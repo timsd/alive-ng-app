@@ -1,0 +1,164 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../models/health_data.dart';
+import '../utils/toast_utils.dart';
+
+class HealthTrackingService {
+  static final _supabase = Supabase.instance.client;
+
+  static Future<List<HealthData>> fetchHealthData() async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) {
+        throw Exception('User not authenticated');
+      }
+
+      final response = await _supabase
+          .from('health_tracking')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('date', ascending: false)
+          .limit(30); // Last 30 days
+
+      return (response as List)
+          .map((json) => HealthData.fromJson(json))
+          .toList();
+    } catch (error) {
+      print('Error fetching health data: $error');
+      ToastUtils.showError('Failed to load health data');
+      return [];
+    }
+  }
+
+  static Future<HealthData?> getTodayData() async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) return null;
+
+      final today = DateTime.now().toIso8601String().split('T')[0];
+      final response = await _supabase
+          .from('health_tracking')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('date', today)
+          .maybeSingle();
+
+      return response != null ? HealthData.fromJson(response) : null;
+    } catch (error) {
+      print('Error fetching today\'s health data: $error');
+      return null;
+    }
+  }
+
+  static Future<bool> updateHealthData(Map<String, dynamic> data) async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) {
+        ToastUtils.showError('Please log in to track your health');
+        return false;
+      }
+
+      final today = DateTime.now().toIso8601String().split('T')[0];
+
+      await _supabase.from('health_tracking').upsert({
+        'user_id': user.id,
+        'date': today,
+        ...data,
+      });
+
+      ToastUtils.showSuccess('Health data updated');
+      return true;
+    } catch (error) {
+      print('Error updating health data: $error');
+      ToastUtils.showError('Could not save your health tracking');
+      return false;
+    }
+  }
+
+  static Future<bool> logWaterIntake(int glasses) async {
+    try {
+      final todayData = await getTodayData();
+      final currentIntake = todayData?.waterIntake ?? 0;
+      return await updateHealthData({
+        'water_intake': currentIntake + glasses,
+      });
+    } catch (error) {
+      print('Error logging water intake: $error');
+      return false;
+    }
+  }
+
+  static Future<bool> logExercise(int minutes) async {
+    try {
+      final todayData = await getTodayData();
+      final currentMinutes = todayData?.exerciseMinutes ?? 0;
+      return await updateHealthData({
+        'exercise_minutes': currentMinutes + minutes,
+      });
+    } catch (error) {
+      print('Error logging exercise: $error');
+      return false;
+    }
+  }
+
+  static Future<bool> logSunlight(int minutes) async {
+    try {
+      final todayData = await getTodayData();
+      final currentMinutes = todayData?.sunlightMinutes ?? 0;
+      return await updateHealthData({
+        'sunlight_minutes': currentMinutes + minutes,
+      });
+    } catch (error) {
+      print('Error logging sunlight: $error');
+      return false;
+    }
+  }
+
+  static Future<bool> logSleep(double hours) async {
+    try {
+      return await updateHealthData({
+        'sleep_hours': hours,
+      });
+    } catch (error) {
+      print('Error logging sleep: $error');
+      return false;
+    }
+  }
+
+  static Future<bool> updateScores({
+    int? nutritionScore,
+    int? temperanceScore,
+    int? freshAirScore,
+    int? trustScore,
+  }) async {
+    try {
+      final updates = <String, dynamic>{};
+      if (nutritionScore != null) updates['nutrition_score'] = nutritionScore;
+      if (temperanceScore != null)
+        updates['temperance_score'] = temperanceScore;
+      if (freshAirScore != null) updates['fresh_air_score'] = freshAirScore;
+      if (trustScore != null) updates['trust_score'] = trustScore;
+
+      return await updateHealthData(updates);
+    } catch (error) {
+      print('Error updating scores: $error');
+      return false;
+    }
+  }
+
+  static int getTodayWellnessScore(HealthData? todayData) {
+    if (todayData == null) return 0;
+
+    final scores = [
+      (todayData.waterIntake / 8).clamp(0, 1) * 100, // 8 glasses target
+      (todayData.exerciseMinutes / 30).clamp(0, 1) * 100, // 30 min target
+      (todayData.sunlightMinutes / 20).clamp(0, 1) * 100, // 20 min target
+      (todayData.sleepHours / 8).clamp(0, 1) * 100, // 8 hours target
+      todayData.nutritionScore.toDouble(),
+      todayData.temperanceScore.toDouble(),
+      todayData.freshAirScore.toDouble(),
+      todayData.trustScore.toDouble(),
+    ];
+
+    return (scores.reduce((sum, score) => sum + score) / 8).round();
+  }
+}
