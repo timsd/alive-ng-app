@@ -2,10 +2,12 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../utils/toast_utils.dart';
+import '../utils/logger.dart';
 
 class FirebaseMessagingService {
   static final _messaging = FirebaseMessaging.instance;
   static final _supabase = Supabase.instance.client;
+  static final _logger = Logger('FirebaseMessagingService');
 
   /// Initialize Firebase messaging
   static Future<void> initialize() async {
@@ -56,7 +58,7 @@ class FirebaseMessagingService {
 
       return null;
     } catch (error) {
-      print('Error requesting notification permission: $error');
+      _logger.error('Error requesting notification permission: $error');
       ToastUtils.showError('Failed to setup notifications');
       return null;
     }
@@ -77,9 +79,9 @@ class FirebaseMessagingService {
       //   'updated_at': DateTime.now().toIso8601String(),
       // });
 
-      print('FCM token saved: $token');
+      _logger.info('FCM token saved: $token');
     } catch (error) {
-      print('Error saving FCM token: $error');
+      _logger.error('Error saving FCM token: $error');
     }
   }
 
@@ -87,7 +89,8 @@ class FirebaseMessagingService {
   static Future<void> _firebaseMessagingBackgroundHandler(
       RemoteMessage message) async {
     await Firebase.initializeApp();
-    print('Handling background message: ${message.messageId}');
+    final logger = Logger('FirebaseMessagingBackgroundHandler');
+    logger.info('Handling background message: ${message.messageId}');
 
     // Handle background message logic here
     // For example, update local database, show notification, etc.
@@ -95,26 +98,25 @@ class FirebaseMessagingService {
 
   /// Handle foreground messages
   static void _handleForegroundMessage(RemoteMessage message) {
-    print('Received foreground message: ${message.messageId}');
+    _logger.info('Received foreground message: ${message.messageId}');
 
     // Show in-app notification or update UI
     if (message.notification != null) {
-      ToastUtils.showInfo(
-        message.notification!.title ?? 'New Message',
-        description: message.notification!.body,
-      );
+      final title = message.notification!.title ?? 'New Message';
+      final body = message.notification!.body ?? '';
+      ToastUtils.showInfo('$title: $body');
     }
   }
 
   /// Handle notification tap
   static void _handleNotificationTap(RemoteMessage message) {
-    print('Notification tapped: ${message.messageId}');
+    _logger.info('Notification tapped: ${message.messageId}');
 
     // Navigate to specific screen based on message data
     final data = message.data;
     if (data.containsKey('screen')) {
       // TODO: Implement navigation based on data['screen']
-      print('Navigate to: ${data['screen']}');
+      _logger.info('Navigate to: ${data['screen']}');
     }
   }
 
@@ -122,9 +124,9 @@ class FirebaseMessagingService {
   static Future<void> subscribeToTopic(String topic) async {
     try {
       await _messaging.subscribeToTopic(topic);
-      print('Subscribed to topic: $topic');
+      _logger.info('Subscribed to topic: $topic');
     } catch (error) {
-      print('Error subscribing to topic $topic: $error');
+      _logger.error('Error subscribing to topic $topic: $error');
     }
   }
 
@@ -132,9 +134,9 @@ class FirebaseMessagingService {
   static Future<void> unsubscribeFromTopic(String topic) async {
     try {
       await _messaging.unsubscribeFromTopic(topic);
-      print('Unsubscribed from topic: $topic');
+      _logger.info('Unsubscribed from topic: $topic');
     } catch (error) {
-      print('Error unsubscribing from topic $topic: $error');
+      _logger.error('Error unsubscribing from topic $topic: $error');
     }
   }
 
@@ -143,7 +145,7 @@ class FirebaseMessagingService {
     try {
       return await _messaging.getToken();
     } catch (error) {
-      print('Error getting FCM token: $error');
+      _logger.error('Error getting FCM token: $error');
       return null;
     }
   }
@@ -162,16 +164,16 @@ class FirebaseMessagingService {
       //       .eq('user_id', user.id);
       // }
 
-      print('FCM token deleted');
+      _logger.info('FCM token deleted');
     } catch (error) {
-      print('Error deleting FCM token: $error');
+      _logger.error('Error deleting FCM token: $error');
     }
   }
 
   /// Listen for token refresh
   static void listenForTokenRefresh() {
     _messaging.onTokenRefresh.listen((newToken) {
-      print('FCM token refreshed: $newToken');
+      _logger.info('FCM token refreshed: $newToken');
       _saveTokenToDatabase(newToken);
     });
   }

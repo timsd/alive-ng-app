@@ -1,6 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/leadership_models.dart';
-import '../utils/app_constants.dart';
 import 'package:uuid/uuid.dart';
 
 class LeadershipService {
@@ -39,7 +38,7 @@ class LeadershipService {
     int? offset,
   }) async {
     try {
-      var query = _supabase.from('leadership_records').select();
+      dynamic query = _supabase.from('leadership_records').select();
 
       if (status != null) {
         query = query.eq('status', status.name);
@@ -382,7 +381,7 @@ class LeadershipService {
     int? limit,
   }) async {
     try {
-      var supabaseQuery = _supabase.from('leadership_records').select();
+      dynamic supabaseQuery = _supabase.from('leadership_records').select();
 
       if (query != null && query.isNotEmpty) {
         supabaseQuery = supabaseQuery.or(
@@ -427,40 +426,46 @@ class LeadershipService {
   Future<Map<String, dynamic>> getLeadershipStatistics() async {
     try {
       // Get counts by status
-      final activeCount = await _supabase
+      final activeCountResponse = await _supabase
           .from('leadership_records')
-          .select('id', const FetchOptions(count: CountOption.exact))
-          .eq('status', ServiceStatus.active.name);
+          .select('*')
+          .eq('status', ServiceStatus.active.name)
+          .count();
+      final activeCount = activeCountResponse.count;
 
-      final completedCount = await _supabase
+      final completedCountResponse = await _supabase
           .from('leadership_records')
-          .select('id', const FetchOptions(count: CountOption.exact))
-          .eq('status', ServiceStatus.completed.name);
+          .select('*')
+          .eq('status', ServiceStatus.completed.name)
+          .count();
+      final completedCount = completedCountResponse.count;
 
-      final archivedCount = await _supabase
+      final archivedCountResponse = await _supabase
           .from('leadership_records')
-          .select('id', const FetchOptions(count: CountOption.exact))
-          .eq('status', ServiceStatus.archived.name);
+          .select('*')
+          .eq('status', ServiceStatus.archived.name)
+          .count();
+      final archivedCount = archivedCountResponse.count;
 
       // Get counts by position
       final positionCounts = <String, int>{};
       for (final position in LeadershipPosition.values) {
-        final count = await _supabase
+        final countResponse = await _supabase
             .from('leadership_records')
-            .select('id', const FetchOptions(count: CountOption.exact))
+            .select('*')
             .eq('position', position.name)
-            .eq('status', ServiceStatus.active.name);
-        positionCounts[position.displayName] = count.count ?? 0;
+            .eq('status', ServiceStatus.active.name)
+            .count();
+        final count = countResponse.count;
+        positionCounts[position.displayName] = count;
       }
 
       return {
-        'active_leaders': activeCount.count ?? 0,
-        'completed_services': completedCount.count ?? 0,
-        'archived_records': archivedCount.count ?? 0,
+        'active_leaders': activeCount,
+        'completed_services': completedCount,
+        'archived_records': archivedCount,
         'position_counts': positionCounts,
-        'total_records': (activeCount.count ?? 0) +
-            (completedCount.count ?? 0) +
-            (archivedCount.count ?? 0),
+        'total_records': activeCount + completedCount + archivedCount,
       };
     } catch (e) {
       throw Exception('Failed to fetch leadership statistics: $e');

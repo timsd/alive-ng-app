@@ -1,9 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/donation_models.dart';
-import '../utils/app_constants.dart';
 import 'package:uuid/uuid.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import '../utils/logger.dart';
 
 class DonationService {
   static final DonationService _instance = DonationService._internal();
@@ -12,6 +10,7 @@ class DonationService {
 
   final SupabaseClient _supabase = Supabase.instance.client;
   final Uuid _uuid = const Uuid();
+  final Logger _logger = Logger('DonationService');
 
   // Get all downloadable materials
   Future<List<DownloadableMaterial>> getMaterials({
@@ -21,7 +20,7 @@ class DonationService {
     int? offset,
   }) async {
     try {
-      var query = _supabase
+      dynamic query = _supabase
           .from('downloadable_materials')
           .select()
           .eq('is_active', true);
@@ -77,7 +76,7 @@ class DonationService {
     int? limit,
   }) async {
     try {
-      var supabaseQuery = _supabase
+      dynamic supabaseQuery = _supabase
           .from('downloadable_materials')
           .select()
           .eq('is_active', true)
@@ -173,7 +172,7 @@ class DonationService {
       final donation = DonationRecord(
         id: _uuid.v4(),
         userId: user.id,
-        userName: profile['full_name'] ?? 'Unknown User',
+        userName: (profile['full_name'] as String?) ?? 'Unknown User',
         userEmail: user.email ?? '',
         type: type,
         amount: amount,
@@ -269,7 +268,7 @@ class DonationService {
     Map<String, dynamic>? metadata,
   }) async {
     try {
-      final updates = {
+      final Map<String, dynamic> updates = {
         'status': status.name,
         'updated_at': DateTime.now().toIso8601String(),
       };
@@ -318,7 +317,7 @@ class DonationService {
       final material = await getMaterialById(materialId);
 
       // Generate signed URL for file download (expires in 1 hour)
-      final signedUrl = await _supabase.storage
+      final String signedUrl = await _supabase.storage
           .from('materials')
           .createSignedUrl(material.fileUrl, 3600);
 
@@ -360,7 +359,7 @@ class DonationService {
         userId: userId,
         materialId: materialId,
         materialTitle: materialTitle,
-        donationId: donation?['id'],
+        donationId: donation?['id'] as String?,
         donationAmount: donation?['amount']?.toDouble(),
         downloadedAt: DateTime.now(),
       );
@@ -368,7 +367,7 @@ class DonationService {
       await _supabase.from('user_downloads').insert(download.toJson());
     } catch (e) {
       // Log error but don't throw - download should still work
-      print('Failed to record download: $e');
+      _logger.error('Failed to record download: $e');
     }
   }
 
@@ -470,10 +469,11 @@ class DonationService {
       for (final type in DonationType.values) {
         final count = await _supabase
             .from('donation_records')
-            .select('id', const FetchOptions(count: CountOption.exact))
+            .select('*')
             .eq('type', type.name)
-            .eq('status', DonationStatus.completed.name);
-        donationsByType[type.name] = count.count ?? 0;
+            .eq('status', DonationStatus.completed.name)
+            .count();
+        donationsByType[type.name] = count.count;
       }
 
       // Recent donations

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/language_provider.dart';
 
@@ -78,7 +79,7 @@ class CustomBottomNavigationBar extends ConsumerWidget {
       elevation: elevation,
       enableFeedback: enableFeedback,
       mouseCursor: mouseCursor,
-      useLegacyColorScheme: useLegacyColorScheme,
+      useLegacyColorScheme: useLegacyColorScheme ?? false,
     );
   }
 }
@@ -202,12 +203,8 @@ class CustomNavigationDrawer extends ConsumerWidget {
       surfaceTintColor: surfaceTintColor,
       elevation: elevation,
       shadowColor: shadowColor,
-      shape: shape,
-      width: width,
-      tilePadding: tilePadding,
       indicatorColor: indicatorColor ?? theme.colorScheme.secondaryContainer,
       indicatorShape: indicatorShape,
-      indicatorSize: indicatorSize,
       children: [
         if (leading != null) leading!,
         ...destinations,
@@ -425,7 +422,7 @@ class StepperNavigation extends ConsumerWidget {
   final VoidCallback? onStepCancel;
   final StepperType type;
   final EdgeInsetsGeometry? margin;
-  final EdgeInsetsGeometry? controlsBuilder;
+  final ControlsWidgetBuilder? controlsBuilder;
   final double? elevation;
   final Color? connectorColor;
   final double? connectorThickness;
@@ -457,24 +454,23 @@ class StepperNavigation extends ConsumerWidget {
       type: type,
       margin: margin,
       elevation: elevation,
-      connectorColor: connectorColor ?? theme.colorScheme.outline,
+      connectorColor: WidgetStateProperty.all(connectorColor ?? theme.colorScheme.outline),
       connectorThickness: connectorThickness ?? 1.0,
-      controlsBuilder: controlsBuilder != null
-          ? (context, details) => controlsBuilder!
-          : (context, details) {
+      controlsBuilder: controlsBuilder ??
+          (context, details) {
               return Row(
                 children: [
                   if (details.stepIndex < steps.length - 1)
                     ElevatedButton(
                       onPressed: details.onStepContinue,
                       child: Text(
-                          ref.read(languageProvider).translate('continue')),
+                          ref.watch(translationProvider)('continue')),
                     ),
                   const SizedBox(width: 8),
                   if (details.stepIndex > 0)
                     TextButton(
                       onPressed: details.onStepCancel,
-                      child: Text(ref.read(languageProvider).translate('back')),
+                      child: Text(ref.watch(translationProvider)('back')),
                     ),
                 ],
               );
@@ -558,8 +554,7 @@ class PaginationNavigation extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final languageProvider = ref.read(this.languageProvider);
+    final translate = ref.watch(translationProvider);
 
     if (totalPages <= 1) return const SizedBox.shrink();
 
@@ -569,7 +564,7 @@ class PaginationNavigation extends ConsumerWidget {
     if (showFirstLast && currentPage > 1) {
       buttons.add(
         _PaginationButton(
-          text: firstText ?? languageProvider.translate('first'),
+          text: firstText ?? translate('first'),
           onPressed: () => onPageChanged(1),
           isActive: false,
           activeColor: activeColor,
@@ -584,7 +579,7 @@ class PaginationNavigation extends ConsumerWidget {
     if (showPrevNext && currentPage > 1) {
       buttons.add(
         _PaginationButton(
-          text: previousText ?? languageProvider.translate('previous'),
+          text: previousText ?? translate('previous'),
           onPressed: () => onPageChanged(currentPage - 1),
           isActive: false,
           activeColor: activeColor,
@@ -617,7 +612,7 @@ class PaginationNavigation extends ConsumerWidget {
     if (showPrevNext && currentPage < totalPages) {
       buttons.add(
         _PaginationButton(
-          text: nextText ?? languageProvider.translate('next'),
+          text: nextText ?? translate('next'),
           onPressed: () => onPageChanged(currentPage + 1),
           isActive: false,
           activeColor: activeColor,
@@ -632,7 +627,7 @@ class PaginationNavigation extends ConsumerWidget {
     if (showFirstLast && currentPage < totalPages) {
       buttons.add(
         _PaginationButton(
-          text: lastText ?? languageProvider.translate('last'),
+          text: lastText ?? translate('last'),
           onPressed: () => onPageChanged(totalPages),
           isActive: false,
           activeColor: activeColor,

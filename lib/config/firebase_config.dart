@@ -8,10 +8,10 @@ import 'package:flutter/foundation.dart';
 /// Contains all Firebase project settings and initialization
 class FirebaseConfig {
   // Firebase Project Details
-  static const String projectName = 'alive-ng-app';
-  static const String projectId = 'alive-ng-app';
-  static const String projectNumber = '1087732403709';
-  static const String senderId = '1087732403709';
+  static const String projectName = 'aliveng-ministry-app';
+  static const String projectId = 'alive-ng-flutter-app';
+  static const String projectNumber = '234909240985';
+  static const String senderId = '234909240985';
 
   // Web Push Certificate Keys
   static const String webPushCertificateKey =
@@ -26,23 +26,23 @@ class FirebaseConfig {
   // Firebase Options for different platforms
   static const FirebaseOptions android = FirebaseOptions(
     apiKey:
-        'AIzaSyDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX', // Replace with actual Android API key
+        'AIzaSyDmpl9Idp9Q0ult4BfWPg5J7A1URQOpDoU', // From google-services.json
     appId:
-        '1:1087732403709:android:XXXXXXXXXXXXXXXXXXXXXXXX', // Replace with actual Android App ID
-    messagingSenderId: '1087732403709',
-    projectId: 'alive-ng-app',
-    storageBucket: 'alive-ng-app.appspot.com',
+        '1:234909240985:android:9d703098e9fcce3e8e3208',
+    messagingSenderId: '234909240985',
+    projectId: 'alive-ng-flutter-app',
+    storageBucket: 'alive-ng-flutter-app.appspot.com',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey:
-        'AIzaSyDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX', // Replace with actual iOS API key
+        'AIzaSyBiDmtEjFx84binj7uKkROtx39NYcp3Q80', // From GoogleService-Info.plist
     appId:
-        '1:1087732403709:ios:XXXXXXXXXXXXXXXXXXXXXXXX', // Replace with actual iOS App ID
-    messagingSenderId: '1087732403709',
-    projectId: 'alive-ng-app',
-    storageBucket: 'alive-ng-app.appspot.com',
-    iosBundleId: 'com.aliveng.app', // Replace with actual bundle ID
+        '1:234909240985:ios:17ffc2d5b91ce9718e3208',
+    messagingSenderId: '234909240985',
+    projectId: 'alive-ng-flutter-app',
+    storageBucket: 'alive-ng-flutter-app.appspot.com',
+    iosBundleId: 'com.alive.alivengiosapp',
   );
 
   static const FirebaseOptions web = FirebaseOptions(

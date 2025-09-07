@@ -1,36 +1,26 @@
 {
   "project_info": {
-    "project_number": "123456789012",
-    "project_id": "alive-ng-ministry",
-    "storage_bucket": "alive-ng-ministry.appspot.com"
+    "project_number": "234909240985",
+    "project_id": "alive-ng-flutter-app",
+    "storage_bucket": "alive-ng-flutter-app.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:123456789012:android:abcdef123456789",
+        "mobilesdk_app_id": "1:234909240985:android:9d703098e9fcce3e8e3208",
         "android_client_info": {
-          "package_name": "com.aliveng.ministry.app"
+          "package_name": "com.alive.alivengandroidapp"
         }
       },
-      "oauth_client": [
-        {
-          "client_id": "123456789012-abcdefghijklmnopqrstuvwxyz123456.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
+      "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyABCDEFGHIJKLMNOPQRSTUVWXYZ1234567"
+          "current_key": "AIzaSyDmpl9Idp9Q0ult4BfWPg5J7A1URQOpDoU"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "123456789012-abcdefghijklmnopqrstuvwxyz123456.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
+          "other_platform_oauth_client": []
         }
       }
     }

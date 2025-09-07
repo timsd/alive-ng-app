@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/chat_models.dart';
 import '../../services/chat_service.dart';
 import '../../widgets/custom_app_bar.dart';
-import '../../widgets/custom_loading.dart';
-import '../../widgets/custom_error_widget.dart';
+import '../../widgets/loading_widget.dart';
+import '../../widgets/error_widget.dart';
 import 'chat_message_widget.dart';
 import 'chat_input_widget.dart';
 import 'channel_list_widget.dart';
@@ -212,11 +212,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ],
       ),
       body: _isLoading
-          ? const CustomLoading()
+          ? const LoadingWidget()
           : _error != null
-              ? CustomErrorWidget(
+              ? AppErrorWidget(
                   message: _error!,
-                  onRetry: _loadChannels,
+                  onAction: _loadChannels,
                 )
               : Row(
                   children: [
@@ -254,7 +254,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                 // Messages area
                                 Expanded(
                                   child: _isLoadingMessages
-                                      ? const CustomLoading()
+                                      ? const LoadingWidget()
                                       : ListView.builder(
                                           controller: _scrollController,
                                           padding: const EdgeInsets.all(16),

@@ -1,9 +1,11 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/prayer_request.dart';
 import '../utils/toast_utils.dart';
+import '../utils/logger.dart';
 
 class PrayerRequestsService {
   static final _supabase = Supabase.instance.client;
+  static final _logger = Logger('PrayerRequestsService');
 
   static Future<List<PrayerRequest>> fetchPrayerRequests() async {
     try {
@@ -21,7 +23,7 @@ class PrayerRequestsService {
           .map((json) => PrayerRequest.fromJson(json))
           .toList();
     } catch (error) {
-      print('Error fetching prayer requests: $error');
+      _logger.error('Error fetching prayer requests', error);
       ToastUtils.showError('Failed to load prayer requests');
       return [];
     }
@@ -50,7 +52,7 @@ class PrayerRequestsService {
       ToastUtils.showSuccess('Prayer request created successfully');
       return true;
     } catch (error) {
-      print('Error creating prayer request: $error');
+      _logger.error('Error creating prayer request', error);
       ToastUtils.showError('Failed to create prayer request');
       return false;
     }
@@ -72,7 +74,7 @@ class PrayerRequestsService {
       ToastUtils.showSuccess('Thank you for praying!');
       return true;
     } catch (error) {
-      print('Error praying for request: $error');
+      _logger.error('Error praying for request', error);
       ToastUtils.showError('Failed to record prayer');
       return false;
     }
@@ -105,7 +107,7 @@ class PrayerRequestsService {
       ToastUtils.showSuccess('Prayer request updated successfully');
       return true;
     } catch (error) {
-      print('Error updating prayer request: $error');
+      _logger.error('Error updating prayer request', error);
       ToastUtils.showError('Failed to update prayer request');
       return false;
     }
@@ -128,7 +130,7 @@ class PrayerRequestsService {
       ToastUtils.showSuccess('Prayer request deleted successfully');
       return true;
     } catch (error) {
-      print('Error deleting prayer request: $error');
+      _logger.error('Error deleting prayer request', error);
       ToastUtils.showError('Failed to delete prayer request');
       return false;
     }

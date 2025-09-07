@@ -89,11 +89,11 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.aliveng.ministry" "\0"
+            VALUE "CompanyName", "com.alive.alivengandroidapp" "\0"
             VALUE "FileDescription", "alive_flutter_app" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "alive_flutter_app" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2025 com.aliveng.ministry. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2025 com.alive.alivengandroidapp. All rights reserved." "\0"
             VALUE "OriginalFilename", "alive_flutter_app.exe" "\0"
             VALUE "ProductName", "alive_flutter_app" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"

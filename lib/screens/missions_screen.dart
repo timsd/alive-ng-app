@@ -469,14 +469,12 @@ class MissionCard extends StatelessWidget {
               const SizedBox(height: 8),
               BibleReferenceWidget(
                 text: mission.description,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                textStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context)
                           .colorScheme
                           .onSurface
                           .withValues(alpha: 0.7),
                     ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 12),
               Row(
@@ -623,7 +621,7 @@ class MissionDetailsSheet extends StatelessWidget {
                   const SizedBox(height: 16),
                   BibleReferenceWidget(
                     text: mission.description,
-                    style: Theme.of(context).textTheme.bodyLarge,
+                    textStyle: Theme.of(context).textTheme.bodyLarge,
                   ),
                   const SizedBox(height: 24),
 

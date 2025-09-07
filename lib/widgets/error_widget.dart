@@ -304,14 +304,7 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
     }
   }
 
-  void _handleError(Object error, StackTrace? stackTrace) {
-    setState(() {
-      _error = error;
-      _stackTrace = stackTrace;
-    });
 
-    widget.onError?.call(error, stackTrace);
-  }
 }
 
 class AsyncErrorWidget extends StatelessWidget {

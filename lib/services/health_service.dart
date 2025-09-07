@@ -478,7 +478,6 @@ class HealthService {
     try {
       // Get recent lifestyle data
       final trackers = await fetchLifestyleTrackers(userId);
-      final goals = await fetchLifestyleGoals(userId);
 
       List<HealthInsight> insights = [];
 
@@ -486,54 +485,65 @@ class HealthService {
         final recent = trackers.first;
 
         // Water intake insight
-        if (recent.waterGlasses < HealthConstants.dailyTargets['water']!) {
+        final waterGlasses = recent.metrics['water_glasses'] ?? 0.0;
+        final waterTarget = HealthConstants.dailyTargets[NaturalRemedy.water]!['glasses'] as int;
+        if (waterGlasses < waterTarget) {
           insights.add(HealthInsight(
             id: _uuid.v4(),
             userId: userId,
-            type: 'water_intake',
             title: 'Increase Water Intake',
-            message:
-                'You\'re drinking ${recent.waterGlasses} glasses of water. Aim for ${HealthConstants.dailyTargets['water']} glasses daily.',
-            recommendation:
-                'Start your day with a glass of water and keep a water bottle nearby.',
-            bibleVerse: HealthConstants.healthBibleVerses['water'],
-            priority: recent.waterGlasses < 4 ? 'high' : 'medium',
-            createdAt: DateTime.now(),
+            content:
+                'You\'re drinking ${waterGlasses.toInt()} glasses of water. Aim for $waterTarget glasses daily.',
+            category: waterGlasses < 4 ? 'urgent' : 'moderate',
+            recommendations: ['Start your day with a glass of water and keep a water bottle nearby.'],
+            data: {
+              'type': 'water_intake',
+              'bibleVerse': HealthConstants.healthBibleVerses['3 John 1:2'] ?? 'Beloved, I wish above all things that thou mayest prosper and be in health, even as thy soul prospereth.',
+              'priority': waterGlasses < 4 ? 'high' : 'medium',
+            },
+            generatedAt: DateTime.now(),
           ));
         }
 
         // Exercise insight
-        if (recent.exerciseMinutes <
-            HealthConstants.dailyTargets['exercise']!) {
+        final exerciseMinutes = recent.metrics['exercise_minutes'] ?? 0.0;
+        final exerciseTarget = HealthConstants.dailyTargets[NaturalRemedy.exercise]!['minutes'] as int;
+        if (exerciseMinutes < exerciseTarget) {
           insights.add(HealthInsight(
             id: _uuid.v4(),
             userId: userId,
-            type: 'exercise',
             title: 'More Physical Activity Needed',
-            message:
-                'You exercised for ${recent.exerciseMinutes} minutes. Aim for ${HealthConstants.dailyTargets['exercise']} minutes daily.',
-            recommendation:
-                'Try a 15-minute walk after meals or simple stretching exercises.',
-            bibleVerse: HealthConstants.healthBibleVerses['exercise'],
-            priority: recent.exerciseMinutes == 0 ? 'high' : 'medium',
-            createdAt: DateTime.now(),
+            content:
+                'You exercised for ${exerciseMinutes.toInt()} minutes. Aim for $exerciseTarget minutes daily.',
+            category: exerciseMinutes == 0 ? 'urgent' : 'moderate',
+            recommendations: ['Try a 15-minute walk after meals or simple stretching exercises.'],
+            data: {
+              'type': 'exercise',
+              'bibleVerse': HealthConstants.healthBibleVerses['Proverbs 31:17'] ?? 'She girdeth her loins with strength, and strengtheneth her arms.',
+              'priority': exerciseMinutes == 0 ? 'high' : 'medium',
+            },
+            generatedAt: DateTime.now(),
           ));
         }
 
         // Sleep insight
-        if (recent.sleepHours < HealthConstants.dailyTargets['sleep']!) {
+        final sleepHours = recent.metrics['sleep_hours'] ?? 0.0;
+        final sleepTarget = HealthConstants.dailyTargets[NaturalRemedy.rest]!['sleep_hours'] as int;
+        if (sleepHours < sleepTarget) {
           insights.add(HealthInsight(
             id: _uuid.v4(),
             userId: userId,
-            type: 'rest',
             title: 'Improve Sleep Quality',
-            message:
-                'You slept for ${recent.sleepHours} hours. Aim for ${HealthConstants.dailyTargets['sleep']} hours nightly.',
-            recommendation:
-                'Establish a bedtime routine and avoid screens 1 hour before sleep.',
-            bibleVerse: HealthConstants.healthBibleVerses['rest'],
-            priority: recent.sleepHours < 6 ? 'high' : 'medium',
-            createdAt: DateTime.now(),
+            content:
+                'You slept for ${sleepHours.toInt()} hours. Aim for $sleepTarget hours nightly.',
+            category: sleepHours < 6 ? 'urgent' : 'moderate',
+            recommendations: ['Establish a bedtime routine and avoid screens 1 hour before sleep.'],
+            data: {
+              'type': 'rest',
+              'bibleVerse': HealthConstants.healthBibleVerses['Ecclesiastes 3:1'] ?? 'To every thing there is a season, and a time to every purpose under the heaven.',
+              'priority': sleepHours < 6 ? 'high' : 'medium',
+            },
+            generatedAt: DateTime.now(),
           ));
         }
       }
@@ -574,24 +584,34 @@ class HealthService {
       };
 
       for (final tracker in trackers) {
-        totalScore += tracker.overallScore;
+        final overallScore = (tracker.metrics['overall_score'] ?? 0).toDouble();
+        final nutritionScore = (tracker.metrics['nutrition_score'] ?? 0).toDouble();
+        final exerciseMinutes = (tracker.metrics['exercise_minutes'] ?? 0).toDouble();
+        final waterGlasses = (tracker.metrics['water_glasses'] ?? 0).toDouble();
+        final sunlightMinutes = (tracker.metrics['sunlight_minutes'] ?? 0).toDouble();
+        final temperanceScore = (tracker.metrics['temperance_score'] ?? 0).toDouble();
+        final airQualityScore = (tracker.metrics['air_quality_score'] ?? 0).toDouble();
+        final sleepHours = (tracker.metrics['sleep_hours'] ?? 0).toDouble();
+        final trustScore = (tracker.metrics['trust_score'] ?? 0).toDouble();
+        
+        totalScore += overallScore;
         categoryTotals['nutrition'] =
-            categoryTotals['nutrition']! + tracker.nutritionScore;
+            categoryTotals['nutrition']! + nutritionScore;
         categoryTotals['exercise'] = categoryTotals['exercise']! +
-            (tracker.exerciseMinutes >= 30 ? 10 : tracker.exerciseMinutes / 3);
+            (exerciseMinutes >= 30 ? 10 : exerciseMinutes / 3);
         categoryTotals['water'] = categoryTotals['water']! +
-            (tracker.waterGlasses >= 8 ? 10 : tracker.waterGlasses * 1.25);
+            (waterGlasses >= 8 ? 10 : waterGlasses * 1.25);
         categoryTotals['sunlight'] = categoryTotals['sunlight']! +
-            (tracker.sunlightMinutes >= 15
+            (sunlightMinutes >= 15
                 ? 10
-                : tracker.sunlightMinutes * 0.67);
+                : sunlightMinutes * 0.67);
         categoryTotals['temperance'] =
-            categoryTotals['temperance']! + tracker.temperanceScore;
+            categoryTotals['temperance']! + temperanceScore;
         categoryTotals['air'] =
-            categoryTotals['air']! + tracker.airQualityScore;
+            categoryTotals['air']! + airQualityScore;
         categoryTotals['rest'] = categoryTotals['rest']! +
-            (tracker.sleepHours >= 7 ? 10 : tracker.sleepHours * 1.43);
-        categoryTotals['trust'] = categoryTotals['trust']! + tracker.trustScore;
+            (sleepHours >= 7 ? 10 : sleepHours * 1.43);
+        categoryTotals['trust'] = categoryTotals['trust']! + trustScore;
       }
 
       // Calculate averages
@@ -609,7 +629,8 @@ class HealthService {
       // Calculate streak
       int streakDays = 0;
       for (final tracker in trackers) {
-        if (tracker.overallScore >= 7.0) {
+        final overallScore = (tracker.metrics['overall_score'] ?? 0).toDouble();
+        if (overallScore >= 7.0) {
           streakDays++;
         } else {
           break;

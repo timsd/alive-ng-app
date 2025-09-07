@@ -322,9 +322,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         await authService.signUpWithEmailAndPassword(
           email: _emailController.text.trim(),
           password: _passwordController.text,
-          data: {
-            'full_name': _nameController.text.trim(),
-          },
+          fullName: _nameController.text.trim(),
         );
 
         if (mounted) {
@@ -338,8 +336,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         }
       } else {
         await authService.signInWithEmailAndPassword(
-          email: _emailController.text.trim(),
-          password: _passwordController.text,
+          _emailController.text.trim(),
+          _passwordController.text,
         );
 
         if (mounted) {

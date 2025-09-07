@@ -117,7 +117,6 @@ class HomeScreen extends ConsumerWidget {
   }
 
   Widget _buildRecentActivitySection(BuildContext context, WidgetRef ref) {
-    final translate = ref.watch(translationProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/chapter_models.dart';
 import '../../services/chapter_service.dart';
 import '../../services/auth_service.dart';
-import '../../utils/app_constants.dart';
+import '../../utils/app_theme.dart';
 
 class ChapterScreen extends StatefulWidget {
   const ChapterScreen({super.key});
@@ -15,7 +15,7 @@ class _ChapterScreenState extends State<ChapterScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final ChapterService _chapterService = ChapterService();
-  final AuthService _authService = AuthService();
+  final AuthService _authService = AuthService.instance;
 
   List<Chapter> _chapters = [];
   List<ChapterMember> _userMemberships = [];
@@ -45,7 +45,7 @@ class _ChapterScreenState extends State<ChapterScreen>
     setState(() => _isLoading = true);
 
     try {
-      _currentUserId = _authService.getCurrentUserId();
+      _currentUserId = _authService.currentUser?.id;
       if (_currentUserId == null) return;
 
       final results = await Future.wait([
@@ -83,7 +83,7 @@ class _ChapterScreenState extends State<ChapterScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('Chapters'),
-        backgroundColor: AppConstants.primaryColor,
+        backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
         bottom: TabBar(
           controller: _tabController,
@@ -369,7 +369,7 @@ class _ChapterScreenState extends State<ChapterScreen>
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: AppConstants.primaryColor,
+          backgroundColor: AppTheme.primaryColor,
           child: Text(
             chapter.name.substring(0, 1).toUpperCase(),
             style: const TextStyle(
@@ -498,7 +498,7 @@ class _ChapterScreenState extends State<ChapterScreen>
       // Browse tab - Create chapter
       return FloatingActionButton(
         onPressed: _createChapter,
-        backgroundColor: AppConstants.primaryColor,
+        backgroundColor: AppTheme.primaryColor,
         child: const Icon(Icons.add),
       );
     }

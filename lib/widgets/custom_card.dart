@@ -148,7 +148,7 @@ class InfoCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              if (icon != null) ..[
+              if (icon != null) ...[
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
@@ -173,7 +173,7 @@ class InfoCard extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    if (subtitle != null) ..[
+                    if (subtitle != null) ...[
                       const SizedBox(height: 4),
                       Text(
                         subtitle!,
@@ -185,7 +185,7 @@ class InfoCard extends StatelessWidget {
                   ],
                 ),
               ),
-              if (value != null) ..[
+              if (value != null) ...[
                 const SizedBox(width: 12),
                 Text(
                   value!,
@@ -195,11 +195,11 @@ class InfoCard extends StatelessWidget {
                   ),
                 ),
               ],
-              if (trailing != null) ..[
+              if (trailing != null) ...[
                 const SizedBox(width: 12),
                 trailing!,
               ],
-              if (onTap != null) ..[
+              if (onTap != null) ...[
                 const SizedBox(width: 8),
                 Icon(
                   Icons.chevron_right,
@@ -208,7 +208,7 @@ class InfoCard extends StatelessWidget {
               ],
             ],
           ),
-          if (showDivider) ..[
+          if (showDivider) ...[
             const SizedBox(height: 12),
             Divider(
               height: 1,
@@ -255,7 +255,7 @@ class StatCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              if (icon != null) ..[
+              if (icon != null) ...[
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
@@ -288,7 +288,7 @@ class StatCard extends StatelessWidget {
               color: cardColor,
             ),
           ),
-          if (subtitle != null || trend != null) ..[
+          if (subtitle != null || trend != null) ...[
             const SizedBox(height: 4),
             Row(
               children: [
@@ -301,7 +301,7 @@ class StatCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                if (trend != null) ..[
+                if (trend != null) ...[
                   Icon(
                     isPositiveTrend ? Icons.trending_up : Icons.trending_down,
                     size: 16,
@@ -376,7 +376,7 @@ class ActionCard extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              if (description != null) ..[
+              if (description != null) ...[
                 const SizedBox(height: 4),
                 Text(
                   description!,
@@ -488,7 +488,7 @@ class ImageCard extends StatelessWidget {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                  if (subtitle != null) ..[
+                  if (subtitle != null) ...[
                     const SizedBox(height: 4),
                     Text(
                       subtitle!,
@@ -497,7 +497,7 @@ class ImageCard extends StatelessWidget {
                       ),
                     ),
                   ],
-                  if (actions != null) ..[
+                  if (actions != null) ...[
                     const SizedBox(height: 12),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
@@ -594,7 +594,7 @@ class _ExpandableCardState extends State<ExpandableCard>
               padding: widget.padding ?? const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  if (widget.icon != null) ..[
+                  if (widget.icon != null) ...[
                     Icon(
                       widget.icon,
                       color: theme.colorScheme.primary,
@@ -611,7 +611,7 @@ class _ExpandableCardState extends State<ExpandableCard>
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        if (widget.subtitle != null) ..[
+                        if (widget.subtitle != null) ...[
                           const SizedBox(height: 4),
                           Text(
                             widget.subtitle!,

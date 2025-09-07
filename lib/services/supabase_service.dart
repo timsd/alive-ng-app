@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/app_models.dart';
+import '../utils/logger.dart';
 
 class SupabaseService {
   static SupabaseService? _instance;
@@ -11,6 +12,7 @@ class SupabaseService {
   SupabaseClient get client => Supabase.instance.client;
   User? get currentUser => client.auth.currentUser;
   bool get isAuthenticated => currentUser != null;
+  final Logger _logger = Logger('SupabaseService');
 
   // Authentication Methods
   Future<AuthResponse> signInWithEmail(String email, String password) async {
@@ -28,16 +30,14 @@ class SupabaseService {
   Future<AuthResponse> signUpWithEmail(
     String email,
     String password, {
-    String? firstName,
-    String? lastName,
+    String? fullName,
   }) async {
     try {
       final response = await client.auth.signUp(
         email: email,
         password: password,
         data: {
-          'first_name': firstName,
-          'last_name': lastName,
+          'full_name': fullName,
         },
       );
       return response;
@@ -354,6 +354,43 @@ class SupabaseService {
       });
     } catch (e) {
       // Silently fail for analytics
+    }
+  }
+
+  // FCM Token Methods
+  Future<void> updateFCMToken(String userId, String token) async {
+    try {
+      // TODO: Uncomment when push_tokens table is available
+      // await client.from('push_tokens').upsert({
+      //   'user_id': userId,
+      //   'token': token,
+      //   'device_type': 'mobile',
+      //   'is_active': true,
+      //   'updated_at': DateTime.now().toIso8601String(),
+      // });
+      
+      // For now, just log the token update
+      _logger.info('FCM token updated for user $userId: $token');
+    } catch (e) {
+      _logger.error('Error updating FCM token', e);
+    }
+  }
+
+  // Notification Settings Methods
+  Future<void> updateNotificationSettings(
+      String userId, Map<String, bool> settings) async {
+    try {
+      // TODO: Uncomment when notification_settings table is available
+      // await client.from('notification_settings').upsert({
+      //   'user_id': userId,
+      //   ...settings,
+      //   'updated_at': DateTime.now().toIso8601String(),
+      // });
+      
+      // For now, just log the settings update
+      _logger.info('Notification settings updated for user $userId: $settings');
+    } catch (e) {
+      _logger.error('Error updating notification settings', e);
     }
   }
 }

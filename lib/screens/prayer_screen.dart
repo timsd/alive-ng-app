@@ -127,9 +127,9 @@ class PrayerScreen extends ConsumerWidget {
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20),
                 child: GuestAccessIndicator(
-                  message:
+                  featureName: 'Prayer Requests',
+                  description:
                       'Create an account to submit prayer requests and connect with our community!',
-                  actionText: 'Sign Up',
                 ),
               ),
 

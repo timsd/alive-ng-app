@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/donation_models.dart';
 import '../../services/donation_service.dart';
-import '../../utils/app_constants.dart';
+import '../../utils/app_theme.dart';
 import 'donation_dialog.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -188,7 +188,7 @@ class _MaterialsScreenState extends State<MaterialsScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('Materials & Downloads'),
-        backgroundColor: AppConstants.primaryColor,
+        backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
         bottom: TabBar(
           controller: _tabController,
@@ -271,8 +271,8 @@ class _MaterialsScreenState extends State<MaterialsScreen>
                         setState(() => _showDonationRequired = selected);
                       },
                       selectedColor:
-                          AppConstants.primaryColor.withValues(alpha: 0.2),
-                      checkmarkColor: AppConstants.primaryColor,
+                          AppTheme.primaryColor.withValues(alpha: 0.2),
+                      checkmarkColor: AppTheme.primaryColor,
                     ),
                   ],
                 ),
@@ -388,15 +388,14 @@ class _MaterialsScreenState extends State<MaterialsScreen>
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color:
-                              AppConstants.primaryColor.withValues(alpha: 0.1),
+                          color: AppTheme.primaryColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           material.category,
                           style: TextStyle(
                             fontSize: 12,
-                            color: AppConstants.primaryColor,
+                            color: AppTheme.primaryColor,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -462,7 +461,7 @@ class _MaterialsScreenState extends State<MaterialsScreen>
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  '${material.fileSize} • ${material.downloadCount} downloads',
+                  '${material.formattedFileSize} • ${material.downloadCount} downloads',
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.grey[500],
@@ -501,7 +500,7 @@ class _MaterialsScreenState extends State<MaterialsScreen>
                   style: ElevatedButton.styleFrom(
                     backgroundColor: material.requiresDonation
                         ? Colors.orange
-                        : AppConstants.primaryColor,
+                        : AppTheme.primaryColor,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),

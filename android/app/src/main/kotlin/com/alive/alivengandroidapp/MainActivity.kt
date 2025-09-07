@@ -1,4 +1,4 @@
-package com.aliveng.ministry.app
+package com.alive.alivengandroidapp
 
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -10,7 +10,7 @@ import android.os.Bundle
 import androidx.annotation.NonNull
 
 class MainActivity: FlutterActivity() {
-    private val CHANNEL = "com.aliveng.ministry.app/native"
+    private val CHANNEL = "com.alive.alivengandroidapp/native"
 
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)

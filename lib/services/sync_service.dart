@@ -3,15 +3,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'supabase_service.dart';
-import 'api_service.dart';
 import 'storage_service.dart';
 import 'auth_service.dart';
-import '../models/user_profile.dart';
-import '../models/prayer_request.dart';
-import '../models/health_activity.dart';
-import '../models/mission.dart';
-import '../models/study_program.dart';
-import '../models/daily_verse.dart';
+import '../models/app_models.dart';
 
 class SyncService {
   static SyncService? _instance;
@@ -22,7 +16,6 @@ class SyncService {
   }
 
   final SupabaseService _supabase = SupabaseService.instance;
-  final ApiService _api = ApiService.instance;
   final StorageService _storage = StorageService.instance;
   final AuthService _auth = AuthService.instance;
 
@@ -32,9 +25,6 @@ class SyncService {
 
   // Sync configuration
   static const Duration _syncInterval = Duration(minutes: 15);
-  static const Duration _backgroundSyncInterval = Duration(hours: 1);
-  static const int _maxRetries = 3;
-  static const Duration _retryDelay = Duration(seconds: 30);
 
   // Initialize sync service
   void _initializeSync() {
@@ -45,8 +35,8 @@ class SyncService {
   // Setup connectivity listener
   void _setupConnectivityListener() {
     _connectivitySubscription =
-        Connectivity().onConnectivityChanged.listen((result) {
-      if (result != ConnectivityResult.none && _auth.isAuthenticated) {
+        Connectivity().onConnectivityChanged.listen((results) {
+      if (!results.contains(ConnectivityResult.none) && _auth.isAuthenticated) {
         // Connection restored, trigger sync
         _triggerSync();
       }
@@ -87,7 +77,7 @@ class SyncService {
 
       // Check connectivity
       final connectivity = await Connectivity().checkConnectivity();
-      if (connectivity == ConnectivityResult.none) {
+      if (connectivity.contains(ConnectivityResult.none)) {
         return SyncResult.error('No internet connection');
       }
 
@@ -130,32 +120,38 @@ class SyncService {
   Future<bool> _syncUserProfile() async {
     try {
       // Get local profile
-      final localProfile = await _storage.getJson(StorageKeys.userProfile);
+      final localProfileJson = await _storage.getJson(StorageKeys.userProfile);
       final localTimestamp =
           await _storage.getString('${StorageKeys.userProfile}_timestamp');
 
       // Get remote profile
-      final remoteProfile =
-          await _supabase.getUserProfile(_auth.currentUser!.id);
+      final currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        return false;
+      }
+      final remoteProfile = await _supabase.getUserProfile(currentUser.id);
 
       if (remoteProfile != null) {
-        final remoteTimestamp = remoteProfile['updated_at'] as String?;
+        final remoteTimestamp = remoteProfile.updatedAt.toIso8601String();
 
         // Compare timestamps and sync if needed
-        if (localTimestamp == null ||
-            (remoteTimestamp != null &&
-                DateTime.parse(remoteTimestamp)
-                    .isAfter(DateTime.parse(localTimestamp)))) {
-          // Remote is newer, update local
-          await _storage.setJson(StorageKeys.userProfile, remoteProfile);
+        if (localTimestamp == null) {
+          // No local timestamp, update with remote
+          await _storage.setJson(StorageKeys.userProfile, remoteProfile.toJson());
           await _storage.setString(
-              '${StorageKeys.userProfile}_timestamp', remoteTimestamp!);
-        } else if (localProfile != null &&
+              '${StorageKeys.userProfile}_timestamp', remoteTimestamp);
+        } else if (DateTime.parse(remoteTimestamp)
+                .isAfter(DateTime.parse(localTimestamp))) {
+          // Remote is newer, update local
+          await _storage.setJson(StorageKeys.userProfile, remoteProfile.toJson());
+          await _storage.setString(
+              '${StorageKeys.userProfile}_timestamp', remoteTimestamp);
+        } else if (localProfileJson != null &&
             DateTime.parse(localTimestamp)
-                .isAfter(DateTime.parse(remoteTimestamp ?? ''))) {
+                .isAfter(remoteProfile.updatedAt)) {
           // Local is newer, update remote
-          await _supabase.updateUserProfile(
-              _auth.currentUser!.id, localProfile);
+          final localProfile = UserProfile.fromJson(localProfileJson);
+          await _supabase.updateUserProfile(localProfile);
         }
       }
 
@@ -226,47 +222,6 @@ class SyncService {
     }
   }
 
-  // Merge local and remote data
-  List<Map<String, dynamic>> _mergeData(
-    List<dynamic> localData,
-    List<dynamic> remoteData,
-    String idField,
-  ) {
-    final Map<String, Map<String, dynamic>> merged = {};
-
-    // Add local data
-    for (final item in localData) {
-      if (item is Map<String, dynamic> && item[idField] != null) {
-        merged[item[idField].toString()] = Map<String, dynamic>.from(item);
-      }
-    }
-
-    // Merge remote data (remote takes precedence)
-    for (final item in remoteData) {
-      if (item is Map<String, dynamic> && item[idField] != null) {
-        final id = item[idField].toString();
-        final localItem = merged[id];
-
-        if (localItem != null) {
-          // Compare timestamps if available
-          final localTimestamp = localItem['updated_at'] as String?;
-          final remoteTimestamp = item['updated_at'] as String?;
-
-          if (remoteTimestamp != null &&
-              (localTimestamp == null ||
-                  DateTime.parse(remoteTimestamp)
-                      .isAfter(DateTime.parse(localTimestamp)))) {
-            merged[id] = Map<String, dynamic>.from(item);
-          }
-        } else {
-          merged[id] = Map<String, dynamic>.from(item);
-        }
-      }
-    }
-
-    return merged.values.toList();
-  }
-
   // Queue local change for sync
   Future<void> queueLocalChange(
     String dataType,
@@ -275,7 +230,7 @@ class SyncService {
     String? id,
   }) async {
     final pendingKey = '${dataType}_pending';
-    final pendingChanges = await _storage.getJson(pendingKey) ?? [];
+    final pendingChanges = await _storage.getJsonList(pendingKey) ?? <Map<String, dynamic>>[];
 
     final change = {
       'action': action,
@@ -288,11 +243,11 @@ class SyncService {
     }
 
     pendingChanges.add(change);
-    await _storage.setJson(pendingKey, pendingChanges);
+    await _storage.setJsonList(pendingKey, pendingChanges.cast<Map<String, dynamic>>());
 
     // Trigger immediate sync if online
     final connectivity = await Connectivity().checkConnectivity();
-    if (connectivity != ConnectivityResult.none) {
+    if (!connectivity.contains(ConnectivityResult.none)) {
       _triggerSync();
     }
   }
@@ -324,7 +279,7 @@ class SyncService {
 
     return SyncStatus(
       lastSyncTime: lastSyncTime != null ? DateTime.parse(lastSyncTime) : null,
-      isOnline: connectivity != ConnectivityResult.none,
+      isOnline: !connectivity.contains(ConnectivityResult.none),
       isSyncing: _isSyncing,
       isAuthenticated: _auth.isAuthenticated,
     );

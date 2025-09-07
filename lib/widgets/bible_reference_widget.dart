@@ -117,7 +117,7 @@ class BibleReferenceWidget extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (verse.text.containsKey('KJV')) ..[
+              if (verse.text.containsKey('KJV')) ...[
                 const Text(
                   'King James Version (KJV):',
                   style: TextStyle(
@@ -135,7 +135,7 @@ class BibleReferenceWidget extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
               ],
-              if (verse.text.containsKey('NKJV')) ..[
+              if (verse.text.containsKey('NKJV')) ...[
                 const Text(
                   'New King James Version (NKJV):',
                   style: TextStyle(
@@ -153,7 +153,7 @@ class BibleReferenceWidget extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
               ],
-              if (verse.text.containsKey('NIV')) ..[
+              if (verse.text.containsKey('NIV')) ...[
                 const Text(
                   'New International Version (NIV):',
                   style: TextStyle(

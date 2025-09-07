@@ -20,6 +20,7 @@ enum PaymentMethod {
   paystack,
   paypal,
   bankTransfer,
+  mobileMoney,
 }
 
 class DonationRecord extends Equatable {
@@ -200,6 +201,8 @@ class DonationRecord extends Equatable {
         return 'PayPal';
       case PaymentMethod.bankTransfer:
         return 'Bank Transfer';
+      case PaymentMethod.mobileMoney:
+        return 'Mobile Money';
     }
   }
 

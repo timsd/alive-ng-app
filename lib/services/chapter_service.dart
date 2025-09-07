@@ -139,9 +139,7 @@ class ChapterService {
         query = query.eq('is_active', isActive);
       }
 
-      query = query.order('joined_at');
-
-      final response = await query;
+      final response = await query.order('joined_at');
       return response
           .map<ChapterMember>((json) => ChapterMember.fromJson(json))
           .toList();
@@ -201,7 +199,7 @@ class ChapterService {
         joinedAt: DateTime.now(),
         isActive: true,
         permissions: Map<String, dynamic>.from(
-            ChapterConstants.rolePermissions[role.name] ?? []),
+            (ChapterConstants.rolePermissions[role.name] as Map<String, dynamic>?) ?? {}),
         metadata: {},
       );
 
@@ -223,7 +221,7 @@ class ChapterService {
       final updatedMember = member.copyWith(
         role: newRole,
         permissions: Map<String, dynamic>.from(
-            ChapterConstants.rolePermissions[newRole.name] ?? []),
+            (ChapterConstants.rolePermissions[newRole.name] as Map<String, dynamic>?) ?? {}),
       );
 
       await _supabase
@@ -282,9 +280,7 @@ class ChapterService {
         query = query.lte('scheduled_at', endDate.toIso8601String());
       }
 
-      query = query.order('scheduled_at');
-
-      final response = await query;
+      final response = await query.order('scheduled_at');
       return response
           .map<ChapterActivity>((json) => ChapterActivity.fromJson(json))
           .toList();
@@ -393,9 +389,7 @@ class ChapterService {
         query = query.eq('priority', priority);
       }
 
-      query = query.order('priority', ascending: false).order('due_date');
-
-      final response = await query;
+      final response = await query.order('priority', ascending: false).order('due_date');
       return response
           .map<ChapterTask>((json) => ChapterTask.fromJson(json))
           .toList();
@@ -498,9 +492,7 @@ class ChapterService {
         query = query.lte('report_period_end', endDate.toIso8601String());
       }
 
-      query = query.order('created_at', ascending: false);
-
-      final response = await query;
+      final response = await query.order('created_at', ascending: false);
       return response
           .map<ChapterReport>((json) => ChapterReport.fromJson(json))
           .toList();

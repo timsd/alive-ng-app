@@ -42,12 +42,12 @@ class Logger {
 
   /// Log critical errors (always shown)
   void critical(String message, [Object? error, StackTrace? stackTrace]) {
-    print('[CRITICAL] $_name: $message');
+    debugPrint('[CRITICAL] $_name: $message');
     if (error != null) {
-      print('Error: $error');
+      debugPrint('Error: $error');
     }
     if (stackTrace != null) {
-      print('Stack trace: $stackTrace');
+      debugPrint('Stack trace: $stackTrace');
     }
   }
 }

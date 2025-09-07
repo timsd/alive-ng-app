@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/gestures.dart';
 import '../../models/chat_models.dart';
 import '../../widgets/custom_image.dart';
 import 'package:timeago/timeago.dart' as timeago;
@@ -118,7 +119,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
               imageUrl: widget.message.senderAvatar,
               width: 32,
               height: 32,
-              borderRadius: 16,
+              borderRadius: BorderRadius.circular(16),
               placeholder: CircleAvatar(
                 radius: 16,
                 backgroundColor: theme.colorScheme.primary,
@@ -419,8 +420,4 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
     // Implement URL launching
     // You can use url_launcher package
   }
-}
-
-class TapGestureRecognizer {
-  VoidCallback? onTap;
 }

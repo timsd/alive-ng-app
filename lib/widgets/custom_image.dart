@@ -79,9 +79,7 @@ class CustomImage extends StatelessWidget {
         colorBlendMode: colorBlendMode,
         opacity: opacity != null ? AlwaysStoppedAnimation(opacity!) : null,
         filterQuality: filterQuality,
-        isAntiAlias: isAntiAlias,
-        semanticLabel: semanticLabel,
-        excludeFromSemantics: excludeFromSemantics,
+         isAntiAlias: isAntiAlias,
         errorBuilder: (context, error, stackTrace) {
           return errorWidget ?? _buildDefaultErrorWidget(context);
         },
@@ -109,8 +107,6 @@ class CustomImage extends StatelessWidget {
         memCacheWidth: width?.toInt(),
         memCacheHeight: height?.toInt(),
         filterQuality: filterQuality,
-        semanticLabel: semanticLabel,
-        excludeFromSemantics: excludeFromSemantics,
       );
     } else {
       imageWidget = _buildDefaultErrorWidget(context);
@@ -550,7 +546,7 @@ class _ImageCarouselState extends State<ImageCarousel> {
           ),
           
           // Navigation arrows
-          ...if (widget.showArrows && totalImages > 1) [
+          if (widget.showArrows && totalImages > 1) ...[
             Positioned(
               left: 8,
               top: 0,

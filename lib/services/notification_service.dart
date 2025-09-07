@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../utils/logger.dart';
 import 'supabase_service.dart';
 import 'auth_service.dart';
 
@@ -21,6 +22,7 @@ class NotificationService {
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
   final SupabaseService _supabaseService = SupabaseService.instance;
   final AuthService _authService = AuthService.instance;
+  final Logger _logger = Logger('NotificationService');
 
   bool _isInitialized = false;
   String? _fcmToken;
@@ -195,19 +197,21 @@ class NotificationService {
   void _navigateFromNotification(Map<String, dynamic> data) {
     final type = data['type'];
     final id = data['id'];
+    
+    _logger.info('Navigating from notification: type=$type, id=$id');
 
     switch (type) {
       case 'prayer_request':
-        // Navigate to prayer request details
+        // Navigate to prayer request details with id: $id
         break;
       case 'mission':
-        // Navigate to mission details
+        // Navigate to mission details with id: $id
         break;
       case 'daily_verse':
-        // Navigate to daily verse
+        // Navigate to daily verse with id: $id
         break;
       case 'health_reminder':
-        // Navigate to health screen
+        // Navigate to health screen with id: $id
         break;
       case 'study_reminder':
         // Navigate to study screen
@@ -290,8 +294,6 @@ class NotificationService {
       tz.TZDateTime.from(scheduledDate, tz.local),
       details,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
       payload: payload?.toString(),
     );
   }
@@ -860,5 +862,14 @@ final notificationServiceProvider = Provider<NotificationService>((ref) {
 final notificationSettingsProvider =
     FutureProvider<NotificationSettings>((ref) async {
   // This would typically fetch from local storage or database
-  return NotificationSettings();
+  return NotificationSettings(
+    userId: '',
+    dailyVerseReminder: true,
+    prayerReminder: true,
+    healthTrackingReminder: true,
+    studyReminder: true,
+    missionReminder: true,
+    reminderTime: '07:00',
+    pushNotificationsEnabled: false,
+  );
 });

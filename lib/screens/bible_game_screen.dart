@@ -389,7 +389,7 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
               children: [
                 BibleReferenceWidget(
                   text: gameState.currentVerse!.reference,
-                  style: const TextStyle(
+                  textStyle: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Colors.blue,

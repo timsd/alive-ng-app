@@ -1,9 +1,11 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../models/study_progress.dart';
+import '../models/app_models.dart';
 import '../utils/toast_utils.dart';
+import '../utils/logger.dart';
 
 class StudyProgressService {
   static final _supabase = Supabase.instance.client;
+  static final _logger = Logger('StudyProgressService');
 
   static Future<List<StudyProgress>> fetchStudyProgress() async {
     try {
@@ -22,7 +24,7 @@ class StudyProgressService {
           .map((json) => StudyProgress.fromJson(json))
           .toList();
     } catch (error) {
-      print('Error fetching study progress: $error');
+      _logger.error('Error fetching study progress', error);
       ToastUtils.showError('Failed to load study progress');
       return [];
     }
@@ -57,7 +59,7 @@ class StudyProgressService {
 
       return true;
     } catch (error) {
-      print('Error updating study progress: $error');
+      _logger.error('Error updating study progress', error);
       ToastUtils.showError('Could not save your study progress');
       return false;
     }
@@ -71,11 +73,11 @@ class StudyProgressService {
   }
 
   static int getTotalCompletedLessons(List<StudyProgress> allProgress) {
-    return allProgress.where((p) => p.completed).length;
+    return allProgress.where((p) => p.progressPercentage >= 100).length;
   }
 
   static int getTotalScore(List<StudyProgress> allProgress) {
-    return allProgress.fold(0, (total, p) => total + p.score);
+    return allProgress.fold(0, (total, p) => total + p.progressPercentage.round());
   }
 
   static double getCompletionPercentage(
@@ -84,7 +86,7 @@ class StudyProgressService {
     int totalLessons,
   ) {
     final programProgress = getProgressForProgram(allProgress, programId);
-    final completedLessons = programProgress.where((p) => p.completed).length;
+    final completedLessons = programProgress.where((p) => p.progressPercentage >= 100).length;
     return totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0;
   }
 
@@ -94,8 +96,10 @@ class StudyProgressService {
     String lessonId,
   ) {
     try {
+      // Convert lessonId to int and compare with currentLesson
+      final lessonNumber = int.tryParse(lessonId) ?? 0;
       return allProgress.firstWhere(
-        (p) => p.programId == programId && p.lessonId == lessonId,
+        (p) => p.programId == programId && p.currentLesson == lessonNumber,
       );
     } catch (e) {
       return null;
@@ -119,15 +123,15 @@ class StudyProgressService {
       ToastUtils.showSuccess('Progress reset successfully');
       return true;
     } catch (error) {
-      print('Error resetting progress: $error');
+      _logger.error('Error resetting progress', error);
       ToastUtils.showError('Failed to reset progress');
       return false;
     }
   }
 
   static Map<String, int> getProgressStats(List<StudyProgress> allProgress) {
-    final completed = allProgress.where((p) => p.completed).length;
-    final inProgress = allProgress.where((p) => !p.completed).length;
+    final completed = allProgress.where((p) => p.progressPercentage >= 100).length;
+    final inProgress = allProgress.where((p) => p.progressPercentage < 100).length;
     final totalScore = getTotalScore(allProgress);
     final averageScore =
         allProgress.isNotEmpty ? (totalScore / allProgress.length).round() : 0;

@@ -5,7 +5,6 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'firebase_service.dart';
 
 enum ReminderType {
   dailyVerse('daily_verse'),
@@ -90,7 +89,6 @@ class ReminderService {
 
   final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
-  final FirebaseService _firebaseService = FirebaseService();
 
   bool _isInitialized = false;
   final Map<String, Timer> _scheduledReminders = {};
@@ -145,8 +143,7 @@ class ReminderService {
           sound: true,
         );
 
-    // Also request Firebase FCM permission
-    await _firebaseService.requestPermission();
+    // Firebase FCM permissions are handled during initialization
 
     return androidPermission ?? iosPermission ?? true;
   }
@@ -222,8 +219,6 @@ class ReminderService {
       tz.TZDateTime.from(scheduledDate, tz.local),
       platformChannelSpecifics,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
       payload: jsonEncode({
         'type': config.type.value,
         'route': _getRouteForType(config.type),

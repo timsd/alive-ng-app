@@ -48,6 +48,34 @@ class ChapterConstants {
     'AMTC Team',
   ];
 
+  static const Map<String, Map<String, dynamic>> rolePermissions = {
+    'member': {
+      'permissions': ['view_activities', 'join_activities', 'submit_reports'],
+      'canCreateActivities': false,
+      'canManageMembers': false,
+    },
+    'coordinator': {
+      'permissions': ['view_activities', 'join_activities', 'submit_reports', 'create_activities', 'manage_activities'],
+      'canCreateActivities': true,
+      'canManageMembers': true,
+    },
+    'director': {
+      'permissions': ['view_activities', 'join_activities', 'submit_reports', 'create_activities', 'manage_activities', 'manage_members', 'approve_reports'],
+      'canCreateActivities': true,
+      'canManageMembers': true,
+    },
+    'bod': {
+      'permissions': ['view_activities', 'join_activities', 'submit_reports', 'create_activities', 'manage_activities', 'manage_members', 'approve_reports', 'manage_chapter'],
+      'canCreateActivities': true,
+      'canManageMembers': true,
+    },
+    'trustee': {
+      'permissions': ['view_activities', 'join_activities', 'submit_reports', 'create_activities', 'manage_activities', 'manage_members', 'approve_reports', 'manage_chapter'],
+      'canCreateActivities': true,
+      'canManageMembers': true,
+    },
+  };
+
   static bool isValidChapter(String chapter) {
     return availableChapters.contains(chapter);
   }

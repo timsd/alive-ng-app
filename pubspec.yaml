@@ -84,7 +84,8 @@ dependencies:
 
   equatable: any
   timezone: any
-  # flutter_paystack: ^1.0.5  # Temporarily disabled due to dependency conflicts
+  # flutter_paystack: ^1.0.5+1  # Temporarily disabled due to dependency conflicts
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

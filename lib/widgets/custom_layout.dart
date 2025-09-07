@@ -115,7 +115,6 @@ class AdaptiveGrid extends StatelessWidget {
             columns = tabletColumns;
             break;
           case DeviceType.mobile:
-          default:
             columns = mobileColumns;
             break;
         }
@@ -449,7 +448,7 @@ class SafeAreaLayout extends StatelessWidget {
       bottom: bottom,
       left: left,
       right: right,
-      minimum: minimum ?? EdgeInsets.zero,
+      minimum: (minimum as EdgeInsets?) ?? EdgeInsets.zero,
       maintainBottomViewPadding: maintainBottomViewPadding,
       child: child,
     );

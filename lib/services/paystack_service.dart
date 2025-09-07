@@ -1,3 +1,5 @@
+// Temporarily disabled due to flutter_paystack dependency conflicts
+/*
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_paystack/flutter_paystack.dart';
@@ -350,3 +352,4 @@ class DonationStats {
     required this.transactionCount,
   });
 }
+*/

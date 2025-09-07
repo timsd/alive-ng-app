@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../models/study_guide_models.dart';
+import '../utils/logger.dart';
 
 class StudyGuideService {
   static final StudyGuideService _instance = StudyGuideService._internal();
@@ -8,6 +9,7 @@ class StudyGuideService {
   StudyGuideService._internal();
 
   final SupabaseClient _supabase = Supabase.instance.client;
+  final Logger _logger = Logger('StudyGuideService');
   final Uuid _uuid = const Uuid();
 
   // Study Guide Management
@@ -629,7 +631,7 @@ class StudyGuideService {
       await updateStudyProgress(updatedProgress);
     } catch (e) {
       // Log error but don't throw to avoid breaking lesson completion
-      print('Error updating study guide progress: $e');
+      _logger.error('Error updating study guide progress', e);
     }
   }
 
@@ -706,7 +708,7 @@ class StudyGuideService {
         await createStudyGuide(studyGuide);
       }
     } catch (e) {
-      print('Error initializing default study guides: $e');
+      _logger.error('Error initializing default study guides', e);
     }
   }
 }

@@ -190,7 +190,7 @@ class ActionBottomSheet extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (message != null) ..[
+          if (message != null) ...[
             Text(
               message!,
               style: theme.textTheme.bodyMedium?.copyWith(
@@ -207,7 +207,7 @@ class ActionBottomSheet extends StatelessWidget {
               action.onTap?.call();
             },
           )),
-          if (cancelAction != null) ..[
+          if (cancelAction != null) ...[
             const SizedBox(height: 8),
             Container(
               width: double.infinity,
@@ -304,7 +304,7 @@ class _BottomSheetActionTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         child: Row(
           children: [
-            if (action.icon != null) ..[
+            if (action.icon != null) ...[
               Icon(
                 action.icon,
                 color: textColor,
@@ -432,38 +432,7 @@ class _FormBottomSheetState extends State<FormBottomSheet> {
     );
   }
 
-  static Future<bool?> show({
-    required BuildContext context,
-    required String title,
-    required List<Widget> fields,
-    String submitText = 'Save',
-    String cancelText = 'Cancel',
-    VoidCallback? onSubmit,
-    VoidCallback? onCancel,
-    GlobalKey<FormState>? formKey,
-    bool showDragHandle = true,
-    EdgeInsetsGeometry? padding,
-    double? height,
-    bool isScrollControlled = true,
-  }) {
-    return CustomBottomSheet.show<bool>(
-      context: context,
-      isScrollControlled: isScrollControlled,
-      child: FormBottomSheet(
-        title: title,
-        fields: fields,
-        submitText: submitText,
-        cancelText: cancelText,
-        onSubmit: onSubmit,
-        onCancel: onCancel,
-        formKey: formKey,
-        showDragHandle: showDragHandle,
-        padding: padding,
-        height: height,
-        isScrollControlled: isScrollControlled,
-      ),
-    );
-  }
+
 }
 
 class ListBottomSheet<T> extends StatelessWidget {
@@ -668,7 +637,7 @@ class ConfirmationBottomSheet extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (icon != null) ..[
+          if (icon != null) ...[
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -706,7 +675,7 @@ class ConfirmationBottomSheet extends StatelessWidget {
                 child: CustomButton(
                   text: confirmText,
                   variant: isDestructive ? ButtonVariant.danger : ButtonVariant.primary,
-                  color: effectiveConfirmColor,
+                  customColor: effectiveConfirmColor,
                   onPressed: () {
                     Navigator.of(context).pop(true);
                     onConfirm?.call();

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/study_guide_models.dart';
 import '../../services/study_guide_service.dart';
 import '../../services/auth_service.dart';
-import '../../utils/app_constants.dart';
+import '../../utils/app_theme.dart';
 
 class StudyGuideScreen extends StatefulWidget {
   const StudyGuideScreen({super.key});
@@ -13,7 +13,7 @@ class StudyGuideScreen extends StatefulWidget {
 
 class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProviderStateMixin {
   final StudyGuideService _studyGuideService = StudyGuideService();
-  final AuthService _authService = AuthService();
+  final AuthService _authService = AuthService.instance;
   late TabController _tabController;
   
   List<StudyGuide> _studyGuides = [];
@@ -73,7 +73,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
     return Scaffold(
       appBar: AppBar(
         title: const Text('Study Guides'),
-        backgroundColor: AppConstants.primaryColor,
+        backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
         bottom: TabBar(
           controller: _tabController,
@@ -129,7 +129,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           gradient: LinearGradient(
-            colors: [AppConstants.primaryColor, AppConstants.primaryColor.withValues(alpha: 0.8)],
+            colors: [AppTheme.primaryColor, AppTheme.primaryColor.withValues(alpha: 0.8)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -158,7 +158,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
               onPressed: () => _tabController.animateTo(1),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
-                foregroundColor: AppConstants.primaryColor,
+                foregroundColor: AppTheme.primaryColor,
               ),
               child: const Text('Browse Study Guides'),
             ),
@@ -431,7 +431,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
                   _buildInfoChip('${guide.estimatedDurationMinutes}min', Colors.green),
                 ],
               ),
-              if (userProgress.status != StudyStatus.notStarted) ..[
+              if (userProgress.status != StudyStatus.notStarted) ...[
                 const SizedBox(height: 12),
                 LinearProgressIndicator(
                   value: userProgress.progressPercentage / 100,
@@ -439,7 +439,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
                   valueColor: AlwaysStoppedAnimation<Color>(
                     userProgress.status == StudyStatus.completed
                         ? Colors.green
-                        : AppConstants.primaryColor,
+                        : AppTheme.primaryColor,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -537,7 +537,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
                 valueColor: AlwaysStoppedAnimation<Color>(
                   progress.status == StudyStatus.completed
                       ? Colors.green
-                      : AppConstants.primaryColor,
+                      : AppTheme.primaryColor,
                 ),
               ),
               const SizedBox(height: 8),
@@ -560,7 +560,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
                   ),
                 ],
               ),
-              if (progress.totalTimeSpentMinutes > 0) ..[
+              if (progress.totalTimeSpentMinutes > 0) ...[
                 const SizedBox(height: 4),
                 Text(
                   'Time spent: ${_formatDuration(progress.totalTimeSpentMinutes)}',
@@ -715,9 +715,9 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
         color = Colors.green;
         text = 'Completed';
         break;
-      case StudyStatus.paused:
+      case StudyStatus.reviewed:
         color = Colors.blue;
-        text = 'Paused';
+        text = 'Reviewed';
         break;
     }
     

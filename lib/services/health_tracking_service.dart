@@ -1,11 +1,12 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../models/health_data.dart';
 import '../utils/toast_utils.dart';
+import '../utils/logger.dart';
 
 class HealthTrackingService {
   static final _supabase = Supabase.instance.client;
+  static final _logger = Logger('HealthTrackingService');
 
-  static Future<List<HealthData>> fetchHealthData() async {
+  static Future<List<Map<String, dynamic>>> fetchHealthData() async {
     try {
       final user = _supabase.auth.currentUser;
       if (user == null) {
@@ -20,16 +21,16 @@ class HealthTrackingService {
           .limit(30); // Last 30 days
 
       return (response as List)
-          .map((json) => HealthData.fromJson(json))
+          .map((json) => json as Map<String, dynamic>)
           .toList();
     } catch (error) {
-      print('Error fetching health data: $error');
+      _logger.error('Error fetching health data', error);
       ToastUtils.showError('Failed to load health data');
       return [];
     }
   }
 
-  static Future<HealthData?> getTodayData() async {
+  static Future<Map<String, dynamic>?> getTodayData() async {
     try {
       final user = _supabase.auth.currentUser;
       if (user == null) return null;
@@ -42,9 +43,9 @@ class HealthTrackingService {
           .eq('date', today)
           .maybeSingle();
 
-      return response != null ? HealthData.fromJson(response) : null;
+      return response;
     } catch (error) {
-      print('Error fetching today\'s health data: $error');
+      _logger.error('Error fetching today\'s health data', error);
       return null;
     }
   }
@@ -68,7 +69,7 @@ class HealthTrackingService {
       ToastUtils.showSuccess('Health data updated');
       return true;
     } catch (error) {
-      print('Error updating health data: $error');
+      _logger.error('Error updating health data', error);
       ToastUtils.showError('Could not save your health tracking');
       return false;
     }
@@ -77,12 +78,12 @@ class HealthTrackingService {
   static Future<bool> logWaterIntake(int glasses) async {
     try {
       final todayData = await getTodayData();
-      final currentIntake = todayData?.waterIntake ?? 0;
+      final currentIntake = todayData?['water_intake'] ?? 0;
       return await updateHealthData({
         'water_intake': currentIntake + glasses,
       });
     } catch (error) {
-      print('Error logging water intake: $error');
+      _logger.error('Error logging water intake', error);
       return false;
     }
   }
@@ -90,12 +91,12 @@ class HealthTrackingService {
   static Future<bool> logExercise(int minutes) async {
     try {
       final todayData = await getTodayData();
-      final currentMinutes = todayData?.exerciseMinutes ?? 0;
+      final currentMinutes = todayData?['exercise_minutes'] ?? 0;
       return await updateHealthData({
         'exercise_minutes': currentMinutes + minutes,
       });
     } catch (error) {
-      print('Error logging exercise: $error');
+      _logger.error('Error logging exercise', error);
       return false;
     }
   }
@@ -103,12 +104,12 @@ class HealthTrackingService {
   static Future<bool> logSunlight(int minutes) async {
     try {
       final todayData = await getTodayData();
-      final currentMinutes = todayData?.sunlightMinutes ?? 0;
+      final currentMinutes = todayData?['sunlight_minutes'] ?? 0;
       return await updateHealthData({
         'sunlight_minutes': currentMinutes + minutes,
       });
     } catch (error) {
-      print('Error logging sunlight: $error');
+      _logger.error('Error logging sunlight', error);
       return false;
     }
   }
@@ -119,7 +120,7 @@ class HealthTrackingService {
         'sleep_hours': hours,
       });
     } catch (error) {
-      print('Error logging sleep: $error');
+      _logger.error('Error logging sleep', error);
       return false;
     }
   }
@@ -133,32 +134,34 @@ class HealthTrackingService {
     try {
       final updates = <String, dynamic>{};
       if (nutritionScore != null) updates['nutrition_score'] = nutritionScore;
-      if (temperanceScore != null)
+      if (temperanceScore != null) {
         updates['temperance_score'] = temperanceScore;
+      }
       if (freshAirScore != null) updates['fresh_air_score'] = freshAirScore;
       if (trustScore != null) updates['trust_score'] = trustScore;
 
       return await updateHealthData(updates);
     } catch (error) {
-      print('Error updating scores: $error');
+      _logger.error('Error updating scores', error);
       return false;
     }
   }
 
-  static int getTodayWellnessScore(HealthData? todayData) {
-    if (todayData == null) return 0;
-
-    final scores = [
-      (todayData.waterIntake / 8).clamp(0, 1) * 100, // 8 glasses target
-      (todayData.exerciseMinutes / 30).clamp(0, 1) * 100, // 30 min target
-      (todayData.sunlightMinutes / 20).clamp(0, 1) * 100, // 20 min target
-      (todayData.sleepHours / 8).clamp(0, 1) * 100, // 8 hours target
-      todayData.nutritionScore.toDouble(),
-      todayData.temperanceScore.toDouble(),
-      todayData.freshAirScore.toDouble(),
-      todayData.trustScore.toDouble(),
-    ];
-
-    return (scores.reduce((sum, score) => sum + score) / 8).round();
-  }
+  // TODO: Implement HealthData model and uncomment this method
+  // static int getTodayWellnessScore(HealthData? todayData) {
+  //   if (todayData == null) return 0;
+  //
+  //   final scores = [
+  //     (todayData.waterIntake / 8).clamp(0, 1) * 100, // 8 glasses target
+  //     (todayData.exerciseMinutes / 30).clamp(0, 1) * 100, // 30 min target
+  //     (todayData.sunlightMinutes / 20).clamp(0, 1) * 100, // 20 min target
+  //     (todayData.sleepHours / 8).clamp(0, 1) * 100, // 8 hours target
+  //     todayData.nutritionScore.toDouble(),
+  //     todayData.temperanceScore.toDouble(),
+  //     todayData.freshAirScore.toDouble(),
+  //     todayData.trustScore.toDouble(),
+  //   ];
+  //
+  //   return (scores.reduce((sum, score) => sum + score) / 8).round();
+  // }
 }

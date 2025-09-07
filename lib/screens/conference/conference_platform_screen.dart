@@ -30,12 +30,13 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen>
 
   Future<void> _initializeJitsi() async {
     // Configure Jitsi Meet
-    _jitsiMeet.addListener(JitsiMeetEventListener(
-      onConferenceWillJoin: _onConferenceWillJoin,
-      onConferenceJoined: _onConferenceJoined,
-      onConferenceTerminated: _onConferenceTerminated,
-      onError: _onError,
-    ));
+    // TODO: Fix Jitsi Meet event listener implementation
+    // _jitsiMeet.addListener(JitsiMeetEventListener(
+    //   onConferenceWillJoin: _onConferenceWillJoin,
+    //   onConferenceJoined: _onConferenceJoined,
+    //   onConferenceTerminated: _onConferenceTerminated,
+    //   onError: _onError,
+    // ));
   }
 
   void _onConferenceWillJoin(message) {
@@ -422,7 +423,7 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen>
                     ),
                   ),
                 ),
-                if (isStartingSoon) ..[
+                if (isStartingSoon) ...[
                   const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -540,7 +541,7 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen>
             // Action Buttons
             Row(
               children: [
-                if (isUpcoming) ..[
+                if (isUpcoming) ...[
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: () => _joinMeetingWithJitsi(meeting),
@@ -563,7 +564,7 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen>
                     ),
                   ),
                 ),
-                if (!isUpcoming) ..[
+                if (!isUpcoming) ...[
                   const SizedBox(width: 8),
                   Expanded(
                     child: OutlinedButton.icon(
@@ -792,7 +793,8 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen>
 
   @override
   void dispose() {
-    _jitsiMeet.removeAllListeners();
+    // Remove Jitsi Meet listeners
+    // _jitsiMeet.removeAllListeners(); // Method not available
     super.dispose();
   }
 }

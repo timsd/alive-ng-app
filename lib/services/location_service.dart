@@ -85,8 +85,10 @@ class LocationService {
       }
 
       final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 10),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 10),
+        ),
       );
 
       _currentPosition = position;
@@ -170,14 +172,15 @@ class LocationService {
       await _storage.setJson(StorageKeys.lastKnownLocation, locationData);
 
       // Store in location history (keep last 100 locations)
-      final history = await _storage.getJson('location_history') ?? [];
+      final historyData = await _storage.getJsonList('location_history');
+      final List<Map<String, dynamic>> history = historyData ?? [];
       history.add(locationData);
 
       if (history.length > 100) {
         history.removeRange(0, history.length - 100);
       }
 
-      await _storage.setJson('location_history', history);
+      await _storage.setJsonList('location_history', history);
     } catch (e) {
       debugPrint('Error storing position: $e');
     }
@@ -227,7 +230,9 @@ class LocationService {
           timestamp: DateTime.parse(locationData['timestamp']),
           accuracy: locationData['accuracy'],
           altitude: locationData['altitude'],
+          altitudeAccuracy: locationData['altitudeAccuracy'] ?? 0.0,
           heading: locationData['heading'],
+          headingAccuracy: locationData['headingAccuracy'] ?? 0.0,
           speed: locationData['speed'],
           speedAccuracy: 0,
         );
@@ -381,7 +386,8 @@ class LocationService {
   // Get location history
   Future<List<Map<String, dynamic>>> getLocationHistory() async {
     try {
-      return await _storage.getJson('location_history') ?? [];
+      final data = await _storage.getJsonList('location_history');
+      return data ?? [];
     } catch (e) {
       debugPrint('Error getting location history: $e');
       return [];

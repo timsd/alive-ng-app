@@ -505,8 +505,6 @@ class RadioListTile<T> extends StatelessWidget {
           : null,
       trailing: Radio<T>(
         value: value,
-        groupValue: groupValue,
-        onChanged: enabled ? onChanged : null,
         activeColor: activeColor,
       ),
       onTap: enabled ? () => onChanged?.call(value) : null,
@@ -561,18 +559,7 @@ class ExpansionListTile extends StatefulWidget {
 }
 
 class _ExpansionListTileState extends State<ExpansionListTile> {
-  late bool _isExpanded;
-
-  @override
-  void initState() {
-    super.initState();
-    _isExpanded = widget.initiallyExpanded;
-  }
-
   void _handleExpansionChanged(bool expanded) {
-    setState(() {
-      _isExpanded = expanded;
-    });
     widget.onExpansionChanged?.call(expanded);
   }
 

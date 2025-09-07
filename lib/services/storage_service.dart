@@ -280,11 +280,19 @@ class StorageKeys {
   static const String lastMissionSync = 'last_mission_sync';
   static const String lastHealthSync = 'last_health_sync';
 
+  // Location data
+  static const String lastKnownLocation = 'last_known_location';
+
   // App state
   static const String currentTab = 'current_tab';
   static const String lastOpenedScreen = 'last_opened_screen';
   static const String appVersion = 'app_version';
   static const String buildNumber = 'build_number';
+
+  // Analytics keys
+  static const String analyticsData = 'analytics_data';
+  static const String currentSessionId = 'current_session_id';
+  static const String sessionStartTime = 'session_start_time';
 }
 
 // Storage helper methods for common operations

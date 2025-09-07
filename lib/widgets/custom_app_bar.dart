@@ -10,7 +10,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final Color? backgroundColor;
   final Color? foregroundColor;
   final double? elevation;
-  final bool centerTitle;
+  final bool? centerTitle;
   final double? titleSpacing;
   final double? leadingWidth;
   final TextStyle? titleTextStyle;
@@ -101,7 +101,7 @@ class SliverCustomAppBar extends StatelessWidget {
   final Color? backgroundColor;
   final Color? foregroundColor;
   final double? elevation;
-  final bool centerTitle;
+  final bool? centerTitle;
   final double? titleSpacing;
   final double? leadingWidth;
   final TextStyle? titleTextStyle;
@@ -333,7 +333,7 @@ class TabAppBar extends StatelessWidget implements PreferredSizeWidget {
   final Color? backgroundColor;
   final Color? foregroundColor;
   final double? elevation;
-  final bool centerTitle;
+  final bool? centerTitle;
   final double? titleSpacing;
   final double? leadingWidth;
   final TextStyle? titleTextStyle;

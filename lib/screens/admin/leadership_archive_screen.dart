@@ -3,6 +3,7 @@ import '../../models/leadership_models.dart';
 import '../../services/leadership_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/loading_widget.dart';
+import '../../widgets/error_widget.dart';
 
 class LeadershipArchiveScreen extends StatefulWidget {
   const LeadershipArchiveScreen({super.key});
@@ -133,9 +134,9 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
       body: _isLoading
           ? const LoadingWidget()
           : _error != null
-              ? CustomErrorWidget(
+              ? AppErrorWidget(
                   message: _error!,
-                  onRetry: _loadData,
+                  onAction: _loadData,
                 )
               : Column(
                   children: [

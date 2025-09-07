@@ -42,7 +42,7 @@ class CustomDialog extends StatelessWidget {
     return AlertDialog(
       title: titleWidget ?? (title != null ? Row(
         children: [
-          if (icon != null) ..[
+          if (icon != null) ...[
             icon!,
             const SizedBox(width: 12),
           ],
@@ -162,7 +162,7 @@ class ConfirmationDialog extends StatelessWidget {
         CustomButton(
           text: cancelText,
           variant: ButtonVariant.text,
-          color: cancelColor,
+          customColor: cancelColor,
           onPressed: () {
             Navigator.of(context).pop(false);
             onCancel?.call();
@@ -172,7 +172,7 @@ class ConfirmationDialog extends StatelessWidget {
         CustomButton(
           text: confirmText,
           variant: isDestructive ? ButtonVariant.danger : ButtonVariant.primary,
-          color: effectiveConfirmColor,
+          customColor: effectiveConfirmColor,
           onPressed: () {
             Navigator.of(context).pop(true);
             onConfirm?.call();
@@ -250,7 +250,7 @@ class InfoDialog extends StatelessWidget {
         CustomButton(
           text: buttonText,
           variant: ButtonVariant.primary,
-          color: buttonColor,
+          customColor: buttonColor,
           onPressed: () {
             Navigator.of(context).pop();
             onPressed?.call();
@@ -299,15 +299,15 @@ class LoadingDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async => barrierDismissible,
+    return PopScope(
+      canPop: barrierDismissible,
       child: CustomDialog(
         title: title,
         contentWidget: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const CircularProgressIndicator(),
-            if (message != null) ..[
+            if (message != null) ...[
               const SizedBox(height: 16),
               Text(
                 message!,
@@ -429,33 +429,7 @@ class _FormDialogState extends State<FormDialog> {
     );
   }
 
-  static Future<bool?> show({
-    required BuildContext context,
-    required String title,
-    required List<Widget> fields,
-    String confirmText = 'Save',
-    String cancelText = 'Cancel',
-    VoidCallback? onConfirm,
-    VoidCallback? onCancel,
-    GlobalKey<FormState>? formKey,
-    bool scrollable = true,
-    EdgeInsetsGeometry? contentPadding,
-  }) {
-    return showDialog<bool>(
-      context: context,
-      builder: (context) => FormDialog(
-        title: title,
-        fields: fields,
-        confirmText: confirmText,
-        cancelText: cancelText,
-        onConfirm: onConfirm,
-        onCancel: onCancel,
-        formKey: formKey,
-        scrollable: scrollable,
-        contentPadding: contentPadding,
-      ),
-    );
-  }
+
 }
 
 class BottomSheetDialog {
@@ -494,7 +468,7 @@ class BottomSheetDialog {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-            if (title != null) ..[
+            if (title != null) ...[
               Text(
                 title,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -525,7 +499,7 @@ class ActionSheet {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (message != null) ..[
+          if (message != null) ...[
             Text(
               message,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -606,7 +580,7 @@ class _ActionSheetTile<T> extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
-            if (item.icon != null) ..[
+            if (item.icon != null) ...[
               Icon(
                 item.icon,
                 color: color,

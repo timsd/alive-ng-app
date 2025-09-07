@@ -1,6 +1,7 @@
 import UIKit
 import Flutter
 import Firebase
+import FirebaseCore
 import UserNotifications
 
 @UIApplicationMain
@@ -29,7 +30,7 @@ import UserNotifications
     
     // Setup method channel for native functionality
     let controller : FlutterViewController = window?.rootViewController as! FlutterViewController
-    let nativeChannel = FlutterMethodChannel(name: "com.aliveng.ministry.app/native",
+    let nativeChannel = FlutterMethodChannel(name: "com.alive.alivengandroidapp/native",
                                            binaryMessenger: controller.binaryMessenger)
     
     nativeChannel.setMethodCallHandler({

@@ -21,7 +21,6 @@ class ApiService {
   // Base URLs for different environments
   static const String _baseUrlProd = 'https://api.alive-app.com';
   static const String _baseUrlDev = 'https://dev-api.alive-app.com';
-  static const String _baseUrlLocal = 'http://localhost:3000';
 
   String get baseUrl {
     if (kDebugMode) {
@@ -259,7 +258,7 @@ class ApiService {
   // Check connectivity
   Future<void> _checkConnectivity() async {
     final connectivityResult = await Connectivity().checkConnectivity();
-    if (connectivityResult == ConnectivityResult.none) {
+    if (connectivityResult.contains(ConnectivityResult.none)) {
       throw const ApiException(
         message: 'No internet connection',
         type: ApiErrorType.network,
@@ -593,14 +592,14 @@ final apiServiceProvider = Provider<ApiService>((ref) {
   return ApiService.instance;
 });
 
-final connectivityProvider = StreamProvider<ConnectivityResult>((ref) {
+final connectivityProvider = StreamProvider<List<ConnectivityResult>>((ref) {
   return Connectivity().onConnectivityChanged;
 });
 
 final isOnlineProvider = Provider<bool>((ref) {
   final connectivity = ref.watch(connectivityProvider);
   return connectivity.when(
-    data: (result) => result != ConnectivityResult.none,
+    data: (results) => !results.contains(ConnectivityResult.none),
     loading: () => true, // Assume online while loading
     error: (_, __) => false,
   );

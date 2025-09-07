@@ -44,6 +44,13 @@ This document outlines all the external services, APIs, and configuration requir
 - **Configuration Files**:
   - Android: `android/app/google-services.json`
   - iOS: `ios/Runner/GoogleService-Info.plist`
+  - Web: Firebase config in `lib/firebase_options.dart` (auto-generated)
+
+#### Updated Gradle Configuration:
+- **Google Services Plugin**: Updated to version 4.4.3 (latest)
+- **Firebase BoM**: Version 34.2.0 for consistent dependency management
+- **Project-level**: `android/build.gradle` - Updated plugin version
+- **App-level**: `android/app/build.gradle` - Added Firebase BoM platform
 
 #### Firebase Services Used:
 - **Firebase Auth**: User authentication

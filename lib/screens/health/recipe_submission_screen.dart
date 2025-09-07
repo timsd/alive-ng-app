@@ -20,7 +20,7 @@ class RecipeSubmissionScreen extends ConsumerStatefulWidget {
 class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormBuilderState>();
-  final _supabaseService = SupabaseService();
+  final _supabaseService = SupabaseService.instance;
   late TabController _tabController;
   bool _isSubmitting = false;
 
@@ -75,7 +75,7 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
-    final translate = I18nService.translate;
+    final translate = I18nService().translate;
 
     return authState.when(
       data: (user) {
@@ -105,9 +105,9 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
         child: Padding(
           padding: EdgeInsets.all(20),
           child: GuestAccessIndicator(
-            message:
+            featureName: 'Recipe Sharing',
+            description:
                 'Create an account to share your healthy recipes and natural remedies with the community!',
-            actionText: 'Sign Up',
             showAsCard: true,
           ),
         ),

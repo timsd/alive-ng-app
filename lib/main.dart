@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'providers/theme_provider.dart';
@@ -14,16 +13,8 @@ import 'config/firebase_config.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase
-  await Firebase.initializeApp(
-    options: FirebaseConfig.currentPlatform,
-  );
-
-  // Initialize Firebase services
-  await FirebaseConfig.initializeFirebaseCore();
-  await FirebaseConfig.initializeFirebaseMessaging();
-  await FirebaseConfig.initializeFirebaseAnalytics();
-  await FirebaseConfig.initializeFirebaseCrashlytics();
+  // Initialize Firebase with all services
+  await FirebaseConfig.initialize();
 
   // Initialize Supabase
   await Supabase.initialize(

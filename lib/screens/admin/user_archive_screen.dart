@@ -338,7 +338,7 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
                     color: Colors.grey.shade600,
                   ),
                 ),
-                if (user.isNewConvert) ..[
+                if (user.isNewConvert) ...[
                   const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(

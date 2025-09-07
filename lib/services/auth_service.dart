@@ -1,6 +1,5 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../models/user_model.dart';
+import '../models/app_models.dart';
 import 'supabase_service.dart';
 
 class AuthService {
@@ -40,8 +39,7 @@ class AuthService {
           userProfile = UserProfile(
             id: response.user!.id,
             email: response.user!.email!,
-            firstName: response.user!.userMetadata?['first_name'] ?? '',
-            lastName: response.user!.userMetadata?['last_name'] ?? '',
+            fullName: response.user!.userMetadata?['full_name'] ?? '',
             createdAt: DateTime.now(),
             updatedAt: DateTime.now(),
           );
@@ -64,14 +62,12 @@ class AuthService {
   Future<AuthResult> signUpWithEmailAndPassword({
     required String email,
     required String password,
-    String? firstName,
-    String? lastName,
+    String? fullName,
   }) async {
     return signUpWithEmail(
       email: email,
       password: password,
-      firstName: firstName,
-      lastName: lastName,
+      fullName: fullName,
     );
   }
 
@@ -79,15 +75,13 @@ class AuthService {
   Future<AuthResult> signUpWithEmail({
     required String email,
     required String password,
-    String? firstName,
-    String? lastName,
+    String? fullName,
   }) async {
     try {
       final response = await _supabaseService.signUpWithEmail(
         email,
         password,
-        firstName: firstName,
-        lastName: lastName,
+        fullName: fullName,
       );
 
       if (response.user != null) {
@@ -95,8 +89,7 @@ class AuthService {
         final userProfile = UserProfile(
           id: response.user!.id,
           email: email,
-          firstName: firstName ?? '',
-          lastName: lastName ?? '',
+          fullName: fullName ?? '',
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         );

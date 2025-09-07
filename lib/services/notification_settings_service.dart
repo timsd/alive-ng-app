@@ -2,9 +2,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../models/notification_settings.dart';
 import '../utils/toast_utils.dart';
+import '../utils/logger.dart';
 
 class NotificationSettingsService {
   static final _supabase = Supabase.instance.client;
+  static final _logger = Logger('NotificationSettingsService');
 
   static Future<NotificationSettings?> fetchSettings() async {
     try {
@@ -42,7 +44,7 @@ class NotificationSettingsService {
         return defaultSettings;
       }
     } catch (error) {
-      print('Error fetching notification settings: $error');
+      _logger.error('Error fetching notification settings: $error');
       ToastUtils.showError('Could not load notification preferences');
       return null;
     }
@@ -65,7 +67,7 @@ class NotificationSettingsService {
       ToastUtils.showSuccess('Your notification preferences have been saved');
       return true;
     } catch (error) {
-      print('Error updating notification settings: $error');
+      _logger.error('Error updating notification settings: $error');
       ToastUtils.showError('Could not save your preferences');
       return false;
     }
@@ -103,7 +105,7 @@ class NotificationSettingsService {
         return false;
       }
     } catch (error) {
-      print('Error requesting notification permission: $error');
+      _logger.error('Error requesting notification permission: $error');
       ToastUtils.showError('Could not set up push notifications');
       return false;
     }
@@ -120,7 +122,7 @@ class NotificationSettingsService {
       }
       return false;
     } catch (error) {
-      print('Error disabling notifications: $error');
+      _logger.error('Error disabling notifications: $error');
       return false;
     }
   }
@@ -136,7 +138,7 @@ class NotificationSettingsService {
       }
       return false;
     } catch (error) {
-      print('Error updating reminder time: $error');
+      _logger.error('Error updating reminder time: $error');
       return false;
     }
   }
@@ -172,7 +174,7 @@ class NotificationSettingsService {
 
       return await updateSettings(updatedSettings);
     } catch (error) {
-      print('Error toggling reminder: $error');
+      _logger.error('Error toggling reminder: $error');
       return false;
     }
   }

@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 import '../../models/discipleship_models.dart';
 import '../../services/discipleship_service.dart';
 import '../../services/auth_service.dart';
-import '../../utils/app_constants.dart';
+import '../../utils/app_theme.dart';
 
 class DiscipleshipScreen extends StatefulWidget {
   const DiscipleshipScreen({super.key});
@@ -15,7 +15,7 @@ class DiscipleshipScreen extends StatefulWidget {
 class _DiscipleshipScreenState extends State<DiscipleshipScreen>
     with TickerProviderStateMixin {
   final DiscipleshipService _discipleshipService = DiscipleshipService();
-  final AuthService _authService = AuthService();
+  final AuthService _authService = AuthService.instance;
   late TabController _tabController;
 
   List<DiscipleshipContact> _contacts = [];
@@ -95,7 +95,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('Discipleship Tracker'),
-        backgroundColor: AppConstants.primaryColor,
+        backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
         bottom: TabBar(
           controller: _tabController,
@@ -341,7 +341,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
       child: Column(
         children: [
           const TabBar(
-            labelColor: AppConstants.primaryColor,
+            labelColor: AppTheme.primaryColor,
             tabs: [
               Tab(text: 'Interactions'),
               Tab(text: 'Study Sessions'),

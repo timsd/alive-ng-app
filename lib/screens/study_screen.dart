@@ -183,9 +183,8 @@ class StudyScreen extends ConsumerWidget {
                       const Text(
                         'Learn verses with voice recitation and fill-in-the-gap exercises',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: Color(0xE6FFFFFF),
                           fontSize: 14,
-                          opacity: 0.9,
                         ),
                       ),
                     ],

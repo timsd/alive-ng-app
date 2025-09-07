@@ -1,10 +1,8 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:stream_chat_flutter/stream_chat_flutter.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import '../config/chat_config.dart';
-import '../utils/logger.dart';
-import 'chat_service.dart';
+import '../utils/logger.dart' as app_logger;
 
 /// GetStream Chat Service - Integrates with existing Supabase chat system
 /// This service provides real-time messaging capabilities using GetStream
@@ -16,10 +14,9 @@ class GetStreamChatService {
   GetStreamChatService._internal();
 
   StreamChatClient? _client;
-  StreamSubscription<User?>? _authSubscription;
+  StreamSubscription<supabase.AuthState>? _authSubscription;
   bool _isInitialized = false;
-  final Logger _logger = Logger('GetStreamChatService');
-  final ChatService _chatService = ChatService();
+  final app_logger.Logger _logger = app_logger.Logger('GetStreamChatService');
 
   /// Get the Stream Chat client instance
   StreamChatClient? get client => _client;
@@ -36,7 +33,7 @@ class GetStreamChatService {
 
       // Listen to Supabase auth changes
       _authSubscription =
-          Supabase.instance.client.auth.onAuthStateChange.listen(
+          supabase.Supabase.instance.client.auth.onAuthStateChange.listen(
         (data) async {
           final session = data.session;
           if (session?.user != null) {
@@ -48,7 +45,7 @@ class GetStreamChatService {
       );
 
       // Connect current user if already authenticated
-      final currentUser = Supabase.instance.client.auth.currentUser;
+      final currentUser = supabase.Supabase.instance.client.auth.currentUser;
       if (currentUser != null) {
         await _connectUser(currentUser);
       }
@@ -62,7 +59,7 @@ class GetStreamChatService {
   }
 
   /// Connect user to Stream Chat
-  Future<void> _connectUser(User supabaseUser) async {
+  Future<void> _connectUser(supabase.User supabaseUser) async {
     try {
       if (_client == null) return;
 
@@ -70,7 +67,7 @@ class GetStreamChatService {
       final userProfile = await _getUserProfile(supabaseUser.id);
 
       // Create Stream Chat user
-      final streamUser = StreamUser(
+      final streamUser = User(
         id: supabaseUser.id,
         name: userProfile['full_name'] ??
             supabaseUser.email?.split('@').first ??
@@ -120,7 +117,7 @@ class GetStreamChatService {
   /// Get user profile from Supabase
   Future<Map<String, dynamic>> _getUserProfile(String userId) async {
     try {
-      final response = await Supabase.instance.client
+      final response = await supabase.Supabase.instance.client
           .from('user_profile_view')
           .select()
           .eq('id', userId)
@@ -143,10 +140,10 @@ class GetStreamChatService {
   /// Update user's online status
   Future<void> _updateUserStatus(bool isOnline) async {
     try {
-      if (_client?.currentUser != null) {
-        await _client!.updateUser(_client!.currentUser!.copyWith(
+      if (_client?.state.currentUser != null) {
+        await _client!.updateUser(_client!.state.currentUser!.copyWith(
           extraData: {
-            ..._client!.currentUser!.extraData,
+            ..._client!.state.currentUser!.extraData,
             'is_online': isOnline,
             'last_seen': DateTime.now().toIso8601String(),
           },
@@ -166,8 +163,9 @@ class GetStreamChatService {
     Map<String, dynamic>? extraData,
   }) async {
     try {
-      if (_client == null)
+      if (_client == null) {
         throw Exception('GetStream chat client not initialized');
+      }
 
       final channelId = '${type}_${DateTime.now().millisecondsSinceEpoch}';
 
@@ -177,7 +175,7 @@ class GetStreamChatService {
         extraData: {
           'name': name,
           'description': description ?? '',
-          'created_by': _client!.currentUser!.id,
+          'created_by': _client!.state.currentUser!.id,
           'created_at': DateTime.now().toIso8601String(),
           'sync_with_supabase': true,
           ...?extraData,
@@ -229,7 +227,7 @@ class GetStreamChatService {
 
       final message = Message(
         text: processedData['text'],
-        mentionedUsers: [...?mentionedUsers, ...mentions],
+        mentionedUsers: [...mentionedUsers?.map((id) => User(id: id)).toList() ?? [], ...mentions],
         quotedMessage: quotedMessage,
         attachments: attachments ?? [],
         extraData: {
@@ -238,11 +236,12 @@ class GetStreamChatService {
           'tag_types': processedData['tag_types'],
           'sent_at': DateTime.now().toIso8601String(),
           'sender_role':
-              _client!.currentUser?.extraData['roles']?.first ?? 'member',
+              (_client!.state.currentUser?.extraData['roles'] as List?)?.first ?? 'member',
         },
       );
 
-      final sentMessage = await channel.sendMessage(message);
+      final response = await channel.sendMessage(message);
+      final sentMessage = response.message;
 
       // Sync with Supabase if needed
       await _syncMessageWithSupabase(sentMessage, channel.id!);
@@ -361,19 +360,18 @@ class GetStreamChatService {
   /// Get channels for current user
   Future<List<Channel>> getUserChannels() async {
     try {
-      if (_client == null)
+      if (_client == null) {
         throw Exception('GetStream chat client not initialized');
+      }
 
       final filter = Filter.in_(
         'members',
-        [_client!.currentUser!.id],
+        [_client!.state.currentUser!.id],
       );
 
       final channels = await _client!
           .queryChannels(
             filter: filter,
-            sort: [const SortOption('last_message_at')],
-            options: const PaginationParams(limit: 30),
           )
           .first;
 
@@ -387,8 +385,9 @@ class GetStreamChatService {
   /// Search for users in GetStream
   Future<List<User>> searchUsers(String query) async {
     try {
-      if (_client == null)
+      if (_client == null) {
         throw Exception('GetStream chat client not initialized');
+      }
 
       final users = await _client!.queryUsers(
         filter: Filter.or([
@@ -415,7 +414,7 @@ class GetStreamChatService {
   /// Get user's channel permissions
   Map<String, List<String>> getUserChannelPermissions() {
     final userRoles =
-        _client?.currentUser?.extraData['roles'] as List<String>? ?? ['member'];
+        _client?.state.currentUser?.extraData['roles'] as List<String>? ?? ['member'];
     return ChatConfig.getChannelPermissions(userRoles.first);
   }
 

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../models/donation_models.dart';
 import '../../services/donation_service.dart';
-import '../../utils/app_constants.dart';
+import '../../utils/app_theme.dart';
 
 class DonationDialog extends StatefulWidget {
   final DownloadableMaterial material;
@@ -160,7 +161,7 @@ class _DonationDialogState extends State<DonationDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(message),
-            if (url != null && url.isNotEmpty) ..[
+            if (url != null && url.isNotEmpty) ...[
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () async {
@@ -203,7 +204,7 @@ class _DonationDialogState extends State<DonationDialog> {
                 children: [
                   Icon(
                     Icons.volunteer_activism,
-                    color: AppConstants.primaryColor,
+                    color: AppTheme.primaryColor,
                     size: 28,
                   ),
                   const SizedBox(width: 12),
@@ -263,7 +264,7 @@ class _DonationDialogState extends State<DonationDialog> {
                         fontSize: 14,
                       ),
                     ),
-                    if (widget.material.description.isNotEmpty) ..[
+                    if (widget.material.description.isNotEmpty) ...[
                       const SizedBox(height: 8),
                       Text(
                         widget.material.description,
@@ -386,14 +387,14 @@ class _DonationDialogState extends State<DonationDialog> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppConstants.primaryColor.withValues(alpha: 0.1),
+                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   children: [
                     Icon(
                       Icons.favorite,
-                      color: AppConstants.primaryColor,
+                      color: AppTheme.primaryColor,
                       size: 20,
                     ),
                     const SizedBox(width: 8),
@@ -402,7 +403,7 @@ class _DonationDialogState extends State<DonationDialog> {
                         'Your donation helps us continue spreading the gospel and supporting our ministry efforts.',
                         style: TextStyle(
                           fontSize: 12,
-                          color: AppConstants.primaryColor,
+                          color: AppTheme.primaryColor,
                         ),
                       ),
                     ),
@@ -431,7 +432,7 @@ class _DonationDialogState extends State<DonationDialog> {
                           ? null 
                           : _processDonation,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppConstants.primaryColor,
+                        backgroundColor: AppTheme.primaryColor,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
@@ -474,6 +475,8 @@ class _DonationDialogState extends State<DonationDialog> {
         return 'Bank Transfer';
       case PaymentMethod.mobileMoney:
         return 'Mobile Money';
+      case PaymentMethod.paypal:
+        return 'PayPal';
     }
   }
 
@@ -487,6 +490,8 @@ class _DonationDialogState extends State<DonationDialog> {
         return 'Direct bank transfer';
       case PaymentMethod.mobileMoney:
         return 'Mobile money services';
+      case PaymentMethod.paypal:
+        return 'Secure payment with PayPal';
     }
   }
 }

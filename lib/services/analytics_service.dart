@@ -103,7 +103,7 @@ class AnalyticsService {
 
   // Store session data locally
   Future<void> _storeSessionData(int duration) async {
-    final sessions = await _storage.getJson(StorageKeys.analyticsData) ?? [];
+    final sessions = await _storage.getJsonList(StorageKeys.analyticsData) ?? [];
 
     sessions.add({
       'session_id': _sessionId,
@@ -117,7 +117,7 @@ class AnalyticsService {
       sessions.removeRange(0, sessions.length - 100);
     }
 
-    await _storage.setJson(StorageKeys.analyticsData, sessions);
+    await _storage.setJsonList(StorageKeys.analyticsData, sessions.cast<Map<String, dynamic>>());
   }
 
   // Set user properties
@@ -125,7 +125,7 @@ class AnalyticsService {
     try {
       final user = _auth.currentUser;
       if (user != null) {
-        await _analytics?.setUserId(user.id);
+        await _analytics?.setUserId(id: user.id);
         await _crashlytics?.setUserIdentifier(user.id);
 
         // Set user properties
@@ -214,13 +214,14 @@ class AnalyticsService {
 
       // Send to Supabase for custom analytics
       if (_auth.isAuthenticated) {
-        await _supabase.trackAnalyticsEvent({
-          'event_name': eventName,
-          'parameters': eventParams,
-          'user_id': _auth.currentUser!.id,
-          'session_id': _sessionId,
-          'timestamp': DateTime.now().toIso8601String(),
-        });
+        await _supabase.trackEvent(
+          _auth.currentUser!.id,
+          eventName,
+          {
+            ...eventParams,
+            'session_id': _sessionId,
+          },
+        );
       }
     } catch (e) {
       debugPrint('Error tracking event $eventName: $e');
@@ -231,7 +232,7 @@ class AnalyticsService {
   Future<void> _storeEventLocally(
       String eventName, Map<String, dynamic> parameters) async {
     try {
-      final events = await _storage.getJson('analytics_events') ?? [];
+      final events = await _storage.getJsonList('analytics_events') ?? [];
 
       events.add({
         'event_name': eventName,
@@ -244,7 +245,7 @@ class AnalyticsService {
         events.removeRange(0, events.length - 500);
       }
 
-      await _storage.setJson('analytics_events', events);
+      await _storage.setJsonList('analytics_events', events.cast<Map<String, dynamic>>());
     } catch (e) {
       debugPrint('Error storing event locally: $e');
     }
@@ -390,8 +391,8 @@ class AnalyticsService {
 
   // Get analytics data
   Future<Map<String, dynamic>> getAnalyticsData() async {
-    final sessions = await _storage.getJson(StorageKeys.analyticsData) ?? [];
-    final events = await _storage.getJson('analytics_events') ?? [];
+    final sessions = await _storage.getJsonList(StorageKeys.analyticsData) ?? [];
+    final events = await _storage.getJsonList('analytics_events') ?? [];
 
     return {
       'sessions': sessions,

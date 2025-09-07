@@ -99,7 +99,6 @@ class HealthScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final translate = ref.watch(translationProvider);
-    final healthTrackingAsync = ref.watch(healthTrackingProvider);
     final todayActivities = ref.watch(todayHealthActivitiesProvider);
 
     return Scaffold(

@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import '../../models/health_models.dart';
 import '../../services/health_service.dart';
-import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class EnhancedHealthScreen extends StatefulWidget {
+class EnhancedHealthScreen extends ConsumerStatefulWidget {
   const EnhancedHealthScreen({super.key});
 
   @override
-  State<EnhancedHealthScreen> createState() => _EnhancedHealthScreenState();
+  ConsumerState<EnhancedHealthScreen> createState() => _EnhancedHealthScreenState();
 }
 
-class _EnhancedHealthScreenState extends State<EnhancedHealthScreen>
+class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
     with TickerProviderStateMixin {
   late TabController _tabController;
   final HealthService _healthService = HealthService();
@@ -44,8 +45,8 @@ class _EnhancedHealthScreenState extends State<EnhancedHealthScreen>
         _error = null;
       });
 
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final userId = authProvider.user?.id ?? '';
+      final currentUser = ref.read(currentUserProvider);
+      final userId = currentUser?.id ?? '';
 
       // Load all health data concurrently
       final results = await Future.wait([
@@ -303,20 +304,20 @@ class _EnhancedHealthScreenState extends State<EnhancedHealthScreen>
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 Text(
-                  '${_todayTracker!.overallScore.toStringAsFixed(1)}/10',
+                  '${(_todayTracker!.completionPercentage / 10).toStringAsFixed(1)}/10',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: _getScoreColor(_todayTracker!.overallScore),
+                    color: _getScoreColor(_todayTracker!.completionPercentage / 10),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            _buildProgressIndicator('Nutrition', _todayTracker!.nutritionScore / 10),
-            _buildProgressIndicator('Exercise', _todayTracker!.exerciseMinutes >= 30 ? 1.0 : _todayTracker!.exerciseMinutes / 30),
-            _buildProgressIndicator('Water', _todayTracker!.waterGlasses >= 8 ? 1.0 : _todayTracker!.waterGlasses / 8),
-            _buildProgressIndicator('Sleep', _todayTracker!.sleepHours >= 7 ? 1.0 : _todayTracker!.sleepHours / 7),
+            _buildProgressIndicator('Nutrition', (_todayTracker!.metrics['nutrition_score'] ?? 0) / 10),
+            _buildProgressIndicator('Exercise', (_todayTracker!.metrics['exercise_minutes'] ?? 0) >= 30 ? 1.0 : (_todayTracker!.metrics['exercise_minutes'] ?? 0) / 30),
+            _buildProgressIndicator('Water', (_todayTracker!.metrics['water_glasses'] ?? 0) >= 8 ? 1.0 : (_todayTracker!.metrics['water_glasses'] ?? 0) / 8),
+            _buildProgressIndicator('Sleep', (_todayTracker!.metrics['sleep_hours'] ?? 0) >= 7 ? 1.0 : (_todayTracker!.metrics['sleep_hours'] ?? 0) / 7),
           ],
         ),
       ),
@@ -512,19 +513,19 @@ class _EnhancedHealthScreenState extends State<EnhancedHealthScreen>
                 Icon(Icons.schedule, size: 16, color: Colors.grey.shade600),
                 const SizedBox(width: 4),
                 Text(
-                  '${mealPlan.durationDays} days',
+                  '${mealPlan.days.length} days',
                   style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                 ),
                 const SizedBox(width: 16),
-                Icon(Icons.star, size: 16, color: Colors.grey.shade600),
+                Icon(Icons.restaurant_menu, size: 16, color: Colors.grey.shade600),
                 const SizedBox(width: 4),
                 Text(
-                  mealPlan.difficultyLevel.name,
+                  '${mealPlan.days.length} meals',
                   style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                 ),
               ],
             ),
-            if (mealPlan.healthPrinciples.isNotEmpty) ..[
+            if (mealPlan.healthPrinciples.isNotEmpty) ...[
               const SizedBox(height: 8),
               Wrap(
                 spacing: 4,
@@ -624,7 +625,7 @@ class _EnhancedHealthScreenState extends State<EnhancedHealthScreen>
               tip.content,
               style: const TextStyle(fontSize: 14, height: 1.5),
             ),
-            if (tip.bibleVerse != null) ..[
+            if (tip.bibleVerse != null) ...[
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(12),
@@ -655,7 +656,7 @@ class _EnhancedHealthScreenState extends State<EnhancedHealthScreen>
                 ),
               ),
             ],
-            if (tip.tags.isNotEmpty) ..[
+            if (tip.tags.isNotEmpty) ...[
               const SizedBox(height: 8),
               Wrap(
                 spacing: 4,
@@ -795,12 +796,15 @@ class _EnhancedHealthScreenState extends State<EnhancedHealthScreen>
     Color priorityColor;
     IconData priorityIcon;
     
-    switch (insight.priority) {
-      case 'high':
+    // Use category to determine priority color
+    switch (insight.category.toLowerCase()) {
+      case 'urgent':
+      case 'critical':
         priorityColor = Colors.red;
         priorityIcon = Icons.priority_high;
         break;
-      case 'medium':
+      case 'warning':
+      case 'moderate':
         priorityColor = Colors.orange;
         priorityIcon = Icons.warning;
         break;
@@ -844,19 +848,20 @@ class _EnhancedHealthScreenState extends State<EnhancedHealthScreen>
             ),
             const SizedBox(height: 12),
             Text(
-              insight.message,
+              insight.content,
               style: const TextStyle(fontSize: 14),
             ),
             const SizedBox(height: 8),
-            Text(
-              'Recommendation: ${insight.recommendation}',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Colors.green.shade700,
+            if (insight.recommendations.isNotEmpty)
+              Text(
+                'Recommendations: ${insight.recommendations.join(', ')}',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.green.shade700,
+                ),
               ),
-            ),
-            if (insight.bibleVerse != null) ..[
+            if (insight.data.containsKey('bibleVerse') && insight.data['bibleVerse'] != null) ...[
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(12),
@@ -875,7 +880,7 @@ class _EnhancedHealthScreenState extends State<EnhancedHealthScreen>
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        insight.bibleVerse!,
+                        insight.data['bibleVerse'] as String,
                         style: TextStyle(
                           fontSize: 12,
                           fontStyle: FontStyle.italic,

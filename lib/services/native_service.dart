@@ -1,11 +1,13 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../utils/logger.dart';
 
 /// Service for handling native platform functionality
 class NativeService {
+  static final Logger _logger = Logger('NativeService');
   static const MethodChannel _channel =
-      MethodChannel('com.aliveng.ministry.app/native');
+      MethodChannel('com.alive.alivengandroidapp/native');
 
   /// Open a URL in the default browser or app
   static Future<bool> openUrl(String url) async {
@@ -20,7 +22,7 @@ class NativeService {
       final bool result = await _channel.invokeMethod('openUrl', {'url': url});
       return result;
     } catch (e) {
-      print('Error opening URL: $e');
+      _logger.error('Error opening URL', e);
       return false;
     }
   }
@@ -34,7 +36,7 @@ class NativeService {
       });
       return result;
     } catch (e) {
-      print('Error sharing text: $e');
+      _logger.error('Error sharing text', e);
       return false;
     }
   }
@@ -54,7 +56,7 @@ class NativeService {
       });
       return result;
     } catch (e) {
-      print('Error making phone call: $e');
+      _logger.error('Error making phone call', e);
       return false;
     }
   }
@@ -94,7 +96,7 @@ class NativeService {
       });
       return result;
     } catch (e) {
-      print('Error sending email: $e');
+      _logger.error('Error sending email', e);
       return false;
     }
   }
@@ -113,7 +115,7 @@ class NativeService {
       }
       return false;
     } catch (e) {
-      print('Error sending SMS: $e');
+      _logger.error('Error sending SMS', e);
       return false;
     }
   }
@@ -139,7 +141,7 @@ class NativeService {
 
       return await openUrl(mapsUrl);
     } catch (e) {
-      print('Error opening maps: $e');
+      _logger.error('Error opening maps', e);
       return false;
     }
   }
@@ -154,7 +156,7 @@ class NativeService {
       }
       return false;
     } catch (e) {
-      print('Error opening app settings: $e');
+      _logger.error('Error opening app settings', e);
       return false;
     }
   }
