@@ -60,9 +60,11 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading data: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading data: $e')),
+        );
+      }
     } finally {
       setState(() => _isLoading = false);
     }
@@ -778,14 +780,18 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
       if (existingProgress == null) {
         // Start new study
         await _studyGuideService.startStudyGuide(user.id, guide.id);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Started study: ${guide.title}')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Started study: ${guide.title}')),
+          );
+        }
       } else {
         // Continue existing study
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Continuing study: ${guide.title}')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Continuing study: ${guide.title}')),
+          );
+        }
       }
       
       // Navigate to study guide detail screen
@@ -793,9 +799,11 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
       
       _loadData(); // Refresh data
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error starting study: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error starting study: $e')),
+        );
+      }
     }
   }
 
