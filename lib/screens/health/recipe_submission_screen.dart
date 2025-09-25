@@ -525,7 +525,6 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
 
       // Capture translated strings before async operation
       final successMessage = translate('recipe_submitted_successfully');
-      final errorMessage = translate('error_submitting_recipe');
       final messenger = ScaffoldMessenger.of(context);
       
       // Submit to Supabase
@@ -547,10 +546,10 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
     } catch (e) {
       if (!mounted) return;
       
-      final messenger = ScaffoldMessenger.of(context);
+      final errorTranslation = translate('error_submitting_recipe');
       messenger.showSnackBar(
         SnackBar(
-          content: Text('${translate('error_submitting_recipe')}: $e'),
+          content: Text('$errorTranslation: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -601,7 +600,6 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
 
       // Capture translated strings before async operation
       final successMessage = translate('remedy_submitted_successfully');
-      final errorMessage = translate('error_submitting_remedy');
       final messenger = ScaffoldMessenger.of(context);
 
       // Submit to Supabase
@@ -623,10 +621,10 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
     } catch (e) {
       if (!mounted) return;
       
-      final messenger = ScaffoldMessenger.of(context);
+      final errorTranslation = translate('error_submitting_remedy');
       messenger.showSnackBar(
         SnackBar(
-          content: Text('${translate('error_submitting_remedy')}: $e'),
+          content: Text('$errorTranslation: $e'),
           backgroundColor: Colors.red,
         ),
       );
