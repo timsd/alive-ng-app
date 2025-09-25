@@ -683,6 +683,9 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                   ),
                   trailing: const Icon(Icons.attach_file),
                   onTap: () async {
+                    // Capture ScaffoldMessenger before async operation
+                    final messenger = ScaffoldMessenger.of(context);
+                    
                     try {
                       FilePickerResult? result = await FilePicker.platform.pickFiles(
                         type: FileType.custom,
@@ -697,7 +700,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                       }
                     } catch (e) {
                       if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        messenger.showSnackBar(
                           SnackBar(
                             content: Text('Error selecting file: $e'),
                             backgroundColor: Colors.red,

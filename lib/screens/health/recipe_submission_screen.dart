@@ -523,6 +523,10 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
         'created_at': DateTime.now().toIso8601String(),
       };
 
+      // Capture translated strings before async operation
+      final successMessage = translate('recipe_submitted_successfully');
+      final errorMessage = translate('error_submitting_recipe');
+
       // Submit to Supabase
       await _supabaseService.client
           .from('user_submitted_recipes')
@@ -532,7 +536,7 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(translate('recipe_submitted_successfully')),
+          content: Text(successMessage),
           backgroundColor: Colors.green,
         ),
       );
@@ -544,7 +548,7 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${translate('error_submitting_recipe')}: $e'),
+          content: Text('$errorMessage: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -593,6 +597,10 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
         'created_at': DateTime.now().toIso8601String(),
       };
 
+      // Capture translated strings before async operation
+      final successMessage = translate('remedy_submitted_successfully');
+      final errorMessage = translate('error_submitting_remedy');
+
       // Submit to Supabase
       await _supabaseService.client
           .from('user_submitted_recipes')
@@ -602,7 +610,7 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(translate('remedy_submitted_successfully')),
+          content: Text(successMessage),
           backgroundColor: Colors.green,
         ),
       );
@@ -614,7 +622,7 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${translate('error_submitting_remedy')}: $e'),
+          content: Text('$errorMessage: $e'),
           backgroundColor: Colors.red,
         ),
       );
