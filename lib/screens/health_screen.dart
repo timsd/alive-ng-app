@@ -29,7 +29,7 @@ final todayHealthActivitiesProvider =
       name: 'Nutrition',
       description: 'Eat healthy, balanced meals',
       icon: Icons.restaurant,
-      color: Colors.green,
+      color: const Color(0xFF4CAF50), // Green
       completed: false,
       target: 3,
       current: 0,
@@ -40,7 +40,7 @@ final todayHealthActivitiesProvider =
       name: 'Exercise',
       description: 'Stay active with physical activity',
       icon: Icons.fitness_center,
-      color: Colors.blue,
+      color: const Color(0xFF2196F3), // Blue
       completed: false,
       target: 30,
       current: 0,
@@ -51,7 +51,7 @@ final todayHealthActivitiesProvider =
       name: 'Water',
       description: 'Stay hydrated throughout the day',
       icon: Icons.water_drop,
-      color: Colors.cyan,
+      color: const Color(0xFF00BCD4), // Cyan
       completed: false,
       target: 8,
       current: 0,
@@ -62,7 +62,7 @@ final todayHealthActivitiesProvider =
       name: 'Sunlight',
       description: 'Get natural sunlight exposure',
       icon: Icons.wb_sunny,
-      color: Colors.orange,
+      color: const Color(0xFFFF9800), // Orange
       completed: false,
       target: 15,
       current: 0,
@@ -73,7 +73,7 @@ final todayHealthActivitiesProvider =
       name: 'Temperance',
       description: 'Practice moderation in all things',
       icon: Icons.balance,
-      color: Colors.purple,
+      color: const Color(0xFF9C27B0), // Purple
       completed: false,
       target: 1,
       current: 0,
@@ -84,7 +84,7 @@ final todayHealthActivitiesProvider =
       name: 'Fresh Air',
       description: 'Breathe clean, fresh air',
       icon: Icons.air,
-      color: Colors.teal,
+      color: const Color(0xFF009688), // Teal
       completed: false,
       target: 20,
       current: 0,

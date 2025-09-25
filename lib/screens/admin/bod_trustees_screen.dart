@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../services/supabase_service.dart';
 import 'board_reports_screen.dart';
 import 'board_decisions_screen.dart';
@@ -490,15 +491,10 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
             child: const Text('Close'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              // TODO: Implement direct Jitsi meeting join
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Joining meeting...'),
-                  backgroundColor: Colors.green,
-                ),
-              );
+              // Launch Jitsi meeting with the room name
+              await _joinMeeting(roomName);
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
             child: const Text('Join Meeting',
@@ -538,5 +534,37 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
         builder: (context) => const BoardDocumentsScreen(),
       ),
     );
+  }
+
+  Future<void> _joinMeeting(String meetingId) async {
+    try {
+      // Launch Jitsi meeting URL
+      final meetingUrl = 'https://meet.jit.si/$meetingId';
+      
+      if (await canLaunchUrl(Uri.parse(meetingUrl))) {
+        await launchUrl(
+          Uri.parse(meetingUrl),
+          mode: LaunchMode.externalApplication,
+        );
+        
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Joining meeting: $meetingId'),
+            backgroundColor: Colors.blue,
+          ),
+        );
+      } else {
+        throw 'Could not launch meeting URL';
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error joining meeting: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }

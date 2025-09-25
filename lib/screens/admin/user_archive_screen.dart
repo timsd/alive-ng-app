@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/app_models.dart';
 import '../../services/supabase_service.dart';
+import '../../utils/logger.dart';
 
 class UserArchiveScreen extends StatefulWidget {
   const UserArchiveScreen({super.key});
@@ -12,6 +13,7 @@ class UserArchiveScreen extends StatefulWidget {
 
 class _UserArchiveScreenState extends State<UserArchiveScreen> {
   final SupabaseService _supabaseService = SupabaseService.instance;
+  final Logger _logger = Logger('UserArchiveScreen');
   bool _isLoading = true;
   bool _hasAccess = false;
   User? _currentUser;
@@ -48,14 +50,27 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
   
   Future<void> _loadArchivedUsers() async {
     try {
-      // TODO: Implement actual data fetching from Supabase
-      // For now, using placeholder data
+      // Fetch archived users from Supabase
+      final response = await _supabaseService.client
+          .from('user_profiles')
+          .select()
+          .eq('is_archived', true)
+          .order('updated_at', ascending: false);
+
+      final List<UserProfile> archivedUsers = [];
+      for (final userData in response) {
+        try {
+          archivedUsers.add(UserProfile.fromJson(userData));
+        } catch (e) {
+          _logger.error('Error parsing user data', e);
+        }
+      }
+
       setState(() {
-        _archivedUsers = [
-          // Placeholder archived users
-        ];
+        _archivedUsers = archivedUsers;
       });
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error loading archived users: $e'),
@@ -448,8 +463,19 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
   
   Future<void> _restoreUser(UserProfile user) async {
     try {
-      // TODO: Implement user restoration logic
-      ScaffoldMessenger.of(context).showSnackBar(
+      // Update user profile to unarchive them
+      // Store context in local variable before async gap
+      final messenger = ScaffoldMessenger.of(context);
+      
+      await _supabaseService.client
+          .from('users')
+          .update({
+            'is_archived': false,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', user.id);
+
+      messenger.showSnackBar(
         SnackBar(
           content: Text('${user.fullName} has been restored'),
           backgroundColor: Colors.green,
@@ -457,7 +483,9 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
       );
       await _loadArchivedUsers();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (!mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.showSnackBar(
         SnackBar(
           content: Text('Error restoring user: $e'),
           backgroundColor: Colors.red,
@@ -493,8 +521,36 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
     
     if (confirmed == true) {
       try {
-        // TODO: Implement permanent deletion logic
-        ScaffoldMessenger.of(context).showSnackBar(
+        // Permanently delete user profile from database
+        await _supabaseService.client
+            .from('user_profiles')
+            .delete()
+            .eq('id', user.id);
+
+        // Also delete related data (prayer requests, health tracking, etc.)
+        await Future.wait([
+          _supabaseService.client
+              .from('prayer_requests')
+              .delete()
+              .eq('user_id', user.id),
+          _supabaseService.client
+              .from('health_tracking')
+              .delete()
+              .eq('user_id', user.id),
+          _supabaseService.client
+              .from('mission_participants')
+              .delete()
+              .eq('user_id', user.id),
+          _supabaseService.client
+              .from('study_guide_progress')
+              .delete()
+              .eq('user_id', user.id),
+        ]);
+
+        // Store context in local variable before async gap
+        if (!mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.showSnackBar(
           SnackBar(
             content: Text('${user.fullName} has been permanently deleted'),
             backgroundColor: Colors.red,
@@ -502,7 +558,9 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
         );
         await _loadArchivedUsers();
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (!mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.showSnackBar(
           SnackBar(
             content: Text('Error deleting user: $e'),
             backgroundColor: Colors.red,

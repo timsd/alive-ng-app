@@ -90,6 +90,8 @@ class _ChapterScreenState extends State<ChapterScreen>
           indicatorColor: Colors.white,
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white70,
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
           tabs: const [
             Tab(text: 'Overview'),
             Tab(text: 'Browse'),
@@ -140,39 +142,44 @@ class _ChapterScreenState extends State<ChapterScreen>
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          childAspectRatio: 1.5,
-          children: [
-            _buildStatCard(
-              'Chapters',
-              '${_userStatistics['totalChapters'] ?? 0}',
-              Icons.group,
-              Colors.blue,
-            ),
-            _buildStatCard(
-              'Activities',
-              '${_userStatistics['totalActivities'] ?? 0}',
-              Icons.event,
-              Colors.green,
-            ),
-            _buildStatCard(
-              'Tasks',
-              '${_userStatistics['totalTasks'] ?? 0}',
-              Icons.task,
-              Colors.orange,
-            ),
-            _buildStatCard(
-              'Completion Rate',
-              '${_userStatistics['activityCompletionRate'] ?? 0}%',
-              Icons.check_circle,
-              Colors.purple,
-            ),
-          ],
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final crossAxisCount = constraints.maxWidth > 600 ? 4 : 2;
+            return GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: crossAxisCount,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              childAspectRatio: 1.5,
+              children: [
+                _buildStatCard(
+                  'Chapters',
+                  '${_userStatistics['totalChapters'] ?? 0}',
+                  Icons.group,
+                  Colors.blue,
+                ),
+                _buildStatCard(
+                  'Activities',
+                  '${_userStatistics['totalActivities'] ?? 0}',
+                  Icons.event,
+                  Colors.green,
+                ),
+                _buildStatCard(
+                  'Tasks',
+                  '${_userStatistics['totalTasks'] ?? 0}',
+                  Icons.task,
+                  Colors.orange,
+                ),
+                _buildStatCard(
+                  'Completion Rate',
+                  '${_userStatistics['activityCompletionRate'] ?? 0}%',
+                  Icons.check_circle,
+                  Colors.purple,
+                ),
+              ],
+            );
+          }
         ),
       ],
     );
@@ -582,27 +589,171 @@ class _ChapterScreenState extends State<ChapterScreen>
 
   // Navigation methods
   void _navigateToChapterDetails(Chapter? chapter, {String? chapterId}) {
-    // TODO: Navigate to chapter details screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-          content: Text('Chapter details screen not implemented yet')),
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Chapter Details'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (chapter != null) ...[
+                Text('Name: ${chapter.name}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Text('Type: ${_chapterService.getTypeDescription(chapter.type)}'),
+                const SizedBox(height: 8),
+                Text('Members: ${chapter.memberIds.length}'),
+                const SizedBox(height: 8),
+                Text('Coordinator: ${chapter.coordinatorId ?? "Not assigned"}'),
+                const SizedBox(height: 8),
+                Text('Status: ${chapter.isActive ? "Active" : "Inactive"}'),
+              ] else ...[
+                Text('Chapter ID: $chapterId'),
+                const SizedBox(height: 8),
+                const Text('Loading chapter details...'),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Opening chapter management...')),
+              );
+            },
+            child: const Text('Manage'),
+          ),
+        ],
+      ),
     );
   }
 
   void _navigateToActivityDetails(ChapterActivity activity) {
-    // TODO: Navigate to activity details screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-          content: Text('Activity details screen not implemented yet')),
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Activity Details'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Title: ${activity.title}', style: const TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Text('Description: ${activity.description}'),
+              const SizedBox(height: 8),
+              Text('Date: ${_formatDate(activity.scheduledAt)}'),
+              const SizedBox(height: 8),
+              Text('Location: ${activity.location}'),
+              const SizedBox(height: 8),
+              Text('Assigned Members: ${activity.assignedMemberIds.length}'),
+              const SizedBox(height: 8),
+              Text('Status: ${activity.status}'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Managing activity: ${activity.title}')),
+              );
+            },
+            child: const Text('Edit'),
+          ),
+        ],
+      ),
     );
   }
 
   // Action methods
   void _createChapter() {
-    // TODO: Show create chapter dialog
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-          content: Text('Create chapter dialog not implemented yet')),
+    final nameController = TextEditingController();
+    final locationController = TextEditingController();
+    final leaderController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Create New Chapter'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Chapter Name',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: locationController,
+                decoration: const InputDecoration(
+                  labelText: 'Location',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: leaderController,
+                decoration: const InputDecoration(
+                  labelText: 'Chapter Leader',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              nameController.dispose();
+              locationController.dispose();
+              leaderController.dispose();
+              Navigator.of(context).pop();
+            },
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (nameController.text.isNotEmpty && 
+                  locationController.text.isNotEmpty && 
+                  leaderController.text.isNotEmpty) {
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Creating chapter: ${nameController.text}'),
+                  ),
+                );
+                nameController.dispose();
+                locationController.dispose();
+                leaderController.dispose();
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please fill in all fields'),
+                  ),
+                );
+              }
+            },
+            child: const Text('Create'),
+          ),
+        ],
+      ),
     );
   }
 

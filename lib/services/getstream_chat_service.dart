@@ -394,7 +394,7 @@ class GetStreamChatService {
           Filter.autoComplete('name', query),
           Filter.autoComplete('id', query),
         ]),
-        sort: [const SortOption('name')],
+        sort: [SortOption.asc('name')],
         pagination: const PaginationParams(limit: 20),
       );
 

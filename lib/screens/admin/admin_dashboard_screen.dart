@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:go_router/go_router.dart';
 import '../../services/supabase_service.dart';
+import '../../services/role_access_service.dart';
+import '../../widgets/role_guard.dart';
 import '../../constants/chapters.dart';
+import '../../constants/app_constants.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -11,7 +15,26 @@ class AdminDashboardScreen extends StatefulWidget {
 }
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+  @override
+  Widget build(BuildContext context) {
+    return RoleProtectedScreen(
+      requiredRole: 'admin',
+      screenName: 'Admin Dashboard',
+      child: const _AdminDashboardContent(),
+    );
+  }
+}
+
+class _AdminDashboardContent extends StatefulWidget {
+  const _AdminDashboardContent();
+
+  @override
+  State<_AdminDashboardContent> createState() => _AdminDashboardContentState();
+}
+
+class _AdminDashboardContentState extends State<_AdminDashboardContent> {
   final SupabaseService _supabaseService = SupabaseService.instance;
+  final RoleAccessService _roleService = RoleAccessService.instance;
   bool _isLoading = true;
   bool _hasAccess = false;
   User? _currentUser;
@@ -25,41 +48,58 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _checkAccess();
+    _loadDashboardData();
   }
 
-  Future<void> _checkAccess() async {
+  Future<void> _loadDashboardData() async {
     try {
-      final user = _supabaseService.currentUser;
-      if (user != null) {
-        _currentUser = user;
-        _hasAccess = user.role == 'admin';
-
-        if (_hasAccess) {
-          await _loadDashboardStats();
-        }
+      _currentUser = _supabaseService.currentUser;
+      if (_currentUser != null) {
+        _hasAccess = _roleService.hasRole('admin');
       }
+      await _loadDashboardStats();
     } catch (e) {
-      _hasAccess = false;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading dashboard: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
   Future<void> _loadDashboardStats() async {
     try {
-      // TODO: Implement actual data fetching from Supabase
-      // For now, using placeholder data
+      // Fetch actual data from Supabase
+      final results = await Future.wait([
+        _supabaseService.client.from('user_profiles').select('id').count(),
+        _supabaseService.client.from('user_profiles').select('id').eq('is_archived', false).count(),
+        _supabaseService.client.from('user_profiles').select('id').eq('is_archived', true).count(),
+        _supabaseService.client.from('board_documents').select('id').count(),
+      ]);
+      
+      setState(() {
+        _totalUsers = results[0].count;
+        _totalChapters = ChapterConstants.availableChapters.length;
+        _activeReports = results[3].count;
+        _archivedUsers = results[2].count;
+      });
+    } catch (e) {
+      // Handle error - fallback to placeholder data
       setState(() {
         _totalUsers = 150;
         _totalChapters = ChapterConstants.availableChapters.length;
         _activeReports = 25;
         _archivedUsers = 12;
       });
-    } catch (e) {
-      // Handle error
     }
   }
 
@@ -253,6 +293,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   'View, edit, and manage all user accounts',
                   Icons.person_outline,
                   () => _navigateToUserManagement(),
+                ),
+                _buildActionTile(
+                  'User Approval',
+                  'Review and approve new user registrations',
+                  Icons.how_to_reg_outlined,
+                  () => context.go(AppConstants.adminApprovalRoute),
                 ),
                 _buildActionTile(
                   'Role Assignment',

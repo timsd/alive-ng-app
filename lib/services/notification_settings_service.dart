@@ -3,6 +3,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../models/notification_settings.dart';
 import '../utils/toast_utils.dart';
 import '../utils/logger.dart';
+import 'firebase_messaging_base.dart';
 
 class NotificationSettingsService {
   static final _supabase = Supabase.instance.client;
@@ -13,15 +14,11 @@ class NotificationSettingsService {
       final user = _supabase.auth.currentUser;
       if (user == null) return null;
 
-      // TODO: Uncomment when notification_settings table is available
-      // final response = await _supabase
-      //     .from('notification_settings')
-      //     .select('*')
-      //     .eq('user_id', user.id)
-      //     .maybeSingle();
-
-      // Temporary fallback - return default settings
-      final response = null;
+      final response = await _supabase
+          .from('notification_settings')
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle();
 
       if (response != null) {
         return NotificationSettings.fromJson(response);
@@ -38,8 +35,7 @@ class NotificationSettingsService {
           pushNotificationsEnabled: false,
         );
 
-        // TODO: Uncomment when notification_settings table is available
-        // await _supabase.from('notification_settings').insert(defaultSettings.toJson());
+        await _supabase.from('notification_settings').insert(defaultSettings.toJson());
 
         return defaultSettings;
       }
@@ -58,11 +54,10 @@ class NotificationSettingsService {
         return false;
       }
 
-      // TODO: Uncomment when notification_settings table is available
-      // await _supabase
-      //     .from('notification_settings')
-      //     .update(settings.toJson())
-      //     .eq('user_id', user.id);
+      await _supabase
+          .from('notification_settings')
+          .upsert(settings.toJson())
+          .eq('user_id', user.id);
 
       ToastUtils.showSuccess('Your notification preferences have been saved');
       return true;
@@ -94,7 +89,14 @@ class NotificationSettingsService {
           await updateSettings(updatedSettings);
         }
 
-        // TODO: Register for push notifications with Firebase when ready
+        // Register for push notifications with Firebase
+        try {
+          await FirebaseMessagingBase.getAndSaveToken();
+          _logger.info('Successfully registered for push notifications with Firebase');
+        } catch (e) {
+          _logger.error('Failed to register for push notifications with Firebase', e);
+          // Don't fail the entire operation if Firebase registration fails
+        }
 
         ToastUtils.showSuccess(
             'You\'ll receive reminders for your daily activities');

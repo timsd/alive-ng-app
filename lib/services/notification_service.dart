@@ -1,31 +1,33 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:go_router/go_router.dart';
 import '../utils/logger.dart';
 import 'supabase_service.dart';
 import 'auth_service.dart';
+import 'firebase_messaging_base.dart';
 
-class NotificationService {
+class NotificationService extends FirebaseMessagingBase {
   static NotificationService? _instance;
   static NotificationService get instance =>
       _instance ??= NotificationService._();
 
   NotificationService._();
 
-  final FlutterLocalNotificationsPlugin _localNotifications =
-      FlutterLocalNotificationsPlugin();
-  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
   final SupabaseService _supabaseService = SupabaseService.instance;
   final AuthService _authService = AuthService.instance;
   final Logger _logger = Logger('NotificationService');
+  
+  // Global navigator key for navigation from background contexts
+  static final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+  static GlobalKey<NavigatorState> get navigatorKey => _navigatorKey;
 
   bool _isInitialized = false;
-  String? _fcmToken;
 
   // Initialize notification service
   Future<void> initialize() async {
@@ -33,162 +35,140 @@ class NotificationService {
 
     try {
       tz.initializeTimeZones();
-      await _initializeLocalNotifications();
-      await _initializeFirebaseMessaging();
+      
+      // Initialize Firebase
+      await FirebaseMessagingBase.initializeFirebase();
+      
+      // Initialize local notifications with custom handler
+      await FirebaseMessagingBase.initializeLocalNotifications(
+        onNotificationTapped: _onNotificationTapped,
+      );
+
+      // Request permissions
+      final hasPermission = await FirebaseMessagingBase.requestNotificationPermissions();
+      if (!hasPermission) {
+        _logger.warning('Notification permissions not granted');
+        return;
+      }
+
+      // Get and save FCM token
+      await FirebaseMessagingBase.getAndSaveToken();
+
+      // Setup message handlers with custom callbacks
+      FirebaseMessagingBase.setupMessageHandlers(
+        onForegroundMessage: _handleForegroundMessage,
+        onBackgroundMessage: _handleBackgroundMessage,
+        onMessageOpenedApp: _handleMessageOpenedApp,
+      );
+
+      // Setup token refresh listener
+      FirebaseMessagingBase.setupTokenRefreshListener();
+      
       _isInitialized = true;
     } catch (e) {
-      if (kDebugMode) {
-        print('Failed to initialize notifications: $e');
-      }
+      _logger.error('Failed to initialize notifications', e);
     }
   }
 
-  // Initialize local notifications
-  Future<void> _initializeLocalNotifications() async {
-    const androidSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-    const iosSettings = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-    );
-
-    const initSettings = InitializationSettings(
-      android: androidSettings,
-      iOS: iosSettings,
-    );
-
-    await _localNotifications.initialize(
-      initSettings,
-      onDidReceiveNotificationResponse: _onNotificationTapped,
-    );
-
-    // Create notification channels for Android
-    if (Platform.isAndroid) {
-      await _createNotificationChannels();
-    }
-  }
-
-  // Create notification channels for Android
-  Future<void> _createNotificationChannels() async {
-    const channels = [
-      AndroidNotificationChannel(
-        'prayer_requests',
-        'Prayer Requests',
-        description: 'Notifications for new prayer requests',
-        importance: Importance.high,
-      ),
-      AndroidNotificationChannel(
-        'missions',
-        'Missions',
-        description: 'Notifications for mission opportunities',
-        importance: Importance.high,
-      ),
-      AndroidNotificationChannel(
-        'daily_verse',
-        'Daily Verse',
-        description: 'Daily Bible verse notifications',
-        importance: Importance.defaultImportance,
-      ),
-      AndroidNotificationChannel(
-        'health_reminders',
-        'Health Reminders',
-        description: 'Health and wellness reminders',
-        importance: Importance.defaultImportance,
-      ),
-      AndroidNotificationChannel(
-        'study_reminders',
-        'Study Reminders',
-        description: 'Bible study reminders',
-        importance: Importance.defaultImportance,
-      ),
-    ];
-
-    for (final channel in channels) {
-      await _localNotifications
-          .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
-          ?.createNotificationChannel(channel);
-    }
-  }
-
-  // Initialize Firebase Messaging
-  Future<void> _initializeFirebaseMessaging() async {
-    // Request permission
-    final settings = await _firebaseMessaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-      provisional: false,
-    );
-
-    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      // Get FCM token
-      _fcmToken = await _firebaseMessaging.getToken();
-
-      // Update token in database if user is authenticated
-      if (_authService.isAuthenticated && _fcmToken != null) {
-        await _supabaseService.updateFCMToken(
-            _authService.currentUser!.id, _fcmToken!);
-      }
-
-      // Listen for token refresh
-      _firebaseMessaging.onTokenRefresh.listen((token) async {
-        _fcmToken = token;
-        if (_authService.isAuthenticated) {
-          await _supabaseService.updateFCMToken(
-              _authService.currentUser!.id, token);
-        }
-      });
-
-      // Handle foreground messages
-      FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
-
-      // Handle background messages
-      FirebaseMessaging.onBackgroundMessage(_handleBackgroundMessage);
-
-      // Handle notification taps when app is in background
-      FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
-
-      // Handle notification tap when app is terminated
-      final initialMessage = await _firebaseMessaging.getInitialMessage();
-      if (initialMessage != null) {
-        _handleNotificationTap(initialMessage);
-      }
-    }
-  }
-
-  // Handle foreground messages
+  // Handle foreground messages with custom logic
   void _handleForegroundMessage(RemoteMessage message) {
-    if (kDebugMode) {
-      print('Received foreground message: ${message.messageId}');
+    _logger.info('Received foreground message: ${message.messageId}');
+    
+    if (message.notification != null) {
+      final title = message.notification!.title ?? 'Alive App';
+      final body = message.notification!.body ?? '';
+      
+      // Show local notification for foreground messages
+      FirebaseMessagingBase.showLocalNotification(
+        id: message.hashCode,
+        title: title,
+        body: body,
+        payload: message.data.toString(),
+      );
     }
-
-    // Show local notification for foreground messages
-    _showLocalNotification(
-      title: message.notification?.title ?? 'Alive App',
-      body: message.notification?.body ?? '',
-      payload: message.data,
-    );
   }
 
-  // Handle notification tap
-  void _handleNotificationTap(RemoteMessage message) {
-    if (kDebugMode) {
-      print('Notification tapped: ${message.messageId}');
+  // Handle background messages with custom logic
+  Future<void> _handleBackgroundMessage(RemoteMessage message) async {
+    _logger.info('Received background message: ${message.messageId}');
+    
+    // Process background message
+    if (message.data.isNotEmpty) {
+      _logger.info('Background message data: ${message.data}');
+      
+      // Process different types of background data
+      final type = message.data['type'];
+      switch (type) {
+        case 'sync_data':
+          // Trigger data synchronization
+          _logger.info('Triggering data sync from background message');
+          break;
+        case 'cache_update':
+          // Update local cache
+          _logger.info('Updating cache from background message');
+          break;
+        case 'prayer_request_update':
+          // Update prayer request data
+          _logger.info('Updating prayer request data');
+          break;
+        case 'mission_update':
+          // Update mission data
+          _logger.info('Updating mission data');
+          break;
+        default:
+          _logger.info('Processing general background message');
+          break;
+      }
     }
+  }
 
+  // Handle message when app is opened from background with custom logic
+  void _handleMessageOpenedApp(RemoteMessage message) {
+    _logger.info('Message opened app: ${message.messageId}');
+    
+    final data = message.data;
+    if (data.containsKey('screen')) {
+      _logger.info('Navigating to: ${data['screen']}');
+      
+      // Use the global navigator key to navigate
+      final context = _navigatorKey.currentContext;
+      if (context != null) {
+        final screen = data['screen'] as String;
+        context.go(screen.startsWith('/') ? screen : '/$screen');
+      } else {
+        _logger.warning('Navigation context not available for direct screen navigation');
+      }
+    }
+    
     // Handle navigation based on notification data
     _navigateFromNotification(message.data);
   }
 
-  // Handle local notification tap
+  // Handle local notification tap with custom logic
   void _onNotificationTapped(NotificationResponse response) {
-    if (response.payload != null) {
-      // Parse payload and navigate
-      // This would typically involve parsing JSON and navigating to specific screens
-      if (kDebugMode) {
-        print('Local notification tapped: ${response.payload}');
+    final payload = response.payload;
+    if (payload != null) {
+      _logger.info('Local notification tapped with payload: $payload');
+      
+      try {
+        // Parse the payload as JSON if it contains structured data
+        if (payload.startsWith('{')) {
+          final data = Map<String, dynamic>.from(
+            payload.split(',').fold<Map<String, String>>({}, (map, item) {
+              final parts = item.replaceAll(RegExp(r'[{}]'), '').split(':');
+              if (parts.length == 2) {
+                map[parts[0].trim()] = parts[1].trim();
+              }
+              return map;
+            })
+          );
+          _navigateFromNotification(data);
+        } else {
+          // Handle simple string payload
+          _logger.info('Simple payload received: $payload');
+        }
+      } catch (e) {
+        _logger.error('Error parsing notification payload: $e');
       }
     }
   }
@@ -200,65 +180,63 @@ class NotificationService {
     
     _logger.info('Navigating from notification: type=$type, id=$id');
 
+    // Use the global navigator key to navigate from background contexts
+    final context = _navigatorKey.currentContext;
+    if (context == null) {
+      _logger.warning('Navigation context not available');
+      return;
+    }
+    
     switch (type) {
       case 'prayer_request':
         // Navigate to prayer request details with id: $id
+        context.go('/prayer-requests${id != null ? '/$id' : ''}');
+        _logger.info('Navigated to prayer request: $id');
         break;
       case 'mission':
         // Navigate to mission details with id: $id
+        context.go('/missions${id != null ? '/$id' : ''}');
+        _logger.info('Navigated to mission: $id');
         break;
       case 'daily_verse':
-        // Navigate to daily verse with id: $id
+        // Navigate to daily verse
+        context.go('/daily');
+        _logger.info('Navigated to daily verse');
         break;
       case 'health_reminder':
-        // Navigate to health screen with id: $id
+        // Navigate to health screen
+        context.go('/health');
+        _logger.info('Navigated to health screen');
         break;
       case 'study_reminder':
         // Navigate to study screen
+        context.go('/study');
+        _logger.info('Navigated to study screen');
         break;
       case 'bible_memorization':
         // Navigate to Bible game screen for memorization
+        context.go('/bible-game');
+        _logger.info('Navigated to Bible memorization game');
+        break;
+      case 'prayer_reminder':
+        // Navigate to prayer screen
+        context.go('/prayer');
+        _logger.info('Navigated to prayer screen');
+        break;
+      case 'mission_reminder':
+        // Navigate to missions screen
+        context.go('/missions');
+        _logger.info('Navigated to missions screen');
         break;
       default:
         // Navigate to home
+        context.go('/home');
+        _logger.info('Navigated to home');
         break;
     }
   }
 
-  // Show local notification
-  Future<void> _showLocalNotification({
-    required String title,
-    required String body,
-    Map<String, dynamic>? payload,
-  }) async {
-    const androidDetails = AndroidNotificationDetails(
-      'default',
-      'Default',
-      channelDescription: 'Default notification channel',
-      importance: Importance.high,
-      priority: Priority.high,
-    );
-
-    const iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-    );
-
-    const details = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
-
-    await _localNotifications.show(
-      DateTime.now().millisecondsSinceEpoch.remainder(100000),
-      title,
-      body,
-      details,
-      payload: payload?.toString(),
-    );
-  }
-
+  // Show local notification using base class method
   // Schedule local notification
   Future<void> scheduleNotification({
     required int id,
@@ -287,7 +265,7 @@ class NotificationService {
       iOS: iosDetails,
     );
 
-    await _localNotifications.zonedSchedule(
+    await FirebaseMessagingBase.localNotifications.zonedSchedule(
       id,
       title,
       body,
@@ -393,17 +371,17 @@ class NotificationService {
 
   // Cancel notification
   Future<void> cancelNotification(int id) async {
-    await _localNotifications.cancel(id);
+    await FirebaseMessagingBase.localNotifications.cancel(id);
   }
 
   // Cancel all notifications
   Future<void> cancelAllNotifications() async {
-    await _localNotifications.cancelAll();
+    await FirebaseMessagingBase.localNotifications.cancelAll();
   }
 
   // Get pending notifications
   Future<List<PendingNotificationRequest>> getPendingNotifications() async {
-    return await _localNotifications.pendingNotificationRequests();
+    return await FirebaseMessagingBase.localNotifications.pendingNotificationRequests();
   }
 
   // Update notification settings
@@ -557,18 +535,18 @@ class NotificationService {
   }
 
   // Get FCM token
-  String? get fcmToken => _fcmToken;
+  String? get fcmToken => FirebaseMessagingBase.fcmToken;
 
   // Check if notifications are enabled
   Future<bool> areNotificationsEnabled() async {
     if (Platform.isAndroid) {
       final androidImplementation =
-          _localNotifications.resolvePlatformSpecificImplementation<
+          FirebaseMessagingBase.localNotifications.resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin>();
       return await androidImplementation?.areNotificationsEnabled() ?? false;
     } else if (Platform.isIOS) {
       final iosImplementation =
-          _localNotifications.resolvePlatformSpecificImplementation<
+          FirebaseMessagingBase.localNotifications.resolvePlatformSpecificImplementation<
               IOSFlutterLocalNotificationsPlugin>();
       return await iosImplementation?.requestPermissions(
             alert: true,
@@ -582,31 +560,7 @@ class NotificationService {
 
   // Request notification permissions
   Future<bool> requestPermissions() async {
-    if (Platform.isAndroid) {
-      final androidImplementation =
-          _localNotifications.resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>();
-      return await androidImplementation?.requestNotificationsPermission() ??
-          false;
-    } else if (Platform.isIOS) {
-      final iosImplementation =
-          _localNotifications.resolvePlatformSpecificImplementation<
-              IOSFlutterLocalNotificationsPlugin>();
-      return await iosImplementation?.requestPermissions(
-            alert: true,
-            badge: true,
-            sound: true,
-          ) ??
-          false;
-    }
-    return false;
-  }
-}
-
-// Background message handler (must be top-level function)
-Future<void> _handleBackgroundMessage(RemoteMessage message) async {
-  if (kDebugMode) {
-    print('Handling background message: ${message.messageId}');
+    return await FirebaseMessagingBase.requestNotificationPermissions();
   }
 }
 

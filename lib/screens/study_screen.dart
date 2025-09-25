@@ -316,7 +316,7 @@ class StudyScreen extends ConsumerWidget {
         return StudyProgramCard(
           program: program,
           onTap: () {
-            // TODO: Navigate to program details
+            _navigateToProgramDetails(context, program);
           },
         );
       },
@@ -352,6 +352,77 @@ class StudyScreen extends ConsumerWidget {
             error,
             style: Theme.of(context).textTheme.bodySmall,
             textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _navigateToProgramDetails(BuildContext context, dynamic program) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(program.title ?? 'Study Program'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Program Details',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 12),
+              Text(program.description ?? 'Detailed study program with comprehensive lessons and activities.'),
+              const SizedBox(height: 16),
+              const Text(
+                'Features:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              const Text('• Interactive lessons and quizzes'),
+              const Text('• Progress tracking'),
+              const Text('• Discussion forums'),
+              const Text('• Certificate upon completion'),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info, color: Colors.blue),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'This program includes multiple modules and assessments.',
+                        style: TextStyle(color: Colors.blue),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Starting program: ${program.title ?? "Study Program"}'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            },
+            child: const Text('Start Program'),
           ),
         ],
       ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../providers/auth_provider.dart';
 import '../providers/language_provider.dart';
@@ -76,10 +77,14 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   Widget _buildHeader(BuildContext context, String Function(String) translate) {
     return Column(
       children: [
-        Icon(
-          Icons.church,
-          size: 80,
-          color: Theme.of(context).colorScheme.primary,
+        SvgPicture.asset(
+          'assets/images/alive_logo.svg',
+          width: 80,
+          height: 80,
+          colorFilter: ColorFilter.mode(
+            Theme.of(context).colorScheme.primary,
+            BlendMode.srcIn,
+          ),
         ),
         const SizedBox(height: 16),
         Text(
@@ -137,8 +142,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               if (value == null || value.trim().isEmpty) {
                 return 'Please enter your email';
               }
-              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}\$')
-                  .hasMatch(value)) {
+              if (!RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+                  .hasMatch(value.trim())) {
                 return 'Please enter a valid email';
               }
               return null;
@@ -257,7 +262,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       BuildContext context, String Function(String) translate) {
     return TextButton(
       onPressed: _showForgotPasswordDialog,
-      child: const Text('Forgot Password?'),
+      child: Text(translate('forgot_password')),
     );
   }
 
@@ -287,7 +292,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               context.go(AppConstants.homeRoute);
             },
             icon: const Icon(Icons.explore),
-            label: const Text('Continue as Guest'),
+            label: Text(translate('continue_as_guest')),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
             ),
@@ -364,16 +369,16 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
   void _showForgotPasswordDialog() {
     final emailController = TextEditingController();
+    final translate = ref.read(translationProvider);
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Reset Password'),
+        title: Text(translate('reset_password')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-                'Enter your email address to receive a password reset link.'),
+            Text(translate('reset_password_instruction')),
             const SizedBox(height: 16),
             TextField(
               controller: emailController,
@@ -388,11 +393,15 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+            child: Text(translate('cancel')),
           ),
           ElevatedButton(
             onPressed: () async {
               if (emailController.text.trim().isEmpty) return;
+
+              final navigator = Navigator.of(context);
+              final scaffoldMessenger = ScaffoldMessenger.of(context);
+              final resetSentMessage = translate('password_reset_sent');
 
               try {
                 await ref.read(authServiceProvider).resetPassword(
@@ -400,17 +409,17 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                     );
 
                 if (mounted) {
-                  Navigator.of(context).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Password reset email sent!'),
+                  navigator.pop();
+                  scaffoldMessenger.showSnackBar(
+                    SnackBar(
+                      content: Text(resetSentMessage),
                       backgroundColor: Colors.green,
                     ),
                   );
                 }
               } catch (e) {
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  scaffoldMessenger.showSnackBar(
                     SnackBar(
                       content: Text(e.toString()),
                       backgroundColor: Colors.red,
@@ -419,7 +428,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 }
               }
             },
-            child: const Text('Send Reset Link'),
+            child: Text(translate('send_reset_link')),
           ),
         ],
       ),

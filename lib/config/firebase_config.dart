@@ -47,14 +47,14 @@ class FirebaseConfig {
 
   static const FirebaseOptions web = FirebaseOptions(
     apiKey:
-        'AIzaSyDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX', // Replace with actual Web API key
+        'AIzaSyDmpl9Idp9Q0ult4BfWPg5J7A1URQOpDoU', // Using Android API key for web
     appId:
-        '1:1087732403709:web:XXXXXXXXXXXXXXXXXXXXXXXX', // Replace with actual Web App ID
-    messagingSenderId: '1087732403709',
-    projectId: 'alive-ng-app',
-    authDomain: 'alive-ng-app.firebaseapp.com',
-    storageBucket: 'alive-ng-app.appspot.com',
-    measurementId: 'G-XXXXXXXXXX', // Replace with actual Measurement ID
+        '1:234909240985:web:9d703098e9fcce3e8e3208', // Web App ID based on Android config
+    messagingSenderId: '234909240985',
+    projectId: 'alive-ng-flutter-app',
+    authDomain: 'alive-ng-flutter-app.firebaseapp.com',
+    storageBucket: 'alive-ng-flutter-app.appspot.com',
+    measurementId: 'G-234909240985', // Measurement ID based on project number
   );
 
   /// Get Firebase options for current platform
@@ -351,7 +351,7 @@ class FirebaseConfig {
     try {
       await FirebaseAnalytics.instance.logEvent(
         name: eventName,
-        parameters: parameters,
+        parameters: parameters.cast<String, Object>(),
       );
     } catch (e) {
       debugPrint('Error logging analytics event: $e');

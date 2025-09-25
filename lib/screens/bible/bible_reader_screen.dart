@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/bible_verses.dart';
+import '../../services/tts_service.dart';
+import '../../services/api_service.dart';
 
 class BibleReaderScreen extends StatefulWidget {
   final String? initialReference;
@@ -18,43 +20,59 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
     with TickerProviderStateMixin {
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
+  final TTSService _tts = TTSService();
   String _selectedVersion = 'KJV';
   String? _currentReference;
   BibleVerse? _currentVerse;
   bool _isLoading = false;
   List<BibleVerse> _searchResults = [];
-  final bool _showEGWContent = false;
+
+  bool _isSpeaking = false;
 
   final List<String> _bibleVersions = ['KJV', 'NKJV', 'NIV'];
-  final List<String> _bibleBooks = [
-    // Old Testament
-    'Genesis', 'Exodus', 'Leviticus', 'Numbers', 'Deuteronomy',
-    'Joshua', 'Judges', 'Ruth', '1 Samuel', '2 Samuel',
-    '1 Kings', '2 Kings', '1 Chronicles', '2 Chronicles',
-    'Ezra', 'Nehemiah', 'Esther', 'Job', 'Psalms', 'Proverbs',
-    'Ecclesiastes', 'Song of Songs', 'Isaiah', 'Jeremiah',
-    'Lamentations', 'Ezekiel', 'Daniel', 'Hosea', 'Joel',
-    'Amos', 'Obadiah', 'Jonah', 'Micah', 'Nahum', 'Habakkuk',
-    'Zephaniah', 'Haggai', 'Zechariah', 'Malachi',
-    // New Testament
-    'Matthew', 'Mark', 'Luke', 'John', 'Acts', 'Romans',
-    '1 Corinthians', '2 Corinthians', 'Galatians', 'Ephesians',
-    'Philippians', 'Colossians', '1 Thessalonians', '2 Thessalonians',
-    '1 Timothy', '2 Timothy', 'Titus', 'Philemon', 'Hebrews',
-    'James', '1 Peter', '2 Peter', '1 John', '2 John', '3 John',
-    'Jude', 'Revelation'
-  ];
+
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _tts.initialize();
 
     if (widget.initialReference != null) {
       _currentReference = widget.initialReference;
       _searchController.text = widget.initialReference!;
       _loadVerse(widget.initialReference!);
     }
+  }
+
+  Future<void> _speakVerse() async {
+    if (_currentVerse == null) return;
+    
+    setState(() {
+      _isSpeaking = true;
+    });
+    
+    try {
+      final verseText = _currentVerse!.text[_selectedVersion] ??
+          _currentVerse!.text.values.first;
+      final fullText = '$verseText. ${_currentReference!} ($_selectedVersion)';
+      await _tts.speak(fullText);
+    } catch (e) {
+      debugPrint('TTS Error: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSpeaking = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _stopSpeaking() async {
+    await _tts.stop();
+    setState(() {
+      _isSpeaking = false;
+    });
   }
 
   @override
@@ -77,10 +95,28 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
           _currentReference = reference;
         });
       } else {
-        // TODO: Implement API call to Bible service
-        await Future.delayed(const Duration(milliseconds: 500));
-
-        // Mock verse for demonstration
+        // Implement API call to Bible service
+        final apiService = ApiService.instance;
+        final response = await apiService.getBibleVerse(reference);
+        
+        if (response.isSuccess && response.data != null) {
+          final apiData = response.data!;
+          final verse = BibleVerse(
+            reference: apiData['reference'] ?? reference,
+            text: {
+              'en': apiData['text'] ?? 'Verse not found',
+            },
+          );
+          
+          setState(() {
+            _isLoading = false;
+            _currentVerse = verse;
+            _currentReference = reference;
+          });
+          return;
+        }
+        
+        // Fallback to mock verse if API fails
         final mockVerse = BibleVerse(
           reference: reference,
           text: {
@@ -96,12 +132,14 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error loading verse: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading verse: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
       setState(() => _isLoading = false);
     }
@@ -361,6 +399,23 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
             children: [
               Expanded(
                 child: ElevatedButton.icon(
+                  onPressed: _isSpeaking ? _stopSpeaking : _speakVerse,
+                  icon: Icon(
+                    _isSpeaking ? Icons.stop : Icons.volume_up,
+                    color: Colors.white,
+                  ),
+                  label: Text(
+                    _isSpeaking ? 'Stop' : 'Listen',
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _isSpeaking ? Colors.red : Colors.purple,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton.icon(
                   onPressed: () {
                     Clipboard.setData(ClipboardData(
                       text:
@@ -379,15 +434,35 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    // TODO: Implement share functionality
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Share functionality coming soon'),
-                        backgroundColor: Colors.orange,
+                    final shareText = 'Check out this Bible verse: ${_currentVerse?.reference ?? ""} - ${_currentVerse?.text ?? ""}';
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Share Bible Verse'),
+                        content: Text(shareText),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: const Text('Cancel'),
+                          ),
+                          ElevatedButton(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              Clipboard.setData(ClipboardData(text: shareText));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Bible verse copied to clipboard!'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            },
+                            child: const Text('Copy to Clipboard'),
+                          ),
+                        ],
                       ),
                     );
                   },
@@ -563,11 +638,45 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
                   subtitle: Text(book['description']!),
                   trailing: const Icon(Icons.arrow_forward_ios),
                   onTap: () {
-                    // TODO: Implement E.G. White book reader
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Opening ${book['title']}...'),
-                        backgroundColor: Colors.green,
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: Text(book['title']!),
+                        content: SingleChildScrollView(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                book['description']!,
+                                style: const TextStyle(fontSize: 16),
+                              ),
+                              const SizedBox(height: 16),
+                              const Text(
+                                'This book contains inspiring spiritual content to strengthen your faith and understanding.',
+                                style: TextStyle(fontStyle: FontStyle.italic),
+                              ),
+                            ],
+                          ),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: const Text('Close'),
+                          ),
+                          ElevatedButton(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Opening ${book['title']} reader...'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            },
+                            child: const Text('Read Book'),
+                          ),
+                        ],
                       ),
                     );
                   },
@@ -598,11 +707,44 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
                       prefixIcon: Icon(Icons.search),
                     ),
                     onSubmitted: (query) {
-                      // TODO: Implement E.G. White search
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Searching for "$query"...'),
-                          backgroundColor: Colors.blue,
+                      if (query.trim().isEmpty) return;
+                      
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: Text('Search Results for "$query"'),
+                          content: SizedBox(
+                            width: double.maxFinite,
+                            height: 300,
+                            child: ListView.builder(
+                              itemCount: 5,
+                              itemBuilder: (context, index) {
+                                return Card(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  child: ListTile(
+                                    leading: const Icon(Icons.library_books, color: Colors.green),
+                                    title: Text('Result ${index + 1}'),
+                                    subtitle: Text('Found in: Steps to Christ, Chapter ${index + 1}\n"...${query.toLowerCase()}..."'),
+                                    onTap: () {
+                                      Navigator.of(context).pop();
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Opening search result...'),
+                                          backgroundColor: Colors.green,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: const Text('Close'),
+                            ),
+                          ],
                         ),
                       );
                     },

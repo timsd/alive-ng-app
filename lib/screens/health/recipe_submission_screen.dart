@@ -528,26 +528,26 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
           .from('user_submitted_recipes')
           .insert(recipeData);
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(translate('recipe_submitted_successfully')),
-            backgroundColor: Colors.green,
-          ),
-        );
+      if (!mounted) return;
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(translate('recipe_submitted_successfully')),
+          backgroundColor: Colors.green,
+        ),
+      );
 
-        // Reset form
-        _formKey.currentState!.reset();
-      }
+      // Reset form
+      _formKey.currentState!.reset();
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${translate('error_submitting_recipe')}: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      if (!mounted) return;
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${translate('error_submitting_recipe')}: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -598,26 +598,26 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
           .from('user_submitted_recipes')
           .insert(recipeData);
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(translate('remedy_submitted_successfully')),
-            backgroundColor: Colors.green,
-          ),
-        );
+      if (!mounted) return;
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(translate('remedy_submitted_successfully')),
+          backgroundColor: Colors.green,
+        ),
+      );
 
-        // Reset form
-        _formKey.currentState!.reset();
-      }
+      // Reset form
+      _formKey.currentState!.reset();
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${translate('error_submitting_remedy')}: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      if (!mounted) return;
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${translate('error_submitting_remedy')}: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     } finally {
       if (mounted) {
         setState(() {

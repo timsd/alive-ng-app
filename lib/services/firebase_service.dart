@@ -1,62 +1,51 @@
-import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../utils/logger.dart';
+import 'firebase_messaging_base.dart';
 
-class FirebaseService {
-  static final FirebaseMessaging _messaging = FirebaseMessaging.instance;
-  static final FlutterLocalNotificationsPlugin _localNotifications =
-      FlutterLocalNotificationsPlugin();
+class FirebaseService extends FirebaseMessagingBase {
   static final SupabaseClient _supabase = Supabase.instance.client;
   static final Logger _logger = Logger('FirebaseService');
+  static final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  static final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+  static bool _isInitialized = false;
 
-  // Initialize Firebase services
+  /// Initialize Firebase services
   static Future<void> initialize() async {
-    try {
-      // Initialize Firebase
-      await Firebase.initializeApp();
+    if (_isInitialized) {
+      _logger.info('Firebase already initialized');
+      return;
+    }
 
-      // Initialize local notifications
-      await _initializeLocalNotifications();
+    try {
+      // Initialize Firebase using base class
+      await FirebaseMessagingBase.initializeFirebase();
+      
+      // Initialize local notifications with custom handler
+      await FirebaseMessagingBase.initializeLocalNotifications(
+        onNotificationTapped: _onNotificationTapped,
+      );
 
       // Request notification permissions
-      await _requestNotificationPermissions();
+      await FirebaseMessagingBase.requestNotificationPermissions();
 
       // Set up message handlers
       _setupMessageHandlers();
 
+      _isInitialized = true;
       _logger.info('Firebase services initialized successfully');
     } catch (e) {
       _logger.error('Error initializing Firebase services', e);
+      rethrow;
     }
   }
 
-  // Initialize local notifications
-  static Future<void> _initializeLocalNotifications() async {
-    const androidSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-    const iosSettings = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-    );
-
-    const settings = InitializationSettings(
-      android: androidSettings,
-      iOS: iosSettings,
-    );
-
-    await _localNotifications.initialize(
-      settings,
-      onDidReceiveNotificationResponse: _onNotificationTapped,
-    );
-  }
-
-  // Handle notification tap
+  /// Handle notification tap with custom logic
   static void _onNotificationTapped(NotificationResponse response) {
     final payload = response.payload;
     if (payload != null) {
+      _logger.info('Notification tapped with payload: $payload');
       // Handle navigation based on payload
       _handleNotificationNavigation(payload);
     }
@@ -70,26 +59,6 @@ class FirebaseService {
       _logger.info('Navigating based on notification payload: $payload');
     } catch (e) {
       _logger.error('Error handling notification navigation: $e');
-    }
-  }
-
-  // Request notification permissions
-  static Future<bool> _requestNotificationPermissions() async {
-    try {
-      final settings = await _messaging.requestPermission(
-        alert: true,
-        announcement: false,
-        badge: true,
-        carPlay: false,
-        criticalAlert: false,
-        provisional: false,
-        sound: true,
-      );
-
-      return settings.authorizationStatus == AuthorizationStatus.authorized;
-    } catch (e) {
-      _logger.error('Error requesting notification permissions: $e');
-      return false;
     }
   }
 
@@ -233,11 +202,11 @@ class FirebaseService {
 
       // Remove token from database
       final user = _supabase.auth.currentUser;
-      if (user != null) {
-        await _supabase
-            .from('push_tokens')
-            .update({'is_active': false}).eq('user_id', user.id);
-      }
+    if (user != null) {
+      await _supabase
+          .from('push_tokens')
+          .update({'is_active': false}).eq('user_id', user.id);
+    }
 
       _logger.info('FCM token deleted');
     } catch (e) {

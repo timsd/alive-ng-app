@@ -10,9 +10,9 @@ class PrayerRequestsService {
   static Future<List<PrayerRequest>> fetchPrayerRequests() async {
     try {
       final user = _supabase.auth.currentUser;
-      if (user == null) {
-        throw Exception('User not authenticated');
-      }
+    if (user == null) {
+      throw Exception('User not authenticated');
+    }
 
       final response = await _supabase
           .from('prayer_requests')
@@ -61,10 +61,10 @@ class PrayerRequestsService {
   static Future<bool> prayForRequest(String requestId) async {
     try {
       final user = _supabase.auth.currentUser;
-      if (user == null) {
-        ToastUtils.showError('Please log in to pray for requests');
-        return false;
-      }
+    if (user == null) {
+      ToastUtils.showError('Please log in to pray for requests');
+      return false;
+    }
 
       // Increment prayer count
       await _supabase.rpc('increment_prayer_count', params: {
@@ -88,10 +88,10 @@ class PrayerRequestsService {
   }) async {
     try {
       final user = _supabase.auth.currentUser;
-      if (user == null) {
-        ToastUtils.showError('Please log in to update prayer requests');
-        return false;
-      }
+       if (user == null) {
+         ToastUtils.showError('Please log in to update prayer request');
+         return false;
+       }
 
       final updates = <String, dynamic>{};
       if (title != null) updates['title'] = title;
@@ -116,10 +116,10 @@ class PrayerRequestsService {
   static Future<bool> deletePrayerRequest(String id) async {
     try {
       final user = _supabase.auth.currentUser;
-      if (user == null) {
-        ToastUtils.showError('Please log in to delete prayer requests');
-        return false;
-      }
+       if (user == null) {
+         ToastUtils.showError('Please log in to delete prayer request');
+         return false;
+       }
 
       await _supabase
           .from('prayer_requests')

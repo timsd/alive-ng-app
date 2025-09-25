@@ -85,11 +85,13 @@ class AuthService {
       );
 
       if (response.user != null) {
-        // Create user profile
+        // Create user profile with approval status set to pending
         final userProfile = UserProfile(
           id: response.user!.id,
           email: email,
           fullName: fullName ?? '',
+          isApproved: false, // New users require approval
+          approvalStatus: 'pending',
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         );

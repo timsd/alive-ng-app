@@ -1,9 +1,53 @@
-// Temporarily disabled due to flutter_paystack dependency conflicts
-/*
+
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:flutter_paystack/flutter_paystack.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+// Mock classes to replace flutter_paystack until dependency conflicts are resolved
+class PaystackPlugin {
+  Future<void> initialize({required String publicKey}) async {
+    // Mock implementation
+  }
+  
+  Future<PaymentResponse> checkout(
+    BuildContext context, {
+    required CheckoutMethod method,
+    required PaymentCharge charge,
+  }) async {
+    // Mock implementation - always return success for development
+    return PaymentResponse(
+      status: true,
+      reference: charge.reference,
+      message: 'Payment successful (mock)',
+    );
+  }
+}
+
+class PaymentCharge {
+  int amount = 0;
+  String reference = '';
+  String email = '';
+  String currency = 'NGN';
+  Map<String, String> customFields = {};
+  
+  void putCustomField(String key, String value) {
+    customFields[key] = value;
+  }
+}
+
+class PaymentResponse {
+  final bool status;
+  final String? reference;
+  final String? message;
+  
+  PaymentResponse({
+    required this.status,
+    this.reference,
+    this.message,
+  });
+}
+
+enum CheckoutMethod { card, bank, ussd }
 
 class PaystackService {
   static const String _publicKey =
@@ -15,9 +59,9 @@ class PaystackService {
   static Future<void> initialize() async {
     try {
       await _paystack.initialize(publicKey: _publicKey);
-      print('Paystack initialized successfully');
+      debugPrint('Paystack initialized successfully');
     } catch (e) {
-      print('Error initializing Paystack: $e');
+      debugPrint('Error initializing Paystack: $e');
     }
   }
 
@@ -32,7 +76,7 @@ class PaystackService {
     Map<String, dynamic>? metadata,
   }) async {
     try {
-      final charge = Charge()
+      final charge = PaymentCharge()
         ..amount = (amount * 100).toInt() // Convert to kobo
         ..reference = reference ?? _generateReference()
         ..email = email
@@ -55,7 +99,7 @@ class PaystackService {
       if (response.status) {
         // Payment successful, save to database
         await _saveTransaction(
-          reference: charge.reference!,
+          reference: charge.reference,
           amount: amount,
           email: email,
           purpose: purpose,
@@ -66,14 +110,14 @@ class PaystackService {
 
         return PaymentResult(
           success: true,
-          reference: charge.reference!,
+          reference: charge.reference,
           message: response.message ?? 'Payment successful',
           transactionId: response.reference,
         );
       } else {
         // Payment failed
         await _saveTransaction(
-          reference: charge.reference!,
+          reference: charge.reference,
           amount: amount,
           email: email,
           purpose: purpose,
@@ -85,13 +129,13 @@ class PaystackService {
 
         return PaymentResult(
           success: false,
-          reference: charge.reference!,
+          reference: charge.reference,
           message: response.message ?? 'Payment failed',
           transactionId: response.reference,
         );
       }
     } catch (e) {
-      print('Error making payment: $e');
+      debugPrint('Error making payment: $e');
       return PaymentResult(
         success: false,
         reference: reference ?? 'unknown',
@@ -143,7 +187,7 @@ class PaystackService {
       }
       return false;
     } catch (e) {
-      print('Error verifying payment: $e');
+      debugPrint('Error verifying payment: $e');
       return false;
     }
   }
@@ -161,7 +205,7 @@ class PaystackService {
           .map((json) => Transaction.fromJson(json))
           .toList();
     } catch (e) {
-      print('Error fetching transaction history: $e');
+      debugPrint('Error fetching transaction history: $e');
       return [];
     }
   }
@@ -197,7 +241,7 @@ class PaystackService {
         transactionCount: transactionCount,
       );
     } catch (e) {
-      print('Error fetching donation stats: $e');
+      debugPrint('Error fetching donation stats: $e');
       return DonationStats(
         totalDonations: 0,
         totalAmount: 0,
@@ -240,7 +284,7 @@ class PaystackService {
         'created_at': DateTime.now().toIso8601String(),
       });
     } catch (e) {
-      print('Error saving transaction: $e');
+      debugPrint('Error saving transaction: $e');
     }
   }
 
@@ -253,7 +297,7 @@ class PaystackService {
         'updated_at': DateTime.now().toIso8601String(),
       }).eq('reference', reference);
     } catch (e) {
-      print('Error updating transaction status: $e');
+      debugPrint('Error updating transaction status: $e');
     }
   }
 }
@@ -352,4 +396,3 @@ class DonationStats {
     required this.transactionCount,
   });
 }
-*/

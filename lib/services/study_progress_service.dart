@@ -10,9 +10,9 @@ class StudyProgressService {
   static Future<List<StudyProgress>> fetchStudyProgress() async {
     try {
       final user = _supabase.auth.currentUser;
-      if (user == null) {
-        throw Exception('User not authenticated');
-      }
+       if (user == null) {
+         throw Exception('User not authenticated');
+       }
 
       final response = await _supabase
           .from('study_progress')

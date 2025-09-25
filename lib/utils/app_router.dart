@@ -18,12 +18,22 @@ import '../screens/admin/admin_dashboard_screen.dart';
 import '../screens/admin/bod_trustees_screen.dart';
 import '../screens/admin/user_archive_screen.dart';
 import '../screens/admin/role_management_screen.dart';
+import '../services/role_access_service.dart';
 import '../screens/conference/conference_platform_screen.dart';
 import '../screens/bible_game_screen.dart';
 import '../screens/chat/chat_screen.dart';
 import '../screens/chapters/chapter_screen.dart';
 import '../screens/health/enhanced_health_screen.dart';
 import '../screens/health/recipe_submission_screen.dart';
+import '../screens/kids/kids_mission_screen.dart';
+import '../screens/prayer/prayer_wall_screen.dart';
+import '../screens/library/library_screen.dart';
+import '../screens/podcasts/podcasts_screen.dart';
+import '../screens/lessons/interactive_lessons_screen.dart';
+import '../screens/books/books_tracts_screen.dart';
+import '../screens/kids/kids_stories_screen.dart';
+import '../screens/discipleship/discipleship_screen.dart';
+import '../screens/admin/admin_approval_screen.dart';
 import '../providers/auth_provider.dart';
 import '../providers/guest_provider.dart';
 import '../constants/app_constants.dart';
@@ -38,6 +48,12 @@ bool _isGuestAccessibleRoute(String path) {
     '/about-app',
     '/about-alive',
     '/bible-game',
+    '/kids-mission',
+    '/library',
+    '/podcasts',
+    '/interactive-lessons',
+    '/books-tracts',
+    '/kids-stories',
   ];
 
   return guestAccessibleRoutes.contains(path);
@@ -94,7 +110,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppConstants.splashRoute,
         builder: (context, state) => AnimatedSplashScreen(
           onAnimationComplete: () {
-            // Animation complete callback
+            context.go(AppConstants.homeRoute);
           },
         ),
       ),
@@ -166,28 +182,69 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
 
           // Admin Dashboard Route
-          GoRoute(
-            path: AppConstants.adminRoute,
-            builder: (context, state) => const AdminDashboardScreen(),
-          ),
+        GoRoute(
+          path: AppConstants.adminRoute,
+          builder: (context, state) => const AdminDashboardScreen(),
+          redirect: (context, state) {
+            final roleService = RoleAccessService.instance;
+            if (!roleService.canAccessAdmin()) {
+              return '/home';
+            }
+            return null;
+          },
+        ),
 
           // BOD Trustees Route
-          GoRoute(
-            path: AppConstants.bodTrusteesRoute,
-            builder: (context, state) => const BodTrusteesScreen(),
-          ),
+        GoRoute(
+          path: AppConstants.bodTrusteesRoute,
+          builder: (context, state) => const BodTrusteesScreen(),
+          redirect: (context, state) {
+            final roleService = RoleAccessService.instance;
+            if (!roleService.canAccessBoardDocuments()) {
+              return '/home';
+            }
+            return null;
+          },
+        ),
 
           // User Archive Route
-          GoRoute(
-            path: AppConstants.userArchiveRoute,
-            builder: (context, state) => const UserArchiveScreen(),
-          ),
+        GoRoute(
+          path: AppConstants.userArchiveRoute,
+          builder: (context, state) => const UserArchiveScreen(),
+          redirect: (context, state) {
+            final roleService = RoleAccessService.instance;
+            if (!roleService.canAccessUserArchives()) {
+              return '/home';
+            }
+            return null;
+          },
+        ),
 
           // Role Management Route
-          GoRoute(
-            path: AppConstants.roleManagementRoute,
-            builder: (context, state) => const RoleManagementScreen(),
-          ),
+        GoRoute(
+          path: AppConstants.roleManagementRoute,
+          builder: (context, state) => const RoleManagementScreen(),
+          redirect: (context, state) {
+            final roleService = RoleAccessService.instance;
+            if (!roleService.canManageRoles()) {
+              return '/home';
+            }
+            return null;
+          },
+        ),
+
+          // Admin Approval Route
+        GoRoute(
+          path: AppConstants.adminApprovalRoute,
+          builder: (context, state) => const AdminApprovalScreen(),
+          redirect: (context, state) {
+            final roleService = RoleAccessService.instance;
+            if (!roleService.canAccessAdmin()) {
+              return '/home';
+            }
+            return null;
+          },
+        ),
 
           // Conference Platform Route
           GoRoute(
@@ -226,6 +283,54 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppConstants.recipeSubmissionRoute,
             builder: (context, state) => const RecipeSubmissionScreen(),
+          ),
+
+          // Kids Mission Route
+          GoRoute(
+            path: AppConstants.kidsMissionRoute,
+            builder: (context, state) => const KidsMissionScreen(),
+          ),
+
+          // Prayer Wall Route
+          GoRoute(
+            path: AppConstants.prayerWallRoute,
+            builder: (context, state) => const PrayerWallScreen(),
+          ),
+
+          // Library Route
+          GoRoute(
+            path: AppConstants.libraryRoute,
+            builder: (context, state) => const LibraryScreen(),
+          ),
+
+          // Podcasts Route
+          GoRoute(
+            path: AppConstants.podcastsRoute,
+            builder: (context, state) => const PodcastsScreen(),
+          ),
+
+          // Interactive Lessons Route
+          GoRoute(
+            path: AppConstants.interactiveLessonsRoute,
+            builder: (context, state) => const InteractiveLessonsScreen(),
+          ),
+
+          // Books & Tracts Route
+          GoRoute(
+            path: AppConstants.booksTractsRoute,
+            builder: (context, state) => const BooksTractsScreen(),
+          ),
+
+          // Kids Stories Route
+          GoRoute(
+            path: AppConstants.kidsStoriesRoute,
+            builder: (context, state) => const KidsStoriesScreen(),
+          ),
+
+          // Discipleship Tracker Route
+          GoRoute(
+            path: AppConstants.discipleshipTrackerRoute,
+            builder: (context, state) => const DiscipleshipScreen(),
           ),
         ],
       ),

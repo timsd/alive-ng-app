@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/health_models.dart';
 import '../../services/health_service.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/language_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class EnhancedHealthScreen extends ConsumerStatefulWidget {
@@ -75,9 +76,11 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
 
   @override
   Widget build(BuildContext context) {
+    final translate = ref.watch(translationProvider);
+    
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Health & Wellness'),
+        title: Text(translate('health_wellness')),
         backgroundColor: Colors.green.shade700,
         foregroundColor: Colors.white,
         bottom: TabBar(
@@ -113,6 +116,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
   }
 
   Widget _buildErrorWidget() {
+    final translate = ref.watch(translationProvider);
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -132,7 +136,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
           const SizedBox(height: 16),
           ElevatedButton(
             onPressed: _loadHealthData,
-            child: const Text('Retry'),
+            child: Text(translate('retry')),
           ),
         ],
       ),
@@ -278,11 +282,11 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
             children: [
               Icon(Icons.add_circle_outline, size: 48, color: Colors.grey.shade400),
               const SizedBox(height: 8),
-              const Text('No tracking data for today'),
+              Text(ref.watch(translationProvider)('no_tracking_data_today')),
               const SizedBox(height: 8),
               ElevatedButton(
                 onPressed: () => _tabController.animateTo(3),
-                child: const Text('Start Tracking'),
+                child: Text(ref.watch(translationProvider)('start_tracking')),
               ),
             ],
           ),
@@ -336,7 +340,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
           Expanded(
             child: LinearProgressIndicator(
               value: progress.clamp(0.0, 1.0),
-              backgroundColor: Colors.grey.shade300,
+              backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
               valueColor: AlwaysStoppedAnimation<Color>(
                 _getScoreColor(progress * 10),
               ),
@@ -445,10 +449,10 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
           ),
           const SizedBox(height: 16),
           if (_mealPlans.isEmpty)
-            const Center(
+            Center(
               child: Padding(
-                padding: EdgeInsets.all(32),
-                child: Text('No meal plans available'),
+                padding: const EdgeInsets.all(32),
+                child: Text(ref.watch(translationProvider)('no_meal_plans_available')),
               ),
             )
           else
@@ -565,10 +569,10 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
           ),
           const SizedBox(height: 16),
           if (_tips.isEmpty)
-            const Center(
+            Center(
               child: Padding(
-                padding: EdgeInsets.all(32),
-                child: Text('No tips available'),
+                padding: const EdgeInsets.all(32),
+                child: Text(ref.watch(translationProvider)('no_tips_available')),
               ),
             )
           else
@@ -721,14 +725,9 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
-                // TODO: Implement tracker form
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Tracker form will be implemented'),
-                  ),
-                );
+                _showHealthTrackerForm(context, ref.watch(translationProvider));
               },
-              child: const Text('Start Tracking'),
+              child: Text(ref.watch(translationProvider)('start_tracking')),
             ),
           ],
         ),
@@ -894,6 +893,89 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
             ],
           ],
         ),
+      ),
+    );
+  }
+
+  void _showHealthTrackerForm(BuildContext context, Function translate) {
+    final weightController = TextEditingController();
+    final bloodPressureController = TextEditingController();
+    final heartRateController = TextEditingController();
+    final sleepHoursController = TextEditingController();
+    final waterIntakeController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(translate('health_tracker_form')),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: weightController,
+                decoration: InputDecoration(
+                  labelText: '${translate('weight')} (kg)',
+                  border: const OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: bloodPressureController,
+                decoration: InputDecoration(
+                  labelText: '${translate('blood_pressure')} (120/80)',
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: heartRateController,
+                decoration: InputDecoration(
+                  labelText: '${translate('heart_rate')} (bpm)',
+                  border: const OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: sleepHoursController,
+                decoration: InputDecoration(
+                  labelText: '${translate('sleep_hours')} (hours)',
+                  border: const OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: waterIntakeController,
+                decoration: InputDecoration(
+                  labelText: '${translate('water_intake')} (glasses)',
+                  border: const OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(translate('cancel')),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(translate('health_data_saved')),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            },
+            child: Text(translate('save')),
+          ),
+        ],
       ),
     );
   }

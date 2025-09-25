@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../utils/toast_utils.dart';
 import '../utils/logger.dart';
+import '../models/health_models.dart';
 
 class HealthTrackingService {
   static final _supabase = Supabase.instance.client;
@@ -9,9 +10,9 @@ class HealthTrackingService {
   static Future<List<Map<String, dynamic>>> fetchHealthData() async {
     try {
       final user = _supabase.auth.currentUser;
-      if (user == null) {
-        throw Exception('User not authenticated');
-      }
+    if (user == null) {
+      throw Exception('User not authenticated');
+    }
 
       final response = await _supabase
           .from('health_tracking')
@@ -147,21 +148,22 @@ class HealthTrackingService {
     }
   }
 
-  // TODO: Implement HealthData model and uncomment this method
-  // static int getTodayWellnessScore(HealthData? todayData) {
-  //   if (todayData == null) return 0;
-  //
-  //   final scores = [
-  //     (todayData.waterIntake / 8).clamp(0, 1) * 100, // 8 glasses target
-  //     (todayData.exerciseMinutes / 30).clamp(0, 1) * 100, // 30 min target
-  //     (todayData.sunlightMinutes / 20).clamp(0, 1) * 100, // 20 min target
-  //     (todayData.sleepHours / 8).clamp(0, 1) * 100, // 8 hours target
-  //     todayData.nutritionScore.toDouble(),
-  //     todayData.temperanceScore.toDouble(),
-  //     todayData.freshAirScore.toDouble(),
-  //     todayData.trustScore.toDouble(),
-  //   ];
-  //
-  //   return (scores.reduce((sum, score) => sum + score) / 8).round();
-  // }
+  // Calculate today's wellness score based on health data
+  static int getTodayWellnessScore(HealthData? todayData) {
+    if (todayData == null) return 0;
+
+    final scores = [
+      (todayData.waterIntake / 8).clamp(0, 1) * 100, // 8 glasses target
+      (todayData.exerciseMinutes / 30).clamp(0, 1) * 100, // 30 min target
+      (todayData.sunlightMinutes / 20).clamp(0, 1) * 100, // 20 min target
+      (todayData.sleepHours / 8).clamp(0, 1) * 100, // 8 hours target
+      todayData.nutritionScore.toDouble(),
+      todayData.temperanceScore.toDouble(),
+      todayData.airQualityScore.toDouble(),
+      todayData.restScore.toDouble(),
+      todayData.trustInGodScore.toDouble(),
+    ];
+
+    return (scores.reduce((sum, score) => sum + score) / scores.length).round();
+  }
 }

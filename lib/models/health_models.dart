@@ -397,6 +397,83 @@ class UserHealthProfile {
   }
 }
 
+// Health Data Model for tracking daily wellness metrics
+@JsonSerializable()
+class HealthData {
+  final String id;
+  final String userId;
+  final DateTime date;
+  final double waterIntake; // glasses of water
+  final int exerciseMinutes;
+  final int sunlightMinutes;
+  final double sleepHours;
+  final int nutritionScore; // 0-100
+  final int temperanceScore; // 0-100
+  final int airQualityScore; // 0-100
+  final int restScore; // 0-100
+  final int trustInGodScore; // 0-100
+  final Map<String, dynamic>? additionalMetrics;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  const HealthData({
+    required this.id,
+    required this.userId,
+    required this.date,
+    this.waterIntake = 0,
+    this.exerciseMinutes = 0,
+    this.sunlightMinutes = 0,
+    this.sleepHours = 0,
+    this.nutritionScore = 0,
+    this.temperanceScore = 0,
+    this.airQualityScore = 0,
+    this.restScore = 0,
+    this.trustInGodScore = 0,
+    this.additionalMetrics,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory HealthData.fromJson(Map<String, dynamic> json) => _$HealthDataFromJson(json);
+  Map<String, dynamic> toJson() => _$HealthDataToJson(this);
+
+  HealthData copyWith({
+    String? id,
+    String? userId,
+    DateTime? date,
+    double? waterIntake,
+    int? exerciseMinutes,
+    int? sunlightMinutes,
+    double? sleepHours,
+    int? nutritionScore,
+    int? temperanceScore,
+    int? airQualityScore,
+    int? restScore,
+    int? trustInGodScore,
+    Map<String, dynamic>? additionalMetrics,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return HealthData(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      date: date ?? this.date,
+      waterIntake: waterIntake ?? this.waterIntake,
+      exerciseMinutes: exerciseMinutes ?? this.exerciseMinutes,
+      sunlightMinutes: sunlightMinutes ?? this.sunlightMinutes,
+      sleepHours: sleepHours ?? this.sleepHours,
+      nutritionScore: nutritionScore ?? this.nutritionScore,
+      temperanceScore: temperanceScore ?? this.temperanceScore,
+      airQualityScore: airQualityScore ?? this.airQualityScore,
+      restScore: restScore ?? this.restScore,
+      trustInGodScore: trustInGodScore ?? this.trustInGodScore,
+      additionalMetrics: additionalMetrics ?? this.additionalMetrics,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+}
+
 // Constants for health features
 class HealthConstants {
   // Nigerian regional ingredients

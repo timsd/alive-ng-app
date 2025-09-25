@@ -52,11 +52,18 @@ class CreatePrayerRequestNotifier extends StateNotifier<AsyncValue<void>> {
   }
 }
 
-class PrayerScreen extends ConsumerWidget {
+class PrayerScreen extends ConsumerStatefulWidget {
   const PrayerScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PrayerScreen> createState() => _PrayerScreenState();
+}
+
+class _PrayerScreenState extends ConsumerState<PrayerScreen> {
+  String? _selectedCategory;
+
+  @override
+  Widget build(BuildContext context) {
     final translate = ref.watch(translationProvider);
     final prayerRequestsAsync = ref.watch(prayerRequestsProvider);
 
@@ -74,19 +81,25 @@ class PrayerScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(prayerRequestsProvider);
-        },
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header section
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isTablet = constraints.maxWidth > 600;
+            final horizontalPadding = isTablet ? 32.0 : 20.0;
+            
+            return RefreshIndicator(
+              onRefresh: () async {
+                ref.invalidate(prayerRequestsProvider);
+              },
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header section
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.all(horizontalPadding),
                 decoration: const BoxDecoration(
                   color: Colors.purple,
                   borderRadius: BorderRadius.only(
@@ -123,19 +136,19 @@ class PrayerScreen extends ConsumerWidget {
 
               const SizedBox(height: 24),
 
-              // Guest Access Indicator
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20),
-                child: GuestAccessIndicator(
-                  featureName: 'Prayer Requests',
-                  description:
-                      'Create an account to submit prayer requests and connect with our community!',
-                ),
-              ),
+                    // Guest Access Indicator
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                      child: const GuestAccessIndicator(
+                        featureName: 'Prayer Requests',
+                        description:
+                            'Create an account to submit prayer requests and connect with our community!',
+                      ),
+                    ),
 
-              // Prayer Requests List
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+                    // Prayer Requests List
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
                 child: Text(
                   translate('recent_requests'),
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -147,16 +160,28 @@ class PrayerScreen extends ConsumerWidget {
               const SizedBox(height: 16),
 
               prayerRequestsAsync.when(
-                data: (requests) =>
-                    _buildPrayerRequests(context, translate, requests),
+                        data: (requests) {
+                          // Filter requests by selected category
+                          final filteredRequests = _selectedCategory == null
+                              ? requests
+                              : requests.where((request) => 
+                                  request.category.toLowerCase() == _selectedCategory!.toLowerCase()
+                                ).toList();
+                          
+                          return _buildPrayerRequests(context, translate, filteredRequests);
+                        },
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (error, stack) =>
                     _buildErrorWidget(context, translate, error.toString()),
               ),
 
-              const SizedBox(height: 24),
-            ],
-          ),
+                    const SizedBox(height: 24),
+                    const SizedBox(height: 80), // Bottom padding for FAB
+                  ],
+                ),
+              ),
+            );
+          },
         ),
       ),
     );
@@ -168,25 +193,25 @@ class PrayerScreen extends ConsumerWidget {
       PrayerCategory(
         title: translate('healing'),
         icon: Icons.healing,
-        color: Colors.green,
+        color: const Color(0xFF4CAF50), // Green
         count: 12,
       ),
       PrayerCategory(
         title: translate('family'),
         icon: Icons.family_restroom,
-        color: Colors.blue,
+        color: const Color(0xFF2196F3), // Blue
         count: 8,
       ),
       PrayerCategory(
         title: translate('guidance'),
         icon: Icons.explore,
-        color: Colors.orange,
+        color: const Color(0xFFFF9800), // Orange
         count: 15,
       ),
       PrayerCategory(
         title: translate('thanksgiving'),
         icon: Icons.favorite,
-        color: Colors.red,
+        color: const Color(0xFFF44336), // Red
         count: 6,
       ),
     ];
@@ -204,71 +229,104 @@ class PrayerScreen extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 16),
-        SizedBox(
-          height: 120,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            itemCount: categories.length,
-            itemBuilder: (context, index) {
-              final category = categories[index];
-              return Container(
-                width: 100,
-                margin: const EdgeInsets.only(right: 16),
-                child: Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: InkWell(
-                    onTap: () {
-                      // TODO: Filter by category
-                    },
-                    borderRadius: BorderRadius.circular(16),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: category.color.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(8),
+        Row(
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: 120,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  itemCount: categories.length,
+                  itemBuilder: (context, index) {
+                    final category = categories[index];
+                    return Container(
+                      width: 100,
+                      margin: const EdgeInsets.only(right: 16),
+                      child: Card(
+                        elevation: 2,
+                        color: _selectedCategory == category.title 
+                            ? category.color.withValues(alpha: 0.1)
+                            : null,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: _selectedCategory == category.title
+                              ? BorderSide(color: category.color, width: 2)
+                              : BorderSide.none,
+                        ),
+                        child: InkWell(
+                          onTap: () {
+                            setState(() {
+                              _selectedCategory = _selectedCategory == category.title 
+                                  ? null 
+                                  : category.title;
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(16),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: category.color.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(
+                                    category.icon,
+                                    color: category.color,
+                                    size: 24,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  category.title,
+                                  style:
+                                      Theme.of(context).textTheme.bodySmall?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  '${category.count}',
+                                  style:
+                                      Theme.of(context).textTheme.bodySmall?.copyWith(
+                                            color: category.color,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                ),
+                              ],
                             ),
-                            child: Icon(
-                              category.icon,
-                              color: category.color,
-                              size: 24,
-                            ),
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            category.title,
-                            style:
-                                Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Text(
-                            '${category.count}',
-                            style:
-                                Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: category.color,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            if (_selectedCategory != null)
+              Padding(
+                padding: const EdgeInsets.only(right: 20),
+                child: IconButton(
+                  onPressed: () {
+                    setState(() {
+                      _selectedCategory = null;
+                    });
+                  },
+                  icon: const Icon(Icons.clear),
+                  tooltip: 'Clear filter',
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.grey.withValues(alpha: 0.1),
+                    foregroundColor: Colors.grey[600],
                   ),
                 ),
-              );
-            },
-          ),
+              ),
+          ],
         ),
       ],
     );
@@ -322,12 +380,63 @@ class PrayerScreen extends ConsumerWidget {
         final request = requests[index];
         return PrayerRequestCard(
           request: request,
-          onPray: () {
-            // TODO: Implement pray functionality
-          },
+          onPray: () => _prayForRequest(context, request),
         );
       },
     );
+  }
+
+  void _prayForRequest(BuildContext context, PrayerRequest request) {
+    // Show a confirmation dialog
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Pray for ${request.title}'),
+        content: Text('You are about to pray for this request. This will be recorded and the prayer count will be updated.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _recordPrayer(context, request);
+            },
+            child: Text('Pray'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _recordPrayer(BuildContext context, PrayerRequest request) async {
+    try {
+      final supabase = ProviderScope.containerOf(context).read(supabaseServiceProvider);
+      
+      // Update prayer count in Supabase
+      await supabase.prayForRequest(request.id, supabase.currentUser?.id ?? '');
+      
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Thank you for praying for ${request.title}'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to record prayer: $e'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildErrorWidget(
@@ -465,6 +574,8 @@ class PrayerRequestCard extends StatelessWidget {
                                   ?.copyWith(
                                     fontWeight: FontWeight.bold,
                                   ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           if (request.isAnonymous)
@@ -517,6 +628,8 @@ class PrayerRequestCard extends StatelessWidget {
             Text(
               request.description,
               style: Theme.of(context).textTheme.bodyMedium,
+              maxLines: 4,
+              overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 16),
             Row(
@@ -685,9 +798,10 @@ class _CreatePrayerRequestDialogState
                           _isAnonymous,
                         );
 
-                    if (mounted &&
-                        !ref.read(createPrayerRequestProvider).hasError) {
-                      Navigator.of(context).pop();
+                    if (context.mounted) {
+                      if (!ref.read(createPrayerRequestProvider).hasError) {
+                        Navigator.of(context).pop();
+                      }
                     }
                   }
                 },

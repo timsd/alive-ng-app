@@ -795,7 +795,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
       }
       
       // Navigate to study guide detail screen
-      // TODO: Implement navigation to study guide detail screen
+      _navigateToStudyDetail(guide, existingProgress);
       
       _loadData(); // Refresh data
     } catch (e) {
@@ -809,10 +809,62 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
 
   Future<void> _continueStudy(StudyGuide guide, UserStudyProgress progress) async {
     // Navigate to study guide detail screen with current progress
-    // TODO: Implement navigation to study guide detail screen
+    _navigateToStudyDetail(guide, progress);
     
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Continuing study: ${guide.title}')),
+    );
+  }
+
+  void _navigateToStudyDetail(StudyGuide guide, UserStudyProgress? progress) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Study Guide: ${guide.title}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Description: ${guide.description}'),
+              const SizedBox(height: 8),
+              Text('Type: ${guide.type.name.toUpperCase()}'),
+              const SizedBox(height: 8),
+              Text('Difficulty: ${guide.difficulty.name.toUpperCase()}'),
+              const SizedBox(height: 8),
+              Text('Duration: ${guide.estimatedDurationMinutes} minutes'),
+              if (progress != null) ...[
+                const SizedBox(height: 8),
+                Text('Progress: ${progress.progressPercentage.toInt()}%'),
+                const SizedBox(height: 8),
+                Text('Current Lesson: ${progress.currentLessonNumber}'),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Opening study guide: ${guide.title}'),
+                    backgroundColor: AppTheme.primaryColor,
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Open Study'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

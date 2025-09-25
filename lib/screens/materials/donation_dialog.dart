@@ -343,20 +343,26 @@ class _DonationDialogState extends State<DonationDialog> {
               ),
               const SizedBox(height: 8),
               Column(
-                children: PaymentMethod.values.map((method) {
-                  return RadioListTile<PaymentMethod>(
-                    title: Text(_getPaymentMethodName(method)),
-                    subtitle: Text(_getPaymentMethodDescription(method)),
-                    value: method,
+                children: [
+                  RadioGroup<PaymentMethod>(
                     groupValue: _selectedPaymentMethod,
                     onChanged: (value) {
                       if (value != null) {
                         setState(() => _selectedPaymentMethod = value);
                       }
                     },
-                    contentPadding: EdgeInsets.zero,
-                  );
-                }).toList(),
+                    child: Column(
+                      children: PaymentMethod.values.map((method) {
+                        return RadioListTile<PaymentMethod>(
+                          title: Text(_getPaymentMethodName(method)),
+                          subtitle: Text(_getPaymentMethodDescription(method)),
+                          value: method,
+                          contentPadding: EdgeInsets.zero,
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ],
               ),
               
               const SizedBox(height: 20),

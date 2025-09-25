@@ -16,29 +16,57 @@ class QuickActionsGrid extends ConsumerWidget {
         icon: Icons.menu_book,
         title: translate('study'),
         subtitle: translate('bible_study'),
-        color: Colors.blue,
+        color: Theme.of(context).colorScheme.primary,
         route: '/study',
       ),
       QuickAction(
         icon: Icons.favorite,
         title: translate('prayer'),
         subtitle: translate('prayer_requests'),
-        color: Colors.purple,
+        color: Theme.of(context).colorScheme.secondary,
         route: '/prayer',
       ),
       QuickAction(
         icon: Icons.health_and_safety,
         title: translate('health'),
         subtitle: translate('wellness_tracking'),
-        color: Colors.green,
+        color: Theme.of(context).colorScheme.tertiary,
         route: '/health',
       ),
       QuickAction(
         icon: Icons.public,
         title: translate('missions'),
         subtitle: translate('global_outreach'),
-        color: Colors.orange,
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
         route: '/missions',
+      ),
+      QuickAction(
+        icon: Icons.auto_stories,
+        title: 'Kids Stories',
+        subtitle: 'Bible stories for children',
+        color: Colors.orange,
+        route: '/kids-stories',
+      ),
+      QuickAction(
+        icon: Icons.library_books,
+        title: 'Library',
+        subtitle: 'Books, articles & resources',
+        color: Colors.teal,
+        route: '/library',
+      ),
+      QuickAction(
+        icon: Icons.podcasts,
+        title: 'Podcasts',
+        subtitle: 'Audio content & sermons',
+        color: Colors.purple,
+        route: '/podcasts',
+      ),
+      QuickAction(
+        icon: Icons.school,
+        title: 'Interactive Lessons',
+        subtitle: 'Learn & grow in faith',
+        color: Colors.indigo,
+        route: '/interactive-lessons',
       ),
     ];
 
@@ -55,22 +83,29 @@ class QuickActionsGrid extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 16),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: 1.2,
-          ),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final crossAxisCount = constraints.maxWidth > 600 ? 4 : 2;
+            final childAspectRatio = constraints.maxWidth > 600 ? 1.0 : 1.2;
+            
+            return GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                childAspectRatio: childAspectRatio,
+              ),
           itemCount: actions.length,
-          itemBuilder: (context, index) {
-            final action = actions[index];
-            return QuickActionCard(
-              action: action,
-              onTap: () => context.go(action.route),
+              itemBuilder: (context, index) {
+                final action = actions[index];
+                return QuickActionCard(
+                  action: action,
+                  onTap: () => context.go(action.route),
+                );
+              },
             );
           },
         ),

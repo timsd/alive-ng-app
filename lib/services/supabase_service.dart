@@ -338,8 +338,18 @@ class SupabaseService {
   // Health Activities Methods
   Future<List<Map<String, dynamic>>> getHealthActivitiesUpdatedSince(
       DateTime since) async {
-    // TODO: Implement health activities sync
-    return [];
+    try {
+      final response = await client
+          .from('health_tracking')
+          .select()
+          .gte('updated_at', since.toIso8601String())
+          .order('updated_at', ascending: false);
+
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      _logger.error('Error fetching health activities updated since $since: $e');
+      return [];
+    }
   }
 
   // Analytics Methods
@@ -360,16 +370,14 @@ class SupabaseService {
   // FCM Token Methods
   Future<void> updateFCMToken(String userId, String token) async {
     try {
-      // TODO: Uncomment when push_tokens table is available
-      // await client.from('push_tokens').upsert({
-      //   'user_id': userId,
-      //   'token': token,
-      //   'device_type': 'mobile',
-      //   'is_active': true,
-      //   'updated_at': DateTime.now().toIso8601String(),
-      // });
+      await client.from('push_tokens').upsert({
+        'user_id': userId,
+        'token': token,
+        'device_type': 'mobile',
+        'is_active': true,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
       
-      // For now, just log the token update
       _logger.info('FCM token updated for user $userId: $token');
     } catch (e) {
       _logger.error('Error updating FCM token', e);
@@ -380,14 +388,12 @@ class SupabaseService {
   Future<void> updateNotificationSettings(
       String userId, Map<String, bool> settings) async {
     try {
-      // TODO: Uncomment when notification_settings table is available
-      // await client.from('notification_settings').upsert({
-      //   'user_id': userId,
-      //   ...settings,
-      //   'updated_at': DateTime.now().toIso8601String(),
-      // });
+      await client.from('notification_settings').upsert({
+        'user_id': userId,
+        ...settings,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
       
-      // For now, just log the settings update
       _logger.info('Notification settings updated for user $userId: $settings');
     } catch (e) {
       _logger.error('Error updating notification settings', e);

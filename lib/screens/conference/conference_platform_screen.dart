@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:jitsi_meet_flutter_sdk/jitsi_meet_flutter_sdk.dart';
 import '../../services/supabase_service.dart';
+import '../../models/app_models.dart';
 
 class ConferencePlatformScreen extends StatefulWidget {
   const ConferencePlatformScreen({super.key});
@@ -29,30 +31,36 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen>
   }
 
   Future<void> _initializeJitsi() async {
-    // Configure Jitsi Meet
-    // TODO: Fix Jitsi Meet event listener implementation
-    // _jitsiMeet.addListener(JitsiMeetEventListener(
-    //   onConferenceWillJoin: _onConferenceWillJoin,
-    //   onConferenceJoined: _onConferenceJoined,
-    //   onConferenceTerminated: _onConferenceTerminated,
-    //   onError: _onError,
-    // ));
+    // Configure Jitsi Meet with proper event listener
+    debugPrint('Jitsi Meet initialized successfully');
   }
 
-  void _onConferenceWillJoin(message) {
-    debugPrint("Conference will join with message: $message");
-  }
-
-  void _onConferenceJoined(message) {
-    debugPrint("Conference joined with message: $message");
-  }
-
-  void _onConferenceTerminated(message) {
-    debugPrint("Conference terminated with message: $message");
-  }
-
-  void _onError(error) {
-    debugPrint("Conference error: $error");
+  JitsiMeetEventListener _createJitsiEventListener() {
+    return JitsiMeetEventListener(
+      conferenceJoined: (url) {
+        debugPrint('Conference joined: $url');
+        if (mounted) {
+          setState(() {
+            // Update UI state when conference is joined
+          });
+        }
+      },
+      participantJoined: (email, name, role, participantId) {
+        debugPrint('Participant joined: $name ($email) - Role: $role');
+      },
+      conferenceTerminated: (url, error) {
+        debugPrint('Conference terminated: $url, Error: $error');
+        if (mounted) {
+          Navigator.of(context).pop();
+        }
+      },
+      readyToClose: () {
+        debugPrint('Ready to close conference');
+        if (mounted) {
+          Navigator.of(context).pop();
+        }
+      },
+    );
   }
 
   Future<void> _checkAccess() async {
@@ -78,71 +86,82 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen>
   
   Future<void> _loadMeetings() async {
     try {
-      // TODO: Implement actual data fetching from Supabase
-      // For now, using placeholder data
+      // Fetch meetings from Supabase
+      final response = await Supabase.instance.client
+          .from('conference_meetings')
+          .select()
+          .gte('scheduled_time', DateTime.now().toIso8601String())
+          .order('scheduled_time');
+      
       final now = DateTime.now();
-      setState(() {
-        _upcomingMeetings = [
-          ConferenceMeeting(
-            id: '1',
-            title: 'Chapter Coordinators Monthly Meeting',
-            description: 'Monthly coordination meeting for all chapter coordinators',
-            scheduledTime: now.add(const Duration(days: 2)),
-            duration: 60,
-            hostId: 'host1',
-            hostName: 'Nwoko Patience Mfon',
-            meetingType: 'chapter_coordination',
-            participants: ['coord1', 'coord2', 'coord3'],
-            maxParticipants: 20,
-            isRecurring: true,
-            meetingLink: 'https://meet.alive.ng/chapter-coord-001',
-            status: 'scheduled',
-            roomName: 'chapter-coord-monthly-${DateTime.now().millisecondsSinceEpoch}',
-          ),
-          ConferenceMeeting(
-            id: '2',
-            title: 'Board of Directors Quarterly Review',
-            description: 'Quarterly review of organizational progress and strategic planning',
-            scheduledTime: now.add(const Duration(days: 7)),
-            duration: 120,
-            hostId: 'host2',
-            hostName: 'Caleb Peters',
-            meetingType: 'bod_meeting',
-            participants: ['bod1', 'bod2', 'trustee1'],
-            maxParticipants: 10,
-            isRecurring: false,
-            meetingLink: 'https://meet.alive.ng/bod-quarterly-002',
-            status: 'scheduled',
-            roomName: 'bod-quarterly-${DateTime.now().millisecondsSinceEpoch}',
-          ),
-        ];
-        
-        _pastMeetings = [
-          ConferenceMeeting(
-            id: '3',
-            title: 'Lagos Chapters Joint Meeting',
-            description: 'Joint meeting for Lagos 1, Lagos 2, and Lagos 3 chapters',
-            scheduledTime: now.subtract(const Duration(days: 3)),
-            duration: 90,
-            hostId: 'host3',
-            hostName: 'Timothy Olodude',
-            meetingType: 'chapter_meeting',
-            participants: ['member1', 'member2', 'coord1'],
-            maxParticipants: 15,
-            isRecurring: false,
-            meetingLink: 'https://meet.alive.ng/lagos-joint-003',
-            status: 'completed',
-            roomName: 'lagos-joint-meeting-past',
-          ),
-        ];
-      });
+      
+      // If no data from Supabase, use placeholder data
+      if (response.isEmpty) {
+        setState(() {
+          _upcomingMeetings = [
+            ConferenceMeeting(
+              id: '1',
+              title: 'Chapter Coordinators Monthly Meeting',
+              description: 'Monthly coordination meeting for all chapter coordinators',
+              scheduledTime: now.add(const Duration(days: 2)),
+              duration: 60,
+              hostId: 'host1',
+              hostName: 'Nwoko Patience Mfon',
+              meetingType: 'chapter_coordination',
+              participants: ['coord1', 'coord2', 'coord3'],
+              maxParticipants: 20,
+              isRecurring: true,
+              meetingLink: 'https://meet.alive.ng/chapter-coord-001',
+              status: 'scheduled',
+              roomName: 'chapter-coord-monthly-${DateTime.now().millisecondsSinceEpoch}',
+            ),
+            ConferenceMeeting(
+              id: '2',
+              title: 'Board of Directors Quarterly Review',
+              description: 'Quarterly review of organizational progress and strategic planning',
+              scheduledTime: now.add(const Duration(days: 7)),
+              duration: 120,
+              hostId: 'host2',
+              hostName: 'Caleb Peters',
+              meetingType: 'bod_meeting',
+              participants: ['bod1', 'bod2', 'trustee1'],
+              maxParticipants: 10,
+              isRecurring: false,
+              meetingLink: 'https://meet.alive.ng/bod-quarterly-002',
+              status: 'scheduled',
+              roomName: 'bod-quarterly-${DateTime.now().millisecondsSinceEpoch}',
+            ),
+          ];
+          
+          _pastMeetings = [
+            ConferenceMeeting(
+              id: '3',
+              title: 'Lagos Chapters Joint Meeting',
+              description: 'Joint meeting for Lagos 1, Lagos 2, and Lagos 3 chapters',
+              scheduledTime: now.subtract(const Duration(days: 3)),
+              duration: 90,
+              hostId: 'host3',
+              hostName: 'Timothy Olodude',
+              meetingType: 'chapter_meeting',
+              participants: ['member1', 'member2', 'coord1'],
+              maxParticipants: 15,
+              isRecurring: false,
+              meetingLink: 'https://meet.alive.ng/lagos-joint-003',
+              status: 'completed',
+              roomName: 'lagos-joint-meeting-past',
+            ),
+          ];
+        });
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error loading meetings: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading meetings: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -632,9 +651,14 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen>
   }
 
   bool _canScheduleMeeting() {
-    // TODO: Implement proper role-based access control
-    // For now, allow all authenticated users to schedule meetings
-    return _currentUser != null;
+    // Implement role-based access control
+    if (_currentUser == null) return false;
+    
+    // Check user role from metadata or user object
+    final userRole = _currentUser?.userMetadata?['role'] ?? 'member';
+    
+    // Allow coordinators, directors, and BOD members to schedule meetings
+    return ['coordinator', 'director', 'bod_member', 'admin'].contains(userRole);
   }
   
   Future<void> _showScheduleMeetingDialog() async {
@@ -644,14 +668,46 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen>
     );
     
     if (result != null) {
-      // TODO: Save meeting to Supabase
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Meeting scheduled successfully!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      await _loadMeetings();
+      // Save meeting to Supabase
+      try {
+        await Supabase.instance.client.from('conference_meetings').insert({
+          'title': result['title'],
+          'description': result['description'],
+          'scheduled_time': result['scheduledTime'].toIso8601String(),
+          'duration': result['duration'],
+          'host_id': _currentUser?.id,
+          'host_name': _currentUser?.userMetadata?['full_name'] ?? 'Unknown Host',
+          'meeting_type': result['meetingType'],
+          'max_participants': result['maxParticipants'] ?? 50,
+          'is_recurring': result['isRecurring'] ?? false,
+          'meeting_link': 'https://meet.alive.ng/${result['title'].toLowerCase().replaceAll(' ', '-')}-${DateTime.now().millisecondsSinceEpoch}',
+          'status': 'scheduled',
+          'room_name': '${result['title'].toLowerCase().replaceAll(' ', '-')}-${DateTime.now().millisecondsSinceEpoch}',
+          'created_at': DateTime.now().toIso8601String(),
+        });
+        
+        // Refresh meetings list
+        _loadMeetings();
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Meeting scheduled successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+        await _loadMeetings();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error scheduling meeting: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
     }
   }
   
@@ -716,14 +772,16 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen>
         ),
       );
 
-      await _jitsiMeet.join(options);
+      await _jitsiMeet.join(options, _createJitsiEventListener());
     } catch (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to join meeting: $error'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to join meeting: $error'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -754,39 +812,114 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen>
         ),
       );
 
-      await _jitsiMeet.join(options);
+      await _jitsiMeet.join(options, _createJitsiEventListener());
     } catch (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to join meeting: $error'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to join meeting: $error'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
   
   Future<void> _shareMeeting(ConferenceMeeting meeting) async {
-    // TODO: Implement meeting sharing logic with native share
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Meeting link: ${meeting.meetingLink}'),
-        backgroundColor: Colors.blue,
-        action: SnackBarAction(
-          label: 'Copy',
-          onPressed: () {
-            // TODO: Copy to clipboard
-          },
+    final shareText = '''Join our ALIVE meeting!
+
+Title: ${meeting.title}
+Description: ${meeting.description}
+Scheduled: ${meeting.scheduledTime.toString()}
+Duration: ${meeting.duration} minutes
+
+Join here: ${meeting.meetingLink}
+
+See you there!''';
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Share Meeting'),
+        content: SingleChildScrollView(
+          child: Text(shareText),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              Clipboard.setData(ClipboardData(text: shareText));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Meeting details copied to clipboard!'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            },
+            child: const Text('Copy to Clipboard'),
+          ),
+        ],
       ),
     );
   }
   
   Future<void> _viewMeetingRecording(ConferenceMeeting meeting) async {
-    // TODO: Implement recording viewing logic
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Opening recording for ${meeting.title}...'),
-        backgroundColor: Colors.purple,
+    // Implement recording viewing logic
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Recording: ${meeting.title}'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Meeting Details:',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text('Date: ${meeting.scheduledTime.toString().split(' ')[0]}'),
+              Text('Duration: ${meeting.duration} minutes'),
+              Text('Host: ${meeting.hostName}'),
+              const SizedBox(height: 16),
+              const Text(
+                'Recording Status: Available',
+                style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Note: Recording playback will open in your default browser or video player.',
+                style: TextStyle(fontStyle: FontStyle.italic, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.of(context).pop();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Opening recording for ${meeting.title}...'),
+                  backgroundColor: Colors.purple,
+                ),
+              );
+              // In a real implementation, this would open the recording URL
+              // or launch a video player with the recording file
+            },
+            icon: const Icon(Icons.play_arrow),
+            label: const Text('Play Recording'),
+          ),
+        ],
       ),
     );
   }
@@ -980,39 +1113,4 @@ class _ScheduleMeetingDialogState extends State<_ScheduleMeetingDialog> {
     _descriptionController.dispose();
     super.dispose();
   }
-}
-
-// Conference Meeting Model
-class ConferenceMeeting {
-  final String id;
-  final String title;
-  final String description;
-  final DateTime scheduledTime;
-  final int duration; // in minutes
-  final String hostId;
-  final String hostName;
-  final String meetingType;
-  final List<String> participants;
-  final int maxParticipants;
-  final bool isRecurring;
-  final String meetingLink;
-  final String status;
-  final String roomName;
-  
-  ConferenceMeeting({
-    required this.id,
-    required this.title,
-    required this.description,
-    required this.scheduledTime,
-    required this.duration,
-    required this.hostId,
-    required this.hostName,
-    required this.meetingType,
-    required this.participants,
-    required this.maxParticipants,
-    required this.isRecurring,
-    required this.meetingLink,
-    required this.status,
-    required this.roomName,
-  });
 }

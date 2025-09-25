@@ -1,11 +1,11 @@
 {
-    "name": "alive_flutter_app",
-    "short_name": "alive_flutter_app",
+    "name": "ALIVE NG Ministry",
+    "short_name": "ALIVE NG",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#4CAF50",
+    "theme_color": "#4CAF50",
+    "description": "ALIVE NG Ministry - Empowering lives through faith, community, and spiritual growth.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -7,10 +7,8 @@ class ChatConfig {
   static const String apiKey = 'vy4hkjdgk2jp';
   static const String appId = '1419392';
 
-  // Note: Secret should be used server-side only for security
-  // This is kept here for reference but should not be used in client-side code
-  static const String _apiSecret =
-      'tshj3kky9ad9chvwe6tnsb8r42hes4f576ax5sks859ag7f4fazzsyhxgg422ur4';
+  // Note: API Secret is not used in client-side code for security reasons
+  // Server-side implementations should use environment variables for secrets
 
   // Presend Message Hook URL (if needed for server-side processing)
   static const String presendMessageHookUrl = '';

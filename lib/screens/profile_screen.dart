@@ -41,25 +41,38 @@ class ProfileScreen extends ConsumerWidget {
         actions: [
           IconButton(
             onPressed: () {
-              // TODO: Navigate to settings
+              // Navigate to settings (placeholder implementation)
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(translate('settings_coming_soon')),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
             },
             icon: const Icon(Icons.settings),
             tooltip: translate('settings'),
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(userProfileProvider);
-        },
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Column(
-            children: [
-              // Profile Header
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isTablet = constraints.maxWidth > 600;
+            final horizontalPadding = isTablet ? 32.0 : 20.0;
+            
+            return RefreshIndicator(
+              onRefresh: () async {
+                ref.invalidate(currentUserProvider);
+                ref.invalidate(userProfileProvider);
+              },
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Column(
+                  children: [
+                    // Profile Header
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.all(horizontalPadding),
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.primary,
                   borderRadius: const BorderRadius.only(
@@ -92,10 +105,16 @@ class ProfileScreen extends ConsumerWidget {
               _buildAccountSection(context, translate, ref),
 
               const SizedBox(height: 24),
-            ],
+              
+              // Bottom padding for FAB
+              const SizedBox(height: 80),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
         ),
-      ),
     );
   }
 
@@ -155,7 +174,13 @@ class ProfileScreen extends ConsumerWidget {
         const SizedBox(height: 16),
         ElevatedButton(
           onPressed: () {
-            // TODO: Navigate to edit profile
+            // Navigate to edit profile (placeholder implementation)
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('${translate('edit_profile')} - ${translate('coming_soon')}'),
+                duration: const Duration(seconds: 2),
+              ),
+            );
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.white,
@@ -376,7 +401,13 @@ class ProfileScreen extends ConsumerWidget {
                 subtitle: Text(translate('english')),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                 onTap: () {
-                  // TODO: Show language selection
+                  // Show language selection (placeholder implementation)
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('${translate('language')} ${translate('selection')} - ${translate('coming_soon')}'),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
                 },
               ),
               const Divider(height: 1),
@@ -389,7 +420,13 @@ class ProfileScreen extends ConsumerWidget {
                 subtitle: Text(translate('manage_notifications')),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                 onTap: () {
-                  // TODO: Navigate to notification settings
+                  // Navigate to notification settings (placeholder implementation)
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('${translate('notifications')} ${translate('settings')} - ${translate('coming_soon')}'),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
                 },
               ),
             ],
@@ -437,7 +474,13 @@ class ProfileScreen extends ConsumerWidget {
                 title: Text(translate('help_support')),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                 onTap: () {
-                  // TODO: Navigate to help
+                  // Navigate to help (placeholder implementation)
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('${translate('help_support')} - ${translate('coming_soon')}'),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
                 },
               ),
               const Divider(height: 1),
@@ -449,7 +492,13 @@ class ProfileScreen extends ConsumerWidget {
                 title: Text(translate('privacy_policy')),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                 onTap: () {
-                  // TODO: Navigate to privacy policy
+                  // Navigate to privacy policy (placeholder implementation)
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('${translate('privacy_policy')} - ${translate('coming_soon')}'),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
                 },
               ),
               const Divider(height: 1),
@@ -461,7 +510,8 @@ class ProfileScreen extends ConsumerWidget {
                 title: Text(translate('about')),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                 onTap: () {
-                  // TODO: Navigate to about
+                  // Navigate to about app screen
+                  context.push('/about-app');
                 },
               ),
               const Divider(height: 1),
@@ -496,32 +546,28 @@ class ProfileScreen extends ConsumerWidget {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            RadioListTile<ThemeMode>(
-              title: Text(translate('light_mode')),
-              value: ThemeMode.light,
+            RadioGroup<ThemeMode>(
               groupValue: ref.read(themeModeProvider),
               onChanged: (value) {
                 ref.read(themeModeProvider.notifier).setThemeMode(value!);
                 Navigator.of(context).pop();
               },
-            ),
-            RadioListTile<ThemeMode>(
-              title: Text(translate('dark_mode')),
-              value: ThemeMode.dark,
-              groupValue: ref.read(themeModeProvider),
-              onChanged: (value) {
-                ref.read(themeModeProvider.notifier).setThemeMode(value!);
-                Navigator.of(context).pop();
-              },
-            ),
-            RadioListTile<ThemeMode>(
-              title: Text(translate('system_mode')),
-              value: ThemeMode.system,
-              groupValue: ref.read(themeModeProvider),
-              onChanged: (value) {
-                ref.read(themeModeProvider.notifier).setThemeMode(value!);
-                Navigator.of(context).pop();
-              },
+              child: Column(
+                children: [
+                  RadioListTile<ThemeMode>(
+                    title: Text(translate('light_mode')),
+                    value: ThemeMode.light,
+                  ),
+                  RadioListTile<ThemeMode>(
+                    title: Text(translate('dark_mode')),
+                    value: ThemeMode.dark,
+                  ),
+                  RadioListTile<ThemeMode>(
+                    title: Text(translate('system_mode')),
+                    value: ThemeMode.system,
+                  ),
+                ],
+              ),
             ),
           ],
         ),

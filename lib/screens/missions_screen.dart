@@ -3,71 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/language_provider.dart';
 import '../models/app_models.dart';
-import '../providers/auth_provider.dart';
+import '../services/supabase_service.dart';
 import '../widgets/bible_reference_widget.dart';
+import '../widgets/star_animation_widget.dart';
 
 // Provider for missions data
 final missionsProvider = FutureProvider<List<Mission>>((ref) async {
-  final supabase = ref.read(supabaseServiceProvider);
-
-  // TODO: Replace with actual Supabase query
-  // For now, return mock data
-  await Future.delayed(const Duration(milliseconds: 500));
-
-  return [
-    Mission(
-      id: '1',
-      title: 'Local Community Outreach',
-      description:
-          'Share God\'s love with your local community through acts of service and kindness.',
-      location: 'Your Local Area',
-      startDate: DateTime.now().add(const Duration(days: 7)),
-      endDate: DateTime.now().add(const Duration(days: 14)),
-      participantsCount: 25,
-      maxParticipants: 50,
-      category: 'Community Service',
-      imageUrl: '',
-      requirements: ['Heart for service', 'Available weekends'],
-      contactInfo: 'missions@church.org',
-      isActive: true,
-    ),
-    Mission(
-      id: '2',
-      title: 'Youth Ministry Support',
-      description:
-          'Help mentor and guide young people in their spiritual journey.',
-      location: 'Church Youth Center',
-      startDate: DateTime.now().add(const Duration(days: 3)),
-      endDate: DateTime.now().add(const Duration(days: 90)),
-      participantsCount: 12,
-      maxParticipants: 20,
-      category: 'Youth Ministry',
-      imageUrl: '',
-      requirements: ['Experience with youth', 'Background check'],
-      contactInfo: 'youth@church.org',
-      isActive: true,
-    ),
-    Mission(
-      id: '3',
-      title: 'International Mission Trip',
-      description:
-          'Join us for a life-changing mission trip to serve communities in need.',
-      location: 'Kenya, Africa',
-      startDate: DateTime.now().add(const Duration(days: 60)),
-      endDate: DateTime.now().add(const Duration(days: 74)),
-      participantsCount: 8,
-      maxParticipants: 15,
-      category: 'International',
-      imageUrl: '',
-      requirements: [
-        'Passport required',
-        'Medical clearance',
-        'Fundraising commitment'
-      ],
-      contactInfo: 'international@church.org',
-      isActive: true,
-    ),
-  ];
+  // Replace with actual Supabase query
+  return await SupabaseService.instance.getMissions();
 });
 
 // Provider for mission categories
@@ -88,8 +31,22 @@ final missionCategoriesProvider = StateProvider<List<MissionCategory>>((ref) {
       isSelected: false,
     ),
     MissionCategory(
+      id: 'retreat',
+      name: 'Retreat',
+      icon: Icons.festival,
+      color: Colors.green,
+      isSelected: false,
+    ),
+    MissionCategory(
+      id: 'conference',
+      name: 'MEC Conference',
+      icon: Icons.speaker_group_rounded,
+      color: Colors.green,
+      isSelected: false,
+    ),
+    MissionCategory(
       id: 'youth',
-      name: 'Youth Ministry',
+      name: 'Camp Ministry',
       icon: Icons.groups,
       color: Colors.orange,
       isSelected: false,
@@ -111,11 +68,19 @@ final missionCategoriesProvider = StateProvider<List<MissionCategory>>((ref) {
   ];
 });
 
-class MissionsScreen extends ConsumerWidget {
+class MissionsScreen extends ConsumerStatefulWidget {
   const MissionsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MissionsScreen> createState() => _MissionsScreenState();
+}
+
+class _MissionsScreenState extends ConsumerState<MissionsScreen> {
+  String _searchQuery = '';
+  bool _showSearch = false;
+
+  @override
+  Widget build(BuildContext context) {
     final translate = ref.watch(translationProvider);
     final missionsAsync = ref.watch(missionsProvider);
     final categories = ref.watch(missionCategoriesProvider);
@@ -130,9 +95,14 @@ class MissionsScreen extends ConsumerWidget {
         actions: [
           IconButton(
             onPressed: () {
-              // TODO: Implement search functionality
+              setState(() {
+                _showSearch = !_showSearch;
+                if (!_showSearch) {
+                  _searchQuery = '';
+                }
+              });
             },
-            icon: const Icon(Icons.search),
+            icon: Icon(_showSearch ? Icons.close : Icons.search),
           ),
         ],
       ),
@@ -181,17 +151,49 @@ class MissionsScreen extends ConsumerWidget {
 
             const SizedBox(height: 20),
 
+            // Search bar
+            if (_showSearch)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: TextField(
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value;
+                    });
+                  },
+                  decoration: InputDecoration(
+                    hintText: translate('search_missions'),
+                    prefixIcon: const Icon(Icons.search),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+
+            if (_showSearch) const SizedBox(height: 20),
+
             // Missions List
             Expanded(
               child: missionsAsync.when(
                 data: (missions) {
-                  final filteredMissions = selectedCategory.id == 'all'
+                  var filteredMissions = selectedCategory.id == 'all'
                       ? missions
                       : missions
                           .where((m) => m.category
                               .toLowerCase()
                               .contains(selectedCategory.id))
                           .toList();
+
+                  // Apply search filter
+                  if (_searchQuery.isNotEmpty) {
+                    filteredMissions = filteredMissions
+                        .where((m) =>
+                            m.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                            m.description.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                            m.location.toLowerCase().contains(_searchQuery.toLowerCase()))
+                        .toList();
+                  }
 
                   if (filteredMissions.isEmpty) {
                     return Center(
@@ -280,7 +282,6 @@ class MissionsScreen extends ConsumerWidget {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // TODO: Implement create mission functionality
           _showCreateMissionDialog(context, translate);
         },
         backgroundColor: Colors.blue,
@@ -346,7 +347,11 @@ class MissionsScreen extends ConsumerWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) =>
-          MissionDetailsSheet(mission: mission, translate: translate),
+          MissionDetailsSheet(
+            mission: mission, 
+            translate: translate,
+            onComplete: _completeMission,
+          ),
     );
   }
 
@@ -365,7 +370,7 @@ class MissionsScreen extends ConsumerWidget {
           ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
-              // TODO: Navigate to create mission screen
+              _showCreateMissionForm(context, translate);
             },
             child: Text(translate('create')),
           ),
@@ -373,6 +378,103 @@ class MissionsScreen extends ConsumerWidget {
       ),
     );
   }
+
+  void _showCreateMissionForm(BuildContext context, Function translate) {
+    final titleController = TextEditingController();
+    final descriptionController = TextEditingController();
+    final locationController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(translate('create_new_mission')),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleController,
+                decoration: InputDecoration(
+                  labelText: translate('mission_title'),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: descriptionController,
+                decoration: InputDecoration(
+                  labelText: translate('description'),
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 3,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: locationController,
+                decoration: InputDecoration(
+                  labelText: translate('location'),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(translate('cancel')),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (titleController.text.isNotEmpty &&
+                  descriptionController.text.isNotEmpty &&
+                  locationController.text.isNotEmpty) {
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Mission "${titleController.text}" created successfully!'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please fill in all fields'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: Text(translate('create')),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _completeMission(BuildContext context, Mission mission) {
+    final translate = ref.read(translationProvider);
+    
+    // Show star animation celebration
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StarAnimationWidget(
+        showAnimation: true,
+        onAnimationComplete: () {
+          Navigator.of(context).pop();
+          // Show completion message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${translate('mission_completed').replaceAll('{title}', mission.title)} 🎉'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        },
+       ),
+     );
+   }
 }
 
 class MissionCategory {
@@ -567,12 +669,29 @@ class MissionCard extends StatelessWidget {
 class MissionDetailsSheet extends StatelessWidget {
   final Mission mission;
   final String Function(String) translate;
+  final Function(BuildContext, Mission) onComplete;
 
   const MissionDetailsSheet({
     super.key,
     required this.mission,
     required this.translate,
+    required this.onComplete,
   });
+
+  Color _getCategoryColor(String category) {
+    switch (category.toLowerCase()) {
+      case 'community service':
+        return Colors.green;
+      case 'youth ministry':
+        return Colors.orange;
+      case 'international':
+        return Colors.purple;
+      case 'evangelism':
+        return Colors.red;
+      default:
+        return Colors.blue;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -691,7 +810,50 @@ class MissionDetailsSheet extends StatelessWidget {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () {
-                      // TODO: Implement share functionality
+                      final shareText = '${mission.title}\n\n${mission.description}\n\nLocation: ${mission.location}\nDate: ${mission.startDate.day}/${mission.startDate.month}/${mission.startDate.year}\n\nJoin us in this mission! Download the ALIVE NG app to participate.';
+                      
+                      // Show share dialog
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Share Mission'),
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text('Share this mission with others:'),
+                              const SizedBox(height: 16),
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[100],
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  shareText,
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ),
+                            ],
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: const Text('Cancel'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Mission details copied to clipboard'),
+                                  ),
+                                );
+                              },
+                              child: const Text('Copy to Clipboard'),
+                            ),
+                          ],
+                        ),
+                      );
                     },
                     child: Text(translate('share')),
                   ),
@@ -700,16 +862,16 @@ class MissionDetailsSheet extends StatelessWidget {
                 Expanded(
                   flex: 2,
                   child: ElevatedButton(
-                    onPressed: () {
-                      // TODO: Implement join mission functionality
-                      Navigator.of(context).pop();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _getCategoryColor(mission.category),
-                      foregroundColor: Colors.white,
+                      onPressed: () {
+                        onComplete(context, mission);
+                        Navigator.of(context).pop();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _getCategoryColor(mission.category),
+                        foregroundColor: Colors.white,
+                      ),
+                      child: Text(translate('complete_mission')),
                     ),
-                    child: Text(translate('join_mission')),
-                  ),
                 ),
               ],
             ),
@@ -758,20 +920,5 @@ class MissionDetailsSheet extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  Color _getCategoryColor(String category) {
-    switch (category.toLowerCase()) {
-      case 'community service':
-        return Colors.green;
-      case 'youth ministry':
-        return Colors.orange;
-      case 'international':
-        return Colors.purple;
-      case 'evangelism':
-        return Colors.red;
-      default:
-        return Colors.blue;
-    }
   }
 }

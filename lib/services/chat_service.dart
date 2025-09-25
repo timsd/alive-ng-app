@@ -36,17 +36,18 @@ class ChatService {
     String? before,
   }) async {
     try {
-      var query = _supabase
+      dynamic query = _supabase
           .from('chat_messages')
           .select('*, sender:profiles(*)')
           .eq('channel_id', channelId)
-          .order('timestamp', ascending: false)
-          .limit(limit);
+          .order('timestamp', ascending: false);
 
-      // TODO: Fix timestamp filtering for pagination
-      // if (before != null) {
-      //   query = query.lt('timestamp', before.toIso8601String());
-      // }
+      // Add timestamp filtering for pagination
+      if (before != null) {
+        query = query.lt('timestamp', before);
+      }
+      
+      query = query.limit(limit);
 
       final response = await query;
 

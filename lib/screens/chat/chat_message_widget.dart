@@ -32,8 +32,6 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isCurrentUser = widget.message.senderId ==
-        'current-user-id'; // Replace with actual current user check
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),

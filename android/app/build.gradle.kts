@@ -22,7 +22,7 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
+        // Application ID for Alive NG Android App
         applicationId = "com.alive.alivengandroidapp"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
@@ -35,8 +35,8 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // Using debug signing config for development builds
+            // For production, replace with proper release signing configuration
             signingConfig = signingConfigs.getByName("debug")
         }
     }

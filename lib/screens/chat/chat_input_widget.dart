@@ -28,7 +28,6 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
   OverlayEntry? _overlayEntry;
 
   List<TaggedEntity> _suggestions = [];
-  String _currentTag = '';
   int _tagStartPosition = -1;
   bool _showSuggestions = false;
   int _selectedSuggestionIndex = 0;
@@ -60,11 +59,9 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
     final tagMatch = RegExp(r'[@#](\w*)$').firstMatch(beforeCursor);
 
     if (tagMatch != null) {
-      final tagType = tagMatch.group(0)![0]; // @ or #
       final tagText = tagMatch.group(1) ?? '';
 
       setState(() {
-        _currentTag = tagText;
         _tagStartPosition = tagMatch.start;
         _showSuggestions = true;
         _selectedSuggestionIndex = 0;
@@ -145,7 +142,6 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
     setState(() {
       _showSuggestions = false;
       _suggestions = [];
-      _currentTag = '';
       _tagStartPosition = -1;
     });
     _removeOverlay();

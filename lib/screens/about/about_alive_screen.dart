@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import '../../providers/language_provider.dart';
 
-class AboutAliveScreen extends StatelessWidget {
+class AboutAliveScreen extends ConsumerWidget {
   const AboutAliveScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.watch(translationProvider);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('About ALIVE'),
+        title: Text(t('about_alive')),
         backgroundColor: Colors.green,
         foregroundColor: Colors.white,
       ),
@@ -25,28 +29,38 @@ class AboutAliveScreen extends StatelessWidget {
                     width: 120,
                     height: 120,
                     decoration: BoxDecoration(
-                      color: Colors.green,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Icon(
-                      Icons.add,
-                      size: 80,
                       color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color.fromRGBO(128, 128, 128, 0.3),
+                          spreadRadius: 2,
+                          blurRadius: 5,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: SvgPicture.asset(
+                        'assets/images/alive_logo.svg',
+                        fit: BoxFit.contain,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    'A.L.I.V.E Nigeria',
-                    style: TextStyle(
+                  Text(
+                    t('alive_nigeria'),
+                    style: const TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
                       color: Colors.green,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'Africans Living In View of Eternity',
-                    style: TextStyle(
+                  Text(
+                    t('app_tagline'),
+                    style: const TextStyle(
                       fontSize: 16,
                       color: Colors.grey,
                       fontStyle: FontStyle.italic,

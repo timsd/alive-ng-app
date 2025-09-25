@@ -12,6 +12,12 @@
 @import app_links;
 #endif
 
+#if __has_include(<audio_session/AudioSessionPlugin.h>)
+#import <audio_session/AudioSessionPlugin.h>
+#else
+@import audio_session;
+#endif
+
 #if __has_include(<connectivity_plus/ConnectivityPlusPlugin.h>)
 #import <connectivity_plus/ConnectivityPlusPlugin.h>
 #else
@@ -90,6 +96,12 @@
 @import flutter_tts;
 #endif
 
+#if __has_include(<gal/GalPlugin.h>)
+#import <gal/GalPlugin.h>
+#else
+@import gal;
+#endif
+
 #if __has_include(<geocoding_ios/GeocodingPlugin.h>)
 #import <geocoding_ios/GeocodingPlugin.h>
 #else
@@ -102,10 +114,10 @@
 @import geolocator_apple;
 #endif
 
-#if __has_include(<image_gallery_saver/ImageGallerySaverPlugin.h>)
-#import <image_gallery_saver/ImageGallerySaverPlugin.h>
+#if __has_include(<get_thumbnail_video/VideoThumbnailPlugin.h>)
+#import <get_thumbnail_video/VideoThumbnailPlugin.h>
 #else
-@import image_gallery_saver;
+@import get_thumbnail_video;
 #endif
 
 #if __has_include(<image_picker_ios/FLTImagePickerPlugin.h>)
@@ -118,6 +130,18 @@
 #import <jitsi_meet_flutter_sdk/JitsiMeetPlugin.h>
 #else
 @import jitsi_meet_flutter_sdk;
+#endif
+
+#if __has_include(<just_audio/JustAudioPlugin.h>)
+#import <just_audio/JustAudioPlugin.h>
+#else
+@import just_audio;
+#endif
+
+#if __has_include(<media_kit_video/MediaKitVideoPlugin.h>)
+#import <media_kit_video/MediaKitVideoPlugin.h>
+#else
+@import media_kit_video;
 #endif
 
 #if __has_include(<package_info_plus/FPPPackageInfoPlusPlugin.h>)
@@ -142,6 +166,12 @@
 #import <photo_manager/PhotoManagerPlugin.h>
 #else
 @import photo_manager;
+#endif
+
+#if __has_include(<record_darwin/RecordPlugin.h>)
+#import <record_darwin/RecordPlugin.h>
+#else
+@import record_darwin;
 #endif
 
 #if __has_include(<share_plus/FPPSharePlusPlugin.h>)
@@ -180,10 +210,10 @@
 @import video_player_avfoundation;
 #endif
 
-#if __has_include(<video_thumbnail/VideoThumbnailPlugin.h>)
-#import <video_thumbnail/VideoThumbnailPlugin.h>
+#if __has_include(<volume_controller/VolumeControllerPlugin.h>)
+#import <volume_controller/VolumeControllerPlugin.h>
 #else
-@import video_thumbnail;
+@import volume_controller;
 #endif
 
 #if __has_include(<wakelock_plus/WakelockPlusPlugin.h>)
@@ -196,6 +226,7 @@
 
 + (void)registerWithRegistry:(NSObject<FlutterPluginRegistry>*)registry {
   [AppLinksIosPlugin registerWithRegistrar:[registry registrarForPlugin:@"AppLinksIosPlugin"]];
+  [AudioSessionPlugin registerWithRegistrar:[registry registrarForPlugin:@"AudioSessionPlugin"]];
   [ConnectivityPlusPlugin registerWithRegistrar:[registry registrarForPlugin:@"ConnectivityPlusPlugin"]];
   [FPPDeviceInfoPlusPlugin registerWithRegistrar:[registry registrarForPlugin:@"FPPDeviceInfoPlusPlugin"]];
   [FilePickerPlugin registerWithRegistrar:[registry registrarForPlugin:@"FilePickerPlugin"]];
@@ -209,22 +240,26 @@
   [FlutterLocalNotificationsPlugin registerWithRegistrar:[registry registrarForPlugin:@"FlutterLocalNotificationsPlugin"]];
   [FlutterSecureStoragePlugin registerWithRegistrar:[registry registrarForPlugin:@"FlutterSecureStoragePlugin"]];
   [FlutterTtsPlugin registerWithRegistrar:[registry registrarForPlugin:@"FlutterTtsPlugin"]];
+  [GalPlugin registerWithRegistrar:[registry registrarForPlugin:@"GalPlugin"]];
   [GeocodingPlugin registerWithRegistrar:[registry registrarForPlugin:@"GeocodingPlugin"]];
   [GeolocatorPlugin registerWithRegistrar:[registry registrarForPlugin:@"GeolocatorPlugin"]];
-  [ImageGallerySaverPlugin registerWithRegistrar:[registry registrarForPlugin:@"ImageGallerySaverPlugin"]];
+  [VideoThumbnailPlugin registerWithRegistrar:[registry registrarForPlugin:@"VideoThumbnailPlugin"]];
   [FLTImagePickerPlugin registerWithRegistrar:[registry registrarForPlugin:@"FLTImagePickerPlugin"]];
   [JitsiMeetPlugin registerWithRegistrar:[registry registrarForPlugin:@"JitsiMeetPlugin"]];
+  [JustAudioPlugin registerWithRegistrar:[registry registrarForPlugin:@"JustAudioPlugin"]];
+  [MediaKitVideoPlugin registerWithRegistrar:[registry registrarForPlugin:@"MediaKitVideoPlugin"]];
   [FPPPackageInfoPlusPlugin registerWithRegistrar:[registry registrarForPlugin:@"FPPPackageInfoPlusPlugin"]];
   [PathProviderPlugin registerWithRegistrar:[registry registrarForPlugin:@"PathProviderPlugin"]];
   [PermissionHandlerPlugin registerWithRegistrar:[registry registrarForPlugin:@"PermissionHandlerPlugin"]];
   [PhotoManagerPlugin registerWithRegistrar:[registry registrarForPlugin:@"PhotoManagerPlugin"]];
+  [RecordPlugin registerWithRegistrar:[registry registrarForPlugin:@"RecordPlugin"]];
   [FPPSharePlusPlugin registerWithRegistrar:[registry registrarForPlugin:@"FPPSharePlusPlugin"]];
   [SharedPreferencesPlugin registerWithRegistrar:[registry registrarForPlugin:@"SharedPreferencesPlugin"]];
   [SpeechToTextPlugin registerWithRegistrar:[registry registrarForPlugin:@"SpeechToTextPlugin"]];
   [SqflitePlugin registerWithRegistrar:[registry registrarForPlugin:@"SqflitePlugin"]];
   [URLLauncherPlugin registerWithRegistrar:[registry registrarForPlugin:@"URLLauncherPlugin"]];
   [FVPVideoPlayerPlugin registerWithRegistrar:[registry registrarForPlugin:@"FVPVideoPlayerPlugin"]];
-  [VideoThumbnailPlugin registerWithRegistrar:[registry registrarForPlugin:@"VideoThumbnailPlugin"]];
+  [VolumeControllerPlugin registerWithRegistrar:[registry registrarForPlugin:@"VolumeControllerPlugin"]];
   [WakelockPlusPlugin registerWithRegistrar:[registry registrarForPlugin:@"WakelockPlusPlugin"]];
 }
 

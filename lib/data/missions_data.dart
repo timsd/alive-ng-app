@@ -10,6 +10,9 @@ class Mission {
   final bool completed;
   final List<String> instructions;
   final VerificationMethod verificationMethod;
+  final List<String> prerequisiteMissionIds; // Missions that must be completed first
+  final bool isLocked; // Whether this mission is currently locked
+  final String? unlockedBy; // ID of the mission that unlocked this one
 
   const Mission({
     required this.id,
@@ -23,6 +26,9 @@ class Mission {
     required this.completed,
     required this.instructions,
     required this.verificationMethod,
+    this.prerequisiteMissionIds = const [],
+    this.isLocked = false,
+    this.unlockedBy,
   });
 
   factory Mission.fromJson(Map<String, dynamic> json) {
@@ -44,6 +50,11 @@ class Mission {
       verificationMethod: VerificationMethod.values.firstWhere(
         (e) => e.name == json['verificationMethod'],
       ),
+      prerequisiteMissionIds: json['prerequisiteMissionIds'] != null
+          ? List<String>.from(json['prerequisiteMissionIds'] as List)
+          : const [],
+      isLocked: json['isLocked'] as bool? ?? false,
+      unlockedBy: json['unlockedBy'] as String?,
     );
   }
 
@@ -60,6 +71,9 @@ class Mission {
       'completed': completed,
       'instructions': instructions,
       'verificationMethod': verificationMethod.name,
+      'prerequisiteMissionIds': prerequisiteMissionIds,
+      'isLocked': isLocked,
+      'unlockedBy': unlockedBy,
     };
   }
 
@@ -75,6 +89,9 @@ class Mission {
     bool? completed,
     List<String>? instructions,
     VerificationMethod? verificationMethod,
+    List<String>? prerequisiteMissionIds,
+    bool? isLocked,
+    String? unlockedBy,
   }) {
     return Mission(
       id: id ?? this.id,
@@ -88,6 +105,9 @@ class Mission {
       completed: completed ?? this.completed,
       instructions: instructions ?? this.instructions,
       verificationMethod: verificationMethod ?? this.verificationMethod,
+      prerequisiteMissionIds: prerequisiteMissionIds ?? this.prerequisiteMissionIds,
+      isLocked: isLocked ?? this.isLocked,
+      unlockedBy: unlockedBy ?? this.unlockedBy,
     );
   }
 }

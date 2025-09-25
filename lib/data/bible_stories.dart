@@ -118,8 +118,8 @@ enum AgeGroup {
 }
 
 enum StoryCategory {
-  old_testament('Old Testament'),
-  new_testament('New Testament'),
+  oldTestament('Old Testament'),
+  newTestament('New Testament'),
   parables('Parables'),
   miracles('Miracles');
 
@@ -141,7 +141,7 @@ final List<BibleStory> bibleStories = [
     bibleReference: 'Genesis 6-9',
     completed: false,
     favorite: false,
-    category: StoryCategory.old_testament,
+    category: StoryCategory.oldTestament,
     tags: ['obedience', 'animals', 'protection', 'rainbow'],
   ),
   const BibleStory(
@@ -157,7 +157,7 @@ final List<BibleStory> bibleStories = [
     bibleReference: '1 Samuel 17',
     completed: true,
     favorite: true,
-    category: StoryCategory.old_testament,
+    category: StoryCategory.oldTestament,
     tags: ['courage', 'faith', 'shepherd', 'victory'],
   ),
   const BibleStory(
@@ -172,7 +172,7 @@ final List<BibleStory> bibleStories = [
     bibleReference: 'Luke 2:1-20',
     completed: false,
     favorite: true,
-    category: StoryCategory.new_testament,
+    category: StoryCategory.newTestament,
     tags: ['Christmas', 'Bethlehem', 'angels', 'shepherds', 'love'],
   ),
   const BibleStory(
@@ -204,7 +204,7 @@ final List<BibleStory> bibleStories = [
     bibleReference: 'Daniel 6',
     completed: false,
     favorite: false,
-    category: StoryCategory.old_testament,
+    category: StoryCategory.oldTestament,
     tags: ['prayer', 'protection', 'faithfulness', 'courage'],
   ),
   const BibleStory(
@@ -236,7 +236,7 @@ final List<BibleStory> bibleStories = [
     bibleReference: 'Exodus 14',
     completed: false,
     favorite: false,
-    category: StoryCategory.old_testament,
+    category: StoryCategory.oldTestament,
     tags: ['miracle', 'deliverance', 'sea', 'Egypt', 'freedom'],
   ),
   const BibleStory(
@@ -284,7 +284,7 @@ final List<BibleStory> bibleStories = [
     bibleReference: 'Genesis 1-2',
     completed: false,
     favorite: true,
-    category: StoryCategory.old_testament,
+    category: StoryCategory.oldTestament,
     tags: ['creation', 'sabbath', 'rest', 'nature', 'beautiful'],
   ),
 ];

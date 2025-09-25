@@ -129,6 +129,7 @@ class _MaterialsScreenState extends State<MaterialsScreen>
 
       if (!canDownload && material.requiresDonation) {
         // Show donation dialog
+        if (!mounted) return;
         final donated = await showDialog<bool>(
           context: context,
           builder: (context) => DonationDialog(

@@ -14,6 +14,37 @@ class ApiService {
     _initializeDio();
   }
 
+  // Bible API methods
+  Future<ApiResponse<Map<String, dynamic>>> getBibleVerse(String reference) async {
+    try {
+      // Using Bible API (bible-api.com) as a free alternative
+      final response = await _dio.get(
+        'https://bible-api.com/$reference',
+        options: Options(
+          headers: {
+            'Accept': 'application/json',
+          },
+        ),
+      );
+      
+      return ApiResponse.success(response.data);
+    } on DioException catch (e) {
+      return _handleDioError<Map<String, dynamic>>(e);
+    } catch (e) {
+      return ApiResponse.error('Failed to fetch Bible verse: $e');
+    }
+  }
+
+  Future<ApiResponse<List<Map<String, dynamic>>>> searchBibleVerses(String query) async {
+    try {
+      // This is a placeholder - you would implement actual search functionality
+      // For now, return empty results
+      return ApiResponse.success([]);
+    } catch (e) {
+      return ApiResponse.error('Failed to search Bible verses: $e');
+    }
+  }
+
   late Dio _dio;
   final StorageService _storage = StorageService.instance;
   final AuthService _authService = AuthService.instance;

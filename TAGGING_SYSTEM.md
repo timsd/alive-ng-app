@@ -149,51 +149,11 @@ Individual tags target specific users by their username or display name.
 
 ## Database Schema
 
-### Message Tags Table
+The tagging system uses the following database tables (defined in `DATABASE_SCHEMA.sql`):
 
-```sql
-CREATE TABLE message_tags (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  message_id UUID NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
-  tag_type VARCHAR(20) NOT NULL, -- 'role', 'user', 'special', 'chapter'
-  tag_value VARCHAR(100) NOT NULL, -- actual tag value
-  created_at TIMESTAMP DEFAULT NOW(),
-  
-  INDEX idx_message_tags_message_id (message_id),
-  INDEX idx_message_tags_type_value (tag_type, tag_value)
-);
-```
-
-### User Roles Table
-
-```sql
-CREATE TABLE user_roles (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  role VARCHAR(50) NOT NULL,
-  chapter_id UUID REFERENCES chapters(id),
-  region VARCHAR(20),
-  is_active BOOLEAN DEFAULT true,
-  assigned_at TIMESTAMP DEFAULT NOW(),
-  assigned_by UUID REFERENCES users(id),
-  
-  UNIQUE(user_id, role, chapter_id)
-);
-```
-
-### Tag Visibility Rules Table
-
-```sql
-CREATE TABLE tag_visibility_rules (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tag_pattern VARCHAR(100) NOT NULL, -- e.g., '#bod', '#director', '@*'
-  required_role VARCHAR(50), -- role required to see this tag
-  required_permission VARCHAR(50), -- specific permission required
-  hierarchy_level INTEGER, -- for hierarchical access
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMP DEFAULT NOW()
-);
-```
+- **message_tags**: Stores tag associations with messages
+- **user_roles**: Manages user role assignments
+- **tag_visibility_rules**: Controls tag visibility based on roles and hierarchy
 
 ## Tag Processing Logic
 

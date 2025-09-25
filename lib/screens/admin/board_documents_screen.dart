@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../models/board_models.dart';
 import '../../services/supabase_service.dart';
 
@@ -125,12 +127,14 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
         ),
       ];
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error loading documents: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading documents: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
       setState(() => _isLoading = false);
     }
@@ -616,14 +620,38 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
     );
   }
 
-  void _downloadDocument(BoardDocument document) {
-    // TODO: Implement actual file download
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Downloading ${document.fileName}...'),
-        backgroundColor: Colors.green,
-      ),
-    );
+  Future<void> _downloadDocument(BoardDocument document) async {
+    try {
+      // Get the signed URL for the document
+      final signedUrl = await _supabaseService.client.storage
+          .from('board-documents')
+          .createSignedUrl(document.fileUrl, 3600); // 1 hour expiry
+
+      // Launch the URL to download the file
+      if (await canLaunchUrl(Uri.parse(signedUrl))) {
+        await launchUrl(Uri.parse(signedUrl), mode: LaunchMode.externalApplication);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Downloading ${document.fileName}...'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        throw 'Could not launch download URL';
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error downloading document: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _showUploadDialog() {
@@ -654,17 +682,29 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                     ),
                   ),
                   trailing: const Icon(Icons.attach_file),
-                  onTap: () {
-                    // TODO: Implement file picker
-                    setDialogState(() {
-                      selectedFileName = 'example_document.pdf';
-                    });
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('File picker would open here'),
-                        backgroundColor: Colors.blue,
-                      ),
-                    );
+                  onTap: () async {
+                    try {
+                      FilePickerResult? result = await FilePicker.platform.pickFiles(
+                        type: FileType.custom,
+                        allowedExtensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'],
+                        allowMultiple: false,
+                      );
+
+                      if (result != null && result.files.single.path != null) {
+                        setDialogState(() {
+                          selectedFileName = result.files.single.name;
+                        });
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error selecting file: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
                   },
                 ),
                 const SizedBox(height: 16),
@@ -733,11 +773,12 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 if (titleController.text.isNotEmpty &&
                     descriptionController.text.isNotEmpty &&
                     selectedFileName != null) {
-                  _uploadDocument(
+                  Navigator.pop(context);
+                  await _uploadDocument(
                     titleController.text,
                     descriptionController.text,
                     selectedFileName!,
@@ -745,7 +786,6 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                     selectedAccessLevel,
                     tagsController.text,
                   );
-                  Navigator.pop(context);
                 }
               },
               style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
@@ -758,39 +798,51 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
     );
   }
 
-  void _uploadDocument(String title, String description, String fileName,
-      String category, String accessLevel, String tagsText) {
-    final tags = tagsText
-        .split(',')
-        .map((tag) => tag.trim())
-        .where((tag) => tag.isNotEmpty)
-        .toList();
+  Future<void> _uploadDocument(String title, String description, String fileName,
+      String category, String accessLevel, String tagsText) async {
+    try {
+      final tags = tagsText
+          .split(',')
+          .map((tag) => tag.trim())
+          .where((tag) => tag.isNotEmpty)
+          .toList();
 
-    final newDocument = BoardDocument(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      title: title,
-      description: description,
-      fileName: fileName,
-      fileUrl: 'https://example.com/documents/$fileName',
-      fileType: fileName.split('.').last,
-      fileSize: 1024000, // Mock file size
-      uploadedBy: _supabaseService.currentUser?.email ?? 'Unknown',
-      uploaderId: _supabaseService.currentUser?.id ?? '',
-      uploadedAt: DateTime.now(),
-      category: category,
-      accessLevel: accessLevel,
-      tags: tags,
-    );
+      // Save document metadata to database
+      await _supabaseService.client.from('board_documents').insert({
+        'title': title,
+        'description': description,
+        'file_name': fileName,
+        'file_url': 'documents/$fileName',
+        'file_type': fileName.split('.').last,
+        'file_size': 1024000, // This would be actual file size in real implementation
+        'uploaded_by': _supabaseService.currentUser?.email ?? 'Unknown',
+        'uploader_id': _supabaseService.currentUser?.id ?? '',
+        'uploaded_at': DateTime.now().toIso8601String(),
+        'category': category,
+        'access_level': accessLevel,
+        'tags': tags,
+        'is_archived': false,
+      });
 
-    setState(() {
-      _documents.insert(0, newDocument);
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Document uploaded successfully'),
-        backgroundColor: Colors.green,
-      ),
-    );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Document uploaded successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+      
+      // Reload documents to show the new upload
+      await _loadDocuments();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error uploading document: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
-}

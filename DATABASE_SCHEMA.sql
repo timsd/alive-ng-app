@@ -1076,3 +1076,431 @@ GROUP BY u.id, u.full_name;
 -- 3. Archive old data to maintain performance
 -- 4. Backup critical data regularly
 -- 5. Monitor storage usage and optimize as needed
+
+-- ============================================================================
+-- ADDITIONAL TABLES FROM MISSING_TABLES.SQL
+-- ============================================================================
+
+-- Notification settings for users (extends existing notification system)
+CREATE TABLE IF NOT EXISTS public.notification_settings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    daily_verse_reminder BOOLEAN DEFAULT TRUE,
+    prayer_reminder BOOLEAN DEFAULT TRUE,
+    health_tracking_reminder BOOLEAN DEFAULT TRUE,
+    study_reminder BOOLEAN DEFAULT TRUE,
+    mission_reminder BOOLEAN DEFAULT TRUE,
+    chat_notifications BOOLEAN DEFAULT TRUE,
+    chapter_notifications BOOLEAN DEFAULT TRUE,
+    conference_notifications BOOLEAN DEFAULT TRUE,
+    reminder_time TIME DEFAULT '07:00:00',
+    push_notifications_enabled BOOLEAN DEFAULT FALSE,
+    email_notifications_enabled BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    
+    UNIQUE(user_id)
+);
+
+-- Notification history/logs (extends existing notification system)
+CREATE TABLE IF NOT EXISTS public.notification_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    notification_type VARCHAR(50) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    body TEXT NOT NULL,
+    data JSONB, -- Additional notification data
+    status VARCHAR(20) DEFAULT 'sent' CHECK (status IN ('sent', 'delivered', 'read', 'failed')),
+    sent_at TIMESTAMP DEFAULT NOW(),
+    delivered_at TIMESTAMP,
+    read_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- ============================================================================
+-- MISSIONS SYSTEM
+-- ============================================================================
+
+-- Missions table with auto-unlock functionality
+CREATE TABLE IF NOT EXISTS public.missions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    category VARCHAR(50) NOT NULL CHECK (category IN ('kidsmission', 'evangelism', 'discipleship', 'service', 'worship', 'study')),
+    difficulty VARCHAR(20) DEFAULT 'easy' CHECK (difficulty IN ('easy', 'medium', 'hard')),
+    points INTEGER DEFAULT 0,
+    duration VARCHAR(50), -- e.g., '30 minutes', '1 hour', '1 day'
+    location VARCHAR(255),
+    instructions TEXT[],
+    verification_method VARCHAR(50) CHECK (verification_method IN ('photo', 'video', 'text', 'location', 'voice')),
+    prerequisite_mission_ids UUID[], -- Array of mission IDs that must be completed first
+    is_locked BOOLEAN DEFAULT FALSE,
+    unlocked_by UUID REFERENCES public.missions(id), -- Mission that unlocked this one
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- User mission progress
+CREATE TABLE IF NOT EXISTS public.user_missions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    mission_id UUID NOT NULL REFERENCES public.missions(id) ON DELETE CASCADE,
+    status VARCHAR(20) DEFAULT 'not_started' CHECK (status IN ('not_started', 'in_progress', 'completed', 'verified')),
+    started_at TIMESTAMP,
+    completed_at TIMESTAMP,
+    verified_at TIMESTAMP,
+    verification_data JSONB, -- Store photos, videos, text responses, etc.
+    points_earned INTEGER DEFAULT 0,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    
+    UNIQUE(user_id, mission_id)
+);
+
+-- ============================================================================
+-- MEMORY VERSES SYSTEM
+-- ============================================================================
+
+-- Memory verses table
+CREATE TABLE IF NOT EXISTS public.memory_verses (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    reference VARCHAR(100) NOT NULL, -- e.g., 'John 3:16', 'Romans 8:28'
+    text TEXT NOT NULL,
+    category VARCHAR(50) CHECK (category IN ('faith', 'love', 'hope', 'salvation', 'prayer', 'obedience', 'wisdom', 'peace')),
+    difficulty VARCHAR(20) DEFAULT 'easy' CHECK (difficulty IN ('easy', 'medium', 'hard')),
+    points INTEGER DEFAULT 10,
+    tags TEXT[],
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- User memory verse progress
+CREATE TABLE IF NOT EXISTS public.user_memory_verses (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    verse_id UUID NOT NULL REFERENCES public.memory_verses(id) ON DELETE CASCADE,
+    status VARCHAR(20) DEFAULT 'learning' CHECK (status IN ('learning', 'memorized', 'mastered')),
+    accuracy_score DECIMAL(5,2) DEFAULT 0, -- Percentage accuracy from voice recognition
+    attempts INTEGER DEFAULT 0,
+    best_score DECIMAL(5,2) DEFAULT 0,
+    memorized_at TIMESTAMP,
+    mastered_at TIMESTAMP,
+    last_practiced TIMESTAMP,
+    practice_count INTEGER DEFAULT 0,
+    points_earned INTEGER DEFAULT 0,
+    voice_recordings JSONB, -- Store voice recording metadata
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    
+    UNIQUE(user_id, verse_id)
+);
+
+-- Memory verse practice sessions
+CREATE TABLE IF NOT EXISTS public.memory_verse_sessions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    verse_id UUID NOT NULL REFERENCES public.memory_verses(id) ON DELETE CASCADE,
+    session_type VARCHAR(20) DEFAULT 'practice' CHECK (session_type IN ('practice', 'test', 'review')),
+    accuracy_score DECIMAL(5,2),
+    time_taken INTEGER, -- in seconds
+    mistakes_count INTEGER DEFAULT 0,
+    voice_recording_url TEXT,
+    feedback TEXT,
+    session_date TIMESTAMP DEFAULT NOW(),
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- ============================================================================
+-- ADDITIONAL INDEXES FOR PERFORMANCE
+-- ============================================================================
+
+-- Missions indexes
+CREATE INDEX IF NOT EXISTS idx_missions_category ON public.missions(category);
+CREATE INDEX IF NOT EXISTS idx_missions_difficulty ON public.missions(difficulty);
+CREATE INDEX IF NOT EXISTS idx_missions_is_active ON public.missions(is_active);
+CREATE INDEX IF NOT EXISTS idx_missions_is_locked ON public.missions(is_locked);
+
+-- User missions indexes
+CREATE INDEX IF NOT EXISTS idx_user_missions_user_id ON public.user_missions(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_missions_mission_id ON public.user_missions(mission_id);
+CREATE INDEX IF NOT EXISTS idx_user_missions_status ON public.user_missions(status);
+CREATE INDEX IF NOT EXISTS idx_user_missions_completed_at ON public.user_missions(completed_at DESC);
+
+-- Memory verses indexes
+CREATE INDEX IF NOT EXISTS idx_memory_verses_category ON public.memory_verses(category);
+CREATE INDEX IF NOT EXISTS idx_memory_verses_difficulty ON public.memory_verses(difficulty);
+CREATE INDEX IF NOT EXISTS idx_memory_verses_is_active ON public.memory_verses(is_active);
+
+-- User memory verses indexes
+CREATE INDEX IF NOT EXISTS idx_user_memory_verses_user_id ON public.user_memory_verses(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_memory_verses_verse_id ON public.user_memory_verses(verse_id);
+CREATE INDEX IF NOT EXISTS idx_user_memory_verses_status ON public.user_memory_verses(status);
+CREATE INDEX IF NOT EXISTS idx_user_memory_verses_last_practiced ON public.user_memory_verses(last_practiced DESC);
+
+-- Memory verse sessions indexes
+CREATE INDEX IF NOT EXISTS idx_memory_verse_sessions_user_id ON public.memory_verse_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_memory_verse_sessions_verse_id ON public.memory_verse_sessions(verse_id);
+CREATE INDEX IF NOT EXISTS idx_memory_verse_sessions_session_date ON public.memory_verse_sessions(session_date DESC);
+
+-- Notification settings and logs indexes
+CREATE INDEX IF NOT EXISTS idx_notification_settings_user_id ON public.notification_settings(user_id);
+CREATE INDEX IF NOT EXISTS idx_notification_logs_user_id ON public.notification_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_notification_logs_status ON public.notification_logs(status);
+CREATE INDEX IF NOT EXISTS idx_notification_logs_sent_at ON public.notification_logs(sent_at DESC);
+
+-- ============================================================================
+-- ADDITIONAL ROW LEVEL SECURITY POLICIES
+-- ============================================================================
+
+-- Enable RLS on new tables
+ALTER TABLE public.notification_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.notification_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.missions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_missions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.memory_verses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_memory_verses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.memory_verse_sessions ENABLE ROW LEVEL SECURITY;
+
+-- Notification settings policies
+CREATE POLICY "Users can view their own notification settings" ON public.notification_settings
+    FOR SELECT USING (user_id = auth.uid());
+
+CREATE POLICY "Users can manage their own notification settings" ON public.notification_settings
+    FOR ALL USING (user_id = auth.uid());
+
+-- Notification logs policies
+CREATE POLICY "Users can view their own notification logs" ON public.notification_logs
+    FOR SELECT USING (user_id = auth.uid());
+
+CREATE POLICY "System can insert notification logs" ON public.notification_logs
+    FOR INSERT WITH CHECK (true);
+
+-- Missions policies
+CREATE POLICY "Anyone can view active missions" ON public.missions
+    FOR SELECT USING (is_active = true);
+
+CREATE POLICY "Admins can manage missions" ON public.missions
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM public.user_roles
+            WHERE user_id = auth.uid()
+            AND role IN ('admin', 'director')
+            AND is_active = true
+        )
+    );
+
+-- User missions policies
+CREATE POLICY "Users can view their own mission progress" ON public.user_missions
+    FOR SELECT USING (user_id = auth.uid());
+
+CREATE POLICY "Users can insert their own mission progress" ON public.user_missions
+    FOR INSERT WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY "Users can update their own mission progress" ON public.user_missions
+    FOR UPDATE USING (user_id = auth.uid());
+
+-- Memory verses policies
+CREATE POLICY "Anyone can view active memory verses" ON public.memory_verses
+    FOR SELECT USING (is_active = true);
+
+CREATE POLICY "Admins can manage memory verses" ON public.memory_verses
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM public.user_roles
+            WHERE user_id = auth.uid()
+            AND role IN ('admin', 'director')
+            AND is_active = true
+        )
+    );
+
+-- User memory verses policies
+CREATE POLICY "Users can view their own memory verse progress" ON public.user_memory_verses
+    FOR SELECT USING (user_id = auth.uid());
+
+CREATE POLICY "Users can manage their own memory verse progress" ON public.user_memory_verses
+    FOR ALL USING (user_id = auth.uid());
+
+-- Memory verse sessions policies
+CREATE POLICY "Users can view their own practice sessions" ON public.memory_verse_sessions
+    FOR SELECT USING (user_id = auth.uid());
+
+CREATE POLICY "Users can create their own practice sessions" ON public.memory_verse_sessions
+    FOR INSERT WITH CHECK (user_id = auth.uid());
+
+-- ============================================================================
+-- ADDITIONAL FUNCTIONS AND TRIGGERS
+-- ============================================================================
+
+-- Function to auto-unlock missions when prerequisites are completed
+CREATE OR REPLACE FUNCTION unlock_dependent_missions()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- When a mission is completed, unlock missions that depend on it
+    IF NEW.status = 'completed' AND (OLD.status IS NULL OR OLD.status != 'completed') THEN
+        UPDATE public.missions 
+        SET is_locked = FALSE, 
+            unlocked_by = NEW.mission_id,
+            updated_at = NOW()
+        WHERE NEW.mission_id = ANY(prerequisite_mission_ids)
+        AND is_locked = TRUE;
+        
+        -- Award points to user
+        UPDATE public.user_missions
+        SET points_earned = (
+            SELECT points FROM public.missions WHERE id = NEW.mission_id
+        )
+        WHERE id = NEW.id;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger to auto-unlock missions
+CREATE TRIGGER trigger_unlock_missions
+    AFTER UPDATE ON public.user_missions
+    FOR EACH ROW
+    EXECUTE FUNCTION unlock_dependent_missions();
+
+-- Function to update memory verse statistics
+CREATE OR REPLACE FUNCTION update_memory_verse_stats()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Update user memory verse progress based on session results
+    IF NEW.accuracy_score >= 90 AND NEW.session_type = 'test' THEN
+        UPDATE public.user_memory_verses
+        SET status = 'memorized',
+            memorized_at = COALESCE(memorized_at, NOW()),
+            best_score = GREATEST(best_score, NEW.accuracy_score),
+            points_earned = (
+                SELECT points FROM public.memory_verses WHERE id = NEW.verse_id
+            )
+        WHERE user_id = NEW.user_id AND verse_id = NEW.verse_id;
+    ELSIF NEW.accuracy_score >= 95 AND NEW.session_type = 'test' THEN
+        UPDATE public.user_memory_verses
+        SET status = 'mastered',
+            mastered_at = NOW(),
+            best_score = GREATEST(best_score, NEW.accuracy_score)
+        WHERE user_id = NEW.user_id AND verse_id = NEW.verse_id;
+    END IF;
+    
+    -- Update practice statistics
+    UPDATE public.user_memory_verses
+    SET practice_count = practice_count + 1,
+        last_practiced = NOW(),
+        attempts = attempts + 1,
+        best_score = GREATEST(best_score, COALESCE(NEW.accuracy_score, 0))
+    WHERE user_id = NEW.user_id AND verse_id = NEW.verse_id;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger to update memory verse statistics
+CREATE TRIGGER trigger_update_memory_verse_stats
+    AFTER INSERT ON public.memory_verse_sessions
+    FOR EACH ROW
+    EXECUTE FUNCTION update_memory_verse_stats();
+
+-- Apply updated_at triggers to new tables
+CREATE TRIGGER update_notification_settings_updated_at 
+    BEFORE UPDATE ON public.notification_settings 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_missions_updated_at 
+    BEFORE UPDATE ON public.missions 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_user_missions_updated_at 
+    BEFORE UPDATE ON public.user_missions 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_memory_verses_updated_at 
+    BEFORE UPDATE ON public.memory_verses 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_user_memory_verses_updated_at 
+    BEFORE UPDATE ON public.user_memory_verses 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================================
+-- SAMPLE DATA FOR NEW TABLES
+-- ============================================================================
+
+-- Insert sample missions
+INSERT INTO public.missions (title, description, category, difficulty, points, duration, instructions, verification_method, prerequisite_mission_ids, is_locked) VALUES
+('Welcome to ALIVE NG', 'Complete your profile and learn about our ministry', 'kidsmission', 'easy', 10, '15 minutes', 
+ ARRAY['Fill out your complete profile', 'Read the ministry overview', 'Set your notification preferences'], 
+ 'text', ARRAY[]::UUID[], FALSE),
+('Share Your Testimony', 'Share your personal testimony with someone', 'evangelism', 'medium', 25, '30 minutes',
+ ARRAY['Prepare your testimony', 'Find someone to share with', 'Share your story', 'Pray with them if possible'],
+ 'text', ARRAY[]::UUID[], FALSE),
+('Memorize John 3:16', 'Learn and recite John 3:16 perfectly', 'study', 'easy', 15, '1 week',
+ ARRAY['Read John 3:16 multiple times', 'Practice reciting it', 'Record yourself saying it'],
+ 'voice', ARRAY[]::UUID[], FALSE)
+ON CONFLICT DO NOTHING;
+
+-- Insert sample memory verses
+INSERT INTO public.memory_verses (reference, text, category, difficulty, points) VALUES
+('John 3:16', 'For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.', 'salvation', 'easy', 10),
+('Romans 8:28', 'And we know that all things work together for good to them that love God, to them who are the called according to his purpose.', 'faith', 'medium', 15),
+('Philippians 4:13', 'I can do all things through Christ which strengtheneth me.', 'faith', 'easy', 10),
+('Psalm 23:1', 'The Lord is my shepherd; I shall not want.', 'peace', 'easy', 10),
+('1 John 1:9', 'If we confess our sins, he is faithful and just to forgive us our sins, and to cleanse us from all unrighteousness.', 'salvation', 'medium', 15)
+ON CONFLICT DO NOTHING;
+
+-- ============================================================================
+-- ADDITIONAL VIEWS FOR NEW TABLES
+-- ============================================================================
+
+-- User mission progress summary
+CREATE OR REPLACE VIEW public.user_mission_summary AS
+SELECT 
+    u.id as user_id,
+    u.full_name,
+    COUNT(DISTINCT um.mission_id) as total_missions,
+    COUNT(DISTINCT um.mission_id) FILTER (WHERE um.status = 'completed') as completed_missions,
+    COUNT(DISTINCT um.mission_id) FILTER (WHERE um.status = 'in_progress') as in_progress_missions,
+    SUM(um.points_earned) as total_points,
+    COUNT(DISTINCT um.mission_id) FILTER (WHERE um.status = 'completed' AND m.category = 'kidsmission') as completed_kids_missions
+FROM public.users u
+LEFT JOIN public.user_missions um ON u.id = um.user_id
+LEFT JOIN public.missions m ON um.mission_id = m.id
+GROUP BY u.id, u.full_name;
+
+-- User memory verse progress summary
+CREATE OR REPLACE VIEW public.user_memory_verse_summary AS
+SELECT 
+    u.id as user_id,
+    u.full_name,
+    COUNT(DISTINCT umv.verse_id) as total_verses,
+    COUNT(DISTINCT umv.verse_id) FILTER (WHERE umv.status = 'memorized') as memorized_verses,
+    COUNT(DISTINCT umv.verse_id) FILTER (WHERE umv.status = 'mastered') as mastered_verses,
+    AVG(umv.best_score) as average_score,
+    SUM(umv.points_earned) as total_verse_points
+FROM public.users u
+LEFT JOIN public.user_memory_verses umv ON u.id = umv.user_id
+GROUP BY u.id, u.full_name;
+
+-- Available missions for user (considering prerequisites)
+CREATE OR REPLACE VIEW public.available_missions AS
+SELECT DISTINCT
+    m.*,
+    CASE 
+        WHEN m.prerequisite_mission_ids IS NULL OR array_length(m.prerequisite_mission_ids, 1) IS NULL THEN TRUE
+        WHEN NOT EXISTS (
+            SELECT 1 FROM unnest(m.prerequisite_mission_ids) AS prereq_id
+            WHERE NOT EXISTS (
+                SELECT 1 FROM public.user_missions um
+                WHERE um.mission_id = prereq_id
+                AND um.user_id = auth.uid()
+                AND um.status = 'completed'
+            )
+        ) THEN TRUE
+        ELSE FALSE
+    END as is_available
+FROM public.missions m
+WHERE m.is_active = TRUE;

@@ -375,7 +375,7 @@ class DonationService {
   Future<List<DonationRecord>> getUserDonations() async {
     try {
       final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) throw Exception('User not authenticated');
+       if (userId == null) throw Exception('User not authenticated');
 
       final response = await _supabase
           .from('donation_records')

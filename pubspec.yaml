@@ -53,15 +53,15 @@ dependencies:
   flutter_local_notifications: ^19.4.1
   
   # Speech & Audio
-  speech_to_text: ^6.3.0
-  flutter_tts: ^3.8.5
+  speech_to_text: ^7.3.0
+  flutter_tts: ^4.2.3
   
   # Video Conferencing
-  jitsi_meet_flutter_sdk: ^10.2.0
+  jitsi_meet_flutter_sdk: ^11.5.1
   
   # Chat & Messaging
-  stream_chat_flutter: ^7.2.0
-  stream_chat_flutter_core: ^7.2.0
+  stream_chat_flutter: ^9.4.0
+  stream_chat_flutter_core: ^9.4.0
   
   # Internationalization
   flutter_localizations:
@@ -71,7 +71,9 @@ dependencies:
   uuid: ^4.5.1
   url_launcher: ^6.1.12
   package_info_plus: ^8.3.1
-  device_info_plus: ^11.5.0
+  device_info_plus: ^12.1.0
+  file_picker: ^8.1.4
+  share_plus: ^10.1.2
   
   # Location & Permissions
   geolocator: ^14.0.2

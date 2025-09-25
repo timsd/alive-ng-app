@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/app_models.dart';
 import '../../services/supabase_service.dart';
+import '../../services/role_access_service.dart';
+import '../../widgets/role_guard.dart';
 import '../../constants/chapters.dart';
 
 class RoleManagementScreen extends StatefulWidget {
@@ -12,9 +14,26 @@ class RoleManagementScreen extends StatefulWidget {
 }
 
 class _RoleManagementScreenState extends State<RoleManagementScreen> {
+  @override
+  Widget build(BuildContext context) {
+    return RoleProtectedScreen(
+      requiredRole: 'leader',
+      screenName: 'Role Management',
+      child: const _RoleManagementContent(),
+    );
+  }
+}
+
+class _RoleManagementContent extends StatefulWidget {
+  const _RoleManagementContent();
+
+  @override
+  State<_RoleManagementContent> createState() => _RoleManagementContentState();
+}
+
+class _RoleManagementContentState extends State<_RoleManagementContent> {
   final SupabaseService _supabaseService = SupabaseService.instance;
   bool _isLoading = true;
-  bool _hasAccess = false;
   User? _currentUser;
   List<UserProfile> _users = [];
   String _searchQuery = '';
@@ -25,46 +44,61 @@ class _RoleManagementScreenState extends State<RoleManagementScreen> {
   @override
   void initState() {
     super.initState();
-    _checkAccess();
+    _loadData();
   }
 
-  Future<void> _checkAccess() async {
+  Future<void> _loadData() async {
     try {
-      final user = _supabaseService.currentUser;
-      if (user != null) {
-        _currentUser = user;
-        // For now, allow access - role checking should be implemented with UserProfile
-        _hasAccess = true;
-
-        if (_hasAccess) {
-          await _loadUsers();
-        }
-      }
+      _currentUser = _supabaseService.currentUser;
+      await _loadUsers();
     } catch (e) {
-      _hasAccess = false;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading data: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
   Future<void> _loadUsers() async {
     try {
-      // TODO: Implement actual data fetching from Supabase
-      // For now, using placeholder data
+      // Fetch users from Supabase
+      final response = await _supabaseService.client
+          .from('user_profiles')
+          .select()
+          .eq('is_archived', false)
+          .order('created_at', ascending: false);
+
+      final List<UserProfile> users = [];
+      for (final userData in response) {
+        try {
+          users.add(UserProfile.fromJson(userData));
+        } catch (e) {
+          print('Error parsing user data: $e');
+        }
+      }
+      
       setState(() {
-        _users = [
-          // Placeholder users
-        ];
+        _users = users;
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error loading users: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading users: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -109,56 +143,8 @@ class _RoleManagementScreenState extends State<RoleManagementScreen> {
       );
     }
 
-    if (!_hasAccess) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Access Denied'),
-          backgroundColor: Colors.red,
-          foregroundColor: Colors.white,
-        ),
-        body: const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.admin_panel_settings_outlined,
-                size: 80,
-                color: Colors.red,
-              ),
-              SizedBox(height: 16),
-              Text(
-                'Access Denied',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.red,
-                ),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'You do not have permission to manage user roles.',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 8),
-              Text(
-                'This section is restricted to\nAdministrators and Leaders only.',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
     return Scaffold(
+
       appBar: AppBar(
         title: const Text('Role Management'),
         backgroundColor: Colors.indigo,
@@ -663,7 +649,14 @@ class _RoleManagementScreenState extends State<RoleManagementScreen> {
   Future<void> _updateUserRole(
       UserProfile user, String newRole, String action) async {
     try {
-      // TODO: Implement actual role update in Supabase
+      // Update user role in Supabase
+      await _supabaseService.client
+          .from('user_profiles')
+          .update({
+            'role': newRole,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', user.id);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -712,7 +705,15 @@ class _RoleManagementScreenState extends State<RoleManagementScreen> {
 
     if (confirmed == true) {
       try {
-        // TODO: Implement user archiving logic
+        // Archive user in Supabase
+        await _supabaseService.client
+            .from('user_profiles')
+            .update({
+              'is_archived': true,
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('id', user.id);
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${user.fullName} has been archived'),

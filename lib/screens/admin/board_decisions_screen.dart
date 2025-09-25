@@ -125,15 +125,45 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
         ),
       ];
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error loading decisions: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading decisions: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
       setState(() => _isLoading = false);
     }
+  }
+
+  // ignore: use_build_context_synchronously
+  Future<DateTime?> _selectVotingDeadline(BuildContext dialogContext) async {
+    final date = await showDatePicker(
+      context: dialogContext,
+      initialDate: DateTime.now().add(const Duration(days: 7)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    
+    if (date == null) return null;
+    
+    // Use the same context for time picker without async gap
+    final time = await showTimePicker(
+      context: dialogContext, // ignore: use_build_context_synchronously
+      initialTime: TimeOfDay.now(),
+    );
+    
+    if (time == null) return null;
+    
+    return DateTime(
+      date.year,
+      date.month,
+      date.day,
+      time.hour,
+      time.minute,
+    );
   }
 
   List<BoardDecision> get _filteredDecisions {
@@ -764,28 +794,12 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                   ),
                   trailing: const Icon(Icons.calendar_today),
                   onTap: () async {
-                    final date = await showDatePicker(
-                      context: context,
-                      initialDate: DateTime.now().add(const Duration(days: 7)),
-                      firstDate: DateTime.now(),
-                      lastDate: DateTime.now().add(const Duration(days: 365)),
-                    );
-                    if (date != null) {
-                      final time = await showTimePicker(
-                        context: context,
-                        initialTime: TimeOfDay.now(),
-                      );
-                      if (time != null) {
-                        setDialogState(() {
-                          votingDeadline = DateTime(
-                            date.year,
-                            date.month,
-                            date.day,
-                            time.hour,
-                            time.minute,
-                          );
-                        });
-                      }
+                    final dialogContext = context;
+                    final selectedDeadline = await _selectVotingDeadline(dialogContext);
+                    if (selectedDeadline != null) {
+                      setDialogState(() {
+                        votingDeadline = selectedDeadline;
+                      });
                     }
                   },
                 ),

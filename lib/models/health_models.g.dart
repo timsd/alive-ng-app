@@ -321,3 +321,40 @@ Map<String, dynamic> _$UserHealthProfileToJson(UserHealthProfile instance) =>
       'createdAt': instance.createdAt.toIso8601String(),
       'updatedAt': instance.updatedAt.toIso8601String(),
     };
+
+HealthData _$HealthDataFromJson(Map<String, dynamic> json) => HealthData(
+      id: json['id'] as String,
+      userId: json['userId'] as String,
+      date: DateTime.parse(json['date'] as String),
+      waterIntake: (json['waterIntake'] as num?)?.toDouble() ?? 0,
+      exerciseMinutes: (json['exerciseMinutes'] as num?)?.toInt() ?? 0,
+      sunlightMinutes: (json['sunlightMinutes'] as num?)?.toInt() ?? 0,
+      sleepHours: (json['sleepHours'] as num?)?.toDouble() ?? 0,
+      nutritionScore: (json['nutritionScore'] as num?)?.toInt() ?? 0,
+      temperanceScore: (json['temperanceScore'] as num?)?.toInt() ?? 0,
+      airQualityScore: (json['airQualityScore'] as num?)?.toInt() ?? 0,
+      restScore: (json['restScore'] as num?)?.toInt() ?? 0,
+      trustInGodScore: (json['trustInGodScore'] as num?)?.toInt() ?? 0,
+      additionalMetrics: json['additionalMetrics'] as Map<String, dynamic>?,
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      updatedAt: DateTime.parse(json['updatedAt'] as String),
+    );
+
+Map<String, dynamic> _$HealthDataToJson(HealthData instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'userId': instance.userId,
+      'date': instance.date.toIso8601String(),
+      'waterIntake': instance.waterIntake,
+      'exerciseMinutes': instance.exerciseMinutes,
+      'sunlightMinutes': instance.sunlightMinutes,
+      'sleepHours': instance.sleepHours,
+      'nutritionScore': instance.nutritionScore,
+      'temperanceScore': instance.temperanceScore,
+      'airQualityScore': instance.airQualityScore,
+      'restScore': instance.restScore,
+      'trustInGodScore': instance.trustInGodScore,
+      'additionalMetrics': instance.additionalMetrics,
+      'createdAt': instance.createdAt.toIso8601String(),
+      'updatedAt': instance.updatedAt.toIso8601String(),
+    };

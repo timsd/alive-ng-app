@@ -26,6 +26,7 @@ class AppConstants {
   static const String bodTrusteesRoute = '/bod-trustees';
   static const String userArchiveRoute = '/user-archive';
   static const String roleManagementRoute = '/role-management';
+  static const String adminApprovalRoute = '/admin-approval';
   static const String conferenceRoute = '/conference';
   static const String bibleGameRoute = '/bible-game';
   static const String chatRoute = '/chat';
@@ -33,6 +34,14 @@ class AppConstants {
   static const String recipesRoute = '/recipes';
   static const String recipeSubmissionRoute = '/recipe-submission';
   static const String enhancedHealthRoute = '/enhanced-health';
+  static const String kidsMissionRoute = '/kids-mission';
+  static const String discipleshipTrackerRoute = '/discipleship-tracker';
+  static const String podcastsRoute = '/podcasts';
+  static const String interactiveLessonsRoute = '/interactive-lessons';
+  static const String libraryRoute = '/library';
+  static const String booksTractsRoute = '/books-tracts';
+  static const String kidsStoriesRoute = '/kids-stories';
+  static const String prayerWallRoute = '/prayer-wall';
 
   // Bible Versions
   static const List<String> bibleVersions = ['KJV', 'NKJV', 'NIV'];

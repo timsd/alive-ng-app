@@ -30,48 +30,103 @@ class GreetingHeader extends ConsumerWidget {
         ),
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  greeting,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.9),
-                      ),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      greeting,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.9),
+                          ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      currentUser != null ? userName : translate('welcome'),
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onPrimary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  userName,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        color: Colors.white,
+              ),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.wb_sunny,
+                  color: Theme.of(context).colorScheme.onPrimary,
+                  size: 32,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            translate('continue_spiritual_journey'),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.8),
+                ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          if (currentUser == null) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(25),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.group_add,
+                    color: Theme.of(context).colorScheme.onPrimary,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    translate('join_us_spiritual_growth'),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.secondary,
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: Text(
+                      'Join',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSecondary,
                         fontWeight: FontWeight.bold,
                       ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Continue your spiritual journey today',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.8),
-                      ),
-                ),
-              ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.wb_sunny,
-              color: Colors.white,
-              size: 32,
-            ),
-          ),
+          ],
         ],
       ),
     );

@@ -5,7 +5,6 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   app_links
   connectivity_plus
-  dart_vlc
   desktop_drop
   file_selector_windows
   firebase_auth
@@ -13,11 +12,16 @@ list(APPEND FLUTTER_PLUGIN_LIST
   firebase_storage
   flutter_secure_storage_windows
   flutter_tts
+  gal
   geolocator_windows
+  media_kit_video
   permission_handler_windows
+  record_windows
   share_plus
+  speech_to_text_windows
   thumblr_windows
   url_launcher_windows
+  volume_controller
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST

@@ -28,7 +28,6 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
 
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
-  ServiceStatus? _selectedStatus;
   LeadershipPosition? _selectedPosition;
 
   @override
@@ -627,6 +626,27 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
     );
   }
 
+  Widget _buildSimpleDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              '$label:',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          Expanded(
+            child: Text(value),
+          ),
+        ],
+      ),
+    );
+  }
+
   Color _getStatusColor(ServiceStatus status) {
     switch (status) {
       case ServiceStatus.active:
@@ -642,38 +662,432 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
     return '${date.day}/${date.month}/${date.year}';
   }
 
+  Future<void> _createLeadershipRecord(
+    String name,
+    String position,
+    String department,
+    DateTime startDate,
+    String status,
+    String notes,
+  ) async {
+    try {
+      await _leadershipService.createRecord(
+        userId: 'temp_user_id', // This should be the actual user ID
+        userName: name,
+        userEmail: 'temp@email.com', // This should be the actual user email
+        position: LeadershipPosition.bod, // This should be parsed from position string
+        positionTitle: position,
+        startDate: startDate,
+        notes: notes,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Leadership record created successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+      
+      await _loadData();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error creating record: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _completeLeadershipService(
+    LeadershipRecord record,
+    DateTime endDate,
+    String achievementsText,
+    String finalNotes,
+  ) async {
+    try {
+      final achievements = achievementsText
+          .split('\n')
+          .map((line) => line.trim())
+          .where((line) => line.isNotEmpty)
+          .toList();
+
+      final yearsOfService = endDate.difference(record.startDate).inDays / 365;
+
+      await _leadershipService.updateRecord(
+        record.id,
+        {
+          'end_date': endDate.toIso8601String(),
+          'status': 'Completed',
+          'achievements': achievements,
+          'notes': finalNotes,
+          'years_of_service': yearsOfService.round(),
+          'updated_at': DateTime.now().toIso8601String(),
+        },
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Service completed for ${record.userName}'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+      
+      await _loadData();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error completing service: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _archiveLeadershipRecord(LeadershipRecord record) async {
+    try {
+      await _leadershipService.updateRecord(
+        record.id,
+        {
+          'is_archived': true,
+          'updated_at': DateTime.now().toIso8601String(),
+        },
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Record archived for ${record.userName}'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      
+      await _loadData();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error archiving record: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   void _showRecordDetails(LeadershipRecord record) {
-    // TODO: Implement record details dialog
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Viewing details for ${record.userName}'),
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Leadership Record Details'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildSimpleDetailRow('Name', record.userName),
+              _buildSimpleDetailRow('Position', record.position.toString()),
+              _buildSimpleDetailRow('Start Date', _formatDate(record.startDate)),
+              if (record.endDate != null)
+                _buildSimpleDetailRow('End Date', _formatDate(record.endDate!)),
+              _buildSimpleDetailRow('Status', record.status.toString()),
+              _buildSimpleDetailRow('Years of Service', '${record.yearsOfService} years'),
+              if (record.achievements != null && record.achievements!.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                const Text('Achievements:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.only(left: 16, bottom: 4),
+                  child: Text('• ${record.achievements!}'),
+                ),
+              ],
+              if (record.notes != null && record.notes!.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                const Text('Notes:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Text(record.notes!),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
       ),
     );
   }
 
   void _showCreateRecordDialog() {
-    // TODO: Implement create record dialog
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Create record dialog - Coming soon'),
+    final nameController = TextEditingController();
+    final positionController = TextEditingController();
+    final departmentController = TextEditingController();
+    final notesController = TextEditingController();
+    DateTime selectedDate = DateTime.now();
+    String selectedStatus = 'Active';
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Create Leadership Record'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Full Name',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: positionController,
+                  decoration: const InputDecoration(
+                    labelText: 'Position',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: departmentController,
+                  decoration: const InputDecoration(
+                    labelText: 'Department',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  title: const Text('Start Date'),
+                  subtitle: Text(_formatDate(selectedDate)),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: selectedDate,
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime.now(),
+                    );
+                    if (date != null) {
+                      setDialogState(() {
+                        selectedDate = date;
+                      });
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  initialValue: selectedStatus,
+                  decoration: const InputDecoration(
+                    labelText: 'Status',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: ['Active', 'Inactive', 'Completed'].map((status) => 
+                    DropdownMenuItem(value: status, child: Text(status))
+                  ).toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setDialogState(() {
+                        selectedStatus = value;
+                      });
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: notesController,
+                  decoration: const InputDecoration(
+                    labelText: 'Notes',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 3,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (nameController.text.isNotEmpty && 
+                    positionController.text.isNotEmpty) {
+                  await _createLeadershipRecord(
+                    nameController.text,
+                    positionController.text,
+                    departmentController.text,
+                    selectedDate,
+                    selectedStatus,
+                    notesController.text,
+                  );
+                  if (mounted && context.mounted) {
+                    Navigator.pop(context);
+                  }
+                }
+              },
+              child: const Text('Create'),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   void _completeService(LeadershipRecord record) {
-    // TODO: Implement complete service dialog
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Completing service for ${record.userName}'),
+    final achievementsController = TextEditingController();
+    final notesController = TextEditingController(text: record.notes);
+    DateTime endDate = DateTime.now();
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text('Complete Service - ${record.userName}'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Position: ${record.position}', 
+                     style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text('Start Date: ${_formatDate(record.startDate)}'),
+                const SizedBox(height: 16),
+                ListTile(
+                  title: const Text('End Date'),
+                  subtitle: Text(_formatDate(endDate)),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: endDate,
+                      firstDate: record.startDate,
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (date != null) {
+                      setDialogState(() {
+                        endDate = date;
+                      });
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: achievementsController,
+                  decoration: const InputDecoration(
+                    labelText: 'Achievements (one per line)',
+                    border: OutlineInputBorder(),
+                    hintText: 'List key achievements during service...',
+                  ),
+                  maxLines: 4,
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: notesController,
+                  decoration: const InputDecoration(
+                    labelText: 'Final Notes',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 3,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                await _completeLeadershipService(
+                  record,
+                  endDate,
+                  achievementsController.text,
+                  notesController.text,
+                );
+                if (mounted && context.mounted) {
+                  Navigator.pop(context);
+                }
+              },
+              child: const Text('Complete Service'),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   void _archiveRecord(LeadershipRecord record) {
-    // TODO: Implement archive confirmation dialog
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Archiving record for ${record.userName}'),
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Archive Leadership Record'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Are you sure you want to archive the leadership record for:'),
+            const SizedBox(height: 8),
+            Text(record.userName, style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text('Position: ${record.position}'),
+            Text('Position Title: ${record.positionTitle}'),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                border: Border.all(color: Colors.orange.shade200),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.warning, color: Colors.orange),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Archived records can be restored later if needed.',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              await _archiveLeadershipRecord(record);
+              if (mounted && context.mounted) {
+                Navigator.pop(context);
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Archive'),
+          ),
+        ],
       ),
     );
   }

@@ -5,6 +5,8 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'dart:math';
 import '../data/bible_verses.dart' as bible_data;
 import '../widgets/bible_reference_widget.dart';
+import '../widgets/star_animation_widget.dart';
+import '../providers/language_provider.dart';
 
 // Game State Provider
 final bibleGameProvider =
@@ -23,6 +25,10 @@ class BibleGameState {
   final String userInput;
   final List<int> blankedWords;
   final bool showHint;
+  final bool showStarAnimation;
+  final bool hasCheckedAnswer;
+  final int? selectedChoiceIndex;
+  final bool showAnswer;
 
   BibleGameState({
     this.currentVerse,
@@ -35,6 +41,10 @@ class BibleGameState {
     this.userInput = '',
     this.blankedWords = const [],
     this.showHint = false,
+    this.showStarAnimation = false,
+    this.hasCheckedAnswer = false,
+    this.selectedChoiceIndex,
+    this.showAnswer = false,
   });
 
   BibleGameState copyWith({
@@ -48,6 +58,10 @@ class BibleGameState {
     String? userInput,
     List<int>? blankedWords,
     bool? showHint,
+    bool? showStarAnimation,
+    bool? hasCheckedAnswer,
+    int? selectedChoiceIndex,
+    bool? showAnswer,
   }) {
     return BibleGameState(
       currentVerse: currentVerse ?? this.currentVerse,
@@ -60,6 +74,10 @@ class BibleGameState {
       userInput: userInput ?? this.userInput,
       blankedWords: blankedWords ?? this.blankedWords,
       showHint: showHint ?? this.showHint,
+      showStarAnimation: showStarAnimation ?? this.showStarAnimation,
+      hasCheckedAnswer: hasCheckedAnswer ?? this.hasCheckedAnswer,
+      selectedChoiceIndex: selectedChoiceIndex ?? this.selectedChoiceIndex,
+      showAnswer: showAnswer ?? this.showAnswer,
     );
   }
 }
@@ -72,12 +90,12 @@ enum GameMode {
 
 class BibleGameNotifier extends StateNotifier<BibleGameState> {
   BibleGameNotifier() : super(BibleGameState()) {
-    _loadNewVerse();
+    loadNewVerse();
   }
 
   final Random _random = Random();
 
-  void _loadNewVerse() {
+  void loadNewVerse() {
     final verse =
         bible_data.dailyVerses[_random.nextInt(bible_data.dailyVerses.length)];
     final blankedWords =
@@ -88,6 +106,9 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
       blankedWords: blankedWords,
       userInput: '',
       showHint: false,
+      hasCheckedAnswer: false,
+      selectedChoiceIndex: null,
+      showAnswer: false,
     );
   }
 
@@ -128,6 +149,9 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
     final correctText = state.currentVerse!.text[state.selectedVersion] ?? '';
     final isCorrect = _isAnswerCorrect(state.userInput, correctText);
 
+    // Mark that answer has been checked
+    state = state.copyWith(hasCheckedAnswer: true);
+
     if (isCorrect) {
       final newScore = state.score + (state.showHint ? 5 : 10);
       final newCompleted = [
@@ -135,13 +159,23 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
         state.currentVerse!.reference
       ];
 
+      // Show star animation for correct answer
       state = state.copyWith(
         score: newScore,
         completedVerses: newCompleted,
+        showStarAnimation: true,
       );
 
-      _loadNewVerse();
+      // Hide animation after 3 seconds and load new verse
+      Future.delayed(const Duration(seconds: 3), () {
+        state = state.copyWith(showStarAnimation: false);
+        loadNewVerse();
+      });
     }
+  }
+
+  void hideStarAnimation() {
+    state = state.copyWith(showStarAnimation: false);
   }
 
   bool _isAnswerCorrect(String userAnswer, String correctAnswer) {
@@ -160,12 +194,37 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
   }
 
   void nextVerse() {
-    _loadNewVerse();
+    loadNewVerse();
   }
 
   void changeVersion(String version) {
     state = state.copyWith(selectedVersion: version);
-    _loadNewVerse();
+    loadNewVerse();
+  }
+
+  void selectChoice(int index) {
+    state = state.copyWith(selectedChoiceIndex: index);
+  }
+
+  void checkMultipleChoiceAnswer() {
+    if (state.selectedChoiceIndex == null) return;
+    
+    final isCorrect = state.selectedChoiceIndex == 0; // First option is always correct
+    
+    if (isCorrect) {
+      state = state.copyWith(
+        score: state.score + 10,
+        showStarAnimation: true,
+        showAnswer: true,
+      );
+      
+      // Show star animation and move to next verse after delay
+      Future.delayed(const Duration(seconds: 2), () {
+        loadNewVerse();
+      });
+    } else {
+      state = state.copyWith(showAnswer: true);
+    }
   }
 }
 
@@ -224,6 +283,11 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
     await _tts.speak(text);
   }
 
+  void _playSuccessSound() async {
+    // Play a celebratory sound using TTS
+    await _tts.speak('Word Perfect! Well Done!');
+  }
+
   @override
   void dispose() {
     _textController.dispose();
@@ -234,48 +298,61 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
   Widget build(BuildContext context) {
     final gameState = ref.watch(bibleGameProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Bible Memorization Game'),
-        backgroundColor: Theme.of(context).primaryColor,
-        foregroundColor: Colors.white,
-        actions: [
-          PopupMenuButton<String>(
-            onSelected: (version) {
-              ref.read(bibleGameProvider.notifier).changeVersion(version);
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(value: 'NIV', child: Text('NIV')),
-              const PopupMenuItem(value: 'KJV', child: Text('KJV')),
-              const PopupMenuItem(value: 'NKJV', child: Text('NKJV')),
-            ],
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Chip(
-                label: Text(gameState.selectedVersion),
-                backgroundColor: Colors.white.withValues(alpha: 0.2),
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: gameState.currentVerse == null
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildScoreCard(gameState),
-                  const SizedBox(height: 20),
-                  _buildGameModeSelector(gameState),
-                  const SizedBox(height: 20),
-                  _buildVerseCard(gameState),
-                  const SizedBox(height: 20),
-                  _buildGameContent(gameState),
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: AppBar(
+            title: Text(ref.watch(translationProvider)('bible_memorization_game')),
+            backgroundColor: Theme.of(context).primaryColor,
+            foregroundColor: Colors.white,
+            actions: [
+              PopupMenuButton<String>(
+                onSelected: (version) {
+                  ref.read(bibleGameProvider.notifier).changeVersion(version);
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(value: 'NIV', child: Text('NIV')),
+                  const PopupMenuItem(value: 'KJV', child: Text('KJV')),
+                  const PopupMenuItem(value: 'NKJV', child: Text('NKJV')),
                 ],
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Chip(
+                    label: Text(gameState.selectedVersion),
+                    backgroundColor: Colors.white.withValues(alpha: 0.2),
+                  ),
+                ),
               ),
-            ),
+            ],
+          ),
+          body: gameState.currentVerse == null
+              ? const Center(child: CircularProgressIndicator())
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildScoreCard(gameState),
+                      const SizedBox(height: 20),
+                      _buildGameModeSelector(gameState),
+                      const SizedBox(height: 20),
+                      _buildVerseCard(gameState),
+                      const SizedBox(height: 20),
+                      _buildGameContent(gameState),
+                    ],
+                  ),
+                ),
+        ),
+        // Star animation overlay
+        CelebrationOverlay(
+          show: gameState.showStarAnimation,
+          message: 'Word Perfect!\nWell Done!',
+          onComplete: () {
+            ref.read(bibleGameProvider.notifier).hideStarAnimation();
+            _playSuccessSound();
+          },
+        ),
+      ],
     );
   }
 
@@ -407,6 +484,24 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
             const SizedBox(height: 12),
             if (gameState.gameMode == GameMode.fillInTheGap)
               _buildFillInTheGapText(gameState)
+            else if (gameState.gameMode == GameMode.voiceRecitation && !gameState.hasCheckedAnswer)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey[300]!),
+                ),
+                child: const Text(
+                  'Recite the verse from memory. Click "Check" to reveal the text.',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontStyle: FontStyle.italic,
+                    color: Colors.grey,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              )
             else
               Text(
                 gameState.currentVerse!.text[gameState.selectedVersion] ?? '',
@@ -502,7 +597,7 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
                     onPressed: () {
                       ref.read(bibleGameProvider.notifier).checkAnswer();
                     },
-                    child: const Text('Check Answer'),
+                    child: Text(ref.watch(translationProvider)('check_answer')),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -513,7 +608,7 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.orange,
                   ),
-                  child: const Text('Hint'),
+                  child: Text(ref.watch(translationProvider)('hint')),
                 ),
                 const SizedBox(width: 8),
                 ElevatedButton(
@@ -524,7 +619,7 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.grey,
                   ),
-                  child: const Text('Skip'),
+                  child: Text(ref.watch(translationProvider)('skip')),
                 ),
               ],
             ),
@@ -610,7 +705,7 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
                   onPressed: gameState.userInput.isNotEmpty
                       ? () => ref.read(bibleGameProvider.notifier).checkAnswer()
                       : null,
-                  child: const Text('Check'),
+                  child: Text(ref.watch(translationProvider)('check')),
                 ),
               ],
             ),
@@ -621,12 +716,123 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
   }
 
   Widget _buildMultipleChoiceInput(BibleGameState gameState) {
-    // TODO: Implement multiple choice mode
-    return const Card(
+    final currentVerse = gameState.currentVerse;
+    if (currentVerse == null) return const SizedBox.shrink();
+    
+    // Generate multiple choice options
+    final correctAnswer = currentVerse.text[gameState.selectedVersion] ?? currentVerse.text.values.first;
+    final options = _generateMultipleChoiceOptions(correctAnswer);
+    
+    return Card(
       child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Text('Multiple choice mode coming soon!'),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Select the correct verse:',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ...options.asMap().entries.map((entry) {
+              final index = entry.key;
+              final option = entry.value;
+              final isSelected = gameState.selectedChoiceIndex == index;
+              final isCorrect = option == correctAnswer;
+              final showResult = gameState.showAnswer;
+              
+              Color? backgroundColor;
+              Color? textColor;
+              
+              if (showResult) {
+                if (isCorrect) {
+                  backgroundColor = Colors.green.withValues(alpha: 0.2);
+                  textColor = Colors.green[700];
+                } else if (isSelected && !isCorrect) {
+                  backgroundColor = Colors.red.withValues(alpha: 0.2);
+                  textColor = Colors.red[700];
+                }
+              } else if (isSelected) {
+                backgroundColor = Theme.of(context).colorScheme.primary.withValues(alpha: 0.2);
+                textColor = Theme.of(context).colorScheme.primary;
+              }
+              
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: InkWell(
+                  onTap: showResult ? null : () {
+                    ref.read(bibleGameProvider.notifier).selectChoice(index);
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: backgroundColor,
+                      border: Border.all(
+                        color: isSelected 
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+                        width: isSelected ? 2 : 1,
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${String.fromCharCode(65 + index)}. $option',
+                      style: TextStyle(
+                        color: textColor,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+            const SizedBox(height: 16),
+            if (!gameState.showAnswer)
+               ElevatedButton(
+                 onPressed: gameState.selectedChoiceIndex != null
+                     ? () => ref.read(bibleGameProvider.notifier).checkMultipleChoiceAnswer()
+                     : null,
+                 child: const Text('Check'),
+               )
+             else
+               ElevatedButton(
+                  onPressed: () => ref.read(bibleGameProvider.notifier).loadNewVerse(),
+                  child: const Text('Next'),
+                ),
+          ],
+        ),
       ),
     );
+  }
+  
+  List<String> _generateMultipleChoiceOptions(String correctAnswer) {
+    // This is a simplified implementation
+    // In a real app, you'd want more sophisticated wrong answers
+    final options = <String>[correctAnswer];
+    
+    // Add some generic wrong answers
+    final wrongAnswers = [
+      'For God so loved the world that he gave his one and only Son.',
+      'The Lord is my shepherd, I lack nothing.',
+      'Trust in the Lord with all your heart and lean not on your own understanding.',
+      'I can do all this through him who gives me strength.',
+      'Be strong and courageous. Do not be afraid; do not be discouraged.',
+    ];
+    
+    // Remove the correct answer if it's in wrong answers
+    wrongAnswers.removeWhere((answer) => answer == correctAnswer);
+    
+    // Add 3 wrong answers
+    for (int i = 0; i < 3 && i < wrongAnswers.length; i++) {
+      options.add(wrongAnswers[i]);
+    }
+    
+    // Shuffle the options
+    options.shuffle();
+    
+    return options;
   }
 }

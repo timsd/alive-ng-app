@@ -4,7 +4,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'providers/theme_provider.dart';
-import 'providers/language_provider.dart';
 import 'utils/app_router.dart';
 import 'utils/app_theme.dart';
 import 'constants/app_constants.dart';
@@ -35,7 +34,6 @@ class AliveApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
-    final locale = ref.watch(localeProvider);
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
@@ -47,19 +45,22 @@ class AliveApp extends ConsumerWidget {
       darkTheme: AppTheme.darkTheme,
       themeMode: themeMode,
 
-      // Localization
-      locale: locale,
+      // Localization - Always use English for MaterialLocalizations
+      locale: const Locale('en', 'US'),
       supportedLocales: const [
-        Locale('en', 'US'), // English
-        Locale('yo', 'NG'), // Yoruba
-        Locale('ig', 'NG'), // Igbo
-        Locale('ha', 'NG'), // Hausa
+        Locale('en', 'US'), // English - MaterialLocalizations support
+        // Note: Other languages handled by custom translation system
       ],
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
+      localeResolutionCallback: (locale, supportedLocales) {
+        // Always return English for MaterialLocalizations compatibility
+        // Our custom translation system handles the actual language switching
+        return const Locale('en', 'US');
+      },
 
       // Routing
       routerConfig: router,

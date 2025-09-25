@@ -21,6 +21,11 @@ public final class GeneratedPluginRegistrant {
       Log.e(TAG, "Error registering plugin app_links, com.llfbandit.app_links.AppLinksPlugin", e);
     }
     try {
+      flutterEngine.getPlugins().add(new com.ryanheise.audio_session.AudioSessionPlugin());
+    } catch (Exception e) {
+      Log.e(TAG, "Error registering plugin audio_session, com.ryanheise.audio_session.AudioSessionPlugin", e);
+    }
+    try {
       flutterEngine.getPlugins().add(new dev.fluttercommunity.plus.connectivity.ConnectivityPlugin());
     } catch (Exception e) {
       Log.e(TAG, "Error registering plugin connectivity_plus, dev.fluttercommunity.plus.connectivity.ConnectivityPlugin", e);
@@ -96,6 +101,11 @@ public final class GeneratedPluginRegistrant {
       Log.e(TAG, "Error registering plugin flutter_tts, com.tundralabs.fluttertts.FlutterTtsPlugin", e);
     }
     try {
+      flutterEngine.getPlugins().add(new studio.midoridesign.gal.GalPlugin());
+    } catch (Exception e) {
+      Log.e(TAG, "Error registering plugin gal, studio.midoridesign.gal.GalPlugin", e);
+    }
+    try {
       flutterEngine.getPlugins().add(new com.baseflow.geocoding.GeocodingPlugin());
     } catch (Exception e) {
       Log.e(TAG, "Error registering plugin geocoding_android, com.baseflow.geocoding.GeocodingPlugin", e);
@@ -106,9 +116,9 @@ public final class GeneratedPluginRegistrant {
       Log.e(TAG, "Error registering plugin geolocator_android, com.baseflow.geolocator.GeolocatorPlugin", e);
     }
     try {
-      flutterEngine.getPlugins().add(new com.example.imagegallerysaver.ImageGallerySaverPlugin());
+      flutterEngine.getPlugins().add(new com.rocksti.get_thumbnail_video.VideoThumbnailPlugin());
     } catch (Exception e) {
-      Log.e(TAG, "Error registering plugin image_gallery_saver, com.example.imagegallerysaver.ImageGallerySaverPlugin", e);
+      Log.e(TAG, "Error registering plugin get_thumbnail_video, com.rocksti.get_thumbnail_video.VideoThumbnailPlugin", e);
     }
     try {
       flutterEngine.getPlugins().add(new io.flutter.plugins.imagepicker.ImagePickerPlugin());
@@ -119,6 +129,16 @@ public final class GeneratedPluginRegistrant {
       flutterEngine.getPlugins().add(new org.jitsi.jitsi_meet_flutter_sdk.JitsiMeetPlugin());
     } catch (Exception e) {
       Log.e(TAG, "Error registering plugin jitsi_meet_flutter_sdk, org.jitsi.jitsi_meet_flutter_sdk.JitsiMeetPlugin", e);
+    }
+    try {
+      flutterEngine.getPlugins().add(new com.ryanheise.just_audio.JustAudioPlugin());
+    } catch (Exception e) {
+      Log.e(TAG, "Error registering plugin just_audio, com.ryanheise.just_audio.JustAudioPlugin", e);
+    }
+    try {
+      flutterEngine.getPlugins().add(new com.alexmercerind.media_kit_video.MediaKitVideoPlugin());
+    } catch (Exception e) {
+      Log.e(TAG, "Error registering plugin media_kit_video, com.alexmercerind.media_kit_video.MediaKitVideoPlugin", e);
     }
     try {
       flutterEngine.getPlugins().add(new dev.fluttercommunity.plus.packageinfo.PackageInfoPlugin());
@@ -139,6 +159,16 @@ public final class GeneratedPluginRegistrant {
       flutterEngine.getPlugins().add(new com.fluttercandies.photo_manager.PhotoManagerPlugin());
     } catch (Exception e) {
       Log.e(TAG, "Error registering plugin photo_manager, com.fluttercandies.photo_manager.PhotoManagerPlugin", e);
+    }
+    try {
+      flutterEngine.getPlugins().add(new com.llfbandit.record.RecordPlugin());
+    } catch (Exception e) {
+      Log.e(TAG, "Error registering plugin record_android, com.llfbandit.record.RecordPlugin", e);
+    }
+    try {
+      flutterEngine.getPlugins().add(new com.aaassseee.screen_brightness_android.ScreenBrightnessAndroidPlugin());
+    } catch (Exception e) {
+      Log.e(TAG, "Error registering plugin screen_brightness_android, com.aaassseee.screen_brightness_android.ScreenBrightnessAndroidPlugin", e);
     }
     try {
       flutterEngine.getPlugins().add(new dev.fluttercommunity.plus.share.SharePlusPlugin());
@@ -171,9 +201,9 @@ public final class GeneratedPluginRegistrant {
       Log.e(TAG, "Error registering plugin video_player_android, io.flutter.plugins.videoplayer.VideoPlayerPlugin", e);
     }
     try {
-      flutterEngine.getPlugins().add(new xyz.justsoft.video_thumbnail.VideoThumbnailPlugin());
+      flutterEngine.getPlugins().add(new com.kurenai7968.volume_controller.VolumeControllerPlugin());
     } catch (Exception e) {
-      Log.e(TAG, "Error registering plugin video_thumbnail, xyz.justsoft.video_thumbnail.VideoThumbnailPlugin", e);
+      Log.e(TAG, "Error registering plugin volume_controller, com.kurenai7968.volume_controller.VolumeControllerPlugin", e);
     }
     try {
       flutterEngine.getPlugins().add(new dev.fluttercommunity.plus.wakelock.WakelockPlusPlugin());

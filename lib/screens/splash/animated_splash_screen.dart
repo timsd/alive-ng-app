@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:async';
 
 class AnimatedSplashScreen extends StatefulWidget {
@@ -141,50 +142,13 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
                       ),
                       child: Stack(
                         children: [
-                          // Background green boxes
-                          Positioned.fill(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.green
-                                    .withValues(alpha: _glowAnimation.value),
-                                borderRadius: BorderRadius.circular(25),
-                              ),
-                            ),
-                          ),
-
-                          // Small green boxes pattern
-                          Positioned.fill(
-                            child: CustomPaint(
-                              painter: GreenBoxesPainter(
-                                glowIntensity: _glowAnimation.value,
-                              ),
-                            ),
-                          ),
-
-                          // White cross in the center
-                          Center(
-                            child: Container(
-                              width: 80,
-                              height: 80,
-                              decoration: BoxDecoration(
-                                color: Colors.white
-                                    .withValues(alpha: _glowAnimation.value),
-                                borderRadius: BorderRadius.circular(8),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.white.withValues(
-                                        alpha: _glowAnimation.value * 0.8),
-                                    blurRadius: 15 * _glowAnimation.value,
-                                    spreadRadius: 3 * _glowAnimation.value,
-                                  ),
-                                ],
-                              ),
-                              child: Icon(
-                                Icons.add,
-                                size: 50,
-                                color: Colors.green
-                                    .withValues(alpha: _glowAnimation.value),
-                              ),
+                          SvgPicture.asset(
+                            'assets/images/alive_logo.svg',
+                            width: 150,
+                            height: 150,
+                            colorFilter: ColorFilter.mode(
+                              Colors.green.withValues(alpha: _glowAnimation.value),
+                              BlendMode.modulate,
                             ),
                           ),
                         ],
@@ -247,46 +211,5 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
         },
       ),
     );
-  }
-}
-
-class GreenBoxesPainter extends CustomPainter {
-  final double glowIntensity;
-
-  GreenBoxesPainter({required this.glowIntensity});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.green.shade700.withValues(alpha: glowIntensity * 0.8)
-      ..style = PaintingStyle.fill;
-
-    final boxSize = 15.0;
-    final spacing = 20.0;
-
-    // Draw small green boxes pattern
-    for (double x = 10; x < size.width - 10; x += spacing) {
-      for (double y = 10; y < size.height - 10; y += spacing) {
-        // Skip center area for the cross
-        if (x > size.width * 0.3 &&
-            x < size.width * 0.7 &&
-            y > size.height * 0.3 &&
-            y < size.height * 0.7) {
-          continue;
-        }
-
-        final rect = Rect.fromLTWH(x, y, boxSize, boxSize);
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(rect, const Radius.circular(3)),
-          paint,
-        );
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return oldDelegate is GreenBoxesPainter &&
-        oldDelegate.glowIntensity != glowIntensity;
   }
 }

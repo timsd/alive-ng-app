@@ -4,20 +4,27 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/language_provider.dart';
 import '../models/app_models.dart';
 import '../widgets/daily_verse_card.dart';
+import '../services/supabase_service.dart';
 
 // Provider for daily verse
-final dailyVerseProvider = FutureProvider<BibleVerse?>((ref) async {
-  // TODO: Implement actual API call to get daily verse
-  await Future.delayed(const Duration(seconds: 1));
-  return BibleVerse(
-    reference: 'Jeremiah 29:11',
-    kjv:
-        'For I know the thoughts that I think toward you, saith the Lord, thoughts of peace, and not of evil, to give you an expected end.',
-    nkjv:
-        'For I know the thoughts that I think toward you, says the Lord, thoughts of peace and not of evil, to give you a future and a hope.',
-    niv:
-        'For I know the plans I have for you, declares the Lord, plans to prosper you and not to harm you, to give you hope and a future.',
-  );
+final dailyVerseProvider = FutureProvider<DailyVerse?>((ref) async {
+  try {
+    final supabaseService = SupabaseService.instance;
+    final dailyVerse = await supabaseService.getDailyVerse();
+    return dailyVerse;
+  } catch (e) {
+    debugPrint('Error fetching daily verse: $e');
+    // Return fallback verse if API fails
+    return DailyVerse(
+       id: 'fallback',
+       verse: 'For I know the thoughts that I think toward you, saith the Lord, thoughts of peace, and not of evil, to give you an expected end.',
+       reference: 'Jeremiah 29:11',
+       translation: 'KJV',
+       date: DateTime.now(),
+       reflection: 'God has good plans for your life. Trust in His timing and His ways.',
+       createdAt: DateTime.now(),
+     );
+  }
 });
 
 // Provider for daily tasks

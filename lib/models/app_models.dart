@@ -13,6 +13,28 @@ class UserProfile {
   final bool isArchived;
   final bool isNewConvert;
   final DateTime? convertDate;
+  
+  // Admin approval fields
+  final bool isApproved;
+  final String? approvedBy;
+  final DateTime? approvedAt;
+  final String approvalStatus; // pending, approved, rejected
+  final String? rejectionReason;
+  
+  // Verification fields
+  final String? localChapter;
+  final String? localChurch;
+  final String? conference;
+  final bool isChapterVerified;
+  final bool isChurchVerified;
+  final bool isConferenceVerified;
+  
+  // Commitment tracking
+  final String? commitmentType; // financial, active_availability, both
+  final double? financialCommitment;
+  final String? availabilityCommitment;
+  final Map<String, dynamic>? commitmentDetails;
+  
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -30,6 +52,28 @@ class UserProfile {
     this.isArchived = false,
     this.isNewConvert = false,
     this.convertDate,
+    
+    // Admin approval fields
+    this.isApproved = false,
+    this.approvedBy,
+    this.approvedAt,
+    this.approvalStatus = 'pending',
+    this.rejectionReason,
+    
+    // Verification fields
+    this.localChapter,
+    this.localChurch,
+    this.conference,
+    this.isChapterVerified = false,
+    this.isChurchVerified = false,
+    this.isConferenceVerified = false,
+    
+    // Commitment tracking
+    this.commitmentType,
+    this.financialCommitment,
+    this.availabilityCommitment,
+    this.commitmentDetails,
+    
     required this.createdAt,
     required this.updatedAt,
   });
@@ -53,6 +97,32 @@ class UserProfile {
       convertDate: json['convert_date'] != null
           ? DateTime.parse(json['convert_date'] as String)
           : null,
+      
+      // Admin approval fields
+      isApproved: json['is_approved'] as bool? ?? false,
+      approvedBy: json['approved_by'] as String?,
+      approvedAt: json['approved_at'] != null
+          ? DateTime.parse(json['approved_at'] as String)
+          : null,
+      approvalStatus: json['approval_status'] as String? ?? 'pending',
+      rejectionReason: json['rejection_reason'] as String?,
+      
+      // Verification fields
+      localChapter: json['local_chapter'] as String?,
+      localChurch: json['local_church'] as String?,
+      conference: json['conference'] as String?,
+      isChapterVerified: json['is_chapter_verified'] as bool? ?? false,
+      isChurchVerified: json['is_church_verified'] as bool? ?? false,
+      isConferenceVerified: json['is_conference_verified'] as bool? ?? false,
+      
+      // Commitment tracking
+      commitmentType: json['commitment_type'] as String?,
+      financialCommitment: json['financial_commitment'] != null
+          ? (json['financial_commitment'] as num).toDouble()
+          : null,
+      availabilityCommitment: json['availability_commitment'] as String?,
+      commitmentDetails: json['commitment_details'] as Map<String, dynamic>?,
+      
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );
@@ -73,8 +143,103 @@ class UserProfile {
       'is_archived': isArchived,
       'is_new_convert': isNewConvert,
       'convert_date': convertDate?.toIso8601String(),
+      
+      // Admin approval fields
+      'is_approved': isApproved,
+      'approved_by': approvedBy,
+      'approved_at': approvedAt?.toIso8601String(),
+      'approval_status': approvalStatus,
+      'rejection_reason': rejectionReason,
+      
+      // Verification fields
+      'local_chapter': localChapter,
+      'local_church': localChurch,
+      'conference': conference,
+      'is_chapter_verified': isChapterVerified,
+      'is_church_verified': isChurchVerified,
+      'is_conference_verified': isConferenceVerified,
+      
+      // Commitment tracking
+      'commitment_type': commitmentType,
+      'financial_commitment': financialCommitment,
+      'availability_commitment': availabilityCommitment,
+      'commitment_details': commitmentDetails,
+      
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
+    };
+  }
+}
+
+// Conference Meeting Model
+class ConferenceMeeting {
+  final String id;
+  final String title;
+  final String description;
+  final DateTime scheduledTime;
+  final int duration; // in minutes
+  final String hostId;
+  final String hostName;
+  final String meetingType;
+  final List<String> participants;
+  final int maxParticipants;
+  final bool isRecurring;
+  final String meetingLink;
+  final String status;
+  final String roomName;
+  
+  ConferenceMeeting({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.scheduledTime,
+    required this.duration,
+    required this.hostId,
+    required this.hostName,
+    required this.meetingType,
+    required this.participants,
+    required this.maxParticipants,
+    required this.isRecurring,
+    required this.meetingLink,
+    required this.status,
+    required this.roomName,
+  });
+
+  factory ConferenceMeeting.fromJson(Map<String, dynamic> json) {
+    return ConferenceMeeting(
+      id: json['id'] as String,
+      title: json['title'] as String,
+      description: json['description'] as String,
+      scheduledTime: DateTime.parse(json['scheduled_time'] as String),
+      duration: json['duration'] as int,
+      hostId: json['host_id'] as String,
+      hostName: json['host_name'] as String,
+      meetingType: json['meeting_type'] as String,
+      participants: List<String>.from(json['participants'] as List? ?? []),
+      maxParticipants: json['max_participants'] as int,
+      isRecurring: json['is_recurring'] as bool? ?? false,
+      meetingLink: json['meeting_link'] as String,
+      status: json['status'] as String,
+      roomName: json['room_name'] as String,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'description': description,
+      'scheduled_time': scheduledTime.toIso8601String(),
+      'duration': duration,
+      'host_id': hostId,
+      'host_name': hostName,
+      'meeting_type': meetingType,
+      'participants': participants,
+      'max_participants': maxParticipants,
+      'is_recurring': isRecurring,
+      'meeting_link': meetingLink,
+      'status': status,
+      'room_name': roomName,
     };
   }
 }
