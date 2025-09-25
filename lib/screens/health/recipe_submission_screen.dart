@@ -547,8 +547,7 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
       if (!mounted) return;
       
       final errorTranslation = translate('error_submitting_recipe');
-      final messenger = ScaffoldMessenger.of(context);
-      messenger.showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('$errorTranslation: $e'),
           backgroundColor: Colors.red,
@@ -623,8 +622,7 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
       if (!mounted) return;
       
       final errorTranslation = translate('error_submitting_remedy');
-      final messenger = ScaffoldMessenger.of(context);
-      messenger.showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('$errorTranslation: $e'),
           backgroundColor: Colors.red,
