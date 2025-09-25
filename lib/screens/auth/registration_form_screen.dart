@@ -441,28 +441,24 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 8),
-          Column(
+          RadioGroup<String>(
+            value: _commitmentType,
+            onChanged: (value) => setState(() => _commitmentType = value!),
             children: [
               RadioListTile<String>(
                 title: const Text('Financial Commitment'),
                 subtitle: const Text('Contribute financially to organizational growth'),
                 value: 'financial',
-                groupValue: _commitmentType,
-                onChanged: (value) => setState(() => _commitmentType = value!),
               ),
               RadioListTile<String>(
                 title: const Text('Active Availability'),
                 subtitle: const Text('Contribute time and skills to organizational activities'),
                 value: 'active_availability',
-                groupValue: _commitmentType,
-                onChanged: (value) => setState(() => _commitmentType = value!),
               ),
               RadioListTile<String>(
                 title: const Text('Both Financial and Active'),
                 subtitle: const Text('Contribute both financially and through active participation'),
                 value: 'both',
-                groupValue: _commitmentType,
-                onChanged: (value) => setState(() => _commitmentType = value!),
               ),
             ],
           ),

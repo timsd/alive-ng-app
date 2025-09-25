@@ -340,7 +340,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
           Expanded(
             child: LinearProgressIndicator(
               value: progress.clamp(0.0, 1.0),
-              backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
+              backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
               valueColor: AlwaysStoppedAnimation<Color>(
                 _getScoreColor(progress * 10),
               ),
