@@ -359,6 +359,10 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
                 return;
               }
               
+              // Capture context-dependent objects before async operation
+              final navigator = Navigator.of(context);
+              final messenger = ScaffoldMessenger.of(context);
+              
               try {
                 await Supabase.instance.client.from('prayer_requests').insert({
                   'content': _prayerController.text.trim(),
@@ -370,13 +374,13 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
                 });
                 
                 if (mounted) {
-                  Navigator.of(context).pop();
+                  navigator.pop();
                   _prayerController.clear();
                   setState(() {
                     _isAnonymous = true;
                   });
                   
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  messenger.showSnackBar(
                     const SnackBar(
                       content: Text('Prayer request posted successfully!'),
                       backgroundColor: Colors.green,
@@ -385,7 +389,7 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
                 }
               } catch (e) {
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  messenger.showSnackBar(
                     SnackBar(
                       content: Text('Failed to post prayer request: $e'),
                       backgroundColor: Colors.red,
