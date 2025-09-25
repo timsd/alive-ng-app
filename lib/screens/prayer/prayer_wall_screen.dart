@@ -348,12 +348,14 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
             onPressed: () async {
               // Save prayer request to Supabase
               if (_prayerController.text.trim().isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Please enter a prayer request'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please enter a prayer request'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
                 return;
               }
               
@@ -369,13 +371,11 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
                 
                 if (mounted) {
                   Navigator.of(context).pop();
-                }
-                _prayerController.clear();
-                setState(() {
-                  _isAnonymous = true;
-                });
-                
-                if (mounted) {
+                  _prayerController.clear();
+                  setState(() {
+                    _isAnonymous = true;
+                  });
+                  
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Prayer request posted successfully!'),
