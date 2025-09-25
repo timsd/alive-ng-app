@@ -442,25 +442,27 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
           ),
           const SizedBox(height: 8),
           RadioGroup<String>(
-            value: _commitmentType,
+            groupValue: _commitmentType,
             onChanged: (value) => setState(() => _commitmentType = value!),
-            children: [
-              RadioListTile<String>(
-                title: const Text('Financial Commitment'),
-                subtitle: const Text('Contribute financially to organizational growth'),
-                value: 'financial',
-              ),
-              RadioListTile<String>(
-                title: const Text('Active Availability'),
-                subtitle: const Text('Contribute time and skills to organizational activities'),
-                value: 'active_availability',
-              ),
-              RadioListTile<String>(
-                title: const Text('Both Financial and Active'),
-                subtitle: const Text('Contribute both financially and through active participation'),
-                value: 'both',
-              ),
-            ],
+            child: Column(
+              children: [
+                RadioListTile<String>(
+                  title: const Text('Financial Commitment'),
+                  subtitle: const Text('Contribute financially to organizational growth'),
+                  value: 'financial',
+                ),
+                RadioListTile<String>(
+                  title: const Text('Active Availability'),
+                  subtitle: const Text('Contribute time and skills to organizational activities'),
+                  value: 'active_availability',
+                ),
+                RadioListTile<String>(
+                  title: const Text('Both Financial and Active'),
+                  subtitle: const Text('Contribute both financially and through active participation'),
+                  value: 'both',
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
           if (_commitmentType == 'financial' || _commitmentType == 'both') ...[
