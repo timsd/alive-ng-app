@@ -496,6 +496,11 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
       _isSubmitting = true;
     });
 
+    // Capture all translations and context-dependent objects before async operations
+    final successMessage = translate('recipe_submitted_successfully');
+    final errorMessage = translate('error_submitting_recipe');
+    final messenger = ScaffoldMessenger.of(context);
+
     try {
       final formData = _formKey.currentState!.value;
       final authService = ref.read(authServiceProvider);
@@ -523,10 +528,6 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
         'created_at': DateTime.now().toIso8601String(),
       };
 
-      // Capture translated strings before async operation
-      final successMessage = translate('recipe_submitted_successfully');
-      final messenger = ScaffoldMessenger.of(context);
-      
       // Submit to Supabase
       await _supabaseService.client
           .from('user_submitted_recipes')
@@ -546,11 +547,9 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
     } catch (e) {
       if (!mounted) return;
       
-      final errorTranslation = translate('error_submitting_recipe');
-      final errorMessenger = ScaffoldMessenger.of(context);
-      errorMessenger.showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
-          content: Text('$errorTranslation: $e'),
+          content: Text('$errorMessage: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -570,6 +569,11 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
     setState(() {
       _isSubmitting = true;
     });
+
+    // Capture all translations and context-dependent objects before async operations
+    final successMessage = translate('remedy_submitted_successfully');
+    final errorMessage = translate('error_submitting_remedy');
+    final messenger = ScaffoldMessenger.of(context);
 
     try {
       final formData = _formKey.currentState!.value;
@@ -599,10 +603,6 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
         'created_at': DateTime.now().toIso8601String(),
       };
 
-      // Capture translated strings before async operation
-      final successMessage = translate('remedy_submitted_successfully');
-      final messenger = ScaffoldMessenger.of(context);
-
       // Submit to Supabase
       await _supabaseService.client
           .from('user_submitted_recipes')
@@ -622,11 +622,9 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
     } catch (e) {
       if (!mounted) return;
       
-      final errorTranslation = translate('error_submitting_remedy');
-      final errorMessenger = ScaffoldMessenger.of(context);
-      errorMessenger.showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
-          content: Text('$errorTranslation: $e'),
+          content: Text('$errorMessage: $e'),
           backgroundColor: Colors.red,
         ),
       );
