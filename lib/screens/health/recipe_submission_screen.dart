@@ -526,35 +526,34 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
       // Capture translated strings before async operation
       final successMessage = translate('recipe_submitted_successfully');
       final errorMessage = translate('error_submitting_recipe');
+      final messenger = ScaffoldMessenger.of(context);
       
-      try {
-        // Submit to Supabase
-        await _supabaseService.client
-            .from('user_submitted_recipes')
-            .insert(recipeData);
+      // Submit to Supabase
+      await _supabaseService.client
+          .from('user_submitted_recipes')
+          .insert(recipeData);
 
-        if (!mounted) return;
-        
-        final messenger = ScaffoldMessenger.of(context);
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(successMessage),
-            backgroundColor: Colors.green,
-          ),
-        );
+      if (!mounted) return;
+      
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(successMessage),
+          backgroundColor: Colors.green,
+        ),
+      );
 
-        // Reset form
-        _formKey.currentState!.reset();
-      } catch (e) {
-        if (!mounted) return;
-        
-        final messenger = ScaffoldMessenger.of(context);
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text('$errorMessage: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+      // Reset form
+      _formKey.currentState!.reset();
+    } catch (e) {
+      if (!mounted) return;
+      
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('${translate('error_submitting_recipe')}: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -603,35 +602,34 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
       // Capture translated strings before async operation
       final successMessage = translate('remedy_submitted_successfully');
       final errorMessage = translate('error_submitting_remedy');
+      final messenger = ScaffoldMessenger.of(context);
 
-      try {
-        // Submit to Supabase
-        await _supabaseService.client
-            .from('user_submitted_recipes')
-            .insert(recipeData);
+      // Submit to Supabase
+      await _supabaseService.client
+          .from('user_submitted_recipes')
+          .insert(recipeData);
 
-        if (!mounted) return;
-        
-        final messenger = ScaffoldMessenger.of(context);
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(successMessage),
-            backgroundColor: Colors.green,
-          ),
-        );
+      if (!mounted) return;
+      
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(successMessage),
+          backgroundColor: Colors.green,
+        ),
+      );
 
-        // Reset form
-        _formKey.currentState!.reset();
-      } catch (e) {
-        if (!mounted) return;
-        
-        final messenger = ScaffoldMessenger.of(context);
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text('$errorMessage: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+      // Reset form
+      _formKey.currentState!.reset();
+    } catch (e) {
+      if (!mounted) return;
+      
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('${translate('error_submitting_remedy')}: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     } finally {
       if (mounted) {
         setState(() {
