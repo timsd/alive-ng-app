@@ -16,6 +16,7 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
   final TextEditingController _searchController = TextEditingController();
   String _selectedAgeGroup = 'All';
   String _selectedCategory = 'All';
+  String _searchQuery = '';
   final Set<String> _favoriteStories = {};
 
   @override
@@ -125,7 +126,7 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: _selectedAgeGroup,
+                        initialValue: _selectedAgeGroup,
                         decoration: InputDecoration(
                           labelText: 'Age Group',
                           border: OutlineInputBorder(
@@ -153,7 +154,7 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
                     const SizedBox(width: 12),
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: _selectedCategory,
+                        initialValue: _selectedCategory,
                         decoration: InputDecoration(
                           labelText: 'Category',
                           border: OutlineInputBorder(

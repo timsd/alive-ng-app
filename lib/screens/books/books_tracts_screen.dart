@@ -15,6 +15,7 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
   final TextEditingController _searchController = TextEditingController();
   String _selectedCategory = 'All';
   String _viewMode = 'grid'; // 'grid' or 'list'
+  String _searchQuery = '';
 
   @override
   void initState() {

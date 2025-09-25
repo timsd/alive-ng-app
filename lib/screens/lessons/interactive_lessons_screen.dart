@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/language_provider.dart';
-import '../../services/study_guide_service.dart';
 import '../../widgets/custom_app_bar.dart';
 
 class InteractiveLessonsScreen extends ConsumerStatefulWidget {
