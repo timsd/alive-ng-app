@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../providers/language_provider.dart';
 import '../../widgets/custom_app_bar.dart';
 
 class KidsStoriesScreen extends ConsumerStatefulWidget {
@@ -16,7 +15,6 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
   final TextEditingController _searchController = TextEditingController();
   String _selectedAgeGroup = 'All';
   String _selectedCategory = 'All';
-  String _searchQuery = '';
   final Set<String> _favoriteStories = {};
 
   @override
@@ -117,7 +115,7 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
                   ),
                   onChanged: (value) {
                     setState(() {
-                      _searchQuery = value;
+                      // Search functionality can be implemented here if needed
                     });
                   },
                 ),

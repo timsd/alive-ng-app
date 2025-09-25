@@ -15,7 +15,6 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
   final TextEditingController _searchController = TextEditingController();
   String _selectedCategory = 'All';
   String _viewMode = 'grid'; // 'grid' or 'list'
-  String _searchQuery = '';
 
   @override
   void initState() {
@@ -73,7 +72,7 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
                   ),
                   onChanged: (value) {
                     setState(() {
-                      _searchQuery = value.toLowerCase();
+                      // Search functionality can be implemented here if needed
                     });
                   },
                 ),

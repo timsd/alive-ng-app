@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/app_models.dart';
 import '../../services/supabase_service.dart';
-import '../../services/role_access_service.dart';
 import '../../widgets/role_guard.dart';
 import '../../constants/chapters.dart';
 
@@ -83,7 +82,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
         try {
           users.add(UserProfile.fromJson(userData));
         } catch (e) {
-          print('Error parsing user data: $e');
+          debugPrint('Error parsing user data: $e');
         }
       }
       
@@ -658,23 +657,27 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
           })
           .eq('id', user.id);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '${user.fullName} has been $action to ${newRole.toUpperCase()}',
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${user.fullName} has been $action to ${newRole.toUpperCase()}',
+            ),
+            backgroundColor: Colors.green,
           ),
-          backgroundColor: Colors.green,
-        ),
-      );
+        );
+      }
 
       await _loadUsers();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error updating user role: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error updating user role: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -714,20 +717,24 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
             })
             .eq('id', user.id);
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${user.fullName} has been archived'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${user.fullName} has been archived'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
         await _loadUsers();
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error archiving user: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error archiving user: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
