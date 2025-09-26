@@ -3,6 +3,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
+import 'dart:convert';
+import 'dart:io';
 
 /// Firebase Configuration for ALIVE NG App
 /// Contains all Firebase project settings and initialization
@@ -21,7 +23,29 @@ class FirebaseConfig {
 
   // Firebase Admin SDK Service Account
   static const String serviceAccountEmail =
-      'firebase-adminsdk-fbsvc@alive-ng-app.iam.gserviceaccount.com';
+      'firebase-adminsdk-fbsvc@alive-ng-flutter-app.iam.gserviceaccount.com';
+
+  // Admin SDK Configuration
+  static Map<String, dynamic>? _adminConfig;
+  
+  /// Load Firebase Admin SDK configuration
+  static Future<Map<String, dynamic>?> getAdminConfig() async {
+    if (_adminConfig != null) return _adminConfig;
+    
+    try {
+      final file = File('firebase-admin-key.json');
+      if (await file.exists()) {
+        final contents = await file.readAsString();
+        _adminConfig = json.decode(contents);
+        return _adminConfig;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error loading Firebase Admin config: $e');
+      }
+    }
+    return null;
+  }
 
   // Firebase Options for different platforms
   static const FirebaseOptions android = FirebaseOptions(
