@@ -1,6 +1,8 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/chat_models.dart';
 import '../utils/logger.dart';
+import 'tag_parser.dart';
+import 'tag_visibility_checker.dart';
 
 class ChatService {
   static final ChatService _instance = ChatService._internal();
@@ -9,6 +11,8 @@ class ChatService {
 
   final SupabaseClient _supabase = Supabase.instance.client;
   final Logger _logger = Logger('ChatService');
+  final TagParser _tagParser = TagParser();
+  final TagVisibilityChecker _visibilityChecker = TagVisibilityChecker();
 
   // Get all channels for a user
   Future<List<ChatChannel>> getUserChannels(String userId) async {
@@ -29,7 +33,7 @@ class ChatService {
     }
   }
 
-  // Get messages for a channel
+  // Enhanced get messages method with tag loading
   Future<List<ChatMessage>> getChannelMessages(
     String channelId, {
     int limit = 50,
@@ -50,17 +54,24 @@ class ChatService {
       query = query.limit(limit);
 
       final response = await query;
+      final messages = <ChatMessage>[];
 
-      return (response as List)
-          .map((json) => ChatMessage.fromJson({
-                ...json,
-                'sender_name':
-                    json['sender']['full_name'] ?? json['sender']['email'],
-                'sender_avatar': json['sender']['avatar_url'] ?? '',
-              }))
-          .toList()
-          .reversed
-          .toList();
+      for (final messageJson in response) {
+        // Load tags for each message
+        final messageTags = await _getMessageTags(messageJson['id']);
+        
+        final message = ChatMessage.fromJson({
+          ...messageJson,
+          'sender_name':
+              messageJson['sender']['full_name'] ?? messageJson['sender']['email'],
+          'sender_avatar': messageJson['sender']['avatar_url'] ?? '',
+          'tags': messageTags.map((tag) => tag.toJson()).toList(),
+        });
+        
+        messages.add(message);
+      }
+
+      return messages.reversed.toList();
     } catch (e) {
       _logger.error('Error fetching channel messages: $e');
       rethrow;
@@ -68,12 +79,12 @@ class ChatService {
   }
 
   // Send a message
+  // Enhanced send message method with new tagging system
   Future<ChatMessage> sendMessage({
     required String channelId,
     required String content,
     MessageType type = MessageType.text,
-    List<String> taggedUsers = const [],
-    List<String> taggedGroups = const [],
+    List<MessageTag> tags = const [],
     String? replyToId,
     List<String> attachments = const [],
   }) async {
@@ -81,20 +92,31 @@ class ChatService {
       final user = _supabase.auth.currentUser;
       if (user == null) throw Exception('User not authenticated');
 
-      // Parse tags from content
-      final parsedTags = _parseTagsFromContent(content);
-      final parsedUsers = (parsedTags['users'] as List?)?.cast<String>() ?? <String>[];
-      final parsedGroups = (parsedTags['groups'] as List?)?.cast<String>() ?? <String>[];
-      final allTaggedUsers = <String>[...taggedUsers, ...parsedUsers];
-      final allTaggedGroups = <String>[...taggedGroups, ...parsedGroups];
+      // Parse tags from content using the new TagParser
+      final parsedTags = _tagParser.parseMessage(content);
+      final allTags = <MessageTag>[...tags, ...parsedTags];
+
+      // Get user roles for visibility checking
+      final userRoles = await _getUserRoles(user.id);
+
+      // Filter tags based on user's permissions
+      final visibleTags = <MessageTag>[];
+      for (final tag in allTags) {
+        if (await _visibilityChecker.canUserSeeTag(
+          user.id,
+          userRoles,
+          tag.type,
+          tag.value,
+        )) {
+          visibleTags.add(tag);
+        }
+      }
 
       final messageData = {
         'channel_id': channelId,
         'sender_id': user.id,
         'content': content,
         'type': type.name,
-        'tagged_users': allTaggedUsers,
-        'tagged_groups': allTaggedGroups,
         'reply_to_id': replyToId,
         'attachments': attachments,
         'timestamp': DateTime.now().toIso8601String(),
@@ -106,16 +128,22 @@ class ChatService {
           .select('*, sender:profiles(*)')
           .single();
 
+      final messageId = response['id'];
+
+      // Store message tags in the database
+      if (visibleTags.isNotEmpty) {
+        await _storeMessageTags(messageId, visibleTags);
+      }
+
       // Update channel last message
       await _updateChannelLastMessage(channelId, content);
 
       // Send notifications to tagged users
-      if (allTaggedUsers.isNotEmpty || allTaggedGroups.isNotEmpty) {
+      if (visibleTags.isNotEmpty) {
         await _sendTagNotifications(
           channelId: channelId,
-          messageId: response['id'],
-          taggedUsers: allTaggedUsers,
-          taggedGroups: allTaggedGroups,
+          messageId: messageId,
+          tags: visibleTags,
           content: content,
         );
       }
@@ -125,6 +153,7 @@ class ChatService {
         'sender_name':
             response['sender']['full_name'] ?? response['sender']['email'],
         'sender_avatar': response['sender']['avatar_url'] ?? '',
+        'tags': visibleTags.map((tag) => tag.toJson()).toList(),
       });
     } catch (e) {
       _logger.error('Error sending message: $e');
@@ -218,40 +247,79 @@ class ChatService {
     }
   }
 
-  // Get users that can be tagged
-  Future<List<TaggedEntity>> getTaggableEntities(String query) async {
+  // Enhanced taggable entities method with role-based filtering
+  Future<List<TaggedEntity>> getTaggableEntities(String query, [TagType? tagType]) async {
     try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) throw Exception('User not authenticated');
+
+      final userRoles = await _getUserRoles(user.id);
       final entities = <TaggedEntity>[];
 
-      // Get users
-      final usersResponse = await _supabase
-          .from('profiles')
-          .select('id, full_name, email, avatar_url, role')
-          .or('full_name.ilike.%$query%,email.ilike.%$query%')
-          .limit(10);
+      // Get users (for @ tags)
+      if (tagType == null || tagType == TagType.user) {
+        final usersResponse = await _supabase
+            .from('profiles')
+            .select('id, full_name, email, avatar_url')
+            .or('full_name.ilike.%$query%,email.ilike.%$query%')
+            .limit(10);
 
-      for (final user in usersResponse) {
-        entities.add(TaggedEntity(
-          id: user['id'],
-          name: user['full_name'] ?? user['email'],
-          type: TagType.user,
-          avatar: user['avatar_url'],
-        ));
+        for (final userJson in usersResponse) {
+          entities.add(TaggedEntity(
+            id: userJson['id'],
+            name: userJson['full_name'] ?? userJson['email'],
+            type: TagType.user,
+            avatar: userJson['avatar_url'],
+          ));
+        }
       }
 
-      // Get groups/roles
-      final groupsResponse = await _supabase
-          .from('user_groups')
-          .select('id, name, type')
-          .ilike('name', '%$query%')
-          .limit(10);
+      // Get roles (for # tags)
+      if (tagType == null || tagType == TagType.role) {
+        final rolesResponse = await _supabase
+            .from('user_roles')
+            .select('DISTINCT role, role_name')
+            .ilike('role', '%$query%')
+            .limit(10);
 
-      for (final group in groupsResponse) {
-        entities.add(TaggedEntity(
-          id: group['id'],
-          name: group['name'],
-          type: group['type'] == 'role' ? TagType.role : TagType.group,
-        ));
+        for (final roleJson in rolesResponse) {
+          // Check if user can tag this role
+          if (await _visibilityChecker.canUserSeeTag(
+            user.id,
+            userRoles,
+            TagType.role,
+            roleJson['role'],
+          )) {
+            entities.add(TaggedEntity(
+              id: roleJson['role'],
+              name: roleJson['role_name'] ?? roleJson['role'],
+              type: TagType.role,
+            ));
+          }
+        }
+      }
+
+      // Get groups (for # tags)
+      if (tagType == null || tagType == TagType.group) {
+        final groupsResponse = await _supabase
+            .from('user_groups')
+            .select('DISTINCT group_name, group_type')
+            .ilike('group_name', '%$query%')
+            .limit(10);
+
+        for (final groupJson in groupsResponse) {
+          entities.add(TaggedEntity(
+            id: groupJson['group_name'],
+            name: groupJson['group_name'],
+            type: TagType.group,
+          ));
+        }
+      }
+
+      // Get special tags (for ! tags)
+      if (tagType == null || tagType == TagType.special) {
+        final specialTags = _getSpecialTags(query, userRoles);
+        entities.addAll(specialTags);
       }
 
       return entities;
@@ -280,26 +348,102 @@ class ChatService {
         .map((data) => data.map((json) => ChatChannel.fromJson(json)).toList());
   }
 
-  // Private helper methods
-  Map<String, List<String>> _parseTagsFromContent(String content) {
-    final users = <String>[];
-    final groups = <String>[];
+  // Get special tags based on user permissions
+  List<TaggedEntity> _getSpecialTags(String query, List<String> userRoles) {
+    final specialTags = <TaggedEntity>[];
+    
+    final availableTags = {
+      'all': 'All members',
+      'online': 'Online members',
+      'active': 'Active members',
+      'new': 'New members',
+      'meeting': 'Meeting participants',
+      'conference': 'Conference attendees',
+      'training': 'Training participants',
+    };
 
-    // Parse @username tags
-    final userRegex = RegExp(r'@(\w+)');
-    final userMatches = userRegex.allMatches(content);
-    for (final match in userMatches) {
-      users.add(match.group(1)!);
+    for (final entry in availableTags.entries) {
+      if (entry.key.toLowerCase().contains(query.toLowerCase()) ||
+          entry.value.toLowerCase().contains(query.toLowerCase())) {
+        // Check if user has permission to use this special tag
+        final canUse = _canUseSpecialTag(entry.key, userRoles);
+        if (canUse) {
+          specialTags.add(TaggedEntity(
+            id: entry.key,
+            name: entry.value,
+            type: TagType.special,
+          ));
+        }
+      }
     }
 
-    // Parse #group tags
-    final groupRegex = RegExp(r'#(\w+)');
-    final groupMatches = groupRegex.allMatches(content);
-    for (final match in groupMatches) {
-      groups.add(match.group(1)!);
-    }
+    return specialTags;
+  }
 
-    return {'users': users, 'groups': groups};
+  bool _canUseSpecialTag(String tagValue, List<String> userRoles) {
+    // Define which roles can use which special tags
+    final permissions = {
+      'all': ['coordinator', 'director', 'leadership', 'executive', 'trustees', 'bod'],
+      'online': ['member'], // Everyone can use
+      'active': ['member'], // Everyone can use
+      'new': ['member'], // Everyone can use
+      'meeting': ['coordinator', 'director', 'leadership'],
+      'conference': ['coordinator', 'director', 'leadership'],
+      'training': ['coordinator', 'director', 'leadership'],
+    };
+
+    final requiredRoles = permissions[tagValue] ?? [];
+    return requiredRoles.any((role) => userRoles.contains(role));
+  }
+
+  // Store message tags in database
+  Future<void> _storeMessageTags(String messageId, List<MessageTag> tags) async {
+    try {
+      final tagData = tags.map((tag) => {
+        'message_id': messageId,
+        'tag_type': tag.type.name,
+        'tag_value': tag.value,
+        'display_name': tag.displayName,
+        'user_id': tag.userId,
+        'role_id': tag.roleId,
+        'created_at': DateTime.now().toIso8601String(),
+      }).toList();
+
+      await _supabase.from('message_tags').insert(tagData);
+    } catch (e) {
+      _logger.error('Error storing message tags: $e');
+    }
+  }
+
+  // Get message tags from database
+  Future<List<MessageTag>> _getMessageTags(String messageId) async {
+    try {
+      final response = await _supabase
+          .from('message_tags')
+          .select('*')
+          .eq('message_id', messageId);
+
+      return (response as List).map((json) => MessageTag.fromJson(json)).toList();
+    } catch (e) {
+      _logger.error('Error fetching message tags: $e');
+      return [];
+    }
+  }
+
+  // Get user roles
+  Future<List<String>> _getUserRoles(String userId) async {
+    try {
+      final response = await _supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', userId)
+          .eq('is_active', true);
+
+      return (response as List).map((json) => json['role'] as String).toList();
+    } catch (e) {
+      _logger.error('Error fetching user roles: $e');
+      return [];
+    }
   }
 
   Future<void> _updateChannelLastMessage(
@@ -315,20 +459,55 @@ class ChatService {
     }
   }
 
+  // Enhanced tag notifications
   Future<void> _sendTagNotifications({
     required String channelId,
     required String messageId,
-    required List<String> taggedUsers,
-    required List<String> taggedGroups,
+    required List<MessageTag> tags,
     required String content,
   }) async {
     try {
-      // Implementation for sending notifications to tagged users/groups
-      // This would integrate with your notification service
-      _logger.info('Sending tag notifications for message $messageId');
+      for (final tag in tags) {
+        switch (tag.type) {
+          case TagType.user:
+            if (tag.userId != null) {
+              await _sendUserNotification(tag.userId!, messageId, content);
+            }
+            break;
+          case TagType.role:
+            await _sendRoleNotification(tag.value, messageId, content);
+            break;
+          case TagType.group:
+            await _sendGroupNotification(tag.value, messageId, content);
+            break;
+          case TagType.special:
+            await _sendSpecialTagNotification(tag.value, messageId, content);
+            break;
+        }
+      }
     } catch (e) {
       _logger.error('Error sending tag notifications: $e');
     }
+  }
+
+  Future<void> _sendUserNotification(String userId, String messageId, String content) async {
+    // Implementation for user notifications
+    _logger.info('Sending user notification to $userId for message $messageId');
+  }
+
+  Future<void> _sendRoleNotification(String role, String messageId, String content) async {
+    // Implementation for role-based notifications
+    _logger.info('Sending role notification to $role for message $messageId');
+  }
+
+  Future<void> _sendGroupNotification(String group, String messageId, String content) async {
+    // Implementation for group notifications
+    _logger.info('Sending group notification to $group for message $messageId');
+  }
+
+  Future<void> _sendSpecialTagNotification(String specialTag, String messageId, String content) async {
+    // Implementation for special tag notifications
+    _logger.info('Sending special tag notification for $specialTag for message $messageId');
   }
 
   // Mark messages as read

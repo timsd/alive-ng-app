@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
 import '../../models/chat_models.dart';
 import '../../widgets/custom_image.dart';
+import '../../widgets/tag_chip.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 class ChatMessageWidget extends StatefulWidget {
@@ -204,14 +205,34 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
   }
 
   Widget _buildMessageContent(ThemeData theme) {
-    return RichText(
-      text: _buildStyledText(widget.message.content, theme),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Message text with enhanced tag styling
+        RichText(
+          text: _buildStyledText(widget.message.content, theme),
+        ),
+        
+        // Display message tags if available
+        if (widget.message.tags.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          TagChipGroup(
+            tags: widget.message.tags.map((tagJson) => MessageTag.fromJson(tagJson)).toList(),
+            size: TagChipSize.small,
+            maxVisible: 5,
+            onTagTap: (tag) {
+              // Handle tag tap - could show user profile, filter messages, etc.
+              _handleTagTap(tag);
+            },
+          ),
+        ],
+      ],
     );
   }
 
   TextSpan _buildStyledText(String content, ThemeData theme) {
     final spans = <TextSpan>[];
-    final regex = RegExp(r'(@\w+|#\w+|\bhttps?://\S+)');
+    final regex = RegExp(r'(@\w+|#\w+|!\w+|\bhttps?://\S+)');
     int lastEnd = 0;
 
     for (final match in regex.allMatches(content)) {
@@ -235,6 +256,10 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
         // Group/role mention
         color = theme.colorScheme.secondary;
         fontWeight = FontWeight.w600;
+      } else if (matchText.startsWith('!')) {
+        // Special tag mention
+        color = theme.colorScheme.tertiary;
+        fontWeight = FontWeight.w600;
       } else if (matchText.startsWith('http')) {
         // URL
         color = theme.colorScheme.primary;
@@ -250,7 +275,9 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
         ),
         recognizer: matchText.startsWith('http')
             ? (TapGestureRecognizer()..onTap = () => _launchUrl(matchText))
-            : null,
+            : (matchText.startsWith('@') || matchText.startsWith('#') || matchText.startsWith('!'))
+                ? (TapGestureRecognizer()..onTap = () => _handleInlineTagTap(matchText))
+                : null,
       ));
 
       lastEnd = match.end;
@@ -265,6 +292,74 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
     }
 
     return TextSpan(children: spans);
+  }
+
+  void _handleTagTap(MessageTag tag) {
+    // Handle tag chip tap
+    switch (tag.type) {
+      case TagType.user:
+        // Show user profile or start direct message
+        _showUserProfile(tag.userId);
+        break;
+      case TagType.role:
+      case TagType.group:
+        // Filter messages by role/group
+        _filterMessagesByTag(tag);
+        break;
+      case TagType.special:
+        // Handle special tag actions
+        _handleSpecialTag(tag);
+        break;
+    }
+  }
+
+  void _handleInlineTagTap(String tagText) {
+    // Handle inline tag tap in message content
+    if (tagText.startsWith('@')) {
+      // Handle user mention tap
+      final username = tagText.substring(1);
+      _showUserProfileByName(username);
+    } else if (tagText.startsWith('#')) {
+      // Handle role/group mention tap
+      final tagValue = tagText.substring(1);
+      _filterMessagesByTagValue(tagValue);
+    } else if (tagText.startsWith('!')) {
+      // Handle special tag tap
+      final specialTag = tagText.substring(1);
+      _handleSpecialTagByValue(specialTag);
+    }
+  }
+
+  void _showUserProfile(String? userId) {
+    if (userId != null) {
+      // Implementation to show user profile
+      print('Show user profile: $userId');
+    }
+  }
+
+  void _showUserProfileByName(String username) {
+    // Implementation to show user profile by username
+    print('Show user profile by name: $username');
+  }
+
+  void _filterMessagesByTag(MessageTag tag) {
+    // Implementation to filter messages by tag
+    print('Filter messages by tag: ${tag.value}');
+  }
+
+  void _filterMessagesByTagValue(String tagValue) {
+    // Implementation to filter messages by tag value
+    print('Filter messages by tag value: $tagValue');
+  }
+
+  void _handleSpecialTag(MessageTag tag) {
+    // Implementation to handle special tag actions
+    print('Handle special tag: ${tag.value}');
+  }
+
+  void _handleSpecialTagByValue(String specialTag) {
+    // Implementation to handle special tag by value
+    print('Handle special tag by value: $specialTag');
   }
 
   Widget _buildAttachments(ThemeData theme) {

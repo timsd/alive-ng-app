@@ -231,6 +231,73 @@ enum TagType {
   user,
   group,
   role,
+  special,
+}
+
+class MessageTag {
+  final TagType type;
+  final String value;
+  final String? displayName;
+  final String? userId;
+  final String? roleId;
+
+  const MessageTag({
+    required this.type,
+    required this.value,
+    this.displayName,
+    this.userId,
+    this.roleId,
+  });
+
+  String get prefix {
+    switch (type) {
+      case TagType.user:
+        return '@';
+      case TagType.role:
+      case TagType.group:
+      case TagType.special:
+        return '#';
+    }
+  }
+
+  String get fullTag => '$prefix$value';
+
+  factory MessageTag.fromJson(Map<String, dynamic> json) {
+    return MessageTag(
+      type: TagType.values.firstWhere(
+        (e) => e.name == json['type'],
+        orElse: () => TagType.user,
+      ),
+      value: json['value'] as String,
+      displayName: json['display_name'] as String?,
+      userId: json['user_id'] as String?,
+      roleId: json['role_id'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'type': type.name,
+      'value': value,
+      'display_name': displayName,
+      'user_id': userId,
+      'role_id': roleId,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is MessageTag &&
+        other.type == type &&
+        other.value == value;
+  }
+
+  @override
+  int get hashCode => type.hashCode ^ value.hashCode;
+
+  @override
+  String toString() => fullTag;
 }
 
 class ChatUser {
