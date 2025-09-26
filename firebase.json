@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "alive-ng-legal",
     "public": "web",
     "ignore": [
       "firebase.json",
