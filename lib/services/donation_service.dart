@@ -1,7 +1,9 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/material.dart';
 import '../models/donation_models.dart';
 import 'package:uuid/uuid.dart';
 import '../utils/logger.dart';
+import 'paystack_service.dart';
 
 class DonationService {
   static final DonationService _instance = DonationService._internal();
@@ -231,29 +233,39 @@ class DonationService {
 
   // Process payment with Paystack (for Nigerian users)
   Future<Map<String, dynamic>> processPaystackPayment({
+    required BuildContext context,
     required String donationId,
     required double amount,
     required String currency,
     required String email,
   }) async {
     try {
-      // This would integrate with Paystack API
-      // For now, we'll simulate the payment process
-
-      final response = {
-        'authorization_url': 'https://checkout.paystack.com/test_${_uuid.v4()}',
-        'access_code': 'test_access_${_uuid.v4()}',
-        'reference': 'ref_${_uuid.v4()}',
-      };
-
-      // Update donation with transaction reference
-      await updateDonationStatus(
-        donationId,
-        DonationStatus.processing,
-        transactionId: response['reference'],
+      // Use the actual PaystackService for payment processing
+      final paymentResult = await PaystackService.makeDonation(
+        context: context, // This will need to be passed from the UI
+        amount: amount,
+        email: email,
+        purpose: 'Material Download Donation',
+        materialId: donationId,
       );
 
-      return response;
+      if (paymentResult != null && paymentResult.success) {
+        // Update donation with transaction reference
+        await updateDonationStatus(
+          donationId,
+          DonationStatus.processing,
+          transactionId: paymentResult.reference,
+        );
+
+        return {
+          'success': true,
+          'reference': paymentResult.reference,
+          'transaction_id': paymentResult.transactionId,
+          'message': paymentResult.message,
+        };
+      } else {
+        throw Exception(paymentResult?.message ?? 'Payment failed');
+      }
     } catch (e) {
       throw Exception('Failed to process Paystack payment: $e');
     }
@@ -521,3 +533,7 @@ class DonationService {
     }
   }
 }
+
+
+
+

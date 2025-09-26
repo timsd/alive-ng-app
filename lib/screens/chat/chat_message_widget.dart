@@ -4,6 +4,7 @@ import 'package:flutter/gestures.dart';
 import '../../models/chat_models.dart';
 import '../../widgets/custom_image.dart';
 import '../../widgets/tag_chip.dart';
+import '../../utils/logger.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 class ChatMessageWidget extends StatefulWidget {
@@ -29,6 +30,7 @@ class ChatMessageWidget extends StatefulWidget {
 class _ChatMessageWidgetState extends State<ChatMessageWidget> {
   bool _isHovered = false;
   bool _showActions = false;
+  final Logger _logger = Logger('ChatMessageWidget');
 
   @override
   Widget build(BuildContext context) {
@@ -213,13 +215,24 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
           text: _buildStyledText(widget.message.content, theme),
         ),
         
-        // Display message tags if available
-        if (widget.message.tags.isNotEmpty) ...[
+        // Display message tags if available (from tagged users and groups)
+        if (widget.message.taggedUsers.isNotEmpty || widget.message.taggedGroups.isNotEmpty) ...[
           const SizedBox(height: 8),
           TagChipGroup(
-            tags: widget.message.tags.map((tagJson) => MessageTag.fromJson(tagJson)).toList(),
+            tags: [
+              ...widget.message.taggedUsers.map((userId) => MessageTag(
+                type: TagType.user,
+                value: userId,
+                userId: userId,
+              )),
+              ...widget.message.taggedGroups.map((groupId) => MessageTag(
+                type: TagType.group,
+                value: groupId,
+              )),
+            ],
+            currentUserId: 'current_user_id', // TODO: Get from auth service
+            userRoles: const [], // TODO: Get user roles
             size: TagChipSize.small,
-            maxVisible: 5,
             onTagTap: (tag) {
               // Handle tag tap - could show user profile, filter messages, etc.
               _handleTagTap(tag);
@@ -333,33 +346,33 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
   void _showUserProfile(String? userId) {
     if (userId != null) {
       // Implementation to show user profile
-      print('Show user profile: $userId');
+      _logger.info('Show user profile: $userId');
     }
   }
 
   void _showUserProfileByName(String username) {
     // Implementation to show user profile by username
-    print('Show user profile by name: $username');
+    _logger.info('Show user profile by name: $username');
   }
 
   void _filterMessagesByTag(MessageTag tag) {
     // Implementation to filter messages by tag
-    print('Filter messages by tag: ${tag.value}');
+    _logger.info('Filter messages by tag: ${tag.value}');
   }
 
   void _filterMessagesByTagValue(String tagValue) {
     // Implementation to filter messages by tag value
-    print('Filter messages by tag value: $tagValue');
+    _logger.info('Filter messages by tag value: $tagValue');
   }
 
   void _handleSpecialTag(MessageTag tag) {
     // Implementation to handle special tag actions
-    print('Handle special tag: ${tag.value}');
+    _logger.info('Handle special tag: ${tag.value}');
   }
 
   void _handleSpecialTagByValue(String specialTag) {
     // Implementation to handle special tag by value
-    print('Handle special tag by value: $specialTag');
+    _logger.info('Handle special tag by value: $specialTag');
   }
 
   Widget _buildAttachments(ThemeData theme) {
@@ -514,3 +527,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
     // You can use url_launcher package
   }
 }
+
+
+
+

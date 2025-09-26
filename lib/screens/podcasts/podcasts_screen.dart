@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../utils/mobile_utils.dart';
 
 class PodcastsScreen extends ConsumerStatefulWidget {
   const PodcastsScreen({super.key});
@@ -48,14 +49,14 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
         children: [
           // Search Bar
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: MobileUtils.getResponsivePadding(context, 16),
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
                 hintText: 'Search podcasts...',
                 prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(MobileUtils.getResponsiveSpacing(context, 12)),
                 ),
               ),
               onChanged: (value) {
@@ -82,7 +83,7 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
 
   Widget _buildAllShowsTab() {
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: MobileUtils.getResponsivePadding(context, 16),
       itemCount: 10, // Using sample data - replace with Supabase query
       itemBuilder: (context, index) {
         return _buildPodcastCard(context, index, false);
@@ -92,7 +93,7 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
 
   Widget _buildSubscribedTab() {
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: MobileUtils.getResponsivePadding(context, 16),
       itemCount: 5, // Using sample data - replace with Supabase query
       itemBuilder: (context, index) {
         return _buildPodcastCard(context, index, true);
@@ -102,7 +103,7 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
 
   Widget _buildDownloadedTab() {
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: MobileUtils.getResponsivePadding(context, 16),
       itemCount: 3, // Using sample data - replace with Supabase query
       itemBuilder: (context, index) {
         return _buildEpisodeCard(context, index, true);
@@ -138,35 +139,35 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
     ];
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.only(bottom: MobileUtils.getResponsiveSpacing(context, 16)),
       elevation: 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(MobileUtils.getResponsiveSpacing(context, 12)),
       ),
       child: InkWell(
         onTap: () {
           _showPodcastDetails(context, index);
         },
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(MobileUtils.getResponsiveSpacing(context, 12)),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: MobileUtils.getResponsivePadding(context, 16),
           child: Row(
             children: [
               // Podcast Cover
               Container(
-                width: 80,
-                height: 80,
+                width: MobileUtils.getResponsiveWidth(context, 80),
+                height: MobileUtils.getResponsiveWidth(context, 80),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).primaryColor.withAlpha(26),
-                  borderRadius: BorderRadius.circular(8),
+                  color: Theme.of(context).primaryColor.withValues(alpha: 26 / 255.0),
+                  borderRadius: BorderRadius.circular(MobileUtils.getResponsiveSpacing(context, 8)),
                 ),
                 child: Icon(
                   Icons.headset,
-                  size: 40,
+                  size: MobileUtils.getResponsiveIconSize(context, 40),
                   color: Theme.of(context).primaryColor,
                 ),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: MobileUtils.getResponsiveSpacing(context, 16)),
               
               // Podcast Info
               Expanded(
@@ -177,43 +178,48 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
                       podcastTitles[index % podcastTitles.length],
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
+                        fontSize: MobileUtils.getResponsiveFontSize(context, 16),
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: MobileUtils.getResponsiveSpacing(context, 4)),
                     Text(
                       descriptions[index % descriptions.length],
-                      style: Theme.of(context).textTheme.bodyMedium,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontSize: MobileUtils.getResponsiveFontSize(context, 14),
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: MobileUtils.getResponsiveSpacing(context, 8)),
                     Row(
                       children: [
                         Icon(
                           Icons.schedule,
-                          size: 16,
+                          size: MobileUtils.getResponsiveIconSize(context, 16),
                           color: Colors.grey[600],
                         ),
-                        const SizedBox(width: 4),
+                        SizedBox(width: MobileUtils.getResponsiveSpacing(context, 4)),
                         Text(
                           '${20 + index * 5} episodes',
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: Colors.grey[600],
+                            fontSize: MobileUtils.getResponsiveFontSize(context, 12),
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        SizedBox(width: MobileUtils.getResponsiveSpacing(context, 16)),
                         Icon(
                           Icons.star,
-                          size: 16,
+                          size: MobileUtils.getResponsiveIconSize(context, 16),
                           color: Colors.amber,
                         ),
-                        const SizedBox(width: 4),
+                        SizedBox(width: MobileUtils.getResponsiveSpacing(context, 4)),
                         Text(
                           '4.${7 + index % 3}',
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: Colors.grey[600],
+                            fontSize: MobileUtils.getResponsiveFontSize(context, 12),
                           ),
                         ),
                       ],
@@ -232,11 +238,14 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
                     icon: Icon(
                       isSubscribed ? Icons.notifications : Icons.notifications_none,
                       color: isSubscribed ? Theme.of(context).primaryColor : null,
+                      size: MobileUtils.getResponsiveIconSize(context, 24),
                     ),
                   ),
                   Text(
                     isSubscribed ? 'Subscribed' : 'Subscribe',
-                    style: Theme.of(context).textTheme.bodySmall,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontSize: MobileUtils.getResponsiveFontSize(context, 10),
+                    ),
                   ),
                 ],
               ),
@@ -257,24 +266,26 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
     ];
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: MobileUtils.getResponsiveSpacing(context, 12)),
       child: ListTile(
         leading: Container(
-          width: 56,
-          height: 56,
+          width: MobileUtils.getResponsiveWidth(context, 56),
+          height: MobileUtils.getResponsiveWidth(context, 56),
           decoration: BoxDecoration(
-            color: Theme.of(context).primaryColor.withAlpha(26),
-            borderRadius: BorderRadius.circular(8),
+            color: Theme.of(context).primaryColor.withValues(alpha: 26 / 255.0),
+            borderRadius: BorderRadius.circular(MobileUtils.getResponsiveSpacing(context, 8)),
           ),
           child: Icon(
             Icons.headphones,
             color: Theme.of(context).primaryColor,
+            size: MobileUtils.getResponsiveIconSize(context, 24),
           ),
         ),
         title: Text(
           episodeTitles[index % episodeTitles.length],
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: MobileUtils.getResponsiveFontSize(context, 14)),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -283,21 +294,23 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
               'Daily Devotions • ${25 + index * 5} min',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: MobileUtils.getResponsiveFontSize(context, 12)),
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: MobileUtils.getResponsiveSpacing(context, 4)),
             if (isDownloaded)
               Row(
                 children: [
                   Icon(
                     Icons.download_done,
-                    size: 16,
+                    size: MobileUtils.getResponsiveIconSize(context, 16),
                     color: Colors.green,
                   ),
-                  const SizedBox(width: 4),
+                  SizedBox(width: MobileUtils.getResponsiveSpacing(context, 4)),
                   Text(
                     'Downloaded',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Colors.green,
+                      fontSize: MobileUtils.getResponsiveFontSize(context, 10),
                     ),
                   ),
                 ],
@@ -308,14 +321,20 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
-              icon: const Icon(Icons.play_arrow),
+              icon: Icon(
+                Icons.play_arrow,
+                size: MobileUtils.getResponsiveIconSize(context, 24),
+              ),
               onPressed: () {
                 _playEpisode(context, episodeTitles[index % episodeTitles.length]);
               },
             ),
             if (!isDownloaded)
               IconButton(
-                icon: const Icon(Icons.download),
+                icon: Icon(
+                  Icons.download,
+                  size: MobileUtils.getResponsiveIconSize(context, 24),
+                ),
                 onPressed: () {
                   _downloadEpisode(context, episodeTitles[index % episodeTitles.length]);
                 },
@@ -330,8 +349,8 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(MobileUtils.getResponsiveSpacing(context, 20))),
       ),
       builder: (context) => DraggableScrollableSheet(
         initialChildSize: 0.7,
@@ -343,34 +362,34 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
             children: [
               // Handle
               Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.symmetric(vertical: 8),
+                width: MobileUtils.getResponsiveWidth(context, 40),
+                height: MobileUtils.getResponsiveSpacing(context, 4),
+                margin: EdgeInsets.symmetric(vertical: MobileUtils.getResponsiveSpacing(context, 8)),
                 decoration: BoxDecoration(
                   color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
+                  borderRadius: BorderRadius.circular(MobileUtils.getResponsiveSpacing(context, 2)),
                 ),
               ),
               
               // Podcast Header
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: MobileUtils.getResponsivePadding(context, 16),
                 child: Row(
                   children: [
                     Container(
-                      width: 100,
-                      height: 100,
+                      width: MobileUtils.getResponsiveWidth(context, 100),
+                      height: MobileUtils.getResponsiveWidth(context, 100),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).primaryColor.withAlpha(26),
-                        borderRadius: BorderRadius.circular(12),
+                        color: Theme.of(context).primaryColor.withValues(alpha: 26 / 255.0),
+                        borderRadius: BorderRadius.circular(MobileUtils.getResponsiveSpacing(context, 12)),
                       ),
                       child: Icon(
                         Icons.headset,
-                        size: 50,
+                        size: MobileUtils.getResponsiveIconSize(context, 50),
                         color: Theme.of(context).primaryColor,
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    SizedBox(width: MobileUtils.getResponsiveSpacing(context, 16)),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -379,14 +398,17 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
                             'Daily Devotions with Pastor John',
                             style: Theme.of(context).textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.bold,
+                              fontSize: MobileUtils.getResponsiveFontSize(context, 18),
                             ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(height: 8),
+                          SizedBox(height: MobileUtils.getResponsiveSpacing(context, 8)),
                           Text(
                             'Daily inspirational messages and Bible reflections to strengthen your faith journey.',
-                            style: Theme.of(context).textTheme.bodyMedium,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              fontSize: MobileUtils.getResponsiveFontSize(context, 14),
+                            ),
                             maxLines: 3,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -401,7 +423,7 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
               Expanded(
                 child: ListView.builder(
                   controller: scrollController,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: EdgeInsets.symmetric(horizontal: MobileUtils.getResponsiveSpacing(context, 16)),
                   itemCount: 15,
                   itemBuilder: (context, episodeIndex) {
                     return _buildEpisodeCard(context, episodeIndex, false);
@@ -506,3 +528,6 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
     );
   }
 }
+
+
+

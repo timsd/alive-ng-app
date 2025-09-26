@@ -40,7 +40,7 @@ dependencies:
   firebase_crashlytics: ^5.0.1
   
   # Date & Time
-  intl: ^0.20.2
+  intl: 0.20.2
   
   # Forms & Validation
   flutter_form_builder: ^10.2.0
@@ -59,6 +59,9 @@ dependencies:
   # Chat & Messaging (used in chat service)
   stream_chat_flutter: ^9.4.0
   stream_chat_flutter_core: ^9.4.0
+  
+  # Payment Integration
+  pay_with_paystack: ^1.0.7
   
   # Internationalization
   flutter_localizations:
@@ -83,7 +86,7 @@ dependencies:
 
   # Data models
   equatable: ^2.0.5
-  timezone: ^0.9.4
+  timezone: 0.10.1
 
 dev_dependencies:
   flutter_test:
@@ -101,26 +104,3 @@ flutter:
     - assets/data/
     - assets/certificates/
 
-  fonts:
-    - family: Roboto
-      fonts:
-        - asset: fonts/Roboto-Regular.ttf
-        - asset: fonts/Roboto-Bold.ttf
-          weight: 700
-  
-  assets:
-    - assets/images/
-    - assets/icons/
-    - assets/data/
-    - assets/certificates/
-  
-  # fonts:
-  #   - family: Inter
-  #     fonts:
-  #       - asset: assets/fonts/Inter-Regular.ttf
-  #       - asset: assets/fonts/Inter-Medium.ttf
-  #         weight: 500
-  #       - asset: assets/fonts/Inter-SemiBold.ttf
-  #         weight: 600
-  #       - asset: assets/fonts/Inter-Bold.ttf
-  #         weight: 700

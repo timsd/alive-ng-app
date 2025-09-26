@@ -45,8 +45,6 @@ class TagVisibilityChecker {
           return await hasSpecialAccess(userId, tag.value);
         case TagType.group:
           return await hasGroupAccess(userId, tag.value);
-        default:
-          return false;
       }
     } catch (e) {
       _logger.error('Error checking tag visibility: $e');
@@ -290,7 +288,7 @@ class TagVisibilityChecker {
           .maybeSingle();
 
       if (response?['last_seen'] != null) {
-        final lastSeen = DateTime.parse(response['last_seen']);
+        final lastSeen = DateTime.parse(response!['last_seen']);
         final now = DateTime.now();
         return now.difference(lastSeen).inHours < 24;
       }
@@ -398,3 +396,6 @@ class TagVisibilityChecker {
     return visibleMessages;
   }
 }
+
+
+

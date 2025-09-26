@@ -80,13 +80,30 @@ class MobileUtils {
   }
 
   /// Get responsive padding based on screen size
-  static EdgeInsets getResponsivePadding(BuildContext context) {
-    if (isMobileScreen(context)) {
-      return const EdgeInsets.all(16.0);
-    } else if (isTabletScreen(context)) {
-      return const EdgeInsets.all(24.0);
+  static EdgeInsets getResponsivePadding(BuildContext context, [double? basePadding, bool vertical = false]) {
+    double padding;
+    if (basePadding != null) {
+      if (isMobileScreen(context)) {
+        padding = basePadding;
+      } else if (isTabletScreen(context)) {
+        padding = basePadding * 1.2;
+      } else {
+        padding = basePadding * 1.4;
+      }
     } else {
-      return const EdgeInsets.all(32.0);
+      if (isMobileScreen(context)) {
+        padding = 16.0;
+      } else if (isTabletScreen(context)) {
+        padding = 24.0;
+      } else {
+        padding = 32.0;
+      }
+    }
+    
+    if (vertical) {
+      return EdgeInsets.symmetric(vertical: padding);
+    } else {
+      return EdgeInsets.all(padding);
     }
   }
 
@@ -120,19 +137,18 @@ class MobileUtils {
 
   /// Get responsive width based on screen size
   static double getResponsiveWidth(
-    BuildContext context, {
-    double mobileWidth = 1.0,
-    double tabletWidth = 0.8,
-    double desktopWidth = 0.6,
+    BuildContext context, 
+    double baseWidth, {
+    double? mobileWidth,
+    double? tabletWidth,
+    double? desktopWidth,
   }) {
-    final screenWidth = MediaQuery.of(context).size.width;
-
     if (isMobileScreen(context)) {
-      return screenWidth * mobileWidth;
+      return mobileWidth ?? baseWidth;
     } else if (isTabletScreen(context)) {
-      return screenWidth * tabletWidth;
+      return tabletWidth ?? (baseWidth * 1.2);
     } else {
-      return screenWidth * desktopWidth;
+      return desktopWidth ?? (baseWidth * 1.4);
     }
   }
 
@@ -161,4 +177,86 @@ class MobileUtils {
   static bool isPortrait(BuildContext context) {
     return getOrientation(context) == Orientation.portrait;
   }
+
+  /// Get responsive border radius based on screen size
+  static double getResponsiveBorderRadius(
+    BuildContext context,
+    double baseBorderRadius, {
+    double? mobileBorderRadius,
+    double? tabletBorderRadius,
+    double? desktopBorderRadius,
+  }) {
+    if (isMobileScreen(context)) {
+      return mobileBorderRadius ?? baseBorderRadius;
+    } else if (isTabletScreen(context)) {
+      return tabletBorderRadius ?? (baseBorderRadius * 1.1);
+    } else {
+      return desktopBorderRadius ?? (baseBorderRadius * 1.2);
+    }
+  }
+
+  /// Get responsive icon size based on screen size
+  static double getResponsiveIconSize(BuildContext context, double baseSize) {
+    if (isMobileScreen(context)) {
+      return baseSize;
+    } else if (isTabletScreen(context)) {
+      return baseSize * 1.2;
+    } else {
+      return baseSize * 1.4;
+    }
+  }
+
+  /// Get responsive spacing based on screen size
+  static double getResponsiveSpacing(
+    BuildContext context,
+    double baseSpacing, {
+    double? mobileSpacing,
+    double? tabletSpacing,
+    double? desktopSpacing,
+  }) {
+    if (isMobileScreen(context)) {
+      return mobileSpacing ?? baseSpacing;
+    } else if (isTabletScreen(context)) {
+      return tabletSpacing ?? (baseSpacing * 1.2);
+    } else {
+      return desktopSpacing ?? (baseSpacing * 1.5);
+    }
+  }
+
+  /// Get responsive height based on screen size
+  static double getResponsiveHeight(BuildContext context, double baseHeight) {
+    if (isMobileScreen(context)) {
+      return baseHeight;
+    } else if (isTabletScreen(context)) {
+      return baseHeight * 1.2;
+    } else {
+      return baseHeight * 1.4;
+    }
+  }
+
+  /// Get responsive horizontal padding based on screen size
+  static EdgeInsets getResponsiveHorizontalPadding(BuildContext context) {
+    if (isMobileScreen(context)) {
+      return const EdgeInsets.symmetric(horizontal: 16.0);
+    } else if (isTabletScreen(context)) {
+      return const EdgeInsets.symmetric(horizontal: 24.0);
+    } else {
+      return const EdgeInsets.symmetric(horizontal: 32.0);
+    }
+  }
+
+  /// Get responsive padding value as double
+  static double getResponsivePaddingValue(BuildContext context) {
+    if (isMobileScreen(context)) {
+      return 16.0;
+    } else if (isTabletScreen(context)) {
+      return 24.0;
+    } else {
+      return 32.0;
+    }
+  }
 }
+
+
+
+

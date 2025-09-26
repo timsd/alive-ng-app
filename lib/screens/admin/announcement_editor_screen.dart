@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/supabase_service.dart';
 import '../../widgets/role_guard.dart';
 import '../../widgets/loading_widget.dart';
 import '../../utils/toast_utils.dart';
+import '../../utils/text_formatter.dart';
 
 class AnnouncementEditorScreen extends StatefulWidget {
   final Map<String, dynamic>? announcement;
@@ -99,7 +99,7 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return RoleGuard(
+    return RoleVisibility(
       allowedRoles: const ['admin', 'super_admin', 'content_manager'],
       child: Scaffold(
         appBar: AppBar(
@@ -162,7 +162,7 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                                     _isActive = value;
                                   });
                                 },
-                                activeColor: Colors.green,
+                                activeTrackColor: Colors.green,
                               ),
                             ],
                           ),
@@ -232,7 +232,7 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                         children: [
                           Expanded(
                             child: DropdownButtonFormField<String>(
-                              value: _priority,
+                              initialValue: _priority,
                               decoration: const InputDecoration(
                                 labelText: 'Priority',
                                 border: OutlineInputBorder(),
@@ -264,7 +264,7 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                           const SizedBox(width: 16),
                           Expanded(
                             child: DropdownButtonFormField<String>(
-                              value: _type,
+                              initialValue: _type,
                               decoration: const InputDecoration(
                                 labelText: 'Type',
                                 border: OutlineInputBorder(),
@@ -273,7 +273,7 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                               items: _types.map((type) {
                                 return DropdownMenuItem(
                                   value: type,
-                                  child: Text(type.replaceAll('_', ' ').toUpperCase()),
+                                  child: Text(TextFormatter.formatNotificationType(type).toUpperCase()),
                                 );
                               }).toList(),
                               onChanged: (value) {
@@ -289,7 +289,7 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                       const SizedBox(height: 16),
                       
                       DropdownButtonFormField<String>(
-                        value: _targetAudience,
+        initialValue: _targetAudience,
                         decoration: const InputDecoration(
                           labelText: 'Target Audience',
                           border: OutlineInputBorder(),
@@ -299,7 +299,7 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                         items: _audiences.map((audience) {
                           return DropdownMenuItem(
                             value: audience,
-                            child: Text(audience.replaceAll('_', ' ').toUpperCase()),
+                            child: Text(TextFormatter.formatRole(audience).toUpperCase()),
                           );
                         }).toList(),
                         onChanged: (value) {
@@ -619,3 +619,6 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
     }
   }
 }
+
+
+

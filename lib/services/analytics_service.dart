@@ -516,3 +516,7 @@ final analyticsEnabledProvider = FutureProvider<bool>((ref) async {
   final analytics = ref.read(analyticsServiceProvider);
   return await analytics.isAnalyticsEnabled();
 });
+
+
+
+

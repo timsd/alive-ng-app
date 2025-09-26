@@ -167,3 +167,7 @@ class HealthTrackingService {
     return (scores.reduce((sum, score) => sum + score) / scores.length).round();
   }
 }
+
+
+
+

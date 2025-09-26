@@ -7,6 +7,7 @@ import '../providers/auth_provider.dart';
 import '../providers/language_provider.dart';
 import '../providers/guest_provider.dart';
 import '../constants/app_constants.dart';
+import '../utils/mobile_utils.dart';
 
 class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
@@ -43,29 +44,29 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
+          padding: MobileUtils.getResponsivePadding(context, 24.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 40),
+              SizedBox(height: MobileUtils.getResponsiveSpacing(context, 40)),
 
               // App Logo and Title
               _buildHeader(context, translate),
-              const SizedBox(height: 40),
+              SizedBox(height: MobileUtils.getResponsiveSpacing(context, 40)),
 
               // Auth Form
               _buildAuthForm(context, translate),
-              const SizedBox(height: 24),
+              SizedBox(height: MobileUtils.getResponsiveSpacing(context, 24)),
 
               // Toggle Sign In/Sign Up
               _buildToggleButton(context, translate),
-              const SizedBox(height: 24),
+              SizedBox(height: MobileUtils.getResponsiveSpacing(context, 24)),
 
               // Forgot Password (only for sign in)
               if (!_isSignUp) _buildForgotPasswordButton(context, translate),
 
               // Guest Access
-              const SizedBox(height: 24),
+              SizedBox(height: MobileUtils.getResponsiveSpacing(context, 24)),
               _buildGuestAccessButton(context, translate),
             ],
           ),
@@ -79,14 +80,14 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       children: [
         SvgPicture.asset(
           'assets/images/alive_logo.svg',
-          width: 80,
-          height: 80,
+          width: MobileUtils.getResponsiveIconSize(context, 80),
+          height: MobileUtils.getResponsiveIconSize(context, 80),
           colorFilter: ColorFilter.mode(
             Theme.of(context).colorScheme.primary,
             BlendMode.srcIn,
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
         Text(
           AppConstants.appName,
           style: Theme.of(context).textTheme.displayMedium?.copyWith(
@@ -94,7 +95,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 fontWeight: FontWeight.bold,
               ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: MobileUtils.getResponsiveSpacing(context, 8)),
         Text(
           _isSignUp
               ? 'Create your account to start your spiritual journey'
@@ -127,7 +128,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 return null;
               },
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
           ],
 
           // Email field
@@ -149,7 +150,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               return null;
             },
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
 
           // Password field
           TextFormField(
@@ -179,7 +180,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               return null;
             },
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
 
           // Confirm Password field (only for sign up)
           if (_isSignUp) ...[
@@ -210,7 +211,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               },
             ),
           ],
-          const SizedBox(height: 24),
+          SizedBox(height: MobileUtils.getResponsiveSpacing(context, 24)),
 
           // Submit button
           SizedBox(
@@ -218,10 +219,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             child: ElevatedButton(
               onPressed: _isLoading ? null : _handleSubmit,
               child: _isLoading
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                  ? SizedBox(
+                      height: MobileUtils.getResponsiveSpacing(context, 20),
+                      width: MobileUtils.getResponsiveSpacing(context, 20),
+                      child: const CircularProgressIndicator(strokeWidth: 2),
                     )
                   : Text(
                       _isSignUp ? translate('sign_up') : translate('sign_in')),
@@ -271,7 +272,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     return Column(
       children: [
         const Divider(),
-        const SizedBox(height: 16),
+        SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
         Text(
           'Or explore the app without an account',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -282,7 +283,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               ),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
@@ -294,11 +295,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             icon: const Icon(Icons.explore),
             label: Text(translate('continue_as_guest')),
             style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: MobileUtils.getResponsivePadding(context, 16, true),
             ),
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: MobileUtils.getResponsiveSpacing(context, 8)),
         Text(
           'Limited features available. Sign up for full access.',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -379,7 +380,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(translate('reset_password_instruction')),
-            const SizedBox(height: 16),
+            SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
             TextField(
               controller: emailController,
               keyboardType: TextInputType.emailAddress,
@@ -435,3 +436,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     );
   }
 }
+
+
+
+

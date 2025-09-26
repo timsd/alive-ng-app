@@ -1,71 +1,14 @@
 
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
-// Mock classes to replace flutter_paystack until dependency conflicts are resolved
-class PaystackPlugin {
-  Future<void> initialize({required String publicKey}) async {
-    // Mock implementation
-  }
-  
-  Future<PaymentResponse> checkout(
-    BuildContext context, {
-    required CheckoutMethod method,
-    required PaymentCharge charge,
-  }) async {
-    // Mock implementation - always return success for development
-    return PaymentResponse(
-      status: true,
-      reference: charge.reference,
-      message: 'Payment successful (mock)',
-    );
-  }
-}
-
-class PaymentCharge {
-  int amount = 0;
-  String reference = '';
-  String email = '';
-  String currency = 'NGN';
-  Map<String, String> customFields = {};
-  
-  void putCustomField(String key, String value) {
-    customFields[key] = value;
-  }
-}
-
-class PaymentResponse {
-  final bool status;
-  final String? reference;
-  final String? message;
-  
-  PaymentResponse({
-    required this.status,
-    this.reference,
-    this.message,
-  });
-}
-
-enum CheckoutMethod { card, bank, ussd }
+import 'package:pay_with_paystack/pay_with_paystack.dart';
 
 class PaystackService {
-  static const String _publicKey =
-      'pk_test_your_paystack_public_key'; // Replace with actual key
-  static final PaystackPlugin _paystack = PaystackPlugin();
+  static const String _secretKey =
+      'sk_test_your_paystack_secret_key'; // Replace with actual secret key
   static final SupabaseClient _supabase = Supabase.instance.client;
 
-  // Initialize Paystack
-  static Future<void> initialize() async {
-    try {
-      await _paystack.initialize(publicKey: _publicKey);
-      debugPrint('Paystack initialized successfully');
-    } catch (e) {
-      debugPrint('Error initializing Paystack: $e');
-    }
-  }
-
-  // Make payment
+  // Make payment using pay_with_paystack
   static Future<PaymentResult?> makePayment({
     required BuildContext context,
     required String email,
@@ -76,64 +19,56 @@ class PaystackService {
     Map<String, dynamic>? metadata,
   }) async {
     try {
-      final charge = PaymentCharge()
-        ..amount = (amount * 100).toInt() // Convert to kobo
-        ..reference = reference ?? _generateReference()
-        ..email = email
-        ..currency = currency
-        ..putCustomField('purpose', purpose);
+      final uniqueTransRef = reference ?? PayWithPayStack().generateUuidV4();
+      
+      // Convert amount to kobo (multiply by 100) and ensure it's an integer
+      final amountInKobo = (amount * 100).round();
 
-      // Add metadata if provided
-      if (metadata != null) {
-        metadata.forEach((key, value) {
-          charge.putCustomField(key, value.toString());
-        });
-      }
-
-      final response = await _paystack.checkout(
-        context,
-        method: CheckoutMethod.card,
-        charge: charge,
+      await PayWithPayStack().now(
+        context: context,
+        secretKey: _secretKey,
+        customerEmail: email,
+        reference: uniqueTransRef,
+        currency: currency,
+        amount: amountInKobo.toDouble(),
+        callbackUrl: "https://your-callback-url.com", // Replace with actual callback URL
+        transactionCompleted: (paymentData) async {
+          debugPrint('Payment completed: ${paymentData.toString()}');
+          
+          // Save successful transaction to database
+          await _saveTransaction(
+            reference: uniqueTransRef,
+            amount: amount,
+            email: email,
+            purpose: purpose,
+            status: 'success',
+            paystackResponse: paymentData.toString(),
+            metadata: metadata,
+          );
+        },
+        transactionNotCompleted: (reason) async {
+          debugPrint("Transaction failed reason: $reason");
+          
+          // Save failed transaction to database
+          await _saveTransaction(
+            reference: uniqueTransRef,
+            amount: amount,
+            email: email,
+            purpose: purpose,
+            status: 'failed',
+            paystackResponse: null,
+            metadata: metadata,
+            errorMessage: reason,
+          );
+        },
       );
 
-      if (response.status) {
-        // Payment successful, save to database
-        await _saveTransaction(
-          reference: charge.reference,
-          amount: amount,
-          email: email,
-          purpose: purpose,
-          status: 'success',
-          paystackResponse: response.reference,
-          metadata: metadata,
-        );
-
-        return PaymentResult(
-          success: true,
-          reference: charge.reference,
-          message: response.message ?? 'Payment successful',
-          transactionId: response.reference,
-        );
-      } else {
-        // Payment failed
-        await _saveTransaction(
-          reference: charge.reference,
-          amount: amount,
-          email: email,
-          purpose: purpose,
-          status: 'failed',
-          paystackResponse: response.reference,
-          metadata: metadata,
-          errorMessage: response.message,
-        );
-
-        return PaymentResult(
-          success: false,
-          reference: charge.reference,
-          message: response.message ?? 'Payment failed',
-          transactionId: response.reference,
-        );
-      }
+      return PaymentResult(
+        success: true,
+        reference: uniqueTransRef,
+        message: 'Payment initiated successfully',
+        transactionId: uniqueTransRef,
+      );
     } catch (e) {
       debugPrint('Error making payment: $e');
       return PaymentResult(
@@ -149,23 +84,23 @@ class PaystackService {
     required BuildContext context,
     required String email,
     required double amount,
-    String? donorName,
-    String? message,
-    bool isAnonymous = false,
+    required String purpose,
+    String currency = 'NGN',
+    String? reference,
+    String? materialId,
+    Map<String, dynamic>? metadata,
   }) async {
-    final metadata = {
-      'donor_name': donorName ?? 'Anonymous',
-      'message': message ?? '',
-      'is_anonymous': isAnonymous.toString(),
-      'donation_type': 'general',
-    };
-
-    return await makePayment(
+    return makePayment(
       context: context,
       email: email,
       amount: amount,
-      purpose: 'donation',
-      metadata: metadata,
+      purpose: purpose,
+      currency: currency,
+      reference: reference,
+      metadata: {
+        'material_id': materialId,
+        ...?metadata,
+      },
     );
   }
 
@@ -228,10 +163,8 @@ class PaystackService {
         final amount = (transaction['amount'] as num).toDouble();
         final purpose = transaction['purpose'] as String;
 
-        switch (purpose) {
-          case 'donation':
-            totalDonations += amount;
-            break;
+        if (purpose.contains('Donation')) {
+          totalDonations += amount;
         }
       }
 
@@ -250,13 +183,6 @@ class PaystackService {
     }
   }
 
-  // Generate unique reference
-  static String _generateReference() {
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final random = Random().nextInt(999999).toString().padLeft(6, '0');
-    return 'ALIVE_${timestamp}_$random';
-  }
-
   // Save transaction to database
   static Future<void> _saveTransaction({
     required String reference,
@@ -270,8 +196,9 @@ class PaystackService {
   }) async {
     try {
       final user = _supabase.auth.currentUser;
-
+      
       await _supabase.from('transactions').insert({
+        'id': PayWithPayStack().generateUuidV4(),
         'reference': reference,
         'user_id': user?.id,
         'email': email,
@@ -396,3 +323,7 @@ class DonationStats {
     required this.transactionCount,
   });
 }
+
+
+
+

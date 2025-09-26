@@ -12,7 +12,7 @@ class AboutAliveScreen extends ConsumerWidget {
     final t = ref.watch(translationProvider);
     return Scaffold(
       appBar: AppBar(
-        title: Text(t('about_alive')),
+        title: Text(t('About ALIVE')),
         backgroundColor: Colors.green,
         foregroundColor: Colors.white,
       ),
@@ -50,7 +50,7 @@ class AboutAliveScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    t('alive_nigeria'),
+                    t('ALIVE NG'),
                     style: const TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
@@ -285,3 +285,7 @@ class AboutAliveScreen extends ConsumerWidget {
     }
   }
 }
+
+
+
+

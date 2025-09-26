@@ -293,3 +293,6 @@ abstract class FirebaseMessagingBase {
   /// Get local notifications instance (for advanced usage)
   static FlutterLocalNotificationsPlugin get localNotifications => _localNotifications;
 }
+
+
+

@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/language_provider.dart';
-import '../models/app_models.dart';
 import '../providers/auth_provider.dart';
+import '../models/app_models.dart';
+import '../utils/text_formatter.dart';
+import '../utils/mobile_utils.dart';
 
 // Provider for health tracking data
 final healthTrackingProvider =
@@ -120,7 +122,7 @@ class HealthScreen extends ConsumerWidget {
               // Header section
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(20),
+                padding: MobileUtils.getResponsivePadding(context),
                 decoration: const BoxDecoration(
                   color: Colors.green,
                   borderRadius: BorderRadius.only(
@@ -132,52 +134,55 @@ class HealthScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      translate('natural_remedies'),
+                      TextFormatter.formatHealthCategory('natural_remedies'),
                       style:
                           Theme.of(context).textTheme.headlineMedium?.copyWith(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
+                                fontSize: MobileUtils.getResponsiveFontSize(context, 24),
                               ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: MobileUtils.getResponsiveSpacing(context, 8)),
                     Text(
-                      translate('gods_natural_healing'),
+                      TextFormatter.formatHealthCategory('gods_natural_healing'),
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                             color: Colors.white.withValues(alpha: 0.9),
+                            fontSize: MobileUtils.getResponsiveFontSize(context, 16),
                           ),
                     ),
                   ],
                 ),
               ),
 
-              const SizedBox(height: 24),
+              SizedBox(height: MobileUtils.getResponsiveSpacing(context, 24)),
 
               // Today's Progress Overview
               _buildProgressOverview(context, translate, todayActivities),
 
-              const SizedBox(height: 24),
+              SizedBox(height: MobileUtils.getResponsiveSpacing(context, 24)),
 
               // Health Activities
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+                padding: MobileUtils.getResponsiveHorizontalPadding(context),
                 child: Text(
-                  translate('todays_activities'),
+                  TextFormatter.formatTimeText('todays_activities'),
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
+                        fontSize: MobileUtils.getResponsiveFontSize(context, 20),
                       ),
                 ),
               ),
 
-              const SizedBox(height: 16),
+              SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
 
               _buildHealthActivities(context, translate, todayActivities, ref),
 
-              const SizedBox(height: 24),
+              SizedBox(height: MobileUtils.getResponsiveSpacing(context, 24)),
 
               // Health Tips
               _buildHealthTips(context, translate),
 
-              const SizedBox(height: 24),
+              SizedBox(height: MobileUtils.getResponsiveSpacing(context, 24)),
             ],
           ),
         ),
@@ -193,8 +198,8 @@ class HealthScreen extends ConsumerWidget {
         totalActivities > 0 ? (completedActivities / totalActivities) : 0.0;
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: const EdgeInsets.all(20),
+      margin: MobileUtils.getResponsiveHorizontalPadding(context),
+      padding: MobileUtils.getResponsivePadding(context),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
@@ -214,18 +219,19 @@ class HealthScreen extends ConsumerWidget {
               Icon(
                 Icons.health_and_safety,
                 color: Colors.green,
-                size: 24,
+                size: MobileUtils.getResponsiveIconSize(context, 24),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: MobileUtils.getResponsiveSpacing(context, 8)),
               Text(
-                translate('todays_wellness'),
+                TextFormatter.formatHealthCategory('todays_wellness'),
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
+                      fontSize: MobileUtils.getResponsiveFontSize(context, 16),
                     ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
           Row(
             children: [
               Expanded(
@@ -233,10 +239,12 @@ class HealthScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '$completedActivities / $totalActivities ${translate('activities_completed')}',
-                      style: Theme.of(context).textTheme.bodyLarge,
+                      '$completedActivities / $totalActivities ${TextFormatter.formatHealthCategory('activities_completed')}',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        fontSize: MobileUtils.getResponsiveFontSize(context, 14),
+                      ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: MobileUtils.getResponsiveSpacing(context, 8)),
                     LinearProgressIndicator(
                       value: progressPercentage,
                       backgroundColor: Colors.green.withValues(alpha: 0.2),
@@ -246,11 +254,15 @@ class HealthScreen extends ConsumerWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 16),
-              CircularProgressIndicator(
-                value: progressPercentage,
-                backgroundColor: Colors.green.withValues(alpha: 0.2),
-                valueColor: const AlwaysStoppedAnimation<Color>(Colors.green),
+              SizedBox(width: MobileUtils.getResponsiveSpacing(context, 16)),
+              SizedBox(
+                width: MobileUtils.getResponsiveIconSize(context, 40),
+                height: MobileUtils.getResponsiveIconSize(context, 40),
+                child: CircularProgressIndicator(
+                  value: progressPercentage,
+                  backgroundColor: Colors.green.withValues(alpha: 0.2),
+                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.green),
+                ),
               ),
             ],
           ),
@@ -267,7 +279,7 @@ class HealthScreen extends ConsumerWidget {
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: MobileUtils.getResponsiveHorizontalPadding(context),
       itemCount: activities.length,
       itemBuilder: (context, index) {
         final activity = activities[index];
@@ -288,21 +300,21 @@ class HealthScreen extends ConsumerWidget {
       BuildContext context, String Function(String) translate) {
     final tips = [
       HealthTip(
-        title: translate('nutrition_tip'),
+        title: TextFormatter.formatText('nutrition_tip'),
         description:
             'Eat a variety of colorful fruits and vegetables to get essential nutrients.',
         icon: Icons.restaurant,
         color: Colors.green,
       ),
       HealthTip(
-        title: translate('exercise_tip'),
+        title: TextFormatter.formatText('exercise_tip'),
         description:
             'Even 10 minutes of walking can boost your mood and energy levels.',
         icon: Icons.fitness_center,
         color: Colors.blue,
       ),
       HealthTip(
-        title: translate('water_tip'),
+        title: TextFormatter.formatText('water_tip'),
         description:
             'Start your day with a glass of water to kickstart your metabolism.',
         icon: Icons.water_drop,
@@ -314,40 +326,41 @@ class HealthScreen extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          padding: MobileUtils.getResponsiveHorizontalPadding(context),
           child: Text(
-            translate('health_tips'),
+            TextFormatter.formatText('health_tips'),
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
+                  fontSize: MobileUtils.getResponsiveFontSize(context, 20),
                 ),
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
         SizedBox(
-          height: 160,
+          height: MobileUtils.getResponsiveHeight(context, 160),
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: MobileUtils.getResponsiveHorizontalPadding(context),
             itemCount: tips.length,
             itemBuilder: (context, index) {
               final tip = tips[index];
               return Container(
-                width: 280,
-                margin: const EdgeInsets.only(right: 16),
+                width: MobileUtils.getResponsiveWidth(context, 280),
+                margin: EdgeInsets.only(right: MobileUtils.getResponsiveSpacing(context, 16)),
                 child: Card(
                   elevation: 2,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: MobileUtils.getResponsivePadding(context),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
                             Container(
-                              padding: const EdgeInsets.all(8),
+                              padding: EdgeInsets.all(MobileUtils.getResponsiveSpacing(context, 8)),
                               decoration: BoxDecoration(
                                 color: tip.color.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(8),
@@ -355,10 +368,10 @@ class HealthScreen extends ConsumerWidget {
                               child: Icon(
                                 tip.icon,
                                 color: tip.color,
-                                size: 20,
+                                size: MobileUtils.getResponsiveIconSize(context, 20),
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            SizedBox(width: MobileUtils.getResponsiveSpacing(context, 12)),
                             Expanded(
                               child: Text(
                                 tip.title,
@@ -367,12 +380,13 @@ class HealthScreen extends ConsumerWidget {
                                     .titleMedium
                                     ?.copyWith(
                                       fontWeight: FontWeight.bold,
+                                      fontSize: MobileUtils.getResponsiveFontSize(context, 16),
                                     ),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: MobileUtils.getResponsiveSpacing(context, 12)),
                         Expanded(
                           child: Text(
                             tip.description,
@@ -384,6 +398,7 @@ class HealthScreen extends ConsumerWidget {
                                       .colorScheme
                                       .onSurface
                                       .withValues(alpha: 0.7),
+                                  fontSize: MobileUtils.getResponsiveFontSize(context, 14),
                                 ),
                           ),
                         ),
@@ -479,20 +494,20 @@ class HealthActivityCard extends StatelessWidget {
         : 0.0;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.only(bottom: MobileUtils.getResponsiveSpacing(context, 16)),
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: MobileUtils.getResponsivePadding(context),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: EdgeInsets.all(MobileUtils.getResponsiveSpacing(context, 12)),
                   decoration: BoxDecoration(
                     color: activity.color.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
@@ -500,10 +515,10 @@ class HealthActivityCard extends StatelessWidget {
                   child: Icon(
                     activity.icon,
                     color: activity.color,
-                    size: 24,
+                    size: MobileUtils.getResponsiveIconSize(context, 24),
                   ),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: MobileUtils.getResponsiveSpacing(context, 16)),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -513,9 +528,10 @@ class HealthActivityCard extends StatelessWidget {
                         style:
                             Theme.of(context).textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.bold,
+                                  fontSize: MobileUtils.getResponsiveFontSize(context, 16),
                                 ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: MobileUtils.getResponsiveSpacing(context, 4)),
                       Text(
                         activity.description,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -530,20 +546,20 @@ class HealthActivityCard extends StatelessWidget {
                 ),
                 if (activity.completed)
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: EdgeInsets.all(MobileUtils.getResponsiveSpacing(context, 8)),
                     decoration: BoxDecoration(
                       color: Colors.green.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.check,
                       color: Colors.green,
-                      size: 16,
+                      size: MobileUtils.getResponsiveIconSize(context, 16),
                     ),
                   ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
             Row(
               children: [
                 Expanded(
@@ -560,6 +576,7 @@ class HealthActivityCard extends StatelessWidget {
                                 .bodyMedium
                                 ?.copyWith(
                                   fontWeight: FontWeight.w500,
+                                  fontSize: MobileUtils.getResponsiveFontSize(context, 14),
                                 ),
                           ),
                           Text(
@@ -570,11 +587,12 @@ class HealthActivityCard extends StatelessWidget {
                                 ?.copyWith(
                                   color: activity.color,
                                   fontWeight: FontWeight.bold,
+                                  fontSize: MobileUtils.getResponsiveFontSize(context, 14),
                                 ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: MobileUtils.getResponsiveSpacing(context, 8)),
                       LinearProgressIndicator(
                         value: progressPercentage,
                         backgroundColor: activity.color.withValues(alpha: 0.2),
@@ -584,38 +602,52 @@ class HealthActivityCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: MobileUtils.getResponsiveSpacing(context, 16)),
                 Row(
                   children: [
-                    IconButton(
-                      onPressed: activity.current > 0
-                          ? () {
-                              final newCurrent = activity.current - 1;
-                              onUpdate(activity.copyWith(
-                                current: newCurrent,
-                                completed: newCurrent >= activity.target,
-                              ));
-                            }
-                          : null,
-                      icon: const Icon(Icons.remove),
-                      style: IconButton.styleFrom(
-                        backgroundColor: activity.color.withValues(alpha: 0.1),
-                        foregroundColor: activity.color,
+                    SizedBox(
+                      width: MobileUtils.getResponsiveIconSize(context, 40),
+                      height: MobileUtils.getResponsiveIconSize(context, 40),
+                      child: IconButton(
+                        onPressed: activity.current > 0
+                            ? () {
+                                final newCurrent = activity.current - 1;
+                                onUpdate(activity.copyWith(
+                                  current: newCurrent,
+                                  completed: newCurrent >= activity.target,
+                                ));
+                              }
+                            : null,
+                        icon: Icon(
+                          Icons.remove,
+                          size: MobileUtils.getResponsiveIconSize(context, 20),
+                        ),
+                        style: IconButton.styleFrom(
+                          backgroundColor: activity.color.withValues(alpha: 0.1),
+                          foregroundColor: activity.color,
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      onPressed: () {
-                        final newCurrent = activity.current + 1;
-                        onUpdate(activity.copyWith(
-                          current: newCurrent,
-                          completed: newCurrent >= activity.target,
-                        ));
-                      },
-                      icon: const Icon(Icons.add),
-                      style: IconButton.styleFrom(
-                        backgroundColor: activity.color.withValues(alpha: 0.1),
-                        foregroundColor: activity.color,
+                    SizedBox(width: MobileUtils.getResponsiveSpacing(context, 8)),
+                    SizedBox(
+                      width: MobileUtils.getResponsiveIconSize(context, 40),
+                      height: MobileUtils.getResponsiveIconSize(context, 40),
+                      child: IconButton(
+                        onPressed: () {
+                          final newCurrent = activity.current + 1;
+                          onUpdate(activity.copyWith(
+                            current: newCurrent,
+                            completed: newCurrent >= activity.target,
+                          ));
+                        },
+                        icon: Icon(
+                          Icons.add,
+                          size: MobileUtils.getResponsiveIconSize(context, 20),
+                        ),
+                        style: IconButton.styleFrom(
+                          backgroundColor: activity.color.withValues(alpha: 0.1),
+                          foregroundColor: activity.color,
+                        ),
                       ),
                     ),
                   ],
@@ -628,3 +660,7 @@ class HealthActivityCard extends StatelessWidget {
     );
   }
 }
+
+
+
+

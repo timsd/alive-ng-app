@@ -5,16 +5,28 @@ import '../providers/language_provider.dart';
 import '../models/app_models.dart';
 import '../widgets/daily_verse_card.dart';
 import '../services/supabase_service.dart';
+import '../services/daily_verse_generation_service.dart';
+import '../utils/text_formatter.dart';
 
 // Provider for daily verse
 final dailyVerseProvider = FutureProvider<DailyVerse?>((ref) async {
   try {
     final supabaseService = SupabaseService.instance;
-    final dailyVerse = await supabaseService.getDailyVerse();
+    final verseGenerator = DailyVerseGenerationService.instance;
+    
+    // Try to get today's verse from database
+    DailyVerse? dailyVerse = await supabaseService.getDailyVerse();
+    
+    // If no verse exists for today, generate one
+    if (dailyVerse == null) {
+      debugPrint('No daily verse found, generating new one...');
+      dailyVerse = await verseGenerator.generateDailyVerseForToday();
+    }
+    
     return dailyVerse;
   } catch (e) {
-    debugPrint('Error fetching daily verse: $e');
-    // Return fallback verse if API fails
+    debugPrint('Error fetching/generating daily verse: $e');
+    // Return fallback verse if everything fails
     return DailyVerse(
        id: 'fallback',
        verse: 'For I know the thoughts that I think toward you, saith the Lord, thoughts of peace, and not of evil, to give you an expected end.',
@@ -105,7 +117,7 @@ class DailyScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      translate('daily_activities'),
+                      TextFormatter.formatActivityType('daily_activities'),
                       style:
                           Theme.of(context).textTheme.headlineMedium?.copyWith(
                                 color: Colors.white,
@@ -150,7 +162,7 @@ class DailyScreen extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Text(
-                  translate('daily_tasks'),
+                  TextFormatter.formatActivityType('daily_tasks'),
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -249,7 +261,7 @@ class DailyScreen extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            translate('today_progress'),
+            TextFormatter.formatTimeText('today_progress'),
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -262,7 +274,7 @@ class DailyScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '$completedTasks / $totalTasks ${translate('tasks_completed')}',
+                      '$completedTasks / $totalTasks ${TextFormatter.formatActivityType('tasks_completed')}',
                       style: Theme.of(context).textTheme.bodyLarge,
                     ),
                     const SizedBox(height: 8),
@@ -447,3 +459,7 @@ class DailyTaskCard extends StatelessWidget {
     );
   }
 }
+
+
+
+

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../data/bible_verses.dart';
 import '../../services/tts_service.dart';
 import '../../services/api_service.dart';
+import '../../utils/mobile_utils.dart';
 
 class BibleReaderScreen extends StatefulWidget {
   final String? initialReference;
@@ -204,7 +205,7 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
                   children: [
                     if (_selectedVersion == version)
                       const Icon(Icons.check, color: Colors.green),
-                    const SizedBox(width: 8),
+                    SizedBox(width: MobileUtils.getResponsiveSpacing(context, 8)),
                     Text(version),
                   ],
                 ),
@@ -229,7 +230,7 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
       children: [
         // Reference Input
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: MobileUtils.getResponsivePadding(context, 16),
           color: Colors.grey.shade100,
           child: Row(
             children: [
@@ -248,7 +249,7 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
                   },
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: MobileUtils.getResponsiveSpacing(context, 8)),
               ElevatedButton(
                 onPressed: () {
                   if (_searchController.text.isNotEmpty) {
@@ -256,7 +257,7 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
                   }
                 },
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                child: const Text('Go', style: TextStyle(color: Colors.white)),
+                child: Text('Go', style: TextStyle(color: Theme.of(context).colorScheme.onPrimary)),
               ),
             ],
           ),
@@ -278,34 +279,34 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
 
   Widget _buildWelcomeContent() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: MobileUtils.getResponsivePadding(context, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Welcome to Bible Reader',
             style: TextStyle(
-              fontSize: 24,
+              fontSize: MobileUtils.getResponsiveFontSize(context, 24),
               fontWeight: FontWeight.bold,
               color: Colors.green,
             ),
           ),
-          const SizedBox(height: 16),
-          const Text(
+          SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
+          Text(
             'Enter a Bible reference above to start reading, or browse popular verses below:',
-            style: TextStyle(fontSize: 16),
+            style: TextStyle(fontSize: MobileUtils.getResponsiveFontSize(context, 16)),
           ),
-          const SizedBox(height: 24),
-          const Text(
+          SizedBox(height: MobileUtils.getResponsiveSpacing(context, 24)),
+          Text(
             'Popular Verses:',
             style: TextStyle(
-              fontSize: 18,
+              fontSize: MobileUtils.getResponsiveFontSize(context, 18),
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
           ...dailyVerses.take(5).map((verse) => Card(
-                margin: const EdgeInsets.only(bottom: 12),
+                margin: EdgeInsets.only(bottom: MobileUtils.getResponsiveSpacing(context, 12)),
                 child: ListTile(
                   title: Text(
                     verse.reference,
@@ -335,64 +336,64 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
         _currentVerse!.text.values.first;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: MobileUtils.getResponsivePadding(context, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Reference Header
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(16),
+            padding: MobileUtils.getResponsivePadding(context, 16),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [Colors.green.shade400, Colors.green.shade600],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(MobileUtils.getResponsiveBorderRadius(context, 12)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   _currentReference!,
-                  style: const TextStyle(
-                    fontSize: 24,
+                  style: TextStyle(
+                    fontSize: MobileUtils.getResponsiveFontSize(context, 24),
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
                 ),
                 Text(
                   _selectedVersion,
-                  style: const TextStyle(
-                    fontSize: 14,
+                  style: TextStyle(
+                    fontSize: MobileUtils.getResponsiveFontSize(context, 14),
                     color: Colors.white70,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: MobileUtils.getResponsiveSpacing(context, 24)),
 
           // Verse Text
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(20),
+            padding: MobileUtils.getResponsivePadding(context, 20),
             decoration: BoxDecoration(
               color: Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(MobileUtils.getResponsiveBorderRadius(context, 12)),
               border: Border.all(color: Colors.grey.shade200),
             ),
             child: Text(
               verseText,
-              style: const TextStyle(
-                fontSize: 18,
+              style: TextStyle(
+                fontSize: MobileUtils.getResponsiveFontSize(context, 18),
                 height: 1.6,
                 fontStyle: FontStyle.italic,
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: MobileUtils.getResponsiveSpacing(context, 24)),
 
           // Actions
           Row(
@@ -402,18 +403,18 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
                   onPressed: _isSpeaking ? _stopSpeaking : _speakVerse,
                   icon: Icon(
                     _isSpeaking ? Icons.stop : Icons.volume_up,
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onPrimary,
                   ),
                   label: Text(
                     _isSpeaking ? 'Stop' : 'Listen',
-                    style: const TextStyle(color: Colors.white),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _isSpeaking ? Colors.red : Colors.purple,
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: MobileUtils.getResponsiveSpacing(context, 8)),
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: () {
@@ -428,13 +429,13 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
                       ),
                     );
                   },
-                  icon: const Icon(Icons.copy, color: Colors.white),
+                  icon: Icon(Icons.copy, color: Theme.of(context).colorScheme.onPrimary),
                   label:
-                      const Text('Copy', style: TextStyle(color: Colors.white)),
+                      Text('Copy', style: TextStyle(color: Theme.of(context).colorScheme.onPrimary)),
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: MobileUtils.getResponsiveSpacing(context, 8)),
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: () {
@@ -466,33 +467,33 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
                       ),
                     );
                   },
-                  icon: const Icon(Icons.share, color: Colors.white),
-                  label: const Text('Share',
-                      style: TextStyle(color: Colors.white)),
+                  icon: Icon(Icons.share, color: Theme.of(context).colorScheme.onPrimary),
+                  label: Text('Share',
+                      style: TextStyle(color: Theme.of(context).colorScheme.onPrimary)),
                   style:
                       ElevatedButton.styleFrom(backgroundColor: Colors.green),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: MobileUtils.getResponsiveSpacing(context, 24)),
 
           // Other Versions
           if (_currentVerse!.text.length > 1) ...[
-            const Text(
+            Text(
               'Other Versions:',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: MobileUtils.getResponsiveFontSize(context, 18),
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: MobileUtils.getResponsiveSpacing(context, 12)),
             ..._currentVerse!.text.entries
                 .where((entry) => entry.key != _selectedVersion)
                 .map((entry) => Card(
-                      margin: const EdgeInsets.only(bottom: 8),
+                      margin: EdgeInsets.only(bottom: MobileUtils.getResponsiveSpacing(context, 8)),
                       child: Padding(
-                        padding: const EdgeInsets.all(16),
+                        padding: MobileUtils.getResponsivePadding(context, 16),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -503,11 +504,11 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
                                 color: Colors.green,
                               ),
                             ),
-                            const SizedBox(height: 8),
+                            SizedBox(height: MobileUtils.getResponsiveSpacing(context, 8)),
                             Text(
                               entry.value,
-                              style: const TextStyle(
-                                fontSize: 16,
+                              style: TextStyle(
+                                fontSize: MobileUtils.getResponsiveFontSize(context, 16),
                                 fontStyle: FontStyle.italic,
                               ),
                             ),
@@ -525,7 +526,7 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: MobileUtils.getResponsivePadding(context, 16),
           color: Colors.grey.shade100,
           child: TextField(
             decoration: const InputDecoration(
@@ -538,20 +539,20 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
         ),
         Expanded(
           child: _searchResults.isEmpty
-              ? const Center(
+              ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
                         Icons.search,
-                        size: 64,
+                        size: MobileUtils.getResponsiveIconSize(context, 64),
                         color: Colors.grey,
                       ),
-                      SizedBox(height: 16),
+                      SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
                       Text(
                         'Search for Bible verses',
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: MobileUtils.getResponsiveFontSize(context, 18),
                           color: Colors.grey,
                         ),
                       ),
@@ -559,12 +560,12 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
                   ),
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.all(16),
+                  padding: MobileUtils.getResponsivePadding(context, 16),
                   itemCount: _searchResults.length,
                   itemBuilder: (context, index) {
                     final verse = _searchResults[index];
                     return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
+                      margin: EdgeInsets.only(bottom: MobileUtils.getResponsiveSpacing(context, 12)),
                       child: ListTile(
                         title: Text(
                           verse.reference,
@@ -595,37 +596,37 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
 
   Widget _buildEGWhiteTab() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: MobileUtils.getResponsivePadding(context, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Ellen G. White Library',
             style: TextStyle(
-              fontSize: 24,
+              fontSize: MobileUtils.getResponsiveFontSize(context, 24),
               fontWeight: FontWeight.bold,
               color: Colors.green,
             ),
           ),
-          const SizedBox(height: 16),
-          const Text(
+          SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
+          Text(
             'Access to Ellen G. White writings and commentary on Bible passages.',
-            style: TextStyle(fontSize: 16),
+            style: TextStyle(fontSize: MobileUtils.getResponsiveFontSize(context, 16)),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: MobileUtils.getResponsiveSpacing(context, 24)),
 
           // Popular Books
-          const Text(
+          Text(
             'Popular Books:',
             style: TextStyle(
-              fontSize: 18,
+              fontSize: MobileUtils.getResponsiveFontSize(context, 18),
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
 
           ..._getEGWhiteBooks().map((book) => Card(
-                margin: const EdgeInsets.only(bottom: 12),
+                margin: EdgeInsets.only(bottom: MobileUtils.getResponsiveSpacing(context, 12)),
                 child: ListTile(
                   leading: const Icon(
                     Icons.library_books,
@@ -649,9 +650,9 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
                             children: [
                               Text(
                                 book['description']!,
-                                style: const TextStyle(fontSize: 16),
+                                style: TextStyle(fontSize: MobileUtils.getResponsiveFontSize(context, 16)),
                               ),
-                              const SizedBox(height: 16),
+                              SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
                               const Text(
                                 'This book contains inspiring spiritual content to strengthen your faith and understanding.',
                                 style: TextStyle(fontStyle: FontStyle.italic),
@@ -683,23 +684,23 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
                 ),
               )),
 
-          const SizedBox(height: 24),
+          SizedBox(height: MobileUtils.getResponsiveSpacing(context, 24)),
 
           // Search E.G. White
           Card(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: MobileUtils.getResponsivePadding(context, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Search E.G. White Writings',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: MobileUtils.getResponsiveFontSize(context, 18),
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: MobileUtils.getResponsiveSpacing(context, 12)),
                   TextField(
                     decoration: const InputDecoration(
                       labelText: 'Search topic or Bible reference...',
@@ -715,12 +716,12 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
                           title: Text('Search Results for "$query"'),
                           content: SizedBox(
                             width: double.maxFinite,
-                            height: 300,
+                            height: MobileUtils.getResponsiveSpacing(context, 300),
                             child: ListView.builder(
                               itemCount: 5,
                               itemBuilder: (context, index) {
                                 return Card(
-                                  margin: const EdgeInsets.only(bottom: 8),
+                                  margin: EdgeInsets.only(bottom: MobileUtils.getResponsiveSpacing(context, 8)),
                                   child: ListTile(
                                     leading: const Icon(Icons.library_books, color: Colors.green),
                                     title: Text('Result ${index + 1}'),
@@ -788,3 +789,7 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
     ];
   }
 }
+
+
+
+

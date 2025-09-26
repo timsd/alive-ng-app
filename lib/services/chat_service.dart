@@ -11,8 +11,6 @@ class ChatService {
 
   final SupabaseClient _supabase = Supabase.instance.client;
   final Logger _logger = Logger('ChatService');
-  final TagParser _tagParser = TagParser();
-  final TagVisibilityChecker _visibilityChecker = TagVisibilityChecker();
 
   // Get all channels for a user
   Future<List<ChatChannel>> getUserChannels(String userId) async {
@@ -93,20 +91,15 @@ class ChatService {
       if (user == null) throw Exception('User not authenticated');
 
       // Parse tags from content using the new TagParser
-      final parsedTags = _tagParser.parseMessage(content);
+      final parsedTags = TagParser.parseMessage(content);
       final allTags = <MessageTag>[...tags, ...parsedTags];
-
-      // Get user roles for visibility checking
-      final userRoles = await _getUserRoles(user.id);
 
       // Filter tags based on user's permissions
       final visibleTags = <MessageTag>[];
       for (final tag in allTags) {
-        if (await _visibilityChecker.canUserSeeTag(
+        if (await TagVisibilityChecker.canUserSeeTag(
           user.id,
-          userRoles,
-          tag.type,
-          tag.value,
+          tag,
         )) {
           visibleTags.add(tag);
         }
@@ -284,11 +277,12 @@ class ChatService {
 
         for (final roleJson in rolesResponse) {
           // Check if user can tag this role
-          if (await _visibilityChecker.canUserSeeTag(
+          if (await TagVisibilityChecker.canUserSeeTag(
             user.id,
-            userRoles,
-            TagType.role,
-            roleJson['role'],
+            MessageTag(
+              type: TagType.role,
+              value: roleJson['role'],
+            ),
           )) {
             entities.add(TaggedEntity(
               id: roleJson['role'],
@@ -559,3 +553,7 @@ class ChatService {
     }
   }
 }
+
+
+
+

@@ -1,8 +1,7 @@
 class AppConstants {
   // Supabase Configuration
   static const String supabaseUrl = 'https://alavvcknoleddumqdxhv.supabase.co';
-  static const String supabaseAnonKey =
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFsYXZ2Y2tub2xlZGR1bXFkeGh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU5MDM2NDIsImV4cCI6MjA3MTQ3OTY0Mn0.5zV86kAD7rRYiso6oXYZNmN1C5c-1aaV3qqdF48bLu8';
+  static const String supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFsYXZ2Y2tub2xlZGR1bXFkeGh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU5MDM2NDIsImV4cCI6MjA3MTQ3OTY0Mn0.5zV86kAD7rRYiso6oXYZNmN1C5c-1aaV3qqdF48bLu8';
 
   // App Information
   static const String appName = 'ALIVE NG';
@@ -108,3 +107,7 @@ class AppConstants {
   static const String onboardingKey = 'onboarding_completed';
   static const String notificationTokenKey = 'notification_token';
 }
+
+
+
+

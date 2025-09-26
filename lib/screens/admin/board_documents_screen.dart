@@ -4,6 +4,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/board_models.dart';
 import '../../services/supabase_service.dart';
+import '../../utils/mobile_utils.dart';
+import '../../utils/text_formatter.dart';
 
 class BoardDocumentsScreen extends StatefulWidget {
   const BoardDocumentsScreen({super.key});
@@ -19,6 +21,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
   String _selectedCategory = 'all';
   String _selectedAccessLevel = 'all';
   String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
 
   final List<String> _categories = [
     'all',
@@ -140,6 +143,12 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
     }
   }
 
+  void _filterDocuments(String query) {
+    setState(() {
+      _searchQuery = query;
+    });
+  }
+
   List<BoardDocument> get _filteredDocuments {
     return _documents.where((document) {
       final categoryMatch =
@@ -179,24 +188,25 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
         children: [
           // Search and Filters
           Container(
-            padding: const EdgeInsets.all(16),
-            color: Colors.grey.shade100,
+            padding: MobileUtils.getResponsivePadding(context),
+            color: Colors.grey.shade50,
             child: Column(
               children: [
                 // Search Bar
                 TextField(
-                  decoration: const InputDecoration(
+                  controller: _searchController,
+                  decoration: InputDecoration(
                     labelText: 'Search documents...',
-                    prefixIcon: Icon(Icons.search),
-                    border: OutlineInputBorder(),
-                    contentPadding:
-                        EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    prefixIcon: const Icon(Icons.search),
+                    border: const OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: MobileUtils.getResponsiveSpacing(context, 12),
+                      vertical: MobileUtils.getResponsiveSpacing(context, 8),
+                    ),
                   ),
-                  onChanged: (value) {
-                    setState(() => _searchQuery = value);
-                  },
+                  onChanged: _filterDocuments,
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: MobileUtils.getResponsiveSpacing(context, 12)),
 
                 // Filter Dropdowns
                 Row(
@@ -204,17 +214,19 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         initialValue: _selectedCategory,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Category',
-                          border: OutlineInputBorder(),
-                          contentPadding:
-                              EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          border: const OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: MobileUtils.getResponsiveSpacing(context, 12),
+                            vertical: MobileUtils.getResponsiveSpacing(context, 8),
+                          ),
                         ),
                         items: _categories.map((category) {
                           return DropdownMenuItem(
                             value: category,
                             child: Text(
-                                category.replaceAll('_', ' ').toUpperCase()),
+                                TextFormatter.formatCategory(category).toUpperCase()),
                           );
                         }).toList(),
                         onChanged: (value) {
@@ -222,21 +234,23 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                         },
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    SizedBox(width: MobileUtils.getResponsiveSpacing(context, 16)),
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         initialValue: _selectedAccessLevel,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Access Level',
-                          border: OutlineInputBorder(),
-                          contentPadding:
-                              EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          border: const OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: MobileUtils.getResponsiveSpacing(context, 12),
+                            vertical: MobileUtils.getResponsiveSpacing(context, 8),
+                          ),
                         ),
                         items: _accessLevels.map((level) {
                           return DropdownMenuItem(
                             value: level,
                             child:
-                                Text(level.replaceAll('_', ' ').toUpperCase()),
+                                Text(TextFormatter.formatRole(level).toUpperCase()),
                           );
                         }).toList(),
                         onChanged: (value) {
@@ -257,20 +271,20 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                     child: CircularProgressIndicator(color: Colors.green),
                   )
                 : _filteredDocuments.isEmpty
-                    ? const Center(
+                    ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
                               Icons.folder_outlined,
-                              size: 64,
+                              size: MobileUtils.getResponsiveIconSize(context, 64),
                               color: Colors.grey,
                             ),
-                            SizedBox(height: 16),
+                            SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
                             Text(
                               'No documents found',
                               style: TextStyle(
-                                fontSize: 18,
+                                fontSize: MobileUtils.getResponsiveFontSize(context, 18),
                                 color: Colors.grey,
                               ),
                             ),
@@ -280,7 +294,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                     : RefreshIndicator(
                         onRefresh: _loadDocuments,
                         child: ListView.builder(
-                          padding: const EdgeInsets.all(16),
+                          padding: MobileUtils.getResponsivePadding(context),
                           itemCount: _filteredDocuments.length,
                           itemBuilder: (context, index) {
                             final document = _filteredDocuments[index];
@@ -342,13 +356,13 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
     }
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: MobileUtils.getResponsiveSpacing(context, 12)),
       elevation: 2,
       child: InkWell(
         onTap: () => _viewDocument(document),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(MobileUtils.getResponsiveBorderRadius(context, 8)),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: MobileUtils.getResponsivePadding(context),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -357,25 +371,25 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                   Icon(
                     fileIcon,
                     color: fileIconColor,
-                    size: 24,
+                    size: MobileUtils.getResponsiveIconSize(context, 24),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: MobileUtils.getResponsiveSpacing(context, 12)),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           document.title,
-                          style: const TextStyle(
-                            fontSize: 16,
+                          style: TextStyle(
+                            fontSize: MobileUtils.getResponsiveFontSize(context, 16),
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        SizedBox(height: MobileUtils.getResponsiveSpacing(context, 4)),
                         Text(
                           document.fileName,
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: MobileUtils.getResponsiveFontSize(context, 12),
                             color: Colors.grey.shade600,
                           ),
                         ),
@@ -383,17 +397,19 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                     ),
                   ),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: MobileUtils.getResponsiveSpacing(context, 8),
+                      vertical: MobileUtils.getResponsiveSpacing(context, 4),
+                    ),
                     decoration: BoxDecoration(
                       color: accessLevelColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(MobileUtils.getResponsiveBorderRadius(context, 12)),
                       border: Border.all(color: accessLevelColor),
                     ),
                     child: Text(
-                      document.accessLevel.replaceAll('_', ' ').toUpperCase(),
+                      TextFormatter.formatRole(document.accessLevel).toUpperCase(),
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: MobileUtils.getResponsiveFontSize(context, 10),
                         fontWeight: FontWeight.bold,
                         color: accessLevelColor,
                       ),
@@ -401,98 +417,102 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: MobileUtils.getResponsiveSpacing(context, 8)),
               Text(
                 document.description,
                 style: const TextStyle(
                   color: Colors.grey,
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: MobileUtils.getResponsiveSpacing(context, 12)),
 
               // Tags
               if (document.tags.isNotEmpty) ...[
                 Wrap(
-                  spacing: 6,
-                  runSpacing: 4,
+                  spacing: MobileUtils.getResponsiveSpacing(context, 6),
+                  runSpacing: MobileUtils.getResponsiveSpacing(context, 4),
                   children: document.tags
                       .map((tag) => Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: MobileUtils.getResponsiveSpacing(context, 6),
+                              vertical: MobileUtils.getResponsiveSpacing(context, 2),
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.green.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(MobileUtils.getResponsiveBorderRadius(context, 8)),
                               border: Border.all(
                                   color: Colors.green.withValues(alpha: 0.3)),
                             ),
                             child: Text(
                               '#$tag',
-                              style: const TextStyle(
-                                fontSize: 10,
+                              style: TextStyle(
+                                fontSize: MobileUtils.getResponsiveFontSize(context, 10),
                                 color: Colors.green,
                               ),
                             ),
                           ))
                       .toList(),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: MobileUtils.getResponsiveSpacing(context, 12)),
               ],
 
               Row(
                 children: [
                   Icon(
                     Icons.person,
-                    size: 16,
+                    size: MobileUtils.getResponsiveIconSize(context, 16),
                     color: Colors.grey.shade600,
                   ),
-                  const SizedBox(width: 4),
+                  SizedBox(width: MobileUtils.getResponsiveSpacing(context, 4)),
                   Text(
                     document.uploadedBy,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: MobileUtils.getResponsiveFontSize(context, 12),
                       color: Colors.grey.shade600,
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: MobileUtils.getResponsiveSpacing(context, 16)),
                   Icon(
                     Icons.calendar_today,
-                    size: 16,
+                    size: MobileUtils.getResponsiveIconSize(context, 16),
                     color: Colors.grey.shade600,
                   ),
-                  const SizedBox(width: 4),
+                  SizedBox(width: MobileUtils.getResponsiveSpacing(context, 4)),
                   Text(
                     DateFormat('MMM dd, yyyy').format(document.uploadedAt),
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: MobileUtils.getResponsiveFontSize(context, 12),
                       color: Colors.grey.shade600,
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: MobileUtils.getResponsiveSpacing(context, 16)),
                   Icon(
                     Icons.storage,
-                    size: 16,
+                    size: MobileUtils.getResponsiveIconSize(context, 16),
                     color: Colors.grey.shade600,
                   ),
-                  const SizedBox(width: 4),
+                  SizedBox(width: MobileUtils.getResponsiveSpacing(context, 4)),
                   Text(
                     _formatFileSize(document.fileSize),
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: MobileUtils.getResponsiveFontSize(context, 12),
                       color: Colors.grey.shade600,
                     ),
                   ),
                   const Spacer(),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: MobileUtils.getResponsiveSpacing(context, 6),
+                      vertical: MobileUtils.getResponsiveSpacing(context, 2),
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.blue.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(MobileUtils.getResponsiveBorderRadius(context, 8)),
                     ),
                     child: Text(
-                      document.category.replaceAll('_', ' ').toUpperCase(),
-                      style: const TextStyle(
-                        fontSize: 10,
+                      TextFormatter.formatCategory(document.category).toUpperCase(),
+                      style: TextStyle(
+                        fontSize: MobileUtils.getResponsiveFontSize(context, 10),
                         fontWeight: FontWeight.bold,
                         color: Colors.blue,
                       ),
@@ -537,7 +557,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: MobileUtils.getResponsiveSpacing(context, 8)),
               Row(
                 children: [
                   const Text(
@@ -547,7 +567,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                   Text(_formatFileSize(document.fileSize)),
                 ],
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: MobileUtils.getResponsiveSpacing(context, 8)),
               Row(
                 children: [
                   const Text(
@@ -557,7 +577,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                   Text(document.uploadedBy),
                 ],
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: MobileUtils.getResponsiveSpacing(context, 8)),
               Row(
                 children: [
                   const Text(
@@ -568,26 +588,26 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                       .format(document.uploadedAt)),
                 ],
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
               Text(
                 document.description,
                 style: const TextStyle(fontStyle: FontStyle.italic),
               ),
               if (document.tags.isNotEmpty) ...[
-                const SizedBox(height: 16),
+                SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
                 const Text(
                   'Tags:',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: MobileUtils.getResponsiveSpacing(context, 8)),
                 Wrap(
-                  spacing: 6,
-                  runSpacing: 4,
+                  spacing: MobileUtils.getResponsiveSpacing(context, 6),
+                  runSpacing: MobileUtils.getResponsiveSpacing(context, 4),
                   children: document.tags
                       .map((tag) => Chip(
                             label: Text(
                               tag,
-                              style: const TextStyle(fontSize: 12),
+                              style: TextStyle(fontSize: MobileUtils.getResponsiveFontSize(context, 12)),
                             ),
                             backgroundColor:
                                 Colors.green.withValues(alpha: 0.1),
@@ -610,9 +630,8 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
               Navigator.pop(context);
               _downloadDocument(document);
             },
-            icon: const Icon(Icons.download, color: Colors.white),
-            label:
-                const Text('Download', style: TextStyle(color: Colors.white)),
+            icon: Icon(Icons.download, color: Theme.of(context).colorScheme.onPrimary),
+            label: Text('Download', style: TextStyle(color: Theme.of(context).colorScheme.onPrimary)),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
           ),
         ],
@@ -710,7 +729,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                     }
                   },
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
 
                 TextField(
                   controller: titleController,
@@ -719,7 +738,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                     border: OutlineInputBorder(),
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
                 TextField(
                   controller: descriptionController,
                   decoration: const InputDecoration(
@@ -728,7 +747,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                   ),
                   maxLines: 3,
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
                 DropdownButtonFormField<String>(
                   initialValue: selectedCategory,
                   decoration: const InputDecoration(
@@ -738,12 +757,12 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                   items: _categories.skip(1).map((category) {
                     return DropdownMenuItem(
                       value: category,
-                      child: Text(category.replaceAll('_', ' ').toUpperCase()),
+                      child: Text(TextFormatter.formatCategory(category).toUpperCase()),
                     );
                   }).toList(),
                   onChanged: (value) => selectedCategory = value!,
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
                 DropdownButtonFormField<String>(
                   initialValue: selectedAccessLevel,
                   decoration: const InputDecoration(
@@ -753,12 +772,12 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                   items: _accessLevels.skip(1).map((level) {
                     return DropdownMenuItem(
                       value: level,
-                      child: Text(level.replaceAll('_', ' ').toUpperCase()),
+                      child: Text(TextFormatter.formatRole(level).toUpperCase()),
                     );
                   }).toList(),
                   onChanged: (value) => selectedAccessLevel = value!,
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
                 TextField(
                   controller: tagsController,
                   decoration: const InputDecoration(
@@ -792,8 +811,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                 }
               },
               style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-              child:
-                  const Text('Upload', style: TextStyle(color: Colors.white)),
+              child: Text('Upload', style: TextStyle(color: Theme.of(context).colorScheme.onPrimary)),
             ),
           ],
         ),
@@ -850,3 +868,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
     }
   }
 }
+
+
+
+

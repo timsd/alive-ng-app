@@ -6,6 +6,7 @@ import '../models/app_models.dart';
 import '../services/supabase_service.dart';
 import '../widgets/bible_reference_widget.dart';
 import '../widgets/star_animation_widget.dart';
+import '../utils/mobile_utils.dart';
 
 // Provider for missions data
 final missionsProvider = FutureProvider<List<Mission>>((ref) async {
@@ -115,12 +116,12 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
             // Header section
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: const BoxDecoration(
+              padding: MobileUtils.getResponsivePadding(context, 20),
+              decoration: BoxDecoration(
                 color: Colors.blue,
                 borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(24),
-                  bottomRight: Radius.circular(24),
+                  bottomLeft: Radius.circular(MobileUtils.getResponsiveBorderRadius(context, 24)),
+                  bottomRight: Radius.circular(MobileUtils.getResponsiveBorderRadius(context, 24)),
                 ),
               ),
               child: Column(
@@ -133,7 +134,7 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
                           fontWeight: FontWeight.bold,
                         ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: MobileUtils.getResponsiveSpacing(context, 8)),
                   Text(
                     translate('go_make_disciples'),
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
@@ -144,17 +145,17 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
               ),
             ),
 
-            const SizedBox(height: 20),
+            SizedBox(height: MobileUtils.getResponsiveSpacing(context, 20)),
 
             // Mission Categories
             _buildMissionCategories(context, categories, ref),
 
-            const SizedBox(height: 20),
+            SizedBox(height: MobileUtils.getResponsiveSpacing(context, 20)),
 
             // Search bar
             if (_showSearch)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+                padding: EdgeInsets.symmetric(horizontal: MobileUtils.getResponsiveSpacing(context, 20)),
                 child: TextField(
                   onChanged: (value) {
                     setState(() {
@@ -165,13 +166,13 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
                     hintText: translate('search_missions'),
                     prefixIcon: const Icon(Icons.search),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(MobileUtils.getResponsiveBorderRadius(context, 12)),
                     ),
                   ),
                 ),
               ),
 
-            if (_showSearch) const SizedBox(height: 20),
+            if (_showSearch) SizedBox(height: MobileUtils.getResponsiveSpacing(context, 20)),
 
             // Missions List
             Expanded(
@@ -202,13 +203,13 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
                         children: [
                           Icon(
                             Icons.search_off,
-                            size: 64,
+                            size: MobileUtils.getResponsiveIconSize(context, 64),
                             color: Theme.of(context)
                                 .colorScheme
                                 .onSurface
                                 .withValues(alpha: 0.5),
                           ),
-                          const SizedBox(height: 16),
+                          SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
                           Text(
                             translate('no_missions_found'),
                             style: Theme.of(context)
@@ -227,7 +228,7 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
                   }
 
                   return ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: EdgeInsets.symmetric(horizontal: MobileUtils.getResponsiveSpacing(context, 20)),
                     itemCount: filteredMissions.length,
                     itemBuilder: (context, index) {
                       final mission = filteredMissions[index];
@@ -248,15 +249,15 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
                     children: [
                       Icon(
                         Icons.error_outline,
-                        size: 64,
+                        size: MobileUtils.getResponsiveIconSize(context, 64),
                         color: Theme.of(context).colorScheme.error,
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
                       Text(
                         translate('error_loading_missions'),
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: MobileUtils.getResponsiveSpacing(context, 8)),
                       Text(
                         error.toString(),
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -267,7 +268,7 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
                             ),
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
                       ElevatedButton(
                         onPressed: () => ref.invalidate(missionsProvider),
                         child: Text(translate('retry')),
@@ -293,15 +294,15 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
   Widget _buildMissionCategories(
       BuildContext context, List<MissionCategory> categories, WidgetRef ref) {
     return SizedBox(
-      height: 50,
+      height: MobileUtils.getResponsiveSpacing(context, 50),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: EdgeInsets.symmetric(horizontal: MobileUtils.getResponsiveSpacing(context, 20)),
         itemCount: categories.length,
         itemBuilder: (context, index) {
           final category = categories[index];
           return Container(
-            margin: const EdgeInsets.only(right: 12),
+            margin: EdgeInsets.only(right: MobileUtils.getResponsiveSpacing(context, 12)),
             child: FilterChip(
               selected: category.isSelected,
               label: Row(
@@ -309,10 +310,10 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
                 children: [
                   Icon(
                     category.icon,
-                    size: 16,
+                    size: MobileUtils.getResponsiveIconSize(context, 16),
                     color: category.isSelected ? Colors.white : category.color,
                   ),
-                  const SizedBox(width: 6),
+                  SizedBox(width: MobileUtils.getResponsiveSpacing(context, 6)),
                   Text(category.name),
                 ],
               ),
@@ -511,28 +512,29 @@ class MissionCard extends StatelessWidget {
         10; // Default value since these properties don't exist in Mission model
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.only(bottom: MobileUtils.getResponsiveSpacing(context, 16)),
       elevation: 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(MobileUtils.getResponsiveBorderRadius(context, 16)),
       ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(MobileUtils.getResponsiveBorderRadius(context, 16)),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: MobileUtils.getResponsivePadding(context, 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: EdgeInsets.symmetric(
+                        horizontal: MobileUtils.getResponsiveSpacing(context, 8), 
+                        vertical: MobileUtils.getResponsiveSpacing(context, 4)),
                     decoration: BoxDecoration(
                       color: _getCategoryColor(mission.category)
                           .withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(MobileUtils.getResponsiveBorderRadius(context, 12)),
                     ),
                     child: Text(
                       mission.category,
@@ -545,11 +547,12 @@ class MissionCard extends StatelessWidget {
                   const Spacer(),
                   if (daysUntilStart > 0)
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
+                      padding: EdgeInsets.symmetric(
+                          horizontal: MobileUtils.getResponsiveSpacing(context, 8), 
+                          vertical: MobileUtils.getResponsiveSpacing(context, 4)),
                       decoration: BoxDecoration(
                         color: Colors.orange.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(MobileUtils.getResponsiveBorderRadius(context, 12)),
                       ),
                       child: Text(
                         '$daysUntilStart days',
@@ -561,14 +564,14 @@ class MissionCard extends StatelessWidget {
                     ),
                 ],
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: MobileUtils.getResponsiveSpacing(context, 12)),
               Text(
                 mission.title,
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: MobileUtils.getResponsiveSpacing(context, 8)),
               BibleReferenceWidget(
                 text: mission.description,
                 textStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -578,18 +581,18 @@ class MissionCard extends StatelessWidget {
                           .withValues(alpha: 0.7),
                     ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: MobileUtils.getResponsiveSpacing(context, 12)),
               Row(
                 children: [
                   Icon(
                     Icons.location_on,
-                    size: 16,
+                    size: MobileUtils.getResponsiveIconSize(context, 16),
                     color: Theme.of(context)
                         .colorScheme
                         .onSurface
                         .withValues(alpha: 0.6),
                   ),
-                  const SizedBox(width: 4),
+                  SizedBox(width: MobileUtils.getResponsiveSpacing(context, 4)),
                   Expanded(
                     child: Text(
                       mission.location,
@@ -603,13 +606,13 @@ class MissionCard extends StatelessWidget {
                   ),
                   Icon(
                     Icons.people,
-                    size: 16,
+                    size: MobileUtils.getResponsiveIconSize(context, 16),
                     color: Theme.of(context)
                         .colorScheme
                         .onSurface
                         .withValues(alpha: 0.6),
                   ),
-                  const SizedBox(width: 4),
+                  SizedBox(width: MobileUtils.getResponsiveSpacing(context, 4)),
                   Text(
                     '5/10', // Default values since properties don't exist
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -621,7 +624,7 @@ class MissionCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: MobileUtils.getResponsiveSpacing(context, 12)),
               Row(
                 children: [
                   Expanded(
@@ -633,7 +636,7 @@ class MissionCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: MobileUtils.getResponsiveSpacing(context, 12)),
                   Text(
                     '$spotsLeft spots left',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -697,29 +700,29 @@ class MissionDetailsSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: MediaQuery.of(context).size.height * 0.8,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
+          topLeft: Radius.circular(MobileUtils.getResponsiveBorderRadius(context, 24)),
+          topRight: Radius.circular(MobileUtils.getResponsiveBorderRadius(context, 24)),
         ),
       ),
       child: Column(
         children: [
           // Handle bar
           Container(
-            width: 40,
-            height: 4,
-            margin: const EdgeInsets.symmetric(vertical: 12),
+            width: MobileUtils.getResponsiveSpacing(context, 40),
+            height: MobileUtils.getResponsiveSpacing(context, 4),
+            margin: EdgeInsets.symmetric(vertical: MobileUtils.getResponsiveSpacing(context, 12)),
             decoration: BoxDecoration(
               color: Colors.grey.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(2),
+              borderRadius: BorderRadius.circular(MobileUtils.getResponsiveBorderRadius(context, 2)),
             ),
           ),
 
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
+              padding: MobileUtils.getResponsivePadding(context, 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -729,7 +732,7 @@ class MissionDetailsSheet extends StatelessWidget {
                           fontWeight: FontWeight.bold,
                         ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: MobileUtils.getResponsiveSpacing(context, 8)),
                   Text(
                     mission.category,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -737,12 +740,12 @@ class MissionDetailsSheet extends StatelessWidget {
                           fontWeight: FontWeight.w500,
                         ),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
                   BibleReferenceWidget(
                     text: mission.description,
                     textStyle: Theme.of(context).textTheme.bodyLarge,
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: MobileUtils.getResponsiveSpacing(context, 24)),
 
                   // Mission Details
                   _buildDetailRow(
@@ -756,7 +759,7 @@ class MissionDetailsSheet extends StatelessWidget {
                   _buildDetailRow(context, Icons.verified, 'Verification',
                       mission.verificationMethod ?? 'Not specified'),
 
-                  const SizedBox(height: 24),
+                  SizedBox(height: MobileUtils.getResponsiveSpacing(context, 24)),
 
                   // Requirements
                   if (mission.instructions?.isNotEmpty == true) ...[
@@ -766,17 +769,18 @@ class MissionDetailsSheet extends StatelessWidget {
                             fontWeight: FontWeight.bold,
                           ),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: MobileUtils.getResponsiveSpacing(context, 12)),
                     ...(mission.instructions?.map((req) => Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
+                              padding: EdgeInsets.only(bottom: MobileUtils.getResponsiveSpacing(context, 8)),
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Container(
-                                    width: 6,
-                                    height: 6,
-                                    margin: const EdgeInsets.only(
-                                        top: 6, right: 12),
+                                    width: MobileUtils.getResponsiveSpacing(context, 6),
+                                    height: MobileUtils.getResponsiveSpacing(context, 6),
+                                    margin: EdgeInsets.only(
+                                        top: MobileUtils.getResponsiveSpacing(context, 6), 
+                                        right: MobileUtils.getResponsiveSpacing(context, 12)),
                                     decoration: BoxDecoration(
                                       color:
                                           _getCategoryColor(mission.category),
@@ -795,7 +799,7 @@ class MissionDetailsSheet extends StatelessWidget {
                               ),
                             )) ??
                         []),
-                    const SizedBox(height: 24),
+                    SizedBox(height: MobileUtils.getResponsiveSpacing(context, 24)),
                   ],
                 ],
               ),
@@ -804,7 +808,7 @@ class MissionDetailsSheet extends StatelessWidget {
 
           // Action buttons
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: MobileUtils.getResponsivePadding(context, 20),
             child: Row(
               children: [
                 Expanded(
@@ -821,12 +825,12 @@ class MissionDetailsSheet extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text('Share this mission with others:'),
-                              const SizedBox(height: 16),
+                              SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
                               Container(
-                                padding: const EdgeInsets.all(12),
+                                padding: MobileUtils.getResponsivePadding(context, 12),
                                 decoration: BoxDecoration(
                                   color: Colors.grey[100],
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(MobileUtils.getResponsiveBorderRadius(context, 8)),
                                 ),
                                 child: Text(
                                   shareText,
@@ -858,7 +862,7 @@ class MissionDetailsSheet extends StatelessWidget {
                     child: Text(translate('share')),
                   ),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: MobileUtils.getResponsiveSpacing(context, 16)),
                 Expanded(
                   flex: 2,
                   child: ElevatedButton(
@@ -884,17 +888,17 @@ class MissionDetailsSheet extends StatelessWidget {
   Widget _buildDetailRow(
       BuildContext context, IconData icon, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: EdgeInsets.only(bottom: MobileUtils.getResponsiveSpacing(context, 16)),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
             icon,
-            size: 20,
+            size: MobileUtils.getResponsiveIconSize(context, 20),
             color:
                 Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: MobileUtils.getResponsiveSpacing(context, 12)),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -909,7 +913,7 @@ class MissionDetailsSheet extends StatelessWidget {
                         fontWeight: FontWeight.w500,
                       ),
                 ),
-                const SizedBox(height: 2),
+                SizedBox(height: MobileUtils.getResponsiveSpacing(context, 2)),
                 Text(
                   value,
                   style: Theme.of(context).textTheme.bodyMedium,
@@ -922,3 +926,7 @@ class MissionDetailsSheet extends StatelessWidget {
     );
   }
 }
+
+
+
+

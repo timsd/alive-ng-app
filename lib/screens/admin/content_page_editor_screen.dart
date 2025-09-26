@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/supabase_service.dart';
 import '../../widgets/role_guard.dart';
 import '../../widgets/loading_widget.dart';
 import '../../utils/toast_utils.dart';
+import '../../utils/text_formatter.dart';
 
 class ContentPageEditorScreen extends StatefulWidget {
   final Map<String, dynamic>? page;
@@ -103,7 +103,7 @@ class _ContentPageEditorScreenState extends State<ContentPageEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return RoleGuard(
+    return RoleVisibility(
       allowedRoles: const ['admin', 'super_admin', 'content_manager'],
       child: Scaffold(
         appBar: AppBar(
@@ -141,7 +141,7 @@ class _ContentPageEditorScreenState extends State<ContentPageEditorScreen> {
                           child: Row(
                             children: [
                               Icon(
-                                _isPublished ? Icons.public : Icons.draft_outlined,
+                                _isPublished ? Icons.public : Icons.drafts,
                                 color: _isPublished ? Colors.green : Colors.orange,
                               ),
                               const SizedBox(width: 12),
@@ -174,7 +174,7 @@ class _ContentPageEditorScreenState extends State<ContentPageEditorScreen> {
                                     }
                                   });
                                 },
-                                activeColor: Colors.green,
+                                activeThumbColor: Colors.green,
                               ),
                             ],
                           ),
@@ -237,7 +237,7 @@ class _ContentPageEditorScreenState extends State<ContentPageEditorScreen> {
                         children: [
                           Expanded(
                             child: DropdownButtonFormField<String>(
-                              value: _pageType,
+                              initialValue: _pageType,
                               decoration: const InputDecoration(
                                 labelText: 'Page Type',
                                 border: OutlineInputBorder(),
@@ -246,7 +246,7 @@ class _ContentPageEditorScreenState extends State<ContentPageEditorScreen> {
                               items: _pageTypes.map((type) {
                                 return DropdownMenuItem(
                                   value: type,
-                                  child: Text(type.replaceAll('_', ' ').toUpperCase()),
+                                  child: Text(TextFormatter.formatCategory(type).toUpperCase()),
                                 );
                               }).toList(),
                               onChanged: (value) {
@@ -480,3 +480,6 @@ class _ContentPageEditorScreenState extends State<ContentPageEditorScreen> {
     );
   }
 }
+
+
+

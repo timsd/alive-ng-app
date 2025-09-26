@@ -232,6 +232,10 @@ class TranslationService {
       'opening_book': 'Opening',
       'search_topic_or_reference': 'Search topic or Bible reference...',
       'searching_for': 'Searching for',
+      // Prayer authentication
+      'authentication_required': 'Authentication Required',
+      'prayer_auth_message': 'Please sign in to access prayer requests and share your prayer needs with the community.',
+      'add_prayer_request': 'Add Prayer Request',
       // Chat screens
       'reply': 'Reply',
       'message_copied_to_clipboard': 'Message copied to clipboard',
@@ -502,6 +506,10 @@ class TranslationService {
       'opening_book': 'Ń ṣí',
       'search_topic_or_reference': 'Wá kókó tàbí ìtọ́kasí Bíbélì...',
       'searching_for': 'Ń wá',
+      // Prayer authentication
+      'authentication_required': 'Ifọwọsi Nilo',
+      'prayer_auth_message': 'Jọwọ wọle lati wọle si awọn ibeere adura ati pin awọn iwulo adura rẹ pẹlu agbegbe.',
+      'add_prayer_request': 'Fi Ibeere Adura kun',
       // Chat screens
       'reply': 'Dáhùn',
       'message_copied_to_clipboard': 'Ìránṣẹ́ ti ṣẹ̀dà sí clipboard',
@@ -767,7 +775,11 @@ class TranslationService {
       'search_verses': 'Nemo ayoyi...',
       'opening_book': 'Ana buɗewa',
       'search_topic_or_reference': 'Nemo jigo ko nassoshi Littafi Mai Tsarki...',
-      'searching_for': 'Ana neman',
+      'searching_for': 'Neman',
+      // Prayer authentication
+      'authentication_required': 'Ana Bukatar Tabbatarwa',
+      'prayer_auth_message': 'Da fatan za a shiga don samun damar yin bukatun addu\'a da raba bukatun addu\'ar ku da al\'umma.',
+      'add_prayer_request': 'Kara Bukatar Addu\'a',
       // Chat screens
       'reply': 'Amsa',
       'message_copied_to_clipboard': 'An kwafi saƙo zuwa clipboard',
@@ -811,3 +823,7 @@ final translationProvider = Provider<String Function(String)>((ref) {
   final locale = ref.watch(localeProvider);
   return (String key) => TranslationService.translate(key, locale.languageCode);
 });
+
+
+
+

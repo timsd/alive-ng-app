@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/app_models.dart';
 import '../../services/auth_service.dart';
+import '../../utils/mobile_utils.dart';
 
 class RegistrationFormScreen extends StatefulWidget {
   const RegistrationFormScreen({super.key});
@@ -142,16 +143,16 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         title: const Text('Registration Submitted'),
-        content: const Column(
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               Icons.check_circle,
               color: Colors.green,
-              size: 64,
+              size: MobileUtils.getResponsiveIconSize(context, 64),
             ),
-            SizedBox(height: 16),
-            Text(
+            SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
+            const Text(
               'Your registration has been submitted successfully. '
               'An administrator will review your application and approve your access to the platform.',
               textAlign: TextAlign.center,
@@ -191,20 +192,26 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
 
   Widget _buildBasicInfoPage() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: MobileUtils.getResponsivePadding(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Basic Information',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: MobileUtils.getResponsiveFontSize(context, 24), 
+              fontWeight: FontWeight.bold
+            ),
           ),
-          const SizedBox(height: 8),
-          const Text(
+          SizedBox(height: MobileUtils.getResponsiveSpacing(context, 8)),
+          Text(
             'Please provide your basic information to create your account.',
-            style: TextStyle(color: Colors.grey),
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: MobileUtils.getResponsiveFontSize(context, 14),
+            ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: MobileUtils.getResponsiveSpacing(context, 24)),
           TextFormField(
             controller: _fullNameController,
             decoration: const InputDecoration(
@@ -219,7 +226,7 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
               return null;
             },
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
           TextFormField(
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
@@ -238,7 +245,7 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
               return null;
             },
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
           TextFormField(
             controller: _passwordController,
             obscureText: _obscurePassword,
@@ -261,7 +268,7 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
               return null;
             },
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
           TextFormField(
             controller: _confirmPasswordController,
             obscureText: _obscureConfirmPassword,
@@ -284,7 +291,7 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
               return null;
             },
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
           TextFormField(
             controller: _phoneController,
             keyboardType: TextInputType.phone,
@@ -294,7 +301,7 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
               prefixIcon: Icon(Icons.phone),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
           TextFormField(
             controller: _addressController,
             maxLines: 2,
@@ -304,7 +311,7 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
               prefixIcon: Icon(Icons.location_on),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
           TextFormField(
             controller: _bioController,
             maxLines: 3,
@@ -322,20 +329,26 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
 
   Widget _buildVerificationPage() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: MobileUtils.getResponsivePadding(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Verification Details',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: MobileUtils.getResponsiveFontSize(context, 24), 
+              fontWeight: FontWeight.bold
+            ),
           ),
-          const SizedBox(height: 8),
-          const Text(
+          SizedBox(height: MobileUtils.getResponsiveSpacing(context, 8)),
+          Text(
             'Please provide your church and organizational details for verification.',
-            style: TextStyle(color: Colors.grey),
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: MobileUtils.getResponsiveFontSize(context, 14),
+            ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: MobileUtils.getResponsiveSpacing(context, 24)),
           TextFormField(
             controller: _localChapterController,
             decoration: const InputDecoration(
@@ -351,7 +364,7 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
               return null;
             },
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
           TextFormField(
             controller: _localChurchController,
             decoration: const InputDecoration(
@@ -367,7 +380,7 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
               return null;
             },
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
           TextFormField(
             controller: _conferenceController,
             decoration: const InputDecoration(
@@ -383,34 +396,38 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
               return null;
             },
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: MobileUtils.getResponsiveSpacing(context, 24)),
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: MobileUtils.getResponsivePadding(context),
             decoration: BoxDecoration(
               color: Colors.blue.shade50,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(MobileUtils.getResponsiveBorderRadius(context, 8)),
               border: Border.all(color: Colors.blue.shade200),
             ),
-            child: const Column(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Icon(Icons.info, color: Colors.blue),
-                    SizedBox(width: 8),
+                    const Icon(Icons.info, color: Colors.blue),
+                    SizedBox(width: MobileUtils.getResponsiveSpacing(context, 8)),
                     Text(
                       'Verification Process',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.blue,
+                        fontSize: MobileUtils.getResponsiveFontSize(context, 16),
                       ),
                     ),
                   ],
                 ),
-                SizedBox(height: 8),
+                SizedBox(height: MobileUtils.getResponsiveSpacing(context, 8)),
                 Text(
                   'Your provided information will be verified by our administrators to ensure you are a legitimate member of the ALIVE organization.',
-                  style: TextStyle(color: Colors.blue),
+                  style: TextStyle(
+                    color: Colors.blue,
+                    fontSize: MobileUtils.getResponsiveFontSize(context, 14),
+                  ),
                 ),
               ],
             ),
@@ -422,25 +439,34 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
 
   Widget _buildCommitmentPage() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: MobileUtils.getResponsivePadding(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Commitment to Growth',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: MobileUtils.getResponsiveFontSize(context, 24), 
+              fontWeight: FontWeight.bold
+            ),
           ),
-          const SizedBox(height: 8),
-          const Text(
+          SizedBox(height: MobileUtils.getResponsiveSpacing(context, 8)),
+          Text(
             'Please specify your commitment to organizational growth.',
-            style: TextStyle(color: Colors.grey),
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: MobileUtils.getResponsiveFontSize(context, 14),
+            ),
           ),
-          const SizedBox(height: 24),
-          const Text(
+          SizedBox(height: MobileUtils.getResponsiveSpacing(context, 24)),
+          Text(
             'Commitment Type *',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            style: TextStyle(
+              fontSize: MobileUtils.getResponsiveFontSize(context, 16), 
+              fontWeight: FontWeight.w500
+            ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: MobileUtils.getResponsiveSpacing(context, 8)),
           RadioGroup<String>(
             groupValue: _commitmentType,
             onChanged: (value) => setState(() => _commitmentType = value!),
@@ -464,7 +490,7 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
           if (_commitmentType == 'financial' || _commitmentType == 'both') ...[
             TextFormField(
               controller: _financialCommitmentController,
@@ -489,7 +515,7 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
                 return null;
               },
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
           ],
           if (_commitmentType == 'active_availability' || _commitmentType == 'both') ...[
             TextFormField(
@@ -509,35 +535,39 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
                 return null;
               },
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
           ],
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: MobileUtils.getResponsivePadding(context),
             decoration: BoxDecoration(
               color: Colors.green.shade50,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(MobileUtils.getResponsiveBorderRadius(context, 8)),
               border: Border.all(color: Colors.green.shade200),
             ),
-            child: const Column(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Icon(Icons.volunteer_activism, color: Colors.green),
-                    SizedBox(width: 8),
+                    const Icon(Icons.volunteer_activism, color: Colors.green),
+                    SizedBox(width: MobileUtils.getResponsiveSpacing(context, 8)),
                     Text(
                       'Your Commitment Matters',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.green,
+                        fontSize: MobileUtils.getResponsiveFontSize(context, 16),
                       ),
                     ),
                   ],
                 ),
-                SizedBox(height: 8),
+                SizedBox(height: MobileUtils.getResponsiveSpacing(context, 8)),
                 Text(
                   'Your commitment helps us plan and allocate resources effectively for the growth and development of the ALIVE organization.',
-                  style: TextStyle(color: Colors.green),
+                  style: TextStyle(
+                    color: Colors.green,
+                    fontSize: MobileUtils.getResponsiveFontSize(context, 14),
+                  ),
                 ),
               ],
             ),
@@ -560,20 +590,20 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
           children: [
             // Progress indicator
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: MobileUtils.getResponsivePadding(context),
               child: Row(
                 children: [
                   for (int i = 0; i < 3; i++) ...[
                     Expanded(
                       child: Container(
-                        height: 4,
+                        height: MobileUtils.getResponsiveSpacing(context, 4),
                         decoration: BoxDecoration(
                           color: i <= _currentPage ? Colors.blue : Colors.grey.shade300,
-                          borderRadius: BorderRadius.circular(2),
+                          borderRadius: BorderRadius.circular(MobileUtils.getResponsiveBorderRadius(context, 2)),
                         ),
                       ),
                     ),
-                    if (i < 2) const SizedBox(width: 8),
+                    if (i < 2) SizedBox(width: MobileUtils.getResponsiveSpacing(context, 8)),
                   ],
                 ],
               ),
@@ -592,7 +622,7 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
             ),
             // Navigation buttons
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: MobileUtils.getResponsivePadding(context),
               child: Row(
                 children: [
                   if (_currentPage > 0)
@@ -602,7 +632,7 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
                         child: const Text('Previous'),
                       ),
                     ),
-                  if (_currentPage > 0) const SizedBox(width: 16),
+                  if (_currentPage > 0) SizedBox(width: MobileUtils.getResponsiveSpacing(context, 16)),
                   Expanded(
                     child: ElevatedButton(
                       onPressed: _isLoading
@@ -611,10 +641,10 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
                               ? _nextPage
                               : _submitRegistration,
                       child: _isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                          ? SizedBox(
+                              height: MobileUtils.getResponsiveSpacing(context, 20),
+                              width: MobileUtils.getResponsiveSpacing(context, 20),
+                              child: const CircularProgressIndicator(strokeWidth: 2),
                             )
                           : Text(_currentPage < 2 ? 'Next' : 'Submit Registration'),
                     ),
@@ -628,3 +658,6 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
     );
   }
 }
+
+
+

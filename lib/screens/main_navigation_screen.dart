@@ -35,7 +35,7 @@ class MainNavigationScreen extends ConsumerWidget {
         currentIndex: _getCurrentIndex(currentLocation),
         onTap: (index) => _onItemTapped(context, index),
         selectedItemColor: Theme.of(context).colorScheme.primary,
-        unselectedItemColor: Theme.of(context).colorScheme.onSurface.withAlpha(153),
+        unselectedItemColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 153 / 255.0),
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
@@ -131,9 +131,19 @@ class MainNavigationScreen extends ConsumerWidget {
   Widget _buildMoreBottomSheet(BuildContext context) {
     final roleService = RoleAccessService.instance;
     final canAccessRoleGated = roleService.canAccessRoleGatedFeatures();
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
+    
+    // Adaptive height based on screen size
+    final bottomSheetHeight = screenHeight < 600 
+        ? screenHeight * 0.85 
+        : screenHeight * 0.7;
+    
+    // Adaptive cross axis count based on screen width
+    final crossAxisCount = screenWidth < 360 ? 2 : 3;
     
     return Container(
-      height: MediaQuery.of(context).size.height * 0.7,
+      height: bottomSheetHeight,
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
@@ -145,12 +155,15 @@ class MainNavigationScreen extends ConsumerWidget {
             height: 4,
             margin: const EdgeInsets.symmetric(vertical: 12),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.onSurface.withAlpha(77),
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 77 / 255.0),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.symmetric(
+              horizontal: screenWidth * 0.04,
+              vertical: 16,
+            ),
             child: Text(
               'More Features',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -160,8 +173,8 @@ class MainNavigationScreen extends ConsumerWidget {
           ),
           if (!canAccessRoleGated) ...[
             Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              padding: const EdgeInsets.all(12),
+              margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
+              padding: EdgeInsets.all(screenWidth * 0.03),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.errorContainer,
                 borderRadius: BorderRadius.circular(8),
@@ -171,28 +184,31 @@ class MainNavigationScreen extends ConsumerWidget {
                   Icon(
                     Icons.pending_actions,
                     color: Theme.of(context).colorScheme.onErrorContainer,
+                    size: screenWidth * 0.06,
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: screenWidth * 0.02),
                   Expanded(
                     child: Text(
                       'Account pending admin approval. Limited features available.',
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.onErrorContainer,
                         fontWeight: FontWeight.w500,
+                        fontSize: screenWidth * 0.035,
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: screenHeight * 0.02),
           ],
           Expanded(
             child: GridView.count(
-              crossAxisCount: 3,
-              padding: const EdgeInsets.all(16),
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 16,
+              crossAxisCount: crossAxisCount,
+              padding: EdgeInsets.all(screenWidth * 0.04),
+              mainAxisSpacing: screenWidth * 0.04,
+              crossAxisSpacing: screenWidth * 0.04,
+              childAspectRatio: screenWidth < 360 ? 1.1 : 1.0,
               children: [
                 if (canAccessRoleGated) ...[
                   _buildMoreItem(context, Icons.calendar_today, 'Daily', AppConstants.dailyRoute),
@@ -226,6 +242,8 @@ class MainNavigationScreen extends ConsumerWidget {
   }
 
   Widget _buildMoreItem(BuildContext context, IconData icon, String label, String route) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    
     return InkWell(
       onTap: () {
         Navigator.pop(context);
@@ -237,7 +255,7 @@ class MainNavigationScreen extends ConsumerWidget {
           color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: Theme.of(context).colorScheme.outline.withAlpha(51),
+            color: Theme.of(context).colorScheme.outline.withValues(alpha: 51 / 255.0),
           ),
         ),
         child: Column(
@@ -245,16 +263,21 @@ class MainNavigationScreen extends ConsumerWidget {
           children: [
             Icon(
               icon,
-              size: 32,
+              size: screenWidth < 360 ? 24 : 32,
               color: Theme.of(context).colorScheme.primary,
             ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w500,
+            SizedBox(height: screenWidth * 0.02),
+            Flexible(
+              child: Text(
+                label,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w500,
+                  fontSize: screenWidth < 360 ? 11 : 12,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
-              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -277,7 +300,7 @@ class MainNavigationScreen extends ConsumerWidget {
                   gradient: LinearGradient(
                     colors: [
                       Theme.of(context).colorScheme.primary,
-                      Theme.of(context).colorScheme.primary.withAlpha(204),
+                      Theme.of(context).colorScheme.primary.withValues(alpha: 204 / 255.0),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -306,7 +329,7 @@ class MainNavigationScreen extends ConsumerWidget {
                     Text(
                       'Grow in Faith',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onPrimary.withAlpha(230),
+                        color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 230 / 255.0),
                       ),
                     ),
                   ],
@@ -420,7 +443,7 @@ class MainNavigationScreen extends ConsumerWidget {
         icon,
         color: isSelected 
             ? Theme.of(context).colorScheme.primary 
-            : Theme.of(context).colorScheme.onSurface.withAlpha(179),
+            : Theme.of(context).colorScheme.onSurface.withValues(alpha: 179 / 255.0),
       ),
       title: Text(
         title,
@@ -432,7 +455,7 @@ class MainNavigationScreen extends ConsumerWidget {
         ),
       ),
       selected: isSelected,
-      selectedTileColor: Theme.of(context).colorScheme.primary.withAlpha(26),
+      selectedTileColor: Theme.of(context).colorScheme.primary.withValues(alpha: 26 / 255.0),
       onTap: () {
         Navigator.pop(context);
         context.go(route);
@@ -447,7 +470,7 @@ class MainNavigationScreen extends ConsumerWidget {
     return ListTile(
       leading: Icon(
         isDark ? Icons.light_mode : Icons.dark_mode,
-        color: Theme.of(context).colorScheme.onSurface.withAlpha(179),
+        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 179 / 255.0),
       ),
       title: Text(
         isDark ? 'Light Mode' : 'Dark Mode',
@@ -468,7 +491,7 @@ class MainNavigationScreen extends ConsumerWidget {
     return ListTile(
       leading: Icon(
         Icons.language,
-        color: Theme.of(context).colorScheme.onSurface.withAlpha(179),
+        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 179 / 255.0),
       ),
       title: Text(
         '${translate('language')} (${currentLocale.languageCode.toUpperCase()})',
@@ -524,3 +547,7 @@ class MainNavigationScreen extends ConsumerWidget {
 
 
 }
+
+
+
+

@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/app_models.dart';
 import '../utils/logger.dart';
+import '../constants/app_constants.dart';
 
 class SupabaseService {
   static SupabaseService? _instance;
@@ -20,7 +21,7 @@ class SupabaseService {
       _logger.info('Testing SSL connection to Supabase...');
       
       // Test basic connection with a simple query
-      final response = await client
+      await client
           .from('users')
           .select('count')
           .limit(1);
@@ -30,7 +31,7 @@ class SupabaseService {
         'success': true,
         'message': 'SSL connection established successfully',
         'timestamp': DateTime.now().toIso8601String(),
-        'url': client.supabaseUrl,
+        'url': AppConstants.supabaseUrl,
       };
     } catch (e) {
       _logger.error('❌ SSL Connection failed: $e');
@@ -38,7 +39,7 @@ class SupabaseService {
         'success': false,
         'message': 'SSL connection failed: $e',
         'timestamp': DateTime.now().toIso8601String(),
-        'url': client.supabaseUrl,
+        'url': AppConstants.supabaseUrl,
       };
     }
   }
@@ -49,8 +50,8 @@ class SupabaseService {
       _logger.info('Verifying SSL configuration...');
       
       final Map<String, dynamic> result = {
-        'ssl_enabled': client.supabaseUrl.startsWith('https://'),
-        'url': client.supabaseUrl,
+        'ssl_enabled': AppConstants.supabaseUrl.startsWith('https://'),
+        'url': AppConstants.supabaseUrl,
         'timestamp': DateTime.now().toIso8601String(),
       };
 
@@ -462,4 +463,90 @@ class SupabaseService {
       _logger.error('Error updating notification settings', e);
     }
   }
+
+  // Content Management Methods
+  static Future<Map<String, dynamic>?> getContentPageBySlug(String slug, {String? languageCode}) async {
+    try {
+      final targetLanguage = languageCode ?? 'en';
+      
+      // First try to get content in the requested language
+      try {
+        final response = await Supabase.instance.client
+            .from('content_pages')
+            .select()
+            .eq('slug', slug)
+            .eq('language', targetLanguage)
+            .eq('is_published', true)
+            .single();
+        return response;
+      } catch (e) {
+        // If not found in target language, fallback to English
+        if (targetLanguage != 'en') {
+          final fallbackResponse = await Supabase.instance.client
+              .from('content_pages')
+              .select()
+              .eq('slug', slug)
+              .eq('language', 'en')
+              .eq('is_published', true)
+              .single();
+          
+          // Mark that this content needs translation
+          fallbackResponse['needs_translation'] = true;
+          fallbackResponse['target_language'] = targetLanguage;
+          return fallbackResponse;
+        }
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getDynamicContent({String? languageCode, String? category}) async {
+    try {
+      final targetLanguage = languageCode ?? 'en';
+      
+      var query = Supabase.instance.client
+          .from('dynamic_content')
+          .select()
+          .eq('is_active', true);
+      
+      if (category != null) {
+        query = query.eq('category', category);
+      }
+      
+      // Try to get content in the requested language first
+      final response = await query.eq('language', targetLanguage);
+      
+      if (response.isEmpty && targetLanguage != 'en') {
+        // Fallback to English if no content in target language
+        final fallbackQuery = Supabase.instance.client
+            .from('dynamic_content')
+            .select()
+            .eq('is_active', true)
+            .eq('language', 'en');
+        
+        if (category != null) {
+          fallbackQuery.eq('category', category);
+        }
+        
+        final fallbackResponse = await fallbackQuery;
+        
+        // Mark content as needing translation
+        return fallbackResponse.map<Map<String, dynamic>>((item) {
+          item['needs_translation'] = true;
+          item['target_language'] = targetLanguage;
+          return item;
+        }).toList();
+      }
+      
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      return [];
+    }
+  }
 }
+
+
+
+

@@ -29,7 +29,6 @@ class TagChip extends StatefulWidget {
 }
 
 class _TagChipState extends State<TagChip> with SingleTickerProviderStateMixin {
-  final TagVisibilityChecker _visibilityChecker = TagVisibilityChecker();
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
   bool _isHovered = false;
@@ -60,11 +59,9 @@ class _TagChipState extends State<TagChip> with SingleTickerProviderStateMixin {
   }
 
   Future<void> _checkTagVisibility() async {
-    final canSee = await _visibilityChecker.canUserSeeTag(
+    final canSee = await TagVisibilityChecker.canUserSeeTag(
       widget.currentUserId,
-      widget.userRoles,
-      widget.tag.type,
-      widget.tag.value,
+      widget.tag,
     );
     
     if (mounted) {
@@ -218,16 +215,6 @@ class _TagChipState extends State<TagChip> with SingleTickerProviderStateMixin {
           shadowColor: Colors.orange,
           icon: _getSpecialTagIcon(),
         );
-      
-      default:
-        return TagChipData(
-          backgroundColor: theme.colorScheme.outline.withValues(alpha: 0.1),
-          borderColor: theme.colorScheme.outline.withValues(alpha: 0.3),
-          iconColor: theme.colorScheme.onSurface,
-          textColor: theme.colorScheme.onSurface,
-          shadowColor: theme.colorScheme.onSurface,
-          icon: Icons.tag,
-        );
     }
   }
 
@@ -349,8 +336,6 @@ class _TagChipState extends State<TagChip> with SingleTickerProviderStateMixin {
         return 'Group: ${widget.tag.displayName ?? widget.tag.value}';
       case TagType.special:
         return 'Special Tag: ${_getSpecialTagDescription()}';
-      default:
-        return widget.tag.fullTag;
     }
   }
 
@@ -474,3 +459,6 @@ class TagChipGroup extends StatelessWidget {
     );
   }
 }
+
+
+

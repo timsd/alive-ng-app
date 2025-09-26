@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/supabase_service.dart';
 import '../../widgets/role_guard.dart';
 import '../../widgets/loading_widget.dart';
 import '../../utils/toast_utils.dart';
+import '../../utils/text_formatter.dart';
 
 class AppSettingsScreen extends StatefulWidget {
   const AppSettingsScreen({super.key});
@@ -16,7 +16,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   final SupabaseService _supabaseService = SupabaseService.instance;
   
   bool _isLoading = true;
-  Map<String, List<Map<String, dynamic>>> _settingsByCategory = {};
+  final Map<String, List<Map<String, dynamic>>> _settingsByCategory = {};
   final Map<String, TextEditingController> _controllers = {};
 
   @override
@@ -71,7 +71,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return RoleGuard(
+    return RoleVisibility(
       allowedRoles: const ['admin', 'super_admin'],
       child: Scaffold(
         appBar: AppBar(
@@ -100,8 +100,8 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           onPressed: _saveAllSettings,
           backgroundColor: Colors.purple,
           foregroundColor: Colors.white,
-          child: const Icon(Icons.save),
           tooltip: 'Save All Changes',
+          child: const Icon(Icons.save),
         ),
       ),
     );
@@ -156,7 +156,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           // Settings by category
           ..._settingsByCategory.entries.map((entry) {
             return _buildCategorySection(entry.key, entry.value);
-          }).toList(),
+          }),
           
           const SizedBox(height: 80), // Space for FAB
         ],
@@ -180,7 +180,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  category.replaceAll('_', ' ').toUpperCase(),
+                  TextFormatter.formatCategory(category).toUpperCase(),
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -198,7 +198,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            ...settings.map((setting) => _buildSettingItem(setting)).toList(),
+            ...settings.map((setting) => _buildSettingItem(setting)),
           ],
         ),
       ),
@@ -582,19 +582,19 @@ class _AddSettingDialogState extends State<_AddSettingDialog> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: _category,
+                initialValue: _category,
                 decoration: const InputDecoration(labelText: 'Category'),
                 items: _categories.map((cat) {
                   return DropdownMenuItem(
                     value: cat,
-                    child: Text(cat.toUpperCase()),
+                    child: Text(TextFormatter.formatCategory(cat).toUpperCase()),
                   );
                 }).toList(),
                 onChanged: (value) => setState(() => _category = value!),
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: _dataType,
+                initialValue: _dataType,
                 decoration: const InputDecoration(labelText: 'Data Type'),
                 items: _dataTypes.map((type) {
                   return DropdownMenuItem(
@@ -708,7 +708,7 @@ class _EditSettingDialogState extends State<_EditSettingDialog> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: _category,
+                initialValue: _category,
                 decoration: const InputDecoration(labelText: 'Category'),
                 items: _categories.map((cat) {
                   return DropdownMenuItem(
@@ -745,3 +745,6 @@ class _EditSettingDialogState extends State<_EditSettingDialog> {
     );
   }
 }
+
+
+

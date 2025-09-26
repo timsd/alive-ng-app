@@ -28,7 +28,7 @@ class KidsMissionScreen extends ConsumerWidget {
                 gradient: LinearGradient(
                   colors: [
                     Theme.of(context).primaryColor,
-                    Theme.of(context).primaryColor.withAlpha(179), // 0.7 opacity = 179 alpha
+                    Theme.of(context).primaryColor.withValues(alpha: 179 / 255.0), // 0.7 opacity = 179 alpha
                   ],
                 ),
                 borderRadius: BorderRadius.circular(16),
@@ -53,7 +53,7 @@ class KidsMissionScreen extends ConsumerWidget {
                   Text(
                     'Exciting missions and activities for young disciples',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.white.withAlpha(230), // 0.9 opacity = 230 alpha
+                      color: Colors.white.withValues(alpha: 230 / 255.0), // 0.9 opacity = 230 alpha
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -159,7 +159,7 @@ class KidsMissionScreen extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: color.withAlpha(26), // 0.1 opacity = 26 alpha
+                  color: color.withValues(alpha: 26 / 255.0), // 0.1 opacity = 26 alpha
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -221,7 +221,7 @@ class KidsMissionScreen extends ConsumerWidget {
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: Theme.of(context).primaryColor.withAlpha(26), // 0.1 opacity = 26 alpha
+          backgroundColor: Theme.of(context).primaryColor.withValues(alpha: 26 / 255.0), // 0.1 opacity = 26 alpha
           child: Icon(
             activity['icon'] as IconData,
             color: Theme.of(context).primaryColor,
@@ -337,3 +337,6 @@ class KidsMissionScreen extends ConsumerWidget {
     );
   }
 }
+
+
+

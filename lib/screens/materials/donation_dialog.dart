@@ -95,30 +95,37 @@ class _DonationDialogState extends State<DonationDialog> {
           'Please complete your payment using the Stripe checkout.',
           paymentResult['authorization_url'] ?? '',
         );
-      } else {
-        // Paystack for Nigerian users
+        
+        // For demo purposes, we'll simulate successful payment
+        await Future.delayed(const Duration(seconds: 2));
+        
+        // Update donation status to completed (in real app, this would be done via webhook)
+        await _donationService.updateDonationStatus(
+          donation.id,
+          DonationStatus.completed,
+        );
+      } else if (_selectedPaymentMethod == PaymentMethod.paystack) {
+        // Check if widget is still mounted before using context
+        if (!mounted) return;
+        
+        // Paystack payment is handled directly by PaystackService
         paymentResult = await _donationService.processPaystackPayment(
+          context: context,
           donationId: donation.id,
           amount: _donationAmount,
           currency: 'NGN',
           email: donation.userEmail,
         );
         
-        await _showPaymentInstructions(
-          'Paystack Payment',
-          'Please complete your payment using Paystack.',
-          paymentResult['authorization_url'] ?? '',
-        );
+        // Check if payment was successful
+        if (paymentResult['success'] == true) {
+          // Payment was processed successfully
+          // The PaystackService handles the payment flow and database updates
+          // No need for additional simulation or manual status updates
+        } else {
+          throw Exception(paymentResult['message'] ?? 'Payment failed');
+        }
       }
-
-      // For demo purposes, we'll simulate successful payment
-      await Future.delayed(const Duration(seconds: 2));
-      
-      // Update donation status to completed (in real app, this would be done via webhook)
-      await _donationService.updateDonationStatus(
-        donation.id,
-        DonationStatus.completed,
-      );
 
       if (mounted) {
         Navigator.of(context).pop(true); // Return true to indicate successful donation
@@ -501,3 +508,7 @@ class _DonationDialogState extends State<DonationDialog> {
     }
   }
 }
+
+
+
+

@@ -1,13 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/supabase_service.dart';
 import '../../widgets/role_guard.dart';
 import '../../widgets/loading_widget.dart';
 import '../../utils/toast_utils.dart';
-import 'content_page_editor_screen.dart';
-import 'announcement_editor_screen.dart';
-import 'app_settings_screen.dart';
-import '../../widgets/error_widget.dart';
+import '../../utils/text_formatter.dart';
 
 class ContentManagementScreen extends StatefulWidget {
   final String? contentType;
@@ -90,7 +86,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
         _contentPages = List<Map<String, dynamic>>.from(response);
       });
     } catch (e) {
-      print('Error loading content pages: $e');
+      debugPrint('Error loading content pages: $e');
     }
   }
 
@@ -105,7 +101,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
         _announcements = List<Map<String, dynamic>>.from(response);
       });
     } catch (e) {
-      print('Error loading announcements: $e');
+      debugPrint('Error loading announcements: $e');
     }
   }
 
@@ -120,7 +116,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
         _appSettings = List<Map<String, dynamic>>.from(response);
       });
     } catch (e) {
-      print('Error loading app settings: $e');
+      debugPrint('Error loading app settings: $e');
     }
   }
 
@@ -135,13 +131,13 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
         _featuredContent = List<Map<String, dynamic>>.from(response);
       });
     } catch (e) {
-      print('Error loading featured content: $e');
+      debugPrint('Error loading featured content: $e');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return RoleGuard(
+    return RoleVisibility(
       allowedRoles: const ['admin', 'super_admin', 'content_manager'],
       child: Scaffold(
         appBar: AppBar(
@@ -237,7 +233,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
         leading: CircleAvatar(
           backgroundColor: isPublished ? Colors.green : Colors.orange,
           child: Icon(
-            isPublished ? Icons.public : Icons.draft_outlined,
+            isPublished ? Icons.public : Icons.drafts,
             color: Colors.white,
           ),
         ),
@@ -263,7 +259,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
         ),
         trailing: PopupMenuButton(
           itemBuilder: (context) => [
-            const PopupMenuItem(
+            PopupMenuItem(
               value: 'edit',
               child: ListTile(
                 leading: Icon(Icons.edit),
@@ -279,11 +275,11 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                 contentPadding: EdgeInsets.zero,
               ),
             ),
-            const PopupMenuItem(
+            PopupMenuItem(
               value: 'delete',
               child: ListTile(
                 leading: Icon(Icons.delete, color: Colors.red),
-                title: Text('Delete', style: TextStyle(color: Colors.red)),
+                title: Text('Delete', style: TextStyle(color: Theme.of(context).colorScheme.onError)),
                 contentPadding: EdgeInsets.zero,
               ),
             ),
@@ -390,7 +386,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Target: ${targetAudience.replaceAll('_', ' ').toUpperCase()}',
+                  'Target: ${TextFormatter.formatRole(targetAudience).toUpperCase()}',
                   style: const TextStyle(fontSize: 12, color: Colors.grey),
                 ),
               ],
@@ -415,11 +411,11 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                 contentPadding: EdgeInsets.zero,
               ),
             ),
-            const PopupMenuItem(
+            PopupMenuItem(
               value: 'delete',
               child: ListTile(
                 leading: Icon(Icons.delete, color: Colors.red),
-                title: Text('Delete', style: TextStyle(color: Colors.red)),
+                title: Text('Delete', style: TextStyle(color: Theme.of(context).colorScheme.onError)),
                 contentPadding: EdgeInsets.zero,
               ),
             ),
@@ -526,7 +522,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
             value: 'delete',
             child: ListTile(
               leading: Icon(Icons.delete, color: Colors.red),
-              title: Text('Delete', style: TextStyle(color: Colors.red)),
+              title: Text('Delete', style: TextStyle(color: Colors.white)),
               contentPadding: EdgeInsets.zero,
             ),
           ),
@@ -609,7 +605,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
             Text(content['description'] ?? ''),
             const SizedBox(height: 4),
             Text(
-              'Type: ${contentType.replaceAll('_', ' ').toUpperCase()}',
+              'Type: ${TextFormatter.formatCategory(contentType).toUpperCase()}',
               style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
           ],
@@ -632,11 +628,11 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                 contentPadding: EdgeInsets.zero,
               ),
             ),
-            const PopupMenuItem(
+            PopupMenuItem(
               value: 'delete',
               child: ListTile(
                 leading: Icon(Icons.delete, color: Colors.red),
-                title: Text('Delete', style: TextStyle(color: Colors.red)),
+                title: Text('Delete', style: TextStyle(color: Theme.of(context).colorScheme.onError)),
                 contentPadding: EdgeInsets.zero,
               ),
             ),
@@ -708,124 +704,6 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
         _deleteFeaturedContent(content);
         break;
     }
-  }
-
-  void _showCreateDialog(String contentType) {
-    switch (contentType) {
-      case 'content_pages':
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const ContentPageEditorScreen(),
-          ),
-        ).then((result) {
-          if (result == true) {
-            _loadData();
-          }
-        });
-        break;
-      case 'announcements':
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const AnnouncementEditorScreen(),
-          ),
-        ).then((result) {
-          if (result == true) {
-            _loadData();
-          }
-        });
-        break;
-      case 'app_settings':
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const AppSettingsScreen(),
-          ),
-        ).then((result) {
-          if (result == true) {
-            _loadData();
-          }
-        });
-        break;
-      default:
-        _showGenericCreateDialog(contentType);
-    }
-  }
-
-  void _showEditDialog(String contentType, Map<String, dynamic> item) {
-    switch (contentType) {
-      case 'content_pages':
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ContentPageEditorScreen(page: item),
-          ),
-        ).then((result) {
-          if (result == true) {
-            _loadData();
-          }
-        });
-        break;
-      case 'announcements':
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => AnnouncementEditorScreen(announcement: item),
-          ),
-        ).then((result) {
-          if (result == true) {
-            _loadData();
-          }
-        });
-        break;
-      case 'app_settings':
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const AppSettingsScreen(),
-          ),
-        ).then((result) {
-          if (result == true) {
-            _loadData();
-          }
-        });
-        break;
-      default:
-        _showGenericEditDialog(contentType, item);
-    }
-  }
-
-  void _showGenericCreateDialog(String contentType) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Create ${contentType.replaceAll('_', ' ').toUpperCase()}'),
-        content: const Text('Create dialog not implemented yet'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showGenericEditDialog(String contentType, Map<String, dynamic> item) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Edit ${contentType.replaceAll('_', ' ').toUpperCase()}'),
-        content: Text('Edit dialog for ${item['title'] ?? item['name'] ?? 'item'} not implemented yet'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
   }
 
   // Dialog methods (placeholder implementations)
@@ -1031,3 +909,6 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     }
   }
 }
+
+
+

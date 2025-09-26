@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../providers/language_provider.dart';
+import '../utils/text_formatter.dart';
 
 class QuickActionsGrid extends ConsumerWidget {
   const QuickActionsGrid({super.key});
@@ -15,28 +16,28 @@ class QuickActionsGrid extends ConsumerWidget {
       QuickAction(
         icon: Icons.menu_book,
         title: translate('study'),
-        subtitle: translate('bible_study'),
+        subtitle: TextFormatter.formatActivityType('bible_study'),
         color: Theme.of(context).colorScheme.primary,
         route: '/study',
       ),
       QuickAction(
         icon: Icons.favorite,
         title: translate('prayer'),
-        subtitle: translate('prayer_requests'),
+        subtitle: TextFormatter.formatActivityType('prayer_requests'),
         color: Theme.of(context).colorScheme.secondary,
         route: '/prayer',
       ),
       QuickAction(
         icon: Icons.health_and_safety,
         title: translate('health'),
-        subtitle: translate('wellness_tracking'),
+        subtitle: TextFormatter.formatActivityType('wellness_tracking'),
         color: Theme.of(context).colorScheme.tertiary,
         route: '/health',
       ),
       QuickAction(
         icon: Icons.public,
         title: translate('missions'),
-        subtitle: translate('global_outreach'),
+        subtitle: TextFormatter.formatActivityType('global_outreach'),
         color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
         route: '/missions',
       ),
@@ -76,7 +77,7 @@ class QuickActionsGrid extends ConsumerWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Text(
-            translate('quick_actions'),
+            TextFormatter.formatText('quick_actions'),
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -207,3 +208,7 @@ class QuickActionCard extends StatelessWidget {
     );
   }
 }
+
+
+
+

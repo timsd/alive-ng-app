@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/auth_provider.dart';
 import '../providers/language_provider.dart';
+import '../utils/text_formatter.dart';
 
 class GreetingHeader extends ConsumerWidget {
   const GreetingHeader({super.key});
@@ -47,7 +48,7 @@ class GreetingHeader extends ConsumerWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      currentUser != null ? userName : translate('welcome'),
+                      currentUser != null ? userName : TextFormatter.formatText('welcome'),
                       style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                             color: Theme.of(context).colorScheme.onPrimary,
                             fontWeight: FontWeight.bold,
@@ -102,7 +103,7 @@ class GreetingHeader extends ConsumerWidget {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    translate('join_us_spiritual_growth'),
+                    TextFormatter.formatText('join_us_spiritual_growth'),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context).colorScheme.onPrimary,
                       fontWeight: FontWeight.w600,
@@ -136,11 +137,15 @@ class GreetingHeader extends ConsumerWidget {
     final hour = DateTime.now().hour;
 
     if (hour < 12) {
-      return translate('good_morning');
+      return TextFormatter.formatText('good_morning');
     } else if (hour < 17) {
-      return translate('good_afternoon');
+      return TextFormatter.formatText('good_afternoon');
     } else {
-      return translate('good_evening');
+      return TextFormatter.formatText('good_evening');
     }
   }
 }
+
+
+
+

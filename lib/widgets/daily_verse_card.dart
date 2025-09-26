@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 import '../providers/language_provider.dart';
 import '../models/app_models.dart';
 import '../services/tts_service.dart';
+import '../utils/text_formatter.dart';
 import 'bible_reference_widget.dart';
 
 class DailyVerseCard extends ConsumerStatefulWidget {
@@ -108,7 +109,7 @@ class _DailyVerseCardState extends ConsumerState<DailyVerseCard> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          translate('daily_verse'),
+                          TextFormatter.formatText('daily_verse'),
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: Theme.of(context).colorScheme.primary,
@@ -212,7 +213,7 @@ class _DailyVerseCardState extends ConsumerState<DailyVerseCard> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        translate('reflection'),
+                        TextFormatter.formatText('reflection'),
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                           color: Theme.of(context).colorScheme.secondary,
@@ -248,7 +249,7 @@ class _DailyVerseCardState extends ConsumerState<DailyVerseCard> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        translate('failed_to_load_verse'),
+                        TextFormatter.formatText('failed_to_load_verse'),
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                     ),
@@ -269,3 +270,7 @@ class _DailyVerseCardState extends ConsumerState<DailyVerseCard> {
     );
   }
 }
+
+
+
+

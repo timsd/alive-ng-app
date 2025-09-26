@@ -5,6 +5,7 @@ import '../../services/supabase_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/custom_card.dart';
 import '../../widgets/loading_widget.dart';
+import '../../utils/text_formatter.dart';
 
 class SSLStatusScreen extends ConsumerStatefulWidget {
   const SSLStatusScreen({super.key});
@@ -180,7 +181,7 @@ class _SSLStatusScreenState extends ConsumerState<SSLStatusScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: isSecure ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                color: isSecure ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: isSecure ? Colors.green : Colors.red,
@@ -254,7 +255,7 @@ class _SSLStatusScreenState extends ConsumerState<SSLStatusScreen> {
             Row(
               children: [
                 Icon(
-                  Icons.certificate,
+                  Icons.security,
                   color: isValid ? Colors.green : Colors.red,
                 ),
                 const SizedBox(width: 8),
@@ -367,12 +368,9 @@ class _SSLStatusScreenState extends ConsumerState<SSLStatusScreen> {
   }
 
   String _formatCheckName(String key) {
-    return key
-        .replaceAll('_', ' ')
-        .split(' ')
-        .map((word) => word.isNotEmpty 
-            ? word[0].toUpperCase() + word.substring(1) 
-            : word)
-        .join(' ');
+    return TextFormatter.formatText(key);
   }
 }
+
+
+

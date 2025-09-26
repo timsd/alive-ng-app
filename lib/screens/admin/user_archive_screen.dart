@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/app_models.dart';
 import '../../services/supabase_service.dart';
 import '../../utils/logger.dart';
+import '../../utils/mobile_utils.dart';
 
 class UserArchiveScreen extends StatefulWidget {
   const UserArchiveScreen({super.key});
@@ -111,38 +112,38 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
           backgroundColor: Colors.red,
           foregroundColor: Colors.white,
         ),
-        body: const Center(
+        body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
                 Icons.archive_outlined,
-                size: 80,
+                size: MobileUtils.getResponsiveIconSize(context, 80),
                 color: Colors.red,
               ),
-              SizedBox(height: 16),
+              SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
               Text(
                 'Access Denied',
                 style: TextStyle(
-                  fontSize: 24,
+                  fontSize: MobileUtils.getResponsiveFontSize(context, 24),
                   fontWeight: FontWeight.bold,
                   color: Colors.red,
                 ),
               ),
-              SizedBox(height: 8),
+              SizedBox(height: MobileUtils.getResponsiveSpacing(context, 8)),
               Text(
                 'You do not have permission to access archived users.',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: MobileUtils.getResponsiveFontSize(context, 16),
                   color: Colors.grey,
                 ),
                 textAlign: TextAlign.center,
               ),
-              SizedBox(height: 8),
+              SizedBox(height: MobileUtils.getResponsiveSpacing(context, 8)),
               Text(
                 'This section is restricted to Leaders,\nCoordinators, and Administrators only.',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: MobileUtils.getResponsiveFontSize(context, 14),
                   color: Colors.grey,
                 ),
                 textAlign: TextAlign.center,
@@ -169,14 +170,14 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
         children: [
           // Search Bar
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: MobileUtils.getResponsivePadding(context),
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
                 hintText: 'Search archived users...',
                 prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(MobileUtils.getResponsiveBorderRadius(context, 10)),
                 ),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
@@ -200,18 +201,18 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
           
           // Info Card
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            padding: EdgeInsets.symmetric(horizontal: MobileUtils.getResponsivePaddingValue(context)),
             child: Card(
               color: Colors.orange.shade50,
               child: Padding(
-                padding: const EdgeInsets.all(12.0),
+                padding: EdgeInsets.all(MobileUtils.getResponsiveSpacing(context, 12)),
                 child: Row(
                   children: [
                     const Icon(
                       Icons.info_outline,
                       color: Colors.orange,
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: MobileUtils.getResponsiveSpacing(context, 12)),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -225,8 +226,8 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
                           ),
                           Text(
                             'Users who have left the organization. Found ${_filteredUsers.length} archived users.',
-                            style: const TextStyle(
-                              fontSize: 12,
+                            style: TextStyle(
+                              fontSize: MobileUtils.getResponsiveFontSize(context, 12),
                               color: Colors.orange,
                             ),
                           ),
@@ -239,7 +240,7 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
             ),
           ),
           
-          const SizedBox(height: 16),
+          SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
           
           // Archived Users List
           Expanded(
@@ -250,26 +251,26 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
                       children: [
                         Icon(
                           Icons.archive_outlined,
-                          size: 64,
+                          size: MobileUtils.getResponsiveIconSize(context, 64),
                           color: Colors.grey.shade400,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
                         Text(
                           _searchQuery.isEmpty
                               ? 'No archived users found'
                               : 'No users match your search',
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: MobileUtils.getResponsiveFontSize(context, 18),
                             color: Colors.grey.shade600,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: MobileUtils.getResponsiveSpacing(context, 8)),
                         Text(
                           _searchQuery.isEmpty
                               ? 'Users who leave the organization will appear here'
                               : 'Try adjusting your search terms',
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: MobileUtils.getResponsiveFontSize(context, 14),
                             color: Colors.grey.shade500,
                           ),
                           textAlign: TextAlign.center,
@@ -278,7 +279,7 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
                     ),
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    padding: EdgeInsets.symmetric(horizontal: MobileUtils.getResponsivePaddingValue(context)),
                     itemCount: _filteredUsers.length,
                     itemBuilder: (context, index) {
                       final user = _filteredUsers[index];
@@ -293,7 +294,7 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
   
   Widget _buildArchivedUserCard(UserProfile user) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: MobileUtils.getResponsiveSpacing(context, 12)),
       elevation: 2,
       child: ExpansionTile(
         leading: CircleAvatar(
@@ -323,51 +324,51 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
                 color: Colors.grey,
               ),
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: MobileUtils.getResponsiveSpacing(context, 4)),
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: MobileUtils.getResponsiveSpacing(context, 8),
+                    vertical: MobileUtils.getResponsiveSpacing(context, 2),
                   ),
                   decoration: BoxDecoration(
                     color: Colors.orange.shade100,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(MobileUtils.getResponsiveBorderRadius(context, 12)),
                   ),
                   child: Text(
                     'ARCHIVED',
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: MobileUtils.getResponsiveFontSize(context, 10),
                       fontWeight: FontWeight.bold,
                       color: Colors.orange.shade700,
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: MobileUtils.getResponsiveSpacing(context, 8)),
                 Text(
                   user.role.toUpperCase(),
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: MobileUtils.getResponsiveFontSize(context, 10),
                     fontWeight: FontWeight.bold,
                     color: Colors.grey.shade600,
                   ),
                 ),
                 if (user.isNewConvert) ...[
-                  const SizedBox(width: 8),
+                  SizedBox(width: MobileUtils.getResponsiveSpacing(context, 8)),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: MobileUtils.getResponsiveSpacing(context, 6),
+                      vertical: MobileUtils.getResponsiveSpacing(context, 2),
                     ),
                     decoration: BoxDecoration(
                       color: Colors.green.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(MobileUtils.getResponsiveBorderRadius(context, 10)),
                     ),
-                    child: const Text(
+                    child: Text(
                       'NC',
                       style: TextStyle(
-                        fontSize: 9,
+                        fontSize: MobileUtils.getResponsiveFontSize(context, 9),
                         fontWeight: FontWeight.bold,
                         color: Colors.green,
                       ),
@@ -380,7 +381,7 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
         ),
         children: [
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: MobileUtils.getResponsivePadding(context),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -392,7 +393,7 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
                   'Archived Date',
                   user.updatedAt.toString().split(' ')[0],
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: MobileUtils.getResponsiveSpacing(context, 16)),
                 
                 // Action Buttons
                 if (_currentUser != null) ...[
@@ -409,7 +410,7 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      SizedBox(width: MobileUtils.getResponsiveSpacing(context, 12)),
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () => _permanentlyDeleteUser(user),
@@ -434,12 +435,12 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
   
   Widget _buildDetailRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
+      padding: EdgeInsets.only(bottom: MobileUtils.getResponsiveSpacing(context, 8)),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 80,
+            width: MobileUtils.getResponsiveSpacing(context, 80),
             child: Text(
               '$label:',
               style: const TextStyle(
@@ -576,3 +577,7 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
     super.dispose();
   }
 }
+
+
+
+

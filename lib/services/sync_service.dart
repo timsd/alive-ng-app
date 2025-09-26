@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_service.dart';
 import 'storage_service.dart';
 import 'auth_service.dart';
+import 'daily_verse_generation_service.dart';
 import '../models/app_models.dart';
 import '../utils/logger.dart';
 
@@ -20,6 +21,7 @@ class SyncService {
   final SupabaseService _supabase = SupabaseService.instance;
   final StorageService _storage = StorageService.instance;
   final AuthService _auth = AuthService.instance;
+  final DailyVerseGenerationService _verseGenerator = DailyVerseGenerationService.instance;
   final Logger _logger = Logger('SyncService');
 
   Timer? _syncTimer;
@@ -417,21 +419,57 @@ class SyncService {
   // Sync daily verses
   Future<bool> _syncDailyVerses() async {
     try {
-      // Fetch daily verses from Supabase
+      _logger.info('Starting daily verses sync...');
+      
+      // Initialize verse generation system if needed
+      await _verseGenerator.initializeVerseGeneration();
+      
+      // Check if auto-generation is enabled
+      final autoGenEnabled = await _verseGenerator.isAutoGenerationEnabled();
+      
+      if (autoGenEnabled) {
+        // Generate today's verse if it doesn't exist
+        final todaysVerse = await _verseGenerator.generateDailyVerseForToday();
+        if (todaysVerse != null) {
+          _logger.info('✅ Today\'s verse generated: ${todaysVerse.reference}');
+        }
+        
+        // Optionally generate verses for the next few days
+        final tomorrow = DateTime.now().add(const Duration(days: 1));
+        await _verseGenerator.generateDailyVerseForDate(tomorrow);
+      }
+      
+      // Fetch daily verses from Supabase (last 30 days + next 7 days)
+      final startDate = DateTime.now().subtract(const Duration(days: 30));
+      final endDate = DateTime.now().add(const Duration(days: 7));
+      
       final response = await _supabase.client
           .from('daily_verses')
           .select()
-          .order('date', ascending: false)
-          .limit(30); // Last 30 days
+          .gte('date', _formatDateForDatabase(startDate))
+          .lte('date', _formatDateForDatabase(endDate))
+          .order('date', ascending: false);
 
       // Store in local storage for offline access
       await _storage.setJsonList('daily_verses', response);
+      
+      // Store generation statistics
+      final stats = await _verseGenerator.getGenerationStatistics();
+      await _storage.setJson('daily_verse_stats', stats);
+      
+      _logger.info('✅ Daily verses synced: ${response.length} verses');
       debugPrint('Daily verses synced: ${response.length} verses');
       return true;
     } catch (e) {
+      _logger.error('❌ Daily verses sync error: $e');
       debugPrint('Daily verses sync error: $e');
       return false;
     }
+  }
+
+  /// Format date for database queries
+  String _formatDateForDatabase(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
   // Queue local change for sync
@@ -657,3 +695,7 @@ final lastSyncTimeProvider = FutureProvider<DateTime?>((ref) async {
   final lastSyncString = await storage.getString(StorageKeys.lastSyncTime);
   return lastSyncString != null ? DateTime.parse(lastSyncString) : null;
 });
+
+
+
+

@@ -35,8 +35,6 @@ class TagInputWidget extends StatefulWidget {
 class _TagInputWidgetState extends State<TagInputWidget> {
   final FocusNode _focusNode = FocusNode();
   final LayerLink _layerLink = LayerLink();
-  final TagParser _tagParser = TagParser();
-  final TagVisibilityChecker _visibilityChecker = TagVisibilityChecker();
   
   OverlayEntry? _overlayEntry;
   List<TaggedEntity> _suggestions = [];
@@ -46,7 +44,6 @@ class _TagInputWidgetState extends State<TagInputWidget> {
   int _selectedSuggestionIndex = 0;
   bool _showSuggestions = false;
   TagType? _currentTagType;
-  String _currentTagQuery = '';
 
   @override
   void initState() {
@@ -77,7 +74,7 @@ class _TagInputWidgetState extends State<TagInputWidget> {
     if (cursorPosition < 0) return;
 
     // Parse current tags in the message
-    _currentTags = _tagParser.parseMessage(text);
+    _currentTags = TagParser.parseMessage(text);
 
     // Check for active tag typing
     final beforeCursor = text.substring(0, cursorPosition);
@@ -90,7 +87,6 @@ class _TagInputWidgetState extends State<TagInputWidget> {
       setState(() {
         _tagStartPosition = tagMatch['start']!;
         _currentTagType = tagType;
-        _currentTagQuery = tagQuery;
         _showSuggestions = true;
         _selectedSuggestionIndex = 0;
       });
@@ -143,11 +139,15 @@ class _TagInputWidgetState extends State<TagInputWidget> {
       // Filter results based on user's visibility permissions
       final visibleResults = <TaggedEntity>[];
       for (final result in results) {
-        if (await _visibilityChecker.canUserSeeTag(
+        final messageTag = MessageTag(
+           type: result.type,
+           value: result.name,
+           displayName: result.name,
+         );
+        
+        if (await TagVisibilityChecker.canUserSeeTag(
           widget.currentUserId,
-          widget.userRoles,
-          result.type,
-          result.name,
+          messageTag,
         )) {
           visibleResults.add(result);
         }
@@ -342,7 +342,6 @@ class _TagInputWidgetState extends State<TagInputWidget> {
   }
 
   Widget _buildTagIcon(TagType type) {
-    final theme = Theme.of(context);
     return Icon(
       _getTagIcon(type),
       size: 20,
@@ -376,8 +375,6 @@ class _TagInputWidgetState extends State<TagInputWidget> {
         return theme.colorScheme.tertiary;
       case TagType.special:
         return Colors.orange;
-      default:
-        return theme.colorScheme.primary;
     }
   }
 
@@ -391,7 +388,7 @@ class _TagInputWidgetState extends State<TagInputWidget> {
         return 'Tag Groups';
       case TagType.special:
         return 'Special Tags';
-      default:
+      case null:
         return 'Tags';
     }
   }
@@ -437,8 +434,6 @@ class _TagInputWidgetState extends State<TagInputWidget> {
         return '#';
       case TagType.special:
         return '!';
-      default:
-        return '@';
     }
   }
 
@@ -489,15 +484,15 @@ class _TagInputWidgetState extends State<TagInputWidget> {
     final text = widget.controller.text.trim();
     if (text.isEmpty) return;
 
-    // Parse final tags from the message
-    final tags = _tagParser.parseMessage(text);
+    // Parse tags from the message
+    final tags = TagParser.parseMessage(text);
 
+    // Send the message with tags
     widget.onSendMessage(text, tags);
+
+    // Clear the input
     widget.controller.clear();
     _hideSuggestions();
-    setState(() {
-      _currentTags.clear();
-    });
   }
 
   @override
@@ -680,3 +675,6 @@ class _TagInputWidgetState extends State<TagInputWidget> {
     );
   }
 }
+
+
+

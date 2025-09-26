@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../models/chat_models.dart';
-import '../../widgets/tag_input_widget.dart';
-import '../../widgets/tag_chip.dart';
 
 class ChatInputWidget extends StatefulWidget {
   final TextEditingController controller;
@@ -258,6 +256,9 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
       case TagType.role:
         icon = Icons.admin_panel_settings;
         break;
+      case TagType.special:
+        icon = Icons.star;
+        break;
     }
 
     return Icon(
@@ -275,6 +276,8 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
         return Theme.of(context).colorScheme.secondary;
       case TagType.role:
         return Theme.of(context).colorScheme.tertiary;
+      case TagType.special:
+        return Colors.orange;
     }
   }
 
@@ -489,3 +492,7 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
     );
   }
 }
+
+
+
+

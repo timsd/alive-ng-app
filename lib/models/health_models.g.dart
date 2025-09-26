@@ -358,3 +358,7 @@ Map<String, dynamic> _$HealthDataToJson(HealthData instance) =>
       'createdAt': instance.createdAt.toIso8601String(),
       'updatedAt': instance.updatedAt.toIso8601String(),
     };
+
+
+
+

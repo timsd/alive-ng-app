@@ -682,3 +682,7 @@ class ChapterConstants {
     'Philippians 2:3-4 - Do nothing from selfish ambition or conceit',
   ];
 }
+
+
+
+

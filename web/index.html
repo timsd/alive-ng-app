@@ -18,7 +18,7 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="ALIVE Nigeria - Spiritual growth, Bible study, and Christian community app">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -29,10 +29,83 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
+  <!-- reCAPTCHA Enterprise -->
+  <script src="https://www.google.com/recaptcha/enterprise.js?render=6LeZO9YrAAAAAKYbeWSQz-tIEysE7229NOaBrDWy"></script>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging-compat.js"></script>
+
   <title>ALIVE NG</title>
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
+  <!-- Firebase Configuration -->
+  <script>
+    // Firebase configuration - using actual project configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyDmpl9Idp9Q0ult4BfWPg5J7A1URQOpDoU",
+      authDomain: "alive-ng-flutter-app.firebaseapp.com",
+      projectId: "alive-ng-flutter-app",
+      storageBucket: "alive-ng-flutter-app.appspot.com",
+      messagingSenderId: "234909240985",
+      appId: "1:234909240985:web:9d703098e9fcce3e8e3208",
+      measurementId: "G-234909240985"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+
+    // Initialize Firebase Cloud Messaging
+    const messaging = firebase.messaging();
+
+    // Web Push Certificate (VAPID Key) - using actual key from firebase_config.dart
+    messaging.getToken({ 
+      vapidKey: 'BMFvrKu5q_mKn80IaIsX3hREab1nodMrdKDlMGOL_lVCIuTwxq4mTZiFG1SYUcCy6G-TrjK9X4H08Jll1PQjkYg' 
+    }).then((currentToken) => {
+      if (currentToken) {
+        console.log('Registration token available.');
+        // Send the token to your server and update the UI if necessary
+      } else {
+        console.log('No registration token available.');
+      }
+    }).catch((err) => {
+      console.log('An error occurred while retrieving token. ', err);
+    });
+
+    // Handle incoming messages when the app is in the foreground
+    messaging.onMessage((payload) => {
+      console.log('Message received. ', payload);
+      // Customize notification here
+    });
+
+    // reCAPTCHA Enterprise functions
+    window.executeRecaptcha = function(action) {
+      return new Promise((resolve, reject) => {
+        grecaptcha.enterprise.ready(async () => {
+          try {
+            const token = await grecaptcha.enterprise.execute('6LeZO9YrAAAAAKYbeWSQz-tIEysE7229NOaBrDWy', {action: action});
+            resolve(token);
+          } catch (error) {
+            reject(error);
+          }
+        });
+      });
+    };
+
+    // Service Worker Registration for Push Notifications
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/firebase-messaging-sw.js')
+        .then((registration) => {
+          console.log('Service Worker registered with scope:', registration.scope);
+          messaging.useServiceWorker(registration);
+        })
+        .catch((error) => {
+          console.log('Service Worker registration failed:', error);
+        });
+    }
+  </script>
+
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

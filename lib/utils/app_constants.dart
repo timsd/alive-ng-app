@@ -95,3 +95,7 @@ class AppConstants {
   static const String onboardingKey = 'onboarding_completed';
   static const String notificationTokenKey = 'notification_token';
 }
+
+
+
+

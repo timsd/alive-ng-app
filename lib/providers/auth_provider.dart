@@ -30,3 +30,7 @@ final authServiceProvider = Provider<AuthService>((ref) {
 final supabaseServiceProvider = Provider<SupabaseService>((ref) {
   return SupabaseService.instance;
 });
+
+
+
+

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import '../../providers/language_provider.dart';
+import '../../utils/mobile_utils.dart';
 
 class AboutAppScreen extends ConsumerWidget {
   const AboutAppScreen({super.key});
@@ -13,55 +13,45 @@ class AboutAppScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(t('about_app')),
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: MobileUtils.getResponsivePadding(context),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // App Logo Section
+            // App Logo and Name
             Center(
               child: Column(
                 children: [
                   Container(
-                    width: 100,
-                    height: 100,
+                    width: MobileUtils.isMobileScreen(context) ? 80 : 100,
+                    height: MobileUtils.isMobileScreen(context) ? 80 : 100,
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Colors.green,
                       borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withAlpha(77),
-                          spreadRadius: 2,
-                          blurRadius: 5,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: SvgPicture.asset(
-                        'assets/images/alive_logo.svg',
-                        fit: BoxFit.contain,
-                      ),
+                    child: Icon(
+                      Icons.favorite,
+                      color: Colors.white,
+                      size: MobileUtils.isMobileScreen(context) ? 40 : 50,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: MobileUtils.isMobileScreen(context) ? 12 : 16),
                   Text(
                     t('app_name'),
-                    style: const TextStyle(
-                      fontSize: 24,
+                    style: TextStyle(
+                      fontSize: MobileUtils.getResponsiveFontSize(context, 24),
                       fontWeight: FontWeight.bold,
                       color: Colors.green,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: MobileUtils.isMobileScreen(context) ? 6 : 8),
                   Text(
                     t('app_tagline'),
-                    style: const TextStyle(
-                      fontSize: 16,
+                    style: TextStyle(
+                      fontSize: MobileUtils.getResponsiveFontSize(context, 16),
                       color: Colors.grey,
                     ),
                     textAlign: TextAlign.center,
@@ -69,32 +59,35 @@ class AboutAppScreen extends ConsumerWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 32),
+            SizedBox(height: MobileUtils.isMobileScreen(context) ? 24 : 32),
 
             // App Description
             Text(
               t('about_this_app'),
-              style: const TextStyle(
-                fontSize: 20,
+              style: TextStyle(
+                fontSize: MobileUtils.getResponsiveFontSize(context, 20),
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: MobileUtils.isMobileScreen(context) ? 8 : 12),
             Text(
               t('app_description'),
-              style: const TextStyle(fontSize: 16, height: 1.5),
+              style: TextStyle(
+                fontSize: MobileUtils.getResponsiveFontSize(context, 16), 
+                height: 1.5
+              ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: MobileUtils.isMobileScreen(context) ? 16 : 24),
 
             // Developer Section
             Text(
               t('app_developer'),
-              style: const TextStyle(
-                fontSize: 20,
+              style: TextStyle(
+                fontSize: MobileUtils.getResponsiveFontSize(context, 20),
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: MobileUtils.isMobileScreen(context) ? 8 : 12),
             Card(
               elevation: 4,
               child: Padding(
@@ -207,3 +200,7 @@ class AboutAppScreen extends ConsumerWidget {
     }
   }
 }
+
+
+
+
