@@ -361,6 +361,9 @@ class TranslationService {
       'developer_message': 'Created by Timothy Olodude as his way to see the organization marching forward. For suggestions and feedback, please contact:',
       'developer_email': 'dammyolodude@gmail.com',
       'app_version': 'Version 1.0.0',
+      'help_support': 'Help & Support',
+      'privacy_policy': 'Privacy Policy',
+      'terms_conditions': 'Terms & Conditions',
       'copyright': '© 2025 ALIVE Nigeria'
     },
     'yo': {
@@ -517,7 +520,9 @@ class TranslationService {
       'retry': 'Gbìyànjú Lẹ́ẹ̀kan Sí i',
       'go_home': 'Lọ sí Ilé',
       'go_back': 'Padà Sẹ́yìn',
-      'dismiss': 'Kọ̀ Sílẹ̀'
+      'dismiss': 'Kọ̀ Sílẹ̀',
+      'privacy_policy': 'Ìlànà Àṣírí',
+      'terms_conditions': 'Àwọn Òfin àti Ipò'
     },
     'ig': {
       'home': 'Ụlọ',

@@ -492,13 +492,21 @@ class ProfileScreen extends ConsumerWidget {
                 title: Text(translate('privacy_policy')),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                 onTap: () {
-                  // Navigate to privacy policy (placeholder implementation)
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('${translate('privacy_policy')} - ${translate('coming_soon')}'),
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
+                  // Navigate to privacy policy
+                  context.push('/privacy-policy');
+                },
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: Icon(
+                  Icons.gavel_outlined,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                title: Text(translate('terms_conditions')),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () {
+                  // Navigate to terms & conditions
+                  context.push('/terms-conditions');
                 },
               ),
               const Divider(height: 1),

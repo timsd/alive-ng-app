@@ -42,6 +42,10 @@ class AppConstants {
   static const String booksTractsRoute = '/books-tracts';
   static const String kidsStoriesRoute = '/kids-stories';
   static const String prayerWallRoute = '/prayer-wall';
+  
+  // Legal Routes
+  static const String privacyPolicyRoute = '/privacy-policy';
+  static const String termsConditionsRoute = '/terms-conditions';
 
   // Bible Versions
   static const List<String> bibleVersions = ['KJV', 'NKJV', 'NIV'];

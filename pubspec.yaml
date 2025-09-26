@@ -15,9 +15,7 @@ dependencies:
   flutter_svg: ^2.0.7
   cached_network_image: ^3.2.3
   
-  # State Management
-  provider: ^6.0.5
-  riverpod: ^2.4.0
+  # State Management (using flutter_riverpod as primary)
   flutter_riverpod: ^2.4.0
   
   # Navigation
@@ -26,7 +24,6 @@ dependencies:
   # HTTP & API
   http: ^1.1.0
   dio: ^5.3.2
-  retrofit: ^4.0.3
   json_annotation: ^4.8.1
   
   # Database & Storage
@@ -52,14 +49,14 @@ dependencies:
   # Notifications
   flutter_local_notifications: ^19.4.1
   
-  # Speech & Audio
+  # Speech & Audio (used in bible game and TTS service)
   speech_to_text: ^7.3.0
   flutter_tts: ^4.2.3
   
-  # Video Conferencing
+  # Video Conferencing (used in conference platform)
   jitsi_meet_flutter_sdk: ^11.5.1
   
-  # Chat & Messaging
+  # Chat & Messaging (used in chat service)
   stream_chat_flutter: ^9.4.0
   stream_chat_flutter_core: ^9.4.0
   
@@ -84,9 +81,9 @@ dependencies:
   connectivity_plus: ^6.1.5
   timeago: ^3.7.1
 
-  equatable: any
-  timezone: any
-  # flutter_paystack: ^1.0.5+1  # Temporarily disabled due to dependency conflicts
+  # Data models
+  equatable: ^2.0.5
+  timezone: ^0.9.4
 
 dev_dependencies:
   flutter_test:
@@ -102,6 +99,20 @@ flutter:
     - assets/images/
     - assets/icons/
     - assets/data/
+    - assets/certificates/
+
+  fonts:
+    - family: Roboto
+      fonts:
+        - asset: fonts/Roboto-Regular.ttf
+        - asset: fonts/Roboto-Bold.ttf
+          weight: 700
+  
+  assets:
+    - assets/images/
+    - assets/icons/
+    - assets/data/
+    - assets/certificates/
   
   # fonts:
   #   - family: Inter

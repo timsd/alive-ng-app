@@ -14,6 +14,69 @@ class SupabaseService {
   bool get isAuthenticated => currentUser != null;
   final Logger _logger = Logger('SupabaseService');
 
+  /// Test SSL connection to Supabase
+  Future<Map<String, dynamic>> testSSLConnection() async {
+    try {
+      _logger.info('Testing SSL connection to Supabase...');
+      
+      // Test basic connection with a simple query
+      final response = await client
+          .from('users')
+          .select('count')
+          .limit(1);
+      
+      _logger.info('✅ SSL Connection successful');
+      return {
+        'success': true,
+        'message': 'SSL connection established successfully',
+        'timestamp': DateTime.now().toIso8601String(),
+        'url': client.supabaseUrl,
+      };
+    } catch (e) {
+      _logger.error('❌ SSL Connection failed: $e');
+      return {
+        'success': false,
+        'message': 'SSL connection failed: $e',
+        'timestamp': DateTime.now().toIso8601String(),
+        'url': client.supabaseUrl,
+      };
+    }
+  }
+
+  /// Verify SSL configuration and connection security
+  Future<Map<String, dynamic>> verifySSLConfiguration() async {
+    try {
+      _logger.info('Verifying SSL configuration...');
+      
+      final Map<String, dynamic> result = {
+        'ssl_enabled': client.supabaseUrl.startsWith('https://'),
+        'url': client.supabaseUrl,
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+
+      if (!result['ssl_enabled']) {
+        result['warning'] = 'Supabase URL is not using HTTPS - SSL not enabled';
+        _logger.warning('⚠️ SSL not enabled - URL does not use HTTPS');
+      } else {
+        result['message'] = 'SSL is properly configured';
+        _logger.info('✅ SSL is properly configured');
+      }
+
+      // Test actual connection
+      final connectionTest = await testSSLConnection();
+      result['connection_test'] = connectionTest;
+
+      return result;
+    } catch (e) {
+      _logger.error('Error verifying SSL configuration: $e');
+      return {
+        'success': false,
+        'error': 'Failed to verify SSL configuration: $e',
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+    }
+  }
+
   // Authentication Methods
   Future<AuthResponse> signInWithEmail(String email, String password) async {
     try {

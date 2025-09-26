@@ -1,0 +1,97 @@
+================================================================================
+ADVANCED SUPABASE DATABASE SCHEMA REPORT
+================================================================================
+Generated: 2025-09-26T00:57:38.889039
+Database: https://alavvcknoleddumqdxhv.supabase.co
+Method: Advanced API Analysis
+
+📊 SUMMARY
+--------------------------------------------------
+Tables Found: 15
+Accessible Tables: 15
+Inaccessible Tables: 0
+Total Columns: 10
+Tables with Data: 1
+Empty/Inaccessible: 14
+
+✅ ACCESSIBLE TABLES
+--------------------------------------------------
+
+🔸 push_tokens
+   Columns: 0
+   Estimated Rows: 0
+
+🔸 mission_completions
+   Columns: 0
+   Estimated Rows: 0
+
+🔸 notification_settings
+   Columns: 0
+   Estimated Rows: 0
+
+🔸 study_progress
+   Columns: 0
+   Estimated Rows: 0
+
+🔸 tasks
+   Columns: 0
+   Estimated Rows: 0
+
+🔸 profiles
+   Columns: 0
+   Estimated Rows: 0
+
+🔸 chapters
+   Columns: 0
+   Estimated Rows: 0
+
+🔸 reports
+   Columns: 0
+   Estimated Rows: 0
+
+🔸 prayer_responses
+   Columns: 0
+   Estimated Rows: 0
+
+🔸 positions
+   Columns: 0
+   Estimated Rows: 0
+
+🔸 disciples
+   Columns: 0
+   Estimated Rows: 0
+
+🔸 teams
+   Columns: 0
+   Estimated Rows: 0
+
+🔸 health_tracking
+   Columns: 0
+   Estimated Rows: 0
+
+🔸 prayer_requests
+   Columns: 10
+   Estimated Rows: 1
+   Column Details:
+     - id: uuid | Sample: f0b5ad9c-8df9-45cb-8763-aed05522a91a
+     - user_id: uuid | Sample: 7359b65b-47a9-4a84-b53b-55d57ff0a568
+     - title: varchar | Sample: Praise God 🙌
+     - description: varchar | Sample: Praise God 🙌
+     - category: varchar | Sample: general
+     - is_answered: boolean | Sample: False
+     - is_private: boolean | Sample: False
+     - prayer_count: integer | Sample: 0
+     - created_at: timestamp | Sample: 2025-08-31T08:52:28.658658+00:00
+     - updated_at: timestamp | Sample: 2025-08-31T08:52:28.658658+00:00
+   Sample Data: 1 rows available
+
+🔸 archived_users
+   Columns: 0
+   Estimated Rows: 0
+
+💡 RECOMMENDATIONS
+--------------------------------------------------
+• For complete schema access, use a service role key instead of anon key
+• Check RLS (Row Level Security) policies for inaccessible tables
+• Consider using pg_dump for complete schema export if you have direct DB access
+• Verify table permissions in Supabase dashboard

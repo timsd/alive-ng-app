@@ -34,6 +34,8 @@ import '../screens/books/books_tracts_screen.dart';
 import '../screens/kids/kids_stories_screen.dart';
 import '../screens/discipleship/discipleship_screen.dart';
 import '../screens/admin/admin_approval_screen.dart';
+import '../screens/legal/privacy_policy_screen.dart';
+import '../screens/legal/terms_conditions_screen.dart';
 import '../providers/auth_provider.dart';
 import '../providers/guest_provider.dart';
 import '../constants/app_constants.dart';
@@ -54,6 +56,8 @@ bool _isGuestAccessibleRoute(String path) {
     '/interactive-lessons',
     '/books-tracts',
     '/kids-stories',
+    '/privacy-policy',
+    '/terms-conditions',
   ];
 
   return guestAccessibleRoutes.contains(path);
@@ -331,6 +335,18 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppConstants.discipleshipTrackerRoute,
             builder: (context, state) => const DiscipleshipScreen(),
+          ),
+
+          // Privacy Policy Route
+          GoRoute(
+            path: AppConstants.privacyPolicyRoute,
+            builder: (context, state) => const PrivacyPolicyScreen(),
+          ),
+
+          // Terms & Conditions Route
+          GoRoute(
+            path: AppConstants.termsConditionsRoute,
+            builder: (context, state) => const TermsConditionsScreen(),
           ),
         ],
       ),

@@ -6,6 +6,7 @@ import '../../services/role_access_service.dart';
 import '../../widgets/role_guard.dart';
 import '../../constants/chapters.dart';
 import '../../constants/app_constants.dart';
+import 'content_management_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -518,7 +519,12 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
   }
 
   void _navigateToContentManagement(String type) {
-    _showComingSoon('Content Management - $type');
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ContentManagementScreen(contentType: type),
+      ),
+    );
   }
 
   void _navigateToChapterManagement() {
