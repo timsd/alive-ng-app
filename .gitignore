@@ -84,3 +84,7 @@ logs/
  
 # Local Chrome downloaded by tooling
 /.local-chrome/
+
+# Local IDE/workspace metadata
+.trae/
+.vscode/
