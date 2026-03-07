@@ -1,0 +1,29 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="60" cy="60" r="55" fill="#673AB7" stroke="#512DA8" stroke-width="3"/>
+  
+  <!-- Crystal ball/orb -->
+  <circle cx="60" cy="50" r="20" fill="#E1BEE7" stroke="#9C27B0" stroke-width="2" opacity="0.8"/>
+  <circle cx="60" cy="50" r="15" fill="#F3E5F5" opacity="0.6"/>
+  
+  <!-- Mystical sparkles -->
+  <g fill="white" opacity="0.9">
+    <polygon points="45,35 47,40 52,40 48,43 50,48 45,45 40,48 42,43 38,40 43,40" transform="scale(0.6)"/>
+    <polygon points="75,30 77,35 82,35 78,38 80,43 75,40 70,43 72,38 68,35 73,35" transform="scale(0.5)"/>
+    <polygon points="80,60 82,65 87,65 83,68 85,73 80,70 75,73 77,68 73,65 78,65" transform="scale(0.4)"/>
+  </g>
+  
+  <!-- Ancient scroll -->
+  <rect x="35" y="65" width="50" height="20" rx="2" fill="#FFF8E1" stroke="#F57F17" stroke-width="1"/>
+  <line x1="40" y1="70" x2="80" y2="70" stroke="#8D6E63" stroke-width="1"/>
+  <line x1="40" y1="75" x2="75" y2="75" stroke="#8D6E63" stroke-width="1"/>
+  <line x1="40" y1="80" x2="70" y2="80" stroke="#8D6E63" stroke-width="1"/>
+  
+  <!-- Eye symbol -->
+  <ellipse cx="60" cy="50" rx="8" ry="5" fill="#1A237E"/>
+  <circle cx="60" cy="50" r="3" fill="white"/>
+  <circle cx="60" cy="50" r="1" fill="#1A237E"/>
+  
+  <!-- Series title -->
+  <text x="60" y="105" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="white">PROPHECY</text>
+</svg>

@@ -1,0 +1,29 @@
+{
+  "verses": [
+    {
+      "verse": 1,
+      "text": "The word that Jeremiah the prophet spake unto Baruch the son of Neriah, when he wrote these words in a book at the mouth of Jeremiah, in the fourth year of Jehoiakim the son of Josiah, king of Judah, saying,"
+    },
+    {
+      "verse": 2,
+      "text": "Thus saith Jehovah, the God of Israel, unto thee, O Baruch:"
+    },
+    {
+      "verse": 3,
+      "text": "Thou didst say, Woe is me now! for Jehovah hath added sorrow to my pain; I am weary with my groaning, and I find no rest."
+    },
+    {
+      "verse": 4,
+      "text": "Thus shalt thou say unto him, Thus saith Jehovah: Behold, that which I have built will I break down, and that which I have planted I will pluck up; and this in the whole land."
+    }
+  ],
+  "metadata": {
+    "book": "Jeremiah",
+    "chapter": 45,
+    "version": "ASV",
+    "versionName": "American Standard Version",
+    "language": "en",
+    "source": "AMERICAN STANDARD VERSION.json",
+    "importedAt": "2025-10-31T17:15:32.920962"
+  }
+}

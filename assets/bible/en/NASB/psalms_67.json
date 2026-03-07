@@ -1,0 +1,41 @@
+{
+  "verses": [
+    {
+      "verse": 1,
+      "text": "God be gracious to us and bless us, And cause His face to shine upon us— Selah."
+    },
+    {
+      "verse": 2,
+      "text": "That Thy way may be known on the earth, Thy salvation among all nations."
+    },
+    {
+      "verse": 3,
+      "text": "Let the peoples praise Thee, O God; Let all the peoples praise Thee."
+    },
+    {
+      "verse": 4,
+      "text": "Let the nations be glad and sing for joy; For Thou wilt judge the peoples with uprightness, And guide the nations on the earth. Selah."
+    },
+    {
+      "verse": 5,
+      "text": "Let the peoples praise Thee, O God; Let all the peoples praise Thee."
+    },
+    {
+      "verse": 6,
+      "text": "The earth has yielded its produce; God, our God, blesses us."
+    },
+    {
+      "verse": 7,
+      "text": "God blesses us, That all the ends of the earth may fear Him."
+    }
+  ],
+  "metadata": {
+    "book": "Psalms",
+    "chapter": 67,
+    "version": "NASB",
+    "versionName": "NASB 1977",
+    "language": "en",
+    "source": "NASB 1977.json",
+    "importedAt": "2025-10-31T17:16:37.056798"
+  }
+}

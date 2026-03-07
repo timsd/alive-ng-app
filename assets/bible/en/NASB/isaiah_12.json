@@ -1,0 +1,37 @@
+{
+  "verses": [
+    {
+      "verse": 1,
+      "text": "Then you will say on that day, “I will give thanks to Thee, O LORD; For although Thou wast angry with me, Thine anger is turned away, And Thou dost comfort me."
+    },
+    {
+      "verse": 2,
+      "text": "“Behold, God is my salvation, I will trust and not be afraid; For the LORD GOD is my strength and song, And He has become my salvation.”"
+    },
+    {
+      "verse": 3,
+      "text": "Therefore you will joyously draw water From the springs of salvation."
+    },
+    {
+      "verse": 4,
+      "text": "And in that day you will say, “Give thanks to the LORD, call on His name. Make known His deeds among the peoples; Make them remember that His name is exalted.”"
+    },
+    {
+      "verse": 5,
+      "text": "Praise the LORD in song, for He has done excellent things; Let this be known throughout the earth."
+    },
+    {
+      "verse": 6,
+      "text": "Cry aloud and shout for joy, O inhabitant of Zion, For great in your midst is the Holy One of Israel."
+    }
+  ],
+  "metadata": {
+    "book": "Isaiah",
+    "chapter": 12,
+    "version": "NASB",
+    "versionName": "NASB 1977",
+    "language": "en",
+    "source": "NASB 1977.json",
+    "importedAt": "2025-10-31T17:16:37.413864"
+  }
+}

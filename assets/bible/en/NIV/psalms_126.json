@@ -1,0 +1,37 @@
+{
+  "verses": [
+    {
+      "verse": 1,
+      "text": "A song of ascents. When the LORD restored the fortunes of Zion, we were like those who dreamed."
+    },
+    {
+      "verse": 2,
+      "text": "Our mouths were filled with laughter, our tongues with songs of joy. Then it was said among the nations, “The LORD has done great things for them.”"
+    },
+    {
+      "verse": 3,
+      "text": "The LORD has done great things for us, and we are filled with joy."
+    },
+    {
+      "verse": 4,
+      "text": "Restore our fortunes, LORD, like streams in the Negev."
+    },
+    {
+      "verse": 5,
+      "text": "Those who sow with tears will reap with songs of joy."
+    },
+    {
+      "verse": 6,
+      "text": "Those who go out weeping, carrying seed to sow, will return with songs of joy, carrying sheaves with them."
+    }
+  ],
+  "metadata": {
+    "book": "Psalms",
+    "chapter": 126,
+    "version": "NIV",
+    "versionName": "New International Version",
+    "language": "en",
+    "source": "NEW INTERNATIONAL VERSION.json",
+    "importedAt": "2025-10-31T17:15:44.433844"
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "verses": [
+    {
+      "verse": 1,
+      "text": "Now the LORD said to Moses, “One more plague I will bring on Pharaoh and on Egypt; after that he will let you go from here. When he lets you go, he will surely drive you out from here completely."
+    },
+    {
+      "verse": 2,
+      "text": "“Speak now in the hearing of the people that each man ask from his neighbor and each woman from her neighbor for articles of silver and articles of gold.”"
+    },
+    {
+      "verse": 3,
+      "text": "And the LORD gave the people favor in the sight of the Egyptians. Furthermore, the man Moses himself was greatly esteemed in the land of Egypt, both in the sight of Pharaoh’s servants and in the sight of the people."
+    },
+    {
+      "verse": 5,
+      "text": "and all the first-born in the land of Egypt shall die, from the first-born of the Pharaoh who sits on his throne, even to the first-born of the slave girl who is behind the millstones; all the first-born of the cattle as well."
+    },
+    {
+      "verse": 6,
+      "text": "‘Moreover, there shall be a great cry in all the land of Egypt, such as there has not been before and such as shall never be again."
+    },
+    {
+      "verse": 7,
+      "text": "‘But against any of the sons of Israel a dog shall not even bark, whether against man or beast, that you may understand how the LORD makes a distinction between Egypt and Israel.’"
+    },
+    {
+      "verse": 8,
+      "text": "“And all these your servants will come down to me and bow themselves before me, saying, ‘Go out, you and all the people who follow you,’ and after that I will go out.” And he went out from Pharaoh in hot anger."
+    },
+    {
+      "verse": 9,
+      "text": "Then the LORD said to Moses, “Pharaoh will not listen to you, so that My wonders will be multiplied in the land of Egypt.”"
+    },
+    {
+      "verse": 10,
+      "text": "And Moses and Aaron performed all these wonders before Pharaoh; yet the LORD hardened Pharaoh’s heart, and he did not let the sons of Israel go out of his land."
+    }
+  ],
+  "metadata": {
+    "book": "Exodus",
+    "chapter": 11,
+    "version": "NASB",
+    "versionName": "NASB 1977",
+    "language": "en",
+    "source": "NASB 1977.json",
+    "importedAt": "2025-10-31T17:16:31.642474"
+  }
+}

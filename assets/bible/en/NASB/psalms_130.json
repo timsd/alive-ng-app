@@ -1,0 +1,45 @@
+{
+  "verses": [
+    {
+      "verse": 1,
+      "text": "Out of the depths I have cried to Thee, O LORD."
+    },
+    {
+      "verse": 2,
+      "text": "Lord, hear my voice! Let Thine ears be attentive To the voice of my supplications."
+    },
+    {
+      "verse": 3,
+      "text": "If Thou, LORD, shouldst mark iniquities, O Lord, who could stand?"
+    },
+    {
+      "verse": 4,
+      "text": "But there is forgiveness with Thee, That Thou mayest be feared."
+    },
+    {
+      "verse": 5,
+      "text": "I wait for the LORD, my soul does wait, And in His word do I hope."
+    },
+    {
+      "verse": 6,
+      "text": "My soul waits for the Lord More than the watchmen for the morning; Indeed, more than the watchmen for the morning."
+    },
+    {
+      "verse": 7,
+      "text": "O Israel, hope in the LORD; For with the LORD there is lovingkindness, And with Him is abundant redemption."
+    },
+    {
+      "verse": 8,
+      "text": "And He will redeem Israel From all his iniquities."
+    }
+  ],
+  "metadata": {
+    "book": "Psalms",
+    "chapter": 130,
+    "version": "NASB",
+    "versionName": "NASB 1977",
+    "language": "en",
+    "source": "NASB 1977.json",
+    "importedAt": "2025-10-31T17:16:37.236203"
+  }
+}

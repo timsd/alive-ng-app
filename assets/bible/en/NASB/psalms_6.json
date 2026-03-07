@@ -1,0 +1,53 @@
+{
+  "verses": [
+    {
+      "verse": 1,
+      "text": "O Lord, do not rebuke me in Thine anger, Nor chasten me in Thy wrath."
+    },
+    {
+      "verse": 2,
+      "text": "Be gracious to me, O LORD, for I am pining away; Heal me, O LORD, for my bones are dismayed."
+    },
+    {
+      "verse": 3,
+      "text": "And my soul is greatly dismayed; But Thou, O LORD—how long?"
+    },
+    {
+      "verse": 4,
+      "text": "Return, O LORD, rescue my soul; Save me because of Thy lovingkindness."
+    },
+    {
+      "verse": 5,
+      "text": "For there is no mention of Thee in death; In Sheol who will give Thee thanks?"
+    },
+    {
+      "verse": 6,
+      "text": "I am weary with my sighing; Every night I make my bed swim, I dissolve my couch with my tears."
+    },
+    {
+      "verse": 7,
+      "text": "My eye has wasted away with grief; It has become old because of all my adversaries."
+    },
+    {
+      "verse": 8,
+      "text": "Depart from me, all you who do iniquity, For the LORD has heard the voice of my weeping."
+    },
+    {
+      "verse": 9,
+      "text": "The LORD has heard my supplication, The LORD receives my prayer."
+    },
+    {
+      "verse": 10,
+      "text": "All my enemies shall be ashamed and greatly dismayed; They shall turn back, they shall suddenly be ashamed."
+    }
+  ],
+  "metadata": {
+    "book": "Psalms",
+    "chapter": 6,
+    "version": "NASB",
+    "versionName": "NASB 1977",
+    "language": "en",
+    "source": "NASB 1977.json",
+    "importedAt": "2025-10-31T17:16:36.876980"
+  }
+}

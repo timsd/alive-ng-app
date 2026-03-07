@@ -1,0 +1,18 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="60" cy="60" r="55" fill="#FF6B35" stroke="#CC5429" stroke-width="3"/>
+  
+  <!-- Megaphone/Speaker -->
+  <path d="M35 45 L50 40 L75 50 L85 45 L85 75 L75 70 L50 80 L35 75 Z" fill="#FFD700" stroke="#E6C200" stroke-width="2"/>
+  
+  <!-- Sound waves -->
+  <path d="M85 50 Q95 55 85 60" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  <path d="M85 45 Q100 55 85 65" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"/>
+  <path d="M85 40 Q105 55 85 70" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+  
+  <!-- Heart symbol -->
+  <path d="M45 55 C45 50, 40 50, 40 55 C40 50, 35 50, 35 55 C35 65, 45 70, 45 70 C45 70, 55 65, 55 55 C55 50, 50 50, 50 55 C50 50, 45 50, 45 55 Z" fill="#FF1744"/>
+  
+  <!-- Series title -->
+  <text x="60" y="100" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" font-weight="bold" fill="white">EVANGELISM</text>
+</svg>

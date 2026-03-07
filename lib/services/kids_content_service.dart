@@ -1,0 +1,1080 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../utils/app_exception.dart';
+import '../utils/logger.dart';
+
+/// Service for managing kids' content including memory verses, prayers, and activities
+class KidsContentService {
+  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  static final Logger _logger = Logger('KidsContentService');
+
+  // Collections
+  static const String _memoryVersesCollection = 'memory_verses';
+  static const String _prayerActivitiesCollection = 'prayer_activities';
+  static const String _serviceProjectsCollection = 'service_projects';
+  static const String _kidsStoriesCollection = 'kids_stories';
+  static const String _learningResourcesCollection = 'learning_resources';
+
+  /// Initialize kids content with default data
+  static Future<void> initializeKidsContent() async {
+    try {
+      await Future.wait([
+        _initializeMemoryVerses(),
+        _initializePrayerActivities(),
+        _initializeServiceProjects(),
+        _initializeKidsStories(),
+        _initializeLearningResources(),
+      ]);
+    } catch (e) {
+      _logger.error('Error initializing kids content', e);
+      throw DatabaseException('Error initializing kids content',
+          originalError: e);
+    }
+  }
+
+  /// Initialize memory verses with SDA-appropriate content
+  static Future<void> _initializeMemoryVerses() async {
+    final memoryVerses = [
+      {
+        'id': 'mv_001',
+        'category': 'Love',
+        'verse':
+            'For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life.',
+        'reference': 'John 3:16',
+        'ageGroup': 'all',
+        'difficulty': 'easy',
+        'theme': 'Gods Love',
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'id': 'mv_002',
+        'category': 'Obedience',
+        'verse': 'Children, obey your parents in the Lord, for this is right.',
+        'reference': 'Ephesians 6:1',
+        'ageGroup': 'young',
+        'difficulty': 'easy',
+        'theme': 'Family',
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'id': 'mv_003',
+        'category': 'Sabbath',
+        'verse': 'Remember the Sabbath day by keeping it holy.',
+        'reference': 'Exodus 20:8',
+        'ageGroup': 'all',
+        'difficulty': 'easy',
+        'theme': 'Sabbath',
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'id': 'mv_004',
+        'category': 'Prayer',
+        'verse':
+            'Do not be anxious about anything, but in every situation, by prayer and petition, with thanksgiving, present your requests to God.',
+        'reference': 'Philippians 4:6',
+        'ageGroup': 'older',
+        'difficulty': 'medium',
+        'theme': 'Prayer',
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'id': 'mv_005',
+        'category': 'Kindness',
+        'verse':
+            'Be kind and compassionate to one another, forgiving each other, just as in Christ God forgave you.',
+        'reference': 'Ephesians 4:32',
+        'ageGroup': 'all',
+        'difficulty': 'medium',
+        'theme': 'Character',
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'id': 'mv_006',
+        'category': 'Creation',
+        'verse': 'In the beginning God created the heavens and the earth.',
+        'reference': 'Genesis 1:1',
+        'ageGroup': 'young',
+        'difficulty': 'easy',
+        'theme': 'Creation',
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'id': 'mv_007',
+        'category': 'Second Coming',
+        'verse':
+            'And if I go and prepare a place for you, I will come back and take you to be with me that you also may be where I am.',
+        'reference': 'John 14:3',
+        'ageGroup': 'older',
+        'difficulty': 'medium',
+        'theme': 'Second Coming',
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'id': 'mv_008',
+        'category': 'Health',
+        'verse':
+            'Do you not know that your bodies are temples of the Holy Spirit, who is in you, whom you have received from God?',
+        'reference': '1 Corinthians 6:19',
+        'ageGroup': 'older',
+        'difficulty': 'hard',
+        'theme': 'Health',
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'id': 'mv_009',
+        'category': 'Trust',
+        'verse':
+            'Trust in the Lord with all your heart and lean not on your own understanding.',
+        'reference': 'Proverbs 3:5',
+        'ageGroup': 'all',
+        'difficulty': 'medium',
+        'theme': 'Trust',
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'id': 'mv_010',
+        'category': 'Stewardship',
+        'verse':
+            'Bring the whole tithe into the storehouse, that there may be food in my house.',
+        'reference': 'Malachi 3:10',
+        'ageGroup': 'older',
+        'difficulty': 'medium',
+        'theme': 'Stewardship',
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+    ];
+
+    final batch = _firestore.batch();
+    for (final verse in memoryVerses) {
+      final docRef = _firestore
+          .collection(_memoryVersesCollection)
+          .doc(verse['id'] as String);
+      batch.set(docRef, verse, SetOptions(merge: true));
+    }
+    await batch.commit();
+  }
+
+  /// Initialize prayer activities
+  static Future<void> _initializePrayerActivities() async {
+    final prayerActivities = [
+      {
+        'id': 'pa_001',
+        'type': 'morning',
+        'title': 'Good Morning Prayer',
+        'content':
+            'Dear Jesus, thank You for this new day. Please help me to be kind, obedient, and loving today. Guide my steps and keep me safe. Amen.',
+        'ageGroup': 'young',
+        'duration': '1 minute',
+        'category': 'Daily Prayers',
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'id': 'pa_002',
+        'type': 'meal',
+        'title': 'Mealtime Blessing',
+        'content':
+            'Dear God, thank You for this food. Bless it to nourish our bodies. Help us remember those who are hungry and teach us to share. Amen.',
+        'ageGroup': 'all',
+        'duration': '30 seconds',
+        'category': 'Meal Prayers',
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'id': 'pa_003',
+        'type': 'bedtime',
+        'title': 'Bedtime Prayer',
+        'content':
+            'Dear Jesus, thank You for watching over me today. Forgive me for any wrong I have done. Please give me peaceful sleep and sweet dreams. Amen.',
+        'ageGroup': 'young',
+        'duration': '1 minute',
+        'category': 'Daily Prayers',
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'id': 'pa_004',
+        'type': 'sabbath',
+        'title': 'Sabbath Welcome Prayer',
+        'content':
+            'Dear God, we welcome Your holy Sabbath day. Help us to rest, worship, and spend special time with You and our family. Bless our Sabbath hours. Amen.',
+        'ageGroup': 'all',
+        'duration': '1 minute',
+        'category': 'Sabbath Prayers',
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'id': 'pa_005',
+        'type': 'gratitude',
+        'title': 'Thankfulness Prayer',
+        'content':
+            'Dear God, thank You for my family, friends, home, and food. Thank You for loving me and taking care of me every day. Help me to always be grateful. Amen.',
+        'ageGroup': 'all',
+        'duration': '1 minute',
+        'category': 'Gratitude Prayers',
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'id': 'pa_006',
+        'type': 'guidance',
+        'title': 'Prayer for Wisdom',
+        'content':
+            'Dear Jesus, please give me wisdom to make good choices today. Help me to be honest, kind, and helpful to others. Guide me in all I do. Amen.',
+        'ageGroup': 'older',
+        'duration': '1 minute',
+        'category': 'Guidance Prayers',
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'id': 'pa_007',
+        'type': 'family',
+        'title': 'Family Prayer',
+        'content':
+            'Dear God, please bless our family. Help us to love each other, be patient, and work together. Keep us healthy and safe. Thank You for our home. Amen.',
+        'ageGroup': 'all',
+        'duration': '1 minute',
+        'category': 'Family Prayers',
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'id': 'pa_008',
+        'type': 'forgiveness',
+        'title': 'Prayer for Forgiveness',
+        'content':
+            'Dear Jesus, I am sorry for the wrong things I have done. Please forgive me and help me to do better. Thank You for Your love and mercy. Amen.',
+        'ageGroup': 'all',
+        'duration': '1 minute',
+        'category': 'Forgiveness Prayers',
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+    ];
+
+    final batch = _firestore.batch();
+    for (final activity in prayerActivities) {
+      final docRef = _firestore
+          .collection(_prayerActivitiesCollection)
+          .doc(activity['id'] as String);
+      batch.set(docRef, activity, SetOptions(merge: true));
+    }
+    await batch.commit();
+  }
+
+  /// Initialize service projects
+  static Future<void> _initializeServiceProjects() async {
+    final serviceProjects = [
+      {
+        'id': 'sp_001',
+        'title': 'Helping Elderly Neighbors',
+        'description':
+            'Visit elderly neighbors to help with simple tasks like carrying groceries, reading to them, or just spending time together.',
+        'ageGroup': 'all',
+        'duration': '1-2 hours',
+        'materials': ['Time', 'Caring heart', 'Parent supervision'],
+        'category': 'Community Service',
+        'difficulty': 'easy',
+        'impact': 'Brings joy and assistance to elderly community members',
+        'sdaValues': ['Love', 'Service', 'Community'],
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'id': 'sp_002',
+        'title': 'Food Bank Collection',
+        'description':
+            'Organize a food drive at church or school to collect non-perishable items for local food banks.',
+        'ageGroup': 'older',
+        'duration': '2-4 weeks',
+        'materials': ['Collection boxes', 'Flyers', 'Transportation'],
+        'category': 'Hunger Relief',
+        'difficulty': 'medium',
+        'impact': 'Provides meals for families in need',
+        'sdaValues': ['Compassion', 'Stewardship', 'Service'],
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'id': 'sp_003',
+        'title': 'Environmental Cleanup',
+        'description':
+            'Organize a neighborhood or park cleanup to care for Gods creation by picking up litter and planting flowers.',
+        'ageGroup': 'all',
+        'duration': '2-3 hours',
+        'materials': ['Gloves', 'Trash bags', 'Seeds or plants'],
+        'category': 'Environmental',
+        'difficulty': 'easy',
+        'impact': 'Beautifies community and protects environment',
+        'sdaValues': ['Stewardship', 'Creation Care', 'Community'],
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'id': 'sp_004',
+        'title': 'Comfort Bags for Homeless',
+        'description':
+            'Create care packages with snacks, socks, toiletries, and encouraging notes for homeless individuals.',
+        'ageGroup': 'all',
+        'duration': '2-3 hours',
+        'materials': ['Bags', 'Snacks', 'Socks', 'Toiletries', 'Notes'],
+        'category': 'Homeless Outreach',
+        'difficulty': 'easy',
+        'impact': 'Provides basic needs and shows love to those without homes',
+        'sdaValues': ['Compassion', 'Love', 'Service'],
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'id': 'sp_005',
+        'title': 'Reading to Younger Children',
+        'description':
+            'Volunteer to read Bible stories and educational books to younger children at church, library, or community center.',
+        'ageGroup': 'older',
+        'duration': '1 hour weekly',
+        'materials': ['Age-appropriate books', 'Bible story books'],
+        'category': 'Education',
+        'difficulty': 'easy',
+        'impact': 'Promotes literacy and shares positive values',
+        'sdaValues': ['Education', 'Service', 'Mentorship'],
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'id': 'sp_006',
+        'title': 'Hospital Encouragement Cards',
+        'description':
+            'Create handmade cards with Bible verses and encouraging messages for patients in local hospitals.',
+        'ageGroup': 'all',
+        'duration': '1-2 hours',
+        'materials': ['Cardstock', 'Markers', 'Stickers', 'Bible verses'],
+        'category': 'Healthcare Support',
+        'difficulty': 'easy',
+        'impact': 'Brings hope and encouragement to sick patients',
+        'sdaValues': ['Healing', 'Hope', 'Compassion'],
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'id': 'sp_007',
+        'title': 'Animal Shelter Assistance',
+        'description':
+            'Help at local animal shelters by walking dogs, playing with cats, or making toys for the animals.',
+        'ageGroup': 'all',
+        'duration': '2-3 hours',
+        'materials': ['Old towels', 'Toys', 'Time and energy'],
+        'category': 'Animal Care',
+        'difficulty': 'easy',
+        'impact': 'Provides care and love for abandoned animals',
+        'sdaValues': ['Creation Care', 'Compassion', 'Stewardship'],
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'id': 'sp_008',
+        'title': 'School Supply Drive',
+        'description':
+            'Collect school supplies for underprivileged children to help them succeed in their education.',
+        'ageGroup': 'all',
+        'duration': '2-3 weeks',
+        'materials': ['Collection boxes', 'Promotional materials'],
+        'category': 'Education Support',
+        'difficulty': 'medium',
+        'impact': 'Ensures all children have tools needed for learning',
+        'sdaValues': ['Education', 'Equality', 'Service'],
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+    ];
+
+    final batch = _firestore.batch();
+    for (final project in serviceProjects) {
+      final docRef = _firestore
+          .collection(_serviceProjectsCollection)
+          .doc(project['id'] as String);
+      batch.set(docRef, project, SetOptions(merge: true));
+    }
+    await batch.commit();
+  }
+
+  /// Initialize kids stories with SDA doctrinal content
+  static Future<void> _initializeKidsStories() async {
+    final kidsStories = [
+      {
+        'id': 'ks_001',
+        'title': 'The Special Day - Sabbath',
+        'content':
+            'Long ago, God created the world in six days. On the seventh day, He rested and made it holy. This special day is called the Sabbath. Every week, we remember Gods creation by resting and worshiping Him on the Sabbath day.',
+        'category': 'Sabbath',
+        'ageGroup': 'young',
+        'moralLesson':
+            'The Sabbath is Gods special gift to us for rest and worship.',
+        'bibleReference': 'Genesis 2:2-3',
+        'sdaDoctrine': 'Sabbath Observance',
+        'duration': '3 minutes',
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'id': 'ks_002',
+        'title': 'Jesus is Coming Back',
+        'content':
+            'Jesus promised His disciples that He would come back to take them to heaven. One day, Jesus will return in the clouds with angels. All who love Him will go to live with Him forever in a beautiful place with no sadness or pain.',
+        'category': 'Second Coming',
+        'ageGroup': 'all',
+        'moralLesson':
+            'Jesus loves us and is preparing a wonderful home for us in heaven.',
+        'bibleReference': 'John 14:1-3',
+        'sdaDoctrine': 'Second Coming of Christ',
+        'duration': '4 minutes',
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'id': 'ks_003',
+        'title': 'Our Bodies are Special Temples',
+        'content':
+            'God made our bodies to be His temple. Just like we keep a church clean and beautiful, we should take care of our bodies by eating healthy food, exercising, and avoiding things that harm us. This shows love and respect for God.',
+        'category': 'Health',
+        'ageGroup': 'all',
+        'moralLesson': 'We honor God by taking good care of our bodies.',
+        'bibleReference': '1 Corinthians 6:19-20',
+        'sdaDoctrine': 'Christian Lifestyle and Health',
+        'duration': '3 minutes',
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'id': 'ks_004',
+        'title': 'The Gift of Giving',
+        'content':
+            'A little boy had only two small coins, but he gave them to help Gods work. Jesus saw his generous heart and was pleased. When we give our tithe and offerings, we show that we trust God to take care of us.',
+        'category': 'Stewardship',
+        'ageGroup': 'older',
+        'moralLesson':
+            'God loves a cheerful giver, no matter how small the gift.',
+        'bibleReference': 'Mark 12:41-44',
+        'sdaDoctrine': 'Stewardship and Tithing',
+        'duration': '4 minutes',
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'id': 'ks_005',
+        'title': 'The Power of Prayer',
+        'content':
+            'Daniel prayed to God three times every day, even when it was dangerous. God protected Daniel in the lions den because of his faith and prayers. We can talk to God anytime, anywhere, and He will listen to us.',
+        'category': 'Prayer',
+        'ageGroup': 'all',
+        'moralLesson':
+            'God always hears our prayers and will protect those who trust in Him.',
+        'bibleReference': 'Daniel 6:10-23',
+        'sdaDoctrine': 'Prayer and Faith',
+        'duration': '5 minutes',
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'id': 'ks_006',
+        'title': 'Gods Beautiful Creation',
+        'content':
+            'In the beginning, God spoke and created the sun, moon, stars, plants, animals, and people. Everything He made was very good. We are special because God made us in His image and gave us the job to take care of His creation.',
+        'category': 'Creation',
+        'ageGroup': 'young',
+        'moralLesson':
+            'We are special to God and should care for His creation.',
+        'bibleReference': 'Genesis 1:1-31',
+        'sdaDoctrine': 'Creation and Stewardship',
+        'duration': '4 minutes',
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'id': 'ks_007',
+        'title': 'The Sanctuary in Heaven',
+        'content':
+            'Long ago, God told Moses to build a special tent called the sanctuary. It showed how Jesus would save us from sin. Today, Jesus is in the heavenly sanctuary, working as our High Priest to help us and prepare us for heaven.',
+        'category': 'Sanctuary',
+        'ageGroup': 'older',
+        'moralLesson':
+            'Jesus is always working to help us and save us from sin.',
+        'bibleReference': 'Hebrews 8:1-2',
+        'sdaDoctrine': 'Heavenly Sanctuary',
+        'duration': '5 minutes',
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'id': 'ks_008',
+        'title': 'The Gift of Prophecy',
+        'content':
+            'God gave Ellen White special dreams and visions to help guide His church. She wrote many books to help people understand the Bible better and live healthy, happy lives. God still speaks to His people today through His Word and His messengers.',
+        'category': 'Prophecy',
+        'ageGroup': 'older',
+        'moralLesson':
+            'God loves us and gives us guidance through His prophets.',
+        'bibleReference': 'Revelation 19:10',
+        'sdaDoctrine': 'Gift of Prophecy',
+        'duration': '4 minutes',
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+    ];
+
+    final batch = _firestore.batch();
+    for (final story in kidsStories) {
+      final docRef = _firestore
+          .collection(_kidsStoriesCollection)
+          .doc(story['id'] as String);
+      batch.set(docRef, story, SetOptions(merge: true));
+    }
+    await batch.commit();
+  }
+
+  /// Get memory verses by category
+  static Future<List<Map<String, dynamic>>> getMemoryVerses({
+    String? category,
+    String? ageGroup,
+    String? difficulty,
+  }) async {
+    Query query = _firestore.collection(_memoryVersesCollection);
+
+    if (category != null) {
+      query = query.where('category', isEqualTo: category);
+    }
+    if (ageGroup != null) {
+      query = query.where('ageGroup', whereIn: [ageGroup, 'all']);
+    }
+    if (difficulty != null) {
+      query = query.where('difficulty', isEqualTo: difficulty);
+    }
+
+    final snapshot = await query.get();
+    return snapshot.docs
+        .map((doc) => {'id': doc.id, ...doc.data() as Map<String, dynamic>})
+        .toList();
+  }
+
+  /// Get prayer activities by type
+  static Future<List<Map<String, dynamic>>> getPrayerActivities({
+    String? type,
+    String? ageGroup,
+    String? category,
+  }) async {
+    Query query = _firestore.collection(_prayerActivitiesCollection);
+
+    if (type != null) {
+      query = query.where('type', isEqualTo: type);
+    }
+    if (ageGroup != null) {
+      query = query.where('ageGroup', whereIn: [ageGroup, 'all']);
+    }
+    if (category != null) {
+      query = query.where('category', isEqualTo: category);
+    }
+
+    final snapshot = await query.get();
+    return snapshot.docs
+        .map((doc) => {'id': doc.id, ...doc.data() as Map<String, dynamic>})
+        .toList();
+  }
+
+  /// Get service projects by category
+  static Future<List<Map<String, dynamic>>> getServiceProjects({
+    String? category,
+    String? ageGroup,
+    String? difficulty,
+  }) async {
+    Query query = _firestore.collection(_serviceProjectsCollection);
+
+    if (category != null) {
+      query = query.where('category', isEqualTo: category);
+    }
+    if (ageGroup != null) {
+      query = query.where('ageGroup', whereIn: [ageGroup, 'all']);
+    }
+    if (difficulty != null) {
+      query = query.where('difficulty', isEqualTo: difficulty);
+    }
+
+    final snapshot = await query.get();
+    return snapshot.docs
+        .map((doc) => {'id': doc.id, ...doc.data() as Map<String, dynamic>})
+        .toList();
+  }
+
+  /// Get kids stories by category
+  static Future<List<Map<String, dynamic>>> getKidsStories({
+    String? category,
+    String? ageGroup,
+    String? sdaDoctrine,
+  }) async {
+    Query query = _firestore.collection(_kidsStoriesCollection);
+
+    if (category != null) {
+      query = query.where('category', isEqualTo: category);
+    }
+    if (ageGroup != null) {
+      query = query.where('ageGroup', whereIn: [ageGroup, 'all']);
+    }
+    if (sdaDoctrine != null) {
+      query = query.where('sdaDoctrine', isEqualTo: sdaDoctrine);
+    }
+
+    final snapshot = await query.get();
+    return snapshot.docs
+        .map((doc) => {'id': doc.id, ...doc.data() as Map<String, dynamic>})
+        .toList();
+  }
+
+  /// Get all categories for memory verses
+  static Future<List<String>> getMemoryVerseCategories() async {
+    final snapshot = await _firestore.collection(_memoryVersesCollection).get();
+    final categories = <String>{};
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      if (data['category'] != null) {
+        categories.add(data['category'] as String);
+      }
+    }
+    return categories.toList()..sort();
+  }
+
+  /// Get all categories for service projects
+  static Future<List<String>> getServiceProjectCategories() async {
+    final snapshot =
+        await _firestore.collection(_serviceProjectsCollection).get();
+    final categories = <String>{};
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      if (data['category'] != null) {
+        categories.add(data['category'] as String);
+      }
+    }
+    return categories.toList()..sort();
+  }
+
+  /// Get random memory verse for daily devotion
+  static Future<Map<String, dynamic>?> getRandomMemoryVerse(
+      {String? ageGroup}) async {
+    final verses = await getMemoryVerses(ageGroup: ageGroup);
+    if (verses.isEmpty) return null;
+
+    verses.shuffle();
+    return verses.first;
+  }
+
+  /// Get prayer for specific time of day
+  static Future<Map<String, dynamic>?> getPrayerForTime(String timeType,
+      {String? ageGroup}) async {
+    final prayers =
+        await getPrayerActivities(type: timeType, ageGroup: ageGroup);
+    if (prayers.isEmpty) return null;
+
+    prayers.shuffle();
+    return prayers.first;
+  }
+
+  // Admin update/delete helpers
+  static Future<void> updateMemoryVerse(
+      String id, Map<String, dynamic> updates) async {
+    try {
+      final doc = _firestore.collection(_memoryVersesCollection).doc(id);
+      await doc.update({...updates, 'updatedAt': FieldValue.serverTimestamp()});
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        throw AuthException(
+            'Admin permission required. Please ensure Firestore rules allow admin writes.',
+            originalError: e);
+      }
+      throw DatabaseException('Failed to update memory verse',
+          originalError: e);
+    }
+  }
+
+  static Future<void> deleteMemoryVerse(String id) async {
+    try {
+      await _firestore.collection(_memoryVersesCollection).doc(id).delete();
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        throw AuthException(
+            'Admin permission required. Please ensure Firestore rules allow admin writes.',
+            originalError: e);
+      }
+      throw DatabaseException('Failed to delete memory verse',
+          originalError: e);
+    }
+  }
+
+  static Future<void> updatePrayerActivity(
+      String id, Map<String, dynamic> updates) async {
+    try {
+      final doc = _firestore.collection(_prayerActivitiesCollection).doc(id);
+      await doc.update({...updates, 'updatedAt': FieldValue.serverTimestamp()});
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        throw AuthException(
+            'Admin permission required. Please ensure Firestore rules allow admin writes.',
+            originalError: e);
+      }
+      throw DatabaseException('Failed to update prayer activity',
+          originalError: e);
+    }
+  }
+
+  static Future<void> deletePrayerActivity(String id) async {
+    try {
+      await _firestore.collection(_prayerActivitiesCollection).doc(id).delete();
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        throw AuthException(
+            'Admin permission required. Please ensure Firestore rules allow admin writes.',
+            originalError: e);
+      }
+      throw DatabaseException('Failed to delete prayer activity',
+          originalError: e);
+    }
+  }
+
+  static Future<void> updateServiceProject(
+      String id, Map<String, dynamic> updates) async {
+    try {
+      final doc = _firestore.collection(_serviceProjectsCollection).doc(id);
+      await doc.update({...updates, 'updatedAt': FieldValue.serverTimestamp()});
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        throw AuthException(
+            'Admin permission required. Please ensure Firestore rules allow admin writes.',
+            originalError: e);
+      }
+      throw DatabaseException('Failed to update service project',
+          originalError: e);
+    }
+  }
+
+  static Future<void> deleteServiceProject(String id) async {
+    try {
+      await _firestore.collection(_serviceProjectsCollection).doc(id).delete();
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        throw AuthException(
+            'Admin permission required. Please ensure Firestore rules allow admin writes.',
+            originalError: e);
+      }
+      throw DatabaseException('Failed to delete service project',
+          originalError: e);
+    }
+  }
+
+  static Future<void> updateKidsStory(
+      String id, Map<String, dynamic> updates) async {
+    try {
+      final doc = _firestore.collection(_kidsStoriesCollection).doc(id);
+      await doc.update({...updates, 'updatedAt': FieldValue.serverTimestamp()});
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        throw AuthException(
+            'Admin permission required. Please ensure Firestore rules allow admin writes.',
+            originalError: e);
+      }
+      throw DatabaseException('Failed to update kids story', originalError: e);
+    }
+  }
+
+  static Future<void> deleteKidsStory(String id) async {
+    try {
+      await _firestore.collection(_kidsStoriesCollection).doc(id).delete();
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        throw AuthException(
+            'Admin permission required. Please ensure Firestore rules allow admin writes.',
+            originalError: e);
+      }
+      throw DatabaseException('Failed to delete kids story', originalError: e);
+    }
+  }
+
+  // Static wrappers for learning resources to match admin usage
+  static Future<void> updateLearningResource(
+      String id, Map<String, dynamic> updates) async {
+    try {
+      final doc = _firestore.collection(_learningResourcesCollection).doc(id);
+      await doc.update({...updates, 'updatedAt': FieldValue.serverTimestamp()});
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        throw AuthException(
+            'Admin permission required. Please ensure Firestore rules allow admin writes.',
+            originalError: e);
+      }
+      throw DatabaseException('Failed to update learning resource',
+          originalError: e);
+    }
+  }
+
+  static Future<void> deleteLearningResource(String id) async {
+    try {
+      await _firestore
+          .collection(_learningResourcesCollection)
+          .doc(id)
+          .delete();
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        throw AuthException(
+            'Admin permission required. Please ensure Firestore rules allow admin writes.',
+            originalError: e);
+      }
+      throw DatabaseException('Failed to delete learning resource',
+          originalError: e);
+    }
+  }
+
+  // Static create helpers used by admin screen
+  static Future<String> createMemoryVerse(Map<String, dynamic> verse) async {
+    try {
+      final id = verse['id'] as String? ??
+          _firestore.collection(_memoryVersesCollection).doc().id;
+      final doc = _firestore.collection(_memoryVersesCollection).doc(id);
+      await doc.set(
+          {...verse, 'id': id, 'updatedAt': FieldValue.serverTimestamp()},
+          SetOptions(merge: true));
+      return id;
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        throw AuthException(
+            'Admin permission required. Please ensure Firestore rules allow admin writes.',
+            originalError: e);
+      }
+      throw DatabaseException('Failed to create memory verse',
+          originalError: e);
+    }
+  }
+
+  static Future<String> createPrayerActivity(
+      Map<String, dynamic> activity) async {
+    try {
+      final id = activity['id'] as String? ??
+          _firestore.collection(_prayerActivitiesCollection).doc().id;
+      final doc = _firestore.collection(_prayerActivitiesCollection).doc(id);
+      await doc.set(
+          {...activity, 'id': id, 'updatedAt': FieldValue.serverTimestamp()},
+          SetOptions(merge: true));
+      return id;
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        throw AuthException(
+            'Admin permission required. Please ensure Firestore rules allow admin writes.',
+            originalError: e);
+      }
+      throw DatabaseException('Failed to create prayer activity',
+          originalError: e);
+    }
+  }
+
+  static Future<String> createServiceProject(
+      Map<String, dynamic> project) async {
+    try {
+      final id = project['id'] as String? ??
+          _firestore.collection(_serviceProjectsCollection).doc().id;
+      final doc = _firestore.collection(_serviceProjectsCollection).doc(id);
+      await doc.set(
+          {...project, 'id': id, 'updatedAt': FieldValue.serverTimestamp()},
+          SetOptions(merge: true));
+      return id;
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        throw AuthException(
+            'Admin permission required. Please ensure Firestore rules allow admin writes.',
+            originalError: e);
+      }
+      throw DatabaseException('Failed to create service project',
+          originalError: e);
+    }
+  }
+
+  static Future<String> createKidsStory(Map<String, dynamic> story) async {
+    try {
+      final id = story['id'] as String? ??
+          _firestore.collection(_kidsStoriesCollection).doc().id;
+      final doc = _firestore.collection(_kidsStoriesCollection).doc(id);
+      await doc.set(
+          {...story, 'id': id, 'updatedAt': FieldValue.serverTimestamp()},
+          SetOptions(merge: true));
+      return id;
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        throw AuthException(
+            'Admin permission required. Please ensure Firestore rules allow admin writes.',
+            originalError: e);
+      }
+      throw DatabaseException('Failed to create kids story', originalError: e);
+    }
+  }
+
+  static Future<String> createLearningResource(
+      Map<String, dynamic> resource) async {
+    try {
+      final id = resource['id'] as String? ??
+          _firestore.collection(_learningResourcesCollection).doc().id;
+      final doc = _firestore.collection(_learningResourcesCollection).doc(id);
+      await doc.set(
+          {...resource, 'id': id, 'updatedAt': FieldValue.serverTimestamp()},
+          SetOptions(merge: true));
+      return id;
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        throw AuthException(
+            'Admin permission required. Please ensure Firestore rules allow admin writes.',
+            originalError: e);
+      }
+      throw DatabaseException('Failed to create learning resource',
+          originalError: e);
+    }
+  }
+}
+
+/// Age groups for kids content
+enum KidsAgeGroup {
+  young, // 3-7 years
+  older, // 8-12 years
+  all, // All ages
+}
+
+/// Difficulty levels for memory verses
+enum MemoryVerseDifficulty {
+  easy,
+  medium,
+  hard,
+}
+
+/// Prayer types
+enum PrayerType {
+  morning,
+  meal,
+  bedtime,
+  sabbath,
+  gratitude,
+  guidance,
+  family,
+  forgiveness,
+}
+
+Future<void> _initializeLearningResources() async {
+  final resources = [
+    {
+      'id': 'lr_001',
+      'title': 'Sabbath Activity Pack',
+      'description':
+          'Coloring pages, memory verse cards, and simple crafts to celebrate the Sabbath.',
+      'category': 'Sabbath',
+      'ageGroup': 'young',
+      'resourceType': 'activity_pack',
+      'downloadable': true,
+      'createdAt': FieldValue.serverTimestamp(),
+    },
+    {
+      'id': 'lr_002',
+      'title': 'Creation Week Lesson Plan',
+      'description':
+          'Seven-day lesson plan with songs, verses, and crafts to learn about creation.',
+      'category': 'Creation',
+      'ageGroup': 'all',
+      'resourceType': 'lesson_plan',
+      'downloadable': true,
+      'createdAt': FieldValue.serverTimestamp(),
+    },
+    {
+      'id': 'lr_003',
+      'title': 'Three Angels Messages Visual Guide',
+      'description':
+          'Kid-friendly poster and story guide explaining the three angels messages.',
+      'category': 'Three Angels',
+      'ageGroup': 'older',
+      'resourceType': 'poster_guide',
+      'downloadable': true,
+      'createdAt': FieldValue.serverTimestamp(),
+    },
+    {
+      'id': 'lr_004',
+      'title': 'Healthy Choices Chart',
+      'description':
+          'Daily tracker for sleep, water, exercise, and devotional time.',
+      'category': 'Health',
+      'ageGroup': 'all',
+      'resourceType': 'chart',
+      'downloadable': true,
+      'createdAt': FieldValue.serverTimestamp(),
+    },
+    {
+      'id': 'lr_005',
+      'title': 'Sanctuary Symbols Coloring',
+      'description':
+          'Coloring pack explaining sanctuary furniture and symbols pointing to Jesus.',
+      'category': 'Sanctuary',
+      'ageGroup': 'older',
+      'resourceType': 'coloring_pack',
+      'downloadable': true,
+      'createdAt': FieldValue.serverTimestamp(),
+    },
+  ];
+
+  final batch = FirebaseFirestore.instance.batch();
+  for (final res in resources) {
+    final docRef = FirebaseFirestore.instance
+        .collection('learning_resources')
+        .doc(res['id'] as String);
+    batch.set(docRef, res, SetOptions(merge: true));
+  }
+  await batch.commit();
+}
+
+Future<List<Map<String, dynamic>>> getLearningResources({
+  String? category,
+  String? ageGroup,
+  String? resourceType,
+}) async {
+  Query query = FirebaseFirestore.instance.collection('learning_resources');
+  if (category != null) {
+    query = query.where('category', isEqualTo: category);
+  }
+  if (ageGroup != null) {
+    query = query.where('ageGroup', whereIn: [ageGroup, 'all']);
+  }
+  if (resourceType != null) {
+    query = query.where('resourceType', isEqualTo: resourceType);
+  }
+  final snapshot = await query.get();
+  return snapshot.docs
+      .map((doc) => {'id': doc.id, ...doc.data() as Map<String, dynamic>})
+      .toList();
+}
+
+Future<String> createLearningResource(Map<String, dynamic> resource) async {
+  try {
+    final firestore = FirebaseFirestore.instance;
+    const collection = 'learning_resources';
+    final id =
+        resource['id'] as String? ?? firestore.collection(collection).doc().id;
+    final doc = firestore.collection(collection).doc(id);
+    await doc.set(
+        {...resource, 'id': id, 'updatedAt': FieldValue.serverTimestamp()},
+        SetOptions(merge: true));
+    return id;
+  } on FirebaseException catch (e) {
+    if (e.code == 'permission-denied') {
+      throw AuthException(
+          'Admin permission required. Please ensure Firestore rules allow admin writes.',
+          originalError: e);
+    }
+    rethrow;
+  }
+}
+
+Future<void> updateLearningResource(
+    String id, Map<String, dynamic> updates) async {
+  try {
+    final firestore = FirebaseFirestore.instance;
+    const collection = 'learning_resources';
+    final doc = firestore.collection(collection).doc(id);
+    await doc.update({...updates, 'updatedAt': FieldValue.serverTimestamp()});
+  } on FirebaseException catch (e) {
+    if (e.code == 'permission-denied') {
+      throw AuthException(
+          'Admin permission required. Please ensure Firestore rules allow admin writes.',
+          originalError: e);
+    }
+    rethrow;
+  }
+}
+
+Future<void> deleteLearningResource(String id) async {
+  try {
+    final firestore = FirebaseFirestore.instance;
+    const collection = 'learning_resources';
+    await firestore.collection(collection).doc(id).delete();
+  } on FirebaseException catch (e) {
+    if (e.code == 'permission-denied') {
+      throw AuthException(
+          'Admin permission required. Please ensure Firestore rules allow admin writes.',
+          originalError: e);
+    }
+    rethrow;
+  }
+}

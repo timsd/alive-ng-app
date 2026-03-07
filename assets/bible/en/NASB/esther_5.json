@@ -1,0 +1,61 @@
+{
+  "verses": [
+    {
+      "verse": 1,
+      "text": "Now it came about on the third day that Esther put on her royal robes and stood in the inner court of the king’s palace in front of the king’s rooms, and the king was sitting on his royal throne in the throne room, opposite the entrance to the palace."
+    },
+    {
+      "verse": 2,
+      "text": "And it happened when the king saw Esther the queen standing in the court, she obtained favor in his sight; and the king extended to Esther the golden scepter which was in his hand. So Esther came near and touched the top of the scepter."
+    },
+    {
+      "verse": 3,
+      "text": "Then the king said to her, “What is troubling you, Queen Esther? And what is your request? Even to half of the kingdom it will be given to you.”"
+    },
+    {
+      "verse": 4,
+      "text": "And Esther said, “If it please the king, may the king and Haman come this day to the banquet that I have prepared for him.”"
+    },
+    {
+      "verse": 6,
+      "text": "And, as they drank their wine at the banquet, the king said to Esther, “What is your petition, for it shall be granted to you. And what is your request? Even to half of the kingdom it shall be done.”"
+    },
+    {
+      "verse": 7,
+      "text": "So Esther answered and said, “My petition and my request is:"
+    },
+    {
+      "verse": 8,
+      "text": "if I have found favor in the sight of the king, and if it please the king to grant my petition and do what I request, may the king and Haman come to the banquet which I shall prepare for them, and tomorrow I will do as the king says.”"
+    },
+    {
+      "verse": 9,
+      "text": "Then Haman went out that day glad and pleased of heart; but when Haman saw Mordecai in the king’s gate, and that he did not stand up or tremble before him, Haman was filled with anger against Mordecai."
+    },
+    {
+      "verse": 10,
+      "text": "Haman controlled himself, however, went to his house, and sent for his friends and his wife Zeresh."
+    },
+    {
+      "verse": 11,
+      "text": "Then Haman recounted to them the glory of his riches, and the number of his sons, and every instance where the king had magnified him, and how he had promoted him above the princes and servants of the king."
+    },
+    {
+      "verse": 13,
+      "text": "“Yet all of this does not satisfy me every time I see Mordecai the Jew sitting at the king’s gate.”"
+    },
+    {
+      "verse": 14,
+      "text": "Then Zeresh his wife and all his friends said to him, “Have a gallows fifty cubits high made and in the morning ask the king to have Mordecai hanged on it, then go joyfully with the king to the banquet.” And the advice pleased Haman, so he had the gallows made."
+    }
+  ],
+  "metadata": {
+    "book": "Esther",
+    "chapter": 5,
+    "version": "NASB",
+    "versionName": "NASB 1977",
+    "language": "en",
+    "source": "NASB 1977.json",
+    "importedAt": "2025-10-31T17:16:36.705299"
+  }
+}

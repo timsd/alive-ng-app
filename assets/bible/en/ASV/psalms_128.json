@@ -1,0 +1,37 @@
+{
+  "verses": [
+    {
+      "verse": 1,
+      "text": "A Song of Ascents. Blessed is every one that feareth Jehovah, That walketh in his ways."
+    },
+    {
+      "verse": 2,
+      "text": "For thou shalt eat the labor of thy hands: Happy shalt thou be, and it shall be well with thee."
+    },
+    {
+      "verse": 3,
+      "text": "Thy wife shall be as a fruitful vine, In the innermost parts of thy house; Thy children like olive plants, Round about thy table."
+    },
+    {
+      "verse": 4,
+      "text": "Behold, thus shall the man be blessed That feareth Jehovah."
+    },
+    {
+      "verse": 5,
+      "text": "Jehovah bless thee out of Zion: And see thou the good of Jerusalem all the days of thy life."
+    },
+    {
+      "verse": 6,
+      "text": "Yea, see thou thy children's children. Peace be upon Israel."
+    }
+  ],
+  "metadata": {
+    "book": "Psalms",
+    "chapter": 128,
+    "version": "ASV",
+    "versionName": "American Standard Version",
+    "language": "en",
+    "source": "AMERICAN STANDARD VERSION.json",
+    "importedAt": "2025-10-31T17:15:30.922402"
+  }
+}

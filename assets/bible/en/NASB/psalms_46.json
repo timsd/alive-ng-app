@@ -1,0 +1,53 @@
+{
+  "verses": [
+    {
+      "verse": 1,
+      "text": "God is our refuge and strength, A very present help in trouble."
+    },
+    {
+      "verse": 2,
+      "text": "Therefore we will not fear, though the earth should change, And though the mountains slip into the heart of the sea;"
+    },
+    {
+      "verse": 3,
+      "text": "Though its waters roar and foam, Though the mountains quake at its swelling pride. Selah."
+    },
+    {
+      "verse": 4,
+      "text": "There is a river whose streams make glad the city of God, The holy dwelling places of the Most High."
+    },
+    {
+      "verse": 5,
+      "text": "God is in the midst of her, she will not be moved; God will help her when morning dawns."
+    },
+    {
+      "verse": 6,
+      "text": "The nations made an uproar, the kingdoms tottered; He raised His voice, the earth melted."
+    },
+    {
+      "verse": 7,
+      "text": "The LORD of hosts is with us; The God of Jacob is our stronghold. Selah."
+    },
+    {
+      "verse": 8,
+      "text": "Come, behold the works of the LORD, Who has wrought desolations in the earth."
+    },
+    {
+      "verse": 9,
+      "text": "He makes wars to cease to the end of the earth; He breaks the bow and cuts the spear in two; He burns the chariots with fire."
+    },
+    {
+      "verse": 11,
+      "text": "The LORD of hosts is with us; The God of Jacob is our stronghold. Selah."
+    }
+  ],
+  "metadata": {
+    "book": "Psalms",
+    "chapter": 46,
+    "version": "NASB",
+    "versionName": "NASB 1977",
+    "language": "en",
+    "source": "NASB 1977.json",
+    "importedAt": "2025-10-31T17:16:37.004521"
+  }
+}

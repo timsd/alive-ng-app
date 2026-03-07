@@ -1,0 +1,41 @@
+{
+  "verses": [
+    {
+      "verse": 1,
+      "text": "Save me, O God, by Thy name, And vindicate me by Thy power."
+    },
+    {
+      "verse": 2,
+      "text": "Hear my prayer, O God; Give ear to the words of my mouth."
+    },
+    {
+      "verse": 3,
+      "text": "For strangers have risen against me, And violent men have sought my life; They have not set God before them. Selah."
+    },
+    {
+      "verse": 4,
+      "text": "Behold, God is my helper; The Lord is the sustainer of my soul."
+    },
+    {
+      "verse": 5,
+      "text": "He will recompense the evil to my foes; Destroy them in Thy faithfulness."
+    },
+    {
+      "verse": 6,
+      "text": "Willingly I will sacrifice to Thee; I will give thanks to Thy name, O LORD, for it is good."
+    },
+    {
+      "verse": 7,
+      "text": "For He has delivered me from all trouble; And my eye has looked with satisfaction upon my enemies."
+    }
+  ],
+  "metadata": {
+    "book": "Psalms",
+    "chapter": 54,
+    "version": "NASB",
+    "versionName": "NASB 1977",
+    "language": "en",
+    "source": "NASB 1977.json",
+    "importedAt": "2025-10-31T17:16:37.018857"
+  }
+}

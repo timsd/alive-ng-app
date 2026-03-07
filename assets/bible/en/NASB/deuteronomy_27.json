@@ -1,0 +1,65 @@
+{
+  "verses": [
+    {
+      "verse": 1,
+      "text": "Then Moses and the elders of Israel charged the people, saying, “Keep all the commandments which I command you today."
+    },
+    {
+      "verse": 2,
+      "text": "“So it shall be on the day when you shall cross the Jordan to the land which the LORD your God gives you, that you shall set up for yourself large stones, and coat them with lime"
+    },
+    {
+      "verse": 3,
+      "text": "and write on them all the words of this law, when you cross over, in order that you may enter the land which the LORD your God gives you, a land flowing with milk and honey, as the LORD, the God of your fathers, promised you."
+    },
+    {
+      "verse": 4,
+      "text": "“So it shall be when you cross the Jordan, you shall set up on Mount Ebal, these stones, as I am commanding you today, and you shall coat them with lime."
+    },
+    {
+      "verse": 5,
+      "text": "“Moreover, you shall build there an altar to the LORD your God, an altar of stones; you shall not wield an iron tool on them."
+    },
+    {
+      "verse": 6,
+      "text": "“You shall build the altar of the LORD your God of uncut stones; and you shall offer on it burnt offerings to the LORD your God;"
+    },
+    {
+      "verse": 7,
+      "text": "and you shall sacrifice peace offerings and eat there, and you shall rejoice before the LORD your God."
+    },
+    {
+      "verse": 8,
+      "text": "“And you shall write on the stones all the words of this law very distinctly.”"
+    },
+    {
+      "verse": 10,
+      "text": "“You shall therefore obey the LORD your God, and do His commandments and His statutes which I command you today.”"
+    },
+    {
+      "verse": 11,
+      "text": "Moses also charged the people on that day, saying,"
+    },
+    {
+      "verse": 12,
+      "text": "“When you cross the Jordan, these shall stand on Mount Gerizim to bless the people: Simeon, Levi, Judah, Issachar, Joseph, and Benjamin."
+    },
+    {
+      "verse": 13,
+      "text": "“And for the curse, these shall stand on Mount Ebal: Reuben, Gad, Asher, Zebulun, Dan, and Naphtali."
+    },
+    {
+      "verse": 14,
+      "text": "“The Levites shall then answer and say to all the men of Israel with a loud voice,"
+    }
+  ],
+  "metadata": {
+    "book": "Deuteronomy",
+    "chapter": 27,
+    "version": "NASB",
+    "versionName": "NASB 1977",
+    "language": "en",
+    "source": "NASB 1977.json",
+    "importedAt": "2025-10-31T17:16:35.116136"
+  }
+}

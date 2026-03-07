@@ -1,0 +1,22 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="60" cy="60" r="55" fill="#4CAF50" stroke="#388E3C" stroke-width="3"/>
+  
+  <!-- Medical cross -->
+  <rect x="52" y="35" width="16" height="50" rx="2" fill="white"/>
+  <rect x="35" y="52" width="50" height="16" rx="2" fill="white"/>
+  
+  <!-- Heart symbol -->
+  <path d="M40 40 C40 35, 35 35, 35 40 C35 35, 30 35, 30 40 C30 50, 40 55, 40 55 C40 55, 50 50, 50 40 C50 35, 45 35, 45 40 C45 35, 40 35, 40 40 Z" fill="#FF5722"/>
+  
+  <!-- Stethoscope -->
+  <path d="M75 45 Q85 40 90 50 Q85 60 75 55" fill="none" stroke="#37474F" stroke-width="3"/>
+  <circle cx="90" cy="50" r="5" fill="#37474F"/>
+  <path d="M75 45 L75 35" stroke="#37474F" stroke-width="2"/>
+  <path d="M75 55 L75 65" stroke="#37474F" stroke-width="2"/>
+  <circle cx="75" cy="32" r="3" fill="#37474F"/>
+  <circle cx="75" cy="68" r="3" fill="#37474F"/>
+  
+  <!-- Series title -->
+  <text x="60" y="105" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="white">HEALTH</text>
+</svg>

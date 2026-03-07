@@ -1,0 +1,25 @@
+{
+  "verses": [
+    {
+      "verse": 1,
+      "text": "A song of ascents. Praise the LORD, all you servants of the LORD who minister by night in the house of the LORD."
+    },
+    {
+      "verse": 2,
+      "text": "Lift up your hands in the sanctuary and praise the LORD."
+    },
+    {
+      "verse": 3,
+      "text": "May the LORD bless you from Zion, he who is the Maker of heaven and earth."
+    }
+  ],
+  "metadata": {
+    "book": "Psalms",
+    "chapter": 134,
+    "version": "NIV",
+    "versionName": "New International Version",
+    "language": "en",
+    "source": "NEW INTERNATIONAL VERSION.json",
+    "importedAt": "2025-10-31T17:15:44.480175"
+  }
+}

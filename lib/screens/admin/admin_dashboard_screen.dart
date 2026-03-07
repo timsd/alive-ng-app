@@ -1,0 +1,939 @@
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:go_router/go_router.dart';
+import '../../services/auth_service.dart';
+import '../../services/role_access_service.dart';
+import '../../widgets/role_guard.dart';
+import '../../widgets/custom_app_bar.dart';
+import '../../constants/chapters.dart';
+import '../../constants/app_constants.dart';
+import 'content_management_screen.dart';
+import '../../data/podcast_data.dart';
+import 'storage_admin_screen.dart';
+import '../../services/firebase_database_service.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+class AdminDashboardScreen extends StatefulWidget {
+  const AdminDashboardScreen({super.key});
+
+  @override
+  State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
+}
+
+class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+  @override
+  Widget build(BuildContext context) {
+    return const RoleProtectedScreen(
+      requiredRole: 'admin',
+      screenName: 'Admin Dashboard',
+      bypassGuard: true, // Development mode bypass
+      child: _AdminDashboardContent(),
+    );
+  }
+}
+
+class _AdminDashboardContent extends StatefulWidget {
+  const _AdminDashboardContent();
+
+  @override
+  State<_AdminDashboardContent> createState() => _AdminDashboardContentState();
+}
+
+class _AdminDashboardContentState extends State<_AdminDashboardContent> {
+  final RoleAccessService _roleService = RoleAccessService.instance;
+  bool _isLoading = true;
+  bool _hasAccess = false;
+  User? _currentUser;
+
+  // Dashboard stats
+  int _totalUsers = 0;
+  int _totalChapters = 0;
+  int _activeReports = 0;
+  int _archivedUsers = 0;
+  int _totalPodcasts = 0;
+  Map<String, int> _podcastCategoryCounts = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDashboardData();
+  }
+
+  Future<void> _loadDashboardData() async {
+    try {
+      _currentUser = AuthService.instance.currentUser;
+      if (_currentUser != null) {
+        _hasAccess = _roleService.hasRole('admin');
+      }
+      await _loadDashboardStats();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading dashboard: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadDashboardStats() async {
+    try {
+      // Fetch real-time stats from Firestore
+      final usersSnapshot = await FirebaseFirestore.instance
+          .collection('profiles')
+          .where('is_archived', isEqualTo: false)
+          .get();
+
+      final archivedUsersSnapshot = await FirebaseFirestore.instance
+          .collection('profiles')
+          .where('is_archived', isEqualTo: true)
+          .get();
+
+      final activeReportsSnapshot = await FirebaseFirestore.instance
+          .collection('board_documents')
+          .where('is_archived', isEqualTo: false)
+          .get();
+
+      final podcastsSnapshot =
+          await FirebaseFirestore.instance.collection('podcasts').get();
+
+      final Map<String, int> categoryCounts = {};
+      for (final doc in podcastsSnapshot.docs) {
+        final data = doc.data();
+        final category = (data['category'] as String?) ?? 'uncategorized';
+        categoryCounts[category] = (categoryCounts[category] ?? 0) + 1;
+      }
+
+      setState(() {
+        _totalUsers = usersSnapshot.docs.length;
+        _archivedUsers = archivedUsersSnapshot.docs.length;
+        _activeReports = activeReportsSnapshot.docs.length;
+        _totalChapters = ChapterConstants.availableChapters.length;
+        _totalPodcasts = podcastsSnapshot.docs.length;
+        _podcastCategoryCounts = categoryCounts;
+      });
+    } catch (e) {
+      // Handle error - fallback to placeholder data
+      setState(() {
+        _totalUsers = 150;
+        _totalChapters = ChapterConstants.availableChapters.length;
+        _activeReports = 25;
+        _archivedUsers = 12;
+        _totalPodcasts = 0;
+        _podcastCategoryCounts = {};
+      });
+    }
+  }
+
+  String _displayPodcastCategory(String key) {
+    try {
+      final cat = PodcastCategory.values.firstWhere((c) => c.name == key);
+      return cat.displayName;
+    } catch (_) {
+      if (key.isEmpty) return 'Uncategorized';
+      final humanized = key.replaceAll('_', ' ');
+      return humanized[0].toUpperCase() + humanized.substring(1);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(
+            color: Colors.green,
+          ),
+        ),
+      );
+    }
+
+    if (!_hasAccess) {
+      return const Scaffold(
+        appBar: CustomAppBar(
+          title: 'Access Denied',
+          showBackButton: true,
+          backgroundColor: Colors.red,
+          foregroundColor: Colors.white,
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.admin_panel_settings_outlined,
+                size: 80,
+                color: Colors.red,
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Admin Access Required',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'You need administrator privileges to access this dashboard.',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      appBar: CustomAppBar(
+        title: 'Admin Dashboard',
+        showBackButton: true,
+        backgroundColor: Colors.green,
+        foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadDashboardStats,
+          ),
+          IconButton(
+            icon: const Icon(Icons.download),
+            tooltip: 'Export Data Backup',
+            onPressed: () async {
+              try {
+                final data =
+                    await FirebaseDatabaseService.instance.exportDataBackup(
+                  collections: [
+                    'profiles',
+                    'prayer_requests',
+                    'chapters',
+                    'user_roles',
+                    'user_groups',
+                    'notification_history',
+                  ],
+                  format: 'csv',
+                );
+                if (context.mounted) {
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      final files = (data['files'] as Map?) ?? {};
+                      return AlertDialog(
+                        title: const Text('Backup Exported'),
+                        content: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Prefix: ${data['prefix'] ?? ''}'),
+                              const SizedBox(height: 12),
+                              for (final entry in files.entries)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                          '${entry.key}: ${entry.value['path']}'),
+                                      if (entry.value['url'] != null)
+                                        TextButton(
+                                          onPressed: () async {
+                                            final url =
+                                                Uri.parse(entry.value['url']);
+                                            if (await canLaunchUrl(url)) {
+                                              await launchUrl(url,
+                                                  mode: LaunchMode
+                                                      .externalApplication);
+                                            }
+                                          },
+                                          child:
+                                              const Text('Open Download Link'),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Close'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Export failed: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.chat_bubble_outline),
+            tooltip: 'Export Chat Backup',
+            onPressed: () async {
+              try {
+                final data =
+                    await FirebaseDatabaseService.instance.exportChatBackup(
+                  type: 'messaging',
+                );
+                if (context.mounted) {
+                  final file = data['file'] as Map?;
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      return AlertDialog(
+                        title: const Text('Chat Backup Exported'),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Prefix: ${data['prefix'] ?? ''}'),
+                            const SizedBox(height: 8),
+                            Text('Channels exported: ${data['count'] ?? 0}'),
+                            const SizedBox(height: 12),
+                            if (file != null && file['url'] != null)
+                              TextButton(
+                                onPressed: () async {
+                                  final url = Uri.parse(file['url']);
+                                  if (await canLaunchUrl(url)) {
+                                    await launchUrl(url,
+                                        mode: LaunchMode.externalApplication);
+                                  }
+                                },
+                                child: const Text('Open Download Link'),
+                              ),
+                          ],
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Close'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Chat export failed: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.chat_outlined),
+            tooltip: 'Export Chat Messages',
+            onPressed: () async {
+              try {
+                final data = await FirebaseDatabaseService.instance.exportChatMessages(
+                  type: 'messaging',
+                  limitPerChannel: 500,
+                );
+                if (context.mounted) {
+                  final files = (data['files'] as List?) ?? const [];
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      return AlertDialog(
+                        title: const Text('Chat Messages Exported'),
+                        content: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Prefix: ${data['prefix'] ?? ''}'),
+                              const SizedBox(height: 12),
+                              for (final item in files)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text('CID: ${item['cid']} (${item['count']} messages)'),
+                                      Text('${item['path']}'),
+                                      if (item['url'] != null)
+                                        TextButton(
+                                          onPressed: () async {
+                                            final url = Uri.parse(item['url']);
+                                            if (await canLaunchUrl(url)) {
+                                              await launchUrl(url, mode: LaunchMode.externalApplication);
+                                            }
+                                          },
+                                          child: const Text('Open Download Link'),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Close'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Chat messages export failed: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Welcome Card
+            Card(
+              color: Colors.green.shade50,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    const CircleAvatar(
+                      backgroundColor: Colors.green,
+                      child: Icon(
+                        Icons.admin_panel_settings,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Welcome, ${_currentUser?.email ?? 'Administrator'}',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green,
+                            ),
+                          ),
+                          const Text(
+                            'ALIVE Nigeria Admin Dashboard',
+                            style: TextStyle(
+                              color: Colors.green,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Statistics Cards
+            const Text(
+              'System Overview',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStatCard(
+                    'Total Users',
+                    _totalUsers.toString(),
+                    Icons.people,
+                    Colors.blue,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildStatCard(
+                    'Chapters',
+                    _totalChapters.toString(),
+                    Icons.location_city,
+                    Colors.orange,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+
+            // Podcast Stats
+            const Text(
+              'Podcast Stats',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStatCard(
+                    'Total Podcasts',
+                    _totalPodcasts.toString(),
+                    Icons.podcasts,
+                    Colors.blue,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildStatCard(
+                    'Categories',
+                    _podcastCategoryCounts.length.toString(),
+                    Icons.category,
+                    Colors.purple,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 12),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.legend_toggle, color: Colors.blue),
+                        SizedBox(width: 8),
+                        Text(
+                          'Podcast Categories Breakdown',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _podcastCategoryCounts.entries.map((e) {
+                        final display = _displayPodcastCategory(e.key);
+                        return Chip(
+                          avatar: const Icon(Icons.label,
+                              size: 18, color: Colors.blue),
+                          label: Text('$display: ${e.value}'),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStatCard(
+                    'Active Reports',
+                    _activeReports.toString(),
+                    Icons.assessment,
+                    Colors.green,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildStatCard(
+                    'Archived Users',
+                    _archivedUsers.toString(),
+                    Icons.archive,
+                    Colors.red,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 32),
+
+            // Management Sections
+            const Text(
+              'Management Tools',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // User Management
+            _buildManagementSection(
+              'User Management',
+              Icons.people_outline,
+              [
+                _buildActionTile(
+                  'Manage Users',
+                  'View, edit, and manage all user accounts',
+                  Icons.person_outline,
+                  () => _navigateToUserManagement(),
+                ),
+                _buildActionTile(
+                  'User Approval',
+                  'Review and approve new user registrations',
+                  Icons.how_to_reg_outlined,
+                  () => context.go(AppConstants.adminApprovalRoute),
+                ),
+                _buildActionTile(
+                  'Role Assignment',
+                  'Assign and modify user roles and permissions',
+                  Icons.admin_panel_settings_outlined,
+                  () => _navigateToRoleManagement(),
+                ),
+                _buildActionTile(
+                  'Archived Users',
+                  'View and manage archived user accounts',
+                  Icons.archive_outlined,
+                  () => _navigateToArchivedUsers(),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // Content Management
+            _buildManagementSection(
+              'Content Management',
+              Icons.library_books_outlined,
+              [
+                _buildActionTile(
+                  'Tract & Podcast Management',
+                  'Manage tracts, podcasts, and categories',
+                  Icons.article_outlined,
+                  () => context.go(AppConstants.tractPodcastAdminRoute),
+                ),
+                _buildActionTile(
+                  'Featured Content',
+                  'Manage featured content and highlights',
+                  Icons.star_outline,
+                  () => _navigateToContentManagement('featured'),
+                ),
+                _buildActionTile(
+                  'Announcements',
+                  'Create and manage app announcements',
+                  Icons.campaign_outlined,
+                  () => _navigateToContentManagement('announcements'),
+                ),
+                _buildActionTile(
+                  'Kids Content',
+                  'Manage kids stories, projects, and resources',
+                  Icons.child_care_outlined,
+                  () => context.go(AppConstants.kidsContentAdminRoute),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // Chapter Management
+            _buildManagementSection(
+              'Chapter Management',
+              Icons.location_city_outlined,
+              [
+                _buildActionTile(
+                  'Chapter Overview',
+                  'View all chapters and their statistics',
+                  Icons.dashboard_outlined,
+                  () => _navigateToChapterManagement(),
+                ),
+                _buildActionTile(
+                  'Coordinator Assignment',
+                  'Assign coordinators to chapters',
+                  Icons.assignment_ind_outlined,
+                  () => _navigateToCoordinatorAssignment(),
+                ),
+                _buildActionTile(
+                  'Chapter Reports',
+                  'Review chapter activity reports',
+                  Icons.assessment_outlined,
+                  () => _navigateToChapterReports(),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // Storage Management
+            _buildManagementSection(
+              'Storage Management',
+              Icons.cloud_upload_outlined,
+              [
+                _buildActionTile(
+                  'File Storage',
+                  'Manage Supabase storage buckets and files',
+                  Icons.folder_outlined,
+                  () => _navigateToStorageAdmin(),
+                ),
+                _buildActionTile(
+                  'Audio Files',
+                  'Upload and manage audio files for podcasts',
+                  Icons.audiotrack_outlined,
+                  () => _navigateToStorageAdmin(),
+                ),
+                _buildActionTile(
+                  'PDF Documents',
+                  'Upload and manage PDF files for tracts',
+                  Icons.picture_as_pdf_outlined,
+                  () => _navigateToStorageAdmin(),
+                ),
+                _buildActionTile(
+                  'Profile Pictures',
+                  'Manage user profile pictures and avatars',
+                  Icons.person_outlined,
+                  () => _navigateToStorageAdmin(),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // System Settings
+            _buildManagementSection(
+              'System Settings',
+              Icons.settings_outlined,
+              [
+                _buildActionTile(
+                  'App Configuration',
+                  'Configure app settings and preferences',
+                  Icons.tune_outlined,
+                  () => _navigateToAppSettings(),
+                ),
+                _buildActionTile(
+                  'Admin Email Settings',
+                  'Configure recipients for admin notifications',
+                  Icons.email_outlined,
+                  () => context.go(AppConstants.adminEmailSettingsRoute),
+                ),
+                _buildActionTile(
+                  'Backup & Restore',
+                  'Manage system backups and data restoration',
+                  Icons.backup_outlined,
+                  () => _navigateToBackupSettings(),
+                ),
+                _buildActionTile(
+                  'System Logs',
+                  'View system logs and error reports',
+                  Icons.bug_report_outlined,
+                  () => _navigateToSystemLogs(),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatCard(
+      String title, String value, IconData icon, Color color) {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              size: 32,
+              color: color,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildManagementSection(
+      String title, IconData icon, List<Widget> children) {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  icon,
+                  color: Colors.green,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ...children,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionTile(
+      String title, String subtitle, IconData icon, VoidCallback onTap) {
+    return ListTile(
+      leading: Icon(
+        icon,
+        color: Colors.green,
+      ),
+      title: Text(
+        title,
+        style: const TextStyle(
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: const TextStyle(
+          fontSize: 12,
+          color: Colors.grey,
+        ),
+      ),
+      trailing: const Icon(
+        Icons.arrow_forward_ios,
+        size: 16,
+        color: Colors.grey,
+      ),
+      onTap: onTap,
+    );
+  }
+
+  // Navigation methods (placeholder implementations)
+  void _navigateToUserManagement() {
+    _showComingSoon('User Management');
+  }
+
+  void _navigateToRoleManagement() {
+    _showComingSoon('Role Management');
+  }
+
+  void _navigateToArchivedUsers() {
+    _showComingSoon('Archived Users');
+  }
+
+  void _navigateToContentManagement(String type) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ContentManagementScreen(contentType: type),
+      ),
+    );
+  }
+
+  void _navigateToStorageAdmin() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const StorageAdminScreen(),
+      ),
+    );
+  }
+
+  void _navigateToChapterManagement() {
+    _showComingSoon('Chapter Management');
+  }
+
+  void _navigateToCoordinatorAssignment() {
+    _showComingSoon('Coordinator Assignment');
+  }
+
+  void _navigateToChapterReports() {
+    _showComingSoon('Chapter Reports');
+  }
+
+  void _navigateToAppSettings() {
+    _showComingSoon('App Settings');
+  }
+
+  void _navigateToBackupSettings() {
+    _showComingSoon('Backup Settings');
+  }
+
+  void _navigateToSystemLogs() {
+    _showComingSoon('System Logs');
+  }
+
+  void _showComingSoon(String feature) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$feature feature coming soon'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+}

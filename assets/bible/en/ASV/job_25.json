@@ -1,0 +1,33 @@
+{
+  "verses": [
+    {
+      "verse": 1,
+      "text": "Then answered Bildad the Shuhite, and said,"
+    },
+    {
+      "verse": 3,
+      "text": "Is there any number of his armies? And upon whom doth not his light arise?"
+    },
+    {
+      "verse": 4,
+      "text": "How then can man be just with God? Or how can he be clean that is born of a woman?"
+    },
+    {
+      "verse": 5,
+      "text": "Behold, even the moon hath no brightness, And the stars are not pure in his sight:"
+    },
+    {
+      "verse": 6,
+      "text": "How much less man, that is a worm! And the son of man, that is a worm!"
+    }
+  ],
+  "metadata": {
+    "book": "Job",
+    "chapter": 25,
+    "version": "ASV",
+    "versionName": "American Standard Version",
+    "language": "en",
+    "source": "AMERICAN STANDARD VERSION.json",
+    "importedAt": "2025-10-31T17:15:29.873231"
+  }
+}

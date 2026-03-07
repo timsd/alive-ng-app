@@ -1,0 +1,33 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isPrivileged() {
+      return isAuthenticated() &&
+        (
+          request.auth.token.admin == true ||
+          (request.auth.token.role in ['admin', 'super_admin', 'content_manager'])
+        );
+    }
+
+    // Publicly readable assets
+    match /images/{allPaths=**} {
+      allow read: if true;
+      allow write: if isPrivileged();
+    }
+
+    match /pdfs/{allPaths=**} {
+      allow read: if true;
+      allow write: if isPrivileged();
+    }
+
+    // Fallback: require authentication for reads and privileged writes
+    match /{path=**} {
+      allow read: if isAuthenticated();
+      allow write: if isPrivileged();
+    }
+  }
+}

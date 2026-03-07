@@ -1,0 +1,21 @@
+{
+  "verses": [
+    {
+      "verse": 1,
+      "text": "Praise the LORD, all you Gentiles! Laud Him, all you peoples!"
+    },
+    {
+      "verse": 2,
+      "text": "For His merciful kindness is great toward us, And the truth of the LORD endures forever. Praise the LORD!"
+    }
+  ],
+  "metadata": {
+    "book": "Psalms",
+    "chapter": 117,
+    "version": "NKJV",
+    "versionName": "New King James Version",
+    "language": "en",
+    "source": "NEW KING JAMES VERSION.json",
+    "importedAt": "2025-10-31T17:16:02.601598"
+  }
+}

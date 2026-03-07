@@ -1,0 +1,25 @@
+{
+  "verses": [
+    {
+      "verse": 1,
+      "text": "A song of ascents. Of David. My heart is not proud, LORD, my eyes are not haughty; I do not concern myself with great matters or things too wonderful for me."
+    },
+    {
+      "verse": 2,
+      "text": "But I have calmed and quieted myself, I am like a weaned child with its mother; like a weaned child I am content."
+    },
+    {
+      "verse": 3,
+      "text": "Israel, put your hope in the LORD both now and forevermore."
+    }
+  ],
+  "metadata": {
+    "book": "Psalms",
+    "chapter": 131,
+    "version": "NIV",
+    "versionName": "New International Version",
+    "language": "en",
+    "source": "NEW INTERNATIONAL VERSION.json",
+    "importedAt": "2025-10-31T17:15:44.470874"
+  }
+}

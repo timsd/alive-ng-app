@@ -1,0 +1,73 @@
+{
+    "name": "ALIVE-NG Ministry",
+    "short_name": "ALIVE-NG",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#4CAF50",
+    "theme_color": "#4CAF50",
+    "description": "ALIVE-NG Ministry - Empowering lives through faith, community, and spiritual growth.",
+    "orientation": "portrait-primary",
+    "prefer_related_applications": false,
+    "scope": "/",
+    "lang": "en",
+    "categories": ["lifestyle", "education", "social"],
+    "screenshots": [
+        {
+            "src": "icons/Icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "form_factor": "wide"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "Daily Verse",
+            "short_name": "Daily",
+            "description": "View today's Bible verse",
+            "url": "/daily",
+            "icons": [
+                {
+                    "src": "icons/Icon-192.png",
+                    "sizes": "192x192"
+                }
+            ]
+        },
+        {
+            "name": "Prayer Requests",
+            "short_name": "Prayer",
+            "description": "Submit and view prayer requests",
+            "url": "/prayer",
+            "icons": [
+                {
+                    "src": "icons/Icon-192.png",
+                    "sizes": "192x192"
+                }
+            ]
+        }
+    ],
+    "icons": [
+        {
+            "src": "icons/Icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-maskable-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "icons/Icon-maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ],
+    "gcm_sender_id": "234909240985"
+}

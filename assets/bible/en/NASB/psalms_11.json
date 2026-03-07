@@ -1,0 +1,37 @@
+{
+  "verses": [
+    {
+      "verse": 2,
+      "text": "For, behold, the wicked bend the bow, They make ready their arrow upon the string, To shoot in darkness at the upright in heart."
+    },
+    {
+      "verse": 3,
+      "text": "If the foundations are destroyed, What can the righteous do?”"
+    },
+    {
+      "verse": 4,
+      "text": "The LORD is in His holy temple; the LORD’S throne is in heaven; His eyes behold, His eyelids test the sons of men."
+    },
+    {
+      "verse": 5,
+      "text": "The LORD tests the righteous and the wicked, And the one who loves violence His soul hates."
+    },
+    {
+      "verse": 6,
+      "text": "Upon the wicked He will rain snares; Fire and brimstone and burning wind will be the portion of their cup."
+    },
+    {
+      "verse": 7,
+      "text": "For the LORD is righteous; He loves righteousness; The upright will behold His face."
+    }
+  ],
+  "metadata": {
+    "book": "Psalms",
+    "chapter": 11,
+    "version": "NASB",
+    "versionName": "NASB 1977",
+    "language": "en",
+    "source": "NASB 1977.json",
+    "importedAt": "2025-10-31T17:16:36.899932"
+  }
+}

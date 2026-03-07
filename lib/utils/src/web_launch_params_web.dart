@@ -1,0 +1,39 @@
+import 'package:web/web.dart' as web;
+
+String? getSelectedProjectId() {
+  try {
+    return web.window.sessionStorage.getItem('selected_project_id');
+  } catch (_) {
+    return null;
+  }
+}
+
+void clearSelectedProjectId() {
+  try {
+    web.window.sessionStorage.removeItem('selected_project_id');
+  } catch (_) {
+    // ignore
+  }
+}
+
+String? getInitialRoute() {
+  try {
+    return web.window.sessionStorage.getItem('start_route');
+  } catch (_) {
+    return null;
+  }
+}
+
+String? getPostAuthRedirect() {
+  try {
+    return web.window.sessionStorage.getItem('post_auth_redirect');
+  } catch (_) {
+    return null;
+  }
+}
+
+void clearPostAuthRedirect() {
+  try {
+    web.window.sessionStorage.removeItem('post_auth_redirect');
+  } catch (_) {}
+}

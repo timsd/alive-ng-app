@@ -1,0 +1,113 @@
+{
+  "verses": [
+    {
+      "verse": 1,
+      "text": "The book of the genealogy of Jesus Christ, the son of David, the son of Abraham."
+    },
+    {
+      "verse": 2,
+      "text": "To Abraham was born Isaac; and to Isaac, Jacob; and to Jacob, Judah and his brothers;"
+    },
+    {
+      "verse": 3,
+      "text": "and to Judah were born Perez and Zerah by Tamar; and to Perez was born Hezron; and to Hezron, Ram;"
+    },
+    {
+      "verse": 4,
+      "text": "and to Ram was born Amminadab; and to Amminadab, Nahshon; and to Nahshon, Salmon;"
+    },
+    {
+      "verse": 5,
+      "text": "and to Salmon was born Boaz by Rahab; and to Boaz was born Obed by Ruth; and to Obed, Jesse;"
+    },
+    {
+      "verse": 6,
+      "text": "and to Jesse was born David the king. And to David was born Solomon by her who had been the wife of Uriah;"
+    },
+    {
+      "verse": 7,
+      "text": "and to Solomon was born Rehoboam; and to Rehoboam, Abijah; and to Abijah, Asa;"
+    },
+    {
+      "verse": 8,
+      "text": "and to Asa was born Jehoshaphat; and to Jehoshaphat, Joram; and to Joram, Uzziah;"
+    },
+    {
+      "verse": 9,
+      "text": "and to Uzziah was born Jotham; and to Jotham, Ahaz; and to Ahaz, Hezekiah;"
+    },
+    {
+      "verse": 10,
+      "text": "and to Hezekiah was born Manasseh; and to Manasseh, Amon; and to Amon, Josiah;"
+    },
+    {
+      "verse": 11,
+      "text": "and to Josiah were born Jeconiah and his brothers, at the time of the deportation to Babylon."
+    },
+    {
+      "verse": 12,
+      "text": "And after the deportation to Babylon, to Jeconiah was born Shealtiel; and to Shealtiel, Zerubbabel;"
+    },
+    {
+      "verse": 13,
+      "text": "and to Zerubbabel was born Abihud; and to Abihud, Eliakim; and to Eliakim, Azor;"
+    },
+    {
+      "verse": 14,
+      "text": "and to Azor was born Zadok; and to Zadok, Achim; and to Achim, Eliud;"
+    },
+    {
+      "verse": 15,
+      "text": "and to Eliud was born Eleazar; and to Eleazar, Matthan; and to Matthan, Jacob;"
+    },
+    {
+      "verse": 16,
+      "text": "and to Jacob was born Joseph the husband of Mary, by whom was born Jesus, who is called Christ."
+    },
+    {
+      "verse": 17,
+      "text": "Therefore all the generations from Abraham to David are fourteen generations; and from David to the deportation to Babylon fourteen generations; and from the deportation to Babylon to the time of Christ fourteen generations."
+    },
+    {
+      "verse": 18,
+      "text": "Now the birth of Jesus Christ was as follows. When His mother Mary had been betrothed to Joseph, before they came together she was found to be with child by the Holy Spirit."
+    },
+    {
+      "verse": 19,
+      "text": "And Joseph her husband, being a righteous man, and not wanting to disgrace her, desired to put her away secretly."
+    },
+    {
+      "verse": 20,
+      "text": "But when he had considered this, behold, an angel of the Lord appeared to him in a dream, saying, “Joseph, son of David, do not be afraid to take Mary as your wife; for that which has been conceived in her is of the Holy Spirit."
+    },
+    {
+      "verse": 21,
+      "text": "“And she will bear a Son; and you shall call His name Jesus, for it is He who will save His people from their sins.”"
+    },
+    {
+      "verse": 22,
+      "text": "Now all this took place that what was spoken by the Lord through the prophet might be fulfilled, saying,"
+    },
+    {
+      "verse": 23,
+      "text": "“BEHOLD, THE VIRGIN SHALL BE WITH CHILD, AND SHALL BEAR A SON, AND THEY SHALL CALL HIS NAME IMMANUEL,” which translated means, “GOD WITH US.”"
+    },
+    {
+      "verse": 24,
+      "text": "And Joseph arose from his sleep, and did as the angel of the Lord commanded him, and took her as his wife,"
+    },
+    {
+      "verse": 25,
+      "text": "and kept her a virgin until she gave birth to a Son; and he called His name Jesus."
+    }
+  ],
+  "metadata": {
+    "book": "Matthew",
+    "chapter": 1,
+    "version": "NASB",
+    "versionName": "NASB 1977",
+    "language": "en",
+    "source": "NASB 1977.json",
+    "importedAt": "2025-10-31T17:16:38.229974"
+  }
+}

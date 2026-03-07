@@ -1,0 +1,25 @@
+{
+  "verses": [
+    {
+      "verse": 1,
+      "text": "O Lord, my heart is not proud, nor my eyes haughty; Nor do I involve myself in great matters, Or in things too difficult for me."
+    },
+    {
+      "verse": 2,
+      "text": "Surely I have composed and quieted my soul; Like a weaned child rests against his mother, My soul is like a weaned child within me."
+    },
+    {
+      "verse": 3,
+      "text": "O Israel, hope in the LORD From this time forth and forever."
+    }
+  ],
+  "metadata": {
+    "book": "Psalms",
+    "chapter": 131,
+    "version": "NASB",
+    "versionName": "NASB 1977",
+    "language": "en",
+    "source": "NASB 1977.json",
+    "importedAt": "2025-10-31T17:16:37.238209"
+  }
+}

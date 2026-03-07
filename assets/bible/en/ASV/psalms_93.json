@@ -1,0 +1,33 @@
+{
+  "verses": [
+    {
+      "verse": 1,
+      "text": "Jehovah reigneth; He is clothed with majesty; Jehovah is clothed with strength; he hath girded himself therewith: The world also is established, that it cannot be moved."
+    },
+    {
+      "verse": 2,
+      "text": "Thy throne is established of old: Thou art from everlasting."
+    },
+    {
+      "verse": 3,
+      "text": "The floods have lifted up, O Jehovah, The floods have lifted up their voice; The floods lift up their waves."
+    },
+    {
+      "verse": 4,
+      "text": "Above the voices of many waters, The mighty breakers of the sea, Jehovah on high is mighty."
+    },
+    {
+      "verse": 5,
+      "text": "Thy testimonies are very sure: Holiness becometh thy house, O Jehovah, for evermore."
+    }
+  ],
+  "metadata": {
+    "book": "Psalms",
+    "chapter": 93,
+    "version": "ASV",
+    "versionName": "American Standard Version",
+    "language": "en",
+    "source": "AMERICAN STANDARD VERSION.json",
+    "importedAt": "2025-10-31T17:15:30.545591"
+  }
+}

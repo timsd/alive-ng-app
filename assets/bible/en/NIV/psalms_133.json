@@ -1,0 +1,25 @@
+{
+  "verses": [
+    {
+      "verse": 1,
+      "text": "A song of ascents. Of David. How good and pleasant it is when God’s people live together in unity!"
+    },
+    {
+      "verse": 2,
+      "text": "It is like precious oil poured on the head, running down on the beard, running down on Aaron’s beard, down on the collar of his robe."
+    },
+    {
+      "verse": 3,
+      "text": "It is as if the dew of Hermon were falling on Mount Zion. For there the LORD bestows his blessing, even life forevermore."
+    }
+  ],
+  "metadata": {
+    "book": "Psalms",
+    "chapter": 133,
+    "version": "NIV",
+    "versionName": "New International Version",
+    "language": "en",
+    "source": "NEW INTERNATIONAL VERSION.json",
+    "importedAt": "2025-10-31T17:15:44.476474"
+  }
+}

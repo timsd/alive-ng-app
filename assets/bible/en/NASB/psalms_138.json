@@ -1,0 +1,45 @@
+{
+  "verses": [
+    {
+      "verse": 1,
+      "text": "I Will give Thee thanks with all my heart; I will sing praises to Thee before the gods."
+    },
+    {
+      "verse": 2,
+      "text": "I will bow down toward Thy holy temple, And give thanks to Thy name for Thy lovingkindness and Thy truth; For Thou hast magnified Thy word according to all Thy name."
+    },
+    {
+      "verse": 3,
+      "text": "On the day I called Thou didst answer me; Thou didst make me bold with strength in my soul."
+    },
+    {
+      "verse": 4,
+      "text": "All the kings of the earth will give thanks to Thee, O LORD, When they have heard the words of Thy mouth."
+    },
+    {
+      "verse": 5,
+      "text": "And they will sing of the ways of the LORD. For great is the glory of the LORD."
+    },
+    {
+      "verse": 6,
+      "text": "For though the LORD is exalted, Yet He regards the lowly; But the haughty He knows from afar."
+    },
+    {
+      "verse": 7,
+      "text": "Though I walk in the midst of trouble, Thou wilt revive me; Thou wilt stretch forth Thy hand against the wrath of my enemies, And Thy right hand will save me."
+    },
+    {
+      "verse": 8,
+      "text": "The LORD will accomplish what concerns me; Thy lovingkindness, O LORD, is everlasting; Do not forsake the works of Thy hands."
+    }
+  ],
+  "metadata": {
+    "book": "Psalms",
+    "chapter": 138,
+    "version": "NASB",
+    "versionName": "NASB 1977",
+    "language": "en",
+    "source": "NASB 1977.json",
+    "importedAt": "2025-10-31T17:16:37.247989"
+  }
+}
