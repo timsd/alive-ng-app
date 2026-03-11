@@ -166,7 +166,7 @@ class ProfileScreen extends ConsumerWidget {
         title: translate('profile'),
         elevation: 0,
         backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Colors.white,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         actions: [
           IconButton(
             onPressed: () {
@@ -258,7 +258,7 @@ class ProfileScreen extends ConsumerWidget {
                     context: context, mobile: 16, tablet: 20, desktop: 24)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
+                color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.1),
                 blurRadius: ResponsiveUtils.getResponsiveValue(
                     context: context, mobile: 8, tablet: 10, desktop: 12),
                 offset: const Offset(0, 2),
@@ -293,7 +293,7 @@ class ProfileScreen extends ConsumerWidget {
                                 mobile: 40,
                                 tablet: 50,
                                 desktop: 60),
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.onPrimary,
                           ),
                         ),
                       )
@@ -304,7 +304,7 @@ class ProfileScreen extends ConsumerWidget {
                             mobile: 40,
                             tablet: 50,
                             desktop: 60),
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onPrimary,
                       ),
               ),
               SizedBox(
@@ -400,7 +400,7 @@ class ProfileScreen extends ConsumerWidget {
                   context: context, mobile: 16, tablet: 20, desktop: 24)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
+              color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.1),
               blurRadius: ResponsiveUtils.getResponsiveValue(
                   context: context, mobile: 8, tablet: 10, desktop: 12),
               offset: const Offset(0, 2),
@@ -467,7 +467,7 @@ class ProfileScreen extends ConsumerWidget {
                   context: context, mobile: 16, tablet: 20, desktop: 24)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
+              color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.1),
               blurRadius: ResponsiveUtils.getResponsiveValue(
                   context: context, mobile: 8, tablet: 10, desktop: 12),
               offset: const Offset(0, 2),
@@ -514,7 +514,7 @@ class ProfileScreen extends ConsumerWidget {
             context: context, mobile: 16, tablet: 20, desktop: 24)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.1),
             blurRadius: ResponsiveUtils.getResponsiveValue(
                 context: context, mobile: 8, tablet: 10, desktop: 12),
             offset: const Offset(0, 2),
@@ -732,7 +732,7 @@ class ProfileScreen extends ConsumerWidget {
                     context: context, mobile: 16, tablet: 20, desktop: 24)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
+                color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.1),
                 blurRadius: ResponsiveUtils.getResponsiveValue(
                     context: context, mobile: 8, tablet: 10, desktop: 12),
                 offset: const Offset(0, 2),
@@ -1217,7 +1217,7 @@ class ProfileScreen extends ConsumerWidget {
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.error,
-              foregroundColor: Colors.white,
+              foregroundColor: Theme.of(context).colorScheme.onError,
             ),
             child: Text(
               translate('sign_out'),

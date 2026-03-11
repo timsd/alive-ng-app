@@ -2,15 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:alive_flutter_app/widgets/custom_app_bar.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter/foundation.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../providers/language_provider.dart';
 import '../../models/app_models.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/responsive_utils.dart';
-import '../../utils/layout_fix_utils.dart';
 import '../../constants/app_constants.dart';
 import '../../config/meeting_links_config.dart';
-import '../conference/enhanced_jitsi_meet_screen.dart';
+import '../../widgets/add_prayer_request_dialog.dart';
 
 // Provider for prayer requests
 final prayerRequestsProvider = FutureProvider<List<PrayerRequest>>((ref) async {
@@ -29,8 +30,15 @@ class CreatePrayerRequestNotifier extends StateNotifier<AsyncValue<void>> {
 
   CreatePrayerRequestNotifier(this.ref) : super(const AsyncValue.data(null));
 
-  Future<void> createRequest(String title, String description, String category,
-      bool isAnonymous) async {
+  Future<void> createRequest(
+    String title,
+    String description,
+    String category,
+    bool isAnonymous, {
+    bool isPublic = true,
+    String? scriptureReference,
+    String urgencyLevel = 'normal',
+  }) async {
     state = const AsyncValue.loading();
     try {
       final firebase = ref.read(firebaseDatabaseServiceProvider);
@@ -43,6 +51,9 @@ class CreatePrayerRequestNotifier extends StateNotifier<AsyncValue<void>> {
         category: category,
         userId: user?.uid ?? '',
         isAnonymous: isAnonymous,
+        isPublic: isPublic,
+        scriptureReference: scriptureReference,
+        urgencyLevel: urgencyLevel,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
@@ -67,19 +78,54 @@ class PrayerScreen extends ConsumerStatefulWidget {
 class _PrayerScreenState extends ConsumerState<PrayerScreen> {
   String? _selectedCategory;
 
+  Future<void> _submitPrayerRequest({
+    required String title,
+    required String category,
+    required String description,
+    required bool isAnonymous,
+    required bool isPublic,
+    String? scriptureReference,
+    required String urgencyLevel,
+  }) async {
+    await ref.read(createPrayerRequestProvider.notifier).createRequest(
+          title,
+          description,
+          category,
+          isAnonymous,
+          isPublic: isPublic,
+          scriptureReference: scriptureReference,
+          urgencyLevel: urgencyLevel,
+        );
+  }
+
   @override
   Widget build(BuildContext context) {
     final translate = ref.watch(translationProvider);
+    final theme = Theme.of(context);
+    final primary = theme.colorScheme.primary;
+    final onPrimary = theme.colorScheme.onPrimary;
     final prayerRequestsAsync = ref.watch(prayerRequestsProvider);
     final currentUser = ref.watch(currentUserProvider);
     final isAuthenticated = currentUser != null;
+    final availableCategories = prayerRequestsAsync.maybeWhen(
+      data: (requests) {
+        final values = requests
+            .map((r) => r.category.trim())
+            .where((c) => c.isNotEmpty)
+            .toSet()
+            .toList();
+        values.sort();
+        return values;
+      },
+      orElse: () => <String>[],
+    );
 
     return Scaffold(
       appBar: CustomAppBar(
         title: translate('prayer'),
         showBackButton: true,
-        backgroundColor: Colors.purple,
-        foregroundColor: Colors.white,
+        backgroundColor: primary,
+        foregroundColor: onPrimary,
         actions: [
           if (isAuthenticated)
             IconButton(
@@ -102,45 +148,62 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
                     children: [
                       Icon(
                         Icons.lock_outline,
-                        size: ResponsiveUtils.getResponsiveIconSize(context, 64),
-                        color: Colors.purple.withValues(alpha: 0.5),
+                        size:
+                            ResponsiveUtils.getResponsiveIconSize(context, 64),
+                        color: primary.withValues(alpha: 0.5),
                       ),
-                      SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
+                      SizedBox(
+                          height: ResponsiveUtils.getResponsiveSpacing(
+                              context, 24)),
                       Text(
                         translate('authentication_required'),
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          fontSize: ResponsiveUtils.getResponsiveFontSize(context, 20),
-                        ),
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineSmall
+                            ?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              fontSize: ResponsiveUtils.getResponsiveFontSize(
+                                  context, 20),
+                            ),
                         textAlign: TextAlign.center,
                       ),
-                      SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
+                      SizedBox(
+                          height: ResponsiveUtils.getResponsiveSpacing(
+                              context, 16)),
                       Text(
                         translate('prayer_auth_message'),
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                        fontSize: ResponsiveUtils.getResponsiveFontSize(context, 16),
-                      ),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.7),
+                              fontSize: ResponsiveUtils.getResponsiveFontSize(
+                                  context, 16),
+                            ),
                         textAlign: TextAlign.center,
                       ),
-                      SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 32)),
+                      SizedBox(
+                          height: ResponsiveUtils.getResponsiveSpacing(
+                              context, 32)),
                       ElevatedButton(
                         onPressed: () {
                           // Navigate to auth screen
                           context.go(AppConstants.authRoute);
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.purple,
-                          foregroundColor: Colors.white,
+                          backgroundColor: primary,
+                          foregroundColor: onPrimary,
                           padding: EdgeInsets.symmetric(
-                            horizontal: ResponsiveUtils.getResponsiveSpacing(context, 32), 
-                            vertical: ResponsiveUtils.getResponsiveSpacing(context, 16)
-                          ),
+                              horizontal: ResponsiveUtils.getResponsiveSpacing(
+                                  context, 32),
+                              vertical: ResponsiveUtils.getResponsiveSpacing(
+                                  context, 16)),
                         ),
                         child: Text(
                           translate('sign_in'),
                           style: TextStyle(
-                            fontSize: ResponsiveUtils.getResponsiveFontSize(context, 16),
+                            fontSize: ResponsiveUtils.getResponsiveFontSize(
+                                context, 16),
                           ),
                         ),
                       ),
@@ -149,7 +212,7 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
                 ),
               );
             }
-            
+
             return RefreshIndicator(
               onRefresh: () async {
                 ref.invalidate(prayerRequestsProvider);
@@ -163,9 +226,9 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
                     Container(
                       width: double.infinity,
                       padding: ResponsiveUtils.getResponsivePadding(context),
-                      decoration: const BoxDecoration(
-                        color: Colors.purple,
-                        borderRadius: BorderRadius.only(
+                      decoration: BoxDecoration(
+                        color: primary,
+                        borderRadius: const BorderRadius.only(
                           bottomLeft: Radius.circular(24),
                           bottomRight: Radius.circular(24),
                         ),
@@ -175,43 +238,52 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
                         children: [
                           Text(
                             translate('prayer_requests'),
-                            style:
-                                Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: ResponsiveUtils.getResponsiveFontSize(context, 24),
-                                    ),
-                          ),
-                          SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
-                          Text(
-                            translate('pray_together'),
-                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                  color: Colors.white.withValues(alpha: 0.9),
-                                  fontSize: ResponsiveUtils.getResponsiveFontSize(context, 16),
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineMedium
+                                ?.copyWith(
+                                  color: onPrimary,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize:
+                                      ResponsiveUtils.getResponsiveFontSize(
+                                          context, 24),
                                 ),
                           ),
-                          SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
+                          SizedBox(
+                              height: ResponsiveUtils.getResponsiveSpacing(
+                                  context, 8)),
+                          Text(
+                            _humanizeLabel(translate('pray_together')),
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyLarge
+                                ?.copyWith(
+                                  color: onPrimary.withValues(alpha: 0.9),
+                                  fontSize:
+                                      ResponsiveUtils.getResponsiveFontSize(
+                                          context, 16),
+                                ),
+                          ),
+                          SizedBox(
+                              height: ResponsiveUtils.getResponsiveSpacing(
+                                  context, 16)),
                           Align(
                             alignment: Alignment.centerLeft,
                             child: ElevatedButton.icon(
                               onPressed: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (context) => const EnhancedJitsiMeetScreen(
-                                      meetingType: MeetingType.prayer,
-                                    ),
-                                  ),
-                                );
+                                _openPrayerMeeting();
                               },
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: Colors.purple,
+                                backgroundColor: theme.colorScheme.surface,
+                                foregroundColor: primary,
                               ),
-                              icon: const Icon(Icons.video_call),
+                              icon: const Icon(Icons.self_improvement),
                               label: Text(
                                 translate('join_prayer_meeting'),
                                 style: TextStyle(
-                                  fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
+                                  fontSize:
+                                      ResponsiveUtils.getResponsiveFontSize(
+                                          context, 14),
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -221,44 +293,59 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
                       ),
                     ),
 
-                    SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
+                    SizedBox(
+                        height:
+                            ResponsiveUtils.getResponsiveSpacing(context, 24)),
 
                     // Prayer Categories
-                    _buildPrayerCategories(context, translate),
+                    _buildPrayerCategories(
+                        context, translate, availableCategories),
 
-                    SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
+                    SizedBox(
+                        height:
+                            ResponsiveUtils.getResponsiveSpacing(context, 24)),
 
                     // Prayer Requests List - Free access until onboarding complete
                     Padding(
-                      padding: ResponsiveUtils.getResponsiveHorizontalPadding(context),
+                      padding: ResponsiveUtils.getResponsiveHorizontalPadding(
+                          context),
                       child: Text(
                         translate('recent_requests'),
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.bold,
-                              fontSize: ResponsiveUtils.getResponsiveFontSize(context, 20),
+                              fontSize: ResponsiveUtils.getResponsiveFontSize(
+                                  context, 20),
                             ),
                       ),
                     ),
 
-                    SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
+                    SizedBox(
+                        height:
+                            ResponsiveUtils.getResponsiveSpacing(context, 16)),
 
                     prayerRequestsAsync.when(
                       data: (requests) {
                         // Filter requests by selected category
                         final filteredRequests = _selectedCategory == null
                             ? requests
-                            : requests.where((request) => 
-                                request.category.toLowerCase() == _selectedCategory!.toLowerCase()
-                              ).toList();
-                        
-                        return _buildPrayerRequests(context, translate, filteredRequests);
+                            : requests
+                                .where((request) =>
+                                    request.category.toLowerCase() ==
+                                    _selectedCategory!.toLowerCase())
+                                .toList();
+
+                        return _buildPrayerRequests(
+                            context, translate, filteredRequests);
                       },
-                      loading: () => const Center(child: CircularProgressIndicator()),
-                      error: (error, stack) =>
-                          _buildErrorWidget(context, translate, error.toString()),
+                      loading: () =>
+                          const Center(child: CircularProgressIndicator()),
+                      error: (error, stack) => _buildErrorWidget(
+                          context, translate, error.toString()),
                     ),
 
-                    SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
+                    SizedBox(
+                        height:
+                            ResponsiveUtils.getResponsiveSpacing(context, 24)),
                   ],
                 ),
               ),
@@ -266,38 +353,20 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
           },
         ),
       ),
+      floatingActionButton: isAuthenticated
+          ? FloatingActionButton(
+              onPressed: () => _showCreatePrayerDialog(context, ref),
+              backgroundColor: primary,
+              foregroundColor: onPrimary,
+              tooltip: translate('add_prayer_request'),
+              child: const Icon(Icons.add),
+            )
+          : null,
     );
   }
 
-  Widget _buildPrayerCategories(
-      BuildContext context, String Function(String) translate) {
-    final categories = [
-      PrayerCategory(
-        title: translate('healing'),
-        icon: Icons.healing,
-        color: const Color(0xFF4CAF50), // Green
-        count: 12,
-      ),
-      PrayerCategory(
-        title: translate('family'),
-        icon: Icons.family_restroom,
-        color: const Color(0xFF2196F3), // Blue
-        count: 8,
-      ),
-      PrayerCategory(
-        title: translate('guidance'),
-        icon: Icons.explore,
-        color: const Color(0xFFFF9800), // Orange
-        count: 15,
-      ),
-      PrayerCategory(
-        title: translate('thanksgiving'),
-        icon: Icons.favorite,
-        color: const Color(0xFFF44336), // Red
-        count: 6,
-      ),
-    ];
-
+  Widget _buildPrayerCategories(BuildContext context,
+      String Function(String) translate, List<String> categories) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -312,122 +381,67 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
           ),
         ),
         SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-        Row(
-          children: [
-            Expanded(
-              child: LayoutFixUtils.constrainedContainer(
-                maxHeight: ResponsiveUtils.getResponsiveValue<double>(
-                  context: context,
-                  mobile: 120,
-                  tablet: 120 * 1.2,
-                  desktop: 120 * 1.4,
-                ),
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: ResponsiveUtils.getResponsiveHorizontalPadding(context),
-                  itemCount: categories.length,
-                  itemBuilder: (context, index) {
-                    final category = categories[index];
-                    return Container(
-                      width: ResponsiveUtils.getResponsiveValue<double>(
-                        context: context,
-                        mobile: 100,
-                        tablet: 100 * 1.2,
-                        desktop: 100 * 1.4,
-                      ),
-                      margin: EdgeInsets.only(right: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-                      child: Card(
-                        elevation: 2,
-                        color: _selectedCategory == category.title 
-                            ? category.color.withValues(alpha: 0.1)
-                            : null,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          side: _selectedCategory == category.title
-                              ? BorderSide(color: category.color, width: 2)
-                              : BorderSide.none,
-                        ),
-                        child: InkWell(
-                          onTap: () {
-                            setState(() {
-                              _selectedCategory = _selectedCategory == category.title 
-                                  ? null 
-                                  : category.title;
-                            });
-                          },
-                          borderRadius: BorderRadius.circular(16),
-                          child: Padding(
-                            padding: EdgeInsets.all(ResponsiveUtils.getResponsiveSpacing(context, 12)),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Container(
-                                  padding: EdgeInsets.all(ResponsiveUtils.getResponsiveSpacing(context, 8)),
-                                  decoration: BoxDecoration(
-                                    color: category.color.withValues(alpha: 0.2),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Icon(
-                                    category.icon,
-                                    color: category.color,
-                                    size: ResponsiveUtils.getResponsiveIconSize(context, 24),
-                                  ),
-                                ),
-                                SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
-                                Text(
-                                  category.title,
-                                  style:
-                                      Theme.of(context).textTheme.bodySmall?.copyWith(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: ResponsiveUtils.getResponsiveFontSize(context, 12),
-                                          ),
-                                  textAlign: TextAlign.center,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                Text(
-                                  '${category.count}',
-                                  style:
-                                      Theme.of(context).textTheme.bodySmall?.copyWith(
-                                            color: category.color,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: ResponsiveUtils.getResponsiveFontSize(context, 12),
-                                          ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
+        if (categories.isEmpty)
+          Padding(
+            padding: ResponsiveUtils.getResponsiveHorizontalPadding(context),
+            child: Text(
+              'No categories yet. Add a prayer request to create one.',
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
-            if (_selectedCategory != null)
-              Padding(
-                padding: EdgeInsets.only(right: ResponsiveUtils.getResponsiveSpacing(context, 20)),
-                child: IconButton(
-                  onPressed: () {
-                    setState(() {
-                      _selectedCategory = null;
-                    });
-                  },
-                  icon: Icon(
-                    Icons.clear,
-                    size: ResponsiveUtils.getResponsiveIconSize(context, 24),
+          )
+        else
+          Padding(
+            padding: ResponsiveUtils.getResponsiveHorizontalPadding(context),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final category in categories)
+                  FilterChip(
+                    label: Text(_humanizeLabel(category)),
+                    selected: _selectedCategory == category,
+                    onSelected: (_) {
+                      setState(() {
+                        _selectedCategory =
+                            _selectedCategory == category ? null : category;
+                      });
+                    },
                   ),
-                  tooltip: 'Clear filter',
-                  style: IconButton.styleFrom(
-                    backgroundColor: Colors.grey.withValues(alpha: 0.1),
-                    foregroundColor: Colors.grey[600],
+                if (_selectedCategory != null)
+                  ActionChip(
+                    avatar: const Icon(Icons.clear, size: 18),
+                    label: const Text('Clear'),
+                    onPressed: () {
+                      setState(() {
+                        _selectedCategory = null;
+                      });
+                    },
                   ),
-                ),
-              ),
-          ],
-        ),
+              ],
+            ),
+          ),
       ],
     );
+  }
+
+  String _humanizeLabel(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return value;
+    final replaced = trimmed.replaceAll('_', ' ');
+    return replaced.split(RegExp(r'\s+')).map((word) {
+      if (word.isEmpty) return word;
+      return word[0].toUpperCase() + word.substring(1).toLowerCase();
+    }).join(' ');
+  }
+
+  Future<void> _openPrayerMeeting() async {
+    if (!kIsWeb) {
+      context.go(AppConstants.conferenceRoute);
+      return;
+    }
+
+    final uri = Uri.parse(MeetingLinksConfig.prayerMeetingUrl);
+    await launchUrl(uri, mode: LaunchMode.platformDefault);
   }
 
   Widget _buildPrayerRequests(BuildContext context,
@@ -445,14 +459,15 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
             Icon(
               Icons.favorite_outline,
               size: ResponsiveUtils.getResponsiveIconSize(context, 48),
-              color: Colors.purple.withValues(alpha: 0.5),
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
             ),
             SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
             Text(
               translate('no_prayer_requests'),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontSize: ResponsiveUtils.getResponsiveFontSize(context, 16),
-              ),
+                    fontSize:
+                        ResponsiveUtils.getResponsiveFontSize(context, 16),
+                  ),
               textAlign: TextAlign.center,
             ),
             SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
@@ -463,7 +478,8 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
                         .colorScheme
                         .onSurface
                         .withValues(alpha: 0.7),
-                    fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
+                    fontSize:
+                        ResponsiveUtils.getResponsiveFontSize(context, 14),
                   ),
               textAlign: TextAlign.center,
             ),
@@ -489,7 +505,7 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
 
   void _prayForRequest(BuildContext context, PrayerRequest request) {
     final currentUser = ref.read(currentUserProvider);
-    
+
     // Check if user is authenticated
     if (currentUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -506,13 +522,14 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
       );
       return;
     }
-    
+
     // Show a confirmation dialog
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Pray for ${request.title}'),
-        content: const Text('You are about to pray for this request. This will be recorded and the prayer count will be updated.'),
+        content: const Text(
+            'You are about to pray for this request. This will be recorded and the prayer count will be updated.'),
         actions: [
           TextButton(
             onPressed: () {
@@ -538,11 +555,13 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
 
   void _recordPrayer(BuildContext context, PrayerRequest request) async {
     try {
-      final firebase = ProviderScope.containerOf(context).read(firebaseDatabaseServiceProvider);
-      
+      final firebase = ProviderScope.containerOf(context)
+          .read(firebaseDatabaseServiceProvider);
+
       // Update prayer count in Firebase
-      await firebase.prayForRequest(request.id, firebase.currentUser?.uid ?? '');
-      
+      await firebase.prayForRequest(
+          request.id, firebase.currentUser?.uid ?? '');
+
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -597,7 +616,7 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
 
   void _showCreatePrayerDialog(BuildContext context, WidgetRef ref) {
     final currentUser = ref.read(currentUserProvider);
-    
+
     // Check if user is authenticated
     if (currentUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -614,26 +633,12 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
       );
       return;
     }
-    
+
     showDialog(
       context: context,
-      builder: (context) => const CreatePrayerRequestDialog(),
+      builder: (context) => AddPrayerRequestDialog(onSubmit: _submitPrayerRequest),
     );
   }
-}
-
-class PrayerCategory {
-  final String title;
-  final IconData icon;
-  final Color color;
-  final int count;
-
-  const PrayerCategory({
-    required this.title,
-    required this.icon,
-    required this.color,
-    required this.count,
-  });
 }
 
 class PrayerRequestCard extends StatelessWidget {
@@ -649,7 +654,8 @@ class PrayerRequestCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: EdgeInsets.only(bottom: ResponsiveUtils.getResponsiveSpacing(context, 16)),
+      margin: EdgeInsets.only(
+          bottom: ResponsiveUtils.getResponsiveSpacing(context, 16)),
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
@@ -662,7 +668,8 @@ class PrayerRequestCard extends StatelessWidget {
             Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: Colors.purple.withValues(alpha: 0.2),
+                  backgroundColor:
+                      Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                   child: Text(
                     request.isAnonymous
                         ? 'M'
@@ -672,13 +679,15 @@ class PrayerRequestCard extends StatelessWidget {
                                 ? request.title[0].toUpperCase()
                                 : 'P'),
                     style: TextStyle(
-                      color: Colors.purple,
+                      color: Theme.of(context).colorScheme.primary,
                       fontWeight: FontWeight.bold,
-                      fontSize: ResponsiveUtils.getResponsiveFontSize(context, 16),
+                      fontSize:
+                          ResponsiveUtils.getResponsiveFontSize(context, 16),
                     ),
                   ),
                 ),
-                SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 12)),
+                SizedBox(
+                    width: ResponsiveUtils.getResponsiveSpacing(context, 12)),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -693,7 +702,9 @@ class PrayerRequestCard extends StatelessWidget {
                                   .titleMedium
                                   ?.copyWith(
                                     fontWeight: FontWeight.bold,
-                                    fontSize: ResponsiveUtils.getResponsiveFontSize(context, 16),
+                                    fontSize:
+                                        ResponsiveUtils.getResponsiveFontSize(
+                                            context, 16),
                                   ),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
@@ -702,8 +713,12 @@ class PrayerRequestCard extends StatelessWidget {
                           if (request.isAnonymous)
                             Container(
                               padding: EdgeInsets.symmetric(
-                                  horizontal: ResponsiveUtils.getResponsiveSpacing(context, 8), 
-                                  vertical: ResponsiveUtils.getResponsiveSpacing(context, 2)),
+                                  horizontal:
+                                      ResponsiveUtils.getResponsiveSpacing(
+                                          context, 8),
+                                  vertical:
+                                      ResponsiveUtils.getResponsiveSpacing(
+                                          context, 2)),
                               decoration: BoxDecoration(
                                 color: Colors.grey.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(12),
@@ -715,7 +730,9 @@ class PrayerRequestCard extends StatelessWidget {
                                     .bodySmall
                                     ?.copyWith(
                                       color: Colors.grey[600],
-                                      fontSize: ResponsiveUtils.getResponsiveFontSize(context, 10),
+                                      fontSize:
+                                          ResponsiveUtils.getResponsiveFontSize(
+                                              context, 10),
                                     ),
                               ),
                             ),
@@ -730,7 +747,8 @@ class PrayerRequestCard extends StatelessWidget {
                                   .colorScheme
                                   .onSurface
                                   .withValues(alpha: 0.6),
-                              fontSize: ResponsiveUtils.getResponsiveFontSize(context, 12),
+                              fontSize: ResponsiveUtils.getResponsiveFontSize(
+                                  context, 12),
                             ),
                       ),
                     ],
@@ -742,8 +760,9 @@ class PrayerRequestCard extends StatelessWidget {
                         color: Theme.of(context)
                             .colorScheme
                             .onSurface
-                  .withValues(alpha: 0.6),
-                        fontSize: ResponsiveUtils.getResponsiveFontSize(context, 12),
+                            .withValues(alpha: 0.6),
+                        fontSize:
+                            ResponsiveUtils.getResponsiveFontSize(context, 12),
                       ),
                 ),
               ],
@@ -752,8 +771,9 @@ class PrayerRequestCard extends StatelessWidget {
             Text(
               request.description,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
-              ),
+                    fontSize:
+                        ResponsiveUtils.getResponsiveFontSize(context, 14),
+                  ),
               maxLines: 4,
               overflow: TextOverflow.ellipsis,
             ),
@@ -765,31 +785,37 @@ class PrayerRequestCard extends StatelessWidget {
                     children: [
                       Icon(
                         Icons.favorite,
-                        size: ResponsiveUtils.getResponsiveIconSize(context, 16),
+                        size:
+                            ResponsiveUtils.getResponsiveIconSize(context, 16),
                         color: Colors.red,
                       ),
-                      SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 4)),
+                      SizedBox(
+                          width:
+                              ResponsiveUtils.getResponsiveSpacing(context, 4)),
                       Text(
                         '${request.prayerCount} prayers',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontSize: ResponsiveUtils.getResponsiveFontSize(context, 12),
-                        ),
+                              fontSize: ResponsiveUtils.getResponsiveFontSize(
+                                  context, 12),
+                            ),
                       ),
                     ],
                   ),
                 ),
                 ElevatedButton.icon(
                   onPressed: onPray,
-                  icon: Icon(Icons.favorite, size: ResponsiveUtils.getResponsiveIconSize(context, 16)),
+                  icon: Icon(Icons.favorite,
+                      size: ResponsiveUtils.getResponsiveIconSize(context, 16)),
                   label: Text(
                     'Pray',
                     style: TextStyle(
-                      fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
+                      fontSize:
+                          ResponsiveUtils.getResponsiveFontSize(context, 14),
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.purple,
-                    foregroundColor: Colors.white,
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
@@ -816,196 +842,3 @@ class PrayerRequestCard extends StatelessWidget {
     }
   }
 }
-
-class CreatePrayerRequestDialog extends ConsumerStatefulWidget {
-  const CreatePrayerRequestDialog({super.key});
-
-  @override
-  ConsumerState<CreatePrayerRequestDialog> createState() =>
-      _CreatePrayerRequestDialogState();
-}
-
-class _CreatePrayerRequestDialogState
-    extends ConsumerState<CreatePrayerRequestDialog> {
-  final _titleController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  String _selectedCategory = 'General';
-  bool _isAnonymous = false;
-
-  final _categories = [
-    'General',
-    'Healing',
-    'Family',
-    'Guidance',
-    'Thanksgiving',
-    'Work',
-    'Relationships'
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final translate = ref.watch(translationProvider);
-    final createState = ref.watch(createPrayerRequestProvider);
-
-    return AlertDialog(
-      title: Text(
-        translate('add_prayer_request'),
-        style: TextStyle(
-          fontSize: ResponsiveUtils.getResponsiveFontSize(context, 18),
-        ),
-      ),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _titleController,
-              decoration: InputDecoration(
-                labelText: translate('title'),
-                border: const OutlineInputBorder(),
-                labelStyle: TextStyle(
-                  fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
-                ),
-              ),
-              style: TextStyle(
-                fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
-              ),
-            ),
-            SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-            DropdownButtonFormField<String>(
-              initialValue: _selectedCategory,
-              decoration: InputDecoration(
-                labelText: translate('category'),
-                border: const OutlineInputBorder(),
-                labelStyle: TextStyle(
-                  fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
-                ),
-              ),
-              style: TextStyle(
-                fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-              items: _categories.map((category) {
-                return DropdownMenuItem(
-                  value: category,
-                  child: Text(
-                    category,
-                    style: TextStyle(
-                      fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
-                    ),
-                  ),
-                );
-              }).toList(),
-              onChanged: (value) {
-                setState(() {
-                  _selectedCategory = value!;
-                });
-              },
-            ),
-            SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-            TextField(
-              controller: _descriptionController,
-              decoration: InputDecoration(
-                labelText: translate('description'),
-                border: const OutlineInputBorder(),
-                labelStyle: TextStyle(
-                  fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
-                ),
-              ),
-              style: TextStyle(
-                fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
-              ),
-              maxLines: 3,
-            ),
-            SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-            Row(
-              children: [
-                Checkbox(
-                  value: _isAnonymous,
-                  onChanged: (value) {
-                    setState(() {
-                      _isAnonymous = value ?? false;
-                    });
-                  },
-                ),
-                SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 8)),
-                Flexible(
-                  child: Text(
-                    'Submit anonymously (show as "Member")',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 2,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () {
-            if (context.mounted) {
-              Navigator.of(context).pop();
-            }
-          },
-          child: Text(
-            translate('cancel'),
-            style: TextStyle(
-              fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
-            ),
-          ),
-        ),
-        ElevatedButton(
-          onPressed: createState.isLoading
-              ? null
-              : () async {
-                  if (_titleController.text.isNotEmpty &&
-                      _descriptionController.text.isNotEmpty) {
-                    await ref
-                        .read(createPrayerRequestProvider.notifier)
-                        .createRequest(
-                          _titleController.text,
-                          _descriptionController.text,
-                          _selectedCategory,
-                          _isAnonymous,
-                        );
-
-                    if (context.mounted) {
-                      if (!ref.read(createPrayerRequestProvider).hasError) {
-                        Navigator.of(context).pop();
-                      }
-                    }
-                  }
-                },
-          child: createState.isLoading
-              ? SizedBox(
-                  width: ResponsiveUtils.getResponsiveIconSize(context, 16),
-                  height: ResponsiveUtils.getResponsiveIconSize(context, 16),
-                  child: const CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(
-                  translate('submit'),
-                  style: TextStyle(
-                    fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
-                  ),
-                ),
-        ),
-      ],
-    );
-  }
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _descriptionController.dispose();
-    super.dispose();
-  }
-}
-
-
-
-
-

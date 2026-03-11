@@ -165,6 +165,108 @@ class TractService {
     }
   }
 
+  /// Get detailed progress for a specific tract using [TractProgress] model.
+  Future<TractProgress?> getTractProgress(String userId, String tractId) async {
+    try {
+      final doc = await _firestore
+          .collection('user_tract_progress')
+          .doc('${userId}_$tractId')
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data()!;
+        data['userId'] = userId;
+        data['tractId'] = tractId;
+        return TractProgress.fromJson(data);
+      }
+
+      // Build from local answers if no Firestore progress doc exists
+      final answer = await _dbHelper.getUserAnswer(userId, tractId);
+      if (answer != null) {
+        return TractProgress(
+          userId: userId,
+          tractId: tractId,
+          currentQuestionIndex: answer.isCompleted ? answer.answers.length : 0,
+          currentAnswers: answer.answers,
+          lastUpdated: answer.completedAt,
+          isCompleted: answer.isCompleted,
+          progressPercentage: answer.isCompleted ? 1.0 : 0.0,
+        );
+      }
+      return null;
+    } catch (e) {
+      _logger.error('Error getting tract progress', e);
+      throw DatabaseException('Failed to get tract progress',
+          originalError: e);
+    }
+  }
+
+  /// Save in-progress tract progress using [TractProgress] model.
+  Future<void> saveTractProgress(TractProgress progress) async {
+    try {
+      await _firestore
+          .collection('user_tract_progress')
+          .doc('${progress.userId}_${progress.tractId}')
+          .set(progress.toJson());
+    } catch (e) {
+      _logger.error('Error saving tract progress', e);
+      throw DatabaseException('Failed to save tract progress',
+          originalError: e);
+    }
+  }
+
+  /// Get aggregated statistics for a tract using [TractStatistics] model.
+  Future<TractStatistics> getTractStatistics(String tractId) async {
+    try {
+      final answersSnapshot = await _firestore
+          .collection('user_tract_answers')
+          .where('tractId', isEqualTo: tractId)
+          .get();
+
+      int totalCompletions = 0;
+      double totalScore = 0;
+      DateTime lastCompleted = DateTime(2000);
+      final questionStats = <String, int>{};
+
+      for (final doc in answersSnapshot.docs) {
+        final data = doc.data();
+        if (data['isCompleted'] == true) {
+          totalCompletions++;
+          totalScore += (data['score'] as num?)?.toDouble() ?? 0;
+          final completedAt =
+              (data['completedAt'] as Timestamp?)?.toDate() ?? DateTime(2000);
+          if (completedAt.isAfter(lastCompleted)) {
+            lastCompleted = completedAt;
+          }
+          final answers = data['answers'] as Map<String, dynamic>? ?? {};
+          for (final qId in answers.keys) {
+            questionStats[qId] = (questionStats[qId] ?? 0) + 1;
+          }
+        }
+      }
+
+      // Get download count from tract metadata
+      final tractDoc =
+          await _firestore.collection('tracts').doc(tractId).get();
+      final totalDownloads =
+          (tractDoc.data()?['downloadCount'] as int?) ?? 0;
+
+      return TractStatistics(
+        tractId: tractId,
+        totalCompletions: totalCompletions,
+        averageScore:
+            totalCompletions > 0 ? totalScore / totalCompletions : 0,
+        totalDownloads: totalDownloads,
+        lastCompleted: lastCompleted,
+        questionStats: questionStats,
+      );
+    } catch (e) {
+      _logger.error('Error getting tract statistics', e);
+      throw DatabaseException('Failed to get tract statistics',
+          originalError: e);
+    }
+  }
+
   // Download tract PDF for offline use
   Future<String?> downloadTractPDF(String tractId, String pdfUrl) async {
     try {

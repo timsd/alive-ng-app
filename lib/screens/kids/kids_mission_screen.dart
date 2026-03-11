@@ -1,16 +1,39 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../utils/responsive_utils.dart';
+import '../../data/missions_data.dart';
 
 class KidsMissionScreen extends ConsumerWidget {
   const KidsMissionScreen({super.key});
 
+  Stream<List<Mission>> _getMissionsStream() {
+    return FirebaseFirestore.instance.collection('kids_missions').snapshots().map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        
+        // Defaults to support legacy compatibility
+        data['completed'] = data['completed'] ?? false;
+        data['points'] = data['points'] ?? 10;
+        data['category'] = data['category'] ?? 'learning';
+        data['difficulty'] = data['difficulty'] ?? 'easy';
+        data['duration'] = data['duration'] ?? 15;
+        data['verificationMethod'] = data['verificationMethod'] ?? 'honor_system';
+        data['content'] = data['content'] ?? data['instructions'] ?? '';
+
+        try {
+          return Mission.fromJson(data);
+        } catch (e) {
+          return null;
+        }
+      }).whereType<Mission>().toList();
+    });
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Will be used for localization in future implementation
-    // final translate = ref.watch(translationProvider);
-
     return Scaffold(
       appBar: const CustomAppBar(
         title: 'Kids Mission',
@@ -29,7 +52,7 @@ class KidsMissionScreen extends ConsumerWidget {
                 gradient: LinearGradient(
                   colors: [
                     Theme.of(context).primaryColor,
-                    Theme.of(context).primaryColor.withValues(alpha: 179 / 255.0), // 0.7 opacity = 179 alpha
+                    Theme.of(context).primaryColor.withValues(alpha: 179 / 255.0),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
@@ -39,13 +62,13 @@ class KidsMissionScreen extends ConsumerWidget {
                   Icon(
                     Icons.child_care,
                     size: ResponsiveUtils.getResponsiveValue(context: context, mobile: 56, tablet: 64, desktop: 72),
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onPrimary,
                   ),
                   SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
                   Text(
                     'Kids Mission Adventures',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onPrimary,
                       fontWeight: FontWeight.bold,
                     ),
                     textAlign: TextAlign.center,
@@ -54,7 +77,7 @@ class KidsMissionScreen extends ConsumerWidget {
                   Text(
                     'Exciting missions and activities for young disciples',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.white.withValues(alpha: 230 / 255.0), // 0.9 opacity = 230 alpha
+                      color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 230 / 255.0),
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -84,43 +107,72 @@ class KidsMissionScreen extends ConsumerWidget {
                   context,
                   'Memory Verses',
                   Icons.psychology,
-                  Colors.green,
+                  Theme.of(context).colorScheme.tertiary,
                   'Learn and memorize Bible verses',
                 ),
                 _buildMissionCard(
                   context,
                   'Prayer Time',
                   Icons.favorite,
-                  Colors.red,
+                  Theme.of(context).colorScheme.error,
                   'Guided prayer activities',
                 ),
                 _buildMissionCard(
                   context,
                   'Service Projects',
                   Icons.volunteer_activism,
-                  Colors.orange,
+                  Theme.of(context).colorScheme.secondary,
                   'Help others in your community',
                 ),
               ],
             ),
             SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 20, tablet: 24, desktop: 28)),
 
-            // Recent Activities
             Text(
-              'Recent Activities',
+              'Available Missions',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
             SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
             
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: 3,
-              itemBuilder: (context, index) {
-                return _buildActivityCard(context, index);
-              },
+            StreamBuilder<List<Mission>>(
+              stream: _getMissionsStream(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()));
+                }
+                
+                if (snapshot.hasError) {
+                  return Center(child: Padding(padding: const EdgeInsets.all(20), child: Text('Failed to load missions: ${snapshot.error}')));
+                }
+
+                final missions = snapshot.data ?? [];
+                
+                if (missions.isEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 32.0),
+                      child: Column(
+                        children: [
+                          Icon(Icons.assignment_turned_in, size: 60, color: Colors.grey[400]),
+                          const SizedBox(height: 16),
+                          Text('No active missions found.', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.grey[600])),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: missions.length,
+                  itemBuilder: (context, index) {
+                    return _buildMissionListItem(context, missions[index]);
+                  },
+                );
+              }
             ),
           ],
         ),
@@ -136,10 +188,12 @@ class KidsMissionScreen extends ConsumerWidget {
     String description,
   ) {
     return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(
+      elevation: 0,
+       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(ResponsiveUtils.getResponsiveValue(context: context, mobile: 10, tablet: 12, desktop: 14)),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4)),
       ),
+      color: Theme.of(context).colorScheme.surfaceContainer,
       child: InkWell(
         onTap: () {
           _navigateToMissionCategory(context, title);
@@ -153,7 +207,7 @@ class KidsMissionScreen extends ConsumerWidget {
               Container(
                 padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(context: context, mobile: 10, tablet: 12, desktop: 14)),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 26 / 255.0), // 0.1 opacity = 26 alpha
+                  color: color.withValues(alpha: 26 / 255.0),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -187,67 +241,69 @@ class KidsMissionScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildActivityCard(BuildContext context, int index) {
-    final activities = [
-      {
-        'title': 'Psalm 23:1',
-        'type': 'Memory Verse',
-        'progress': 1.0,
-        'icon': Icons.psychology,
-      },
-      {
-        'title': 'Help a Neighbor',
-        'type': 'Service Project',
-        'progress': 0.6,
-        'icon': Icons.volunteer_activism,
-      },
-      {
-        'title': 'Morning Prayer',
-        'type': 'Prayer Time',
-        'progress': 0.9,
-        'icon': Icons.favorite,
-      },
-    ];
+  Widget _buildMissionListItem(BuildContext context, Mission mission) {
+    final categoryIcons = {
+      MissionCategory.evangelism: Icons.campaign,
+      MissionCategory.service: Icons.volunteer_activism,
+      MissionCategory.learning: Icons.psychology,
+      MissionCategory.prayer: Icons.favorite,
+    };
+    final categoryColors = {
+      MissionCategory.evangelism: Theme.of(context).colorScheme.primary,
+      MissionCategory.service: Theme.of(context).colorScheme.secondary,
+      MissionCategory.learning: Theme.of(context).colorScheme.tertiary,
+      MissionCategory.prayer: Theme.of(context).colorScheme.error,
+    };
 
-    final activity = activities[index];
-    
     return Card(
+      elevation: 0,
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
       margin: EdgeInsets.only(bottom: ResponsiveUtils.getResponsiveValue(context: context, mobile: 10, tablet: 12, desktop: 14)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: Theme.of(context).primaryColor.withValues(alpha: 26 / 255.0), // 0.1 opacity = 26 alpha
+          backgroundColor: (categoryColors[mission.category] ?? Theme.of(context).primaryColor).withValues(alpha: 0.15),
           child: Icon(
-            activity['icon'] as IconData,
-            color: Theme.of(context).primaryColor,
+            categoryIcons[mission.category] ?? Icons.star,
+            color: categoryColors[mission.category] ?? Theme.of(context).primaryColor,
           ),
         ),
         title: Text(
-          activity['title'] as String,
+          mission.title,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            decoration: mission.completed ? TextDecoration.lineThrough : null,
+          ),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              activity['type'] as String,
+              '${mission.category.displayName} • ${mission.difficulty.displayName} • ${mission.points} pts',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall,
             ),
             SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 3, tablet: 4, desktop: 5)),
-            LinearProgressIndicator(
-              value: activity['progress'] as double,
-              backgroundColor: Colors.grey[300],
-              valueColor: AlwaysStoppedAnimation<Color>(
-                Theme.of(context).primaryColor,
+            Text(
+              mission.description,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
               ),
             ),
           ],
         ),
-        trailing: const Icon(Icons.arrow_forward_ios),
-        onTap: () {
-          _navigateToActivityDetails(context, activity['title'] as String, activity['description'] as String);
-        },
+        trailing: mission.completed
+            ? Icon(Icons.check_circle, color: Colors.green.shade600)
+            : const Icon(Icons.arrow_forward_ios, size: 16),
+        isThreeLine: true,
+        onTap: () => _navigateToActivityDetails(context, mission),
       ),
     );
   }
@@ -286,29 +342,43 @@ class KidsMissionScreen extends ConsumerWidget {
     );
   }
 
-  void _navigateToActivityDetails(BuildContext context, String title, String description) {
+  void _navigateToActivityDetails(BuildContext context, Mission mission) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Activity Details',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(description),
-            const SizedBox(height: 16),
-            const Text(
-              'Instructions:',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            const Text('1. Read the activity description\n2. Gather required materials\n3. Follow the step-by-step guide\n4. Share your results with friends'),
-          ],
+        title: Text(mission.title),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (mission.mediaUrl != null && mission.mediaUrl!.isNotEmpty)
+                 Padding(
+                   padding: const EdgeInsets.only(bottom: 12.0),
+                   child: ClipRRect(
+                     borderRadius: BorderRadius.circular(8),
+                     child: Image.network(mission.mediaUrl!, height: 150, width: double.infinity, fit: BoxFit.cover,
+                       errorBuilder: (context, error, stackTrace) => Container(
+                         height: 150, color: Colors.grey[300], child: const Icon(Icons.broken_image, color: Colors.grey),
+                       ),
+                     ),
+                   ),
+                 ),
+              const Text(
+                'Activity Details',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(mission.description),
+              const SizedBox(height: 16),
+              const Text(
+                'Instructions:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(mission.instructions.isNotEmpty ? mission.instructions : '1. Read the activity description\n2. Gather required materials\n3. Follow the step-by-step guide\n4. Share your results with friends'),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -320,7 +390,7 @@ class KidsMissionScreen extends ConsumerWidget {
               Navigator.of(context).pop();
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Starting activity: $title'),
+                  content: Text('Starting activity: ${mission.title}'),
                 ),
               );
             },
@@ -331,6 +401,3 @@ class KidsMissionScreen extends ConsumerWidget {
     );
   }
 }
-
-
-

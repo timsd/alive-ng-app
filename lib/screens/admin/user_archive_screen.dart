@@ -498,8 +498,8 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
-                color: Colors.black87,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ),

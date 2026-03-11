@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../widgets/custom_app_bar.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../widgets/custom_app_bar.dart';
 import '../../providers/language_provider.dart';
 import '../../models/app_models.dart';
 import '../../widgets/daily_verse_card.dart';
@@ -10,6 +13,7 @@ import '../../services/daily_verse_generation_service.dart';
 import '../../services/bible_source.dart';
 import '../../utils/text_formatter.dart';
 import '../../utils/responsive_utils.dart';
+import '../../constants/app_constants.dart';
 
 // Provider for daily verse
 final dailyVerseProvider = FutureProvider<DailyVerse?>((ref) async {
@@ -34,10 +38,7 @@ final dailyVerseProvider = FutureProvider<DailyVerse?>((ref) async {
     final repo = DailyVerseRepository.instance;
     final verseGenerator = DailyVerseGenerationService.instance;
 
-    // Try to get today's verse from database
     DailyVerse? dailyVerse = await repo.getDailyVerse(DateTime.now());
-
-    // If no verse exists for today, generate one
     if (dailyVerse == null) {
       debugPrint('No daily verse found, generating new one...');
       dailyVerse = await verseGenerator.generateDailyVerseForToday();
@@ -64,6 +65,7 @@ final dailyTasksProvider = StateProvider<List<DailyTask>>((ref) {
       icon: Icons.favorite,
       completed: false,
       category: 'Prayer',
+      route: AppConstants.prayerWallRoute,
     ),
     const DailyTask(
       id: '2',
@@ -72,6 +74,7 @@ final dailyTasksProvider = StateProvider<List<DailyTask>>((ref) {
       icon: Icons.menu_book,
       completed: false,
       category: 'Study',
+      route: AppConstants.bibleRoute,
     ),
     const DailyTask(
       id: '3',
@@ -80,6 +83,7 @@ final dailyTasksProvider = StateProvider<List<DailyTask>>((ref) {
       icon: Icons.health_and_safety,
       completed: false,
       category: 'Health',
+      route: AppConstants.enhancedHealthRoute,
     ),
     const DailyTask(
       id: '4',
@@ -88,15 +92,41 @@ final dailyTasksProvider = StateProvider<List<DailyTask>>((ref) {
       icon: Icons.self_improvement,
       completed: false,
       category: 'Reflection',
+      route: AppConstants.testimoniesRoute,
     ),
   ];
 });
 
-class DailyScreen extends ConsumerWidget {
+class DailyScreen extends ConsumerStatefulWidget {
   const DailyScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DailyScreen> createState() => _DailyScreenState();
+}
+
+class _DailyScreenState extends ConsumerState<DailyScreen> {
+  static const _requiredDuration = Duration(minutes: 5);
+
+  final Map<String, DateTime> _taskStartTimes = {};
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      _autoCompleteElapsedTasks();
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final translate = ref.watch(translationProvider);
     final dailyVerseAsync = ref.watch(dailyVerseProvider);
     final dailyTasks = ref.watch(dailyTasksProvider);
@@ -120,7 +150,6 @@ class DailyScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header section
               Container(
                 width: double.infinity,
                 padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(
@@ -149,7 +178,7 @@ class DailyScreen extends ConsumerWidget {
                       TextFormatter.formatActivityType('daily_activities'),
                       style:
                           Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                color: Colors.white,
+                                color: Theme.of(context).colorScheme.onSecondary,
                                 fontWeight: FontWeight.bold,
                               ),
                     ),
@@ -168,37 +197,26 @@ class DailyScreen extends ConsumerWidget {
                   ],
                 ),
               ),
-
               SizedBox(
                   height: ResponsiveUtils.getResponsiveValue(
                       context: context, mobile: 20, tablet: 24, desktop: 28)),
-
-              // Daily Verse Section
-              Padding(
-                padding: EdgeInsets.symmetric(
-                    horizontal: ResponsiveUtils.getResponsiveValue(
-                        context: context, mobile: 16, tablet: 20, desktop: 24)),
-                child: dailyVerseAsync.when(
-                  data: (verse) => DailyVerseCard(
-                    verse: verse,
-                    isLoading: false,
-                  ),
-                  loading: () => const DailyVerseCard(
-                    verse: null,
-                    isLoading: true,
-                  ),
-                  error: (error, stack) => const DailyVerseCard(
-                    verse: null,
-                    isLoading: false,
-                  ),
+              dailyVerseAsync.when(
+                data: (verse) => DailyVerseCard(
+                  verse: verse,
+                  isLoading: false,
+                ),
+                loading: () => const DailyVerseCard(
+                  verse: null,
+                  isLoading: true,
+                ),
+                error: (error, stack) => const DailyVerseCard(
+                  verse: null,
+                  isLoading: false,
                 ),
               ),
-
               SizedBox(
                   height: ResponsiveUtils.getResponsiveValue(
                       context: context, mobile: 20, tablet: 24, desktop: 28)),
-
-              // Daily Tasks Section
               Padding(
                 padding: EdgeInsets.symmetric(
                     horizontal: ResponsiveUtils.getResponsiveValue(
@@ -210,20 +228,14 @@ class DailyScreen extends ConsumerWidget {
                       ),
                 ),
               ),
-
               SizedBox(
                   height: ResponsiveUtils.getResponsiveValue(
                       context: context, mobile: 12, tablet: 16, desktop: 20)),
-
               _buildDailyTasks(context, translate, dailyTasks, ref),
-
               SizedBox(
                   height: ResponsiveUtils.getResponsiveValue(
                       context: context, mobile: 20, tablet: 24, desktop: 28)),
-
-              // Progress Summary
               _buildProgressSummary(context, translate, dailyTasks),
-
               SizedBox(
                   height: ResponsiveUtils.getResponsiveValue(
                       context: context, mobile: 20, tablet: 24, desktop: 28)),
@@ -274,13 +286,24 @@ class DailyScreen extends ConsumerWidget {
       itemCount: tasks.length,
       itemBuilder: (context, index) {
         final task = tasks[index];
+        final startAt = _taskStartTimes[task.id];
+        final remaining = startAt == null
+            ? _requiredDuration
+            : _requiredDuration - DateTime.now().difference(startAt);
+
         return DailyTaskCard(
           task: task,
+          trackingStarted: startAt != null,
+          remaining: remaining,
           onToggle: (completed) {
             final updatedTasks = [...tasks];
             updatedTasks[index] = task.copyWith(completed: completed);
             ref.read(dailyTasksProvider.notifier).state = updatedTasks;
+            if (completed) {
+              _taskStartTimes.remove(task.id);
+            }
           },
+          onStart: () => _startTask(context, ref, tasks, index),
         );
       },
     );
@@ -369,6 +392,48 @@ class DailyScreen extends ConsumerWidget {
       ),
     );
   }
+
+  void _startTask(BuildContext context, WidgetRef ref, List<DailyTask> tasks, int index) {
+    final task = tasks[index];
+    if (task.completed) return;
+
+    _taskStartTimes.putIfAbsent(task.id, () => DateTime.now());
+    setState(() {});
+
+    context.go(task.route);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Tracking started for ${task.title}. Complete 5 minutes to auto-mark done.'),
+      ),
+    );
+  }
+
+  void _autoCompleteElapsedTasks() {
+    final tasks = ref.read(dailyTasksProvider);
+    if (_taskStartTimes.isEmpty || tasks.isEmpty) return;
+
+    bool changed = false;
+    final updated = [...tasks];
+    final now = DateTime.now();
+
+    for (var i = 0; i < updated.length; i++) {
+      final task = updated[i];
+      if (task.completed) continue;
+      final start = _taskStartTimes[task.id];
+      if (start == null) continue;
+
+      if (now.difference(start) >= _requiredDuration) {
+        updated[i] = task.copyWith(completed: true);
+        _taskStartTimes.remove(task.id);
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      ref.read(dailyTasksProvider.notifier).state = updated;
+    }
+  }
 }
 
 class DailyTask {
@@ -378,6 +443,7 @@ class DailyTask {
   final IconData icon;
   final bool completed;
   final String category;
+  final String route;
 
   const DailyTask({
     required this.id,
@@ -386,6 +452,7 @@ class DailyTask {
     required this.icon,
     required this.completed,
     required this.category,
+    required this.route,
   });
 
   DailyTask copyWith({
@@ -395,6 +462,7 @@ class DailyTask {
     IconData? icon,
     bool? completed,
     String? category,
+    String? route,
   }) {
     return DailyTask(
       id: id ?? this.id,
@@ -403,22 +471,33 @@ class DailyTask {
       icon: icon ?? this.icon,
       completed: completed ?? this.completed,
       category: category ?? this.category,
+      route: route ?? this.route,
     );
   }
 }
 
 class DailyTaskCard extends StatelessWidget {
   final DailyTask task;
+  final bool trackingStarted;
+  final Duration remaining;
   final Function(bool) onToggle;
+  final VoidCallback onStart;
 
   const DailyTaskCard({
     super.key,
     required this.task,
     required this.onToggle,
+    required this.trackingStarted,
+    required this.remaining,
+    required this.onStart,
   });
 
   @override
   Widget build(BuildContext context) {
+    final timeLeft = remaining.isNegative ? Duration.zero : remaining;
+    final timeText =
+        '${timeLeft.inMinutes.remainder(60).toString().padLeft(2, '0')}:${timeLeft.inSeconds.remainder(60).toString().padLeft(2, '0')}';
+
     return Card(
       margin: EdgeInsets.only(
           bottom: ResponsiveUtils.getResponsiveValue(
@@ -429,7 +508,7 @@ class DailyTaskCard extends StatelessWidget {
             context: context, mobile: 12, tablet: 16, desktop: 20)),
       ),
       child: InkWell(
-        onTap: () => onToggle(!task.completed),
+        onTap: task.completed ? null : onStart,
         borderRadius: BorderRadius.circular(ResponsiveUtils.getResponsiveValue(
             context: context, mobile: 12, tablet: 16, desktop: 20)),
         child: Padding(
@@ -545,6 +624,16 @@ class DailyTaskCard extends StatelessWidget {
                             ),
                       ),
                     ),
+                    if (!task.completed && trackingStarted) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        'Tracking... $timeText left',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.secondary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                    ],
                   ],
                 ),
               ),

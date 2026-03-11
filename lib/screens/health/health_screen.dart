@@ -116,7 +116,7 @@ class HealthScreen extends ConsumerWidget {
         title: translate('health'),
         elevation: 0,
         backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         showThemeToggle: true,
         showLanguageToggle: true,
         showDonationButton: true,
@@ -146,7 +146,7 @@ class HealthScreen extends ConsumerWidget {
                   Text(
                     TextFormatter.formatHealthCategory('natural_remedies'),
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.onPrimary,
                           fontWeight: FontWeight.bold,
                           fontSize: ResponsiveUtils.getResponsiveFontSize(
                               context, 24),
@@ -157,7 +157,7 @@ class HealthScreen extends ConsumerWidget {
                   Text(
                     TextFormatter.formatHealthCategory('gods_natural_healing'),
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: Colors.white.withValues(alpha: 0.9),
+                          color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.9),
                           fontSize: ResponsiveUtils.getResponsiveFontSize(
                               context, 16),
                         ),
@@ -217,7 +217,7 @@ class HealthScreen extends ConsumerWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),

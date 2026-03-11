@@ -8,9 +8,6 @@
   "storage": {
     "rules": "firebase/storage.rules"
   },
-  "database": {
-    "rules": "database.rules.json"
-  },
   "hosting": {
     "public": "build/web",
     "ignore": [
@@ -19,12 +16,24 @@
       "**/node_modules/**"
     ],
     "cleanUrls": true,
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ],
     "headers": [
       {
         "source": "**",
         "headers": [
-          { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" },
-          { "key": "Cross-Origin-Embedder-Policy", "value": "credentialless" }
+          {
+            "key": "Cross-Origin-Opener-Policy",
+            "value": "same-origin"
+          },
+          {
+            "key": "Cross-Origin-Embedder-Policy",
+            "value": "credentialless"
+          }
         ]
       }
     ]

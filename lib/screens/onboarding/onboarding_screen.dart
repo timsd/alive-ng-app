@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../constants/app_constants.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/language_provider.dart';
 import '../../services/onboarding_service.dart';
 import '../../utils/responsive_utils.dart';
-import '../../constants/app_constants.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
@@ -15,21 +16,35 @@ class OnboardingScreen extends ConsumerStatefulWidget {
 }
 
 class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
+  final PageController _pageController = PageController();
   int _step = 0;
   String? _dynamicContent;
   bool _isLoading = false;
-  final List<Map<String, String>> _steps = [
+
+  final List<Map<String, dynamic>> _steps = [
     {
       'title': 'Welcome to ALIVE Nigeria',
-      'body': 'Join prayer, study, missions, health tracking and more.'
+      'body': 'Join our vibrant community united by Prayer, Study, Missions, and Health.',
+      'icon': Icons.public,
+      'color': Colors.blue,
     },
     {
-      'title': 'Stay Connected',
-      'body': 'Follow chapters, join events, and share testimonies.'
+      'title': 'Roles & Organization',
+      'body': 'We are organized to serve! From dedicated Members and Chapter Leaders to Coordinators, Directors, and BODs, every role is vital.',
+      'icon': Icons.groups,
+      'color': Colors.indigo,
     },
     {
-      'title': 'Admin & Kids Content',
-      'body': 'Admins manage content; kids enjoy curated resources.'
+      'title': 'Tagging, Praying & Chatting',
+      'body': 'Stay deeply connected. Tag members, join chapter chats, pray together instantly, and share your powerful testimonies with the community.',
+      'icon': Icons.chat_bubble_outline,
+      'color': Colors.teal,
+    },
+    {
+      'title': 'Kids & Discipleship',
+      'body': 'A rich library of Books, Tracts, and Podcasts awaits you. Plus, special mission activities and Bible memorization features for both Kids and Adults to grow as true Disciples of Christ.',
+      'icon': Icons.menu_book,
+      'color': Colors.orange,
     },
   ];
 
@@ -39,10 +54,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     _loadDynamicContent();
   }
 
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadDynamicContent() async {
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
     try {
       final currentLocale = ref.read(localeProvider);
       final languageCode = currentLocale.languageCode;
@@ -51,131 +70,92 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         'onboarding',
         languageCode: languageCode,
       );
-      if (mounted) {
-        setState(() {
-          _dynamicContent = contentData?['content'];
-          _isLoading = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _dynamicContent = contentData?['content']?.toString();
+      });
     } catch (_) {
+      // keep static onboarding fallback
+    } finally {
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
       }
     }
   }
 
-  void _next() async {
+  Future<void> _next() async {
     if (_step < _steps.length - 1) {
-      setState(() => _step++);
-    } else {
-      await OnboardingService.complete();
-      if (mounted) {
-        context.go(AppConstants.homeRoute);
-      }
+      final next = _step + 1;
+      await _pageController.animateToPage(
+        next,
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeInOut,
+      );
+      return;
+    }
+    await OnboardingService.complete();
+    if (mounted) {
+      context.go(AppConstants.homeRoute);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final current = _steps[_step];
     return Scaffold(
       appBar: AppBar(title: const Text('Getting Started')),
       body: Padding(
         padding: context.responsivePadding,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (_isLoading)
-              const LinearProgressIndicator(),
-            if (_dynamicContent != null && _dynamicContent!.isNotEmpty) ...[
-              Text(
-                'Overview',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  fontSize: context.responsiveFontSize(18),
-                ),
-              ),
-              SizedBox(height: context.responsivePadding.top / 2),
-              Text(
-                _dynamicContent!,
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  fontSize: context.responsiveFontSize(16),
-                  height: 1.6,
-                ),
-              ),
-              SizedBox(height: context.responsivePadding.top),
-            ],
-          Card(
-            elevation: 0,
-            color: Theme.of(context).colorScheme.surfaceContainerLowest,
-            child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Tagging Guide',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      fontSize: context.responsiveFontSize(18),
-                    ),
-                  ),
-                  SizedBox(height: context.responsivePadding.top / 3),
-                  Text(
-                    'Use tags to reach the right audience:',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      fontSize: context.responsiveFontSize(15),
-                      height: 1.6,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '• Role tags (#): #bod, #director, #chap_coor, #media, #tech, #chapter_lagos',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '• Individual tags (@): @username, @firstname.lastname',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '• Special tags: #all, #online, #active, #new, #meeting, #event_[name]',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Visibility follows hierarchy (e.g. #bod sees all), peers (directors ↔ directors), and team membership (chapters, ministries).',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
+            if (_isLoading) const LinearProgressIndicator(),
+            Expanded(
+              child: PageView.builder(
+                controller: _pageController,
+                itemCount: _steps.length,
+                onPageChanged: (index) => setState(() => _step = index),
+                itemBuilder: (context, index) {
+                  final item = _steps[index];
+                  return _OnboardingCard(
+                    title: item['title'] as String,
+                    body: item['body'] as String,
+                    icon: item['icon'] as IconData,
+                    iconColor: item['color'] as Color,
+                    extra: index == 0 ? _dynamicContent : null,
+                  );
+                },
               ),
             ),
-          ),
-            Text(
-              current['title']!,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                fontSize: context.responsiveFontSize(22),
-              ),
+            SizedBox(height: context.responsivePadding.top / 2),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(_steps.length, (i) {
+                final active = i == _step;
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  width: active ? 18 : 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: active
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                );
+              }),
             ),
             SizedBox(height: context.responsivePadding.top),
-            Text(
-              current['body']!,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                fontSize: context.responsiveFontSize(16),
-                height: 1.6,
-              ),
-            ),
-            const Spacer(),
             Row(
               children: [
                 Expanded(
                   child: ElevatedButton(
                     onPressed: _next,
-                    child: Text(_step < _steps.length - 1 ? 'Next' : 'Get Started'),
+                    child: Text(
+                      _step < _steps.length - 1 ? 'Next' : 'Get Started',
+                    ),
                   ),
                 ),
               ],
@@ -183,15 +163,98 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             SizedBox(height: context.responsivePadding.top / 2),
             Center(
               child: TextButton(
-                onPressed: () {
-                  context.go(AppConstants.authRoute);
-                },
+                onPressed: () => context.go(AppConstants.authRoute),
                 child: const Text('Sign In'),
               ),
-            )
+            ),
           ],
         ),
       ),
     );
   }
 }
+
+class _OnboardingCard extends StatelessWidget {
+  final String title;
+  final String body;
+  final IconData icon;
+  final Color iconColor;
+  final String? extra;
+
+  const _OnboardingCard({
+    required this.title,
+    required this.body,
+    required this.icon,
+    required this.iconColor,
+    this.extra,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.center,
+      child: Card(
+        elevation: 0,
+        color: Colors.transparent,
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  icon,
+                  size: 80,
+                  color: iconColor,
+                ),
+              ),
+              SizedBox(height: context.responsivePadding.top * 1.5),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      fontSize: context.responsiveFontSize(24),
+                    ),
+              ),
+              SizedBox(height: context.responsivePadding.top),
+              Text(
+                body,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      fontSize: context.responsiveFontSize(16),
+                      height: 1.6,
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+                    ),
+              ),
+              if (extra != null && extra!.trim().isNotEmpty) ...[
+                SizedBox(height: context.responsivePadding.top),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    extra!,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          height: 1.6,
+                        ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+

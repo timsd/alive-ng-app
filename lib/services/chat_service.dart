@@ -571,4 +571,90 @@ class ChatService {
       return 0;
     }
   }
+
+  /// Get a [ChatUser] profile for the given user ID.
+  Future<ChatUser?> getChatUser(String userId) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('chat_users')
+          .doc(userId)
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data()!;
+        data['id'] = doc.id;
+        return ChatUser.fromJson(data);
+      }
+
+      // Fall back to profile collection if no chat_users doc
+      final profileDoc = await FirebaseFirestore.instance
+          .collection('profiles')
+          .doc(userId)
+          .get();
+
+      if (profileDoc.exists) {
+        final pData = profileDoc.data()!;
+        return ChatUser(
+          id: userId,
+          name: pData['full_name'] ?? pData['email'] ?? 'User',
+          email: pData['email'] ?? '',
+          avatar: pData['avatar_url'] as String?,
+          role: UserRole.member,
+          isOnline: false,
+          lastSeen: DateTime.now(),
+        );
+      }
+      return null;
+    } catch (e) {
+      _logger.error('Error getting chat user: $e');
+      return null;
+    }
+  }
+
+  /// Update a [ChatUser]'s online status (e.g. on app foreground/background).
+  Future<void> updateChatUserStatus({
+    required String userId,
+    required bool isOnline,
+  }) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('chat_users')
+          .doc(userId)
+          .set({
+        'is_online': isOnline,
+        'last_seen': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      _logger.error('Error updating chat user status: $e');
+    }
+  }
+
+  /// Get all currently online [ChatUser]s in a channel.
+  Future<List<ChatUser>> getOnlineChatUsers(String channelId) async {
+    try {
+      // Get channel members
+      final channelDoc = await FirebaseFirestore.instance
+          .collection('chat_channels')
+          .doc(channelId)
+          .get();
+
+      if (!channelDoc.exists) return [];
+
+      final members =
+          List<String>.from(channelDoc.data()?['members'] ?? []);
+
+      // Get online status for each member
+      final onlineUsers = <ChatUser>[];
+      for (final memberId in members) {
+        final chatUser = await getChatUser(memberId);
+        if (chatUser != null && chatUser.isOnline) {
+          onlineUsers.add(chatUser);
+        }
+      }
+      return onlineUsers;
+    } catch (e) {
+      _logger.error('Error getting online chat users: $e');
+      return [];
+    }
+  }
 }

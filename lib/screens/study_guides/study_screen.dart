@@ -36,7 +36,7 @@ class StudyScreen extends ConsumerWidget {
         title: translate('study'),
         elevation: 0,
         backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Colors.white,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         showThemeToggle: true,
         showLanguageToggle: true,
         showDonationButton: true,
@@ -74,7 +74,7 @@ class StudyScreen extends ConsumerWidget {
                       TextFormatter.formatActivityType('bible_study'),
                       style:
                           Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                color: Colors.white,
+                                color: Theme.of(context).colorScheme.onPrimary,
                                 fontWeight: FontWeight.bold,
                               ),
                     ),
@@ -84,7 +84,7 @@ class StudyScreen extends ConsumerWidget {
                     Text(
                       TextFormatter.formatText('grow_in_faith'),
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: Colors.white.withValues(alpha: 0.9),
+                            color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.9),
                           ),
                     ),
                   ],
@@ -259,14 +259,14 @@ class StudyScreen extends ConsumerWidget {
                   padding:
                       ResponsiveUtils.getResponsivePaddingWithBase(context, 12),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
+                    color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(
                         ResponsiveUtils.getResponsiveBorderRadiusValue(
                             context, 12)),
                   ),
                   child: Icon(
                     Icons.games,
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onPrimary,
                     size: ResponsiveUtils.getResponsiveIconSize(context, 32),
                   ),
                 ),
@@ -279,7 +279,7 @@ class StudyScreen extends ConsumerWidget {
                       Text(
                         'Bible Memorization Game',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.onPrimary,
                           fontSize: ResponsiveUtils.getResponsiveFontSize(
                               context, 18),
                           fontWeight: FontWeight.bold,
@@ -291,7 +291,7 @@ class StudyScreen extends ConsumerWidget {
                       Text(
                         'Learn verses with voice recitation and fill-in-the-gap exercises',
                         style: TextStyle(
-                          color: const Color(0xE6FFFFFF),
+                          color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.9),
                           fontSize: ResponsiveUtils.getResponsiveFontSize(
                               context, 14),
                         ),
@@ -330,7 +330,7 @@ class StudyScreen extends ConsumerWidget {
             ResponsiveUtils.getResponsiveBorderRadiusValue(context, 16)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -516,21 +516,21 @@ class StudyScreen extends ConsumerWidget {
                 padding:
                     ResponsiveUtils.getResponsivePaddingWithBase(context, 12),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withValues(alpha: 0.1),
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(
                       ResponsiveUtils.getResponsiveBorderRadiusValue(
                           context, 8)),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.info, color: Colors.blue),
+                    Icon(Icons.info, color: Theme.of(context).colorScheme.primary),
                     SizedBox(
                         width:
                             ResponsiveUtils.getResponsiveSpacing(context, 8)),
-                    const Expanded(
+                    Expanded(
                       child: Text(
                         'This program includes multiple modules and assessments.',
-                        style: TextStyle(color: Colors.blue),
+                        style: TextStyle(color: Theme.of(context).colorScheme.primary),
                       ),
                     ),
                   ],
@@ -551,7 +551,7 @@ class StudyScreen extends ConsumerWidget {
                 SnackBar(
                   content: Text(
                       'Starting program: ${program.title ?? "Study Program"}'),
-                  backgroundColor: Colors.green,
+                  backgroundColor: Theme.of(context).colorScheme.tertiary,
                 ),
               );
             },

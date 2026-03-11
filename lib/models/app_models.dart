@@ -1207,6 +1207,47 @@ class BibleStory {
   }
 }
 
+// Leadership Record Model (for archiving past roles)
+class LeadershipRecord {
+  final String id;
+  final String userId;
+  final String role;
+  final DateTime startDate;
+  final DateTime endDate;
+  final String? chapterId;
+  final String? notes;
 
+  LeadershipRecord({
+    required this.id,
+    required this.userId,
+    required this.role,
+    required this.startDate,
+    required this.endDate,
+    this.chapterId,
+    this.notes,
+  });
 
+  factory LeadershipRecord.fromJson(Map<String, dynamic> json) {
+    return LeadershipRecord(
+      id: json['id'] as String,
+      userId: json['user_id'] as String,
+      role: json['role'] as String,
+      startDate: DateTime.parse(json['start_date'] as String),
+      endDate: DateTime.parse(json['end_date'] as String),
+      chapterId: json['chapter_id'] as String?,
+      notes: json['notes'] as String?,
+    );
+  }
 
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'user_id': userId,
+      'role': role,
+      'start_date': startDate.toIso8601String(),
+      'end_date': endDate.toIso8601String(),
+      'chapter_id': chapterId,
+      'notes': notes,
+    };
+  }
+}

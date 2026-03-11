@@ -4,6 +4,7 @@ import '../../models/notification_settings.dart';
 import '../../services/notification_settings_service.dart';
 import '../../services/firebase_messaging_service.dart';
 import '../../services/firebase_messaging_base.dart';
+import '../../services/reminder_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/loading_widget.dart';
 import '../../utils/responsive_utils.dart';
@@ -63,6 +64,7 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
     try {
       final success = await NotificationSettingsService.updateSettings(newSettings);
       if (success) {
+        await _syncReminderSchedules(newSettings);
         setState(() {
           _settings = newSettings;
         });
@@ -81,6 +83,55 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
         });
       }
     }
+  }
+
+  Future<void> _syncReminderSchedules(NotificationSettings settings) async {
+    final parts = settings.reminderTime.split(':');
+    final hour = parts.isNotEmpty ? int.tryParse(parts[0]) ?? 7 : 7;
+    final minute = parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0;
+    final time = TimeOfDay(hour: hour, minute: minute);
+
+    final reminders = <ReminderConfig>[
+      ReminderConfig(
+        type: ReminderType.dailyVerse,
+        title: 'Daily Verse Reminder',
+        body: 'Your daily verse is ready.',
+        time: time,
+        enabled:
+            settings.pushNotificationsEnabled && settings.dailyVerseReminder,
+      ),
+      ReminderConfig(
+        type: ReminderType.prayer,
+        title: 'Prayer Reminder',
+        body: 'Take a moment to pray.',
+        time: time,
+        enabled: settings.pushNotificationsEnabled && settings.prayerReminder,
+      ),
+      ReminderConfig(
+        type: ReminderType.healthTracking,
+        title: 'Health Reminder',
+        body: 'Log your health activities for today.',
+        time: time,
+        enabled:
+            settings.pushNotificationsEnabled && settings.healthTrackingReminder,
+      ),
+      ReminderConfig(
+        type: ReminderType.study,
+        title: 'Study Reminder',
+        body: 'Continue your Bible study progress.',
+        time: time,
+        enabled: settings.pushNotificationsEnabled && settings.studyReminder,
+      ),
+      ReminderConfig(
+        type: ReminderType.mission,
+        title: 'Mission Reminder',
+        body: 'Check your mission and outreach activities.',
+        time: time,
+        enabled: settings.pushNotificationsEnabled && settings.missionReminder,
+      ),
+    ];
+
+    await reminderService.scheduleAllReminders(reminders);
   }
 
   Future<void> _selectTime() async {
@@ -145,16 +196,11 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
                                 value: _settings!.pushNotificationsEnabled,
                                 onChanged: _isSaving ? null : (value) async {
                                   if (value) {
-                                    // Request permission and get token
+                                    final granted = await NotificationSettingsService.requestNotificationPermission();
+                                    if (!granted) return;
                                     final token = await FirebaseMessagingService.getCurrentToken();
-                                    if (token != null) {
-                                      await _updateSetting(_settings!.copyWith(pushNotificationsEnabled: value));
-                                    } else {
-                                      if (!context.mounted) return;
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('Failed to enable push notifications')),
-                                      );
-                                    }
+                                    if (token == null) return;
+                                    await _updateSetting(_settings!.copyWith(pushNotificationsEnabled: true));
                                   } else {
                                     await _updateSetting(_settings!.copyWith(pushNotificationsEnabled: value));
                                   }

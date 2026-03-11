@@ -29,12 +29,7 @@ service cloud.firestore {
     function isAdminOrDevelopmentBypass() {
       return isAdmin() || isDevelopmentBypass();
     }
-    
-    // User profiles - users can read/write their own profile
-    match /profiles/{userId} {
-      allow read, write: if isAuthenticated() && isOwner(userId);
-      allow read: if isAdmin();
-    }
+
     
     // Prayer requests - authenticated users can read all, write their own
     match /prayer_requests/{requestId} {
@@ -118,18 +113,7 @@ service cloud.firestore {
       }
     }
 
-    // Chapters
-    match /chapters/{chapterId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdminOrDevelopmentBypass();
-    }
 
-    // Chapter Memberships
-    match /chapter_members/{membershipId} {
-      allow read: if isAuthenticated() && (isOwner(resource.data.user_id) || isAdmin());
-      allow create: if isAuthenticated() && isOwner(request.resource.data.user_id);
-      allow update, delete: if isAuthenticated() && isOwner(resource.data.user_id);
-    }
     
     // Service projects - read-only for authenticated users, admin can write
     match /service_projects/{projectId} {
@@ -522,11 +506,7 @@ service cloud.firestore {
       allow write: if isAdminOrDevelopmentBypass();
     }
 
-    // Downloadable materials - read for authenticated users, write for admin
-    match /downloadable_materials/{materialId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
-    }
+
 
     // Cleanup logs - admin-only for storage maintenance
     match /cleanup_logs/{logId} {

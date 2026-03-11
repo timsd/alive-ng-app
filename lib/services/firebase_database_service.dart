@@ -28,18 +28,6 @@ class FirebaseDatabaseService {
   User? get currentUser => _auth.currentUser;
   bool get isAuthenticated => currentUser != null;
 
-  // Helper to split full name into first and last names
-  Map<String, String> _splitFullName(String? fullName) {
-    final name = (fullName ?? '').trim();
-    if (name.isEmpty) {
-      return {'first_name': '', 'last_name': ''};
-    }
-    final parts = name.split(RegExp(r'\s+'));
-    final first = parts.first;
-    final last = parts.length > 1 ? parts.sublist(1).join(' ') : '';
-    return {'first_name': first, 'last_name': last};
-  }
-
   // Bible Service Methods
   Future<void> addBibleVerse(String book, int chapter, int verse, String text,
       String version, String language) async {
@@ -347,9 +335,30 @@ class FirebaseDatabaseService {
         'role': newRole,
         'updated_at': DateTime.now().toIso8601String(),
       });
+
+      // Keep Firebase Auth custom claims in sync with profile role.
+      try {
+        await _functions.httpsCallable('setUserRoleAndClaims').call({
+          'uid': userId,
+          'role': newRole,
+        });
+      } catch (e) {
+        _logger.warning('Role claims sync failed for $userId: $e');
+      }
     } catch (e) {
       _logger.error('Error updating user role: $e');
       throw DatabaseException('Failed to update user role', originalError: e);
+    }
+  }
+
+  Future<bool> claimAdminRole() async {
+    try {
+      final result = await _functions.httpsCallable('claimAdminRole').call();
+      final data = result.data;
+      return data is Map && data['ok'] == true;
+    } catch (e) {
+      _logger.error('Error claiming admin role: $e');
+      return false;
     }
   }
 
@@ -366,35 +375,77 @@ class FirebaseDatabaseService {
     }
   }
 
+  // Admin: Archive user leadership role
+  Future<void> archiveLeadershipRole(LeadershipRecord record) async {
+    try {
+      await _firestore
+          .collection('profiles')
+          .doc(record.userId)
+          .collection('leadership_history')
+          .doc(record.id)
+          .set(record.toJson());
+    } catch (e) {
+      _logger.error('Error archiving leadership role: $e');
+      throw DatabaseException('Failed to archive leadership role', originalError: e);
+    }
+  }
+
+  // Admin: Get leadership history for a user
+  Future<List<LeadershipRecord>> getLeadershipHistory(String userId) async {
+    try {
+      final snapshot = await _firestore
+          .collection('profiles')
+          .doc(userId)
+          .collection('leadership_history')
+          .orderBy('end_date', descending: true)
+          .get();
+      return snapshot.docs.map((doc) => LeadershipRecord.fromJson(doc.data())).toList();
+    } catch (e) {
+      _logger.error('Error getting leadership history: $e');
+      throw DatabaseException('Failed to get leadership history', originalError: e);
+    }
+  }
+
   // Prayer Requests Methods
   Future<List<PrayerRequest>> getPrayerRequests({String? category}) async {
     try {
-      Query query = _firestore
+      Query orderedQuery = _firestore
           .collection('prayer_requests')
-          .where('is_public', isEqualTo: true)
           .orderBy('created_at', descending: true);
+      Query fallbackQuery = _firestore.collection('prayer_requests');
 
       if (category != null && category.isNotEmpty) {
-        query = query.where('category', isEqualTo: category);
+        orderedQuery = orderedQuery.where('category', isEqualTo: category);
+        fallbackQuery = fallbackQuery.where('category', isEqualTo: category);
       }
 
-      final snapshot = await query.get();
+      QuerySnapshot snapshot;
+      try {
+        snapshot = await orderedQuery.get();
+      } on FirebaseException catch (e) {
+        // Avoid hard failure when composite index is missing in Firestore.
+        if (e.code == 'failed-precondition') {
+          snapshot = await fallbackQuery.get();
+        } else {
+          rethrow;
+        }
+      }
       List<PrayerRequest> requests = [];
 
       for (var doc in snapshot.docs) {
         final data = doc.data() as Map<String, dynamic>;
         data['id'] = doc.id;
+        final isPublic = data['is_public'] as bool?;
+        if (isPublic == false) {
+          continue;
+        }
 
         // Get user profile for each request
         if (data['user_id'] != null) {
           try {
             final profile = await getUserProfile(data['user_id']);
             if (profile != null) {
-              final nameParts = _splitFullName(profile.fullName);
-              data['profiles'] = {
-                'first_name': nameParts['first_name'] ?? '',
-                'last_name': nameParts['last_name'] ?? '',
-              };
+              data['user'] = profile.toJson();
             }
           } catch (e) {
             // Ignore if user profile not found
@@ -404,6 +455,7 @@ class FirebaseDatabaseService {
         requests.add(PrayerRequest.fromJson(data));
       }
 
+      requests.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return requests;
     } catch (e) {
       _logger.error('Error getting prayer requests: $e');
@@ -414,8 +466,14 @@ class FirebaseDatabaseService {
 
   Future<PrayerRequest> createPrayerRequest(PrayerRequest request) async {
     try {
-      final docRef =
-          await _firestore.collection('prayer_requests').add(request.toJson());
+      final payload = request.toJson()
+        ..remove('id')
+        ..addAll({
+          'is_public': request.isPublic,
+          'created_at': FieldValue.serverTimestamp(),
+          'updated_at': FieldValue.serverTimestamp(),
+        });
+      final docRef = await _firestore.collection('prayer_requests').add(payload);
       final doc = await docRef.get();
       final data = doc.data()!;
       data['id'] = doc.id;
@@ -424,11 +482,7 @@ class FirebaseDatabaseService {
       if (data['user_id'] != null) {
         final profile = await getUserProfile(data['user_id']);
         if (profile != null) {
-          final nameParts = _splitFullName(profile.fullName);
-          data['profiles'] = {
-            'first_name': nameParts['first_name'] ?? '',
-            'last_name': nameParts['last_name'] ?? '',
-          };
+          data['user'] = profile.toJson();
         }
       }
 
@@ -442,11 +496,26 @@ class FirebaseDatabaseService {
 
   Future<void> prayForRequest(String requestId, String userId) async {
     try {
-      await _firestore.collection('prayer_interactions').add({
-        'prayer_request_id': requestId,
-        'user_id': userId,
-        'interaction_type': 'pray',
-        'created_at': FieldValue.serverTimestamp(),
+      await _firestore.runTransaction((tx) async {
+        final prayerRef = _firestore.collection('prayer_requests').doc(requestId);
+        final prayerSnap = await tx.get(prayerRef);
+        if (!prayerSnap.exists) {
+          throw NotFoundException('Prayer request not found');
+        }
+
+        final interactionRef = _firestore.collection('prayer_interactions').doc();
+        tx.set(interactionRef, {
+          'prayer_request_id': requestId,
+          'user_id': userId,
+          'interaction_type': 'pray',
+          'created_at': FieldValue.serverTimestamp(),
+        });
+
+        final currentCount = (prayerSnap.data()?['prayer_count'] as int?) ?? 0;
+        tx.update(prayerRef, {
+          'prayer_count': currentCount + 1,
+          'updated_at': FieldValue.serverTimestamp(),
+        });
       });
     } catch (e) {
       _logger.error('Error praying for request: $e');
@@ -632,7 +701,6 @@ class FirebaseDatabaseService {
   Stream<List<PrayerRequest>> subscribeToPrayerRequests() {
     return _firestore
         .collection('prayer_requests')
-        .where('is_public', isEqualTo: true)
         .orderBy('created_at', descending: true)
         .snapshots()
         .asyncMap((snapshot) async {
@@ -641,16 +709,16 @@ class FirebaseDatabaseService {
       for (var doc in snapshot.docs) {
         final data = doc.data();
         data['id'] = doc.id;
+        final isPublic = data['is_public'] as bool?;
+        if (isPublic == false) {
+          continue;
+        }
 
         // Get user profile for each request
         if (data['user_id'] != null) {
           final profile = await getUserProfile(data['user_id']);
           if (profile != null) {
-            final nameParts = _splitFullName(profile.fullName);
-            data['profiles'] = {
-              'first_name': nameParts['first_name'] ?? '',
-              'last_name': nameParts['last_name'] ?? '',
-            };
+            data['user'] = profile.toJson();
           }
         }
 

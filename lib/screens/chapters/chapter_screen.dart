@@ -30,7 +30,7 @@ class _ChapterScreenState extends State<ChapterScreen>
 
   bool _isLoading = true;
   String _searchQuery = '';
-  ChapterType? _selectedType;
+  WorkersType? _selectedType;
   String? _currentUserId;
 
   @override
@@ -118,7 +118,7 @@ class _ChapterScreenState extends State<ChapterScreen>
                 _buildActivitiesTab(),
                 _buildTasksTab(),
               ],
-          ),
+            ),
       floatingActionButton: _buildFloatingActionButton(),
     );
   }
@@ -215,45 +215,43 @@ class _ChapterScreenState extends State<ChapterScreen>
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final crossAxisCount = constraints.maxWidth > 600 ? 4 : 2;
-            return GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: crossAxisCount,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              childAspectRatio: 1.5,
-              children: [
-                _buildStatCard(
-                  'Chapters',
-                  '${_userStatistics['totalChapters'] ?? 0}',
-                  Icons.group,
-                  Colors.blue,
-                ),
-                _buildStatCard(
-                  'Activities',
-                  '${_userStatistics['totalActivities'] ?? 0}',
-                  Icons.event,
-                  Colors.green,
-                ),
-                _buildStatCard(
-                  'Tasks',
-                  '${_userStatistics['totalTasks'] ?? 0}',
-                  Icons.task,
-                  Colors.orange,
-                ),
-                _buildStatCard(
-                  'Completion Rate',
-                  '${_userStatistics['activityCompletionRate'] ?? 0}%',
-                  Icons.check_circle,
-                  Colors.purple,
-                ),
-              ],
-            );
-          }
-        ),
+        LayoutBuilder(builder: (context, constraints) {
+          final crossAxisCount = constraints.maxWidth > 600 ? 4 : 2;
+          return GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: crossAxisCount,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            childAspectRatio: 1.5,
+            children: [
+              _buildStatCard(
+                'Chapters',
+                '${_userStatistics['totalChapters'] ?? 0}',
+                Icons.group,
+                Colors.blue,
+              ),
+              _buildStatCard(
+                'Activities',
+                '${_userStatistics['totalActivities'] ?? 0}',
+                Icons.event,
+                Colors.green,
+              ),
+              _buildStatCard(
+                'Tasks',
+                '${_userStatistics['totalTasks'] ?? 0}',
+                Icons.task,
+                Colors.orange,
+              ),
+              _buildStatCard(
+                'Completion Rate',
+                '${_userStatistics['activityCompletionRate'] ?? 0}%',
+                Icons.check_circle,
+                Colors.purple,
+              ),
+            ],
+          );
+        }),
       ],
     );
   }
@@ -361,7 +359,7 @@ class _ChapterScreenState extends State<ChapterScreen>
   Widget _buildSearchAndFilter() {
     return Container(
       padding: const EdgeInsets.all(16),
-      color: Colors.grey[100],
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
       child: Column(
         children: [
           TextField(
@@ -379,18 +377,18 @@ class _ChapterScreenState extends State<ChapterScreen>
           Row(
             children: [
               Expanded(
-                child: DropdownButtonFormField<ChapterType?>(
+                child: DropdownButtonFormField<WorkersType?>(
                   initialValue: _selectedType,
                   decoration: const InputDecoration(
-                    labelText: 'Chapter Type',
+                    labelText: 'Worker Type',
                     border: OutlineInputBorder(),
                   ),
                   items: [
-                    const DropdownMenuItem<ChapterType?>(
+                    const DropdownMenuItem<WorkersType?>(
                       value: null,
-                      child: Text('All Types'),
+                      child: Text('All Worker Types'),
                     ),
-                    ...ChapterType.values.map((type) => DropdownMenuItem(
+                    ...WorkersType.values.map((type) => DropdownMenuItem(
                           value: type,
                           child: Text(_chapterService.getTypeDescription(type)),
                         )),
@@ -672,9 +670,11 @@ class _ChapterScreenState extends State<ChapterScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (chapter != null) ...[
-                Text('Name: ${chapter.name}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text('Name: ${chapter.name}',
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
-                Text('Type: ${_chapterService.getTypeDescription(chapter.type)}'),
+                Text(
+                    'Type: ${_chapterService.getTypeDescription(chapter.type)}'),
                 const SizedBox(height: 8),
                 Text('Members: ${chapter.memberIds.length}'),
                 const SizedBox(height: 8),
@@ -718,7 +718,8 @@ class _ChapterScreenState extends State<ChapterScreen>
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Title: ${activity.title}', style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text('Title: ${activity.title}',
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               Text('Description: ${activity.description}'),
               const SizedBox(height: 8),
@@ -756,7 +757,7 @@ class _ChapterScreenState extends State<ChapterScreen>
     final nameController = TextEditingController();
     final locationController = TextEditingController();
     final leaderController = TextEditingController();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -803,8 +804,8 @@ class _ChapterScreenState extends State<ChapterScreen>
           ),
           ElevatedButton(
             onPressed: () {
-              if (nameController.text.isNotEmpty && 
-                  locationController.text.isNotEmpty && 
+              if (nameController.text.isNotEmpty &&
+                  locationController.text.isNotEmpty &&
                   leaderController.text.isNotEmpty) {
                 Navigator.of(context).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -848,7 +849,3 @@ class _ChapterScreenState extends State<ChapterScreen>
     }
   }
 }
-
-
-
-

@@ -16,6 +16,9 @@ import '../screens/about/about_app_screen.dart';
 import '../screens/about/about_alive_screen.dart';
 import '../screens/admin/admin_dashboard_screen.dart';
 import '../screens/admin/kids_content_admin_screen.dart';
+import '../screens/admin/admin_kids_stories_screen.dart';
+import '../screens/admin/admin_kids_missions_screen.dart';
+import '../screens/admin/admin_study_guides_screen.dart';
 import '../screens/admin/tract_podcast_admin_screen.dart';
 import '../screens/admin/meeting_file_sharing_screen.dart';
 import '../screens/admin/bod_trustees_screen.dart';
@@ -48,16 +51,25 @@ import '../screens/testimonies/testimonies_screen.dart';
 import '../screens/resources/resources_screen.dart';
 import '../screens/donation/donation_screen.dart';
 import '../screens/donation/gift_in_kind_form_screen.dart';
+import '../screens/donation/non_monetary_gift_form_screen.dart';
 import '../providers/firebase_auth_provider.dart';
 import '../constants/app_constants.dart';
 import '../services/onboarding_service.dart';
+import '../services/firestore_service.dart';
 import '../utils/web_launch_params.dart';
+
+// New screen imports
+import '../screens/study_guides/study_guide_screen.dart';
+import '../screens/materials/materials_screen.dart';
+import '../screens/admin/leadership_archive_screen.dart';
+
 
 const bool kMinimalRouterMode = false;
 
 // Helper function to determine if a route is accessible to guest users
 bool _isGuestAccessibleRoute(String path) {
   const guestAccessibleRoutes = [
+    '/onboarding',
     '/home',
     '/study',
     '/daily',
@@ -106,11 +118,10 @@ final routerProvider = Provider<GoRouter>((ref) {
     );
   }
 
-  final initialRoute = getInitialRoute();
-
   return GoRouter(
-    initialLocation: initialRoute ?? AppConstants.splashRoute,
-    redirect: (context, state) {
+    // Always start from splash so web/mobile behavior is consistent.
+    initialLocation: AppConstants.splashRoute,
+    redirect: (context, state) async {
       debugPrint('Router redirect start: ${state.uri.path}');
       final authState = ref.watch(authStateProvider);
       bool isAuthenticated = false;
@@ -123,6 +134,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       final isAuthRoute = state.uri.path == AppConstants.authRoute;
       final isSplashRoute = state.uri.path == AppConstants.splashRoute;
+      final isOnboardingRoute = state.uri.path == AppConstants.onboardingRoute;
       final isGuestAccessibleRoute = _isGuestAccessibleRoute(state.uri.path);
       // Removed unused variable: hasAccess
       String? selectedProjectId;
@@ -142,10 +154,31 @@ final routerProvider = Provider<GoRouter>((ref) {
         return null;
       }
 
-      // Allow guest-accessible routes regardless of authentication
-      if (isGuestAccessibleRoute) {
+      // Allow onboarding route before authentication.
+      if (isOnboardingRoute) {
+        debugPrint('Allow onboarding route');
+        return null;
+      }
+
+      // Allow guest-accessible routes for unauthenticated users.
+      if (!isAuthenticated && isGuestAccessibleRoute) {
         debugPrint('Route is guest accessible: ${state.uri.path}');
         return null;
+      }
+
+      // Enforce profile completion after login/signup before using the app.
+      if (isAuthenticated &&
+          state.uri.path != AppConstants.profileRoute &&
+          !isAuthRoute) {
+        final user = ref.read(firebaseUserProvider).value;
+        if (user != null) {
+          final profile = await FirestoreService.instance.getProfile(user.uid);
+          final bool isComplete = _isProfileComplete(profile);
+          if (!isComplete) {
+            debugPrint('Profile incomplete; redirecting to profile');
+            return AppConstants.profileRoute;
+          }
+        }
       }
 
       // If authenticated, allow access to all routes except auth
@@ -524,6 +557,29 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: AppConstants.giftInKindRoute,
             builder: (context, state) => const GiftInKindFormScreen(),
           ),
+
+          GoRoute(
+            path: AppConstants.nonMonetaryGiftRoute,
+            builder: (context, state) => const NonMonetaryGiftFormScreen(),
+          ),
+
+          // Missing Routes configured
+          GoRoute(
+            path: AppConstants.studyGuideRoute,
+            builder: (context, state) => const StudyGuideScreen(),
+          ),
+          GoRoute(
+            path: AppConstants.materialsRoute,
+            builder: (context, state) => const MaterialsScreen(),
+          ),
+          GoRoute(
+            path: AppConstants.leadershipArchiveRoute,
+            builder: (context, state) => const LeadershipArchiveScreen(),
+          ),
+          GoRoute(
+            path: AppConstants.adminEmailSettingsRoute,
+            builder: (context, state) => const AdminEmailSettingsScreen(),
+          ),
         ],
       ),
 
@@ -537,6 +593,47 @@ final routerProvider = Provider<GoRouter>((ref) {
           }
           return null;
         },
+      ),
+      GoRoute(
+        path: AppConstants.adminKidsStoriesRoute,
+        builder: (context, state) => const AdminKidsStoriesScreen(),
+        redirect: (context, state) {
+          final roleService = RoleAccessService.instance;
+          if (!roleService.canAccessAdmin()) {
+            return '/home';
+          }
+          return null;
+        },
+      ),
+      GoRoute(
+        path: AppConstants.adminKidsMissionsRoute,
+        builder: (context, state) => const AdminKidsMissionsScreen(),
+        redirect: (context, state) {
+          final roleService = RoleAccessService.instance;
+          if (!roleService.canAccessAdmin()) {
+            return '/home';
+          }
+          return null;
+        },
+      ),
+      GoRoute(
+        path: AppConstants.adminStudyGuidesRoute,
+        builder: (context, state) => const AdminStudyGuidesScreen(),
+        redirect: (context, state) {
+          final roleService = RoleAccessService.instance;
+          if (!roleService.canAccessAdmin()) {
+            return '/home';
+          }
+          return null;
+        },
+      ),
+      GoRoute(
+        path: AppConstants.leadershipArchiveRoute,
+        builder: (context, state) => const LeadershipArchiveScreen(),
+      ),
+      GoRoute(
+        path: AppConstants.materialsRoute,
+        builder: (context, state) => const MaterialsScreen(),
       ),
     ],
 
@@ -576,3 +673,24 @@ final routerProvider = Provider<GoRouter>((ref) {
     ),
   );
 });
+
+bool _isProfileComplete(Map<String, dynamic>? profile) {
+  if (profile == null) return false;
+
+  bool hasValue(String key) {
+    final value = profile[key];
+    return value is String && value.trim().isNotEmpty;
+  }
+
+  const requiredFields = [
+    'full_name',
+    'phone_number',
+    'location',
+    'local_church',
+    'occupation',
+    'skills',
+    'local_chapter',
+  ];
+
+  return requiredFields.every(hasValue);
+}

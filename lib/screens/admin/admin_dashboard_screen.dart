@@ -12,6 +12,9 @@ import 'content_management_screen.dart';
 import '../../data/podcast_data.dart';
 import 'storage_admin_screen.dart';
 import '../../services/firebase_database_service.dart';
+import '../../services/admin_service.dart';
+import '../../services/admin_notification_service.dart';
+
 import 'package:url_launcher/url_launcher.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -27,7 +30,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     return const RoleProtectedScreen(
       requiredRole: 'admin',
       screenName: 'Admin Dashboard',
-      bypassGuard: true, // Development mode bypass
       child: _AdminDashboardContent(),
     );
   }
@@ -354,7 +356,8 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
             tooltip: 'Export Chat Messages',
             onPressed: () async {
               try {
-                final data = await FirebaseDatabaseService.instance.exportChatMessages(
+                final data =
+                    await FirebaseDatabaseService.instance.exportChatMessages(
                   type: 'messaging',
                   limitPerChannel: 500,
                 );
@@ -375,19 +378,24 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                                 Padding(
                                   padding: const EdgeInsets.only(bottom: 8),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Text('CID: ${item['cid']} (${item['count']} messages)'),
+                                      Text(
+                                          'CID: ${item['cid']} (${item['count']} messages)'),
                                       Text('${item['path']}'),
                                       if (item['url'] != null)
                                         TextButton(
                                           onPressed: () async {
                                             final url = Uri.parse(item['url']);
                                             if (await canLaunchUrl(url)) {
-                                              await launchUrl(url, mode: LaunchMode.externalApplication);
+                                              await launchUrl(url,
+                                                  mode: LaunchMode
+                                                      .externalApplication);
                                             }
                                           },
-                                          child: const Text('Open Download Link'),
+                                          child:
+                                              const Text('Open Download Link'),
                                         ),
                                     ],
                                   ),
@@ -664,8 +672,26 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                   () => _navigateToContentManagement('announcements'),
                 ),
                 _buildActionTile(
-                  'Kids Content',
-                  'Manage kids stories, projects, and resources',
+                  'Zero-Code Kids Stories',
+                  'Upload PDF to extract text or type in content and upload media (choose which to use)',
+                  Icons.auto_stories,
+                  () => context.go(AppConstants.adminKidsStoriesRoute),
+                ),
+                _buildActionTile(
+                  'Zero-Code Kids Missions',
+                  'Upload PDF to extract text or type in content and upload media (choose which to use)',
+                  Icons.assignment_turned_in,
+                  () => context.go(AppConstants.adminKidsMissionsRoute),
+                ),
+                _buildActionTile(
+                  'Zero-Code Study Guides',
+                  'Upload PDF to extract text or type in content and upload media (choose which to use)',
+                  Icons.menu_book,
+                  () => context.go(AppConstants.adminStudyGuidesRoute),
+                ),
+                _buildActionTile(
+                  'Kids Content (Legacy)',
+                  'Manage kids stories, projects, and resources manually',
                   Icons.child_care_outlined,
                   () => context.go(AppConstants.kidsContentAdminRoute),
                 ),
@@ -690,6 +716,12 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                   'Assign coordinators to chapters',
                   Icons.assignment_ind_outlined,
                   () => _navigateToCoordinatorAssignment(),
+                ),
+                _buildActionTile(
+                  'Leadership Archive',
+                  'View historical leadership records and past administrations',
+                  Icons.history_edu,
+                  () => context.go(AppConstants.leadershipArchiveRoute),
                 ),
                 _buildActionTile(
                   'Chapter Reports',
@@ -746,12 +778,6 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                   'Configure app settings and preferences',
                   Icons.tune_outlined,
                   () => _navigateToAppSettings(),
-                ),
-                _buildActionTile(
-                  'Admin Email Settings',
-                  'Configure recipients for admin notifications',
-                  Icons.email_outlined,
-                  () => context.go(AppConstants.adminEmailSettingsRoute),
                 ),
                 _buildActionTile(
                   'Backup & Restore',
@@ -875,15 +901,15 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
 
   // Navigation methods (placeholder implementations)
   void _navigateToUserManagement() {
-    _showComingSoon('User Management');
+    context.go(AppConstants.roleManagementRoute);
   }
 
   void _navigateToRoleManagement() {
-    _showComingSoon('Role Management');
+    context.go(AppConstants.roleManagementRoute);
   }
 
   void _navigateToArchivedUsers() {
-    _showComingSoon('Archived Users');
+    context.go(AppConstants.userArchiveRoute);
   }
 
   void _navigateToContentManagement(String type) {

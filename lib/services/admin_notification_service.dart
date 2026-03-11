@@ -3,7 +3,6 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/logger.dart';
 import '../models/app_models.dart';
-import 'admin_email_settings_service.dart';
 import 'approval_link_service.dart';
 
 /// Service for sending admin notifications for new user registrations
@@ -26,8 +25,7 @@ class AdminNotificationService {
       _logger.info(
           'Sending admin notification for new user: ${userProfile.email}');
       const emailSubject = 'New User Registration - ALIVE-NG App';
-      final recipients =
-          await AdminEmailSettingsService.instance.getRecipients();
+      final recipients = ['alivenigeria2011@gmail.com']; // Fallback super admin
       final token = await ApprovalLinkService.instance
           .generateToken(userId: userProfile.id);
       final approvalUrl = ApprovalLinkService.instance.buildApprovalUrl(
@@ -220,8 +218,7 @@ class AdminNotificationService {
       const subject = 'User Approval Status Changed - ALIVE-NG App';
       final body =
           _buildApprovalChangeEmailBody(userProfile, newStatus, reason);
-      final recipients =
-          await AdminEmailSettingsService.instance.getRecipients();
+      final recipients = ['alivenigeria2011@gmail.com']; // Fallback super admin
 
       bool anySuccess = false;
       for (final to in recipients) {

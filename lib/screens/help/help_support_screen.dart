@@ -43,13 +43,13 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
         title: translate('help_support'),
         showBackButton: true,
         backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Colors.white,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         elevation: 0,
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: Colors.white,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
+          indicatorColor: Theme.of(context).colorScheme.onPrimary,
+          labelColor: Theme.of(context).colorScheme.onPrimary,
+          unselectedLabelColor: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.7),
           tabs: [
             Tab(
               icon: const Icon(Icons.help_outline),
@@ -552,7 +552,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
                 emailController.text, selectedFeedbackType),
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.primary,
-              foregroundColor: Colors.white,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
               padding: EdgeInsets.symmetric(
                 vertical: ResponsiveUtils.getResponsiveSpacing(context, 16),
               ),
@@ -663,10 +663,10 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
     // Here you would typically send the feedback to your backend
     // For now, we'll just show a success message
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         content:
             Text('Thank you for your feedback! We will review it shortly.'),
-        backgroundColor: Colors.green,
+        backgroundColor: Theme.of(context).colorScheme.tertiary,
       ),
     );
 

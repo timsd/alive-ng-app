@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'admin_claims_preview_screen.dart';
 import 'kids_content_admin_screen.dart';
-import 'dev_settings_dialog.dart';
 import '../../services/role_access_service.dart';
 
 class AdminPreviewHome extends ConsumerStatefulWidget {
@@ -14,25 +13,7 @@ class AdminPreviewHome extends ConsumerStatefulWidget {
 
 class _AdminPreviewHomeState extends ConsumerState<AdminPreviewHome> {
   final RoleAccessService _roleService = RoleAccessService.instance;
-  bool _showDevSettings = false;
-  
-  @override
-  void initState() {
-    super.initState();
-    _checkRoles();
-  }
-  
-  Future<void> _checkRoles() async {
-    final hasAdminRole = _roleService.hasRole('admin');
-    // Removed unused local variable; kid admin role enforced at route level
-    
-    if (mounted) {
-      setState(() {
-        _showDevSettings = hasAdminRole;
-      });
-    }
-  }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -50,18 +31,7 @@ class _AdminPreviewHomeState extends ConsumerState<AdminPreviewHome> {
               );
             },
           ),
-          // Only show dev settings if user has admin role
-          if (_showDevSettings)
-            IconButton(
-              icon: const Icon(Icons.tune),
-              tooltip: 'Developer Settings',
-              onPressed: () async {
-                await showDialog(
-                  context: context,
-                  builder: (_) => const DevSettingsDialog(),
-                );
-              },
-            ),
+
         ],
       ), 
       body: LayoutBuilder(

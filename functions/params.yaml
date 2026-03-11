@@ -5,3 +5,14 @@ params:
     type: string
   - name: PAYSTACK_SECRET_KEY
     type: string
+  - name: RESEND_API_KEY
+    type: string
+  - name: ENFORCE_APPCHECK
+    type: string
+    default: "false"
+  - name: RECEIPT_SENDER_EMAIL
+    type: string
+    default: "onboarding@resend.dev"
+  - name: ALIVE_LOGO_URL
+    type: string
+    default: "https://alive.ng/logo.png"

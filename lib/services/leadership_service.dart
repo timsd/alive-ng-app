@@ -340,6 +340,9 @@ class LeadershipService {
       final currentUserId = _authService.currentUser?.uid;
       if (currentUserId == null) throw AuthException('User not authenticated');
 
+      // Get current record before completion for transition tracking
+      final currentRecord = await getRecordById(recordId);
+
       final updates = {
         'status': ServiceStatus.completed.name,
         'completed_at': DateTime.now().toIso8601String(),
@@ -355,6 +358,22 @@ class LeadershipService {
           .collection('leadership_records')
           .doc(recordId)
           .update(updates);
+
+      // Record the leadership transition
+      if (currentRecord != null) {
+        await recordLeadershipTransition(LeadershipTransition(
+          id: _uuid.v4(),
+          userId: currentRecord.userId,
+          fromPosition: currentRecord.position,
+          toPosition: currentRecord.position,
+          fromPositionTitle: currentRecord.positionTitle,
+          toPositionTitle: currentRecord.positionTitle,
+          transitionDate: DateTime.now(),
+          reason: completionNotes ?? 'Service completed',
+          approvedBy: currentUserId,
+          createdAt: DateTime.now(),
+        ));
+      }
 
       // Get updated record
       final docSnapshot = await FirebaseFirestore.instance
@@ -503,6 +522,104 @@ class LeadershipService {
       }).toList();
     } catch (e) {
       throw DatabaseException('Failed to fetch user active positions',
+          originalError: e);
+    }
+  }
+
+  /// Get a comprehensive [LeadershipSummary] for a user, including service
+  /// history and transitions.
+  Future<LeadershipSummary> getUserLeadershipSummary(String userId) async {
+    try {
+      // Fetch all records for the user
+      final recordsSnapshot = await FirebaseFirestore.instance
+          .collection('leadership_records')
+          .where('user_id', isEqualTo: userId)
+          .orderBy('created_at', descending: true)
+          .get();
+
+      final records = recordsSnapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return LeadershipRecord.fromJson(data);
+      }).toList();
+
+      // Fetch transitions for the user
+      final transitionsSnapshot = await FirebaseFirestore.instance
+          .collection('leadership_transitions')
+          .where('user_id', isEqualTo: userId)
+          .orderBy('transition_date', descending: true)
+          .get();
+
+      final transitions = transitionsSnapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return LeadershipTransition.fromJson(data);
+      }).toList();
+
+      // Determine current position
+      final activeRecord = records.where((r) => r.isActive).firstOrNull;
+      final userName = records.isNotEmpty ? records.first.userName : '';
+
+      // Calculate total years of service
+      int totalYears = 0;
+      for (final record in records) {
+        totalYears += record.yearsOfService;
+      }
+
+      return LeadershipSummary(
+        userId: userId,
+        userName: userName,
+        currentPosition: activeRecord?.position,
+        currentPositionTitle: activeRecord?.positionTitle,
+        currentPositionStartDate: activeRecord?.startDate,
+        serviceHistory: records,
+        totalYearsOfService: totalYears,
+        totalPositionsHeld: records.length,
+        transitions: transitions,
+      );
+    } catch (e) {
+      _logger.error('Failed to get user leadership summary', e);
+      throw DatabaseException('Failed to get user leadership summary',
+          originalError: e);
+    }
+  }
+
+  /// Record a [LeadershipTransition] when a leader changes positions
+  /// or completes service.
+  Future<LeadershipTransition> recordLeadershipTransition(
+      LeadershipTransition transition) async {
+    try {
+      final data = transition.toJson();
+      final docRef = await FirebaseFirestore.instance
+          .collection('leadership_transitions')
+          .add(data);
+
+      data['id'] = docRef.id;
+      return LeadershipTransition.fromJson(data);
+    } catch (e) {
+      _logger.error('Failed to record leadership transition', e);
+      throw DatabaseException('Failed to record leadership transition',
+          originalError: e);
+    }
+  }
+
+  /// Get transition history for a user.
+  Future<List<LeadershipTransition>> getUserTransitions(String userId) async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('leadership_transitions')
+          .where('user_id', isEqualTo: userId)
+          .orderBy('transition_date', descending: true)
+          .get();
+
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return LeadershipTransition.fromJson(data);
+      }).toList();
+    } catch (e) {
+      _logger.error('Failed to get user transitions', e);
+      throw DatabaseException('Failed to get user transitions',
           originalError: e);
     }
   }

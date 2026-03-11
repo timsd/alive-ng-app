@@ -238,7 +238,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                       setting['display_name'] ?? key,
                       style: TextStyle(
                         fontWeight: FontWeight.w500,
-                        color: isActive ? Colors.black : Colors.grey.shade600,
+                        color: isActive ? Theme.of(context).colorScheme.onSurface : Colors.grey.shade600,
                       ),
                     ),
                     if (setting['description'] != null) ...[

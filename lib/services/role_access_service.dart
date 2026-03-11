@@ -18,12 +18,18 @@ class RoleAccessService {
 
   UserProfile? _cachedUserProfile;
   DateTime? _cacheTimestamp;
+  bool? _cachedAdminClaim;
+  DateTime? _claimsTimestamp;
+  String? _claimsUserId;
 
   /// User roles in hierarchical order (lowest to highest privilege)
   static const List<String> _roleHierarchy = [
     'member',
     'coordinator',
     'leader',
+    'director',
+    'bod',
+    'trustee',
     'admin'
   ];
 
@@ -115,7 +121,38 @@ class RoleAccessService {
       return true;
     }
 
-    return hasRole('admin');
+    // ignore: discarded_futures
+    _refreshClaimsCache();
+    final currentUid = _authService.currentUser?.uid;
+    final claimsForCurrentUser = _claimsUserId == currentUid;
+    final hasClaim = claimsForCurrentUser && _cachedAdminClaim == true;
+    final hasRoleAccess = hasRole('admin');
+    return hasClaim || (hasRoleAccess && !claimsForCurrentUser);
+  }
+
+  Future<void> _refreshClaimsCache() async {
+    try {
+      final now = DateTime.now();
+      if (_claimsTimestamp != null &&
+          now.difference(_claimsTimestamp!).inMinutes < 5) {
+        return;
+      }
+
+      final user = _authService.currentUser;
+      if (user == null) {
+        _cachedAdminClaim = null;
+        _claimsTimestamp = now;
+        _claimsUserId = null;
+        return;
+      }
+
+      final token = await user.getIdTokenResult(true);
+      _cachedAdminClaim = token.claims?['admin'] == true;
+      _claimsTimestamp = now;
+      _claimsUserId = user.uid;
+    } catch (e) {
+      _logger.warning('Could not refresh claims cache: $e');
+    }
   }
 
   /// Check if user can access leadership features
@@ -143,6 +180,9 @@ class RoleAccessService {
     final currentRole = getCurrentUserRole();
     return currentRole == 'admin' ||
         currentRole == 'leader' ||
+        currentRole == 'director' ||
+        currentRole == 'bod' ||
+        currentRole == 'trustee' ||
         _isUserBoardMember();
   }
 
@@ -205,7 +245,11 @@ class RoleAccessService {
     if (profile == null) return false;
 
     // Check if user has leadership role or admin role (board members)
-    return profile.role == 'leader' || profile.role == 'admin';
+    return profile.role == 'leader' ||
+        profile.role == 'director' ||
+        profile.role == 'bod' ||
+        profile.role == 'trustee' ||
+        profile.role == 'admin';
   }
 
   /// Check if user is archived
@@ -393,6 +437,9 @@ class RoleAccessService {
   void clearCache() {
     _cachedUserProfile = null;
     _cacheTimestamp = null;
+    _cachedAdminClaim = null;
+    _claimsTimestamp = null;
+    _claimsUserId = null;
   }
 
   /// Validate access and throw exception if denied

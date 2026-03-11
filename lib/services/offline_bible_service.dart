@@ -433,35 +433,72 @@ class OfflineBibleService {
 
   Future<BibleChapter?> _loadChapterFromAssets(
       String book, int chapter, String version, String language) async {
-    try {
-      final String chapterJson = await rootBundle.loadString(
-          'assets/bible/$language/$version/${book.toLowerCase()}_$chapter.json');
-      final Map<String, dynamic> chapterData = json.decode(chapterJson);
+    final candidates =
+        _buildChapterAssetCandidates(book, chapter, version, language);
+    Object? lastError;
+    for (final assetPath in candidates) {
+      try {
+        final String chapterJson = await rootBundle.loadString(assetPath);
+        final Map<String, dynamic> chapterData = json.decode(chapterJson);
 
-      // Convert to BibleChapter object
-      final verses = (chapterData['verses'] as List<dynamic>)
-          .map((v) => BibleVerse(
-                number: v['verse'],
-                text: v['text'],
-                footnotes: v['footnotes']?.cast<String, String>(),
-                crossReferences: v['crossReferences']?.cast<String>(),
-              ))
-          .toList();
+        final verses = (chapterData['verses'] as List<dynamic>)
+            .map((v) => BibleVerse(
+                  number: v['verse'],
+                  text: v['text'],
+                  footnotes: v['footnotes']?.cast<String, String>(),
+                  crossReferences: v['crossReferences']?.cast<String>(),
+                ))
+            .toList();
 
-      return BibleChapter(
-        book: book,
-        chapter: chapter,
-        version: version,
-        language: language,
-        verses: verses,
-        metadata: chapterData['metadata'],
-        lastUpdated: DateTime.now(),
-      );
-    } catch (e) {
-      _logger.error('Error loading chapter from assets', e);
-      throw NotFoundException('Failed to load chapter from assets',
-          originalError: e);
+        return BibleChapter(
+          book: book,
+          chapter: chapter,
+          version: version,
+          language: language,
+          verses: verses,
+          metadata: chapterData['metadata'],
+          lastUpdated: DateTime.now(),
+        );
+      } catch (e) {
+        lastError = e;
+      }
     }
+    _logger.error(
+      'Error loading chapter from assets. Tried ${candidates.length} candidates',
+      lastError,
+    );
+    throw NotFoundException('Failed to load chapter from assets',
+        originalError: lastError);
+  }
+
+  List<String> _buildChapterAssetCandidates(
+      String book, int chapter, String version, String language) {
+    final raw = book.trim();
+    final lower = raw.toLowerCase();
+    final collapsed = lower.replaceAll(RegExp(r'\s+'), ' ').trim();
+    final underscore = collapsed.replaceAll(' ', '_');
+    final dash = collapsed.replaceAll(' ', '-');
+    final noPunct = collapsed
+        .replaceAll("'", '')
+        .replaceAll('’', '')
+        .replaceAll('.', '')
+        .replaceAll(',', '')
+        .replaceAll(':', '')
+        .replaceAll(';', '');
+    final noPunctUnderscore = noPunct.replaceAll(' ', '_');
+
+    final names = <String>{
+      lower,
+      collapsed,
+      underscore,
+      dash,
+      noPunct,
+      noPunctUnderscore,
+    }.where((n) => n.isNotEmpty);
+
+    return names
+        .map((name) => 'assets/bible/$language/$version/${name}_$chapter.json')
+        .toList();
   }
 
   Future<List<BibleBook>> _fetchBooksFromFirebase(String language) async {
@@ -603,6 +640,87 @@ class OfflineBibleService {
       return codes.toList()..sort();
     } catch (e) {
       // If manifest unavailable, return empty to fall back to defaults
+      return [];
+    }
+  }
+
+  // ---- BibleReadingPlan / BibleReadingDay integration ----
+
+  /// Create a new [BibleReadingPlan] for a user.
+  Future<BibleReadingPlan> createReadingPlan({
+    required String userId,
+    required String name,
+    required String description,
+    required List<BibleReadingDay> days,
+    String version = 'KJV',
+  }) async {
+    try {
+      final plan = BibleReadingPlan(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        name: name,
+        description: description,
+        days: days,
+        totalDays: days.length,
+        startDate: DateTime.now(),
+        metadata: {'version': version},
+      );
+
+      final prefs = await SharedPreferences.getInstance();
+      final plans = prefs.getStringList('reading_plans_$userId') ?? [];
+      plans.add(json.encode(plan.toJson()));
+      await prefs.setStringList('reading_plans_$userId', plans);
+
+      return plan;
+    } catch (e) {
+      _logger.error('Error creating reading plan', e);
+      throw DatabaseException('Failed to create reading plan',
+          originalError: e);
+    }
+  }
+
+  /// Get all [BibleReadingPlan]s for a user.
+  Future<List<BibleReadingPlan>> getUserReadingPlans(String userId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final plans = prefs.getStringList('reading_plans_$userId') ?? [];
+      return plans.map((planJson) {
+        return BibleReadingPlan.fromJson(
+            json.decode(planJson) as Map<String, dynamic>);
+      }).toList();
+    } catch (e) {
+      _logger.error('Error getting reading plans', e);
+      return [];
+    }
+  }
+
+  /// Mark a [BibleReadingDay] as completed within a plan.
+  Future<void> completeReadingDay({
+    required String userId,
+    required String planId,
+    required int dayNumber,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'reading_plan_progress_${userId}_$planId';
+      final completedDays = prefs.getStringList(key) ?? [];
+      if (!completedDays.contains(dayNumber.toString())) {
+        completedDays.add(dayNumber.toString());
+        await prefs.setStringList(key, completedDays);
+      }
+    } catch (e) {
+      _logger.error('Error completing reading day', e);
+    }
+  }
+
+  /// Get completed day numbers for a reading plan.
+  Future<List<int>> getCompletedReadingDays(
+      String userId, String planId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'reading_plan_progress_${userId}_$planId';
+      final completedDays = prefs.getStringList(key) ?? [];
+      return completedDays.map((d) => int.tryParse(d) ?? 0).toList();
+    } catch (e) {
       return [];
     }
   }

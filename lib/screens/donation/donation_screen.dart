@@ -19,7 +19,7 @@ class DonationScreen extends ConsumerStatefulWidget {
 
 class _DonationScreenState extends ConsumerState<DonationScreen>
     with TickerProviderStateMixin {
-  bool _isMonthlySelected = false;
+  bool _isMonthlySelected = true;
   String _selectedCurrency = 'USD';
   double _selectedAmount = 0;
   bool _coverProcessingFees = false;
@@ -37,9 +37,9 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       {'amount': 100, 'label': '\$100'},
     ],
     'NGN': [
-      {'amount': 20000, 'label': '₦20K'},
-      {'amount': 50000, 'label': '₦50K'},
-      {'amount': 100000, 'label': '₦100K'},
+      {'amount': 20000, 'label': '\u20A620K'},
+      {'amount': 50000, 'label': '\u20A650K'},
+      {'amount': 100000, 'label': '\u20A6100K'},
     ],
   };
 
@@ -86,7 +86,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
-          '🤍 Support ALIVE',
+          'Support ALIVE',
           style: TextStyle(
             fontSize: ResponsiveUtils.getResponsiveValue(
               context: context,
@@ -97,8 +97,11 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+        backgroundColor:
+            theme.appBarTheme.backgroundColor ?? theme.colorScheme.surface,
+        foregroundColor:
+            theme.appBarTheme.foregroundColor ?? theme.colorScheme.onSurface,
+        elevation: 0.5,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.pop(),
@@ -301,8 +304,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                 'Give Monthly',
                 'Sustain our mission',
                 Icons.refresh,
-                !_isMonthlySelected,
-                () => setState(() => _isMonthlySelected = false),
+                _isMonthlySelected,
+                () => setState(() => _isMonthlySelected = true),
               ),
             ),
             SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 12)),
@@ -313,8 +316,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                 'One-Time Donation',
                 'Make an impact today',
                 Icons.favorite,
-                _isMonthlySelected,
-                () => setState(() => _isMonthlySelected = true),
+                !_isMonthlySelected,
+                () => setState(() => _isMonthlySelected = false),
               ),
             ),
           ],
@@ -537,7 +540,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                   desktop: 22,
                 ),
                 fontWeight: FontWeight.bold,
-                color: isSelected ? Colors.white : theme.colorScheme.onSurface,
+                color: isSelected ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface,
               ),
             ),
           ),
@@ -693,7 +696,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                 : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: theme.primaryColor,
-              foregroundColor: Colors.white,
+              foregroundColor: theme.colorScheme.onPrimary,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -956,6 +959,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
             'Non-Monetary Gifts',
             'Share your skills and time with our ministry',
             Icons.volunteer_activism,
+            onTap: () => context.go(AppConstants.nonMonetaryGiftRoute),
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
           _buildOtherGivingOption(
@@ -1102,6 +1106,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
         amount: totalAmount,
         currency: currency,
         email: donation.userEmail,
+        isRecurringMonthly: isMonthly,
       );
 
       if (paymentResult['success'] == true) {
@@ -1110,34 +1115,74 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
         showDialog(
           context: rootCtx,
           barrierDismissible: false,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Thank You!'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.check_circle_outline,
-                    color: Colors.green, size: 60),
-                const SizedBox(height: 16),
-                const Text('Your donation was successful.',
-                    textAlign: TextAlign.center),
-                const SizedBox(height: 8),
-                Text(
-                  'Reference: ${paymentResult['transaction_id'] ?? donation.id}',
-                  style: const TextStyle(fontSize: 12),
-                  textAlign: TextAlign.center,
+          builder: (ctx) {
+            final dialogTheme = Theme.of(ctx);
+            return AlertDialog(
+              backgroundColor: dialogTheme.dialogBackgroundColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: Text(
+                'Thank You!',
+                style: TextStyle(
+                  color: dialogTheme.colorScheme.onSurface,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: dialogTheme.colorScheme.primaryContainer,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.check_circle_outline,
+                        color: dialogTheme.colorScheme.primary, size: 60),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Your donation was successful.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: dialogTheme.colorScheme.onSurface,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Reference: ${paymentResult['transaction_id'] ?? donation.id}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: dialogTheme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+              actions: [
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      rootCtx.pop();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: dialogTheme.colorScheme.primary,
+                      foregroundColor: dialogTheme.colorScheme.onPrimary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text('Close'),
+                  ),
                 ),
               ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(ctx).pop();
-                  rootCtx.pop();
-                },
-                child: const Text('Close'),
-              ),
-            ],
-          ),
+            );
+          },
         );
       } else {
         // Show error

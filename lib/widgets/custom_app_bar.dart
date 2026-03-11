@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../utils/layout_fix_utils.dart';
 import '../providers/theme_provider.dart';
 import '../providers/language_provider.dart';
 import '../utils/i18n_service.dart';
 import 'donation_button.dart';
 import 'custom_image.dart';
+import '../constants/app_constants.dart';
 
 class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
   final String? title;
@@ -115,8 +117,13 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
           context: context,
         ),
         onPressed: onBackPressed ?? () {
-          if (Navigator.of(context).canPop()) {
-            Navigator.of(context).pop();
+          final navigator = Navigator.of(context);
+          if (navigator.canPop()) {
+            navigator.pop();
+            return;
+          }
+          if (context.mounted) {
+            context.go(AppConstants.homeRoute);
           }
         },
       );

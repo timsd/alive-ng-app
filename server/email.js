@@ -1,25 +1,36 @@
-import nodemailer from 'nodemailer';
+// email.js — Send emails via Resend API
+// Requires RESEND_API_KEY environment variable.
 
-export async function sendTransactionalEmail({ to, subject, html }) {
-  const user = process.env.BREVO_SMTP_USER;
-  const pass = process.env.BREVO_SMTP_PASS;
-  const from = process.env.SENDER_EMAIL || 'noreply@alivenigeria.org';
+const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
+const SENDER_EMAIL = process.env.SENDER_EMAIL || 'onboarding@resend.dev';
 
-  if (!user || !pass) {
-    throw new Error('Missing BREVO_SMTP_USER/BREVO_SMTP_PASS env');
+/**
+ * Send a transactional email via Resend.
+ * @param {string} to - Recipient email address.
+ * @param {string} subject - Email subject.
+ * @param {string} html - HTML body.
+ * @returns {Promise<void>}
+ */
+export async function sendTransactionalEmail(to, subject, html) {
+  if (!RESEND_API_KEY) {
+    console.warn('sendTransactionalEmail: RESEND_API_KEY not set, skipping');
+    return;
   }
-
-  const transporter = nodemailer.createTransport({
-    host: 'smtp-relay.brevo.com',
-    port: 587,
-    secure: false,
-    auth: { user, pass },
+  const resp = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: SENDER_EMAIL,
+      to: [to],
+      subject,
+      html,
+    }),
   });
-
-  await transporter.sendMail({
-    from,
-    to,
-    subject,
-    html,
-  });
+  if (!resp.ok) {
+    const body = await resp.text();
+    throw new Error(`Resend email failed (${resp.status}): ${body}`);
+  }
 }

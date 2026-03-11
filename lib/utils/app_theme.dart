@@ -33,69 +33,69 @@ class AppTheme {
   static const Color darkBorderColor = darkBorder;
   
   // Core spiritual palette - Light Theme
-  static const Color lightBackground = Color(0xFFFBF9F7); // hsl(43 25% 97%)
-  static const Color lightForeground = Color(0xFF2D3748); // hsl(220 40% 15%)
+  static const Color lightBackground = Color(0xFFF8FAFC); // Crisp, cool white
+  static const Color lightForeground = Color(0xFF0F172A); // Deep slate black
   
-  static const Color lightCard = Color(0xFFFCFBF9); // hsl(45 20% 98%)
-  static const Color lightCardForeground = Color(0xFF2D3748); // hsl(220 40% 15%)
+  static const Color lightCard = Color(0xFFFFFFFF); // Pure white
+  static const Color lightCardForeground = Color(0xFF0F172A); 
   
   // Primary - Deep spiritual blue
-  static const Color lightPrimary = Color(0xFF2D3748); // hsl(220 45% 25%)
-  static const Color lightPrimaryForeground = Color(0xFFF7F5F0); // hsl(45 30% 95%)
-  static const Color lightPrimaryGlow = Color(0xFF4A5568); // hsl(220 60% 35%)
+  static const Color lightPrimary = Color(0xFF1E3A8A); // Vibrant deep blue
+  static const Color lightPrimaryForeground = Color(0xFFFFFFFF); 
+  static const Color lightPrimaryGlow = Color(0xFF3B82F6); 
   
   // Secondary - Warm divine gold
-  static const Color lightSecondary = Color(0xFFF7E6A3); // hsl(43 70% 85%)
-  static const Color lightSecondaryForeground = Color(0xFF2D3748); // hsl(220 45% 25%)
-  static const Color lightGold = Color(0xFFE6B800); // hsl(45 85% 60%)
-  static const Color lightGoldForeground = Color(0xFF1A202C); // hsl(220 40% 20%)
+  static const Color lightSecondary = Color(0xFFFEF08A); 
+  static const Color lightSecondaryForeground = Color(0xFF1E3A8A); 
+  static const Color lightGold = Color(0xFFEAB308); // Brilliant gold
+  static const Color lightGoldForeground = Color(0xFFFFFFFF); 
   
   // Accent - Life/growth green
-  static const Color lightAccent = Color(0xFFE6F4EA); // hsl(140 30% 85%)
-  static const Color lightAccentForeground = Color(0xFF1A202C); // hsl(220 40% 20%)
-  static const Color lightEmerald = Color(0xFF38A169); // hsl(150 60% 45%)
-  static const Color lightEmeraldForeground = Color(0xFFF7F5F0); // hsl(45 30% 95%)
+  static const Color lightAccent = Color(0xFFDCFCE7); 
+  static const Color lightAccentForeground = Color(0xFF14532D); 
+  static const Color lightEmerald = Color(0xFF10B981); // Vibrant emerald
+  static const Color lightEmeraldForeground = Color(0xFFFFFFFF); 
   
-  static const Color lightMuted = Color(0xFFF1EDE6); // hsl(43 15% 92%)
-  static const Color lightMutedForeground = Color(0xFF718096); // hsl(220 20% 55%)
+  static const Color lightMuted = Color(0xFFF1F5F9); 
+  static const Color lightMutedForeground = Color(0xFF64748B); // Slate 500
   
-  static const Color lightDestructive = Color(0xFFE53E3E); // hsl(0 70% 55%)
-  static const Color lightDestructiveForeground = Color(0xFFF7F5F0); // hsl(45 30% 95%)
+  static const Color lightDestructive = Color(0xFFEF4444); 
+  static const Color lightDestructiveForeground = Color(0xFFFFFFFF); 
   
-  static const Color lightBorder = Color(0xFFE2D8CC); // hsl(43 20% 88%)
-  static const Color lightInput = Color(0xFFE2D8CC); // hsl(43 20% 88%)
-  static const Color lightRing = Color(0xFF2D3748); // hsl(220 45% 25%)
+  static const Color lightBorder = Color(0xFFE2E8F0); 
+  static const Color lightInput = Color(0xFFE2E8F0); 
+  static const Color lightRing = Color(0xFF1E3A8A); 
   
-  // Dark mode - peaceful night theme
-  static const Color darkBackground = Color(0xFF0F1419); // hsl(220 35% 8%)
-  static const Color darkForeground = Color(0xFFE6E1D6); // hsl(45 25% 90%)
+  // Dark mode - peaceful night theme (High contrast, OLED friendly)
+  static const Color darkBackground = Color(0xFF0B0F19); // Rich, deep OLED blue-black
+  static const Color darkForeground = Color(0xFFF8FAFC); // Brilliant white
   
-  static const Color darkCard = Color(0xFF1A1F2E); // hsl(220 30% 10%)
-  static const Color darkCardForeground = Color(0xFFE6E1D6); // hsl(45 25% 90%)
+  static const Color darkCard = Color(0xFF151D2F); // Elevated dark surface
+  static const Color darkCardForeground = Color(0xFFF8FAFC); 
   
-  static const Color darkPrimary = Color(0xFFD4AF37); // hsl(45 70% 75%)
-  static const Color darkPrimaryForeground = Color(0xFF1A1F2E); // hsl(220 35% 12%)
-  static const Color darkPrimaryGlow = Color(0xFFB8860B); // hsl(45 80% 65%)
+  static const Color darkPrimary = Color(0xFFFDE047); // Brilliant bright gold/yellow
+  static const Color darkPrimaryForeground = Color(0xFF0B0F19); // Deep dark text on primary
+  static const Color darkPrimaryGlow = Color(0xFFEAB308); 
   
-  static const Color darkSecondary = Color(0xFF2D3748); // hsl(220 25% 15%)
-  static const Color darkSecondaryForeground = Color(0xFFD4D4D8); // hsl(45 25% 85%)
-  static const Color darkGold = Color(0xFFB8860B); // hsl(45 75% 65%)
-  static const Color darkGoldForeground = Color(0xFF1A1F2E); // hsl(220 35% 12%)
+  static const Color darkSecondary = Color(0xFF1E293B); 
+  static const Color darkSecondaryForeground = Color(0xFFF1F5F9); 
+  static const Color darkGold = Color(0xFFFDE047); // Brilliant gold
+  static const Color darkGoldForeground = Color(0xFF0B0F19); 
   
-  static const Color darkAccent = Color(0xFF2A2E3A); // hsl(220 20% 18%)
-  static const Color darkAccentForeground = Color(0xFFD4D4D8); // hsl(45 25% 85%)
-  static const Color darkEmerald = Color(0xFF48BB78); // hsl(150 50% 55%)
-  static const Color darkEmeraldForeground = Color(0xFF1A1F2E); // hsl(220 35% 12%)
+  static const Color darkAccent = Color(0xFF1E293B); 
+  static const Color darkAccentForeground = Color(0xFFF8FAFC); 
+  static const Color darkEmerald = Color(0xFF10B981); 
+  static const Color darkEmeraldForeground = Color(0xFFFFFFFF); 
   
-  static const Color darkMuted = Color(0xFF1E2532); // hsl(220 25% 12%)
-  static const Color darkMutedForeground = Color(0xFF9CA3AF); // hsl(45 15% 65%)
+  static const Color darkMuted = Color(0xFF1E293B); // Slate 800
+  static const Color darkMutedForeground = Color(0xFF94A3B8); // Brilliant slate 400
   
-  static const Color darkDestructive = Color(0xFFE53E3E); // hsl(0 60% 55%)
-  static const Color darkDestructiveForeground = Color(0xFFE6E1D6); // hsl(45 25% 90%)
+  static const Color darkDestructive = Color(0xFFEF4444); 
+  static const Color darkDestructiveForeground = Color(0xFFFFFFFF); 
   
-  static const Color darkBorder = Color(0xFF2A2E3A); // hsl(220 25% 18%)
-  static const Color darkInput = Color(0xFF2A2E3A); // hsl(220 25% 18%)
-  static const Color darkRing = Color(0xFFD4AF37); // hsl(45 70% 75%)
+  static const Color darkBorder = Color(0xFF334155); // Sharper borders
+  static const Color darkInput = Color(0xFF1E293B); 
+  static const Color darkRing = Color(0xFFFDE047); 
   
   // Spiritual gradients
   static const LinearGradient gradientPrimary = LinearGradient(

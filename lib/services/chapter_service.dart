@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
 import '../models/chapter_models.dart';
+import '../models/app_models.dart' show TaskAssignment;
 import '../utils/app_exception.dart';
 
 class ChapterService {
@@ -13,7 +14,7 @@ class ChapterService {
 
   // Chapter Management
   Future<List<Chapter>> getChapters({
-    ChapterType? type,
+    WorkersType? type,
     bool? isActive,
     String? searchQuery,
   }) async {
@@ -173,22 +174,71 @@ class ChapterService {
   // Member Management
   Future<List<ChapterMember>> getChapterMembers(String chapterId,
       {bool? isActive}) async {
-    return [];
+    try {
+      Query query = _firestore
+          .collection('chapter_members')
+          .where('chapter_id', isEqualTo: chapterId);
+
+      if (isActive != null) {
+        query = query.where('is_active', isEqualTo: isActive);
+      }
+
+      final snapshot = await query.orderBy('joined_at', descending: true).get();
+      return snapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        data['id'] = doc.id;
+        return ChapterMember.fromJson(data);
+      }).toList();
+    } catch (e) {
+      throw DatabaseException('Failed to get chapter members', originalError: e);
+    }
   }
 
   Future<ChapterMember?> getChapterMember(
       String chapterId, String userId) async {
-    return null;
+    try {
+      final snapshot = await _firestore
+          .collection('chapter_members')
+          .where('chapter_id', isEqualTo: chapterId)
+          .where('user_id', isEqualTo: userId)
+          .limit(1)
+          .get();
+
+      if (snapshot.docs.isEmpty) return null;
+
+      final doc = snapshot.docs.first;
+      final data = doc.data();
+      data['id'] = doc.id;
+      return ChapterMember.fromJson(data);
+    } catch (e) {
+      throw DatabaseException('Failed to get chapter member', originalError: e);
+    }
   }
 
   Future<List<ChapterMember>> getUserMemberships(String userId) async {
-    return [];
+    try {
+      final snapshot = await _firestore
+          .collection('chapter_members')
+          .where('user_id', isEqualTo: userId)
+          .where('is_active', isEqualTo: true)
+          .orderBy('joined_at', descending: true)
+          .get();
+
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return ChapterMember.fromJson(data);
+      }).toList();
+    } catch (e) {
+      throw DatabaseException('Failed to get user memberships', originalError: e);
+    }
   }
 
   Future<ChapterMember> addMember(
       String chapterId, String userId, MemberRole role) async {
+    final memberId = _uuid.v4();
     final member = ChapterMember(
-      id: _uuid.v4(),
+      id: memberId,
       chapterId: chapterId,
       userId: userId,
       role: role,
@@ -199,7 +249,15 @@ class ChapterService {
           {}),
       metadata: {},
     );
-    return member;
+    try {
+      await _firestore.collection('chapter_members').doc(memberId).set({
+        ...member.toJson(),
+        'joined_at': FieldValue.serverTimestamp(),
+      });
+      return member;
+    } catch (e) {
+      throw DatabaseException('Failed to add chapter member', originalError: e);
+    }
   }
 
   Future<ChapterMember> updateMemberRole(
@@ -215,8 +273,16 @@ class ChapterService {
               .rolePermissions[newRole.name] as Map<String, dynamic>?) ??
           {}),
     );
-
-    return updatedMember;
+    try {
+      await _firestore.collection('chapter_members').doc(member.id).update({
+        'role': newRole.name,
+        'permissions': updatedMember.permissions,
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+      return updatedMember;
+    } catch (e) {
+      throw DatabaseException('Failed to update member role', originalError: e);
+    }
   }
 
   Future<void> removeMember(String chapterId, String userId) async {
@@ -655,7 +721,7 @@ class ChapterService {
     return permissions.contains(permission);
   }
 
-  String getTypeDescription(ChapterType type) {
+  String getTypeDescription(WorkersType type) {
     return ChapterConstants.typeDescriptions[type] ?? 'Chapter';
   }
 
@@ -781,5 +847,87 @@ class ChapterService {
       'December'
     ];
     return '${months[date.month - 1]} ${date.year}';
+  }
+}
+
+/// Extension on ChapterService for [TaskAssignment] model integration.
+extension ChapterServiceTaskAssignment on ChapterService {
+  /// Create a [TaskAssignment] within a chapter.
+  Future<TaskAssignment> createTaskAssignment({
+    required String title,
+    required String description,
+    required String assignedById,
+    required String assignedToId,
+    required String chapterId,
+    required DateTime dueDate,
+    String priority = 'medium',
+    String? teamId,
+  }) async {
+    try {
+      final now = DateTime.now();
+      final assignment = TaskAssignment(
+        id: const Uuid().v4(),
+        title: title,
+        description: description,
+        assignedById: assignedById,
+        assignedToId: assignedToId,
+        teamId: teamId,
+        chapterId: chapterId,
+        priority: priority,
+        status: 'assigned',
+        dueDate: dueDate,
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      await FirebaseFirestore.instance
+          .collection('task_assignments')
+          .doc(assignment.id)
+          .set(assignment.toJson());
+
+      return assignment;
+    } catch (e) {
+      throw DatabaseException('Failed to create task assignment',
+          originalError: e);
+    }
+  }
+
+  /// Get all [TaskAssignment]s for a chapter.
+  Future<List<TaskAssignment>> getChapterTaskAssignments(
+      String chapterId) async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('task_assignments')
+          .where('chapter_id', isEqualTo: chapterId)
+          .orderBy('due_date')
+          .get();
+
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return TaskAssignment.fromJson(data);
+      }).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /// Get all [TaskAssignment]s for a specific user.
+  Future<List<TaskAssignment>> getUserTaskAssignments(String userId) async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('task_assignments')
+          .where('assigned_to_id', isEqualTo: userId)
+          .orderBy('due_date')
+          .get();
+
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return TaskAssignment.fromJson(data);
+      }).toList();
+    } catch (e) {
+      return [];
+    }
   }
 }

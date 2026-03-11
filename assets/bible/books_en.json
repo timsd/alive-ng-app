@@ -1,1 +1,662 @@
-[]
+[
+  {
+    "name": "1 Chronicles",
+    "abbreviation": "1Chronicles",
+    "chapters": 29,
+    "testament": "old",
+    "order": 1,
+    "translations": {
+      "ASV": "1 Chronicles"
+    }
+  },
+  {
+    "name": "1 Corinthians",
+    "abbreviation": "1Corinthians",
+    "chapters": 16,
+    "testament": "old",
+    "order": 2,
+    "translations": {
+      "ASV": "1 Corinthians"
+    }
+  },
+  {
+    "name": "1 John",
+    "abbreviation": "1John",
+    "chapters": 5,
+    "testament": "old",
+    "order": 3,
+    "translations": {
+      "ASV": "1 John"
+    }
+  },
+  {
+    "name": "1 Kings",
+    "abbreviation": "1Kings",
+    "chapters": 22,
+    "testament": "old",
+    "order": 4,
+    "translations": {
+      "ASV": "1 Kings"
+    }
+  },
+  {
+    "name": "1 Peter",
+    "abbreviation": "1Peter",
+    "chapters": 5,
+    "testament": "old",
+    "order": 5,
+    "translations": {
+      "ASV": "1 Peter"
+    }
+  },
+  {
+    "name": "1 Samuel",
+    "abbreviation": "1Samuel",
+    "chapters": 31,
+    "testament": "old",
+    "order": 6,
+    "translations": {
+      "ASV": "1 Samuel"
+    }
+  },
+  {
+    "name": "1 Thessalonians",
+    "abbreviation": "1Thessalonians",
+    "chapters": 5,
+    "testament": "old",
+    "order": 7,
+    "translations": {
+      "ASV": "1 Thessalonians"
+    }
+  },
+  {
+    "name": "1 Timothy",
+    "abbreviation": "1Timothy",
+    "chapters": 6,
+    "testament": "old",
+    "order": 8,
+    "translations": {
+      "ASV": "1 Timothy"
+    }
+  },
+  {
+    "name": "2 Chronicles",
+    "abbreviation": "2Chronicles",
+    "chapters": 36,
+    "testament": "old",
+    "order": 9,
+    "translations": {
+      "ASV": "2 Chronicles"
+    }
+  },
+  {
+    "name": "2 Corinthians",
+    "abbreviation": "2Corinthians",
+    "chapters": 13,
+    "testament": "old",
+    "order": 10,
+    "translations": {
+      "ASV": "2 Corinthians"
+    }
+  },
+  {
+    "name": "2 John",
+    "abbreviation": "2John",
+    "chapters": 1,
+    "testament": "old",
+    "order": 11,
+    "translations": {
+      "ASV": "2 John"
+    }
+  },
+  {
+    "name": "2 Kings",
+    "abbreviation": "2Kings",
+    "chapters": 25,
+    "testament": "old",
+    "order": 12,
+    "translations": {
+      "ASV": "2 Kings"
+    }
+  },
+  {
+    "name": "2 Peter",
+    "abbreviation": "2Peter",
+    "chapters": 3,
+    "testament": "old",
+    "order": 13,
+    "translations": {
+      "ASV": "2 Peter"
+    }
+  },
+  {
+    "name": "2 Samuel",
+    "abbreviation": "2Samuel",
+    "chapters": 24,
+    "testament": "old",
+    "order": 14,
+    "translations": {
+      "ASV": "2 Samuel"
+    }
+  },
+  {
+    "name": "2 Thessalonians",
+    "abbreviation": "2Thessalonians",
+    "chapters": 3,
+    "testament": "old",
+    "order": 15,
+    "translations": {
+      "ASV": "2 Thessalonians"
+    }
+  },
+  {
+    "name": "2 Timothy",
+    "abbreviation": "2Timothy",
+    "chapters": 4,
+    "testament": "old",
+    "order": 16,
+    "translations": {
+      "ASV": "2 Timothy"
+    }
+  },
+  {
+    "name": "3 John",
+    "abbreviation": "3John",
+    "chapters": 1,
+    "testament": "old",
+    "order": 17,
+    "translations": {
+      "ASV": "3 John"
+    }
+  },
+  {
+    "name": "Acts",
+    "abbreviation": "Acts",
+    "chapters": 28,
+    "testament": "old",
+    "order": 18,
+    "translations": {
+      "ASV": "Acts"
+    }
+  },
+  {
+    "name": "Amos",
+    "abbreviation": "Amos",
+    "chapters": 9,
+    "testament": "old",
+    "order": 19,
+    "translations": {
+      "ASV": "Amos"
+    }
+  },
+  {
+    "name": "Colossians",
+    "abbreviation": "Colo",
+    "chapters": 4,
+    "testament": "old",
+    "order": 20,
+    "translations": {
+      "ASV": "Colossians"
+    }
+  },
+  {
+    "name": "Daniel",
+    "abbreviation": "Dani",
+    "chapters": 12,
+    "testament": "old",
+    "order": 21,
+    "translations": {
+      "ASV": "Daniel"
+    }
+  },
+  {
+    "name": "Deuteronomy",
+    "abbreviation": "Deut",
+    "chapters": 34,
+    "testament": "old",
+    "order": 22,
+    "translations": {
+      "ASV": "Deuteronomy"
+    }
+  },
+  {
+    "name": "Ecclesiastes",
+    "abbreviation": "Eccl",
+    "chapters": 12,
+    "testament": "old",
+    "order": 23,
+    "translations": {
+      "ASV": "Ecclesiastes"
+    }
+  },
+  {
+    "name": "Ephesians",
+    "abbreviation": "Ephe",
+    "chapters": 6,
+    "testament": "old",
+    "order": 24,
+    "translations": {
+      "ASV": "Ephesians"
+    }
+  },
+  {
+    "name": "Esther",
+    "abbreviation": "Esth",
+    "chapters": 10,
+    "testament": "old",
+    "order": 25,
+    "translations": {
+      "ASV": "Esther"
+    }
+  },
+  {
+    "name": "Exodus",
+    "abbreviation": "Exod",
+    "chapters": 40,
+    "testament": "old",
+    "order": 26,
+    "translations": {
+      "ASV": "Exodus"
+    }
+  },
+  {
+    "name": "Ezekiel",
+    "abbreviation": "Ezek",
+    "chapters": 48,
+    "testament": "old",
+    "order": 27,
+    "translations": {
+      "ASV": "Ezekiel"
+    }
+  },
+  {
+    "name": "Ezra",
+    "abbreviation": "Ezra",
+    "chapters": 10,
+    "testament": "old",
+    "order": 28,
+    "translations": {
+      "ASV": "Ezra"
+    }
+  },
+  {
+    "name": "Galatians",
+    "abbreviation": "Gala",
+    "chapters": 6,
+    "testament": "old",
+    "order": 29,
+    "translations": {
+      "ASV": "Galatians"
+    }
+  },
+  {
+    "name": "Genesis",
+    "abbreviation": "Gene",
+    "chapters": 50,
+    "testament": "old",
+    "order": 30,
+    "translations": {
+      "ASV": "Genesis"
+    }
+  },
+  {
+    "name": "Habakkuk",
+    "abbreviation": "Haba",
+    "chapters": 3,
+    "testament": "old",
+    "order": 31,
+    "translations": {
+      "ASV": "Habakkuk"
+    }
+  },
+  {
+    "name": "Haggai",
+    "abbreviation": "Hagg",
+    "chapters": 2,
+    "testament": "old",
+    "order": 32,
+    "translations": {
+      "ASV": "Haggai"
+    }
+  },
+  {
+    "name": "Hebrews",
+    "abbreviation": "Hebr",
+    "chapters": 13,
+    "testament": "old",
+    "order": 33,
+    "translations": {
+      "ASV": "Hebrews"
+    }
+  },
+  {
+    "name": "Hosea",
+    "abbreviation": "Hose",
+    "chapters": 14,
+    "testament": "old",
+    "order": 34,
+    "translations": {
+      "ASV": "Hosea"
+    }
+  },
+  {
+    "name": "Isaiah",
+    "abbreviation": "Isai",
+    "chapters": 66,
+    "testament": "old",
+    "order": 35,
+    "translations": {
+      "ASV": "Isaiah"
+    }
+  },
+  {
+    "name": "James",
+    "abbreviation": "Jame",
+    "chapters": 5,
+    "testament": "old",
+    "order": 36,
+    "translations": {
+      "ASV": "James"
+    }
+  },
+  {
+    "name": "Jeremiah",
+    "abbreviation": "Jere",
+    "chapters": 52,
+    "testament": "old",
+    "order": 37,
+    "translations": {
+      "ASV": "Jeremiah"
+    }
+  },
+  {
+    "name": "Job",
+    "abbreviation": "Job",
+    "chapters": 42,
+    "testament": "old",
+    "order": 38,
+    "translations": {
+      "ASV": "Job"
+    }
+  },
+  {
+    "name": "Joel",
+    "abbreviation": "Joel",
+    "chapters": 3,
+    "testament": "old",
+    "order": 39,
+    "translations": {
+      "ASV": "Joel"
+    }
+  },
+  {
+    "name": "John",
+    "abbreviation": "John",
+    "chapters": 21,
+    "testament": "new",
+    "order": 40,
+    "translations": {
+      "ASV": "John"
+    }
+  },
+  {
+    "name": "Jonah",
+    "abbreviation": "Jona",
+    "chapters": 4,
+    "testament": "new",
+    "order": 41,
+    "translations": {
+      "ASV": "Jonah"
+    }
+  },
+  {
+    "name": "Joshua",
+    "abbreviation": "Josh",
+    "chapters": 24,
+    "testament": "new",
+    "order": 42,
+    "translations": {
+      "ASV": "Joshua"
+    }
+  },
+  {
+    "name": "Jude",
+    "abbreviation": "Jude",
+    "chapters": 1,
+    "testament": "new",
+    "order": 43,
+    "translations": {
+      "ASV": "Jude"
+    }
+  },
+  {
+    "name": "Judges",
+    "abbreviation": "Judg",
+    "chapters": 21,
+    "testament": "new",
+    "order": 44,
+    "translations": {
+      "ASV": "Judges"
+    }
+  },
+  {
+    "name": "Lamentations",
+    "abbreviation": "Lame",
+    "chapters": 5,
+    "testament": "new",
+    "order": 45,
+    "translations": {
+      "ASV": "Lamentations"
+    }
+  },
+  {
+    "name": "Leviticus",
+    "abbreviation": "Levi",
+    "chapters": 27,
+    "testament": "new",
+    "order": 46,
+    "translations": {
+      "ASV": "Leviticus"
+    }
+  },
+  {
+    "name": "Luke",
+    "abbreviation": "Luke",
+    "chapters": 24,
+    "testament": "new",
+    "order": 47,
+    "translations": {
+      "ASV": "Luke"
+    }
+  },
+  {
+    "name": "Malachi",
+    "abbreviation": "Mala",
+    "chapters": 4,
+    "testament": "new",
+    "order": 48,
+    "translations": {
+      "ASV": "Malachi"
+    }
+  },
+  {
+    "name": "Mark",
+    "abbreviation": "Mark",
+    "chapters": 16,
+    "testament": "new",
+    "order": 49,
+    "translations": {
+      "ASV": "Mark"
+    }
+  },
+  {
+    "name": "Matthew",
+    "abbreviation": "Matt",
+    "chapters": 28,
+    "testament": "new",
+    "order": 50,
+    "translations": {
+      "ASV": "Matthew"
+    }
+  },
+  {
+    "name": "Micah",
+    "abbreviation": "Mica",
+    "chapters": 7,
+    "testament": "new",
+    "order": 51,
+    "translations": {
+      "ASV": "Micah"
+    }
+  },
+  {
+    "name": "Nahum",
+    "abbreviation": "Nahu",
+    "chapters": 3,
+    "testament": "new",
+    "order": 52,
+    "translations": {
+      "ASV": "Nahum"
+    }
+  },
+  {
+    "name": "Nehemiah",
+    "abbreviation": "Nehe",
+    "chapters": 13,
+    "testament": "new",
+    "order": 53,
+    "translations": {
+      "ASV": "Nehemiah"
+    }
+  },
+  {
+    "name": "Numbers",
+    "abbreviation": "Numb",
+    "chapters": 36,
+    "testament": "new",
+    "order": 54,
+    "translations": {
+      "ASV": "Numbers"
+    }
+  },
+  {
+    "name": "Obadiah",
+    "abbreviation": "Obad",
+    "chapters": 1,
+    "testament": "new",
+    "order": 55,
+    "translations": {
+      "ASV": "Obadiah"
+    }
+  },
+  {
+    "name": "Philemon",
+    "abbreviation": "Phil",
+    "chapters": 1,
+    "testament": "new",
+    "order": 56,
+    "translations": {
+      "ASV": "Philemon"
+    }
+  },
+  {
+    "name": "Philippians",
+    "abbreviation": "Phil",
+    "chapters": 4,
+    "testament": "new",
+    "order": 57,
+    "translations": {
+      "ASV": "Philippians"
+    }
+  },
+  {
+    "name": "Proverbs",
+    "abbreviation": "Prov",
+    "chapters": 31,
+    "testament": "new",
+    "order": 58,
+    "translations": {
+      "ASV": "Proverbs"
+    }
+  },
+  {
+    "name": "Psalms",
+    "abbreviation": "Psal",
+    "chapters": 150,
+    "testament": "new",
+    "order": 59,
+    "translations": {
+      "ASV": "Psalms"
+    }
+  },
+  {
+    "name": "Revelation",
+    "abbreviation": "Reve",
+    "chapters": 22,
+    "testament": "new",
+    "order": 60,
+    "translations": {
+      "ASV": "Revelation"
+    }
+  },
+  {
+    "name": "Romans",
+    "abbreviation": "Roma",
+    "chapters": 16,
+    "testament": "new",
+    "order": 61,
+    "translations": {
+      "ASV": "Romans"
+    }
+  },
+  {
+    "name": "Ruth",
+    "abbreviation": "Ruth",
+    "chapters": 4,
+    "testament": "new",
+    "order": 62,
+    "translations": {
+      "ASV": "Ruth"
+    }
+  },
+  {
+    "name": "Song of Solomon",
+    "abbreviation": "Sonof",
+    "chapters": 8,
+    "testament": "new",
+    "order": 63,
+    "translations": {
+      "ASV": "Song of Solomon"
+    }
+  },
+  {
+    "name": "Titus",
+    "abbreviation": "Titu",
+    "chapters": 3,
+    "testament": "new",
+    "order": 64,
+    "translations": {
+      "ASV": "Titus"
+    }
+  },
+  {
+    "name": "Zechariah",
+    "abbreviation": "Zech",
+    "chapters": 14,
+    "testament": "new",
+    "order": 65,
+    "translations": {
+      "ASV": "Zechariah"
+    }
+  },
+  {
+    "name": "Zephaniah",
+    "abbreviation": "Zeph",
+    "chapters": 3,
+    "testament": "new",
+    "order": 66,
+    "translations": {
+      "ASV": "Zephaniah"
+    }
+  }
+]

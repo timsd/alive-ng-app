@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../constants/app_constants.dart';
+import '../utils/text_formatter.dart';
 
 // Language/Locale Provider
 class LocaleNotifier extends StateNotifier<Locale> {
@@ -1105,8 +1106,8 @@ class TranslationService {
       return englishTranslations[key]!;
     }
 
-    // Return the key itself if no translation found
-    return key;
+    // Global fallback: humanize snake_case keys for user-facing text.
+    return TextFormatter.formatText(key);
   }
 }
 

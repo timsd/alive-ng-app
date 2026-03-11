@@ -36,4 +36,25 @@ class PaymentConfig {
 
   // Currency code
   static const String currencyCode = 'NGN';
+
+  // Monthly plan codes per currency (configure via --dart-define)
+  static const String paystackMonthlyPlanCodeNgn = String.fromEnvironment(
+    'PAYSTACK_MONTHLY_PLAN_CODE_NGN',
+    defaultValue: '',
+  );
+
+  static const String paystackMonthlyPlanCodeUsd = String.fromEnvironment(
+    'PAYSTACK_MONTHLY_PLAN_CODE_USD',
+    defaultValue: '',
+  );
+
+  static String monthlyPlanCodeForCurrency(String currency) {
+    switch (currency.toUpperCase()) {
+      case 'USD':
+        return paystackMonthlyPlanCodeUsd;
+      case 'NGN':
+      default:
+        return paystackMonthlyPlanCodeNgn;
+    }
+  }
 }

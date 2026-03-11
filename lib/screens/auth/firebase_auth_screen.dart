@@ -9,10 +9,10 @@ import '../../providers/language_provider.dart';
 import '../../providers/guest_provider.dart';
 import '../../constants/app_constants.dart';
 import '../../services/biometric_auth_service.dart';
+import '../../services/admin_notification_service.dart';
 import '../../utils/responsive_utils.dart';
 import '../../utils/layout_fix_utils.dart';
 import 'package:flutter/foundation.dart';
-
 
 class FirebaseAuthScreen extends ConsumerStatefulWidget {
   const FirebaseAuthScreen({super.key});
@@ -27,11 +27,21 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _nameController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _locationController = TextEditingController();
+  final _localChurchController = TextEditingController();
+  final _occupationController = TextEditingController();
+  final _skillsController = TextEditingController();
+  final _localChapterController = TextEditingController();
+  final _conferenceController = TextEditingController();
+  final _financialCommitmentController = TextEditingController();
+  final _availabilityController = TextEditingController();
 
   bool _isSignUp = false;
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  String _commitmentType = 'both';
   bool _isBiometricAvailable = false;
   bool _isBiometricEnabled = false;
   final BiometricAuthService _biometricService = BiometricAuthService.instance;
@@ -49,6 +59,15 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _nameController.dispose();
+    _phoneController.dispose();
+    _locationController.dispose();
+    _localChurchController.dispose();
+    _occupationController.dispose();
+    _skillsController.dispose();
+    _localChapterController.dispose();
+    _conferenceController.dispose();
+    _financialCommitmentController.dispose();
+    _availabilityController.dispose();
     super.dispose();
   }
 
@@ -65,7 +84,7 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
       }
       final isAvailable = await _biometricService.isBiometricAvailable();
       final isEnabled = await _biometricService.isBiometricEnabled();
-      
+
       if (mounted) {
         setState(() {
           _isBiometricAvailable = isAvailable;
@@ -90,7 +109,8 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('Biometric authentication is not set up. Please sign in normally first.'),
+              content: const Text(
+                  'Biometric authentication is not set up. Please sign in normally first.'),
               backgroundColor: Theme.of(context).colorScheme.error,
             ),
           );
@@ -100,7 +120,7 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
 
       // Authenticate with biometrics and get stored credentials
       final credentials = await _biometricService.authenticateWithBiometrics();
-      
+
       if (credentials != null) {
         // Sign in with the retrieved credentials
         final authProvider = ref.read(signInControllerProvider.notifier);
@@ -108,7 +128,7 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
           credentials['email']!,
           credentials['password']!,
         );
-        
+
         // Navigate to home on successful authentication
         if (mounted) {
           context.go('/home');
@@ -172,7 +192,8 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      SizedBox(height: ResponsiveUtils.getResponsiveValue(
+                      SizedBox(
+                          height: ResponsiveUtils.getResponsiveValue(
                         context: context,
                         mobile: 20.0,
                         tablet: 30.0,
@@ -181,8 +202,9 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
 
                       // App Logo and Title
                       _buildHeader(context, translate),
-                      
-                      SizedBox(height: ResponsiveUtils.getResponsiveValue(
+
+                      SizedBox(
+                          height: ResponsiveUtils.getResponsiveValue(
                         context: context,
                         mobile: 32.0,
                         tablet: 40.0,
@@ -191,8 +213,9 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
 
                       // Auth Buttons Row (Sign In / Sign Up)
                       _buildAuthButtonsRow(context, translate),
-                      
-                      SizedBox(height: ResponsiveUtils.getResponsiveValue(
+
+                      SizedBox(
+                          height: ResponsiveUtils.getResponsiveValue(
                         context: context,
                         mobile: 24.0,
                         tablet: 32.0,
@@ -201,8 +224,9 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
 
                       // Auth Form
                       _buildAuthForm(context, translate, signInState),
-                      
-                      SizedBox(height: ResponsiveUtils.getResponsiveValue(
+
+                      SizedBox(
+                          height: ResponsiveUtils.getResponsiveValue(
                         context: context,
                         mobile: 16.0,
                         tablet: 20.0,
@@ -210,9 +234,11 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
                       )),
 
                       // Forgot Password (smaller, only for sign in)
-                      if (!_isSignUp) _buildForgotPasswordButton(context, translate),
+                      if (!_isSignUp)
+                        _buildForgotPasswordButton(context, translate),
 
-                      SizedBox(height: ResponsiveUtils.getResponsiveValue(
+                      SizedBox(
+                          height: ResponsiveUtils.getResponsiveValue(
                         context: context,
                         mobile: 24.0,
                         tablet: 32.0,
@@ -220,9 +246,11 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
                       )),
 
                       // Social Sign In Options
-                      _buildSocialSignInOptions(context, translate, signInState),
+                      _buildSocialSignInOptions(
+                          context, translate, signInState),
 
-                      SizedBox(height: ResponsiveUtils.getResponsiveValue(
+                      SizedBox(
+                          height: ResponsiveUtils.getResponsiveValue(
                         context: context,
                         mobile: 16.0,
                         tablet: 20.0,
@@ -230,14 +258,44 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
                       )),
 
                       // Biometric Authentication (if available and enabled)
-                      if (_isBiometricAvailable && _isBiometricEnabled) _buildBiometricButton(context, translate),
+                      if (_isBiometricAvailable && _isBiometricEnabled)
+                        _buildBiometricButton(context, translate),
 
                       const Spacer(),
 
                       // Guest Access
                       _buildGuestAccessButton(context, translate, signInState),
                       
-                      SizedBox(height: ResponsiveUtils.getResponsiveValue(
+                      // Development Admin Login Bypass
+                      if (!kReleaseMode)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 16.0),
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                                // 1. Force the bypass configs
+                                await DevelopmentConfig.setBypassRoleGuards(true);
+                                await DevelopmentConfig.setAdminPreviewEnabled(true);
+                                
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Dev Admin Mode Enforced! Please login with any Google Account. The role guard will grant you admin access.'),
+                                      backgroundColor: Colors.orange,
+                                      duration: Duration(seconds: 4),
+                                    )
+                                  );
+                                }
+                            },
+                            icon: const Icon(Icons.developer_mode, color: Colors.orange),
+                            label: const Text('Force Admin Dev Mode', style: TextStyle(color: Colors.orange)),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Colors.orange),
+                            ),
+                          ),
+                        ),
+
+                      SizedBox(
+                          height: ResponsiveUtils.getResponsiveValue(
                         context: context,
                         mobile: 16.0,
                         tablet: 20.0,
@@ -277,49 +335,54 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
             BlendMode.srcIn,
           ),
         ),
-        
-        SizedBox(height: ResponsiveUtils.getResponsiveValue(
+
+        SizedBox(
+            height: ResponsiveUtils.getResponsiveValue(
           context: context,
           mobile: 16.0,
           tablet: 18.0,
           desktop: 20.0,
         )),
-        
+
         // App Name
         Text(
           AppConstants.appName,
           style: Theme.of(context).textTheme.displayMedium?.copyWith(
-            color: Theme.of(context).colorScheme.primary,
-            fontWeight: FontWeight.bold,
-            fontSize: ResponsiveUtils.getResponsiveValue(
-              context: context,
-              mobile: 28.0,
-              tablet: 32.0,
-              desktop: 36.0,
-            ),
-          ),
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.bold,
+                fontSize: ResponsiveUtils.getResponsiveValue(
+                  context: context,
+                  mobile: 28.0,
+                  tablet: 32.0,
+                  desktop: 36.0,
+                ),
+              ),
         ),
-        
-        SizedBox(height: ResponsiveUtils.getResponsiveValue(
+
+        SizedBox(
+            height: ResponsiveUtils.getResponsiveValue(
           context: context,
           mobile: 8.0,
           tablet: 10.0,
           desktop: 12.0,
         )),
-        
+
         // Welcome Message
         Text(
-          translate('welcome_message'),
+          translate('welcome 🤗'),
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-            fontSize: ResponsiveUtils.getResponsiveValue(
-              context: context,
-              mobile: 16.0,
-              tablet: 18.0,
-              desktop: 20.0,
-            ),
-            height: 1.4,
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-          ),
+                fontSize: ResponsiveUtils.getResponsiveValue(
+                  context: context,
+                  mobile: 16.0,
+                  tablet: 18.0,
+                  desktop: 20.0,
+                ),
+                height: 1.4,
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.7),
+              ),
           textAlign: TextAlign.center,
           softWrap: true,
         ),
@@ -327,7 +390,8 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
     );
   }
 
-  Widget _buildAuthButtonsRow(BuildContext context, String Function(String) translate) {
+  Widget _buildAuthButtonsRow(
+      BuildContext context, String Function(String) translate) {
     return Row(
       children: [
         Expanded(
@@ -356,7 +420,7 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.primary,
-              foregroundColor: Colors.white,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
               padding: EdgeInsets.symmetric(
                 vertical: ResponsiveUtils.getResponsiveValue(
                   context: context,
@@ -372,14 +436,13 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
             ),
           ),
         ),
-        
-        SizedBox(width: ResponsiveUtils.getResponsiveValue(
+        SizedBox(
+            width: ResponsiveUtils.getResponsiveValue(
           context: context,
           mobile: 12.0,
           tablet: 16.0,
           desktop: 20.0,
         )),
-        
         Expanded(
           child: ElevatedButton.icon(
             onPressed: _isLoading ? null : () => _handleDirectSignUp(),
@@ -406,7 +469,7 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.secondary,
-              foregroundColor: Colors.white,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
               padding: EdgeInsets.symmetric(
                 vertical: ResponsiveUtils.getResponsiveValue(
                   context: context,
@@ -426,7 +489,8 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
     );
   }
 
-  Widget _buildAuthForm(BuildContext context, String Function(String) translate, AsyncValue<void> signInState) {
+  Widget _buildAuthForm(BuildContext context, String Function(String) translate,
+      AsyncValue<void> signInState) {
     return Form(
       key: _formKey,
       child: Column(
@@ -442,7 +506,8 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 filled: true,
-                fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                fillColor:
+                    Theme.of(context).colorScheme.surfaceContainerHighest,
               ),
               validator: (value) {
                 if (_isSignUp && (value == null || value.trim().isEmpty)) {
@@ -451,7 +516,16 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
                 return null;
               },
             ),
-            SizedBox(height: ResponsiveUtils.getResponsiveValue(
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveValue(
+              context: context,
+              mobile: 16.0,
+              tablet: 18.0,
+              desktop: 20.0,
+            )),
+            _buildSignUpProfileFields(context),
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveValue(
               context: context,
               mobile: 16.0,
               tablet: 18.0,
@@ -476,14 +550,16 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
               if (value == null || value.trim().isEmpty) {
                 return translate('email_required');
               }
-              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                  .hasMatch(value)) {
                 return translate('invalid_email');
               }
               return null;
             },
           ),
 
-          SizedBox(height: ResponsiveUtils.getResponsiveValue(
+          SizedBox(
+              height: ResponsiveUtils.getResponsiveValue(
             context: context,
             mobile: 16.0,
             tablet: 18.0,
@@ -498,8 +574,10 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
               labelText: translate('password'),
               prefixIcon: const Icon(Icons.lock_outline),
               suffixIcon: IconButton(
-                icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off),
-                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                icon: Icon(
+                    _obscurePassword ? Icons.visibility : Icons.visibility_off),
+                onPressed: () =>
+                    setState(() => _obscurePassword = !_obscurePassword),
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -520,7 +598,8 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
 
           // Confirm password field (only for sign up)
           if (_isSignUp) ...[
-            SizedBox(height: ResponsiveUtils.getResponsiveValue(
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveValue(
               context: context,
               mobile: 16.0,
               tablet: 18.0,
@@ -533,14 +612,18 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
                 labelText: translate('confirm_password'),
                 prefixIcon: const Icon(Icons.lock_outline),
                 suffixIcon: IconButton(
-                  icon: Icon(_obscureConfirmPassword ? Icons.visibility : Icons.visibility_off),
-                  onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                  icon: Icon(_obscureConfirmPassword
+                      ? Icons.visibility
+                      : Icons.visibility_off),
+                  onPressed: () => setState(
+                      () => _obscureConfirmPassword = !_obscureConfirmPassword),
                 ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
                 filled: true,
-                fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                fillColor:
+                    Theme.of(context).colorScheme.surfaceContainerHighest,
               ),
               validator: (value) {
                 if (_isSignUp && value != _passwordController.text) {
@@ -551,7 +634,8 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
             ),
           ],
 
-          SizedBox(height: ResponsiveUtils.getResponsiveValue(
+          SizedBox(
+              height: ResponsiveUtils.getResponsiveValue(
             context: context,
             mobile: 24.0,
             tablet: 28.0,
@@ -564,7 +648,8 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
     );
   }
 
-  Widget _buildForgotPasswordButton(BuildContext context, String Function(String) translate) {
+  Widget _buildForgotPasswordButton(
+      BuildContext context, String Function(String) translate) {
     return Align(
       alignment: Alignment.centerRight,
       child: TextButton(
@@ -588,15 +673,100 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
     );
   }
 
-  Widget _buildSocialSignInOptions(BuildContext context, String Function(String) translate, AsyncValue<void> signInState) {
+  Widget _buildSignUpProfileFields(BuildContext context) {
+    return Column(
+      children: [
+        TextFormField(
+          controller: _phoneController,
+          keyboardType: TextInputType.phone,
+          decoration: _signupDecoration(context, 'Phone Number', Icons.phone_outlined),
+        ),
+        SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12.0, tablet: 14.0, desktop: 16.0)),
+        TextFormField(
+          controller: _locationController,
+          decoration: _signupDecoration(context, 'Location', Icons.location_on_outlined),
+        ),
+        SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12.0, tablet: 14.0, desktop: 16.0)),
+        TextFormField(
+          controller: _localChurchController,
+          decoration: _signupDecoration(context, 'Local Church', Icons.church_outlined),
+        ),
+        SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12.0, tablet: 14.0, desktop: 16.0)),
+        TextFormField(
+          controller: _occupationController,
+          decoration: _signupDecoration(context, 'Occupation', Icons.work_outline),
+        ),
+        SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12.0, tablet: 14.0, desktop: 16.0)),
+        TextFormField(
+          controller: _skillsController,
+          decoration: _signupDecoration(context, 'Skills', Icons.handyman_outlined),
+        ),
+        SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12.0, tablet: 14.0, desktop: 16.0)),
+        TextFormField(
+          controller: _localChapterController,
+          decoration: _signupDecoration(context, 'Local Chapter', Icons.groups_outlined),
+        ),
+        SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12.0, tablet: 14.0, desktop: 16.0)),
+        TextFormField(
+          controller: _conferenceController,
+          decoration: _signupDecoration(context, 'Conference', Icons.event_outlined),
+        ),
+        SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12.0, tablet: 14.0, desktop: 16.0)),
+        DropdownButtonFormField<String>(
+          initialValue: _commitmentType,
+          decoration: _signupDecoration(context, 'Commitment Type', Icons.volunteer_activism_outlined),
+          items: const [
+            DropdownMenuItem(value: 'financial', child: Text('Financial')),
+            DropdownMenuItem(value: 'active_availability', child: Text('Active Availability')),
+            DropdownMenuItem(value: 'both', child: Text('Both')),
+          ],
+          onChanged: (value) => setState(() => _commitmentType = value ?? 'both'),
+        ),
+        SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12.0, tablet: 14.0, desktop: 16.0)),
+        if (_commitmentType == 'financial' || _commitmentType == 'both') ...[
+          TextFormField(
+            controller: _financialCommitmentController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: _signupDecoration(
+                context, 'Financial Commitment (Optional)', Icons.payments_outlined),
+          ),
+          SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12.0, tablet: 14.0, desktop: 16.0)),
+        ],
+        if (_commitmentType == 'active_availability' || _commitmentType == 'both')
+          TextFormField(
+            controller: _availabilityController,
+            decoration: _signupDecoration(
+                context, 'Availability Commitment (Optional)', Icons.schedule_outlined),
+          ),
+      ],
+    );
+  }
+
+  InputDecoration _signupDecoration(
+      BuildContext context, String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      filled: true,
+      fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+    );
+  }
+
+  Widget _buildSocialSignInOptions(BuildContext context,
+      String Function(String) translate, AsyncValue<void> signInState) {
     return Column(
       children: [
         // Divider with "OR" text
         Row(
           children: [
-            Expanded(child: Divider(color: Theme.of(context).colorScheme.outline)),
+            Expanded(
+                child: Divider(color: Theme.of(context).colorScheme.outline)),
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: ResponsiveUtils.getResponsiveValue(
+              padding: EdgeInsets.symmetric(
+                  horizontal: ResponsiveUtils.getResponsiveValue(
                 context: context,
                 mobile: 16.0,
                 tablet: 20.0,
@@ -605,27 +775,32 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
               child: LayoutFixUtils.safeText(
                 translate('or'),
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                  fontSize: ResponsiveUtils.getResponsiveValue(
-                    context: context,
-                    mobile: 14.0,
-                    tablet: 16.0,
-                    desktop: 18.0,
-                  ),
-                ),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.6),
+                      fontSize: ResponsiveUtils.getResponsiveValue(
+                        context: context,
+                        mobile: 14.0,
+                        tablet: 16.0,
+                        desktop: 18.0,
+                      ),
+                    ),
               ),
             ),
-            Expanded(child: Divider(color: Theme.of(context).colorScheme.outline)),
+            Expanded(
+                child: Divider(color: Theme.of(context).colorScheme.outline)),
           ],
         ),
-        
-        SizedBox(height: ResponsiveUtils.getResponsiveValue(
+
+        SizedBox(
+            height: ResponsiveUtils.getResponsiveValue(
           context: context,
           mobile: 20.0,
           tablet: 24.0,
           desktop: 28.0,
         )),
-        
+
         // Google Sign In Button
         SizedBox(
           width: double.infinity,
@@ -675,7 +850,8 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
     );
   }
 
-  Widget _buildBiometricButton(BuildContext context, String Function(String) translate) {
+  Widget _buildBiometricButton(
+      BuildContext context, String Function(String) translate) {
     return Container(
       width: double.infinity,
       margin: EdgeInsets.only(
@@ -725,7 +901,8 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
     );
   }
 
-  Widget _buildGuestAccessButton(BuildContext context, String Function(String) translate, AsyncValue<void> signInState) {
+  Widget _buildGuestAccessButton(BuildContext context,
+      String Function(String) translate, AsyncValue<void> signInState) {
     return TextButton(
       onPressed: signInState.isLoading ? null : _handleGuestAccess,
       child: Text(
@@ -746,18 +923,20 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
 
   Future<void> _handleDirectSignIn() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     setState(() {
       _isSignUp = false;
       _isLoading = true;
     });
 
     try {
-      await ref.read(signInControllerProvider.notifier).signInWithEmailAndPassword(
-        _emailController.text.trim(),
-        _passwordController.text,
-      );
-      
+      await ref
+          .read(signInControllerProvider.notifier)
+          .signInWithEmailAndPassword(
+            _emailController.text.trim(),
+            _passwordController.text,
+          );
+
       // After successful sign-in, offer biometric setup if available and not already enabled
       if (_isBiometricAvailable && !_isBiometricEnabled) {
         _showBiometricSetupDialog();
@@ -775,19 +954,64 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
     setState(() {
       _isSignUp = true;
     });
-    
+
     if (!_formKey.currentState!.validate()) return;
-    
+
     setState(() {
       _isLoading = true;
     });
 
     try {
-      await ref.read(signInControllerProvider.notifier).signUpWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-        fullName: _nameController.text.trim().isNotEmpty ? _nameController.text.trim() : null,
-      );
+      await ref
+          .read(signInControllerProvider.notifier)
+          .signUpWithEmailAndPassword(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+            fullName: _nameController.text.trim().isNotEmpty
+                ? _nameController.text.trim()
+                : null,
+            profileData: {
+              if (_phoneController.text.trim().isNotEmpty)
+                'phone_number': _phoneController.text.trim(),
+              if (_locationController.text.trim().isNotEmpty)
+                'location': _locationController.text.trim(),
+              if (_localChurchController.text.trim().isNotEmpty)
+                'local_church': _localChurchController.text.trim(),
+              if (_occupationController.text.trim().isNotEmpty)
+                'occupation': _occupationController.text.trim(),
+              if (_skillsController.text.trim().isNotEmpty)
+                'skills': _skillsController.text.trim(),
+              if (_localChapterController.text.trim().isNotEmpty)
+                'local_chapter': _localChapterController.text.trim(),
+              if (_conferenceController.text.trim().isNotEmpty)
+                'conference': _conferenceController.text.trim(),
+              'commitment_type': _commitmentType,
+              if ((_commitmentType == 'financial' || _commitmentType == 'both') &&
+                  _financialCommitmentController.text.trim().isNotEmpty)
+                'financial_commitment':
+                    double.tryParse(_financialCommitmentController.text.trim()),
+              if ((_commitmentType == 'active_availability' ||
+                      _commitmentType == 'both') &&
+                  _availabilityController.text.trim().isNotEmpty)
+                'availability_commitment':
+                    _availabilityController.text.trim(),
+              'is_approved': false,
+              'approval_status': 'pending',
+            },
+          );
+
+    // Notify admin of new signup (best-effort, don't block UI)
+    try {
+      await AdminNotificationService.instance.notifyAdminOfNewSignup({
+        'email': _emailController.text.trim(),
+        'full_name': _nameController.text.trim(),
+        'phone_number': _phoneController.text.trim(),
+        'local_church': _localChurchController.text.trim(),
+        'commitment_type': _commitmentType,
+      });
+    } catch (_) {
+      // Best-effort notification — don't fail signup
+    }
     } finally {
       if (mounted) {
         setState(() {
@@ -796,7 +1020,6 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
       }
     }
   }
-
 
   Future<void> _handleGoogleSignIn() async {
     await ref.read(signInControllerProvider.notifier).signInWithGoogle();
@@ -810,10 +1033,11 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
     }
   }
 
-  void _showForgotPasswordDialog(BuildContext context, String Function(String) translate) {
+  void _showForgotPasswordDialog(
+      BuildContext context, String Function(String) translate) {
     final emailController = TextEditingController();
     final rootCtx = context;
-    
+
     showDialog(
       context: rootCtx,
       builder: (dialogCtx) => AlertDialog(
@@ -845,8 +1069,8 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
               if (emailController.text.trim().isNotEmpty) {
                 Navigator.of(dialogCtx).pop();
                 await ref.read(signInControllerProvider.notifier).resetPassword(
-                  emailController.text.trim(),
-                );
+                      emailController.text.trim(),
+                    );
                 if (rootCtx.mounted) {
                   ScaffoldMessenger.of(rootCtx).showSnackBar(
                     SnackBar(
@@ -865,7 +1089,7 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
 
   void _showBiometricSetupDialog() {
     final translate = ref.read(translationProvider);
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -901,7 +1125,7 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
 
   Future<void> _setupBiometricAuth() async {
     final translate = ref.read(translationProvider);
-    
+
     try {
       final success = await _biometricService.enableBiometricAuth(
         email: _emailController.text.trim(),
@@ -913,11 +1137,11 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
           setState(() {
             _isBiometricEnabled = true;
           });
-          
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(translate('biometric_enabled_success')),
-              backgroundColor: Colors.green,
+              backgroundColor: Theme.of(context).colorScheme.tertiary,
             ),
           );
         } else {

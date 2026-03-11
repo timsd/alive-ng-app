@@ -566,6 +566,7 @@ class DonationService {
     required double amount,
     required String currency,
     required String email,
+    bool isRecurringMonthly = false,
   }) async {
     try {
       // Get the donation record
@@ -586,19 +587,27 @@ class DonationService {
         };
       }
       // Use PaymentService to process the payment
-      final paymentResult = await PaymentService().processDonation(
-        amount: amount,
-        email: email,
-        context: context,
-        reference: donationId,
-        metadata: {
-          'donation_id': donationId,
-          'donation_type': donation.type.name,
-          'material_title': donation.materialTitle,
-          'currency': currency,
-          if (donation.materialId != null) 'material_id': donation.materialId,
-        },
-      );
+      final baseMetadata = {
+        'donation_id': donationId,
+        'donation_type': donation.type.name,
+        'material_title': donation.materialTitle,
+        'currency': currency,
+        'recurring': isRecurringMonthly,
+        if (donation.materialId != null) 'material_id': donation.materialId,
+      };
+      final paymentResult = isRecurringMonthly
+          ? await PaymentService().processMonthlyDonation(
+              email: email,
+              currency: currency,
+              reference: donationId,
+              metadata: baseMetadata,
+            )
+          : await PaymentService().processDonation(
+              amount: amount,
+              email: email,
+              reference: donationId,
+              metadata: baseMetadata,
+            );
 
       if (paymentResult.initialized && !paymentResult.success) {
         await updateDonationStatus(
@@ -667,6 +676,51 @@ class DonationService {
         'message': 'Payment processing error: $e',
         'donation_id': donationId,
       };
+    }
+  }
+
+  Future<void> submitGiftContribution({
+    required String giftType,
+    required String fullName,
+    required String email,
+    required String phone,
+    String? itemType,
+    String? quantity,
+    String? estimatedValue,
+    String? deliveryPreference,
+    String? location,
+    String? skillsOrService,
+    String? availability,
+    String? description,
+  }) async {
+    try {
+      final user = _auth.currentUser;
+      await _db.collection('gift_submissions').add({
+        'gift_type': giftType,
+        'user_id': user?.uid,
+        'full_name': fullName,
+        'email': email,
+        'phone': phone,
+        if (itemType != null && itemType.trim().isNotEmpty) 'item_type': itemType,
+        if (quantity != null && quantity.trim().isNotEmpty) 'quantity': quantity,
+        if (estimatedValue != null && estimatedValue.trim().isNotEmpty)
+          'estimated_value': estimatedValue,
+        if (deliveryPreference != null && deliveryPreference.trim().isNotEmpty)
+          'delivery_preference': deliveryPreference,
+        if (location != null && location.trim().isNotEmpty) 'location': location,
+        if (skillsOrService != null && skillsOrService.trim().isNotEmpty)
+          'skills_or_service': skillsOrService,
+        if (availability != null && availability.trim().isNotEmpty)
+          'availability': availability,
+        if (description != null && description.trim().isNotEmpty)
+          'description': description,
+        'status': 'submitted',
+        'created_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+    } catch (e) {
+      throw DatabaseException('Failed to submit gift contribution',
+          originalError: e);
     }
   }
 }

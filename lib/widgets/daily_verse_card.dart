@@ -75,13 +75,13 @@ class _DailyVerseCardState extends ConsumerState<DailyVerseCard> {
     final translate = ref.watch(translationProvider);
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         color: Theme.of(context).colorScheme.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -158,9 +158,9 @@ class _DailyVerseCardState extends ConsumerState<DailyVerseCard> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  LayoutFixUtils.responsiveText(
+                  Text(
                     '"${widget.verse!.verse}"',
-                    context: context,
+                    softWrap: true,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                           fontStyle: FontStyle.italic,
                           height: 1.4,
@@ -169,22 +169,10 @@ class _DailyVerseCardState extends ConsumerState<DailyVerseCard> {
                         ),
                   ),
                   const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: BibleReferenceWidget(
-                          text: '— ${widget.verse!.reference}',
-                          textStyle: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                        ),
-                      ),
-                      Row(
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final compact = constraints.maxWidth < 360;
+                      final actions = Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
@@ -231,8 +219,49 @@ class _DailyVerseCardState extends ConsumerState<DailyVerseCard> {
                             ),
                           ),
                         ],
-                      ),
-                    ],
+                      );
+
+                      if (compact) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            BibleReferenceWidget(
+                              text: '- ${widget.verse!.reference}',
+                              textStyle: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color:
+                                        Theme.of(context).colorScheme.primary,
+                                  ),
+                            ),
+                            const SizedBox(height: 10),
+                            actions,
+                          ],
+                        );
+                      }
+
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: BibleReferenceWidget(
+                              text: '- ${widget.verse!.reference}',
+                              textStyle: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color:
+                                        Theme.of(context).colorScheme.primary,
+                                  ),
+                            ),
+                          ),
+                          actions,
+                        ],
+                      );
+                    },
                   ),
                 ],
               ),
@@ -253,9 +282,9 @@ class _DailyVerseCardState extends ConsumerState<DailyVerseCard> {
                     width: 1,
                   ),
                 ),
-                child: LayoutFixUtils.responsiveText(
+                child: Text(
                   "Today, let God's Word guide your heart and mind. ALIVE Nigeria encourages you to meditate on His promises and find strength for your daily journey.",
-                  context: context,
+                  softWrap: true,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         height: 1.4,
                         fontStyle: FontStyle.italic,
@@ -339,7 +368,7 @@ class _DailyVerseCardState extends ConsumerState<DailyVerseCard> {
 
   void _shareVerse(BuildContext context, DailyVerse verse) {
     final shareText =
-        '"${verse.verse}" - ${verse.reference}\n\n> Shared from ALIVE App';
+        '"${verse.verse}" - ${verse.reference}\n\n> Shared from ALIVE-NG App';
     SharePlus.instance.share(
       ShareParams(
         text: shareText,

@@ -16,6 +16,7 @@ class ChapterConstants {
     'Babcock',
     'Abia',
     'Jos',
+    'Calabar',
   ];
 
   static const Map<String, String> chapterDescriptions = {
@@ -33,12 +34,16 @@ class ChapterConstants {
     'Babcock': 'ALIVE Nigeria Babcock Chapter',
     'Abia': 'ALIVE Nigeria Abia Chapter',
     'Jos': 'ALIVE Nigeria Jos Chapter',
+    'Calabar': 'ALIVE Nigeria Calabar Chapter',
   };
 
   static const List<String> userRoles = [
     'member',
     'coordinator',
     'leader',
+    'director',
+    'bod',
+    'trustee',
     'admin',
   ];
 
@@ -55,22 +60,54 @@ class ChapterConstants {
       'canManageMembers': false,
     },
     'coordinator': {
-      'permissions': ['view_activities', 'join_activities', 'submit_reports', 'create_activities', 'manage_activities'],
+      'permissions': [
+        'view_activities',
+        'join_activities',
+        'submit_reports',
+        'create_activities',
+        'manage_activities'
+      ],
       'canCreateActivities': true,
       'canManageMembers': true,
     },
     'director': {
-      'permissions': ['view_activities', 'join_activities', 'submit_reports', 'create_activities', 'manage_activities', 'manage_members', 'approve_reports'],
+      'permissions': [
+        'view_activities',
+        'join_activities',
+        'submit_reports',
+        'create_activities',
+        'manage_activities',
+        'manage_members',
+        'approve_reports'
+      ],
       'canCreateActivities': true,
       'canManageMembers': true,
     },
     'bod': {
-      'permissions': ['view_activities', 'join_activities', 'submit_reports', 'create_activities', 'manage_activities', 'manage_members', 'approve_reports', 'manage_chapter'],
+      'permissions': [
+        'view_activities',
+        'join_activities',
+        'submit_reports',
+        'create_activities',
+        'manage_activities',
+        'manage_members',
+        'approve_reports',
+        'manage_chapter'
+      ],
       'canCreateActivities': true,
       'canManageMembers': true,
     },
     'trustee': {
-      'permissions': ['view_activities', 'join_activities', 'submit_reports', 'create_activities', 'manage_activities', 'manage_members', 'approve_reports', 'manage_chapter'],
+      'permissions': [
+        'view_activities',
+        'join_activities',
+        'submit_reports',
+        'create_activities',
+        'manage_activities',
+        'manage_members',
+        'approve_reports',
+        'manage_chapter'
+      ],
       'canCreateActivities': true,
       'canManageMembers': true,
     },
@@ -88,7 +125,3 @@ class ChapterConstants {
     return teamTypes.contains(teamType);
   }
 }
-
-
-
-

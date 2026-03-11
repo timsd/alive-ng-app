@@ -6,6 +6,8 @@ import '../../services/auth_service.dart';
 import '../../widgets/role_guard.dart';
 import '../../widgets/custom_image.dart';
 import '../../constants/chapters.dart';
+import 'package:uuid/uuid.dart';
+import 'package:intl/intl.dart';
 
 class RoleManagementScreen extends StatefulWidget {
   const RoleManagementScreen({super.key});
@@ -482,6 +484,16 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
                       ],
                     ),
                   ),
+                  const PopupMenuItem(
+                    value: 'view_history',
+                    child: Row(
+                      children: [
+                        Icon(Icons.history, color: Colors.blueGrey),
+                        SizedBox(width: 8),
+                        Text('View Leadership History'),
+                      ],
+                    ),
+                  ),
                 ],
               )
             : Icon(
@@ -547,6 +559,9 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
         break;
       case 'archive':
         await _archiveUser(user);
+        break;
+      case 'view_history':
+        await _showLeadershipHistoryDialog(user);
         break;
     }
   }
@@ -664,6 +679,22 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
   Future<void> _updateUserRole(
       UserProfile user, String newRole, String action) async {
     try {
+      // Auto-archive leadership roles when they change (e.g. term expires)
+      if (['admin', 'leader', 'coordinator'].contains(user.role) && user.role != newRole) {
+        final archiveRecord = await _showArchiveRoleDialog(user);
+        if (archiveRecord != null) {
+          await _databaseService.archiveLeadershipRole(archiveRecord);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Past ${user.role.toUpperCase()} role archived successfully for historical records.'),
+                backgroundColor: Colors.blue,
+              ),
+            );
+          }
+        }
+      }
+
       // Update user role in Firebase
       await _databaseService.updateUserRole(user.id, newRole);
 
@@ -741,6 +772,152 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
         }
       }
     }
+  }
+
+  Future<LeadershipRecord?> _showArchiveRoleDialog(UserProfile user) async {
+    DateTime startDate = DateTime.now().subtract(const Duration(days: 365));
+    DateTime endDate = DateTime.now();
+    bool shouldArchive = true;
+
+    return await showDialog<LeadershipRecord?>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Archive Past Administration?'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('${user.fullName} is no longer a ${user.role.toUpperCase()}. Do you want to archive their past tenure for historical records?'),
+                  const SizedBox(height: 16),
+                  SwitchListTile(
+                    title: const Text('Archive Role'),
+                    value: shouldArchive,
+                    onChanged: (val) => setDialogState(() => shouldArchive = val),
+                  ),
+                  if (shouldArchive) ...[
+                    const SizedBox(height: 16),
+                    ListTile(
+                      title: const Text('Start Date'),
+                      subtitle: Text(DateFormat('MMM d, yyyy').format(startDate)),
+                      trailing: const Icon(Icons.calendar_today),
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: startDate,
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime.now(),
+                        );
+                        if (picked != null) {
+                          setDialogState(() => startDate = picked);
+                        }
+                      },
+                    ),
+                    ListTile(
+                      title: const Text('End Date'),
+                      subtitle: Text(DateFormat('MMM d, yyyy').format(endDate)),
+                      trailing: const Icon(Icons.calendar_today),
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: endDate,
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime.now(),
+                        );
+                        if (picked != null) {
+                          setDialogState(() => endDate = picked);
+                        }
+                      },
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(null),
+                  child: const Text('Skip Archiving'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    if (!shouldArchive) {
+                      Navigator.of(context).pop(null);
+                      return;
+                    }
+                    final record = LeadershipRecord(
+                      id: const Uuid().v4(),
+                      userId: user.id,
+                      role: user.role,
+                      startDate: startDate,
+                      endDate: endDate,
+                      chapterId: user.chapterId,
+                    );
+                    Navigator.of(context).pop(record);
+                  },
+                  child: const Text('Save & Archive'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _showLeadershipHistoryDialog(UserProfile user) async {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Leadership History: ${user.fullName}'),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 400,
+            child: FutureBuilder<List<LeadershipRecord>>(
+              future: _databaseService.getLeadershipHistory(user.id),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
+                final records = snapshot.data ?? [];
+                if (records.isEmpty) {
+                  return const Center(child: Text('No past leadership records found.'));
+                }
+                return ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: records.length,
+                  itemBuilder: (context, index) {
+                    final record = records[index];
+                    return Card(
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: _getRoleColor(record.role),
+                          child: const Icon(Icons.history, color: Colors.white, size: 20),
+                        ),
+                        title: Text(record.role.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text('${DateFormat('MMM yyyy').format(record.startDate)} - ${DateFormat('MMM yyyy').format(record.endDate)}'),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override

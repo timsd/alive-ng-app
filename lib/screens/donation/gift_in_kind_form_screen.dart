@@ -8,6 +8,7 @@ import '../../utils/layout_fix_utils.dart';
 import '../../providers/language_provider.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../utils/validation_utils.dart';
+import '../../services/donation_service.dart';
 
 class GiftInKindFormScreen extends ConsumerStatefulWidget {
   const GiftInKindFormScreen({super.key});
@@ -58,46 +59,65 @@ class _GiftInKindFormScreenState extends ConsumerState<GiftInKindFormScreen> {
   Future<void> _submitForm() async {
     final rootCtx = context;
     if (!_formKey.currentState!.validate()) return;
+    try {
+      final name = _nameController.text.trim();
+      final email = _emailController.text.trim();
+      final phone = _phoneController.text.trim();
+      final itemType = _selectedItemType ?? 'Other';
+      final quantity = _quantityController.text.trim();
+      final location = _locationController.text.trim();
+      final value = _valueController.text.trim();
+      final preference = _deliveryPreference;
+      final description = _descriptionController.text.trim();
 
-    final name = _nameController.text.trim();
-    final email = _emailController.text.trim();
-    final phone = _phoneController.text.trim();
-    final itemType = _selectedItemType ?? 'Other';
-    final quantity = _quantityController.text.trim();
-    final location = _locationController.text.trim();
-    final value = _valueController.text.trim();
-    final preference = _deliveryPreference;
-    final description = _descriptionController.text.trim();
-
-    final subject = Uri.encodeComponent('Specific Item Donation: $itemType');
-    final body = Uri.encodeComponent(
-      'Name: $name\n'
-      'Email: $email\n'
-      'Phone: $phone\n'
-      'Item Type: $itemType\n'
-      'Quantity: $quantity\n'
-      'Estimated Value: $value\n'
-      'Delivery Preference: $preference\n'
-      'Location: $location\n'
-      'Description: $description\n'
-    );
-
-    final mailto = Uri.parse('mailto:alivenigeria2011@gmail.com?subject=$subject&body=$body');
-    if (await canLaunchUrl(mailto)) {
-      await launchUrl(mailto);
-      if (!rootCtx.mounted) return;
-      ScaffoldMessenger.of(rootCtx).showSnackBar(
-        const SnackBar(
-            content:
-                Text('Opening email to send your donation details...')),
+      await DonationService().submitGiftContribution(
+        giftType: 'gift_in_kind',
+        fullName: name,
+        email: email,
+        phone: phone,
+        itemType: itemType,
+        quantity: quantity,
+        estimatedValue: value,
+        deliveryPreference: preference,
+        location: location,
+        description: description,
       );
-      rootCtx.pop();
-    } else {
+
+      final subject = Uri.encodeComponent('Specific Item Donation: $itemType');
+      final body = Uri.encodeComponent(
+        'Name: $name\n'
+        'Email: $email\n'
+        'Phone: $phone\n'
+        'Item Type: $itemType\n'
+        'Quantity: $quantity\n'
+        'Estimated Value: $value\n'
+        'Delivery Preference: $preference\n'
+        'Location: $location\n'
+        'Description: $description\n'
+      );
+
+      final mailto = Uri.parse(
+          'mailto:alivenigeria2011@gmail.com?subject=$subject&body=$body');
+      if (await canLaunchUrl(mailto)) {
+        await launchUrl(mailto);
+        if (!rootCtx.mounted) return;
+        ScaffoldMessenger.of(rootCtx).showSnackBar(
+          const SnackBar(
+              content: Text('Opening email to send your donation details...')),
+        );
+        rootCtx.pop();
+      } else {
+        if (!rootCtx.mounted) return;
+        ScaffoldMessenger.of(rootCtx).showSnackBar(
+          const SnackBar(
+              content: Text(
+                  'Saved. Could not open email app. Please email alivenigeria2011@gmail.com.')),
+        );
+      }
+    } catch (e) {
       if (!rootCtx.mounted) return;
       ScaffoldMessenger.of(rootCtx).showSnackBar(
-        const SnackBar(
-            content: Text(
-                'Could not open email app. Please email alivenigeria2011@gmail.com.')),
+        SnackBar(content: Text('Failed to submit gift form: $e')),
       );
     }
   }

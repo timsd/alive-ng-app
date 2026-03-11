@@ -338,7 +338,7 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                                       ? '${_scheduledFor!.day}/${_scheduledFor!.month}/${_scheduledFor!.year} ${_scheduledFor!.hour}:${_scheduledFor!.minute.toString().padLeft(2, '0')}'
                                       : 'Publish immediately',
                                   style: TextStyle(
-                                    color: _scheduledFor != null ? Colors.black : Colors.grey,
+                                    color: _scheduledFor != null ? Theme.of(context).colorScheme.onSurface : Colors.grey,
                                   ),
                                 ),
                               ),
@@ -378,7 +378,7 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                                       ? '${_expiresAt!.day}/${_expiresAt!.month}/${_expiresAt!.year} ${_expiresAt!.hour}:${_expiresAt!.minute.toString().padLeft(2, '0')}'
                                       : 'No expiry',
                                   style: TextStyle(
-                                    color: _expiresAt != null ? Colors.black : Colors.grey,
+                                    color: _expiresAt != null ? Theme.of(context).colorScheme.onSurface : Colors.grey,
                                   ),
                                 ),
                               ),

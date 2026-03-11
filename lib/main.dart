@@ -146,7 +146,7 @@ class MainNavigationScreen extends ConsumerWidget {
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         currentIndex: _getCurrentIndex(currentLocation),
-        onTap: (index) => _onItemTapped(context, index),
+        onTap: (index) => _onItemTapped(context, ref, index),
         selectedItemColor: Theme.of(context).colorScheme.primary,
         unselectedItemColor: Theme.of(context)
             .colorScheme
@@ -218,7 +218,7 @@ class MainNavigationScreen extends ConsumerWidget {
     }
   }
 
-  void _onItemTapped(BuildContext context, int index) {
+  void _onItemTapped(BuildContext context, WidgetRef ref, int index) {
     switch (index) {
       case 0:
         context.go(AppConstants.homeRoute);
@@ -233,23 +233,28 @@ class MainNavigationScreen extends ConsumerWidget {
         context.go(AppConstants.healthRoute);
         break;
       case 4:
-        _showMoreBottomSheet(context);
+        _showMoreBottomSheet(context, ref);
         break;
     }
   }
 
-  void _showMoreBottomSheet(BuildContext context) {
+  void _showMoreBottomSheet(BuildContext context, WidgetRef ref) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _buildMoreBottomSheet(context),
+      builder: (context) => _buildMoreBottomSheet(context, ref),
     );
   }
 
-  Widget _buildMoreBottomSheet(BuildContext context) {
+  Widget _buildMoreBottomSheet(BuildContext context, WidgetRef ref) {
     final roleService = RoleAccessService.instance;
     final canAccessRoleGated = roleService.canAccessRoleGatedFeatures();
+    final userEmail = ref.watch(authStateProvider).maybeWhen(
+          data: (user) => user?.email?.toLowerCase(),
+          orElse: () => null,
+        );
+    final canClaimAdmin = userEmail == 'alivenigeria2011@gmail.com';
 
     // Use responsive utilities instead of hardcoded MediaQuery values
     final bottomSheetHeight = ResponsiveUtils.getResponsiveValue(
@@ -336,124 +341,136 @@ class MainNavigationScreen extends ConsumerWidget {
                     mobile: 8.0, tablet: 12.0, desktop: 16.0)),
           ],
           Expanded(
-            child: GridView.builder(
-              padding: context.responsivePadding,
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: crossAxisCount,
-                mainAxisSpacing: context.responsivePadding.top,
-                crossAxisSpacing: context.responsivePadding.left,
-                childAspectRatio: ResponsiveUtils.getResponsiveValue(
-                  context: context,
-                  mobile: 1.1,
-                  tablet: 1.0,
-                  desktop: 0.95,
-                ),
-              ),
-              itemCount: (canAccessRoleGated ? 9 : 0) + 8 + 1,
-              itemBuilder: (context, index) {
-                final items = <Map<String, dynamic>>[
+            child: Builder(builder: (context) {
+              final items = <Map<String, dynamic>>[
                   if (canAccessRoleGated) ...[
+                    {
+                      'icon': Icons.health_and_safety,
+                      'label': 'Health',
+                      'route': AppConstants.enhancedHealthRoute
+                    },
                     {
                       'icon': Icons.calendar_today,
                       'label': 'Daily',
-                      'route': AppConstants.dailyRoute
-                    },
-                    {
-                      'icon': Icons.volunteer_activism,
-                      'label': 'Missions',
-                      'route': AppConstants.missionsRoute
-                    },
-                    {
-                      'icon': Icons.event,
-                      'label': 'Events',
-                      'route': AppConstants.eventsRoute
-                    },
-                    {
-                      'icon': Icons.games,
-                      'label': 'Bible Game',
-                      'route': AppConstants.bibleGameRoute
-                    },
-                    {
-                      'icon': Icons.chat,
-                      'label': 'Chat',
-                      'route': AppConstants.chatRoute
-                    },
-                    {
-                      'icon': Icons.groups,
-                      'label': 'Chapters',
-                      'route': AppConstants.chaptersRoute
-                    },
-                    {
-                      'icon': Icons.video_call,
-                      'label': 'Conference',
-                      'route': AppConstants.conferenceRoute
-                    },
-                    {
-                      'icon': Icons.restaurant,
-                      'label': 'Recipes',
-                      'route': AppConstants.recipesRoute
-                    },
+                    'route': AppConstants.dailyRoute
+                  },
+                  {
+                    'icon': Icons.volunteer_activism,
+                    'label': 'Missions',
+                    'route': AppConstants.missionsRoute
+                  },
+                  {
+                    'icon': Icons.event,
+                    'label': 'Events',
+                    'route': AppConstants.eventsRoute
+                  },
+                  {
+                    'icon': Icons.games,
+                    'label': 'Bible Game',
+                    'route': AppConstants.bibleGameRoute
+                  },
+                  {
+                    'icon': Icons.chat,
+                    'label': 'Chat',
+                    'route': AppConstants.chatRoute
+                  },
+                  {
+                    'icon': Icons.groups,
+                    'label': 'Chapters',
+                    'route': AppConstants.chaptersRoute
+                  },
+                  {
+                    'icon': Icons.video_call,
+                    'label': 'Conference',
+                    'route': AppConstants.conferenceRoute
+                  },
+                  {
+                    'icon': Icons.restaurant,
+                    'label': 'Recipes',
+                    'route': AppConstants.recipesRoute
+                  },
                     {
                       'icon': Icons.people,
                       'label': 'BOD Trustees',
-                      'route': AppConstants.bodTrusteesRoute
+                      'route': AppConstants.bodTrusteesRoute,
+                      'allowedRoles': ['admin', 'bod', 'trustee']
                     },
                   ],
+                {
+                  'icon': Icons.person,
+                  'label': 'Profile',
+                  'route': AppConstants.profileRoute
+                },
+                {
+                  'icon': Icons.admin_panel_settings,
+                  'label': 'Admin',
+                  'route': AppConstants.adminRoute,
+                  'roleOnly': true
+                },
+                if (canClaimAdmin)
                   {
-                    'icon': Icons.person,
-                    'label': 'Profile',
-                    'route': AppConstants.profileRoute
+                    'icon': Icons.verified_user,
+                    'label': 'Claim Admin Role (Temp)',
+                    'action': 'claimAdminRole',
                   },
-                  {
-                    'icon': Icons.admin_panel_settings,
-                    'label': 'Admin',
-                    'route': AppConstants.adminRoute,
-                    'roleOnly': true
-                  },
-                  {
-                    'icon': Icons.auto_stories,
-                    'label': 'Kids Stories',
-                    'route': AppConstants.kidsStoriesRoute
-                  },
-                  {
-                    'icon': Icons.library_books,
-                    'label': 'Library',
-                    'route': AppConstants.libraryRoute
-                  },
-                  {
-                    'icon': Icons.headset,
-                    'label': 'Podcasts',
-                    'route': AppConstants.podcastsRoute
-                  },
-                  {
-                    'icon': Icons.school,
-                    'label': 'Lessons',
-                    'route': AppConstants.interactiveLessonsRoute
-                  },
-                  {
-                    'icon': Icons.menu_book,
-                    'label': 'Tracts',
-                    'route': AppConstants.booksTractsRoute
-                  },
-                  {
-                    'icon': Icons.record_voice_over,
-                    'label': 'Testimonies',
-                    'route': AppConstants.testimoniesRoute
-                  },
-                  {
-                    'icon': Icons.child_care,
-                    'label': 'Kids Mission',
-                    'route': AppConstants.kidsMissionRoute
-                  },
-                  {
-                    'icon': Icons.login,
-                    'label': 'Sign In',
-                    'route': AppConstants.authRoute,
-                    'guestOnly': true,
-                  },
-                ];
-
-                final item = items[index];
+                {
+                  'icon': Icons.auto_stories,
+                  'label': 'Kids Stories',
+                  'route': AppConstants.kidsStoriesRoute
+                },
+                {
+                  'icon': Icons.library_books,
+                  'label': 'Library',
+                  'route': AppConstants.libraryRoute
+                },
+                {
+                  'icon': Icons.headset,
+                  'label': 'Podcasts',
+                  'route': AppConstants.podcastsRoute
+                },
+                {
+                  'icon': Icons.school,
+                  'label': 'Lessons',
+                  'route': AppConstants.interactiveLessonsRoute
+                },
+                {
+                  'icon': Icons.menu_book,
+                  'label': 'Tracts',
+                  'route': AppConstants.booksTractsRoute
+                },
+                {
+                  'icon': Icons.record_voice_over,
+                  'label': 'Testimonies',
+                  'route': AppConstants.testimoniesRoute
+                },
+                {
+                  'icon': Icons.child_care,
+                  'label': 'Kids Mission',
+                  'route': AppConstants.kidsMissionRoute
+                },
+                {
+                  'icon': Icons.login,
+                  'label': 'Sign In',
+                  'route': AppConstants.authRoute,
+                  'guestOnly': true,
+                },
+              ];
+              return GridView.builder(
+                padding: context.responsivePadding,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  mainAxisSpacing: context.responsivePadding.top,
+                  crossAxisSpacing: context.responsivePadding.left,
+                  childAspectRatio: ResponsiveUtils.getResponsiveValue(
+                    context: context,
+                    mobile: 1.1,
+                    tablet: 1.0,
+                    desktop: 0.95,
+                  ),
+                ),
+                itemCount: items.length,
+                itemBuilder: (context, index) {
+                  final item = items[index];
                 if (item['guestOnly'] == true) {
                   return Consumer(builder: (context, ref, _) {
                     final authState = ref.watch(authStateProvider);
@@ -468,7 +485,7 @@ class MainNavigationScreen extends ConsumerWidget {
                       context,
                       item['icon'] as IconData,
                       item['label'] as String,
-                      item['route'] as String,
+                      item['route'] as String?,
                     );
                   });
                 }
@@ -479,19 +496,42 @@ class MainNavigationScreen extends ConsumerWidget {
                       context,
                       item['icon'] as IconData,
                       item['label'] as String,
-                      item['route'] as String,
+                      item['route'] as String?,
                       roleOnly: true,
                     ),
+                  );
+                }
+                if (item['allowedRoles'] is List) {
+                  final allowedRoles = (item['allowedRoles'] as List)
+                      .map((e) => e.toString())
+                      .toList();
+                  return RoleVisibility(
+                    allowedRoles: allowedRoles,
+                    child: _buildMoreItem(
+                      context,
+                      item['icon'] as IconData,
+                      item['label'] as String,
+                      item['route'] as String?,
+                    ),
+                  );
+                }
+                if (item['action'] == 'claimAdminRole') {
+                  return _buildMoreItem(
+                    context,
+                    item['icon'] as IconData,
+                    item['label'] as String,
+                    null,
+                    onTap: () => _claimAdminRole(context, ref),
                   );
                 }
                 return _buildMoreItem(
                   context,
                   item['icon'] as IconData,
                   item['label'] as String,
-                  item['route'] as String,
+                  item['route'] as String?,
                 );
-              },
-            ),
+              });
+            }),
           ),
         ],
       ),
@@ -502,13 +542,20 @@ class MainNavigationScreen extends ConsumerWidget {
     BuildContext context,
     IconData icon,
     String label,
-    String route, {
+    String? route, {
     bool roleOnly = false,
+    VoidCallback? onTap,
   }) {
     return InkWell(
       onTap: () {
         Navigator.pop(context);
-        context.go(route);
+        if (onTap != null) {
+          onTap();
+          return;
+        }
+        if (route != null) {
+          context.go(route);
+        }
       },
       borderRadius: context.responsiveBorderRadius,
       child: Stack(
@@ -586,6 +633,37 @@ class MainNavigationScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _claimAdminRole(BuildContext context, WidgetRef ref) async {
+    try {
+      final ok = await ref.read(firebaseDatabaseServiceProvider).claimAdminRole();
+      if (!context.mounted) return;
+      if (ok) {
+        RoleAccessService.instance.clearCache();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Admin role claimed. Sign out and sign in again.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Claim failed. Confirm Cloud Function is deployed.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not claim admin role right now.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Widget _buildNavigationDrawer(BuildContext context, bool isAuthenticated) {

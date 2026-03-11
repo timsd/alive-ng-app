@@ -2,8 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/admin_models.dart';
+import '../utils/app_exception.dart';
 import 'admin_database_helper.dart';
-import 'admin_email_settings_service.dart';
 import '../utils/logger.dart';
 
 class AdminService {
@@ -376,8 +376,7 @@ class AdminService {
         'type': 'new_signup',
         'userEmail': userEmail,
         'userName': userName,
-        'notificationEmails':
-            await AdminEmailSettingsService.instance.getRecipients(),
+        'notificationEmails': [superAdminEmail],
         'createdAt': FieldValue.serverTimestamp(),
         'isRead': false,
         'priority': 'normal',
@@ -389,7 +388,7 @@ class AdminService {
           .call({
         'userEmail': userEmail,
         'userName': userName,
-        'recipients': await AdminEmailSettingsService.instance.getRecipients(),
+        'recipients': [superAdminEmail],
       });
       _logger.info(
           'New signup notification triggered for: $userName ($userEmail)');
@@ -451,6 +450,38 @@ class AdminService {
       default:
         return AdminLevel.none;
     }
+  }
+
+  List<AdminPermission> _getDefaultAdminPermissions(String role) {
+    final permissionNames = _getDefaultPermissions(role);
+    return permissionNames.map((name) => AdminPermission(
+      id: '${role}_$name',
+      name: name,
+      description: _getPermissionDescription(name),
+      category: _getPermissionCategory(name),
+      isActive: true,
+    )).toList();
+  }
+
+  String _getPermissionDescription(String permission) {
+    const descriptions = {
+      'approve_users': 'Can approve or reject new user registrations',
+      'manage_roles': 'Can assign and modify user roles',
+      'manage_content': 'Can moderate and manage app content',
+      'view_analytics': 'Can view usage analytics and reports',
+      'manage_admins': 'Can create and manage admin accounts',
+      'system_settings': 'Can modify system-wide settings',
+    };
+    return descriptions[permission] ?? permission;
+  }
+
+  String _getPermissionCategory(String permission) {
+    if (permission.contains('user') || permission.contains('role') || permission.contains('admin')) {
+      return 'User Management';
+    }
+    if (permission.contains('content')) return 'Content';
+    if (permission.contains('analytics')) return 'Analytics';
+    return 'System';
   }
 
   List<String> _getDefaultPermissions(String role) {
@@ -563,5 +594,114 @@ class AdminService {
     } catch (e) {
       return 0;
     }
+  }
+}
+
+/// Extension on AdminService providing [UserSession], [AdminPermission],
+/// and [ContentModerationRequest] integration.
+extension AdminServiceModelIntegration on AdminService {
+  /// Record a [UserSession] when an admin logs in.
+  Future<UserSession> recordUserSession({
+    required String userId,
+    required String deviceInfo,
+    String? ipAddress,
+  }) async {
+    try {
+      final session = UserSession(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        userId: userId,
+        loginAt: DateTime.now(),
+        deviceInfo: deviceInfo,
+        ipAddress: ipAddress ?? '',
+        isActive: true,
+      );
+
+      await FirebaseFirestore.instance
+          .collection('user_sessions')
+          .doc(session.id)
+          .set(session.toJson());
+
+      return session;
+    } catch (e) {
+      throw DatabaseException('Failed to record user session',
+          originalError: e);
+    }
+  }
+
+  /// Get active [UserSession]s for a user.
+  Future<List<UserSession>> getActiveUserSessions(String userId) async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('user_sessions')
+          .where('userId', isEqualTo: userId)
+          .where('isActive', isEqualTo: true)
+          .orderBy('loginTime', descending: true)
+          .get();
+
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return UserSession.fromJson(data);
+      }).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /// Submit a [ContentModerationRequest] for content review.
+  Future<ContentModerationRequest> submitContentModeration({
+    required String contentId,
+    required String contentType,
+    required String reason,
+    String? reportedBy,
+  }) async {
+    try {
+      final request = ContentModerationRequest(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        contentId: contentId,
+        contentType: contentType,
+        reason: reason,
+        description: reason,
+        reportedBy: reportedBy ?? FirebaseAuth.instance.currentUser?.uid ?? '',
+        reportedAt: DateTime.now(),
+        status: 'pending',
+      );
+
+      await FirebaseFirestore.instance
+          .collection('content_moderation')
+          .doc(request.id)
+          .set(request.toJson());
+
+      return request;
+    } catch (e) {
+      throw DatabaseException('Failed to submit moderation request',
+          originalError: e);
+    }
+  }
+
+  /// Get pending [ContentModerationRequest]s.
+  Future<List<ContentModerationRequest>> getContentModerationRequests({
+    String status = 'pending',
+  }) async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('content_moderation')
+          .where('status', isEqualTo: status)
+          .orderBy('reportedAt', descending: true)
+          .get();
+
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return ContentModerationRequest.fromJson(data);
+      }).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /// Get typed [AdminPermission]s for a given role.
+  Future<List<AdminPermission>> getPermissionsForRole(String role) async {
+    return _getDefaultAdminPermissions(role);
   }
 }

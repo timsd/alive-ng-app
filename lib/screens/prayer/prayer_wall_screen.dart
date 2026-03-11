@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../widgets/add_prayer_request_dialog.dart';
 
 class PrayerWallScreen extends ConsumerStatefulWidget {
   const PrayerWallScreen({super.key});
@@ -15,8 +16,6 @@ class PrayerWallScreen extends ConsumerStatefulWidget {
 class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final TextEditingController _prayerController = TextEditingController();
-  bool _isAnonymous = true;
 
   @override
   void initState() {
@@ -27,7 +26,6 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
   @override
   void dispose() {
     _tabController.dispose();
-    _prayerController.dispose();
     super.dispose();
   }
 
@@ -106,9 +104,7 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
       child: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('prayer_requests')
-            .where('status', isEqualTo: 'active')
-            .orderBy('created_at', descending: true)
-            .limit(20)
+            .limit(50)
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -123,21 +119,33 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
             return const Center(child: Text('No prayer requests found'));
           }
 
+          final docs = snapshot.data!.docs.where((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            final notArchived = (data['status'] as String?) != 'archived';
+            final isPublic = data['is_public'] as bool? ?? true;
+            return notArchived && isPublic;
+          }).toList()
+            ..sort((a, b) {
+              final aData = a.data() as Map<String, dynamic>;
+              final bData = b.data() as Map<String, dynamic>;
+              return _asDateTime(bData['created_at'])
+                  .compareTo(_asDateTime(aData['created_at']));
+            });
+
           return ListView.builder(
             padding: const EdgeInsets.all(16),
-            itemCount: snapshot.data!.docs.length,
+            itemCount: docs.length,
             itemBuilder: (context, index) {
-              final doc = snapshot.data!.docs[index];
+              final doc = docs[index];
               final data = doc.data() as Map<String, dynamic>;
 
               return _buildPrayerCard(
                 context,
                 index,
                 data['title'] ?? 'Prayer Request',
-                data['content'] ?? 'Please pray for this request',
+                _resolveDescription(data),
                 data['author_name'] ?? 'Anonymous',
-                DateTime.parse(
-                    data['created_at'] ?? DateTime.now().toIso8601String()),
+                _asDateTime(data['created_at']),
                 data['prayer_count'] ?? 0,
                 false,
               );
@@ -159,7 +167,6 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
       stream: FirebaseFirestore.instance
           .collection('prayer_requests')
           .where('user_id', isEqualTo: user.uid)
-          .orderBy('created_at', descending: true)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -175,21 +182,28 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
               child: Text('You haven\'t created any prayer requests yet'));
         }
 
+        final docs = snapshot.data!.docs.toList()
+          ..sort((a, b) {
+            final aData = a.data() as Map<String, dynamic>;
+            final bData = b.data() as Map<String, dynamic>;
+            return _asDateTime(bData['created_at'])
+                .compareTo(_asDateTime(aData['created_at']));
+          });
+
         return ListView.builder(
           padding: const EdgeInsets.all(16),
-          itemCount: snapshot.data!.docs.length,
+          itemCount: docs.length,
           itemBuilder: (context, index) {
-            final doc = snapshot.data!.docs[index];
+            final doc = docs[index];
             final data = doc.data() as Map<String, dynamic>;
 
             return _buildPrayerCard(
               context,
               index,
               data['title'] ?? 'My Prayer',
-              data['content'] ?? 'Prayer content',
+              _resolveDescription(data),
               'You',
-              DateTime.parse(
-                  data['created_at'] ?? DateTime.now().toIso8601String()),
+              _asDateTime(data['created_at']),
               data['prayer_count'] ?? 0,
               true,
             );
@@ -262,10 +276,9 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
                   context,
                   index,
                   data['title'] ?? 'Prayer Request',
-                  data['content'] ?? 'Prayer content',
+                  _resolveDescription(data),
                   data['author_name'] ?? 'Community Member',
-                  DateTime.parse(
-                      data['created_at'] ?? DateTime.now().toIso8601String()),
+                  _asDateTime(data['created_at']),
                   data['prayer_count'] ?? 0,
                   false,
                   isPrayingFor: true,
@@ -437,119 +450,66 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
   }
 
   void _showAddPrayerDialog() {
+    final screenContext = context;
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Prayer Request'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _prayerController,
-              decoration: const InputDecoration(
-                hintText: 'Share your prayer request...',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 4,
-              maxLength: 500,
+      builder: (context) => AddPrayerRequestDialog(
+        onSubmit: ({
+          required String title,
+          required String category,
+          required String description,
+          required bool isAnonymous,
+          required bool isPublic,
+          String? scriptureReference,
+          required String urgencyLevel,
+        }) async {
+          final user = FirebaseAuth.instance.currentUser;
+          if (user == null) {
+            throw Exception('User not authenticated');
+          }
+
+          final displayName = user.displayName?.trim();
+          final emailPrefix = user.email?.split('@').first;
+          final visibleName = (displayName != null && displayName.isNotEmpty)
+              ? displayName
+              : ((emailPrefix != null && emailPrefix.isNotEmpty)
+                  ? emailPrefix
+                  : 'ALIVE Member');
+
+          await FirebaseFirestore.instance.collection('prayer_requests').add({
+            'title': title,
+            'description': description,
+            'category': category,
+            'content': description,
+            'is_anonymous': isAnonymous,
+            'is_public': isPublic,
+            'scripture_reference': scriptureReference,
+            'urgency_level': urgencyLevel,
+            'author_name': isAnonymous ? 'Anonymous' : visibleName,
+            'user_id': user.uid,
+            'created_at': FieldValue.serverTimestamp(),
+            'updated_at': FieldValue.serverTimestamp(),
+            'prayer_count': 0,
+            'status': 'active',
+          });
+
+          if (!mounted) return;
+          if (!screenContext.mounted) return;
+          ScaffoldMessenger.of(screenContext).showSnackBar(
+            const SnackBar(
+              content: Text('Prayer request posted successfully!'),
+              backgroundColor: Colors.green,
             ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Checkbox(
-                  value: _isAnonymous,
-                  onChanged: (value) {
-                    setState(() {
-                      _isAnonymous = value ?? true;
-                    });
-                  },
-                ),
-                const Text('Post anonymously'),
-              ],
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              // Save prayer request to Supabase
-              if (_prayerController.text.trim().isEmpty) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Please enter a prayer request'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-                return;
-              }
-
-              // Capture context-dependent objects before async operation
-              final navigator = Navigator.of(context);
-              final messenger = ScaffoldMessenger.of(context);
-
-              try {
-                final user = FirebaseAuth.instance.currentUser;
-                if (user == null) {
-                  throw Exception('User not authenticated');
-                }
-
-                final displayName = user.displayName?.trim();
-                final emailPrefix = user.email?.split('@').first;
-                final visibleName =
-                    (displayName != null && displayName.isNotEmpty)
-                        ? displayName
-                        : ((emailPrefix != null && emailPrefix.isNotEmpty)
-                            ? emailPrefix
-                            : 'ALIVE Member');
-
-                await FirebaseFirestore.instance
-                    .collection('prayer_requests')
-                    .add({
-                  'content': _prayerController.text.trim(),
-                  'is_anonymous': _isAnonymous,
-                  'author_name': _isAnonymous ? 'Anonymous' : visibleName,
-                  'user_id': user.uid,
-                  'created_at': DateTime.now().toIso8601String(),
-                  'prayer_count': 0,
-                  'status': 'active',
-                });
-
-                if (mounted) {
-                  navigator.pop();
-                  _prayerController.clear();
-                  setState(() {
-                    _isAnonymous = true;
-                  });
-
-                  messenger.showSnackBar(
-                    const SnackBar(
-                      content: Text('Prayer request posted successfully!'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (mounted) {
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text('Failed to post prayer request: $e'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              }
-            },
-            child: const Text('Post Prayer'),
-          ),
-        ],
+          );
+        },
       ),
     );
+  }
+
+  String _resolveDescription(Map<String, dynamic> data) {
+    final value = (data['description'] ?? data['content'] ?? '').toString();
+    if (value.trim().isEmpty) return 'Please pray for this request';
+    return value;
   }
 
   String _formatTimestamp(DateTime timestamp) {
@@ -567,6 +527,18 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
     } else {
       return '${timestamp.day}/${timestamp.month}/${timestamp.year}';
     }
+  }
+
+  DateTime _asDateTime(dynamic value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
+    try {
+      final dynamicValue = value;
+      final DateTime? parsed = dynamicValue?.toDate() as DateTime?;
+      if (parsed != null) return parsed;
+    } catch (_) {}
+    return DateTime.now();
   }
 
   void _editPrayer(BuildContext context, int index) {

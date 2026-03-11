@@ -83,6 +83,21 @@ class TestimonyService {
       };
 
       await docRef.set(data);
+
+      // Mirror testimony into prayer strengthening pipeline; visibility follows approval.
+      await _firestore.collection('prayer_strengthening_feed').doc(docRef.id).set({
+        'id': docRef.id,
+        'testimony_id': docRef.id,
+        'user_id': user.uid,
+        'author_name': isAnonymous ? 'Anonymous' : userName,
+        'content': content,
+        'is_anonymous': isAnonymous,
+        'is_approved': false,
+        'is_visible': false,
+        'source': 'testimony',
+        'created_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
+      }, SetOptions(merge: true));
     } catch (e) {
       _logger.error('Error creating testimony', e);
       throw DatabaseException('Failed to create testimony', originalError: e);

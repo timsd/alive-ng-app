@@ -76,13 +76,8 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
     return Scaffold(
       appBar: AppBar(
         title: const Text('Study Guides'),
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: Colors.white,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
           tabs: const [
             Tab(icon: Icon(Icons.dashboard), text: 'Overview'),
             Tab(icon: Icon(Icons.library_books), text: 'Browse'),
@@ -132,7 +127,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
           gradient: LinearGradient(
-            colors: [AppTheme.primaryColor, AppTheme.primaryColor.withValues(alpha: 0.8)],
+            colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.primary.withValues(alpha: 0.8)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -145,7 +140,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
               style: TextStyle(
                 fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 24, tablet: 28, desktop: 32),
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.onPrimary,
               ),
             ),
             SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 8, tablet: 10, desktop: 12)),
@@ -153,15 +148,15 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
               'Deepen your understanding of Scripture through structured Bible studies',
               style: TextStyle(
                 fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 16, tablet: 18, desktop: 20),
-                color: Colors.white70,
+                color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.7),
               ),
             ),
             SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 16, tablet: 20, desktop: 24)),
             ElevatedButton(
               onPressed: () => _tabController.animateTo(1),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: AppTheme.primaryColor,
+                backgroundColor: Theme.of(context).colorScheme.onPrimary,
+                foregroundColor: Theme.of(context).colorScheme.primary,
               ),
               child: Text(
                 'Browse Study Guides',

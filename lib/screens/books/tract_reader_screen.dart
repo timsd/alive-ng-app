@@ -27,14 +27,19 @@ class TractReaderScreen extends StatefulWidget {
 
 class _TractReaderScreenState extends State<TractReaderScreen> {
   final PageController _pageController = PageController();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   int _currentPage = 0;
   final Map<String, TextEditingController> _answerControllers = {};
   bool _showAnswers = false;
+  List<String> _contentPages = [];
+  List<Map<String, dynamic>> _reflectionQuestions = [];
+  bool _loadingDynamicContent = true;
 
   @override
   void initState() {
     super.initState();
     _initializeAnswerControllers();
+    _loadDynamicTractContent();
   }
 
   void _initializeAnswerControllers() {
@@ -43,6 +48,108 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
     for (int i = 1; i <= 10; i++) {
       _answerControllers['question_$i'] = TextEditingController();
     }
+  }
+
+  Future<void> _loadDynamicTractContent() async {
+    try {
+      DocumentSnapshot<Map<String, dynamic>>? tractContentDoc;
+      final byId = await _firestore
+          .collection('tract_contents')
+          .doc(widget.tract.id)
+          .get();
+      if (byId.exists) {
+        tractContentDoc = byId;
+      } else {
+        final byTractId = await _firestore
+            .collection('tract_contents')
+            .where('tract_id', isEqualTo: widget.tract.id)
+            .limit(1)
+            .get();
+        if (byTractId.docs.isNotEmpty) {
+          tractContentDoc = byTractId.docs.first;
+        }
+      }
+
+      if (tractContentDoc == null || !tractContentDoc.exists) {
+        if (mounted) {
+          setState(() {
+            _loadingDynamicContent = false;
+          });
+        }
+        return;
+      }
+
+      final data = tractContentDoc.data() ?? {};
+      final extractedText = (data['content'] ??
+              data['extracted_text'] ??
+              data['text'] ??
+              data['body'] ??
+              '')
+          .toString()
+          .trim();
+      final rawPages = data['pages'];
+      final rawQuestions = data['questions'];
+
+      List<String> pages = [];
+      if (rawPages is List) {
+        pages = rawPages
+            .map((e) => e.toString().trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
+      }
+      if (pages.isEmpty && extractedText.isNotEmpty) {
+        pages = _chunkText(extractedText, 2200);
+      }
+
+      final questions = <Map<String, dynamic>>[];
+      if (rawQuestions is List) {
+        for (final q in rawQuestions) {
+          if (q is Map) {
+            questions.add(Map<String, dynamic>.from(q));
+          }
+        }
+      }
+
+      for (int i = 1; i <= questions.length; i++) {
+        _answerControllers.putIfAbsent(
+            'question_$i', () => TextEditingController());
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _contentPages = pages;
+        _reflectionQuestions = questions;
+        _loadingDynamicContent = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loadingDynamicContent = false;
+      });
+    }
+  }
+
+  List<String> _chunkText(String text, int chunkSize) {
+    final normalized = text.replaceAll(RegExp(r'\r\n?'), '\n').trim();
+    if (normalized.isEmpty) return const [];
+    final chunks = <String>[];
+    int cursor = 0;
+    while (cursor < normalized.length) {
+      int end = cursor + chunkSize;
+      if (end >= normalized.length) {
+        chunks.add(normalized.substring(cursor).trim());
+        break;
+      }
+      final splitAt = normalized.lastIndexOf('\n', end);
+      if (splitAt > cursor + (chunkSize ~/ 3)) {
+        chunks.add(normalized.substring(cursor, splitAt).trim());
+        cursor = splitAt + 1;
+      } else {
+        chunks.add(normalized.substring(cursor, end).trim());
+        cursor = end;
+      }
+    }
+    return chunks.where((e) => e.isNotEmpty).toList();
   }
 
   @override
@@ -625,6 +732,10 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
   // Duplicate _getSampleContent and _getSampleQuestion removed (kept original earlier definitions)
 
   int _getTotalPages() {
+    final dynamicPages = _contentPages.length;
+    if (dynamicPages > 0) {
+      return dynamicPages + 1; // +1 for cover page
+    }
     return widget.tract.pages + 1; // +1 for cover page
   }
 
@@ -825,7 +936,7 @@ Check out this amazing tract: "${widget.tract.title}" by ${widget.tract.author}
 
 ${widget.tract.description}
 
-Download it from ALIVE-NG App
+Download it from ALIVE-NG App www.app.alivenigeria.org
 
 #ALIVE-NG #Gospel #ChristianTract
       '''
@@ -1001,8 +1112,20 @@ Download it from ALIVE-NG App
   }
 
   Widget _buildContentPage(int pageIndex) {
-    // This is a sample content structure - in a real implementation,
-    // this would be populated from the actual tract content
+    final contentIndex = pageIndex - 1;
+    final hasDynamicContent =
+        _contentPages.isNotEmpty && contentIndex >= 0 && contentIndex < _contentPages.length;
+    final dynamicText = hasDynamicContent ? _contentPages[contentIndex] : null;
+    final hasDynamicQuestion =
+        _reflectionQuestions.isNotEmpty &&
+            contentIndex >= 0 &&
+            contentIndex < _reflectionQuestions.length;
+    final question = hasDynamicQuestion ? _reflectionQuestions[contentIndex] : null;
+
+    if (_loadingDynamicContent && _contentPages.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1017,7 +1140,7 @@ Download it from ALIVE-NG App
 
         // Sample content
         Text(
-          _getSampleContent(pageIndex),
+          dynamicText ?? _getSampleContent(pageIndex),
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 height: 1.6,
               ),
@@ -1025,7 +1148,8 @@ Download it from ALIVE-NG App
         const SizedBox(height: 24),
 
         // Interactive question section
-        if (pageIndex <= 10) _buildQuestionSection(pageIndex),
+        if (pageIndex <= 10 || question != null)
+          _buildQuestionSection(pageIndex, question: question),
 
         const SizedBox(height: 24),
 
@@ -1082,7 +1206,17 @@ Download it from ALIVE-NG App
     );
   }
 
-  Widget _buildQuestionSection(int pageIndex) {
+  Widget _buildQuestionSection(int pageIndex, {Map<String, dynamic>? question}) {
+    final prompt = (question?['question'] ??
+            question?['prompt'] ??
+            question?['text'] ??
+            _getSampleQuestion(pageIndex))
+        .toString();
+    final suggested = (question?['suggested_answer'] ??
+            question?['answer'] ??
+            question?['model_answer'] ??
+            _getSampleAnswer(pageIndex))
+        .toString();
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1108,7 +1242,7 @@ Download it from ALIVE-NG App
           ),
           const SizedBox(height: 12),
           Text(
-            _getSampleQuestion(pageIndex),
+            prompt,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.w500,
                 ),
@@ -1157,7 +1291,7 @@ Download it from ALIVE-NG App
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    _getSampleAnswer(pageIndex),
+                    suggested,
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],

@@ -1,56 +1,51 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:cloud_functions/cloud_functions.dart';
 import '../models/donation_models.dart';
 import '../utils/app_exception.dart';
+import '../utils/logger.dart';
 
-enum EmailProvider { server }
-
-class EmailProviderConfig {
-  final EmailProvider provider;
-  final String serverBaseUrl;
-  final Duration timeout;
-
-  const EmailProviderConfig({
-    required this.provider,
-    required this.serverBaseUrl,
-    this.timeout = const Duration(seconds: 10),
-  });
-
-  static const EmailProviderConfig fromEnv = EmailProviderConfig(
-    provider: EmailProvider.server,
-    serverBaseUrl:
-        String.fromEnvironment('EMAIL_SERVER_URL', defaultValue: 'http://localhost:8080'),
-  );
-}
-
+/// Unified email service using Resend via Firebase Cloud Functions.
+///
+/// All emails are sent server-side through the `sendEmail` callable Cloud
+/// Function which uses the Resend API, keeping the API key secure.
 class EmailService {
-  EmailService._({EmailProviderConfig? config})
-      : _config = config ?? EmailProviderConfig.fromEnv;
+  EmailService._();
   static final EmailService instance = EmailService._();
 
-  final EmailProviderConfig _config;
+  static final Logger _logger = Logger('EmailService');
+  final FirebaseFunctions _functions = FirebaseFunctions.instance;
 
+  /// Send a custom email via the Cloud Function.
   Future<void> sendCustomEmail({
     required String toEmail,
     required String toName,
     required String subject,
     required String html,
   }) async {
-    if (_config.provider == EmailProvider.server) {
-      await _sendViaServer(
-        toEmail: toEmail,
-        toName: toName,
-        subject: subject,
-        html: html,
+    try {
+      final callable = _functions.httpsCallable('sendEmail');
+      await callable.call(<String, dynamic>{
+        'to': toEmail,
+        'subject': subject,
+        'html': html,
+      });
+    } on FirebaseFunctionsException catch (e) {
+      _logger.error('Cloud Function sendEmail failed: ${e.code} ${e.message}', e);
+      throw NetworkException(
+        'Email send failed: ${e.message}',
+        originalError: e,
       );
-      return;
+    } catch (e) {
+      _logger.error('Unexpected error sending email', e);
+      throw NetworkException('Email send failed', originalError: e);
     }
-
-    throw AppException('Unsupported email provider');
   }
 
-  Future<void> sendDonationReceipt(DonationRecord record,
-      {DownloadableMaterial? material}) async {
+  /// Send a donation receipt email.
+  Future<void> sendDonationReceipt(
+    DonationRecord record, {
+    DownloadableMaterial? material,
+  }) async {
     const subject = 'Thank you for your donation';
     final html = _buildDonationReceiptHtml(record, material: material);
     await sendCustomEmail(
@@ -61,10 +56,11 @@ class EmailService {
     );
   }
 
+  /// Send an admin alert email.
   Future<void> sendAdminAlert({
     required String subject,
     required String message,
-    String adminEmail = 'zavolah@gmail.com',
+    String adminEmail = 'alivenigeria2011@gmail.com',
     String adminName = 'Admin',
   }) async {
     final html = '<p>${htmlEscape.convert(message)}</p>';
@@ -76,8 +72,10 @@ class EmailService {
     );
   }
 
-  String _buildDonationReceiptHtml(DonationRecord record,
-      {DownloadableMaterial? material}) {
+  String _buildDonationReceiptHtml(
+    DonationRecord record, {
+    DownloadableMaterial? material,
+  }) {
     final lines = <String>[
       '<h2>Donation Receipt</h2>',
       '<p>Dear ${htmlEscape.convert(record.userName)},</p>',
@@ -91,37 +89,8 @@ class EmailService {
         '<li><strong>Transaction ID:</strong> ${htmlEscape.convert(record.transactionId!)}</li>',
       '</ul>',
       '<p>Date: ${record.createdAt.toIso8601String()}</p>',
-      '<p>— ALIVE-NG Treasure</p>',
+      '<p>— ALIVE-NG Treasury</p>',
     ];
-    return '<html><body>${lines.join()}<body></html>';
-  }
-
-  Future<void> _sendViaServer({
-    required String toEmail,
-    required String toName,
-    required String subject,
-    required String html,
-  }) async {
-    final base = _config.serverBaseUrl.trim();
-    if (base.isEmpty) {
-      throw AppException(
-          'Email server URL not configured. Set EMAIL_SERVER_URL via --dart-define.');
-    }
-    final uri = Uri.parse('$base/email/send');
-    final payload = {
-      'to': toEmail,
-      'subject': subject,
-      'html': html,
-    };
-    final res = await http
-        .post(
-          uri,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode(payload),
-        )
-        .timeout(_config.timeout);
-    if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw NetworkException('Server email failed: ${res.statusCode} ${res.body}');
-    }
+    return '<html><body>${lines.join()}</body></html>';
   }
 }

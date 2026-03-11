@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:go_router/go_router.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../utils/responsive_utils.dart';
 import '../../data/tracts_data.dart';
@@ -24,12 +26,14 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
   String _selectedCategory = 'All';
   String _viewMode = 'grid'; // 'grid' or 'list'
   late Future<List<Tract>> _tractsFuture;
+  late Future<List<UserDownload>> _downloadsFuture;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _tractsFuture = Future.value(tracts);
+    _downloadsFuture = DonationService().getUserDownloads();
   }
 
   @override
@@ -53,6 +57,7 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
                 _viewMode = _viewMode == 'grid' ? 'list' : 'grid';
               });
             },
+            tooltip: 'Toggle View',
           ),
         ],
         bottom: TabBar(
@@ -223,11 +228,52 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
   }
 
   Widget _buildDownloadedTab() {
-    return ListView.builder(
-      padding: context.responsivePadding,
-      itemCount: 8, // Using sample data - replace with Supabase query
-      itemBuilder: (context, index) {
-        return _buildDownloadedItem(context, index);
+    return FutureBuilder<List<UserDownload>>(
+      future: _downloadsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return const Center(child: Text('Failed to load downloads'));
+        }
+        
+        final downloads = snapshot.data ?? [];
+        if (downloads.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.download_done, size: 64, color: Colors.grey[400]),
+                const SizedBox(height: 16),
+                Text(
+                  'No downloads yet',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Materials you download will appear here',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey[500]),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return RefreshIndicator(
+          onRefresh: () async {
+            setState(() {
+              _downloadsFuture = DonationService().getUserDownloads();
+            });
+          },
+          child: ListView.builder(
+            padding: context.responsivePadding,
+            itemCount: downloads.length,
+            itemBuilder: (context, index) {
+              return _buildRealDownloadedItem(context, downloads[index]);
+            },
+          ),
+        );
       },
     );
   }
@@ -544,6 +590,9 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
 
         final downloadUrl = await donationService.generateDownloadUrl(material.id);
         if (await canLaunchUrl(Uri.parse(downloadUrl))) {
+          // Register the download so it appears in the "Downloaded" tab
+          await donationService.recordDownload(material.id);
+          
           await launchUrl(Uri.parse(downloadUrl), mode: LaunchMode.externalApplication);
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -552,6 +601,10 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
                 backgroundColor: Colors.green,
               ),
             );
+            // Refresh downloads tab
+            setState(() {
+              _downloadsFuture = donationService.getUserDownloads();
+            });
           }
         } else {
           throw 'Could not launch downloaded tract';
@@ -839,20 +892,7 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
     );
   }
 
-  Widget _buildDownloadedItem(BuildContext context, int index) {
-    final titles = [
-      'Steps to Christ',
-      'The Sabbath Truth',
-      'The Great Controversy',
-      'What Happens When You Die?',
-      'Desire of Ages',
-      'The Second Coming of Christ',
-      'Patriarchs and Prophets',
-      'Health and Temperance',
-    ];
-
-    final isBook = index % 2 == 0;
-
+  Widget _buildRealDownloadedItem(BuildContext context, UserDownload download) {
     return Card(
       margin: EdgeInsets.only(bottom: ResponsiveUtils.getResponsiveValue(context: context, mobile: 10.0, tablet: 12.0, desktop: 14.0)),
       child: ListTile(
@@ -867,7 +907,7 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
-                isBook ? Icons.menu_book : Icons.article,
+                Icons.article,
                 color: Colors.green,
                 size: ResponsiveUtils.getResponsiveValue(context: context, mobile: 20.0, tablet: 24.0, desktop: 28.0),
               ),
@@ -880,7 +920,7 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
           ),
         ),
         title: Text(
-          titles[index % titles.length],
+          download.materialTitle,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
@@ -888,14 +928,14 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              isBook ? 'Book • Downloaded' : 'Tract • Downloaded',
+              'Downloaded',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Colors.green,
               ),
             ),
             SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 3.0, tablet: 4.0, desktop: 5.0)),
             Text(
-              'Downloaded on ${DateTime.now().subtract(Duration(days: index + 1)).day}/${DateTime.now().month}/${DateTime.now().year}',
+              'On ${download.downloadedAt.day}/${download.downloadedAt.month}/${download.downloadedAt.year}',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Colors.grey[600],
               ),
@@ -906,24 +946,35 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
-              icon: Icon(Icons.share, size: ResponsiveUtils.getResponsiveValue(context: context, mobile: 20.0, tablet: 24.0, desktop: 28.0)),
+              icon: Icon(Icons.download, size: ResponsiveUtils.getResponsiveValue(context: context, mobile: 20.0, tablet: 24.0, desktop: 28.0)),
               onPressed: () {
-                _shareDownloadedItem(titles[index % titles.length]);
+                _redownloadMaterial(download);
               },
-            ),
-            IconButton(
-              icon: Icon(Icons.delete, size: ResponsiveUtils.getResponsiveValue(context: context, mobile: 20.0, tablet: 24.0, desktop: 28.0)),
-              onPressed: () {
-                _deleteDownloadedItem(titles[index % titles.length]);
-              },
+              tooltip: 'Download PDF',
             ),
           ],
         ),
         onTap: () {
-          _openReader(context, titles[index % titles.length], isBook);
+          _redownloadMaterial(download);
         },
       ),
     );
+  }
+
+  void _redownloadMaterial(UserDownload download) async {
+    try {
+      final downloadUrl = await DonationService().generateDownloadUrl(download.materialId);
+      if (await canLaunchUrl(Uri.parse(downloadUrl))) {
+        await launchUrl(Uri.parse(downloadUrl), mode: LaunchMode.externalApplication);
+      } else {
+        throw 'Could not launch downloaded content';
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to re-download: $e')),
+      );
+    }
   }
 
   void _openReader(BuildContext context, String title, bool isBook) {
@@ -997,49 +1048,6 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
               );
             },
             child: const Text('Download'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _shareDownloadedItem(String title) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Sharing "$title"...'),
-        action: SnackBarAction(
-          label: 'Share',
-          onPressed: () {
-            // Implement actual sharing logic
-          },
-        ),
-      ),
-    );
-  }
-
-  void _deleteDownloadedItem(String title) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Item'),
-        content: Text('Are you sure you want to delete "$title"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('"$title" deleted successfully!'),
-                  backgroundColor: Colors.red,
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete'),
           ),
         ],
       ),

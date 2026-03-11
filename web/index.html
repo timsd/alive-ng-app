@@ -314,7 +314,7 @@
               return;
             }
             const token = await user.getIdTokenResult();
-            window._isAdmin = !!(token.claims && token.claims.admin) || (user.email === 'alivenigeria2011@gmail.com');
+            window._isAdmin = !!(token.claims && token.claims.admin);
             window._isLoggedIn = true;
           } catch (_) {
             window._isAdmin = false;
@@ -438,6 +438,27 @@
     document.getElementById('open-web-app')?.addEventListener('click', function() {
       loadFlutterApp('/auth');
     });
+    (function bootstrapDeepLinks() {
+      try {
+        var hash = window.location.hash || '';
+        var path = window.location.pathname || '/';
+        var appPath = null;
+
+        // Hash strategy deep links, e.g. /#/admin
+        if (hash.indexOf('#/') === 0) {
+          appPath = hash.substring(1);
+        }
+
+        // Path strategy deep links, e.g. /admin
+        if (!appPath && path !== '/' && !path.endsWith('.html')) {
+          appPath = path;
+        }
+
+        if (appPath) {
+          loadFlutterApp(appPath);
+        }
+      } catch (_) {}
+    })();
     document.getElementById('loading-close')?.addEventListener('click', function() {
       try { 
         document.getElementById('app-loading-overlay').style.display = 'none'; 

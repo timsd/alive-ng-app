@@ -12,7 +12,7 @@ DateTime _parseDateTime(dynamic value) {
   return DateTime.now();
 }
 
-enum ChapterType {
+enum WorkersType {
   main,
   campus,
   fieldwork,
@@ -57,7 +57,7 @@ class Chapter {
   final String id;
   final String name;
   final String description;
-  final ChapterType type;
+  final WorkersType type;
   final String? coordinatorId;
   final String? directorId;
   final List<String> memberIds;
@@ -85,9 +85,9 @@ class Chapter {
       id: json['id'] as String,
       name: json['name'] as String,
       description: json['description'] as String? ?? '',
-      type: ChapterType.values.firstWhere(
+      type: WorkersType.values.firstWhere(
         (type) => type.name == json['type'],
-        orElse: () => ChapterType.main,
+        orElse: () => WorkersType.main,
       ),
       coordinatorId: json['coordinator_id'] as String?,
       directorId: json['director_id'] as String?,
@@ -119,7 +119,7 @@ class Chapter {
     String? id,
     String? name,
     String? description,
-    ChapterType? type,
+    WorkersType? type,
     String? coordinatorId,
     String? directorId,
     List<String>? memberIds,
@@ -177,9 +177,7 @@ class ChapterMember {
         orElse: () => MemberRole.member,
       ),
       joinedAt: _parseDateTime(json['joined_at']),
-      leftAt: json['left_at'] != null
-          ? _parseDateTime(json['left_at'])
-          : null,
+      leftAt: json['left_at'] != null ? _parseDateTime(json['left_at']) : null,
       isActive: json['is_active'] as bool? ?? true,
       permissions: Map<String, dynamic>.from(json['permissions'] ?? {}),
       metadata: Map<String, dynamic>.from(json['metadata'] ?? {}),
@@ -596,11 +594,11 @@ class ChapterTask {
 }
 
 class ChapterConstants {
-  static const Map<ChapterType, String> typeDescriptions = {
-    ChapterType.main: 'Main Chapter - General organizational activities',
-    ChapterType.campus: 'Campus Chapter - University and college outreach',
-    ChapterType.fieldwork: 'Field Work - Community evangelism and service',
-    ChapterType.amtc: 'AMTC - Adventist Medical Training Center activities',
+  static const Map<WorkersType, String> typeDescriptions = {
+    WorkersType.main: 'Main Chapter - General organizational activities',
+    WorkersType.campus: 'Campus Chapter - University and college outreach',
+    WorkersType.fieldwork: 'Field Work - Community evangelism and service',
+    WorkersType.amtc: 'AMTC - Alive Missionary Training Center activities',
   };
 
   static const Map<MemberRole, String> roleDescriptions = {

@@ -28,11 +28,15 @@ class AppConstants {
   static const String roleManagementRoute = '/role-management';
   static const String adminApprovalRoute = '/admin-approval';
   static const String adminApprovalLinkRoute = '/admin-approve';
-  static const String adminEmailSettingsRoute = '/admin-email-settings';
+  static const String leadershipArchiveRoute = '/leadership-archive';
+  static const String materialsRoute = '/materials';
   static const String tractPodcastAdminRoute = '/tract-podcast-admin';
   static const String meetingFileSharingRoute = '/meeting-file-sharing';
   // New Kids Content Admin route
   static const String kidsContentAdminRoute = '/kids-content-admin';
+  static const String adminKidsStoriesRoute = '/admin-kids-stories';
+  static const String adminKidsMissionsRoute = '/admin-kids-missions';
+  static const String adminStudyGuidesRoute = '/admin-study-guides';
   static const String conferenceRoute = '/conference';
   static const String bibleGameRoute = '/bible-game';
   static const String chatRoute = '/chat';
@@ -60,6 +64,7 @@ class AppConstants {
   static const String helpSupportRoute = '/help-support';
   static const String donationRoute = '/donation';
   static const String giftInKindRoute = '/gift-in-kind';
+  static const String nonMonetaryGiftRoute = '/non-monetary-gift';
 
   // Bible Versions
   static const List<String> bibleVersions = ['KJV', 'NKJV', 'NIV'];
