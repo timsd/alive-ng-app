@@ -1,3 +1,4 @@
+import '../constants/bible_verses.dart' show BibleVerse;
 import '../constants/daily_verses.dart' as daily_data;
 
 /// BibleSource provides a unified interface for accessing Bible verses

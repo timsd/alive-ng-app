@@ -601,8 +601,9 @@
 
     function showProjectDetail(p) {
       const el = document.getElementById('project-detail');
-      const goal = formatCurrency(p.goal);
-      const raised = formatCurrency(p.raised || 0);
+      const currencyCode = p.currency || 'NGN';
+      const goal = formatCurrency(p.goal, currencyCode);
+      const raised = formatCurrency(p.raised || 0, currencyCode);
       const statusBadge = p.status ? `<span style="padding:4px 8px;border-radius:999px;background:#EDF2F7;color:#2D3748;font-size:12px;">${escapeHtml(p.status)}</span>` : '';
         const image = p.image_url ? `<img src="${escapeHtml(p.image_url)}" alt="${escapeHtml(p.title)}" style="width:100%;height:220px;object-fit:cover;border-radius:8px;"/>`
         : `<img src="https://images.unsplash.com/photo-1593914370442-49d414beca24?q=80&w=1031&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="Project image" style="width:100%;height:220px;object-fit:cover;border-radius:8px;"/>`;
@@ -648,9 +649,13 @@
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
     }
-    function formatCurrency(n) {
+    function formatCurrency(n, currencyCode = 'NGN') {
       if (typeof n !== 'number') return n || '';
-      return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n);
+      return new Intl.NumberFormat(currencyCode === 'NGN' ? 'en-NG' : 'en-US', { 
+        style: 'currency', 
+        currency: currencyCode, 
+        maximumFractionDigits: 0 
+      }).format(n);
     }
   </script>
   <footer style="margin-top:40px; border-top:1px solid #E2E8F0; background:#ffffff;">

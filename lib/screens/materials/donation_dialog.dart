@@ -73,7 +73,7 @@ class _DonationDialogState extends State<DonationDialog> {
       final donation = await _donationService.createDonation(
         type: widget.donationType,
         amount: _donationAmount,
-        paymentMethod: _selectedPaymentMethod,
+        paymentMethod: PaymentMethod.paystack,
         materialId: widget.material.id,
         materialTitle: widget.material.title,
         notes: _notesController.text.trim().isEmpty
