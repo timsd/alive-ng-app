@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
-import '../data/bible_verses.dart';
+import '../constants/bible_verses.dart';
 import '../screens/bible/bible_reader_screen.dart';
 
 class BibleReferenceWidget extends StatelessWidget {

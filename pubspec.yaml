@@ -116,6 +116,7 @@ dependencies:
   # supabase_flutter: removed (phasing out Supabase SDK)
   just_audio: ^0.9.46
   crypto: ^3.0.3
+  syncfusion_flutter_pdf: ^32.2.9
 dependency_overrides:
   record: ^6.1.2
   record_android: ^1.4.5

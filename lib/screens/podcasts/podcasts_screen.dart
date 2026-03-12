@@ -9,7 +9,7 @@ import 'package:just_audio/just_audio.dart';
 import '../../widgets/podcast_search_bar.dart';
 import '../../widgets/podcast_card.dart';
 import '../../widgets/podcast_episode_card.dart';
-import '../../data/podcast_data.dart';
+import '../../models/podcast_models.dart';
 import '../../widgets/custom_image.dart';
 
 class PodcastsScreen extends ConsumerStatefulWidget {
@@ -418,7 +418,7 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
                       vertical:
                           ResponsiveUtils.getResponsiveSpacing(context, 8)),
                   decoration: BoxDecoration(
-                    color: Colors.grey[300],
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(
                         ResponsiveUtils.getResponsiveSpacing(context, 2)),
                   ),

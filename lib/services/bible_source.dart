@@ -1,5 +1,4 @@
-import '../data/daily_verses.dart' as daily_data;
-import '../data/bible_verses.dart';
+import '../constants/daily_verses.dart' as daily_data;
 
 /// BibleSource provides a unified interface for accessing Bible verses
 /// from the bundled corpus and, in future, remote sources.

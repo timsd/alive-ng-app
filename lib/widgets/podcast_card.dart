@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../utils/responsive_utils.dart';
 import '../utils/layout_fix_utils.dart';
-import '../data/podcast_data.dart';
+import '../models/podcast_models.dart';
 import 'custom_image.dart';
 
 class PodcastCard extends StatelessWidget {

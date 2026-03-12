@@ -164,6 +164,26 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                     _buildHeader(context, theme, isDark),
                     SizedBox(
                         height:
+                            ResponsiveUtils.getResponsiveSpacing(context, 16)),
+                    // View Projects button — lets users donate to a specific project
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _showProjectsPicker,
+                        icon: const Icon(Icons.folder_special),
+                        label: const Text('View Projects & Donate to a Cause'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: theme.colorScheme.secondary,
+                          side: BorderSide(color: theme.colorScheme.secondary, width: 1.5),
+                          padding: EdgeInsets.symmetric(
+                            vertical: ResponsiveUtils.getResponsiveSpacing(context, 14),
+                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                        height:
                             ResponsiveUtils.getResponsiveSpacing(context, 32)),
                     _buildDonationTypeSelector(context, theme),
                     SizedBox(
@@ -335,19 +355,19 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
         padding: ResponsiveUtils.getResponsivePadding(context),
         decoration: BoxDecoration(
           color: isSelected
-              ? theme.primaryColor.withValues(alpha: 0.1)
+              ? theme.colorScheme.primary
               : theme.cardColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected
-                ? theme.primaryColor
+                ? theme.colorScheme.primary
                 : theme.dividerColor.withValues(alpha: 0.3),
             width: isSelected ? 2 : 1,
           ),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: theme.primaryColor.withValues(alpha: 0.2),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.3),
                     blurRadius: 8,
                     offset: const Offset(0, 4),
                   ),
@@ -358,7 +378,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
           children: [
             Icon(
               icon,
-              color: isSelected ? theme.primaryColor : theme.iconTheme.color,
+              color: isSelected ? theme.colorScheme.onPrimary : theme.iconTheme.color,
               size: ResponsiveUtils.getResponsiveValue(
                 context: context,
                 mobile: 32,
@@ -378,7 +398,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                 ),
                 fontWeight: FontWeight.bold,
                 color: isSelected
-                    ? theme.primaryColor
+                    ? theme.colorScheme.onPrimary
                     : theme.colorScheme.onSurface,
               ),
               textAlign: TextAlign.center,
@@ -699,6 +719,10 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
               foregroundColor: theme.colorScheme.onPrimary,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
+              ),
+              minimumSize: Size(
+                ResponsiveUtils.getResponsiveValue(context: context, mobile: 140, tablet: 160, desktop: 180),
+                ResponsiveUtils.getResponsiveValue(context: context, mobile: 44, tablet: 48, desktop: 52),
               ),
               elevation: isEnabled ? 8 : 0,
               shadowColor: theme.primaryColor.withValues(alpha: 0.3),
@@ -1230,5 +1254,248 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       _selectedProjectId = null;
       _selectedProjectTitle = null;
     });
+  }
+
+  /// Opens a bottom sheet listing active ministry projects from Firestore.
+  /// User can tap "Donate to This Project" to pre-select that project and
+  /// scroll down to the donation form.
+  void _showProjectsPicker() {
+    final theme = Theme.of(context);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        maxChildSize: 0.95,
+        minChildSize: 0.4,
+        expand: false,
+        builder: (ctx2, scrollController) => Container(
+          decoration: BoxDecoration(
+            color: theme.scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              // Drag handle
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Ministry Projects',
+                        style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: FutureBuilder<List<Map<String, dynamic>>>(
+                  future: _fetchProjects(),
+                  builder: (ctx3, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.folder_off, size: 48, color: theme.colorScheme.onSurface.withValues(alpha: 0.4)),
+                            const SizedBox(height: 12),
+                            Text('No projects available at this time', style: theme.textTheme.bodyLarge),
+                          ],
+                        ),
+                      );
+                    }
+                    final projects = snapshot.data!;
+                    return ListView.builder(
+                      controller: scrollController,
+                      padding: const EdgeInsets.all(16),
+                      itemCount: projects.length,
+                      itemBuilder: (ctx4, i) {
+                        final project = projects[i];
+                        final id = project['id'] as String? ?? '';
+                        final title = (project['title'] as String?) ?? 'Unnamed Project';
+                        // 'summary' is short caption, 'description' is full text — matching web modal
+                        final summary = (project['summary'] as String?) ?? '';
+                        final description = (project['description'] as String?) ?? '';
+                        final goal = project['goal'] as num?;
+                        final raised = (project['raised'] as num?) ?? 0;
+                        final status = (project['status'] as String?) ?? '';
+                        final imageUrl = project['image_url'] as String?;
+
+                        // Badge color per status (mirrors web badges)
+                        Color statusColor;
+                        switch (status.toLowerCase()) {
+                          case 'active': statusColor = Colors.green; break;
+                          case 'planning': statusColor = Colors.orange; break;
+                          case 'completed': statusColor = Colors.blue; break;
+                          default: statusColor = theme.colorScheme.secondary;
+                        }
+
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          clipBehavior: Clip.antiAlias,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Project image — matches web modal's image display
+                              if (imageUrl != null && imageUrl.isNotEmpty)
+                                Image.network(
+                                  imageUrl,
+                                  height: 160,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                    height: 80,
+                                    color: theme.colorScheme.surfaceContainerHighest,
+                                  ),
+                                ),
+                              Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Title + status badge row
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(title,
+                                              style: theme.textTheme.titleMedium
+                                                  ?.copyWith(fontWeight: FontWeight.bold)),
+                                        ),
+                                        if (status.isNotEmpty)
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                            decoration: BoxDecoration(
+                                              color: statusColor.withValues(alpha: 0.12),
+                                              borderRadius: BorderRadius.circular(999),
+                                              border: Border.all(color: statusColor.withValues(alpha: 0.4)),
+                                            ),
+                                            child: Text(
+                                              status,
+                                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: statusColor),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                    // Summary (short caption)
+                                    if (summary.isNotEmpty) ...[
+                                      const SizedBox(height: 6),
+                                      Text(summary, style: theme.textTheme.bodyMedium,
+                                          maxLines: 2, overflow: TextOverflow.ellipsis),
+                                    ],
+                                    // Full description
+                                    if (description.isNotEmpty) ...[
+                                      const SizedBox(height: 4),
+                                      Text(description, style: theme.textTheme.bodySmall,
+                                          maxLines: 3, overflow: TextOverflow.ellipsis),
+                                    ],
+                                    // Goal / raised progress bar (NGN currency — same as web modal)
+                                    if (goal != null && goal > 0) ...[
+                                      const SizedBox(height: 12),
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(4),
+                                        child: LinearProgressIndicator(
+                                          value: (raised / goal).clamp(0.0, 1.0).toDouble(),
+                                          minHeight: 6,
+                                          backgroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.15),
+                                          color: theme.colorScheme.secondary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        // Goal and raised are stored in NGN — matching web formatCurrency()
+                                        '₦${_formatNgn(raised.toDouble())} raised of ₦${_formatNgn(goal.toDouble())}',
+                                        style: theme.textTheme.labelMedium,
+                                      ),
+                                    ],
+                                    const SizedBox(height: 12),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton.icon(
+                                        onPressed: () {
+                                          Navigator.of(ctx).pop();
+                                          setState(() {
+                                            _selectedProjectId = id;
+                                            _selectedProjectTitle = title;
+                                          });
+                                          setSelectedProjectId(id);
+                                        },
+                                        icon: const Icon(Icons.volunteer_activism),
+                                        label: const Text('Donate for this item'),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: theme.colorScheme.secondary,
+                                          foregroundColor: theme.colorScheme.onSecondary,
+                                          minimumSize: const Size(double.infinity, 44),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Fetches projects ordered by 'priority' ascending — exactly matching the
+  /// web modal's fetchProjects() which does .orderBy('priority', 'asc').
+  /// Shows all statuses so users can see active, planning, and completed projects.
+  /// Fallback uses the same hardcoded projects as the web modal (Impact Hub, Vehicle, Media Studio).
+  Future<List<Map<String, dynamic>>> _fetchProjects() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('projects')
+          .orderBy('priority')
+          .get();
+      if (snapshot.docs.isNotEmpty) {
+        return snapshot.docs.map((d) => {'id': d.id, ...d.data()}).toList();
+      }
+    } catch (_) {}
+    // Fallback: same real project data as the web modal (used when Firestore unavailable)
+    return [
+      {'id': 'impact-hub', 'title': 'Impact Hub Center', 'summary': 'Community discipleship and outreach facility', 'goal': 35000000, 'raised': 8000000, 'status': 'active', 'priority': 1, 'image_url': 'https://images.unsplash.com/photo-1593914370442-49d414beca24?q=80&w=1031&auto=format&fit=crop'},
+      {'id': 'vehicle-purchase', 'title': 'Vehicle Purchase', 'summary': 'Mission vehicle for outreach logistics', 'goal': 18000000, 'raised': 0, 'status': 'active', 'priority': 2, 'image_url': 'https://images.unsplash.com/photo-1597685204565-110abf469a1e?q=80&w=870&auto=format&fit=crop'},
+      {'id': 'media-studio', 'title': 'Media Studio Setup', 'summary': 'Podcast and content production equipment', 'goal': 9000000, 'raised': 0, 'status': 'planning', 'priority': 3, 'image_url': 'https://images.unsplash.com/photo-1769699167906-a44d5ae50abb?q=80&w=387&auto=format&fit=crop'},
+    ];
+  }
+
+  /// Formats a number as NGN with compact suffix (e.g. 35,000,000 → 35M)
+  String _formatNgn(double value) {
+    if (value >= 1000000) {
+      return '${(value / 1000000).toStringAsFixed(value % 1000000 == 0 ? 0 : 1)}M';
+    } else if (value >= 1000) {
+      return '${(value / 1000).toStringAsFixed(value % 1000 == 0 ? 0 : 1)}K';
+    }
+    return value.toStringAsFixed(0);
   }
 }

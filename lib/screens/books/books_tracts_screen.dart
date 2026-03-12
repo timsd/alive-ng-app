@@ -5,7 +5,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../utils/responsive_utils.dart';
-import '../../data/tracts_data.dart';
+import '../../models/tract_models.dart';
+import '../../services/tract_service.dart';
 import '../../services/firebase_storage_service.dart';
 import '../../services/donation_service.dart';
 import '../../models/donation_models.dart';
@@ -32,7 +33,7 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _tractsFuture = Future.value(tracts);
+    _tractsFuture = TractService().getAllTracts();
     _downloadsFuture = DonationService().getUserDownloads();
   }
 
@@ -183,7 +184,7 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
           final matchesSearch = query.isEmpty ||
               t.title.toLowerCase().contains(query) ||
               t.description.toLowerCase().contains(query);
-          final matchesCategory = _selectedCategory == 'All' || t.category.displayName == _selectedCategory;
+          final matchesCategory = _selectedCategory == 'All' || t.category.tractDisplayName == _selectedCategory;
           return matchesSearch && matchesCategory;
         }).toList();
 
@@ -248,12 +249,12 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
                 const SizedBox(height: 16),
                 Text(
                   'No downloads yet',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Materials you download will appear here',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey[500]),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
                 ),
               ],
             ),
@@ -353,9 +354,9 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
                     ),
                     SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 3.0, tablet: 4.0, desktop: 5.0)),
                     Text(
-                      tract.author,
+                      tract.author ?? '',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.grey[600],
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -373,7 +374,7 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              '${tract.pages}',
+                              '${tract.pages ?? 0}',
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
                           ],
@@ -460,14 +461,14 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
             Text(
               '${tract.author} • ${tract.pages} pages',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Colors.grey[600],
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
             SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 3.0, tablet: 4.0, desktop: 5.0)),
             Text(
               tract.description,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Colors.grey[600],
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -776,7 +777,7 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
                     Text(
                       author,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.grey[600],
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

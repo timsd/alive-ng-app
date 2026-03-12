@@ -25,7 +25,7 @@ class _DonationDialogState extends State<DonationDialog> {
   final _amountController = TextEditingController();
   final _notesController = TextEditingController();
 
-  PaymentMethod _selectedPaymentMethod = PaymentMethod.paystack;
+  // Payment is always via Paystack — no need for a method selector
   bool _isProcessing = false;
   double _donationAmount = 0.0;
 
@@ -81,30 +81,17 @@ class _DonationDialogState extends State<DonationDialog> {
             : _notesController.text.trim(),
       );
 
-      // Process payment based on selected method
-      Map<String, dynamic> paymentResult;
-
-      if (_selectedPaymentMethod == PaymentMethod.paystack) {
-        // Check if widget is still mounted before using context
-        if (!mounted) return;
-
-        // Paystack payment is handled directly by PaystackService
-        paymentResult = await _donationService.processPaystackPayment(
-          context: context,
-          donationId: donation.id,
-          amount: _donationAmount,
-          currency: 'NGN',
-          email: donation.userEmail,
-        );
-
-        // Check if payment was successful
-        if (paymentResult['success'] == true) {
-          // Payment was processed successfully
-          // The PaystackService handles the payment flow and database updates
-          // No need for additional simulation or manual status updates
-        } else {
-          throw Exception(paymentResult['message'] ?? 'Payment failed');
-        }
+      // All payments go through Paystack (handles card, bank, USSD, QR)
+      if (!mounted) return;
+      final paymentResult = await _donationService.processPaystackPayment(
+        context: context,
+        donationId: donation.id,
+        amount: _donationAmount,
+        currency: 'NGN',
+        email: donation.userEmail,
+      );
+      if (paymentResult['success'] != true) {
+        throw Exception(paymentResult['message'] ?? 'Payment failed');
       }
 
       if (mounted) {
@@ -185,7 +172,7 @@ class _DonationDialogState extends State<DonationDialog> {
                         Text(
                           'Help us spread the gospel forward',
                           style: TextStyle(
-                            color: Colors.grey[600],
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                             fontSize: context.responsiveFontSize(14),
                           ),
                         ),
@@ -211,9 +198,9 @@ class _DonationDialogState extends State<DonationDialog> {
               Container(
                 padding: context.responsivePadding,
                 decoration: BoxDecoration(
-                  color: Colors.grey[50],
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   borderRadius: context.responsiveBorderRadius,
-                  border: Border.all(color: Colors.grey[200]!),
+                  border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -235,7 +222,7 @@ class _DonationDialogState extends State<DonationDialog> {
                     Text(
                       widget.material.category,
                       style: TextStyle(
-                        color: Colors.grey[600],
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                         fontSize: context.responsiveFontSize(14),
                       ),
                     ),
@@ -250,7 +237,7 @@ class _DonationDialogState extends State<DonationDialog> {
                       Text(
                         widget.material.description,
                         style: TextStyle(
-                          color: Colors.grey[700],
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55),
                           fontSize: context.responsiveFontSize(13),
                         ),
                         maxLines: 2,
@@ -274,7 +261,7 @@ class _DonationDialogState extends State<DonationDialog> {
                 'Donation Amount (USD)',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
-                  color: Colors.grey[800],
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               SizedBox(
@@ -328,7 +315,7 @@ class _DonationDialogState extends State<DonationDialog> {
                 _minimumAmountText,
                 style: TextStyle(
                   fontSize: context.responsiveFontSize(12),
-                  color: Colors.grey[600],
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
 
@@ -340,50 +327,46 @@ class _DonationDialogState extends State<DonationDialog> {
                 desktop: 28.0,
               )),
 
-              // Payment Method
-              Text(
-                'Payment Method',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey[800],
+              // Payment Method — Paystack only (handles card, bank, USSD, QR)
+              Container(
+                padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(
+                  context: context, mobile: 12.0, tablet: 14.0, desktop: 16.0,
+                )),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: context.responsiveBorderRadius,
+                  border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.4)),
                 ),
-              ),
-              SizedBox(
-                  height: ResponsiveUtils.getResponsiveValue(
-                context: context,
-                mobile: 8.0,
-                tablet: 10.0,
-                desktop: 12.0,
-              )),
-              Column(
-                children: [
-                  RadioGroup<PaymentMethod>(
-                    groupValue: _selectedPaymentMethod,
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => _selectedPaymentMethod = value);
-                      }
-                    },
-                    child: Column(
-                      children: PaymentMethod.values.map((method) {
-                        return RadioListTile<PaymentMethod>(
-                          title: Text(_getPaymentMethodName(method)),
-                          subtitle: Text(_getPaymentMethodDescription(method)),
-                          value: method,
-                          contentPadding: EdgeInsets.zero,
-                        );
-                      }).toList(),
+                child: Row(
+                  children: [
+                    Icon(Icons.lock_outline, size: 18, color: Theme.of(context).colorScheme.secondary),
+                    SizedBox(width: ResponsiveUtils.getResponsiveValue(
+                      context: context, mobile: 10.0, tablet: 12.0, desktop: 14.0,
+                    )),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Secured by Paystack',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: context.responsiveFontSize(14),
+                                color: Theme.of(context).colorScheme.onSurface,
+                              )),
+                          Text('Pay with card, bank transfer, USSD, QR or USSD',
+                              style: TextStyle(
+                                fontSize: context.responsiveFontSize(12),
+                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                              )),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
 
-              SizedBox(
-                  height: ResponsiveUtils.getResponsiveValue(
-                context: context,
-                mobile: 20.0,
-                tablet: 24.0,
-                desktop: 28.0,
+              SizedBox(height: ResponsiveUtils.getResponsiveValue(
+                context: context, mobile: 20.0, tablet: 24.0, desktop: 28.0,
               )),
 
               // Optional Notes
@@ -499,6 +482,10 @@ class _DonationDialogState extends State<DonationDialog> {
                         ),
                         shape: RoundedRectangleBorder(
                           borderRadius: context.responsiveBorderRadius,
+                        ),
+                        minimumSize: Size(
+                          ResponsiveUtils.getResponsiveValue(context: context, mobile: 140, tablet: 160, desktop: 180),
+                          ResponsiveUtils.getResponsiveValue(context: context, mobile: 44, tablet: 48, desktop: 52),
                         ),
                       ),
                       child: _isProcessing

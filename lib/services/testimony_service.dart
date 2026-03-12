@@ -18,16 +18,41 @@ class TestimonyService {
   // Fetch approved testimonies (public feed)
   Future<List<Testimony>> fetchTestimonies() async {
     try {
-      final snapshot = await _firestore
-          .collection('testimonies')
-          .where('is_approved', isEqualTo: true)
-          .orderBy('created_at', descending: true)
-          .get();
+      QuerySnapshot snapshot;
+      try {
+        // Try the full query with orderBy (requires composite index in Firestore)
+        snapshot = await _firestore
+            .collection('testimonies')
+            .where('is_approved', isEqualTo: true)
+            .orderBy('created_at', descending: true)
+            .get();
+      } on FirebaseException catch (e) {
+        if (e.code == 'failed-precondition' ||
+            e.code == 'permission-denied' ||
+            e.message?.contains('index') == true) {
+          // Composite index not yet created – fallback without orderBy
+          _logger.warning(
+              'Testimony index missing or permission denied, using fallback query');
+          snapshot = await _firestore
+              .collection('testimonies')
+              .where('is_approved', isEqualTo: true)
+              .get();
+        } else {
+          rethrow;
+        }
+      }
 
-      return snapshot.docs
-          .map((doc) => Testimony.fromJson(doc.data()))
-          .toList();
+      final testimonies = snapshot.docs.map((doc) {
+        final data = Map<String, dynamic>.from(doc.data() as Map);
+        data['id'] ??= doc.id;
+        return Testimony.fromJson(data);
+      }).toList();
+
+      // Client-side sort as fallback if orderBy was skipped
+      testimonies.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return testimonies;
     } catch (e) {
+      if (e is AppException) rethrow;
       _logger.error('Error fetching testimonies', e);
       throw DatabaseException('Failed to fetch testimonies', originalError: e);
     }
@@ -41,18 +66,38 @@ class TestimonyService {
         throw AuthException('User not authenticated');
       }
 
-      final snapshot = await _firestore
-          .collection('testimonies')
-          .where('user_id', isEqualTo: user.uid)
-          .orderBy('created_at', descending: true)
-          .get();
+      QuerySnapshot snapshot;
+      try {
+        snapshot = await _firestore
+            .collection('testimonies')
+            .where('user_id', isEqualTo: user.uid)
+            .orderBy('created_at', descending: true)
+            .get();
+      } on FirebaseException catch (e) {
+        if (e.code == 'failed-precondition') {
+          _logger.warning('My testimonies index missing, using fallback');
+          snapshot = await _firestore
+              .collection('testimonies')
+              .where('user_id', isEqualTo: user.uid)
+              .get();
+        } else {
+          rethrow;
+        }
+      }
 
-      return snapshot.docs
-          .map((doc) => Testimony.fromJson(doc.data()))
-          .toList();
+      final testimonies = snapshot.docs.map((doc) {
+        final data = Map<String, dynamic>.from(doc.data() as Map);
+        data['id'] ??= doc.id;
+        return Testimony.fromJson(data);
+      }).toList();
+
+      testimonies.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return testimonies;
     } catch (e) {
+      if (e is AppException) rethrow;
       _logger.error('Error fetching my testimonies', e);
-      throw DatabaseException('Failed to fetch my testimonies', originalError: e);
+      throw DatabaseException('Failed to fetch my testimonies',
+          originalError: e);
     }
   }
 
@@ -63,7 +108,8 @@ class TestimonyService {
     try {
       final user = _authService.currentUser;
       if (user == null) {
-        throw AuthException('User not authenticated');
+        throw AuthException(
+            'Please sign in to share your testimony. Tap "Sign In" from the menu.');
       }
 
       final String userName = user.displayName ?? 'User';
@@ -85,7 +131,10 @@ class TestimonyService {
       await docRef.set(data);
 
       // Mirror testimony into prayer strengthening pipeline; visibility follows approval.
-      await _firestore.collection('prayer_strengthening_feed').doc(docRef.id).set({
+      await _firestore
+          .collection('prayer_strengthening_feed')
+          .doc(docRef.id)
+          .set({
         'id': docRef.id,
         'testimony_id': docRef.id,
         'user_id': user.uid,
@@ -99,6 +148,7 @@ class TestimonyService {
         'updated_at': DateTime.now().toIso8601String(),
       }, SetOptions(merge: true));
     } catch (e) {
+      if (e is AppException) rethrow;
       _logger.error('Error creating testimony', e);
       throw DatabaseException('Failed to create testimony', originalError: e);
     }

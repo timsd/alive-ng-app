@@ -17,7 +17,8 @@ enum DonationStatus {
 }
 
 enum PaymentMethod {
-  paystack,
+  paystack, // Only payment provider: Paystack handles card, bank, USSD, QR etc
+  // Legacy values kept for backward-compat with old Firestore records only:
   paypal,
   bankTransfer,
   mobileMoney,
@@ -194,16 +195,8 @@ class DonationRecord extends Equatable {
   }
 
   String get paymentMethodDisplayName {
-    switch (paymentMethod) {
-      case PaymentMethod.paystack:
-        return 'Paystack';
-      case PaymentMethod.paypal:
-        return 'PayPal';
-      case PaymentMethod.bankTransfer:
-        return 'Bank Transfer';
-      case PaymentMethod.mobileMoney:
-        return 'Mobile Money';
-    }
+    // All new donations go through Paystack
+    return 'Paystack';
   }
 
   bool get isCompleted => status == DonationStatus.completed;

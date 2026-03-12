@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../data/podcast_data.dart';
+import '../models/podcast_models.dart';
 import '../services/firebase_database_service.dart';
 
 class PodcastNotifier extends StateNotifier<List<Podcast>> {

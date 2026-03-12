@@ -282,7 +282,7 @@ class DonationService {
       // If this is an external non-Firebase HTTP URL, return it directly
       if (path.startsWith('http') &&
           !path.contains('firebasestorage.googleapis.com')) {
-        await _recordDownload(materialId, material.title);
+        await recordDownload(materialId, material.title);
         await _db.collection('downloadable_materials').doc(materialId).update({
           'download_count': FieldValue.increment(1),
           'updated_at': DateTime.now().toIso8601String(),
@@ -302,7 +302,7 @@ class DonationService {
       final String signedUrl = await ref.getDownloadURL();
 
       // Record the download
-      await _recordDownload(materialId, material.title);
+      await recordDownload(materialId, material.title);
 
       // Update download count
       await _db.collection('downloadable_materials').doc(materialId).update({
@@ -319,7 +319,7 @@ class DonationService {
   }
 
   // Record user download
-  Future<void> _recordDownload(String materialId, String materialTitle) async {
+  Future<void> recordDownload(String materialId, [String materialTitle = '']) async {
     try {
       final userId = _auth.currentUser?.uid;
       if (userId == null) return;

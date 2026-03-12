@@ -224,7 +224,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
               title,
               style: TextStyle(
                 fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 14, desktop: 16),
-                color: Colors.grey[600],
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
               textAlign: TextAlign.center,
             ),
@@ -303,7 +303,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
   Widget _buildSearchAndFilters() {
     return Container(
       padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(context: context, mobile: 16, tablet: 20, desktop: 24)),
-      color: Colors.grey[50],
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
       child: Column(
         children: [
           TextField(
@@ -438,7 +438,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
                 SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
                 LinearProgressIndicator(
                   value: userProgress.progressPercentage / 100,
-                  backgroundColor: Colors.grey[300],
+                  backgroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.15),
                   valueColor: AlwaysStoppedAnimation<Color>(
                     userProgress.status == StudyStatus.completed
                         ? Colors.green
@@ -471,12 +471,12 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
             SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 16, tablet: 20, desktop: 24)),
             Text(
               'No study progress yet',
-              style: TextStyle(fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 18, tablet: 20, desktop: 22), color: Colors.grey),
+              style: TextStyle(fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 18, tablet: 20, desktop: 22), color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
             ),
             SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 8, tablet: 10, desktop: 12)),
             Text(
               'Start a study guide to track your progress',
-              style: TextStyle(fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 14, tablet: 16, desktop: 18), color: Colors.grey),
+              style: TextStyle(fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 14, tablet: 16, desktop: 18), color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
             ),
           ],
         ),
@@ -551,14 +551,14 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
                     '${progress.progressPercentage.toInt()}% Complete',
                     style: TextStyle(
                       fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 14, desktop: 16),
-                      color: Colors.grey[600],
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                   Text(
                     'Lesson ${progress.currentLessonNumber}',
                     style: TextStyle(
                       fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 14, desktop: 16),
-                      color: Colors.grey[600],
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                 ],
@@ -569,7 +569,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
                   'Time spent: ${_formatDuration(progress.totalTimeSpentMinutes)}',
                   style: TextStyle(
                     fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 14, desktop: 16),
-                    color: Colors.grey[600],
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
               ],

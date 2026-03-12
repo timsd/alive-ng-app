@@ -17,6 +17,9 @@ import 'widgets/role_guard.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'services/in_app_update_service.dart';
 import 'dart:async';
+import 'package:flutter/foundation.dart';
+// DEV ONLY — delete this import + the file below when done testing admin features:
+import 'debug/dev_admin_override.dart';
 
 void main() {
   runZonedGuarded(() async {
@@ -141,7 +144,13 @@ class MainNavigationScreen extends ConsumerWidget {
     debugPrint('isAuthenticated=$isAuthenticated');
 
     return Scaffold(
-      body: child,
+      body: Stack(
+        children: [
+          child,
+          // DEV ONLY overlay — invisible in release builds; delete dev_admin_override.dart + this import to clean up
+          if (kDebugMode) const DevAdminOverlayButton(),
+        ],
+      ),
       drawer: _buildNavigationDrawer(context, isAuthenticated),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,

@@ -4,8 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/pdf_extractor_service.dart';
 import '../../services/firebase_database_service.dart';
-import '../../data/missions_data.dart'; // Using local enums initially
-
+import '../../models/kids_missions.dart';
 class AdminKidsMissionsScreen extends StatefulWidget {
   const AdminKidsMissionsScreen({super.key});
 
@@ -25,8 +24,8 @@ class _AdminKidsMissionsScreenState extends State<AdminKidsMissionsScreen> {
   final TextEditingController _pointsController = TextEditingController(text: '100');
   final TextEditingController _instructionsController = TextEditingController();
 
-  MissionDifficulty _selectedDifficulty = MissionDifficulty.beginner;
-  MissionCategory _selectedCategory = MissionCategory.character;
+  MissionDifficulty _selectedDifficulty = MissionDifficulty.easy;
+  MissionCategory _selectedCategory = MissionCategory.learning;
   VerificationMethod _selectedVerification = VerificationMethod.photo;
   
   Uint8List? _mediaBytes;

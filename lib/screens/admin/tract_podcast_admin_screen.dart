@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../data/tracts_data.dart';
-import '../../data/podcast_data.dart';
+import '../../models/tract_models.dart';
+import '../../models/podcast_models.dart';
 import '../../utils/responsive_utils.dart';
 import '../../widgets/role_guard.dart';
 import '../../services/firebase_database_service.dart';
@@ -506,13 +506,31 @@ class _TractManagementTabState extends State<_TractManagementTab> {
 
         // Tracts list
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: tracts.length,
-            itemBuilder: (context, index) {
-              final tract = tracts[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 8),
+          child: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance.collection('tracts').snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                 return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                 return const Center(child: Text('Error loading tracts'));
+              }
+              final tracts = snapshot.data?.docs.map((doc) {
+                final data = doc.data() as Map<String, dynamic>;
+                data['id'] = doc.id;
+                return Tract.fromJson(data);
+              }).toList() ?? [];
+              
+              if (tracts.isEmpty) {
+                 return const Center(child: Text('No tracts available.'));
+              }
+              return ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: tracts.length,
+                itemBuilder: (context, index) {
+                  final tract = tracts[index];
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 8),
                 child: ListTile(
                   leading: Container(
                     width: 50,
@@ -535,7 +553,7 @@ class _TractManagementTabState extends State<_TractManagementTab> {
                     children: [
                       Text('${tract.author} • ${tract.pages} pages'),
                       Text(
-                        tract.category.displayName,
+                        tract.category.tractDisplayName,
                         style: const TextStyle(
                           color: Colors.orange,
                           fontWeight: FontWeight.w500,
@@ -594,9 +612,6 @@ class _TractManagementTabState extends State<_TractManagementTab> {
     ).then((result) {
       if (result is Tract) {
         if (!mounted) return;
-        setState(() {
-          tracts.add(result);
-        });
         messenger.showSnackBar(
           SnackBar(
             content: Text('Tract "${result.title}" added successfully!'),
@@ -615,12 +630,6 @@ class _TractManagementTabState extends State<_TractManagementTab> {
     ).then((result) {
       if (result is Tract) {
         if (!mounted) return;
-        setState(() {
-          final idx = tracts.indexWhere((t) => t.id == result.id);
-          if (idx != -1) {
-            tracts[idx] = result;
-          }
-        });
         messenger.showSnackBar(
           SnackBar(
             content: Text('Tract "${result.title}" updated successfully!'),
@@ -690,9 +699,7 @@ class _TractManagementTabState extends State<_TractManagementTab> {
                     .delete();
 
                 if (!mounted) return;
-                setState(() {
-                  tracts.removeWhere((t) => t.id == tract.id);
-                });
+                // UI automatically updates via StreamBuilder
 
                 if (mounted) {
                   navigator.pop();
@@ -745,8 +752,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
   List<String> _tractCategories = [];
   String? _selectedCategoryName;
   bool _loadingTractCategories = true;
-  TractCategory _selectedCategory =
-      TractCategory.bibleSays; // fallback for local UI
+  String _selectedCategory = 'biblesays'; // fallback for local UI
   bool _isFeatured = false;
   Uint8List? _selectedPdfBytes;
   String? _selectedPdfName;
@@ -767,7 +773,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
       _pagesController.text = widget.tract!.pages.toString();
       _tagsController.text = widget.tract!.tags.join(', ');
       _selectedCategory = widget.tract!.category;
-      _selectedCategoryName = widget.tract!.category.displayName;
+      _selectedCategoryName = widget.tract!.category;
       _isFeatured = widget.tract!.featured;
       // Prefill existing cover image name (display only)
       _selectedCoverImageName = widget.tract!.coverImage;
@@ -798,23 +804,18 @@ class _TractFormDialogState extends State<_TractFormDialog> {
           .where((d) => (d['isActive'] as bool?) != false)
           .map((d) => d['name'] as String)
           .toList();
+      // 'names' could be used for advanced categorization if implemented
       if (!mounted) return;
       setState(() {
-        _tractCategories = names.isNotEmpty
-            ? names
-            : TractCategory.values.map((c) => c.displayName).toList();
-        // If no selected name yet, default to first
-        _selectedCategoryName ??=
-            _tractCategories.isNotEmpty ? _tractCategories.first : null;
+        _tractCategories = [];
+        _selectedCategoryName ??= null;
         _loadingTractCategories = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _tractCategories =
-            TractCategory.values.map((c) => c.displayName).toList();
-        _selectedCategoryName ??=
-            _tractCategories.isNotEmpty ? _tractCategories.first : null;
+        _tractCategories = [];
+        _selectedCategoryName ??= null;
         _loadingTractCategories = false;
       });
     }
@@ -943,12 +944,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
                               onChanged: (value) {
                                 setState(() {
                                   _selectedCategoryName = value;
-                                  // Best-effort map to enum for local UI (fallback visuals)
-                                  final match = TractCategory.values.firstWhere(
-                                    (c) => c.displayName == value,
-                                    orElse: () => _selectedCategory,
-                                  );
-                                  _selectedCategory = match;
+                                  _selectedCategory = value?.toLowerCase().replaceAll(' ', '') ?? 'biblesays';
                                 });
                               },
                               validator: (value) {
@@ -1280,7 +1276,6 @@ class _TractFormDialogState extends State<_TractFormDialog> {
         final List<String> oldFilesToDelete = [];
 
         // Upload PDF file
-        String? pdfUrl;
         if (_selectedPdfBytes != null && _selectedPdfName != null) {
           // If editing and replacing PDF, mark old one for deletion
           if (widget.tract?.downloadUrl?.isNotEmpty == true) {
@@ -1289,7 +1284,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
 
           final timestamp = DateTime.now().millisecondsSinceEpoch;
           final fileName = '${timestamp}_${_selectedPdfName!}';
-          pdfUrl = await firebaseService.uploadFile(
+          await firebaseService.uploadFile(
             'pdfs/$fileName',
             _selectedPdfBytes!,
             contentType: 'application/pdf',
@@ -1346,8 +1341,6 @@ class _TractFormDialogState extends State<_TractFormDialog> {
               .map((tag) => tag.trim())
               .where((tag) => tag.isNotEmpty)
               .toList(),
-          featured: _isFeatured,
-          downloadUrl: pdfUrl ?? widget.tract?.downloadUrl,
           coverImage: coverImageUrl ?? widget.tract?.coverImage,
           coverImages: _mergeCoverImages(
             existing: widget.tract?.coverImages ?? const [],
@@ -1359,7 +1352,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
         final payload = {
           ...tract.toJson(),
           // Override category with dynamic selection string for Firestore consumers
-          'category': _selectedCategoryName ?? tract.category.displayName,
+          'category': _selectedCategoryName ?? tract.category,
           // Compatibility fields for TractService consumption
           'pdfUrl': tract.downloadUrl,
           'imageUrl': tract.coverImage,
@@ -1452,12 +1445,33 @@ class _PodcastManagementTabState extends State<_PodcastManagementTab> {
 
         // Podcasts list
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: podcasts.length,
-            itemBuilder: (context, index) {
-              final podcast = podcasts[index];
-              return Card(
+          child: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('podcasts')
+                .orderBy('order')
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return Center(child: Text('Error: ${snapshot.error}'));
+              }
+              if (!snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              final docs = snapshot.data!.docs;
+              if (docs.isEmpty) {
+                return const Center(
+                    child: Text('No podcasts yet. Tap + to add one.'));
+              }
+              return ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: docs.length,
+                itemBuilder: (context, index) {
+                  final doc = docs[index];
+                  final data = doc.data() as Map<String, dynamic>;
+                  data['id'] = doc.id;
+                  final podcast = Podcast.fromJson(data);
+                  
+                  return Card(
                 margin: const EdgeInsets.only(bottom: 8),
                 child: ListTile(
                   leading: Container(
@@ -1644,12 +1658,6 @@ class _PodcastManagementTabState extends State<_PodcastManagementTab> {
 
                 // Delete podcast document
                 await firebaseService.deleteDocument('podcasts', podcast.id);
-
-                if (mounted) {
-                  setState(() {
-                    podcasts.removeWhere((p) => p.id == podcast.id);
-                  });
-                }
 
                 if (mounted) {
                   navigator.pop();

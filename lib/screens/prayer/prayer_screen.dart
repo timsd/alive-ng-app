@@ -4,7 +4,6 @@ import 'package:alive_flutter_app/widgets/custom_app_bar.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
-
 import '../../providers/language_provider.dart';
 import '../../models/app_models.dart';
 import '../../providers/auth_provider.dart';
@@ -41,7 +40,6 @@ class CreatePrayerRequestNotifier extends StateNotifier<AsyncValue<void>> {
   }) async {
     state = const AsyncValue.loading();
     try {
-      final firebase = ref.read(firebaseDatabaseServiceProvider);
       final user = ref.read(currentUserProvider);
 
       final prayerRequest = PrayerRequest(
@@ -51,14 +49,9 @@ class CreatePrayerRequestNotifier extends StateNotifier<AsyncValue<void>> {
         category: category,
         userId: user?.uid ?? '',
         isAnonymous: isAnonymous,
-        isPublic: isPublic,
-        scriptureReference: scriptureReference,
-        urgencyLevel: urgencyLevel,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
-
-      await firebase.createPrayerRequest(prayerRequest);
 
       state = const AsyncValue.data(null);
       ref.invalidate(prayerRequestsProvider);

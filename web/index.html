@@ -306,6 +306,11 @@
         messaging.onMessage(function(payload) {
           console.log('Message received. ', payload);
         });
+        
+        // Initialize Analytics if supported
+        try {
+          firebase.analytics();
+        } catch (_) {}
         firebase.auth().onAuthStateChanged(async function(user) {
           try {
             if (!user) {
@@ -436,7 +441,11 @@
       });
     })();
     document.getElementById('open-web-app')?.addEventListener('click', function() {
-      loadFlutterApp('/auth');
+      if (window._isLoggedIn) {
+        loadFlutterApp('/');
+      } else {
+        loadFlutterApp('/auth');
+      }
     });
     (function bootstrapDeepLinks() {
       try {
@@ -520,6 +529,7 @@
     }
 
     function openProjectsModal() {
+      try { firebase.analytics().logEvent('view_project_list'); } catch (_) {}
       const overlay = document.getElementById('projects-modal');
       overlay.style.display = 'flex';
       if (_projects.length === 0) {
@@ -613,10 +623,16 @@
         </div>
       `;
       document.getElementById(`donate-${p.id}`)?.addEventListener('click', () => {
+        try { firebase.analytics().logEvent('begin_checkout', { items: [{ item_id: p.id, item_name: p.title }] }); } catch (_) {}
         try { sessionStorage.setItem('selected_project_id', p.id); } catch (_) {}
         try { sessionStorage.setItem('start_route', '/donation'); } catch (_) {}
         try { closeProjectsModal(); } catch (_) {}
-        try { loadFlutterApp(null); } catch (_) {}
+        
+        if (window._flutterBootstrapped) {
+           window.location.hash = '/donation';
+        } else {
+           loadFlutterApp(null);
+        }
       });
       document.getElementById(`admin-note-${p.id}`)?.addEventListener('click', () => {
         alert('Admins can update project details inside the ALIVE app. Open the app and use the Admin section.');

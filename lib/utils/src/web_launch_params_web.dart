@@ -16,6 +16,14 @@ void clearSelectedProjectId() {
   }
 }
 
+void setSelectedProjectId(String projectId) {
+  try {
+    web.window.sessionStorage.setItem('selected_project_id', projectId);
+  } catch (_) {
+    // ignore
+  }
+}
+
 String? getInitialRoute() {
   try {
     return web.window.sessionStorage.getItem('start_route');

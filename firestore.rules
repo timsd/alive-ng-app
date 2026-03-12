@@ -121,6 +121,12 @@ service cloud.firestore {
       allow write: if isAdminOrDevelopmentBypass();
     }
     
+    // Donation Projects - public read (for web modal), admin write
+    match /projects/{projectId} {
+      allow read: if true;
+      allow write: if isAdminOrDevelopmentBypass();
+    }
+    
     // Kids stories - read-only for authenticated users, admin can write
     match /kids_stories/{storyId} {
       allow read: if isAuthenticated();

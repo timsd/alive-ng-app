@@ -6,7 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/firebase_storage_service.dart';
 import '../../constants/app_constants.dart';
-import '../../data/tracts_data.dart';
+import '../../models/tract_models.dart';
 import '../../utils/responsive_utils.dart';
 import '../../services/donation_service.dart';
 import '../../models/donation_models.dart';
@@ -259,7 +259,7 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     Text(
-                      widget.tract.category.displayName,
+                      widget.tract.category.tractDisplayName,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: Colors.grey[600],
                           ),
@@ -394,7 +394,7 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
                   fit: BoxFit.cover,
                   borderRadius: BorderRadius.circular(10),
                   placeholder:
-                      _buildPassportAvatar(widget.tract.category.seriesImage),
+                      _buildPassportAvatar(""),
                 ),
               ),
 
@@ -407,7 +407,7 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  '${widget.tract.category.displayName.toUpperCase()} SERIES',
+                  '${widget.tract.category.tractDisplayName.toUpperCase()} SERIES',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -458,7 +458,7 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
         Text(
           'By ${widget.tract.author}',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Colors.grey[600],
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
                 fontSize: ResponsiveUtils.getResponsiveValue(
                   context: context,
                   mobile: 16.0,
@@ -485,9 +485,9 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
             desktop: 18.0,
           )),
           decoration: BoxDecoration(
-            color: Colors.grey[50],
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey[300]!),
+            border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
           ),
           child: Text(
             widget.tract.description,
@@ -587,6 +587,7 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
                         foregroundColor: Colors.green[700],
                         side: BorderSide(color: Colors.green[400]!),
                         padding: const EdgeInsets.symmetric(vertical: 8),
+                        minimumSize: const Size(120, 48),
                       ),
                     ),
                   ),
@@ -601,6 +602,7 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         elevation: 2,
+                        minimumSize: const Size(120, 48),
                       ),
                     ),
                   ),
@@ -622,7 +624,7 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
           children: [
             Icon(
               Icons.pages,
-              color: Colors.grey[600],
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               size: ResponsiveUtils.getResponsiveValue(
                 context: context,
                 mobile: 18.0,
@@ -634,7 +636,7 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
             Text(
               '${widget.tract.pages} pages',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey[600],
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     fontSize: ResponsiveUtils.getResponsiveValue(
                       context: context,
                       mobile: 14.0,
@@ -656,7 +658,7 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
         Text(
           'Copyright © ALIVE-NG, ALIVE by the Truth',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Colors.grey[500],
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
                 fontStyle: FontStyle.italic,
                 fontSize: ResponsiveUtils.getResponsiveValue(
                   context: context,
@@ -736,7 +738,7 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
     if (dynamicPages > 0) {
       return dynamicPages + 1; // +1 for cover page
     }
-    return widget.tract.pages + 1; // +1 for cover page
+    return (widget.tract.pages ?? 0) + 1; // +1 for cover page
   }
 
   void _previousPage() {

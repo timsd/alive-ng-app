@@ -4,8 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../utils/responsive_utils.dart';
 import '../../utils/layout_fix_utils.dart';
-import '../../data/bible_stories.dart';
-
+import '../../models/kids_models.dart';
 class KidsStoriesScreen extends ConsumerStatefulWidget {
   const KidsStoriesScreen({super.key});
 

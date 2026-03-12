@@ -386,7 +386,8 @@ class FirebaseDatabaseService {
           .set(record.toJson());
     } catch (e) {
       _logger.error('Error archiving leadership role: $e');
-      throw DatabaseException('Failed to archive leadership role', originalError: e);
+      throw DatabaseException('Failed to archive leadership role',
+          originalError: e);
     }
   }
 
@@ -399,10 +400,13 @@ class FirebaseDatabaseService {
           .collection('leadership_history')
           .orderBy('end_date', descending: true)
           .get();
-      return snapshot.docs.map((doc) => LeadershipRecord.fromJson(doc.data())).toList();
+      return snapshot.docs
+          .map((doc) => LeadershipRecord.fromJson(doc.data()))
+          .toList();
     } catch (e) {
       _logger.error('Error getting leadership history: $e');
-      throw DatabaseException('Failed to get leadership history', originalError: e);
+      throw DatabaseException('Failed to get leadership history',
+          originalError: e);
     }
   }
 
@@ -469,11 +473,11 @@ class FirebaseDatabaseService {
       final payload = request.toJson()
         ..remove('id')
         ..addAll({
-          'is_public': request.isPublic,
           'created_at': FieldValue.serverTimestamp(),
           'updated_at': FieldValue.serverTimestamp(),
         });
-      final docRef = await _firestore.collection('prayer_requests').add(payload);
+      final docRef =
+          await _firestore.collection('prayer_requests').add(payload);
       final doc = await docRef.get();
       final data = doc.data()!;
       data['id'] = doc.id;
@@ -497,13 +501,15 @@ class FirebaseDatabaseService {
   Future<void> prayForRequest(String requestId, String userId) async {
     try {
       await _firestore.runTransaction((tx) async {
-        final prayerRef = _firestore.collection('prayer_requests').doc(requestId);
+        final prayerRef =
+            _firestore.collection('prayer_requests').doc(requestId);
         final prayerSnap = await tx.get(prayerRef);
         if (!prayerSnap.exists) {
           throw NotFoundException('Prayer request not found');
         }
 
-        final interactionRef = _firestore.collection('prayer_interactions').doc();
+        final interactionRef =
+            _firestore.collection('prayer_interactions').doc();
         tx.set(interactionRef, {
           'prayer_request_id': requestId,
           'user_id': userId,
@@ -609,6 +615,8 @@ class FirebaseDatabaseService {
     try {
       final snapshot = await _firestore.collection('study_programs').get();
 
+      if (snapshot.docs.isEmpty) return <StudyProgram>[];
+
       final programs = snapshot.docs.map((doc) {
         final data = doc.data();
         return StudyProgram(
@@ -633,9 +641,14 @@ class FirebaseDatabaseService {
 
       programs.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return programs;
+    } on FirebaseException catch (e) {
+      // Return empty list gracefully if missing index/permission issue
+      _logger
+          .warning('Could not load study programs (${e.code}): ${e.message}');
+      return <StudyProgram>[];
     } catch (e) {
       _logger.error('Error getting study programs: $e');
-      throw DatabaseException('Failed to get study programs', originalError: e);
+      return <StudyProgram>[];
     }
   }
 

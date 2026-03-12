@@ -40,9 +40,9 @@ class AppTheme {
   static const Color lightCardForeground = Color(0xFF0F172A); 
   
   // Primary - Deep spiritual blue
-  static const Color lightPrimary = Color(0xFF1E3A8A); // Vibrant deep blue
-  static const Color lightPrimaryForeground = Color(0xFFFFFFFF); 
-  static const Color lightPrimaryGlow = Color(0xFF3B82F6); 
+  static const Color lightPrimary = Color(0xFFF8FAFC); // Crisp, cool white (Requested)
+  static const Color lightPrimaryForeground = Color(0xFF0F172A); // Deep slate black for contrast
+  static const Color lightPrimaryGlow = Color(0xFFE2E8F0); 
   
   // Secondary - Warm divine gold
   static const Color lightSecondary = Color(0xFFFEF08A); 
@@ -73,9 +73,9 @@ class AppTheme {
   static const Color darkCard = Color(0xFF151D2F); // Elevated dark surface
   static const Color darkCardForeground = Color(0xFFF8FAFC); 
   
-  static const Color darkPrimary = Color(0xFFFDE047); // Brilliant bright gold/yellow
-  static const Color darkPrimaryForeground = Color(0xFF0B0F19); // Deep dark text on primary
-  static const Color darkPrimaryGlow = Color(0xFFEAB308); 
+  static const Color darkPrimary = Color(0xFF151D2F); // Elevated dark surface (Requested)
+  static const Color darkPrimaryForeground = Color(0xFFF8FAFC); // Brilliant white for contrast
+  static const Color darkPrimaryGlow = Color(0xFF1E293B); 
   
   static const Color darkSecondary = Color(0xFF1E293B); 
   static const Color darkSecondaryForeground = Color(0xFFF1F5F9); 
@@ -292,114 +292,6 @@ class AppTheme {
         ),
       ),
       
-      // Text Theme
-      textTheme: const TextTheme(
-        displayLarge: TextStyle(
-          fontSize: 32,
-          fontWeight: FontWeight.bold,
-          color: lightForeground,
-          letterSpacing: -0.5,
-          height: 1.2,
-        ),
-        displayMedium: TextStyle(
-          fontSize: 28,
-          fontWeight: FontWeight.bold,
-          color: lightForeground,
-          letterSpacing: -0.3,
-          height: 1.3,
-        ),
-        displaySmall: TextStyle(
-          fontSize: 24,
-          fontWeight: FontWeight.bold,
-          color: lightForeground,
-          letterSpacing: -0.2,
-          height: 1.3,
-        ),
-        headlineLarge: TextStyle(
-          fontSize: 22,
-          fontWeight: FontWeight.w600,
-          color: lightForeground,
-          letterSpacing: 0,
-          height: 1.4,
-        ),
-        headlineMedium: TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-          color: lightForeground,
-          letterSpacing: 0.1,
-          height: 1.4,
-        ),
-        headlineSmall: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-          color: lightForeground,
-          letterSpacing: 0.2,
-          height: 1.4,
-        ),
-        titleLarge: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: lightForeground,
-          letterSpacing: 0.3,
-          height: 1.5,
-        ),
-        titleMedium: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          color: lightForeground,
-          letterSpacing: 0.3,
-          height: 1.5,
-        ),
-        titleSmall: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: lightForeground,
-          letterSpacing: 0.4,
-          height: 1.5,
-        ),
-        bodyLarge: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.normal,
-          color: lightForeground,
-          letterSpacing: 0.2,
-          height: 1.6,
-        ),
-        bodyMedium: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.normal,
-          color: lightForeground,
-          letterSpacing: 0.2,
-          height: 1.6,
-        ),
-        bodySmall: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.normal,
-          color: lightMutedForeground,
-          letterSpacing: 0.3,
-          height: 1.6,
-        ),
-        labelLarge: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          color: lightForeground,
-          letterSpacing: 0.4,
-          height: 1.4,
-        ),
-        labelMedium: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: lightMutedForeground,
-          letterSpacing: 0.4,
-          height: 1.4,
-        ),
-        labelSmall: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w500,
-          color: lightMutedForeground,
-          letterSpacing: 0.5,
-          height: 1.4,
-        ),
-      ),
       
       // Chip Theme
       chipTheme: ChipThemeData(
@@ -422,9 +314,33 @@ class AppTheme {
       ),
       
       fontFamily: 'Inter',
+
+      // Standard Text Hierarchy — visible in light mode (dark text on light bg)
+      textTheme: const TextTheme(
+        // Display — hero banners & splash screens
+        displayLarge:   TextStyle(fontSize: 57, fontWeight: FontWeight.w700, letterSpacing: -0.25, color: lightCardForeground),
+        displayMedium:  TextStyle(fontSize: 45, fontWeight: FontWeight.w700, color: lightCardForeground),
+        displaySmall:   TextStyle(fontSize: 36, fontWeight: FontWeight.w600, color: lightCardForeground),
+        // Headline — screen/section titles
+        headlineLarge:  TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: lightCardForeground),
+        headlineMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: lightCardForeground),
+        headlineSmall:  TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: lightCardForeground),
+        // Title — card headers, dialog titles
+        titleLarge:     TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: lightCardForeground),
+        titleMedium:    TextStyle(fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 0.15, color: lightCardForeground),
+        titleSmall:     TextStyle(fontSize: 14, fontWeight: FontWeight.w500, letterSpacing: 0.1, color: lightCardForeground),
+        // Body — main content
+        bodyLarge:      TextStyle(fontSize: 16, fontWeight: FontWeight.w400, letterSpacing: 0.5, height: 1.5, color: lightCardForeground),
+        bodyMedium:     TextStyle(fontSize: 14, fontWeight: FontWeight.w400, letterSpacing: 0.25, height: 1.4, color: lightCardForeground),
+        bodySmall:      TextStyle(fontSize: 12, fontWeight: FontWeight.w400, letterSpacing: 0.4, height: 1.4, color: lightMutedForeground),
+        // Label — buttons, chips, tabs, captions
+        labelLarge:     TextStyle(fontSize: 14, fontWeight: FontWeight.w600, letterSpacing: 0.1, color: lightCardForeground),
+        labelMedium:    TextStyle(fontSize: 12, fontWeight: FontWeight.w500, letterSpacing: 0.5, color: lightMutedForeground),
+        labelSmall:     TextStyle(fontSize: 11, fontWeight: FontWeight.w500, letterSpacing: 0.5, color: lightMutedForeground),
+      ),
     );
   }
-  
+
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,
@@ -595,114 +511,6 @@ class AppTheme {
         ),
       ),
       
-      // Text Theme (using dark colors)
-      textTheme: const TextTheme(
-        displayLarge: TextStyle(
-          fontSize: 32,
-          fontWeight: FontWeight.bold,
-          color: darkForeground,
-          letterSpacing: -0.5,
-          height: 1.2,
-        ),
-        displayMedium: TextStyle(
-          fontSize: 28,
-          fontWeight: FontWeight.bold,
-          color: darkForeground,
-          letterSpacing: -0.3,
-          height: 1.3,
-        ),
-        displaySmall: TextStyle(
-          fontSize: 24,
-          fontWeight: FontWeight.bold,
-          color: darkForeground,
-          letterSpacing: -0.2,
-          height: 1.3,
-        ),
-        headlineLarge: TextStyle(
-          fontSize: 22,
-          fontWeight: FontWeight.w600,
-          color: darkForeground,
-          letterSpacing: 0,
-          height: 1.4,
-        ),
-        headlineMedium: TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-          color: darkForeground,
-          letterSpacing: 0.1,
-          height: 1.4,
-        ),
-        headlineSmall: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-          color: darkForeground,
-          letterSpacing: 0.2,
-          height: 1.4,
-        ),
-        titleLarge: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: darkForeground,
-          letterSpacing: 0.3,
-          height: 1.5,
-        ),
-        titleMedium: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          color: darkForeground,
-          letterSpacing: 0.3,
-          height: 1.5,
-        ),
-        titleSmall: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: darkForeground,
-          letterSpacing: 0.4,
-          height: 1.5,
-        ),
-        bodyLarge: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.normal,
-          color: darkForeground,
-          letterSpacing: 0.2,
-          height: 1.6,
-        ),
-        bodyMedium: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.normal,
-          color: darkForeground,
-          letterSpacing: 0.2,
-          height: 1.6,
-        ),
-        bodySmall: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.normal,
-          color: darkMutedForeground,
-          letterSpacing: 0.3,
-          height: 1.6,
-        ),
-        labelLarge: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          color: darkForeground,
-          letterSpacing: 0.4,
-          height: 1.4,
-        ),
-        labelMedium: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: darkMutedForeground,
-          letterSpacing: 0.4,
-          height: 1.4,
-        ),
-        labelSmall: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w500,
-          color: darkMutedForeground,
-          letterSpacing: 0.5,
-          height: 1.4,
-        ),
-      ),
       
       // Chip Theme
       chipTheme: ChipThemeData(
@@ -725,9 +533,28 @@ class AppTheme {
       ),
       
       fontFamily: 'Inter',
+
+      // Standard Text Hierarchy — visible in dark mode (light text on dark bg)
+      textTheme: const TextTheme(
+        displayLarge:   TextStyle(fontSize: 57, fontWeight: FontWeight.w700, letterSpacing: -0.25, color: darkCardForeground),
+        displayMedium:  TextStyle(fontSize: 45, fontWeight: FontWeight.w700, color: darkCardForeground),
+        displaySmall:   TextStyle(fontSize: 36, fontWeight: FontWeight.w600, color: darkCardForeground),
+        headlineLarge:  TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: darkCardForeground),
+        headlineMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: darkCardForeground),
+        headlineSmall:  TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: darkCardForeground),
+        titleLarge:     TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: darkCardForeground),
+        titleMedium:    TextStyle(fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 0.15, color: darkCardForeground),
+        titleSmall:     TextStyle(fontSize: 14, fontWeight: FontWeight.w500, letterSpacing: 0.1, color: darkCardForeground),
+        bodyLarge:      TextStyle(fontSize: 16, fontWeight: FontWeight.w400, letterSpacing: 0.5, height: 1.5, color: darkCardForeground),
+        bodyMedium:     TextStyle(fontSize: 14, fontWeight: FontWeight.w400, letterSpacing: 0.25, height: 1.4, color: darkCardForeground),
+        bodySmall:      TextStyle(fontSize: 12, fontWeight: FontWeight.w400, letterSpacing: 0.4, height: 1.4, color: darkMutedForeground),
+        labelLarge:     TextStyle(fontSize: 14, fontWeight: FontWeight.w600, letterSpacing: 0.1, color: darkCardForeground),
+        labelMedium:    TextStyle(fontSize: 12, fontWeight: FontWeight.w500, letterSpacing: 0.5, color: darkMutedForeground),
+        labelSmall:     TextStyle(fontSize: 11, fontWeight: FontWeight.w500, letterSpacing: 0.5, color: darkMutedForeground),
+      ),
     );
   }
-  
+
   // Utility methods for accessing theme colors
   static Color getPrimaryColor(BuildContext context) {
     return Theme.of(context).colorScheme.primary;

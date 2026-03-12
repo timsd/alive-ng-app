@@ -3,8 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../utils/responsive_utils.dart';
-import '../../data/missions_data.dart';
-
+import '../../models/kids_missions.dart';
 class KidsMissionScreen extends ConsumerWidget {
   const KidsMissionScreen({super.key});
 
@@ -376,7 +375,7 @@ class KidsMissionScreen extends ConsumerWidget {
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              Text(mission.instructions.isNotEmpty ? mission.instructions : '1. Read the activity description\n2. Gather required materials\n3. Follow the step-by-step guide\n4. Share your results with friends'),
+              Text(mission.instructions.isNotEmpty ? mission.instructions.join('\n') : '1. Read the activity description\n2. Gather required materials\n3. Follow the step-by-step guide\n4. Share your results with friends'),
             ],
           ),
         ),

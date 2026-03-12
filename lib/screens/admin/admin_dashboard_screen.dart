@@ -9,7 +9,7 @@ import '../../widgets/custom_app_bar.dart';
 import '../../constants/chapters.dart';
 import '../../constants/app_constants.dart';
 import 'content_management_screen.dart';
-import '../../data/podcast_data.dart';
+import '../../models/podcast_models.dart';
 import 'storage_admin_screen.dart';
 import '../../services/firebase_database_service.dart';
 import '../../services/admin_service.dart';

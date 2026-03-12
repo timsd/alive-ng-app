@@ -11,6 +11,7 @@ import '../../constants/app_constants.dart';
 import '../../services/biometric_auth_service.dart';
 import '../../services/admin_notification_service.dart';
 import '../../utils/responsive_utils.dart';
+import '../../models/app_models.dart';
 import '../../utils/layout_fix_utils.dart';
 import 'package:flutter/foundation.dart';
 
@@ -39,6 +40,7 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
 
   bool _isSignUp = false;
   bool _isLoading = false;
+  bool _isGoogleSigningIn = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   String _commitmentType = 'both';
@@ -162,19 +164,39 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
           }
         },
         error: (error, _) {
-          // Show error
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(error.toString()),
-                backgroundColor: Theme.of(context).colorScheme.error,
-              ),
-            );
+          if (!mounted) return;
+          // Show a user-facing message instead of raw exception text
+          final rawError = error.toString();
+          String displayMsg;
+          if (rawError.contains('popup-blocked') ||
+              rawError.contains('popup_blocked_by_browser')) {
+            displayMsg =
+                'Google Sign-In popup was blocked. Please allow popups for this site in your browser settings, then try again.';
+          } else if (rawError.contains('unauthorized_client') ||
+              rawError.contains('unauthorized-domain') ||
+              rawError.contains('auth/unauthorized')) {
+            displayMsg =
+                'This domain is not authorized for Google Sign-In. Please contact the app admin.';
+          } else if (rawError.contains('network-request-failed') ||
+              rawError.contains('network')) {
+            displayMsg =
+                'No internet connection. Please check your network and try again.';
+          } else {
+            // Strip Dart exception type prefix if present
+            displayMsg = rawError
+                .replaceAll('Exception: ', '')
+                .replaceAll('AppException: ', '')
+                .replaceAll('AuthException: ', '');
           }
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(displayMsg),
+              backgroundColor: Theme.of(context).colorScheme.error,
+              duration: const Duration(seconds: 6),
+            ),
+          );
         },
-        loading: () {
-          // Loading state handled by UI
-        },
+        loading: () {},
       );
     });
 
@@ -266,33 +288,7 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
                       // Guest Access
                       _buildGuestAccessButton(context, translate, signInState),
                       
-                      // Development Admin Login Bypass
-                      if (!kReleaseMode)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 16.0),
-                          child: OutlinedButton.icon(
-                            onPressed: () async {
-                                // 1. Force the bypass configs
-                                await DevelopmentConfig.setBypassRoleGuards(true);
-                                await DevelopmentConfig.setAdminPreviewEnabled(true);
-                                
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Dev Admin Mode Enforced! Please login with any Google Account. The role guard will grant you admin access.'),
-                                      backgroundColor: Colors.orange,
-                                      duration: Duration(seconds: 4),
-                                    )
-                                  );
-                                }
-                            },
-                            icon: const Icon(Icons.developer_mode, color: Colors.orange),
-                            label: const Text('Force Admin Dev Mode', style: TextStyle(color: Colors.orange)),
-                            style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: Colors.orange),
-                            ),
-                          ),
-                        ),
+
 
                       SizedBox(
                           height: ResponsiveUtils.getResponsiveValue(
@@ -1002,13 +998,18 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
 
     // Notify admin of new signup (best-effort, don't block UI)
     try {
-      await AdminNotificationService.instance.notifyAdminOfNewSignup({
-        'email': _emailController.text.trim(),
-        'full_name': _nameController.text.trim(),
-        'phone_number': _phoneController.text.trim(),
-        'local_church': _localChurchController.text.trim(),
-        'commitment_type': _commitmentType,
-      });
+      await AdminNotificationService.instance.notifyAdminOfNewSignup(
+        UserProfile(
+          id: '',
+          email: _emailController.text.trim(),
+          fullName: _nameController.text.trim(),
+          phoneNumber: _phoneController.text.trim(),
+          localChurch: _localChurchController.text.trim(),
+          commitmentType: _commitmentType,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
     } catch (_) {
       // Best-effort notification — don't fail signup
     }
@@ -1022,7 +1023,14 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
   }
 
   Future<void> _handleGoogleSignIn() async {
-    await ref.read(signInControllerProvider.notifier).signInWithGoogle();
+    // Prevent multiple concurrent sign-in requests
+    if (_isGoogleSigningIn) return;
+    setState(() => _isGoogleSigningIn = true);
+    try {
+      await ref.read(signInControllerProvider.notifier).signInWithGoogle();
+    } finally {
+      if (mounted) setState(() => _isGoogleSigningIn = false);
+    }
   }
 
   Future<void> _handleGuestAccess() async {

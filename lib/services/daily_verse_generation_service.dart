@@ -1,7 +1,11 @@
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import '../models/app_models.dart' hide BibleVerse;
-import '../data/bible_verses.dart';
+import '../models/daily_verse_model.dart';
+import 'offline_bible_service.dart';
+import 'package:flutter/services.dart';
+import 'dart:convert';
+import '../constants/bible_verses.dart';
 import 'bible_source.dart';
 import '../utils/logger.dart';
 import 'daily_verse_repository.dart';
@@ -38,22 +42,15 @@ class DailyVerseGenerationService {
   Future<void> initializeVerseGeneration() async {
     try {
       _logger.info('Initializing daily verse generation system...');
+      // We no longer populate a huge tracking table. The daily verse is now
+      // dynamically generated deterministically passing the date as seed.
 
-      // Check if tracking table is populated
-      final trackingCount = await _getTrackingTableCount();
-
-      if (trackingCount == 0) {
-        _logger.info('Populating verse tracking table...');
-        await _populateVerseTrackingTable();
-      }
-
-      // Generate today's verse if it doesn't exist
+      // Pre-generate today's verse if not exists (so it's immediately available)
       await generateDailyVerseForToday();
 
       _logger.info('✅ Daily verse generation system initialized');
     } catch (e) {
-      _logger.error('❌ Failed to initialize verse generation: $e');
-      rethrow;
+      _logger.error('Failed to initialize daily verse system: $e');
     }
   }
 
@@ -147,20 +144,38 @@ class DailyVerseGenerationService {
         return existingVerse;
       }
       
-      // Prefer an unused verse from tracking; fall back to sequential
-      final unused = await _getNextUnusedVerse();
-      if (unused != null) {
-        return await _createDailyVerseFromBibleVerse(unused, date);
+      // Deterministically pick a verse based on the date seed
+      final random = Random(date.year * 10000 + date.month * 100 + date.day);
+      
+      try {
+        final String booksJson = await rootBundle.loadString('assets/bible/books_en.json');
+        final List<dynamic> booksList = json.decode(booksJson);
+        final book = booksList[random.nextInt(booksList.length)];
+        final chapterNum = random.nextInt(book['chapters']) + 1;
+        
+        final chapterData = await OfflineBibleService.instance.getBibleChapter(
+          book: book['name'], 
+          chapter: chapterNum, 
+          version: 'KJV', 
+          language: 'en'
+        );
+        
+        if (chapterData != null && chapterData.verses.isNotEmpty) {
+          final verseObj = chapterData.verses[random.nextInt(chapterData.verses.length)];
+          final dynamicVerse = BibleVerse(
+            reference: '${book['name']} $chapterNum:${verseObj.number}',
+            text: {'KJV': verseObj.text, 'BM': verseObj.text}, 
+          );
+          return await _createDailyVerseFromBibleVerse(dynamicVerse, date);
+        }
+      } catch (e) {
+        _logger.error('Failed dynamic pick, falling back to static corpus: $e');
       }
-      // If no unused verses remain, reset cycle and try again
-      await _resetVerseUsageCycle();
-      final retried = await _getNextUnusedVerse();
-      if (retried != null) {
-        return await _createDailyVerseFromBibleVerse(retried, date);
-      }
-      // Deterministic sequential verse selection that loops through the list
-      final sequentialVerse = _getSequentialVerseForDate(date);
-      return await _createDailyVerseFromBibleVerse(sequentialVerse, date);
+
+      // Fallback to static corpus if dynamic selection fails
+      final staticCorpus = BibleSource.instance.dailyCorpus;
+      final fallback = staticCorpus[random.nextInt(staticCorpus.length)];
+      return await _createDailyVerseFromBibleVerse(fallback, date);
     } catch (e) {
       _logger.error('❌ Failed to generate daily verse for ${_formatDateForDatabase(date)}: $e');
       return null;
@@ -200,54 +215,11 @@ class DailyVerseGenerationService {
       _logger.error('Error getting next unused verse: $e');
       return null;
     }
-  }
+  /// Mark a verse as used in the tracking table (No-op now)
+  Future<void> _markVerseAsUsed(String reference, String translation) async {}
 
-  /// Mark a verse as used in the tracking table
-  Future<void> _markVerseAsUsed(String reference, String translation) async {
-    try {
-      final docId = '$translation|$reference';
-      await _firebaseService
-          .createOrUpdateDocument('daily_verse_tracking', docId, {
-        'verse_reference': reference,
-        'translation': translation,
-        'book': _extractBookFromReference(reference),
-        'chapter': _extractChapterFromReference(reference),
-        'verse_number': _extractVerseNumberFromReference(reference),
-        'is_used': true,
-        'used_date': DateTime.now().toIso8601String().split('T')[0],
-      });
-    } catch (e) {
-      _logger.error('Error marking verse as used: $e');
-    }
-  }
-
-  /// Reset verse usage cycle (mark all verses as unused)
-  Future<void> _resetVerseUsageCycle() async {
-    try {
-      _logger.info('Resetting verse usage cycle...');
-
-      final used = await _firebaseService.getCollection(
-        'daily_verse_tracking',
-        where: {'is_used': true},
-      );
-      for (final doc in used) {
-        final ref = doc['verse_reference'] as String?;
-        final translation = doc['translation'] as String? ?? 'KJV';
-        if (ref != null && ref.isNotEmpty) {
-          final docId = '$translation|$ref';
-          await _firebaseService.updateDocument('daily_verse_tracking', docId, {
-            'is_used': false,
-            'used_date': null,
-          });
-        }
-      }
-
-      _logger.info('✅ Verse usage cycle reset');
-    } catch (e) {
-      _logger.error('❌ Failed to reset verse usage cycle: $e');
-      rethrow;
-    }
-  }
+  /// Reset verse usage cycle (No-op now)
+  Future<void> _resetVerseUsageCycle() async {}
 
   /// Create a DailyVerse from a BibleVerse and save to database
   Future<DailyVerse> _createDailyVerseFromBibleVerse(

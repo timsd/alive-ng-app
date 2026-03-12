@@ -26,7 +26,7 @@ class QuickActionsGrid extends ConsumerWidget {
       ),
       QuickAction(
         icon: Icons.trending_up,
-        title: 'Discipleship Tracker',
+        title: 'Discipleship',
         subtitle: 'Track spiritual growth',
         color: Theme.of(context).brightness == Brightness.dark 
             ? Colors.green.shade300 
@@ -44,7 +44,7 @@ class QuickActionsGrid extends ConsumerWidget {
       ),
       QuickAction(
         icon: Icons.restaurant,
-        title: 'Healthy Recipes',
+        title: 'Recipes',
         subtitle: 'Nutritious meal ideas',
         color: Theme.of(context).brightness == Brightness.dark 
             ? Colors.orange.shade300 
@@ -55,7 +55,9 @@ class QuickActionsGrid extends ConsumerWidget {
         icon: Icons.public,
         title: translate('missions'),
         subtitle: TextFormatter.formatActivityType('global_outreach'),
-        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
+        color: Theme.of(context).brightness == Brightness.dark 
+            ? Colors.cyan.shade300 
+            : Colors.cyan,
         route: '/missions',
       ),
       QuickAction(
@@ -96,7 +98,7 @@ class QuickActionsGrid extends ConsumerWidget {
       ),
       QuickAction(
         icon: Icons.school,
-        title: 'Interactive Lessons',
+        title: 'Lessons',
         subtitle: 'Learn & grow in faith',
         color: Theme.of(context).brightness == Brightness.dark 
             ? Colors.indigo.shade300 

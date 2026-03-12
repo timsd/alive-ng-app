@@ -3,14 +3,15 @@ import 'package:flutter/services.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../services/bible_source.dart';
 import '../../models/bible_models.dart' as models;
-import '../../data/bible_verses.dart' as data_bible;
-import '../../data/bible_data.dart';
+import '../../constants/bible_verses.dart' as data_bible;
+import '../../constants/bible_data.dart';
 import '../../services/offline_bible_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../../config/app_config.dart';
 import '../../services/tts_service.dart';
 import '../../services/user_statistics_service.dart';
+import 'package:share_plus/share_plus.dart';
 
 class BibleReaderScreen extends StatefulWidget {
   final String? initialReference;
@@ -63,8 +64,33 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
     _tabController = TabController(length: 3, vsync: this);
     _ttsService.initialize();
     _statisticsService.startReadingSession();
-    _loadHighlights();
+    _loadHighlights(); // Now implemented
     _loadBooksAndInit();
+  }
+
+  Future<void> _loadHighlights() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final keys = prefs.getKeys().where((k) => k.startsWith('highlight_'));
+      final newHighlightColors = <String, Color>{};
+      final newHighlightedVerses = <String>{};
+      
+      for (final key in keys) {
+        final verseKey = key.replaceFirst('highlight_', '');
+        final colorValue = prefs.getInt(key);
+        if (colorValue != null) {
+          newHighlightColors[verseKey] = Color(colorValue);
+          newHighlightedVerses.add(verseKey);
+        }
+      }
+      
+      if (mounted) {
+        setState(() {
+          _verseHighlightColors = newHighlightColors;
+          _highlightedVerses = newHighlightedVerses;
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadBooksAndInit() async {
@@ -516,7 +542,7 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
                                                   : (isMediumScreen
                                                       ? 15
                                                       : 16),
-                                              color: colorScheme.primary,
+                                              color: colorScheme.secondary,
                                             ),
                                           ),
                                           TextSpan(
@@ -560,7 +586,8 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
           ),
         ),
       ],
-    );
+    ),
+  );
   }
 
   Widget _buildCompactNavigation() {
@@ -580,18 +607,27 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
           flex: 2,
           child: GestureDetector(
             onTap: _showBookSelector,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-              child: Text(
-                _selectedBook.isEmpty ? 'Book' : _selectedBook,
-                style: TextStyle(
-                  color: colorScheme.onSurface,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Flexible(
+                  child: Text(
+                    _selectedBook.isEmpty ? 'Book' : _selectedBook,
+                    style: TextStyle(
+                      color: colorScheme.onSurface,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                textAlign: TextAlign.center,
-                overflow: TextOverflow.ellipsis,
-              ),
+                Icon(
+                  Icons.expand_more,
+                  size: 16,
+                  color: colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+              ],
             ),
           ),
         ),
@@ -601,17 +637,24 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
           flex: 1,
           child: GestureDetector(
             onTap: _showChapterSelector,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-              child: Text(
-                _selectedChapter.toString(),
-                style: TextStyle(
-                  color: colorScheme.onSurface,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  _selectedChapter.toString(),
+                  style: TextStyle(
+                    color: colorScheme.onSurface,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-                textAlign: TextAlign.center,
-              ),
+                Icon(
+                  Icons.expand_more,
+                  size: 16,
+                  color: colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+              ],
             ),
           ),
         ),
@@ -643,7 +686,7 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
           },
           child: Icon(
             _isSpeaking ? Icons.stop : Icons.volume_up,
-            color: colorScheme.primary,
+            color: colorScheme.secondary,
             size: 20,
           ),
         ),
@@ -675,18 +718,27 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
           flex: 2,
           child: GestureDetector(
             onTap: _showBookSelector,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Text(
-                _selectedBook.isEmpty ? 'Select Book' : _selectedBook,
-                style: TextStyle(
-                  color: colorScheme.onSurface,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Flexible(
+                  child: Text(
+                    _selectedBook.isEmpty ? 'Select Book' : _selectedBook,
+                    style: TextStyle(
+                      color: colorScheme.onSurface,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                textAlign: TextAlign.center,
-                overflow: TextOverflow.ellipsis,
-              ),
+                Icon(
+                  Icons.expand_more,
+                  size: 18,
+                  color: colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+              ],
             ),
           ),
         ),
@@ -696,30 +748,29 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
           flex: 1,
           child: GestureDetector(
             onTap: _showChapterSelector,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Text(
-                _selectedChapter.toString(),
-                style: TextStyle(
-                  color: colorScheme.onSurface,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  _selectedChapter.toString(),
+                  style: TextStyle(
+                    color: colorScheme.onSurface,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-                textAlign: TextAlign.center,
-              ),
+                Icon(
+                  Icons.expand_more,
+                  size: 18,
+                  color: colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+              ],
             ),
           ),
         ),
 
         const SizedBox(width: 12),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
-        ),
 
         const SizedBox(width: 12),
 
@@ -750,7 +801,7 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
           },
           child: Icon(
             _isSpeaking ? Icons.stop : Icons.volume_up,
-            color: colorScheme.primary,
+            color: colorScheme.secondary,
             size: 22,
           ),
         ),
@@ -776,12 +827,12 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: colorScheme.primary.withValues(alpha: 0.1),
+          color: colorScheme.secondary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Icon(
           icon,
-          color: colorScheme.primary,
+          color: colorScheme.secondary,
           size: 18,
         ),
       ),
@@ -800,10 +851,10 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: colorScheme.primary.withValues(alpha: 0.1),
+          color: colorScheme.secondary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(16),
           border:
-              Border.all(color: colorScheme.primary.withValues(alpha: 0.3)),
+              Border.all(color: colorScheme.secondary.withValues(alpha: 0.3)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -811,7 +862,7 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
             Text(
               label,
               style: TextStyle(
-                color: colorScheme.primary,
+                color: colorScheme.secondary,
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
               ),
@@ -819,7 +870,7 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
             const SizedBox(width: 2),
             Icon(
               Icons.arrow_drop_down,
-              color: colorScheme.primary,
+              color: colorScheme.secondary,
               size: 16,
             ),
           ],
@@ -878,14 +929,14 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
                         fontWeight:
                             isSelected ? FontWeight.bold : FontWeight.normal,
                         color: isSelected
-                            ? Theme.of(context).colorScheme.primary
+                            ? Theme.of(context).colorScheme.secondary
                             : Theme.of(context).textTheme.bodyLarge?.color,
                       ),
                     ),
                     trailing: isSelected
                         ? Icon(
                             Icons.check,
-                            color: Theme.of(context).colorScheme.primary,
+                            color: Theme.of(context).colorScheme.secondary,
                             size: isSmallScreen ? 20 : 24,
                           )
                         : null,
@@ -969,12 +1020,12 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: isSelected 
-                            ? Theme.of(context).colorScheme.primary 
+                            ? Theme.of(context).colorScheme.secondary 
                             : Theme.of(context).colorScheme.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                           color: isSelected
-                              ? Theme.of(context).colorScheme.primary
+                              ? Theme.of(context).colorScheme.secondary
                               : Theme.of(context).dividerColor,
                         ),
                       ),
@@ -984,7 +1035,7 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
                           fontSize: 16,
                           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                           color: isSelected
-                              ? Theme.of(context).colorScheme.onPrimary
+                              ? Theme.of(context).colorScheme.onSecondary
                               : Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
@@ -1049,14 +1100,14 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
                         fontWeight:
                             isSelected ? FontWeight.bold : FontWeight.normal,
                         color: isSelected
-                            ? Theme.of(context).colorScheme.primary
+                            ? Theme.of(context).colorScheme.secondary
                             : Theme.of(context).textTheme.bodyLarge?.color,
                       ),
                     ),
                     trailing: isSelected
                         ? Icon(
                             Icons.check,
-                            color: Theme.of(context).colorScheme.primary,
+                            color: Theme.of(context).colorScheme.secondary,
                             size: isSmallScreen ? 20 : 24,
                           )
                         : null,
@@ -1127,14 +1178,14 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
                         fontWeight:
                             isSelected ? FontWeight.bold : FontWeight.normal,
                         color: isSelected
-                            ? Theme.of(context).colorScheme.primary
+                            ? Theme.of(context).colorScheme.secondary
                             : Theme.of(context).textTheme.bodyLarge?.color,
                       ),
                     ),
                     trailing: isSelected
                         ? Icon(
                             Icons.check,
-                            color: Theme.of(context).colorScheme.primary,
+                            color: Theme.of(context).colorScheme.secondary,
                             size: isSmallScreen ? 20 : 24,
                           )
                         : null,
@@ -1229,7 +1280,7 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
                           verse.reference,
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: colorScheme.primary,
+                            color: colorScheme.secondary,
                           ),
                         ),
                         subtitle: Text(
@@ -1341,7 +1392,7 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
                                 SnackBar(
                                   content: Text(
                                       'Opening ${book['title']} reader...'),
-                                  backgroundColor: colorScheme.primary,
+                                  backgroundColor: colorScheme.secondary,
                                 ),
                               );
                             },
@@ -1776,5 +1827,132 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
         });
       }
     }
+  }
+
+  void _showVerseActionSheet(Map<String, dynamic> verse, String verseKey) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.highlight),
+                title: const Text('Highlight'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showHighlightColorsSheet(verseKey);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.share),
+                title: const Text('Share'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  final textToShare =
+                      '$_selectedBook $_selectedChapter:${verse['verse']} - ${verse['text']}\n\nShared from ALIVE-NG App';
+                  Share.share(textToShare);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.edit_note),
+                title: const Text('Add Note'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showNoteDialog('$_selectedBook $_selectedChapter:${verse['verse']}');
+                },
+              ),
+              if (_highlightedVerses.contains(verseKey))
+                ListTile(
+                  leading: const Icon(Icons.format_clear, color: Colors.orange),
+                  title: const Text('Remove Highlight', style: TextStyle(color: Colors.orange)),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _removeHighlight(verseKey);
+                  },
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showHighlightColorsSheet(String verseKey) {
+    final colors = [
+      Colors.yellow.withValues(alpha: 0.5),
+      Colors.green.withValues(alpha: 0.5),
+      Colors.blue.withValues(alpha: 0.5),
+      Colors.pink.withValues(alpha: 0.5),
+      Colors.purple.withValues(alpha: 0.5),
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Select Highlight Color', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: colors.map((color) {
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _saveHighlight(verseKey, color);
+                      },
+                      child: Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _saveHighlight(String verseKey, Color color) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('highlight_$verseKey', color.value);
+      
+      setState(() {
+        _verseHighlightColors[verseKey] = color;
+        _highlightedVerses.add(verseKey);
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _removeHighlight(String verseKey) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('highlight_$verseKey');
+      
+      setState(() {
+        _verseHighlightColors.remove(verseKey);
+        _highlightedVerses.remove(verseKey);
+      });
+    } catch (_) {}
   }
 }

@@ -4,8 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/pdf_extractor_service.dart';
 import '../../services/firebase_database_service.dart';
-import '../../data/bible_stories.dart'; // Using the enums locally initially
-
+import '../../models/kids_models.dart';
 class AdminKidsStoriesScreen extends StatefulWidget {
   const AdminKidsStoriesScreen({super.key});
 

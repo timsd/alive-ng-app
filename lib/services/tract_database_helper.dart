@@ -181,6 +181,7 @@ class TractDatabaseHelper {
   // Tract operations
   Future<void> insertTract(Tract tract) async {
     final db = await database;
+    final now = DateTime.now().toIso8601String();
     await db.insert(
       _tractsTable,
       {
@@ -188,11 +189,11 @@ class TractDatabaseHelper {
         'title': tract.title,
         'description': tract.description,
         'category': tract.category,
-        'pdfUrl': tract.pdfUrl,
+        'pdfUrl': tract.pdfUrl ?? '',
         'localPdfPath': tract.localPdfPath,
         'imageUrl': tract.imageUrl,
-        'createdAt': tract.createdAt.toIso8601String(),
-        'updatedAt': tract.updatedAt.toIso8601String(),
+        'createdAt': tract.createdAt?.toIso8601String() ?? now,
+        'updatedAt': tract.updatedAt?.toIso8601String() ?? now,
         'isDownloaded': tract.isDownloaded ? 1 : 0,
         'orderIndex': tract.order,
         'language': tract.language,
@@ -432,18 +433,18 @@ class TractDatabaseHelper {
   // Helper methods
   Tract _tractFromMap(Map<String, dynamic> map) {
     return Tract(
-      id: map['id'],
-      title: map['title'],
-      description: map['description'],
-      category: map['category'],
-      pdfUrl: map['pdfUrl'],
-      localPdfPath: map['localPdfPath'],
-      imageUrl: map['imageUrl'],
-      createdAt: DateTime.parse(map['createdAt']),
-      updatedAt: DateTime.parse(map['updatedAt']),
-      isDownloaded: map['isDownloaded'] == 1,
-      order: map['orderIndex'],
-      language: map['language'],
+      id: map['id'] as String,
+      title: map['title'] as String,
+      description: map['description'] as String,
+      category: map['category'] as String,
+      pdfUrl: map['pdfUrl'] as String?,
+      localPdfPath: map['localPdfPath'] as String?,
+      imageUrl: map['imageUrl'] as String?,
+      createdAt: map['createdAt'] != null ? DateTime.tryParse(map['createdAt'] as String) : null,
+      updatedAt: map['updatedAt'] != null ? DateTime.tryParse(map['updatedAt'] as String) : null,
+      isDownloaded: (map['isDownloaded'] as int? ?? 0) == 1,
+      order: map['orderIndex'] as int? ?? 0,
+      language: map['language'] as String? ?? 'en',
     );
   }
 }

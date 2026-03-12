@@ -1,5 +1,5 @@
 class AppConstants {
-  // Supabase removed - migrated to Firebase
+  // Firebase
 
   // App Information
   static const String appName = 'ALIVE-NG APP';
@@ -29,7 +29,7 @@ class AppConstants {
   static const String adminApprovalRoute = '/admin-approval';
   static const String adminApprovalLinkRoute = '/admin-approve';
   static const String leadershipArchiveRoute = '/leadership-archive';
-  static const String materialsRoute = '/materials';
+  static const String studyGuideRoute = '/study-guide';
   static const String tractPodcastAdminRoute = '/tract-podcast-admin';
   static const String meetingFileSharingRoute = '/meeting-file-sharing';
   // New Kids Content Admin route

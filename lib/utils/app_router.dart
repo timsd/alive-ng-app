@@ -38,6 +38,7 @@ import '../screens/library/library_screen.dart';
 import '../screens/podcasts/podcasts_screen.dart';
 import '../screens/lessons/interactive_lessons_screen.dart';
 import '../screens/books/books_tracts_screen.dart';
+import '../screens/study_guides/study_guide_screen.dart';
 import '../screens/kids/kids_stories_screen.dart';
 import '../screens/discipleship/discipleship_screen.dart';
 import '../screens/events/events_screen.dart';
@@ -59,8 +60,6 @@ import '../services/firestore_service.dart';
 import '../utils/web_launch_params.dart';
 
 // New screen imports
-import '../screens/study_guides/study_guide_screen.dart';
-import '../screens/materials/materials_screen.dart';
 import '../screens/admin/leadership_archive_screen.dart';
 
 
@@ -569,16 +568,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const StudyGuideScreen(),
           ),
           GoRoute(
-            path: AppConstants.materialsRoute,
-            builder: (context, state) => const MaterialsScreen(),
-          ),
-          GoRoute(
             path: AppConstants.leadershipArchiveRoute,
             builder: (context, state) => const LeadershipArchiveScreen(),
-          ),
-          GoRoute(
-            path: AppConstants.adminEmailSettingsRoute,
-            builder: (context, state) => const AdminEmailSettingsScreen(),
           ),
         ],
       ),
@@ -630,10 +621,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppConstants.leadershipArchiveRoute,
         builder: (context, state) => const LeadershipArchiveScreen(),
-      ),
-      GoRoute(
-        path: AppConstants.materialsRoute,
-        builder: (context, state) => const MaterialsScreen(),
       ),
     ],
 
