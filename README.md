@@ -112,11 +112,7 @@ lib/
      - `android/app/google-services.json` (Android)
      - `ios/Runner/GoogleService-Info.plist` (iOS)
 
-4. **Configure Firebase**
-   - Create a Firebase project 
-   - Update the Firebase configuration in your environment variables or constants file
-
-5. **Run the app**
+4. **Run the app**
    ```bash
    flutter run
    ```
