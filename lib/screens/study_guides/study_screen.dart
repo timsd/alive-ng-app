@@ -278,7 +278,7 @@ class StudyScreen extends ConsumerWidget {
                     children: [
                       Text(
                         'Bible Memorization Game',
-                        style: TextStyle(
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           color: Theme.of(context).colorScheme.onPrimary,
                           fontSize: ResponsiveUtils.getResponsiveFontSize(
                               context, 18),
@@ -290,7 +290,7 @@ class StudyScreen extends ConsumerWidget {
                               ResponsiveUtils.getResponsiveSpacing(context, 4)),
                       Text(
                         'Learn verses with voice recitation and fill-in-the-gap exercises',
-                        style: TextStyle(
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.9),
                           fontSize: ResponsiveUtils.getResponsiveFontSize(
                               context, 14),
@@ -301,7 +301,7 @@ class StudyScreen extends ConsumerWidget {
                 ),
                 Icon(
                   Icons.arrow_forward_ios,
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.onPrimary,
                   size: ResponsiveUtils.getResponsiveIconSize(context, 20),
                 ),
               ],
@@ -489,7 +489,7 @@ class StudyScreen extends ConsumerWidget {
             children: [
               Text(
                 'Program Details',
-                style: TextStyle(
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     fontSize:
                         ResponsiveUtils.getResponsiveFontSize(context, 16)),
@@ -500,9 +500,9 @@ class StudyScreen extends ConsumerWidget {
                   'Detailed study program with comprehensive lessons and activities.'),
               SizedBox(
                   height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-              const Text(
-                'Features:',
-                style: TextStyle(fontWeight: FontWeight.bold),
+              Text(
+                'Includes:',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
               SizedBox(
                   height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
@@ -530,7 +530,7 @@ class StudyScreen extends ConsumerWidget {
                     Expanded(
                       child: Text(
                         'This program includes multiple modules and assessments.',
-                        style: TextStyle(color: Theme.of(context).colorScheme.primary),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.primary),
                       ),
                     ),
                   ],

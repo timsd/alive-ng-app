@@ -12,17 +12,18 @@ import '../../config/app_config.dart';
 import '../../services/tts_service.dart';
 import '../../services/user_statistics_service.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class BibleReaderScreen extends StatefulWidget {
+class BibleReaderScreen extends ConsumerStatefulWidget {
   final String? initialReference;
 
   const BibleReaderScreen({super.key, this.initialReference});
 
   @override
-  State<BibleReaderScreen> createState() => _BibleReaderScreenState();
+  ConsumerState<BibleReaderScreen> createState() => _BibleReaderScreenState();
 }
 
-class _BibleReaderScreenState extends State<BibleReaderScreen>
+class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
     with TickerProviderStateMixin {
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
@@ -97,16 +98,34 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
     setState(() => _isLoading = true);
     try {
       final languageCode = _languageCodes[_selectedLanguage] ?? 'en';
-      // Load available versions for the selected language
-      final versions =
-          await _offlineBible.getAvailableVersions(language: languageCode);
-      _versionsForLanguage = versions.map((v) => v.code).toList();
-      if (_versionsForLanguage.isNotEmpty) {
+      // Mapped versions based on requirements
+      if (_selectedLanguage == 'English') {
+        _versionsForLanguage = ['ASV', 'KJV', 'NASB', 'NIV', 'NKJV', 'NLT'];
+      } else if (_selectedLanguage == 'Hausa') {
+        _versionsForLanguage = ['HAUSA']; // Verify with actual assets later
+      } else if (_selectedLanguage == 'Igbo') {
+        _versionsForLanguage = ['IGBO'];
+      } else if (_selectedLanguage == 'Yoruba') {
+        _versionsForLanguage = ['BM'];
+      } else {
+        final versions = await _offlineBible.getAvailableVersions(language: languageCode);
+        _versionsForLanguage = versions.map((v) => v.code).toList();
+      }
+
+      if (_versionsForLanguage.isNotEmpty && !_versionsForLanguage.contains(_selectedVersion)) {
         _selectedVersion = _versionsForLanguage.first;
       }
+      
       final books = await _offlineBible.getBibleBooks(language: languageCode);
       if (books.isNotEmpty) {
-        _books = books..sort((a, b) => a.order.compareTo(b.order));
+        // Reorder books according to BibleData.allBooks
+        final orderMap = {for (var i = 0; i < BibleData.allBooks.length; i++) BibleData.allBooks[i]: i};
+        books.sort((a, b) {
+          final orderA = orderMap[a.name] ?? 999;
+          final orderB = orderMap[b.name] ?? 999;
+          return orderA.compareTo(orderB);
+        });
+        _books = books;
         _currentBookIndex = 0;
         _selectedBook = _books[_currentBookIndex].name;
         _selectedChapter = 1;
@@ -151,6 +170,50 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error loading chapter: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _loadFullBook() async {
+    setState(() => _isLoading = true);
+    try {
+      final languageCode = _languageCodes[_selectedLanguage] ?? 'en';
+      final currentBook = _books[_currentBookIndex];
+      
+      final List<Map<String, dynamic>> allVerses = [];
+      final chapters = await _offlineBible.getBibleBookFull(
+        book: _selectedBook,
+        totalChapters: currentBook.chapters,
+        version: _selectedVersion,
+        language: languageCode,
+      );
+
+      for (var chapter in chapters) {
+        for (var v in chapter.verses) {
+          allVerses.add({
+            'verse': v.number,
+            'text': v.text,
+            'chapter': chapter.chapter,
+          });
+        }
+      }
+
+      setState(() {
+        _chapterVerses = allVerses;
+        _selectedChapter = 1; // Default to start
+      });
+      
+      _statisticsService.recordChapterRead(_selectedBook, 1);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading book: $e'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -352,6 +415,19 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
         showThemeToggle: true,
         showLanguageToggle: true,
         showDonationButton: true,
+        actions: [
+          IconButton(
+            icon: Icon(_isSpeaking ? Icons.stop : Icons.volume_up),
+            onPressed: () {
+              if (_isSpeaking) {
+                _stopSpeaking();
+              } else {
+                _speakChapter();
+              }
+            },
+            tooltip: _isSpeaking ? 'Stop Reading' : 'Listen to Chapter',
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: headerTextColor,
@@ -398,7 +474,7 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
             child: Text(
               _selectedBook.isEmpty
                   ? 'Bible Reader'
-                  : '$_selectedBook ${_selectedChapter.toString()}',
+                  : _selectedBook,
               style: TextStyle(
                 color: headerTextColor,
                 fontSize: isSmallScreen ? 24 : (isMediumScreen ? 26 : 28),
@@ -670,28 +746,12 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
         // Language Dropdown Equivalent
         _buildNavChip(
           label: _selectedLanguage,
-          onTap: _showLanguageSelector,
+          onTap: () => _showLanguageSelector(context),
         ),
 
         const SizedBox(width: 4),
-
-        // Speak/Stop Chapter (TTS)
-        GestureDetector(
-          onTap: () {
-            if (_isSpeaking) {
-              _stopSpeaking();
-            } else {
-              _speakChapter();
-            }
-          },
-          child: Icon(
-            _isSpeaking ? Icons.stop : Icons.volume_up,
-            color: colorScheme.secondary,
-            size: 20,
-          ),
-        ),
-
-        // Next Chapter Button
+ 
+         // Next Chapter Button
         _buildNavButton(
           icon: Icons.arrow_forward_ios,
           onTap: _navigateToNextChapter,
@@ -785,29 +845,12 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
         // Language Chip
         _buildNavChip(
           label: _selectedLanguage,
-          onTap: _showLanguageSelector,
+          onTap: () => _showLanguageSelector(context),
         ),
 
         const SizedBox(width: 12),
-
-        // Speak/Stop Chapter (TTS)
-        GestureDetector(
-          onTap: () {
-            if (_isSpeaking) {
-              _stopSpeaking();
-            } else {
-              _speakChapter();
-            }
-          },
-          child: Icon(
-            _isSpeaking ? Icons.stop : Icons.volume_up,
-            color: colorScheme.secondary,
-            size: 22,
-          ),
-        ),
-        const SizedBox(width: 12),
-
-        // Next Chapter Button
+ 
+         // Next Chapter Button
         _buildNavButton(
           icon: Icons.arrow_forward_ios,
           onTap: _navigateToNextChapter,
@@ -947,7 +990,7 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
                         _selectedChapter = 1; // Reset to chapter 1
                       });
                       Navigator.pop(context);
-                      _loadChapter();
+                      _loadFullBook();
                     },
                   );
                 },
@@ -1128,7 +1171,7 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
     );
   }
 
-  void _showLanguageSelector() {
+  void _showLanguageSelector(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 600;
@@ -1491,21 +1534,6 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
   }
 
   // TTS functionality
-  /// Load saved highlights from SharedPreferences
-  Future<void> _loadHighlights() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final data = prefs.getString('verse_highlights');
-      if (data != null) {
-        final Map<String, dynamic> decoded = json.decode(data);
-        setState(() {
-          _verseHighlightColors = decoded.map((key, value) =>
-              MapEntry(key, Color(value as int)));
-          _highlightedVerses = decoded.keys.toSet();
-        });
-      }
-    } catch (_) {}
-  }
 
   /// Save highlights to SharedPreferences
   Future<void> _saveHighlights() async {
@@ -1829,130 +1857,4 @@ class _BibleReaderScreenState extends State<BibleReaderScreen>
     }
   }
 
-  void _showVerseActionSheet(Map<String, dynamic> verse, String verseKey) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.highlight),
-                title: const Text('Highlight'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _showHighlightColorsSheet(verseKey);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.share),
-                title: const Text('Share'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  final textToShare =
-                      '$_selectedBook $_selectedChapter:${verse['verse']} - ${verse['text']}\n\nShared from ALIVE-NG App';
-                  Share.share(textToShare);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.edit_note),
-                title: const Text('Add Note'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _showNoteDialog('$_selectedBook $_selectedChapter:${verse['verse']}');
-                },
-              ),
-              if (_highlightedVerses.contains(verseKey))
-                ListTile(
-                  leading: const Icon(Icons.format_clear, color: Colors.orange),
-                  title: const Text('Remove Highlight', style: TextStyle(color: Colors.orange)),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _removeHighlight(verseKey);
-                  },
-                ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _showHighlightColorsSheet(String verseKey) {
-    final colors = [
-      Colors.yellow.withValues(alpha: 0.5),
-      Colors.green.withValues(alpha: 0.5),
-      Colors.blue.withValues(alpha: 0.5),
-      Colors.pink.withValues(alpha: 0.5),
-      Colors.purple.withValues(alpha: 0.5),
-    ];
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('Select Highlight Color', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: colors.map((color) {
-                    return GestureDetector(
-                      onTap: () {
-                        Navigator.pop(ctx);
-                        _saveHighlight(verseKey, color);
-                      },
-                      child: Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: color,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _saveHighlight(String verseKey, Color color) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('highlight_$verseKey', color.value);
-      
-      setState(() {
-        _verseHighlightColors[verseKey] = color;
-        _highlightedVerses.add(verseKey);
-      });
-    } catch (_) {}
-  }
-
-  Future<void> _removeHighlight(String verseKey) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('highlight_$verseKey');
-      
-      setState(() {
-        _verseHighlightColors.remove(verseKey);
-        _highlightedVerses.remove(verseKey);
-      });
-    } catch (_) {}
-  }
 }

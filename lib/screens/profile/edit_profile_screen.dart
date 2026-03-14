@@ -7,6 +7,7 @@ import '../../services/firebase_database_service.dart';
 import '../../services/auth_service.dart';
 import '../../utils/toast_utils.dart';
 import '../../widgets/custom_image.dart';
+import '../../widgets/custom_app_bar.dart';
 
 class EditProfileScreen extends StatefulWidget {
   final UserProfile userProfile;
@@ -179,9 +180,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Profile updated successfully!'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: const Text('Profile updated successfully!'),
+            backgroundColor: Theme.of(context).colorScheme.tertiary,
           ),
         );
         Navigator.of(context).pop(updatedProfile);
@@ -191,7 +192,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to update profile: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -256,11 +257,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       },
       child: Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        appBar: AppBar(
-          title: const Text('Edit Profile'),
-          backgroundColor: Colors.green,
-          foregroundColor: Colors.white,
-          elevation: 0,
+        appBar: CustomAppBar(
+          title: 'Edit Profile',
+          showBackButton: true,
           actions: [
             if (_hasChanges)
               IconButton(
@@ -279,8 +278,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     ResponsiveUtils.getResponsivePaddingWithBase(context, 16),
                 child: LinearProgressIndicator(
                   value: (_currentPage + 1) / 3,
-                  backgroundColor: Colors.grey.shade300,
-                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.green),
+                  backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
                 ),
               ),
 
@@ -290,10 +289,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     ResponsiveUtils.getResponsivePaddingWithBase(context, 8),
                 child: Text(
                   'Section ${_currentPage + 1} of 3',
-                  style: TextStyle(
-                    fontSize:
-                        ResponsiveUtils.getResponsiveFontSize(context, 14),
-                    color: Colors.grey.shade600,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.outline,
                   ),
                 ),
               ),
@@ -323,8 +320,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       ElevatedButton(
                         onPressed: _previousPage,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey.shade600,
-                          foregroundColor: Colors.white,
+                          backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                          foregroundColor: Theme.of(context).colorScheme.onSurface,
                         ),
                         child: const Text('Previous'),
                       )
@@ -334,8 +331,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       ElevatedButton(
                         onPressed: _nextPage,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
+                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          foregroundColor: Theme.of(context).colorScheme.onPrimary,
                         ),
                         child: const Text('Next'),
                       )
@@ -343,17 +340,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       ElevatedButton(
                         onPressed: _isLoading ? null : _saveProfile,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
+                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          foregroundColor: Theme.of(context).colorScheme.onPrimary,
                         ),
                         child: _isLoading
-                            ? const SizedBox(
+                            ? SizedBox(
                                 width: 20,
                                 height: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
                                   valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.white),
+                                      Theme.of(context).colorScheme.onPrimary),
                                 ),
                               )
                             : const Text('Save Changes'),
@@ -376,22 +373,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         children: [
           Text(
             'Basic Information',
-            style: TextStyle(
-              fontSize: ResponsiveUtils.getResponsiveFontSize(context, 24),
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
-              color: Theme.of(context).textTheme.headlineMedium?.color,
             ),
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
           LayoutFixUtils.safeText(
             'Update your basic information. Note: Email cannot be changed.',
-            style: TextStyle(
-              color: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.color
-                  ?.withValues(alpha: 0.7),
-              fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
@@ -409,7 +399,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               border: const OutlineInputBorder(),
               prefixIcon: const Icon(Icons.email),
               filled: true,
-              fillColor: Colors.grey.shade200,
+              fillColor: Theme.of(context).colorScheme.surfaceContainer,
             ),
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
@@ -421,9 +411,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               border: const OutlineInputBorder(),
               prefixIcon: const Icon(Icons.person),
               filled: true,
-              fillColor: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.grey.shade800
-                  : Colors.grey.shade50,
+              fillColor: Theme.of(context).colorScheme.surfaceContainer,
             ),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
@@ -442,9 +430,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               border: const OutlineInputBorder(),
               prefixIcon: const Icon(Icons.phone),
               filled: true,
-              fillColor: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.grey.shade800
-                  : Colors.grey.shade50,
+              fillColor: Theme.of(context).colorScheme.surfaceContainer,
             ),
           ),
         ],
@@ -460,22 +446,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         children: [
           Text(
             'Profile Details',
-            style: TextStyle(
-              fontSize: ResponsiveUtils.getResponsiveFontSize(context, 24),
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
-              color: Theme.of(context).textTheme.headlineMedium?.color,
             ),
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
           LayoutFixUtils.safeText(
             'Update your profile details. This information is important for community engagement.',
-            style: TextStyle(
-              color: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.color
-                  ?.withValues(alpha: 0.7),
-              fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
@@ -486,9 +465,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               border: const OutlineInputBorder(),
               prefixIcon: const Icon(Icons.location_on),
               filled: true,
-              fillColor: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.grey.shade800
-                  : Colors.grey.shade50,
+              fillColor: Theme.of(context).colorScheme.surfaceContainer,
             ),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
@@ -505,9 +482,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               border: const OutlineInputBorder(),
               prefixIcon: const Icon(Icons.church),
               filled: true,
-              fillColor: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.grey.shade800
-                  : Colors.grey.shade50,
+              fillColor: Theme.of(context).colorScheme.surfaceContainer,
             ),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
@@ -524,9 +499,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               border: const OutlineInputBorder(),
               prefixIcon: const Icon(Icons.work),
               filled: true,
-              fillColor: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.grey.shade800
-                  : Colors.grey.shade50,
+              fillColor: Theme.of(context).colorScheme.surfaceContainer,
             ),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
@@ -565,9 +538,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               border: const OutlineInputBorder(),
               prefixIcon: const Icon(Icons.business),
               filled: true,
-              fillColor: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.grey.shade800
-                  : Colors.grey.shade50,
+              fillColor: Theme.of(context).colorScheme.surfaceContainer,
             ),
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
@@ -579,9 +550,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               border: const OutlineInputBorder(),
               prefixIcon: const Icon(Icons.home),
               filled: true,
-              fillColor: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.grey.shade800
-                  : Colors.grey.shade50,
+              fillColor: Theme.of(context).colorScheme.surfaceContainer,
             ),
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
@@ -594,9 +563,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               border: const OutlineInputBorder(),
               prefixIcon: const Icon(Icons.info),
               filled: true,
-              fillColor: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.grey.shade800
-                  : Colors.grey.shade50,
+              fillColor: Theme.of(context).colorScheme.surfaceContainer,
             ),
           ),
         ],
@@ -612,22 +579,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         children: [
           Text(
             'Commitment & Engagement',
-            style: TextStyle(
-              fontSize: ResponsiveUtils.getResponsiveFontSize(context, 24),
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
-              color: Theme.of(context).textTheme.headlineMedium?.color,
             ),
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
           LayoutFixUtils.safeText(
             'Update your commitment and engagement preferences.',
-            style: TextStyle(
-              color: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.color
-                  ?.withValues(alpha: 0.7),
-              fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
@@ -638,9 +598,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               border: const OutlineInputBorder(),
               prefixIcon: const Icon(Icons.group),
               filled: true,
-              fillColor: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.grey.shade800
-                  : Colors.grey.shade50,
+              fillColor: Theme.of(context).colorScheme.surfaceContainer,
             ),
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
@@ -651,18 +609,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               border: const OutlineInputBorder(),
               prefixIcon: const Icon(Icons.account_balance),
               filled: true,
-              fillColor: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.grey.shade800
-                  : Colors.grey.shade50,
+              fillColor: Theme.of(context).colorScheme.surfaceContainer,
             ),
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
           Text(
             'How do you plan to contribute?',
-            style: TextStyle(
-              fontSize: ResponsiveUtils.getResponsiveFontSize(context, 18),
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.bold,
-              color: Theme.of(context).textTheme.headlineMedium?.color,
             ),
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
@@ -703,13 +657,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     : _commitmentType == 'active_availability'
                         ? 'I plan to be actively available for service and activities'
                         : 'I plan to contribute both financially and through active service',
-                style: TextStyle(
-                  color: Theme.of(context)
-                      .textTheme
-                      .bodyMedium
-                      ?.color
-                      ?.withValues(alpha: 0.7),
-                  fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
@@ -725,10 +674,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       children: [
         Text(
           'Profile Picture',
-          style: TextStyle(
-            fontSize: ResponsiveUtils.getResponsiveFontSize(context, 18),
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.w600,
-            color: Theme.of(context).textTheme.titleMedium?.color,
           ),
         ),
         SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
@@ -745,17 +692,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         width: 80,
                         height: 80,
                         fit: BoxFit.cover,
-                        placeholder: const Icon(
+                        placeholder: Icon(
                           Icons.person,
                           size: 40,
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.onPrimary,
                         ),
                       ),
                     )
-                  : const Icon(
+                  : Icon(
                       Icons.person,
                       size: 40,
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onPrimary,
                     ),
             ),
             SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 16)),
@@ -778,7 +725,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         : 'Upload Picture'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Theme.of(context).colorScheme.primary,
-                      foregroundColor: Colors.white,
+                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
                     ),
                   ),
                   if (_profilePictureUrl != null) ...[
@@ -787,9 +734,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             ResponsiveUtils.getResponsiveSpacing(context, 8)),
                     TextButton.icon(
                       onPressed: _removeProfilePicture,
-                      icon: const Icon(Icons.delete, color: Colors.red),
-                      label: const Text('Remove Picture',
-                          style: TextStyle(color: Colors.red)),
+                      icon: Icon(Icons.delete, color: Theme.of(context).colorScheme.error),
+                      label: Text('Remove Picture',
+                          style: TextStyle(color: Theme.of(context).colorScheme.error)),
                     ),
                   ],
                 ],

@@ -22,7 +22,7 @@ class HomeScreen extends ConsumerWidget {
     final translate = ref.watch(translationProvider);
 
     return Scaffold(
-      appBar: const CustomAppBar(
+      appBar: CustomAppBar(
         title: 'Home',
         // Actions include language, theme, and support automatically
         backgroundColor: Colors.transparent,
@@ -40,12 +40,12 @@ class HomeScreen extends ConsumerWidget {
                 Icons.error,
                 context: context,
                 baseSize: 64,
-                color: Colors.red,
+                color: Theme.of(context).colorScheme.error,
               ),
               SizedBox(height: context.isMobile ? 12 : 16),
               Text(
                 'Error: $error',
-                style: TextStyle(
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   fontSize: ResponsiveUtils.getResponsiveFontSize(context, 16),
                 ),
                 textAlign: TextAlign.center,

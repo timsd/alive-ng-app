@@ -13,7 +13,7 @@
     "name": "Joṣua",
     "abbreviation": "Joṣu",
     "chapters": 24,
-    "testament": "old",
+    "testament": "new",
     "order": 2,
     "translations": {
       "BM": "Joṣua"
@@ -23,7 +23,7 @@
     "name": "Jẹnẹsisi",
     "abbreviation": "Jẹnẹ",
     "chapters": 50,
-    "testament": "old",
+    "testament": "new",
     "order": 3,
     "translations": {
       "BM": "Jẹnẹsisi"
@@ -43,7 +43,7 @@
     "name": "Nọmba",
     "abbreviation": "Nọmb",
     "chapters": 36,
-    "testament": "old",
+    "testament": "new",
     "order": 5,
     "translations": {
       "BM": "Nọmba"
@@ -63,7 +63,7 @@
     "name": "Orin Solomoni",
     "abbreviation": "OriSolomoni",
     "chapters": 8,
-    "testament": "old",
+    "testament": "new",
     "order": 7,
     "translations": {
       "BM": "Orin Solomoni"
@@ -73,7 +73,7 @@
     "name": "Àwọn Adájọ́",
     "abbreviation": "ÀwọAdájọ́",
     "chapters": 21,
-    "testament": "old",
+    "testament": "new",
     "order": 8,
     "translations": {
       "BM": "Àwọn Adájọ́"
@@ -93,7 +93,7 @@
     "name": "Ìwé Keji lati Ọ̀dọ̀ Peteru",
     "abbreviation": "ÌwéKeji",
     "chapters": 3,
-    "testament": "old",
+    "testament": "new",
     "order": 10,
     "translations": {
       "BM": "Ìwé Keji lati Ọ̀dọ̀ Peteru"
@@ -103,7 +103,7 @@
     "name": "Ìwé Keji Paulu sí Timoti",
     "abbreviation": "ÌwéKeji",
     "chapters": 4,
-    "testament": "old",
+    "testament": "new",
     "order": 11,
     "translations": {
       "BM": "Ìwé Keji Paulu sí Timoti"
@@ -123,7 +123,7 @@
     "name": "Ìwé Keji Paulu sí Àwọn Ará Tẹsalonika",
     "abbreviation": "ÌwéKeji",
     "chapters": 3,
-    "testament": "old",
+    "testament": "new",
     "order": 13,
     "translations": {
       "BM": "Ìwé Keji Paulu sí Àwọn Ará Tẹsalonika"
@@ -143,7 +143,7 @@
     "name": "Ìwé Keji ti Kronika",
     "abbreviation": "ÌwéKeji",
     "chapters": 36,
-    "testament": "old",
+    "testament": "new",
     "order": 15,
     "translations": {
       "BM": "Ìwé Keji ti Kronika"
@@ -153,7 +153,7 @@
     "name": "ÌWÉ KEJI TI SAMUẸLI",
     "abbreviation": "ÌWÉKEJI",
     "chapters": 24,
-    "testament": "old",
+    "testament": "new",
     "order": 16,
     "translations": {
       "BM": "ÌWÉ KEJI TI SAMUẸLI"
@@ -163,7 +163,7 @@
     "name": "Ìwé Keji ti Àwọn Ọba",
     "abbreviation": "ÌwéKeji",
     "chapters": 25,
-    "testament": "old",
+    "testament": "new",
     "order": 17,
     "translations": {
       "BM": "Ìwé Keji ti Àwọn Ọba"
@@ -173,7 +173,7 @@
     "name": "Ìwé Kinni lati Ọ̀dọ̀ Peteru",
     "abbreviation": "ÌwéKinni",
     "chapters": 5,
-    "testament": "old",
+    "testament": "new",
     "order": 18,
     "translations": {
       "BM": "Ìwé Kinni lati Ọ̀dọ̀ Peteru"
@@ -193,7 +193,7 @@
     "name": "Ìwé Kinni Paulu sí Àwọn Ará Kọrinti",
     "abbreviation": "ÌwéKinni",
     "chapters": 16,
-    "testament": "old",
+    "testament": "new",
     "order": 20,
     "translations": {
       "BM": "Ìwé Kinni Paulu sí Àwọn Ará Kọrinti"
@@ -233,7 +233,7 @@
     "name": "ÌWÉ KINNI TI SAMUẸLI",
     "abbreviation": "ÌWÉKINNI",
     "chapters": 31,
-    "testament": "old",
+    "testament": "new",
     "order": 24,
     "translations": {
       "BM": "ÌWÉ KINNI TI SAMUẸLI"
@@ -283,7 +283,7 @@
     "name": "Ìwé Oníwàásù",
     "abbreviation": "ÌwéOníwàásù",
     "chapters": 12,
-    "testament": "old",
+    "testament": "new",
     "order": 29,
     "translations": {
       "BM": "Ìwé Oníwàásù"
@@ -323,7 +323,7 @@
     "name": "Ìwé Paulu sí Àwọn Ará Filipi",
     "abbreviation": "ÌwéPaulu",
     "chapters": 4,
-    "testament": "old",
+    "testament": "new",
     "order": 33,
     "translations": {
       "BM": "Ìwé Paulu sí Àwọn Ará Filipi"
@@ -353,7 +353,7 @@
     "name": "Ìwé Paulu sí Àwọn Ará Romu",
     "abbreviation": "ÌwéPaulu",
     "chapters": 16,
-    "testament": "old",
+    "testament": "new",
     "order": 36,
     "translations": {
       "BM": "Ìwé Paulu sí Àwọn Ará Romu"
@@ -403,7 +403,7 @@
     "name": "Ìwé ti Habakuku",
     "abbreviation": "Ìwéti",
     "chapters": 3,
-    "testament": "new",
+    "testament": "old",
     "order": 41,
     "translations": {
       "BM": "Ìwé ti Habakuku"
@@ -413,7 +413,7 @@
     "name": "Ìwé ti Hagai",
     "abbreviation": "Ìwéti",
     "chapters": 2,
-    "testament": "new",
+    "testament": "old",
     "order": 42,
     "translations": {
       "BM": "Ìwé ti Hagai"
@@ -433,7 +433,7 @@
     "name": "Ìwé ti Isikiẹli",
     "abbreviation": "Ìwéti",
     "chapters": 48,
-    "testament": "new",
+    "testament": "old",
     "order": 44,
     "translations": {
       "BM": "Ìwé ti Isikiẹli"
@@ -443,7 +443,7 @@
     "name": "Ìwé ti Jeremaya",
     "abbreviation": "Ìwéti",
     "chapters": 52,
-    "testament": "new",
+    "testament": "old",
     "order": 45,
     "translations": {
       "BM": "Ìwé ti Jeremaya"
@@ -453,7 +453,7 @@
     "name": "Ìwé ti Jobu",
     "abbreviation": "Ìwéti",
     "chapters": 42,
-    "testament": "new",
+    "testament": "old",
     "order": 46,
     "translations": {
       "BM": "Ìwé ti Jobu"
@@ -473,7 +473,7 @@
     "name": "Ìwé ti Joẹli",
     "abbreviation": "Ìwéti",
     "chapters": 3,
-    "testament": "new",
+    "testament": "old",
     "order": 48,
     "translations": {
       "BM": "Ìwé ti Joẹli"
@@ -503,7 +503,7 @@
     "name": "Ìwé ti Nahumu",
     "abbreviation": "Ìwéti",
     "chapters": 3,
-    "testament": "new",
+    "testament": "old",
     "order": 51,
     "translations": {
       "BM": "Ìwé ti Nahumu"
@@ -513,7 +513,7 @@
     "name": "Ìwé ti Nehemaya",
     "abbreviation": "Ìwéti",
     "chapters": 13,
-    "testament": "new",
+    "testament": "old",
     "order": 52,
     "translations": {
       "BM": "Ìwé ti Nehemaya"
@@ -523,7 +523,7 @@
     "name": "Ìwé ti Obadaya",
     "abbreviation": "Ìwéti",
     "chapters": 1,
-    "testament": "new",
+    "testament": "old",
     "order": 53,
     "translations": {
       "BM": "Ìwé ti Obadaya"
@@ -533,7 +533,7 @@
     "name": "Ìwé ti Rutu",
     "abbreviation": "Ìwéti",
     "chapters": 4,
-    "testament": "new",
+    "testament": "old",
     "order": 54,
     "translations": {
       "BM": "Ìwé ti Rutu"
@@ -543,7 +543,7 @@
     "name": "Ìwé ti Sakaraya",
     "abbreviation": "Ìwéti",
     "chapters": 14,
-    "testament": "new",
+    "testament": "old",
     "order": 55,
     "translations": {
       "BM": "Ìwé ti Sakaraya"
@@ -573,7 +573,7 @@
     "name": "Ìwé ti Ẹsra",
     "abbreviation": "Ìwéti",
     "chapters": 10,
-    "testament": "new",
+    "testament": "old",
     "order": 58,
     "translations": {
       "BM": "Ìwé ti Ẹsra"
@@ -583,7 +583,7 @@
     "name": "Ìwé Òwe",
     "abbreviation": "ÌwéÒwe",
     "chapters": 31,
-    "testament": "new",
+    "testament": "old",
     "order": 59,
     "translations": {
       "BM": "Ìwé Òwe"
@@ -613,7 +613,7 @@
     "name": "Ìyìnrere Jesu Kristi lati Ọwọ́ Luku",
     "abbreviation": "ÌyìJesu",
     "chapters": 24,
-    "testament": "new",
+    "testament": "old",
     "order": 62,
     "translations": {
       "BM": "Ìyìnrere Jesu Kristi lati Ọwọ́ Luku"
@@ -623,7 +623,7 @@
     "name": "Ìyìnrere Jesu Kristi lati Ọwọ́ Maku",
     "abbreviation": "ÌyìJesu",
     "chapters": 16,
-    "testament": "new",
+    "testament": "old",
     "order": 63,
     "translations": {
       "BM": "Ìyìnrere Jesu Kristi lati Ọwọ́ Maku"
@@ -643,7 +643,7 @@
     "name": "ÌṢE ÀWỌN APOSTELI",
     "abbreviation": "ÌṢEÀWỌN",
     "chapters": 28,
-    "testament": "new",
+    "testament": "old",
     "order": 65,
     "translations": {
       "BM": "ÌṢE ÀWỌN APOSTELI"
@@ -653,7 +653,7 @@
     "name": "Ẹkisodu",
     "abbreviation": "Ẹkis",
     "chapters": 40,
-    "testament": "new",
+    "testament": "old",
     "order": 66,
     "translations": {
       "BM": "Ẹkisodu"

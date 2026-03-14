@@ -12,6 +12,7 @@ import '../../services/donation_service.dart';
 import '../../models/donation_models.dart';
 import '../../screens/materials/donation_dialog.dart';
 import 'tract_reader_screen.dart';
+import '../../providers/language_provider.dart';
 
 class BooksTractsScreen extends ConsumerStatefulWidget {
   const BooksTractsScreen({super.key});
@@ -46,9 +47,10 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
 
   @override
   Widget build(BuildContext context) {
+    final translate = ref.watch(languageProvider);
     return Scaffold(
       appBar: CustomAppBar(
-        title: 'Books & Tracts',
+        title: translate('books_and_tracts'),
         showBackButton: true,
         actions: [
           IconButton(
@@ -63,10 +65,10 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
         ],
         bottom: TabBar(
           controller: _tabController,
-          tabs: const [
-            Tab(icon: Icon(Icons.book), text: 'Books'),
-            Tab(icon: Icon(Icons.article), text: 'Tracts'),
-            Tab(icon: Icon(Icons.download), text: 'Downloaded'),
+          tabs: [
+            Tab(icon: const Icon(Icons.book), text: translate('books')),
+            Tab(icon: const Icon(Icons.article), text: translate('tracts')),
+            Tab(icon: const Icon(Icons.download), text: translate('downloaded')),
           ],
         ),
       ),
@@ -80,7 +82,7 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
                 TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
-                    hintText: 'Search books and tracts...',
+                    hintText: translate('search_books_tracts'),
                     prefixIcon: const Icon(Icons.search),
                     border: OutlineInputBorder(
                       borderRadius: context.responsiveBorderRadius,
@@ -94,7 +96,7 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
                 ),
                 SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12.0, tablet: 14.0, desktop: 16.0)),
                 DropdownButtonFormField<String>(
-                  initialValue: _selectedCategory,
+                  value: _selectedCategory,
                   decoration: InputDecoration(
                     labelText: 'Category',
                     border: OutlineInputBorder(
@@ -105,15 +107,15 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
                       vertical: ResponsiveUtils.getResponsiveValue(context: context, mobile: 8.0, tablet: 10.0, desktop: 12.0),
                     ),
                   ),
-                  items: const [
-                    DropdownMenuItem(value: 'All', child: Text('All Categories')),
-                    DropdownMenuItem(value: 'Doctrine', child: Text('Doctrine')),
-                    DropdownMenuItem(value: 'Prophecy', child: Text('Prophecy')),
-                    DropdownMenuItem(value: 'Health', child: Text('Health')),
-                    DropdownMenuItem(value: 'Youth', child: Text('Youth')),
-                    DropdownMenuItem(value: 'Family', child: Text('Family')),
-                    DropdownMenuItem(value: 'Evangelism', child: Text('Evangelism')),
-                    DropdownMenuItem(value: 'Sabbath', child: Text('Sabbath')),
+                  items: [
+                    DropdownMenuItem(value: 'All', child: Text(translate('all_categories'))),
+                    DropdownMenuItem(value: 'Doctrine', child: Text(translate('category_doctrine'))),
+                    DropdownMenuItem(value: 'Prophecy', child: Text(translate('category_prophecy'))),
+                    DropdownMenuItem(value: 'Health', child: Text(translate('category_health'))),
+                    DropdownMenuItem(value: 'Youth', child: Text(translate('category_youth'))),
+                    DropdownMenuItem(value: 'Family', child: Text(translate('category_family'))),
+                    DropdownMenuItem(value: 'Evangelism', child: Text(translate('category_evangelism'))),
+                    DropdownMenuItem(value: 'Sabbath', child: Text(translate('category_sabbath'))),
                   ],
                   onChanged: (value) {
                     setState(() {
@@ -131,9 +133,9 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
             child: TabBarView(
               controller: _tabController,
               children: [
-                _buildBooksTab(),
-                _buildTractsTab(),
-                _buildDownloadedTab(),
+                _buildBooksTab(translate),
+                _buildTractsTab(translate),
+                _buildDownloadedTab(translate),
               ],
             ),
           ),
@@ -142,7 +144,7 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
     );
   }
 
-  Widget _buildBooksTab() {
+  Widget _buildBooksTab(String Function(String) translate) {
     if (_viewMode == 'grid') {
       return GridView.builder(
         padding: context.responsivePadding,
@@ -152,7 +154,7 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
           crossAxisSpacing: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12.0, tablet: 16.0, desktop: 20.0),
           mainAxisSpacing: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12.0, tablet: 16.0, desktop: 20.0),
         ),
-        itemCount: 20, // Using sample data - replace with Supabase query
+        itemCount: 20, // Using sample data - replace with backend query
         itemBuilder: (context, index) {
           return _buildBookGridItem(context, index, true);
         },
@@ -160,7 +162,7 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
     } else {
       return ListView.builder(
         padding: context.responsivePadding,
-        itemCount: 20, // Using sample data - replace with Supabase query
+        itemCount: 20, // Using sample data - replace with backend query
         itemBuilder: (context, index) {
           return _buildBookListItem(context, index, true);
         },
@@ -168,7 +170,7 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
     }
   }
 
-  Widget _buildTractsTab() {
+  Widget _buildTractsTab(String Function(String) translate) {
     return FutureBuilder<List<Tract>>(
       future: _tractsFuture,
       builder: (context, snapshot) {
@@ -189,13 +191,13 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
         }).toList();
 
         if (filtered.isEmpty) {
-          return const Center(
+          return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.search_off, size: 64),
-                SizedBox(height: 12),
-                Text('No tracts found'),
+                const Icon(Icons.search_off, size: 64),
+                const SizedBox(height: 12),
+                Text(translate('no_tracts_found')),
               ],
             ),
           );
@@ -228,7 +230,7 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
     );
   }
 
-  Widget _buildDownloadedTab() {
+  Widget _buildDownloadedTab(String Function(String) translate) {
     return FutureBuilder<List<UserDownload>>(
       future: _downloadsFuture,
       builder: (context, snapshot) {
@@ -245,15 +247,15 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.download_done, size: 64, color: Colors.grey[400]),
+                Icon(Icons.download_done, size: 64, color: Theme.of(context).colorScheme.onSurfaceVariant),
                 const SizedBox(height: 16),
                 Text(
-                  'No downloads yet',
+                  translate('no_downloads_yet'),
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Materials you download will appear here',
+                  translate('materials_download_message'),
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
                 ),
               ],
@@ -319,16 +321,16 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
                         vertical: ResponsiveUtils.getResponsiveValue(context: context, mobile: 3.0, tablet: 4.0, desktop: 5.0),
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.orange,
+                        color: Theme.of(context).colorScheme.secondary,
                         borderRadius: BorderRadius.circular(ResponsiveUtils.getResponsiveValue(context: context, mobile: 10.0, tablet: 12.0, desktop: 14.0)),
                       ),
                       child: Text(
                         'TRACT',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 9.0, tablet: 10.0, desktop: 11.0),
-                          fontWeight: FontWeight.bold,
-                        ),
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onSecondary,
+                            fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 9.0, tablet: 10.0, desktop: 11.0),
+                            fontWeight: FontWeight.bold,
+                          ),
                       ),
                     ),
                   ],
@@ -370,7 +372,7 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
                             Icon(
                               Icons.pages,
                               size: ResponsiveUtils.getResponsiveValue(context: context, mobile: 14.0, tablet: 16.0, desktop: 18.0),
-                              color: Colors.grey[600],
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
                             const SizedBox(width: 4),
                             Text(
@@ -438,14 +440,14 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
                   color: Colors.orange,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Text(
-                  'TRACT',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 8,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                                child: Text(
+                      'TRACT',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: Colors.white,
+                        fontSize: 8,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
               ),
             ],
           ),
@@ -599,7 +601,7 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('Downloading ${tract.title}...'),
-                backgroundColor: Colors.green,
+                backgroundColor: Theme.of(context).colorScheme.tertiary,
               ),
             );
             // Refresh downloads tab
@@ -621,7 +623,7 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Downloading ${tract.title}...'),
-              backgroundColor: Colors.green,
+              backgroundColor: Theme.of(context).colorScheme.tertiary,
             ),
           );
         }
@@ -745,7 +747,7 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
                         ),
                         child: Text(
                           'TRACT',
-                          style: TextStyle(
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
                             color: Colors.white,
                             fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 9.0, tablet: 10.0, desktop: 11.0),
                             fontWeight: FontWeight.bold,

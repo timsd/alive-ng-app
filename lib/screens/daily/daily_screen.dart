@@ -136,7 +136,7 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
         title: translate('daily'),
         elevation: 0,
         backgroundColor: Theme.of(context).colorScheme.secondary,
-        foregroundColor: Colors.white,
+        foregroundColor: Theme.of(context).colorScheme.onSecondary,
         showThemeToggle: true,
         showLanguageToggle: true,
         showDonationButton: true,
@@ -191,7 +191,7 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
                     Text(
                       _getDateString(),
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: Colors.white.withValues(alpha: 0.9),
+                            color: Theme.of(context).colorScheme.onSecondary.withValues(alpha: 0.9),
                           ),
                     ),
                   ],
@@ -328,7 +328,7 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
             context: context, mobile: 12, tablet: 16, desktop: 20)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.1),
             blurRadius: ResponsiveUtils.getResponsiveValue(
                 context: context, mobile: 6, tablet: 8, desktop: 10),
             offset: const Offset(0, 2),

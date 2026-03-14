@@ -194,10 +194,7 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
                         ),
                         child: Text(
                           translate('sign_in'),
-                          style: TextStyle(
-                            fontSize: ResponsiveUtils.getResponsiveFontSize(
-                                context, 16),
-                          ),
+                          style: Theme.of(context).textTheme.labelLarge,
                         ),
                       ),
                     ],
@@ -273,10 +270,7 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
                               icon: const Icon(Icons.self_improvement),
                               label: Text(
                                 translate('join_prayer_meeting'),
-                                style: TextStyle(
-                                  fontSize:
-                                      ResponsiveUtils.getResponsiveFontSize(
-                                          context, 14),
+                                style: Theme.of(context).textTheme.labelLarge?.copyWith(
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -504,7 +498,7 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Please sign in to pray for requests'),
-          backgroundColor: Colors.orange,
+          backgroundColor: Theme.of(context).colorScheme.secondary,
           action: SnackBarAction(
             label: 'Sign In',
             onPressed: () {
@@ -559,7 +553,7 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Thank you for praying for ${request.title}'),
-            backgroundColor: Colors.green,
+            backgroundColor: Theme.of(context).colorScheme.tertiary,
             duration: const Duration(seconds: 2),
           ),
         );
@@ -569,7 +563,7 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to record prayer: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
             duration: const Duration(seconds: 2),
           ),
         );
@@ -615,7 +609,7 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Please sign in to create prayer requests'),
-          backgroundColor: Colors.orange,
+          backgroundColor: Theme.of(context).colorScheme.secondary,
           action: SnackBarAction(
             label: 'Sign In',
             onPressed: () {
@@ -671,11 +665,9 @@ class PrayerRequestCard extends StatelessWidget {
                             : request.title.isNotEmpty
                                 ? request.title[0].toUpperCase()
                                 : 'P'),
-                    style: TextStyle(
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: Theme.of(context).colorScheme.primary,
                       fontWeight: FontWeight.bold,
-                      fontSize:
-                          ResponsiveUtils.getResponsiveFontSize(context, 16),
                     ),
                   ),
                 ),
@@ -713,7 +705,7 @@ class PrayerRequestCard extends StatelessWidget {
                                       ResponsiveUtils.getResponsiveSpacing(
                                           context, 2)),
                               decoration: BoxDecoration(
-                                color: Colors.grey.withValues(alpha: 0.2),
+                                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
@@ -722,7 +714,7 @@ class PrayerRequestCard extends StatelessWidget {
                                     .textTheme
                                     .bodySmall
                                     ?.copyWith(
-                                      color: Colors.grey[600],
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                                       fontSize:
                                           ResponsiveUtils.getResponsiveFontSize(
                                               context, 10),
@@ -780,7 +772,7 @@ class PrayerRequestCard extends StatelessWidget {
                         Icons.favorite,
                         size:
                             ResponsiveUtils.getResponsiveIconSize(context, 16),
-                        color: Colors.red,
+                        color: Theme.of(context).colorScheme.error,
                       ),
                       SizedBox(
                           width:

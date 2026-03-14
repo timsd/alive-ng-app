@@ -152,7 +152,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
     return GestureDetector(
       onTap: () => setState(() => _selectedTab = tabId),
       child: Container(
-            padding: ResponsiveUtils.getResponsivePaddingWithBase(context, 12),
+        padding: ResponsiveUtils.getResponsivePaddingWithBase(context, 12),
         decoration: BoxDecoration(
           color: isSelected
               ? Theme.of(context).colorScheme.primary
@@ -172,13 +172,12 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
             const SizedBox(width: 8),
             Text(
               label,
-              style: TextStyle(
-                fontSize: context.responsiveFontSize(14),
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                color: isSelected
-                    ? Theme.of(context).colorScheme.onPrimary
-                    : Theme.of(context).colorScheme.onSurface,
-              ),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                    color: isSelected
+                        ? Theme.of(context).colorScheme.onPrimary
+                        : Theme.of(context).colorScheme.onSurface,
+                  ),
             ),
           ],
         ),
@@ -200,8 +199,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
             const SizedBox(height: 16),
             Text(
               translate('no_events_available'),
-              style: TextStyle(
-                fontSize: context.responsiveFontSize(16),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
               ),
             ),
@@ -211,7 +209,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
     }
 
     return ListView.builder(
-            padding: ResponsiveUtils.getResponsivePaddingWithBase(context, 16),
+      padding: ResponsiveUtils.getResponsivePaddingWithBase(context, 16),
       itemCount: _events.length,
       itemBuilder: (context, index) {
         final event = _events[index];
@@ -234,8 +232,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
             const SizedBox(height: 16),
             Text(
               translate('no_announcements_available'),
-              style: TextStyle(
-                fontSize: context.responsiveFontSize(16),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
               ),
             ),
@@ -245,7 +242,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
     }
 
     return ListView.builder(
-            padding: ResponsiveUtils.getResponsivePaddingWithBase(context, 16),
+      padding: ResponsiveUtils.getResponsivePaddingWithBase(context, 16),
       itemCount: _announcements.length,
       itemBuilder: (context, index) {
         final announcement = _announcements[index];
@@ -260,7 +257,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       child: Padding(
-            padding: ResponsiveUtils.getResponsivePaddingWithBase(context, 16),
+        padding: ResponsiveUtils.getResponsivePaddingWithBase(context, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -274,8 +271,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                   ),
                   child: Text(
                     translate('event'),
-                    style: TextStyle(
-                      fontSize: context.responsiveFontSize(12),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       fontWeight: FontWeight.w500,
                       color: Theme.of(context).colorScheme.primary,
                     ),
@@ -285,8 +281,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                 if (scheduledFor != null)
                   Text(
                     '${scheduledFor.day}/${scheduledFor.month}/${scheduledFor.year}',
-                    style: TextStyle(
-                      fontSize: context.responsiveFontSize(12),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                   ),
@@ -295,8 +290,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
             const SizedBox(height: 12),
             Text(
               event['title'] ?? translate('untitled_event'),
-              style: TextStyle(
-                fontSize: context.responsiveFontSize(16),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -304,8 +298,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
               const SizedBox(height: 8),
               Text(
                 event['description'],
-                style: TextStyle(
-                  fontSize: context.responsiveFontSize(14),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
                 ),
               ),
@@ -322,8 +315,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                   const SizedBox(width: 4),
                   Text(
                     event['location'],
-                    style: TextStyle(
-                      fontSize: context.responsiveFontSize(12),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                   ),
@@ -370,8 +362,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                   ),
                   child: Text(
                     translate(priority),
-                    style: TextStyle(
-                      fontSize: context.responsiveFontSize(12),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       fontWeight: FontWeight.w500,
                       color: priorityColor,
                     ),
@@ -381,8 +372,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                 if (createdAt != null)
                   Text(
                     '${createdAt.day}/${createdAt.month}/${createdAt.year}',
-                    style: TextStyle(
-                      fontSize: context.responsiveFontSize(12),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                   ),
@@ -391,8 +381,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
             const SizedBox(height: 12),
             Text(
               announcement['title'] ?? translate('untitled_announcement'),
-              style: TextStyle(
-                fontSize: context.responsiveFontSize(16),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -400,8 +389,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
               const SizedBox(height: 8),
               Text(
                 announcement['message'],
-                style: TextStyle(
-                  fontSize: context.responsiveFontSize(14),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
                 ),
               ),

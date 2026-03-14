@@ -13,7 +13,7 @@
     "name": "1 KORANTIYAWA",
     "abbreviation": "1KORANTIYAWA",
     "chapters": 16,
-    "testament": "old",
+    "testament": "new",
     "order": 2,
     "translations": {
       "HAU": "1 KORANTIYAWA"
@@ -23,7 +23,7 @@
     "name": "1 SAMA'ILA",
     "abbreviation": "1SAMA'ILA",
     "chapters": 31,
-    "testament": "old",
+    "testament": "new",
     "order": 3,
     "translations": {
       "HAU": "1 SAMA'ILA"
@@ -43,7 +43,7 @@
     "name": "1 TARIHI",
     "abbreviation": "1TARIHI",
     "chapters": 29,
-    "testament": "old",
+    "testament": "new",
     "order": 5,
     "translations": {
       "HAU": "1 TARIHI"
@@ -63,7 +63,7 @@
     "name": "1 TIMOTI",
     "abbreviation": "1TIMOTI",
     "chapters": 6,
-    "testament": "old",
+    "testament": "new",
     "order": 7,
     "translations": {
       "HAU": "1 TIMOTI"
@@ -73,7 +73,7 @@
     "name": "1 YAHAYA",
     "abbreviation": "1YAHAYA",
     "chapters": 5,
-    "testament": "old",
+    "testament": "new",
     "order": 8,
     "translations": {
       "HAU": "1 YAHAYA"
@@ -93,7 +93,7 @@
     "name": "2 KORANTIYAWA",
     "abbreviation": "2KORANTIYAWA",
     "chapters": 13,
-    "testament": "old",
+    "testament": "new",
     "order": 10,
     "translations": {
       "HAU": "2 KORANTIYAWA"
@@ -103,7 +103,7 @@
     "name": "2 SAMA'ILA",
     "abbreviation": "2SAMA'ILA",
     "chapters": 24,
-    "testament": "old",
+    "testament": "new",
     "order": 11,
     "translations": {
       "HAU": "2 SAMA'ILA"
@@ -123,7 +123,7 @@
     "name": "2 TARIHI",
     "abbreviation": "2TARIHI",
     "chapters": 36,
-    "testament": "old",
+    "testament": "new",
     "order": 13,
     "translations": {
       "HAU": "2 TARIHI"
@@ -143,7 +143,7 @@
     "name": "2 TIMOTI",
     "abbreviation": "2TIMOTI",
     "chapters": 4,
-    "testament": "old",
+    "testament": "new",
     "order": 15,
     "translations": {
       "HAU": "2 TIMOTI"
@@ -153,7 +153,7 @@
     "name": "2 YAHAYA",
     "abbreviation": "2YAHAYA",
     "chapters": 1,
-    "testament": "old",
+    "testament": "new",
     "order": 16,
     "translations": {
       "HAU": "2 YAHAYA"
@@ -163,7 +163,7 @@
     "name": "3 YAHAYA",
     "abbreviation": "3YAHAYA",
     "chapters": 1,
-    "testament": "old",
+    "testament": "new",
     "order": 17,
     "translations": {
       "HAU": "3 YAHAYA"
@@ -173,7 +173,7 @@
     "name": "AFISAWA",
     "abbreviation": "AFIS",
     "chapters": 6,
-    "testament": "old",
+    "testament": "new",
     "order": 18,
     "translations": {
       "HAU": "AFISAWA"
@@ -193,7 +193,7 @@
     "name": "AYUBA",
     "abbreviation": "AYUB",
     "chapters": 42,
-    "testament": "old",
+    "testament": "new",
     "order": 20,
     "translations": {
       "HAU": "AYUBA"
@@ -233,7 +233,7 @@
     "name": "EZEKIYEL",
     "abbreviation": "EZEK",
     "chapters": 48,
-    "testament": "old",
+    "testament": "new",
     "order": 24,
     "translations": {
       "HAU": "EZEKIYEL"
@@ -283,7 +283,7 @@
     "name": "FITOWA",
     "abbreviation": "FITO",
     "chapters": 40,
-    "testament": "old",
+    "testament": "new",
     "order": 29,
     "translations": {
       "HAU": "FITOWA"
@@ -323,7 +323,7 @@
     "name": "IRMIYA",
     "abbreviation": "IRMI",
     "chapters": 52,
-    "testament": "old",
+    "testament": "new",
     "order": 33,
     "translations": {
       "HAU": "IRMIYA"
@@ -353,7 +353,7 @@
     "name": "KARIN MAGANA",
     "abbreviation": "KARMAGANA",
     "chapters": 31,
-    "testament": "old",
+    "testament": "new",
     "order": 36,
     "translations": {
       "HAU": "KARIN MAGANA"
@@ -403,7 +403,7 @@
     "name": "LUKA",
     "abbreviation": "LUKA",
     "chapters": 24,
-    "testament": "new",
+    "testament": "old",
     "order": 41,
     "translations": {
       "HAU": "LUKA"
@@ -413,7 +413,7 @@
     "name": "MAI HADISHI",
     "abbreviation": "MAIHADISHI",
     "chapters": 12,
-    "testament": "new",
+    "testament": "old",
     "order": 42,
     "translations": {
       "HAU": "MAI HADISHI"
@@ -433,7 +433,7 @@
     "name": "MAKOƘI",
     "abbreviation": "MAKO",
     "chapters": 5,
-    "testament": "new",
+    "testament": "old",
     "order": 44,
     "translations": {
       "HAU": "MAKOƘI"
@@ -443,7 +443,7 @@
     "name": "MALAKAI",
     "abbreviation": "MALA",
     "chapters": 4,
-    "testament": "new",
+    "testament": "old",
     "order": 45,
     "translations": {
       "HAU": "MALAKAI"
@@ -453,7 +453,7 @@
     "name": "MARKUS",
     "abbreviation": "MARK",
     "chapters": 16,
-    "testament": "new",
+    "testament": "old",
     "order": 46,
     "translations": {
       "HAU": "MARKUS"
@@ -473,7 +473,7 @@
     "name": "MIKA",
     "abbreviation": "MIKA",
     "chapters": 7,
-    "testament": "new",
+    "testament": "old",
     "order": 48,
     "translations": {
       "HAU": "MIKA"
@@ -503,7 +503,7 @@
     "name": "OBADIYA",
     "abbreviation": "OBAD",
     "chapters": 1,
-    "testament": "new",
+    "testament": "old",
     "order": 51,
     "translations": {
       "HAU": "OBADIYA"
@@ -513,7 +513,7 @@
     "name": "ROMAWA",
     "abbreviation": "ROMA",
     "chapters": 16,
-    "testament": "new",
+    "testament": "old",
     "order": 52,
     "translations": {
       "HAU": "ROMAWA"
@@ -523,7 +523,7 @@
     "name": "RUT",
     "abbreviation": "RUT",
     "chapters": 4,
-    "testament": "new",
+    "testament": "old",
     "order": 53,
     "translations": {
       "HAU": "RUT"
@@ -533,7 +533,7 @@
     "name": "TITUS",
     "abbreviation": "TITU",
     "chapters": 3,
-    "testament": "new",
+    "testament": "old",
     "order": 54,
     "translations": {
       "HAU": "TITUS"
@@ -543,7 +543,7 @@
     "name": "WAHAYIN YAHAYA",
     "abbreviation": "WAHYAHAYA",
     "chapters": 22,
-    "testament": "new",
+    "testament": "old",
     "order": 55,
     "translations": {
       "HAU": "WAHAYIN YAHAYA"
@@ -573,7 +573,7 @@
     "name": "YAHUZA",
     "abbreviation": "YAHU",
     "chapters": 1,
-    "testament": "new",
+    "testament": "old",
     "order": 58,
     "translations": {
       "HAU": "YAHUZA"
@@ -583,7 +583,7 @@
     "name": "YAKUBU",
     "abbreviation": "YAKU",
     "chapters": 5,
-    "testament": "new",
+    "testament": "old",
     "order": 59,
     "translations": {
       "HAU": "YAKUBU"
@@ -613,7 +613,7 @@
     "name": "YUSHA'U",
     "abbreviation": "YUSH",
     "chapters": 14,
-    "testament": "new",
+    "testament": "old",
     "order": 62,
     "translations": {
       "HAU": "YUSHA'U"
@@ -623,7 +623,7 @@
     "name": "ZABURA",
     "abbreviation": "ZABU",
     "chapters": 150,
-    "testament": "new",
+    "testament": "old",
     "order": 63,
     "translations": {
       "HAU": "ZABURA"
@@ -643,7 +643,7 @@
     "name": "ZAKARIYA",
     "abbreviation": "ZAKA",
     "chapters": 14,
-    "testament": "new",
+    "testament": "old",
     "order": 65,
     "translations": {
       "HAU": "ZAKARIYA"

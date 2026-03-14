@@ -768,6 +768,76 @@ class FirebaseDatabaseService {
     }
   }
 
+
+  Future<bool> addBoardReport(Map<String, dynamic> reportData) async {
+    try {
+      await _firestore.collection('board_reports').add({
+        ...reportData,
+        'created_at': FieldValue.serverTimestamp(),
+      });
+      return true;
+    } catch (e) {
+      _logger.error('Error adding board report: $e');
+      return false;
+    }
+  }
+
+  Future<bool> updateBoardReportStatus(String reportId, String status) async {
+    try {
+      await _firestore.collection('board_reports').doc(reportId).update({
+        'status': status,
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+      return true;
+    } catch (e) {
+      _logger.error('Error updating board report status: $e');
+      return false;
+    }
+  }
+
+
+  Future<bool> addBoardDecision(Map<String, dynamic> decisionData) async {
+    try {
+      await _firestore.collection('board_decisions').add({
+        ...decisionData,
+        'proposed_at': FieldValue.serverTimestamp(),
+        'votes': [], // Initialize empty votes array
+      });
+      return true;
+    } catch (e) {
+      _logger.error('Error adding board decision: $e');
+      return false;
+    }
+  }
+
+  Future<bool> castBoardVote(String decisionId, Map<String, dynamic> voteData) async {
+    try {
+      final decisionRef = _firestore.collection('board_decisions').doc(decisionId);
+      
+      await _firestore.runTransaction((transaction) async {
+        final snapshot = await transaction.get(decisionRef);
+        if (!snapshot.exists) throw Exception('Decision not found');
+        
+        final List<dynamic> currentVotes = List.from(snapshot.data()?['votes'] ?? []);
+        
+        // Remove existing vote from same user if any
+        currentVotes.removeWhere((v) => v['voter_id'] == voteData['voter_id']);
+        
+        // Add new vote
+        currentVotes.add({
+          ...voteData,
+          'voted_at': DateTime.now().toIso8601String(),
+        });
+        
+        transaction.update(decisionRef, {'votes': currentVotes});
+      });
+      return true;
+    } catch (e) {
+      _logger.error('Error casting board vote: $e');
+      return false;
+    }
+  }
+
   // Analytics Methods
   Future<void> trackEvent(
       String userId, String eventName, Map<String, dynamic>? properties) async {
@@ -1052,6 +1122,58 @@ class FirebaseDatabaseService {
       _logger.error('Error getting board decisions: $e');
       throw DatabaseException('Failed to get board decisions',
           originalError: e);
+    }
+  }
+
+  // Projects Management Methods
+  Future<List<Map<String, dynamic>>> getProjects() async {
+    try {
+      final snapshot = await _firestore
+          .collection('projects')
+          .orderBy('priority')
+          .get();
+
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return data;
+      }).toList();
+    } catch (e) {
+      _logger.error('Error getting projects: $e');
+      throw DatabaseException('Failed to get projects', originalError: e);
+    }
+  }
+
+  Future<String> addProject(Map<String, dynamic> projectData) async {
+    try {
+      projectData['created_at'] = FieldValue.serverTimestamp();
+      if (projectData['raised'] == null) projectData['raised'] = 0;
+      if (projectData['priority'] == null) projectData['priority'] = 100;
+      
+      final docRef = await _firestore.collection('projects').add(projectData);
+      return docRef.id;
+    } catch (e) {
+      _logger.error('Error adding project: $e');
+      throw DatabaseException('Failed to add project', originalError: e);
+    }
+  }
+
+  Future<void> updateProject(String projectId, Map<String, dynamic> projectData) async {
+    try {
+      projectData['updated_at'] = FieldValue.serverTimestamp();
+      await _firestore.collection('projects').doc(projectId).update(projectData);
+    } catch (e) {
+      _logger.error('Error updating project: $e');
+      throw DatabaseException('Failed to update project', originalError: e);
+    }
+  }
+
+  Future<void> deleteProject(String projectId) async {
+    try {
+      await _firestore.collection('projects').doc(projectId).delete();
+    } catch (e) {
+      _logger.error('Error deleting project: $e');
+      throw DatabaseException('Failed to delete project', originalError: e);
     }
   }
 

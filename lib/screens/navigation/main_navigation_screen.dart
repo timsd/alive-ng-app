@@ -44,7 +44,9 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
                 alignment: Alignment.bottomLeft,
                 child: Text(
                   'More',
-                  style: TextStyle(color: Theme.of(context).colorScheme.onPrimary, fontSize: 20),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.onPrimary,
+                  ),
                 ),
               ),
             ),

@@ -31,34 +31,34 @@ class AdminClaimsPreviewScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _buildHeaderCard(user),
+          _buildHeaderCard(context, user),
           const SizedBox(height: 16),
-          _buildPreviewInfoCard(roleService),
+          _buildPreviewInfoCard(context, roleService),
           const SizedBox(height: 16),
-          _buildClaimsList(claims),
+          _buildClaimsList(context, claims),
         ],
       ),
     );
   }
 
-  Widget _buildHeaderCard(User? user) {
+  Widget _buildHeaderCard(BuildContext context, User? user) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Current User', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            Text('Current User', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            Text('UID: ${user?.uid ?? 'Not signed in'}'),
-            Text('Email: ${user?.email ?? 'N/A'}'),
+            Text('UID: ${user?.uid ?? 'Not signed in'}', style: Theme.of(context).textTheme.bodySmall),
+            Text('Email: ${user?.email ?? 'N/A'}', style: Theme.of(context).textTheme.bodySmall),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildPreviewInfoCard(RoleAccessService roleService) {
+  Widget _buildPreviewInfoCard(BuildContext context, RoleAccessService roleService) {
     final devBypass = DevelopmentConfig.shouldBypassRoleGuards;
     return Card(
       child: Padding(
@@ -66,17 +66,18 @@ class AdminClaimsPreviewScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Preview Mode', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            Text('Preview Mode', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             Row(
               children: [
-                Icon(devBypass ? Icons.check_circle : Icons.info, color: devBypass ? Colors.green : Colors.orange),
+                Icon(devBypass ? Icons.check_circle : Icons.info, color: devBypass ? Theme.of(context).colorScheme.tertiary : Theme.of(context).colorScheme.secondary),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     devBypass
                         ? 'Development bypass is active. Admin checks are skipped.'
                         : 'Development bypass disabled. Real role checks are enforced.',
+                    style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ),
               ],
@@ -86,15 +87,15 @@ class AdminClaimsPreviewScreen extends StatelessWidget {
               spacing: 12,
               runSpacing: 8,
               children: [
-                _pill('Role Guards Bypassed', devBypass),
-                _pill('Admin Preview Enabled', DevelopmentConfig.isAdminPreviewEnabled),
-                _pill('Has Admin Access (real)', roleService.canAccessAdmin()),
+                _pill(context, 'Role Guards Bypassed', devBypass),
+                _pill(context, 'Admin Preview Enabled', DevelopmentConfig.isAdminPreviewEnabled),
+                _pill(context, 'Has Admin Access (real)', roleService.canAccessAdmin()),
               ],
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Note: This screen previews what an admin can do. In development, guards may be bypassed. Disable in lib/config/development_config.dart for production.',
-              style: TextStyle(color: Colors.grey),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
           ],
         ),
@@ -102,17 +103,17 @@ class AdminClaimsPreviewScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildClaimsList(List<Map<String, dynamic>> claims) {
+  Widget _buildClaimsList(BuildContext context, List<Map<String, dynamic>> claims) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Admin Capabilities', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            Text('Admin Capabilities', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             ...claims.map((c) => ListTile(
-                  leading: Icon(c['granted'] ? Icons.check_circle : Icons.cancel, color: c['granted'] ? Colors.green : Colors.red),
+                  leading: Icon(c['granted'] ? Icons.check_circle : Icons.cancel, color: c['granted'] ? Theme.of(context).colorScheme.tertiary : Theme.of(context).colorScheme.error),
                   title: Text(c['name'] as String),
                   subtitle: Text(c['desc'] as String),
                 )),
@@ -122,20 +123,20 @@ class AdminClaimsPreviewScreen extends StatelessWidget {
     );
   }
 
-  Widget _pill(String label, bool enabled) {
+  Widget _pill(BuildContext context, String label, bool enabled) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: enabled ? Colors.green.withValues(alpha: 0.15) : Colors.orange.withValues(alpha: 0.15),
-        border: Border.all(color: enabled ? Colors.green : Colors.orange),
+        color: enabled ? Theme.of(context).colorScheme.tertiaryContainer.withValues(alpha: 0.15) : Theme.of(context).colorScheme.secondaryContainer.withValues(alpha: 0.15),
+        border: Border.all(color: enabled ? Theme.of(context).colorScheme.tertiary : Theme.of(context).colorScheme.secondary),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(enabled ? Icons.check : Icons.info, size: 16, color: enabled ? Colors.green : Colors.orange),
+          Icon(enabled ? Icons.check : Icons.info, size: 16, color: enabled ? Theme.of(context).colorScheme.tertiary : Theme.of(context).colorScheme.secondary),
           const SizedBox(width: 6),
-          Text(label),
+          Text(label, style: Theme.of(context).textTheme.labelMedium),
         ],
       ),
     );

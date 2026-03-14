@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../providers/language_provider.dart';
 import '../../utils/responsive_utils.dart';
+import '../../widgets/custom_app_bar.dart';
 
 class AboutAppScreen extends ConsumerWidget {
   const AboutAppScreen({super.key});
@@ -12,10 +13,9 @@ class AboutAppScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(translationProvider);
     return Scaffold(
-      appBar: AppBar(
-        title: Text(t('about_app')),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+      appBar: CustomAppBar(
+        title: t('about_app'),
+        showBackButton: true,
       ),
       body: SingleChildScrollView(
         padding: ResponsiveUtils.getResponsivePadding(context),
@@ -30,7 +30,7 @@ class AboutAppScreen extends ConsumerWidget {
                     width: ResponsiveUtils.isMobile(context) ? 80 : 100,
                     height: ResponsiveUtils.isMobile(context) ? 80 : 100,
                     decoration: BoxDecoration(
-                      color: Colors.green,
+                      color: Theme.of(context).colorScheme.primary,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Padding(
@@ -49,21 +49,17 @@ class AboutAppScreen extends ConsumerWidget {
                   SizedBox(height: ResponsiveUtils.isMobile(context) ? 12 : 16),
                   Text(
                     t('app_name'),
-                    style: TextStyle(
-                      fontSize:
-                          ResponsiveUtils.getResponsiveFontSize(context, 24),
+                    style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
                       fontWeight: FontWeight.bold,
-                      color: Colors.green,
                     ),
                   ),
                   SizedBox(height: ResponsiveUtils.isMobile(context) ? 6 : 8),
                   Text(
                     t('app_tagline'),
-                    style: TextStyle(
-                      fontSize:
-                          ResponsiveUtils.getResponsiveFontSize(context, 16),
-                      color: Colors.grey,
-                    ),
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                     textAlign: TextAlign.center,
                   ),
                 ],
@@ -74,16 +70,14 @@ class AboutAppScreen extends ConsumerWidget {
             // App Description
             Text(
               t('about_this_app'),
-              style: TextStyle(
-                fontSize: ResponsiveUtils.getResponsiveFontSize(context, 20),
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
             SizedBox(height: ResponsiveUtils.isMobile(context) ? 8 : 12),
             Text(
               t('app_description'),
-              style: TextStyle(
-                  fontSize: ResponsiveUtils.getResponsiveFontSize(context, 16),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   height: 1.5),
             ),
             SizedBox(height: ResponsiveUtils.isMobile(context) ? 16 : 24),
@@ -91,8 +85,7 @@ class AboutAppScreen extends ConsumerWidget {
             // Developer Section
             Text(
               t('app_developer'),
-              style: TextStyle(
-                fontSize: ResponsiveUtils.getResponsiveFontSize(context, 20),
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -106,11 +99,11 @@ class AboutAppScreen extends ConsumerWidget {
                   children: [
                     Row(
                       children: [
-                        const CircleAvatar(
-                          backgroundColor: Colors.green,
+                        CircleAvatar(
+                          backgroundColor: Theme.of(context).colorScheme.primary,
                           child: Icon(
                             Icons.person,
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.onPrimary,
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -120,17 +113,15 @@ class AboutAppScreen extends ConsumerWidget {
                             children: [
                               Text(
                                 t('developer_name'),
-                                style: const TextStyle(
-                                  fontSize: 18,
+                                style: Theme.of(context).textTheme.titleLarge?.copyWith(
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                               Text(
                                 t('developer_title'),
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey,
-                                ),
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                    ),
                               ),
                             ],
                           ),
@@ -140,25 +131,25 @@ class AboutAppScreen extends ConsumerWidget {
                     const SizedBox(height: 16),
                     Text(
                       t('developer_message'),
-                      style: const TextStyle(fontSize: 14, height: 1.4),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.4),
                     ),
                     const SizedBox(height: 12),
                     InkWell(
                       onTap: () => _launchEmail('dammyolodude@gmail.com'),
                       child: Row(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.email,
-                            color: Colors.green,
+                            color: Theme.of(context).colorScheme.primary,
                             size: 20,
                           ),
                           const SizedBox(width: 8),
                           Text(
                             t('developer_email'),
-                            style: const TextStyle(
-                              color: Colors.green,
-                              decoration: TextDecoration.underline,
-                            ),
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  decoration: TextDecoration.underline,
+                                ),
                           ),
                         ],
                       ),
@@ -175,18 +166,17 @@ class AboutAppScreen extends ConsumerWidget {
                 children: [
                   Text(
                     t('app_version'),
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey,
-                    ),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     t('copyright'),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey,
-                    ),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          fontSize: 10,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                   ),
                 ],
               ),

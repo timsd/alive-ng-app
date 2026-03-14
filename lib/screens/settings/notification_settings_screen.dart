@@ -131,7 +131,7 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
       ),
     ];
 
-    await reminderService.scheduleAllReminders(reminders);
+    await ReminderService().scheduleAllReminders(reminders);
   }
 
   Future<void> _selectTime() async {
@@ -156,7 +156,7 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomAppBar(
+      appBar: CustomAppBar(
         title: 'Notification Settings',
         showBackButton: true,
       ),

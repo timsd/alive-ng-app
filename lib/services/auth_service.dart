@@ -164,10 +164,8 @@ class AuthService {
         } on FirebaseAuthException catch (e) {
           if (e.code == 'popup-blocked' ||
               e.code == 'popup-closed-by-user' ||
-              e.code == 'cancelled-popup-request' ||
-              e.code == 'web-context-cancelled') {
-            await _auth.signInWithRedirect(googleProvider);
-            return AuthResult.error(_googleSignInRedirecting);
+              e.code == 'cancelled-popup-request') {
+            return AuthResult.error(_googleSignInCancelled);
           }
           rethrow;
         }

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../providers/language_provider.dart';
 import '../../utils/responsive_utils.dart';
+import '../../widgets/custom_app_bar.dart';
 
 class AboutAliveScreen extends ConsumerWidget {
   const AboutAliveScreen({super.key});
@@ -12,11 +13,9 @@ class AboutAliveScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(translationProvider);
     return Scaffold(
-      appBar: AppBar(
-        title: Text(t('About ALIVE')),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Theme.of(context).colorScheme.onPrimary,
-        toolbarHeight: ResponsiveUtils.getResponsiveAppBarHeight(context),
+      appBar: CustomAppBar(
+        title: t('About ALIVE'),
+        showBackButton: true,
       ),
       body: SingleChildScrollView(
         padding: context.responsivePadding,
@@ -67,8 +66,7 @@ class AboutAliveScreen extends ConsumerWidget {
                   SizedBox(height: context.responsivePadding.top),
                   Text(
                     t('ALIVE NG'),
-                    style: TextStyle(
-                      fontSize: context.responsiveFontSize(28),
+                    style: Theme.of(context).textTheme.displayMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: Theme.of(context).colorScheme.primary,
                     ),
@@ -76,8 +74,7 @@ class AboutAliveScreen extends ConsumerWidget {
                   SizedBox(height: context.responsivePadding.top / 2),
                   Text(
                     t('app_tagline'),
-                    style: TextStyle(
-                      fontSize: context.responsiveFontSize(16),
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                       fontStyle: FontStyle.italic,
                     ),
@@ -113,10 +110,9 @@ class AboutAliveScreen extends ConsumerWidget {
             // Leadership Section
             Text(
               'Leadership Team',
-              style: TextStyle(
-                fontSize: context.responsiveFontSize(22),
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: Colors.green,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
             SizedBox(height: context.responsivePadding.top),
@@ -161,10 +157,9 @@ class AboutAliveScreen extends ConsumerWidget {
             // Contact Section
             Text(
               'Contact Us',
-              style: TextStyle(
-                fontSize: context.responsiveFontSize(22),
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: Colors.green,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
             SizedBox(height: context.responsivePadding.top),
@@ -182,17 +177,16 @@ class AboutAliveScreen extends ConsumerWidget {
                         children: [
                           Icon(
                             Icons.email,
-                            color: Colors.green,
+                            color: Theme.of(context).colorScheme.primary,
                             size: context.responsiveIconSize(24),
                           ),
                           SizedBox(width: context.responsivePadding.left / 2),
                           Expanded(
                             child: Text(
                               'alivenigeria2011@gmail.com',
-                              style: TextStyle(
-                                color: Colors.green,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Theme.of(context).colorScheme.primary,
                                 decoration: TextDecoration.underline,
-                                fontSize: context.responsiveFontSize(16),
                               ),
                             ),
                           ),
@@ -206,16 +200,15 @@ class AboutAliveScreen extends ConsumerWidget {
                         children: [
                           Icon(
                             Icons.phone,
-                            color: Colors.green,
+                            color: Theme.of(context).colorScheme.primary,
                             size: context.responsiveIconSize(24),
                           ),
                           SizedBox(width: context.responsivePadding.left / 2),
                           Text(
                             '+2347068548865',
-                            style: TextStyle(
-                              color: Colors.green,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.primary,
                               decoration: TextDecoration.underline,
-                              fontSize: context.responsiveFontSize(16),
                             ),
                           ),
                         ],
@@ -239,17 +232,15 @@ class AboutAliveScreen extends ConsumerWidget {
       children: [
         Text(
           title,
-          style: TextStyle(
-            fontSize: context.responsiveFontSize(22),
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.bold,
-            color: Colors.green,
+            color: Theme.of(context).colorScheme.primary,
           ),
         ),
         SizedBox(height: context.responsivePadding.top / 2),
         Text(
           content,
-          style: TextStyle(
-            fontSize: context.responsiveFontSize(16),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
             height: 1.6,
           ),
           textAlign: TextAlign.justify,
@@ -271,25 +262,22 @@ class AboutAliveScreen extends ConsumerWidget {
             tablet: 24.0,
             desktop: 28.0,
           ),
-          backgroundColor: Colors.green,
+          backgroundColor: Theme.of(context).colorScheme.primary,
           child: Icon(
             icon,
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.onPrimary,
             size: context.responsiveIconSize(20),
           ),
         ),
         title: Text(
           name,
-          style: TextStyle(
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.bold,
-            fontSize: context.responsiveFontSize(16),
           ),
         ),
         subtitle: Text(
           position,
-          style: TextStyle(
-            fontSize: context.responsiveFontSize(14),
-          ),
+          style: Theme.of(context).textTheme.bodySmall,
         ),
       ),
     );

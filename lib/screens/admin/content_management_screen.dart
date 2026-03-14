@@ -1,11 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import '../../services/firebase_database_service.dart';
 import '../../widgets/role_guard.dart';
 import '../../widgets/loading_widget.dart';
 import '../../utils/toast_utils.dart';
 import '../../utils/text_formatter.dart';
 import '../../utils/layout_fix_utils.dart';
+import '../../services/chapter_service.dart';
+import '../../models/chapter_models.dart' hide ChapterConstants;
+import '../../constants/chapters.dart';
+import 'announcement_editor_screen.dart';
+import 'app_settings_screen.dart';
+import 'tract_podcast_admin_screen.dart';
+import 'role_management_screen.dart';
+import 'board_reports_screen.dart';
 
 class ContentManagementScreen extends StatefulWidget {
   final String? contentType;
@@ -29,11 +38,13 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
   List<Map<String, dynamic>> _announcements = [];
   List<Map<String, dynamic>> _appSettings = [];
   List<Map<String, dynamic>> _featuredContent = [];
+  List<Chapter> _chapters = [];
+  List<Map<String, dynamic>> _projects = [];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
     _loadAllContent();
     
     // Set initial tab based on content type
@@ -47,6 +58,12 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
           break;
         case 'featured':
           _tabController.index = 3;
+          break;
+        case 'chapters':
+          _tabController.index = 4;
+          break;
+        case 'projects':
+          _tabController.index = 5;
           break;
         default:
           _tabController.index = 0;
@@ -69,6 +86,8 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
         _loadAnnouncements(),
         _loadAppSettings(),
         _loadFeaturedContent(),
+        _loadChapters(),
+        _loadProjects(),
       ]);
     } catch (e) {
       ToastUtils.showError('Error loading content: $e');
@@ -149,25 +168,71 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     }
   }
 
+  Future<void> _loadChapters() async {
+    try {
+      final chapters = await ChapterService().getChapters();
+      
+      if (chapters.isEmpty) {
+        // Automatically seed sample chapters from constants if the collection is empty
+        await _seedSampleChapters();
+        return;
+      }
+      
+      setState(() {
+        _chapters = chapters;
+      });
+    } catch (e) {
+      debugPrint('Error loading chapters: $e');
+    }
+  }
+
+  Future<void> _loadProjects() async {
+    try {
+      final projects = await _firebaseService.getProjects();
+      if (projects.isEmpty) {
+        // Automatically seed sample data if the collection is empty
+        await _seedSampleProjects(showDialog: false);
+        return;
+      }
+      setState(() {
+        _projects = projects;
+      });
+    } catch (e) {
+      debugPrint('Error loading projects: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return RoleVisibility(
       allowedRoles: const ['admin', 'super_admin', 'content_manager'],
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Content Management'),
-          backgroundColor: Colors.green,
-          foregroundColor: Colors.white,
+          title: Text(
+            'Content Management',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          backgroundColor: Colors.green.shade700,
+          elevation: 2,
+          shadowColor: Colors.black26,
+          centerTitle: true,
           bottom: TabBar(
             controller: _tabController,
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white70,
+            labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
             indicatorColor: Colors.white,
+            indicatorWeight: 4,
+            indicatorSize: TabBarIndicatorSize.label,
             tabs: const [
-              Tab(text: 'Pages', icon: Icon(Icons.article)),
-              Tab(text: 'Announcements', icon: Icon(Icons.campaign)),
-              Tab(text: 'Settings', icon: Icon(Icons.settings)),
-              Tab(text: 'Featured', icon: Icon(Icons.star)),
+              Tab(text: 'Pages', icon: Icon(Icons.article_outlined, size: 20)),
+              Tab(text: 'Announcements', icon: Icon(Icons.campaign_outlined, size: 20)),
+              Tab(text: 'Settings', icon: Icon(Icons.settings_outlined, size: 20)),
+              Tab(text: 'Featured', icon: Icon(Icons.star_outline, size: 20)),
+              Tab(text: 'Chapters', icon: Icon(Icons.group_outlined, size: 20)),
+              Tab(text: 'Projects', icon: Icon(Icons.account_tree_outlined, size: 20)),
             ],
           ),
         ),
@@ -180,6 +245,8 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                   _buildAnnouncementsTab(),
                   _buildAppSettingsTab(),
                   _buildFeaturedContentTab(),
+                  _buildChaptersTab(),
+                  _buildProjectsTab(),
                 ],
               ),
       ),
@@ -196,9 +263,9 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
             children: [
               LayoutFixUtils.safeText(
                 'Content Pages (${_contentPages.length})',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
                 ),
               ),
               Row(
@@ -344,9 +411,9 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
             children: [
               LayoutFixUtils.safeText(
                 'Announcements (${_announcements.length})',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
                 ),
               ),
               ElevatedButton.icon(
@@ -486,9 +553,9 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
             children: [
               Text(
                 'App Settings (${_appSettings.length})',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
                 ),
               ),
               ElevatedButton.icon(
@@ -586,9 +653,9 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
             children: [
               Text(
                 'Featured Content (${_featuredContent.length})',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
                 ),
               ),
               ElevatedButton.icon(
@@ -684,6 +751,335 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
           onSelected: (value) => _handleFeaturedContentAction(value, content),
         ),
       ),
+    );
+  }
+
+  Widget _buildChaptersTab() {
+    return LayoutFixUtils.safeColumn(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              LayoutFixUtils.safeText(
+                'Chapters (${_chapters.length})',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: () => _showChapterDialog(),
+                icon: const Icon(Icons.add),
+                label: const Text('New Chapter'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: _chapters.isEmpty
+              ? const Center(
+                  child: Text(
+                    'No chapters found.\nCreate your first chapter!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  itemCount: _chapters.length,
+                  itemBuilder: (context, index) {
+                    final chapter = _chapters[index];
+                    return _buildChapterCard(chapter);
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildChapterCard(Chapter chapter) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12.0),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: chapter.isActive ? Colors.green : Colors.grey,
+          child: const Icon(Icons.group, color: Colors.white),
+        ),
+        title: Text(
+          chapter.name,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: LayoutFixUtils.safeColumn(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            LayoutFixUtils.safeText(chapter.description, maxLines: 1),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    chapter.type.name.toUpperCase(),
+                    style: const TextStyle(fontSize: 10, color: Colors.blue, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '${chapter.memberIds.length} members',
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                TextButton.icon(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const RoleManagementScreen(),
+                    ),
+                  ),
+                  icon: const Icon(Icons.person_add, size: 16),
+                  label: const Text('Assign Coordinator', style: TextStyle(fontSize: 12)),
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                TextButton.icon(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => BoardReportsScreen(initialChapter: chapter.name),
+                    ),
+                  ),
+                  icon: const Icon(Icons.analytics, size: 16),
+                  label: const Text('Chapter Report', style: TextStyle(fontSize: 12)),
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        trailing: PopupMenuButton(
+          itemBuilder: (context) => [
+            const PopupMenuItem(
+              value: 'edit',
+              child: ListTile(
+                leading: Icon(Icons.edit),
+                title: Text('Edit'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            PopupMenuItem(
+              value: chapter.isActive ? 'deactivate' : 'activate',
+              child: ListTile(
+                leading: Icon(chapter.isActive ? Icons.pause : Icons.play_arrow),
+                title: Text(chapter.isActive ? 'Deactivate' : 'Activate'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            PopupMenuItem(
+              value: 'delete',
+              child: ListTile(
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: Text('Delete', style: const TextStyle(color: Colors.red)),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          ],
+          onSelected: (value) => _handleChapterAction(value, chapter),
+        ),
+      ),
+    );
+  }
+
+  void _handleChapterAction(String action, Chapter chapter) {
+    switch (action) {
+      case 'edit':
+        _showChapterDialog(chapter: chapter);
+        break;
+      case 'activate':
+        _toggleChapterActive(chapter, true);
+        break;
+      case 'deactivate':
+        _toggleChapterActive(chapter, false);
+        break;
+      case 'delete':
+        _deleteChapter(chapter);
+        break;
+    }
+  }
+
+  Future<void> _toggleChapterActive(Chapter chapter, bool active) async {
+    try {
+      await ChapterService().updateChapterFields(chapter.id, {'is_active': active});
+      ToastUtils.showSuccess('Chapter ${active ? 'activated' : 'deactivated'} successfully');
+      _loadChapters();
+    } catch (e) {
+      ToastUtils.showError('Error updating chapter: $e');
+    }
+  }
+
+  Future<void> _deleteChapter(Chapter chapter) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Chapter'),
+        content: Text('Are you sure you want to delete "${chapter.name}"? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await ChapterService().deleteChapter(chapter.id);
+        ToastUtils.showSuccess('Chapter deleted successfully');
+        _loadChapters();
+      } catch (e) {
+        ToastUtils.showError('Error deleting chapter: $e');
+      }
+    }
+  }
+
+  void _showChapterDialog({Chapter? chapter}) {
+    final isEditing = chapter != null;
+    final nameController = TextEditingController(text: chapter?.name ?? '');
+    final descriptionController = TextEditingController(text: chapter?.description ?? '');
+    WorkersType selectedType = chapter?.type ?? WorkersType.main;
+    bool isActive = chapter?.isActive ?? true;
+
+    showDialog<void>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(isEditing ? 'Edit Chapter' : 'Create Chapter'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Chapter Name',
+                        prefixIcon: Icon(Icons.group),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: descriptionController,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        labelText: 'Description',
+                        prefixIcon: Icon(Icons.description),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<WorkersType>(
+                      value: selectedType,
+                      decoration: const InputDecoration(
+                        labelText: 'Chapter Type',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: WorkersType.values.map((type) {
+                        return DropdownMenuItem(
+                          value: type,
+                          child: Text(type.name.toUpperCase()),
+                        );
+                      }).toList(),
+                      onChanged: (v) {
+                        if (v != null) setDialogState(() => selectedType = v);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    SwitchListTile(
+                      value: isActive,
+                      title: const Text('Active'),
+                      onChanged: (v) => setDialogState(() => isActive = v),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.save),
+                  label: const Text('Save'),
+                  onPressed: () async {
+                    if (nameController.text.trim().isEmpty) {
+                      ToastUtils.showError('Name is required');
+                      return;
+                    }
+
+                    try {
+                      if (isEditing) {
+                        await ChapterService().updateChapterFields(chapter.id, {
+                          'name': nameController.text.trim(),
+                          'description': descriptionController.text.trim(),
+                          'type': selectedType.name,
+                          'is_active': isActive,
+                          'updated_at': DateTime.now().toIso8601String(),
+                        });
+                        ToastUtils.showSuccess('Chapter updated');
+                      } else {
+                        await ChapterService().createChapter(Chapter(
+                          id: '', 
+                          name: nameController.text.trim(),
+                          description: descriptionController.text.trim(),
+                          type: selectedType,
+                          memberIds: [],
+                          settings: {},
+                          isActive: isActive,
+                          createdAt: DateTime.now(),
+                          updatedAt: DateTime.now(),
+                        ));
+                        ToastUtils.showSuccess('Chapter created');
+                      }
+                      _loadChapters();
+                      if (!mounted) return;
+                      Navigator.of(context).pop();
+                    } catch (e) {
+                      ToastUtils.showError('Error saving chapter: $e');
+                    }
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -870,15 +1266,30 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
   }
 
   void _showAnnouncementDialog({Map<String, dynamic>? announcement}) {
-    ToastUtils.showInfo('Announcement editor coming soon');
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AnnouncementEditorScreen(announcement: announcement),
+      ),
+    ).then((_) => _loadAnnouncements());
   }
 
   void _showAppSettingDialog({Map<String, dynamic>? setting}) {
-    ToastUtils.showInfo('App setting editor coming soon');
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const AppSettingsScreen(),
+      ),
+    ).then((_) => _loadAppSettings());
   }
 
   void _showFeaturedContentDialog({Map<String, dynamic>? content}) {
-    ToastUtils.showInfo('Featured content editor coming soon');
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const TractPodcastAdminScreen(),
+      ),
+    ).then((_) => _loadFeaturedContent());
   }
 
   // Database operations
@@ -1066,7 +1477,393 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
       }
     }
   }
+  Widget _buildProjectsTab() {
+    return LayoutFixUtils.safeColumn(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              LayoutFixUtils.safeText(
+                'Projects (${_projects.length})',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: () => _showProjectDialog(),
+                icon: const Icon(Icons.add),
+                label: const Text('New Project'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: _projects.isEmpty
+              ? const Center(
+                  child: Text(
+                    'No projects found.\nCreate your first project!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  itemCount: _projects.length,
+                  itemBuilder: (context, index) {
+                    final project = _projects[index];
+                    return _buildProjectCard(project);
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProjectCard(Map<String, dynamic> project) {
+    final goal = (project['goal'] ?? 0).toDouble();
+    final raised = (project['raised'] ?? 0).toDouble();
+    final percent = goal > 0 ? (raised / goal).clamp(0.0, 1.0) : 0.0;
+    final status = project['status'] ?? 'active';
+    
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12.0),
+      child: ExpansionTile(
+        leading: CircleAvatar(
+          backgroundColor: status == 'active' ? Colors.green : Colors.orange,
+          child: const Icon(Icons.account_tree, color: Colors.white),
+        ),
+        title: Text(
+          project['title'] ?? 'Untitled Project',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(project['summary'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: percent,
+                backgroundColor: Colors.grey.shade200,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.green.shade600),
+                minHeight: 8,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Raised: ${NumberFormat.simpleCurrency(name: 'NGN').format(raised)}',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  'Goal: ${NumberFormat.simpleCurrency(name: 'NGN').format(goal)}',
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ],
+            ),
+          ],
+        ),
+        trailing: PopupMenuButton(
+          itemBuilder: (context) => [
+            const PopupMenuItem(
+              value: 'edit',
+              child: ListTile(
+                leading: Icon(Icons.edit),
+                title: Text('Edit'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'delete',
+              child: ListTile(
+                leading: Icon(Icons.delete, color: Colors.red),
+                title: Text('Delete'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          ],
+          onSelected: (value) async {
+            if (value == 'edit') {
+              _showProjectDialog(project: project);
+            } else if (value == 'delete') {
+              _deleteProject(project);
+            }
+          },
+        ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Description:', style: TextStyle(fontWeight: FontWeight.bold)),
+                Text(project['description'] ?? 'No description provided.'),
+                const SizedBox(height: 12),
+                if (project['image_url'] != null) ...[
+                  const Text('Image URL:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text(project['image_url'], style: const TextStyle(fontSize: 12, color: Colors.blue)),
+                ],
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const Text('Status: ', style: TextStyle(fontWeight: FontWeight.bold)),
+                    _buildStatusBadge(status),
+                    const Spacer(),
+                    const Text('Priority: ', style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text('${project['priority'] ?? 100}'),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusBadge(String status) {
+    Color color;
+    switch (status) {
+      case 'active': color = Colors.green; break;
+      case 'planning': color = Colors.blue; break;
+      case 'completed': color = Colors.purple; break;
+      default: color = Colors.grey;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        border: Border.all(color: color),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        status.toUpperCase(),
+        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  Future<void> _showProjectDialog({Map<String, dynamic>? project}) async {
+    final isEditing = project != null;
+    final titleController = TextEditingController(text: project?['title'] ?? '');
+    final summaryController = TextEditingController(text: project?['summary'] ?? '');
+    final descriptionController = TextEditingController(text: project?['description'] ?? '');
+    final goalController = TextEditingController(text: (project?['goal'] ?? 0).toString());
+    final raisedController = TextEditingController(text: (project?['raised'] ?? 0).toString());
+    final imageUrlController = TextEditingController(text: project?['image_url'] ?? '');
+    final priorityController = TextEditingController(text: (project?['priority'] ?? 100).toString());
+    String status = project?['status'] ?? 'active';
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(isEditing ? 'Edit Project' : 'New Project'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(labelText: 'Project Title *'),
+                ),
+                TextField(
+                  controller: summaryController,
+                  decoration: const InputDecoration(labelText: 'Short Summary'),
+                ),
+                TextField(
+                  controller: descriptionController,
+                  decoration: const InputDecoration(labelText: 'Full Description'),
+                  maxLines: 3,
+                ),
+                TextField(
+                  controller: goalController,
+                  decoration: const InputDecoration(labelText: 'Goal Amount (NGN)'),
+                  keyboardType: TextInputType.number,
+                ),
+                TextField(
+                  controller: raisedController,
+                  decoration: const InputDecoration(labelText: 'Amount Raised (NGN)'),
+                  keyboardType: TextInputType.number,
+                ),
+                TextField(
+                  controller: imageUrlController,
+                  decoration: const InputDecoration(labelText: 'Image URL'),
+                ),
+                TextField(
+                  controller: priorityController,
+                  decoration: const InputDecoration(labelText: 'Priority (ascending)'),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: status,
+                  decoration: const InputDecoration(labelText: 'Status'),
+                  items: ['active', 'planning', 'completed']
+                      .map((s) => DropdownMenuItem(value: s, child: Text(s.toUpperCase())))
+                      .toList(),
+                  onChanged: (val) => setDialogState(() => status = val!),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () {
+                if (titleController.text.isEmpty) {
+                  ToastUtils.showError('Title is required');
+                  return;
+                }
+                Navigator.pop(context, true);
+              },
+              child: Text(isEditing ? 'Update' : 'Create'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result == true) {
+      final projectData = {
+        'title': titleController.text,
+        'summary': summaryController.text,
+        'description': descriptionController.text,
+        'goal': double.tryParse(goalController.text) ?? 0,
+        'raised': double.tryParse(raisedController.text) ?? 0,
+        'image_url': imageUrlController.text,
+        'priority': int.tryParse(priorityController.text) ?? 100,
+        'status': status,
+      };
+
+      try {
+        if (isEditing) {
+          await _firebaseService.updateProject(project!['id'], projectData);
+          ToastUtils.showSuccess('Project updated successfully');
+        } else {
+          await _firebaseService.addProject(projectData);
+          ToastUtils.showSuccess('Project created successfully');
+        }
+        _loadProjects();
+      } catch (e) {
+        ToastUtils.showError('Error saving project: $e');
+      }
+    }
+  }
+
+  Future<void> _deleteProject(Map<String, dynamic> project) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Project'),
+        content: Text('Are you sure you want to delete "${project['title']}"? This will also affect the donation page.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await _firebaseService.deleteProject(project['id']);
+        ToastUtils.showSuccess('Project deleted successfully');
+        _loadProjects();
+      } catch (e) {
+        ToastUtils.showError('Error deleting project: $e');
+      }
+    }
+  }
+
+  Future<void> _seedSampleChapters() async {
+    setState(() => _isLoading = true);
+    try {
+      for (final name in ChapterConstants.availableChapters) {
+        final description = ChapterConstants.chapterDescriptions[name] ?? 'ALIVE Nigeria $name Chapter';
+        final chapter = Chapter(
+          id: '', // Will be generated by Firestore
+          name: name,
+          description: description,
+          type: WorkersType.main,
+          memberIds: [],
+          settings: {},
+          isActive: true,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+        await ChapterService().createChapter(chapter);
+      }
+      
+      final chapters = await ChapterService().getChapters();
+      setState(() {
+        _chapters = chapters;
+      });
+    } catch (e) {
+      debugPrint('Error seeding chapters: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _seedSampleProjects({bool showDialog = false}) async {
+    setState(() => _isLoading = true);
+    try {
+      final samples = [
+        {
+          'title': 'Impact Hub Center',
+          'summary': 'Community discipleship and outreach facility',
+          'description': 'A central hub for training, discipleship, and community engagement.',
+          'goal': 35000000.0,
+          'raised': 8000000.0,
+          'status': 'active',
+          'priority': 1,
+          'image_url': 'https://images.unsplash.com/photo-1593914370442-49d414beca24?q=80&w=1031&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        },
+        {
+          'title': 'Vehicle Purchase',
+          'summary': 'Mission vehicle for outreach logistics',
+          'description': 'Reliable transportation for mission trips and logistics across Nigeria.',
+          'goal': 18000000.0,
+          'raised': 0.0,
+          'status': 'active',
+          'priority': 2,
+          'image_url': 'https://images.unsplash.com/photo-1597685204565-110abf469a1e?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        },
+        {
+          'title': 'Media Studio Setup',
+          'summary': 'Podcast and content production equipment',
+          'description': 'Equipping the ministry with high-quality media production capabilities.',
+          'goal': 9000000.0,
+          'raised': 0.0,
+          'status': 'planning',
+          'priority': 3,
+          'image_url': 'https://images.unsplash.com/photo-1769699167906-a44d5ae50abb?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        },
+      ];
+
+      for (var project in samples) {
+        await _firebaseService.addProject(project);
+      }
+
+      _loadProjects();
+    } catch (e) {
+      debugPrint('Error seeding projects: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
 }
-
-
-

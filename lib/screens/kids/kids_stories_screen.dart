@@ -43,7 +43,7 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
                     borderRadius: BorderRadius.circular(8),
                     child: Image.network(story.illustrationUrl!, height: 150, width: double.infinity, fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) => Container(
-                        height: 150, color: Colors.grey[300], child: const Icon(Icons.broken_image, color: Colors.grey),
+                        height: 150, color: Theme.of(context).colorScheme.surfaceContainer, child: Icon(Icons.broken_image, color: Theme.of(context).colorScheme.onSurfaceVariant),
                       ),
                     ),
                   ),
@@ -229,7 +229,7 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.auto_stories, size: 56, color: Colors.grey[400]),
+            Icon(Icons.auto_stories, size: 56, color: Theme.of(context).colorScheme.onSurfaceVariant),
             const SizedBox(height: 16),
             Text('No stories found in CMS', style: Theme.of(context).textTheme.titleMedium),
           ],
@@ -252,7 +252,7 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.search_off, size: 56, color: Colors.grey[400]),
+            Icon(Icons.search_off, size: 56, color: Theme.of(context).colorScheme.onSurfaceVariant),
             const SizedBox(height: 16),
             Text('No stories match your filters', style: Theme.of(context).textTheme.titleMedium),
           ],
@@ -284,11 +284,11 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.favorite_border, size: ResponsiveUtils.getResponsiveValue(context: context, mobile: 56, tablet: 64, desktop: 72), color: Colors.grey[400]),
+            Icon(Icons.favorite_border, size: ResponsiveUtils.getResponsiveValue(context: context, mobile: 56, tablet: 64, desktop: 72), color: Theme.of(context).colorScheme.onSurfaceVariant),
             SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 14, tablet: 16, desktop: 18)),
-            Text('No favorite stories yet', style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Colors.grey[600])),
+            Text('No favorite stories yet', style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
             SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 6, tablet: 8, desktop: 10)),
-            Text('Tap the heart icon on any story to add it to your favorites', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey[500]), textAlign: TextAlign.center),
+            Text('Tap the heart icon on any story to add it to your favorites', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.8)), textAlign: TextAlign.center),
           ],
         ),
       );
@@ -351,14 +351,14 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
 
   Widget _buildStoryCardFromData(BuildContext context, BibleStory story, bool isFavorite, bool isDownloaded) {
     final categoryColors = {
-      StoryCategory.oldTestament: Colors.blue,
-      StoryCategory.newTestament: Colors.green,
-      StoryCategory.parables: Colors.orange,
-      StoryCategory.miracles: Colors.purple,
-      StoryCategory.sdaDoctrines: Colors.teal,
-      StoryCategory.sdaValues: Colors.indigo,
+      StoryCategory.oldTestament: Theme.of(context).colorScheme.primary,
+      StoryCategory.newTestament: Theme.of(context).colorScheme.tertiary,
+      StoryCategory.parables: Theme.of(context).colorScheme.secondary,
+      StoryCategory.miracles: Theme.of(context).colorScheme.secondary,
+      StoryCategory.sdaDoctrines: Theme.of(context).colorScheme.tertiary,
+      StoryCategory.sdaValues: Theme.of(context).colorScheme.primary,
     };
-    final color = categoryColors[story.category] ?? Colors.blue;
+    final color = categoryColors[story.category] ?? Theme.of(context).colorScheme.primary;
 
     return Card(
       elevation: 0,
@@ -379,11 +379,11 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
               child: Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  image: story.illustrationUrl != null 
+                    image: story.illustrationUrl != null 
                     ? DecorationImage(
                         image: NetworkImage(story.illustrationUrl!), 
                         fit: BoxFit.cover,
-                        colorFilter: ColorFilter.mode(Colors.black.withValues(alpha: 0.3), BlendMode.darken)
+                        colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.shadow.withValues(alpha: 0.3), BlendMode.darken)
                       )
                     : null,
                   gradient: story.illustrationUrl == null ? LinearGradient(
@@ -405,7 +405,7 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
                         child: Icon(
                           Icons.auto_stories,
                           size: ResponsiveUtils.getResponsiveValue(context: context, mobile: 42, tablet: 48, desktop: 54),
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.onPrimary,
                         ),
                       ),
                     Positioned(
@@ -414,7 +414,7 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
                       child: IconButton(
                         icon: Icon(
                           isFavorite ? Icons.favorite : Icons.favorite_border,
-                          color: isFavorite ? Colors.red : Colors.white,
+                          color: isFavorite ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.onPrimary,
                         ),
                         onPressed: () {
                           setState(() {
@@ -433,14 +433,14 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
                         left: ResponsiveUtils.getResponsiveValue(context: context, mobile: 6, tablet: 8, desktop: 10),
                         child: Container(
                           padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: Colors.green,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.tertiary,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.download_done,
                             size: 14,
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.onTertiary,
                           ),
                         ),
                       ),
@@ -487,7 +487,7 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
                           ),
                           child: Text(
                             story.ageGroup.displayName,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
                               fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 9, tablet: 10, desktop: 11),
                             ),
                           ),
@@ -502,10 +502,10 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
                             SizedBox(width: ResponsiveUtils.getResponsiveValue(context: context, mobile: 1, tablet: 2, desktop: 3)),
                             LayoutFixUtils.safeText(
                               '${story.duration} min',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 9, tablet: 10, desktop: 11),
-                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                              ),
+                                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                  fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 9, tablet: 10, desktop: 11),
+                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                                ),
                             ),
                           ],
                         ),
@@ -542,9 +542,9 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
             ) : null,
             borderRadius: BorderRadius.circular(ResponsiveUtils.getResponsiveValue(context: context, mobile: 6, tablet: 8, desktop: 10)),
           ),
-          child: story.illustrationUrl == null ? const Icon(
+          child: story.illustrationUrl == null ? Icon(
             Icons.auto_stories,
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.onPrimary,
           ) : null,
         ),
         title: Text(
@@ -567,13 +567,13 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
                 Icon(
                   Icons.check_circle,
                   size: ResponsiveUtils.getResponsiveValue(context: context, mobile: 14, tablet: 16, desktop: 18),
-                  color: Colors.green,
+                  color: Theme.of(context).colorScheme.tertiary,
                 ),
                 SizedBox(width: ResponsiveUtils.getResponsiveValue(context: context, mobile: 3, tablet: 4, desktop: 5)),
                 Text(
                   'Added recently',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.green,
+                    color: Theme.of(context).colorScheme.tertiary,
                     fontWeight: FontWeight.w500,
                   ),
                 ),

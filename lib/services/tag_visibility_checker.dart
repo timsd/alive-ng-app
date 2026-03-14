@@ -315,7 +315,7 @@ class TagVisibilityChecker {
     }
   }
 
-  /// Get user's group memberships from Firebase if Supabase is unavailable
+  /// Get user's group memberships from Firebase if backend is unavailable
   static Future<List<String>> getFirebaseGroups(String userId) async {
     try {
       final groupsSnapshot = await FirebaseFirestore.instance

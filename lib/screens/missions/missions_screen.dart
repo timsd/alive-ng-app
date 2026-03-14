@@ -29,14 +29,14 @@ final missionCategoriesProvider = StateProvider<List<MissionCategory>>((ref) {
       id: 'all',
       name: 'All Missions',
       icon: Icons.public,
-      color: Colors.blue,
+      color: null, // Use primary color by default
       isSelected: true,
     ),
     const MissionCategory(
       id: 'community',
       name: 'Community Service',
       icon: Icons.volunteer_activism,
-      color: Colors.green,
+      color: Colors.green, // Fixed categories with specific meaningful colors
       isSelected: false,
     ),
     const MissionCategory(
@@ -357,7 +357,7 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
                   Icon(
                     category.icon,
                     size: ResponsiveUtils.getResponsiveIconSize(context, 16),
-                    color: category.isSelected ? Colors.white : category.color,
+                    color: category.isSelected ? Colors.white : (category.color ?? Theme.of(context).colorScheme.primary),
                   ),
                   SizedBox(
                       width: ResponsiveUtils.getResponsiveSpacing(context, 6)),
@@ -379,7 +379,7 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
                       updatedCategories;
                 }
               },
-              selectedColor: category.color,
+              selectedColor: category.color ?? Theme.of(context).colorScheme.primary,
               checkmarkColor: Colors.white,
             ),
           );
@@ -542,14 +542,14 @@ class MissionCategory {
   final String id;
   final String name;
   final IconData icon;
-  final Color color;
+  final Color? color;
   final bool isSelected;
 
   const MissionCategory({
     required this.id,
     required this.name,
     required this.icon,
-    required this.color,
+    this.color,
     required this.isSelected,
   });
 }
@@ -599,7 +599,7 @@ class MissionCard extends StatelessWidget {
                         vertical:
                             ResponsiveUtils.getResponsiveSpacing(context, 4)),
                     decoration: BoxDecoration(
-                      color: _getCategoryColor(mission.category)
+                      color: _getCategoryColor(context, mission.category)
                           .withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(
                           ResponsiveUtils.getResponsiveBorderRadiusValue(
@@ -608,7 +608,7 @@ class MissionCard extends StatelessWidget {
                     child: Text(
                       mission.category,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: _getCategoryColor(mission.category),
+                            color: _getCategoryColor(context, mission.category),
                             fontWeight: FontWeight.w500,
                           ),
                     ),
@@ -713,7 +713,7 @@ class MissionCard extends StatelessWidget {
                       backgroundColor:
                           Theme.of(context).colorScheme.surfaceContainerHighest,
                       valueColor: AlwaysStoppedAnimation<Color>(
-                        _getCategoryColor(mission.category),
+                        _getCategoryColor(context, mission.category),
                       ),
                     ),
                   ),
@@ -722,7 +722,7 @@ class MissionCard extends StatelessWidget {
                   Text(
                     '$spotsLeft spots left',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: _getCategoryColor(mission.category),
+                          color: _getCategoryColor(context, mission.category),
                           fontWeight: FontWeight.w500,
                         ),
                   ),
@@ -735,10 +735,13 @@ class MissionCard extends StatelessWidget {
     );
   }
 
-  Color _getCategoryColor(String category) {
+  Color _getCategoryColor(BuildContext context, String category) {
     switch (category.toLowerCase()) {
       case 'community service':
+      case 'retreat':
+      case 'mec conference':
         return Colors.green;
+      case 'camp ministry':
       case 'youth ministry':
         return Colors.orange;
       case 'international':
@@ -746,7 +749,7 @@ class MissionCard extends StatelessWidget {
       case 'evangelism':
         return Colors.red;
       default:
-        return Colors.blue;
+        return Theme.of(context).colorScheme.primary;
     }
   }
 }
@@ -763,10 +766,13 @@ class MissionDetailsSheet extends StatelessWidget {
     required this.onComplete,
   });
 
-  Color _getCategoryColor(String category) {
+  Color _getCategoryColor(BuildContext context, String category) {
     switch (category.toLowerCase()) {
       case 'community service':
+      case 'retreat':
+      case 'mec conference':
         return Colors.green;
+      case 'camp ministry':
       case 'youth ministry':
         return Colors.orange;
       case 'international':
@@ -774,7 +780,7 @@ class MissionDetailsSheet extends StatelessWidget {
       case 'evangelism':
         return Colors.red;
       default:
-        return Colors.blue;
+        return Theme.of(context).colorScheme.primary;
     }
   }
 
@@ -829,7 +835,7 @@ class MissionDetailsSheet extends StatelessWidget {
                   Text(
                     mission.category,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: _getCategoryColor(mission.category),
+                          color: _getCategoryColor(context, mission.category),
                           fontWeight: FontWeight.w500,
                         ),
                   ),
@@ -894,7 +900,7 @@ class MissionDetailsSheet extends StatelessWidget {
                                     context, 12),
                               ),
                               decoration: BoxDecoration(
-                                color: _getCategoryColor(mission.category),
+                                color: _getCategoryColor(context, mission.category),
                                 shape: BoxShape.circle,
                               ),
                             ),
@@ -984,7 +990,7 @@ class MissionDetailsSheet extends StatelessWidget {
                                 padding: ResponsiveUtils
                                     .getResponsivePaddingWithBase(context, 12),
                                 decoration: BoxDecoration(
-                                  color: Colors.grey[100],
+                                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                                   borderRadius: BorderRadius.circular(
                                       ResponsiveUtils
                                           .getResponsiveBorderRadiusValue(
@@ -1031,8 +1037,8 @@ class MissionDetailsSheet extends StatelessWidget {
                       Navigator.of(context).pop();
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _getCategoryColor(mission.category),
-                      foregroundColor: Colors.white,
+                      backgroundColor: _getCategoryColor(context, mission.category),
+                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
                     ),
                     child: Text(translate('complete_mission')),
                   ),

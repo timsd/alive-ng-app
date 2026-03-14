@@ -4,6 +4,7 @@ import '../../widgets/role_guard.dart';
 import '../../widgets/loading_widget.dart';
 import '../../utils/toast_utils.dart';
 import '../../utils/text_formatter.dart';
+import '../../widgets/custom_app_bar.dart';
 
 class AppSettingsScreen extends StatefulWidget {
   const AppSettingsScreen({super.key});
@@ -79,10 +80,8 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     return RoleVisibility(
       allowedRoles: const ['admin', 'super_admin'],
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('App Settings'),
-          backgroundColor: Colors.purple,
-          foregroundColor: Colors.white,
+        appBar: CustomAppBar(
+          title: 'App Settings',
           actions: [
             IconButton(
               icon: const Icon(Icons.add),
@@ -103,8 +102,8 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 : _buildSettingsList(),
         floatingActionButton: FloatingActionButton(
           onPressed: _saveAllSettings,
-          backgroundColor: Colors.purple,
-          foregroundColor: Colors.white,
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          foregroundColor: Theme.of(context).colorScheme.onPrimary,
           tooltip: 'Save All Changes',
           child: const Icon(Icons.save),
         ),
@@ -125,15 +124,14 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           const SizedBox(height: 16),
           Text(
             'No Settings Found',
-            style: TextStyle(
-              fontSize: 18,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
               color: Colors.grey.shade600,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             'Add your first app setting to get started',
-            style: TextStyle(
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Colors.grey.shade500,
             ),
           ),
@@ -143,10 +141,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             icon: const Icon(Icons.add),
             label: const Text('Add Setting'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.purple,
-              foregroundColor: Colors.white,
-            ),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            foregroundColor: Theme.of(context).colorScheme.onPrimary,
           ),
+        ),
         ],
       ),
     );
@@ -181,22 +179,20 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               children: [
                 Icon(
                   _getCategoryIcon(category),
-                  color: Colors.purple,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
                 const SizedBox(width: 8),
                 Text(
                   TextFormatter.formatCategory(category).toUpperCase(),
-                  style: const TextStyle(
-                    fontSize: 18,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: Colors.purple,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
                 const Spacer(),
                 Text(
                   '${settings.length} setting${settings.length != 1 ? 's' : ''}',
-                  style: TextStyle(
-                    fontSize: 12,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: Colors.grey.shade600,
                   ),
                 ),
@@ -245,8 +241,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                       const SizedBox(height: 4),
                       Text(
                         setting['description'],
-                        style: TextStyle(
-                          fontSize: 12,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           color: Colors.grey.shade600,
                         ),
                       ),

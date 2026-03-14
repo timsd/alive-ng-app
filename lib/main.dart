@@ -20,6 +20,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 // DEV ONLY — delete this import + the file below when done testing admin features:
 import 'debug/dev_admin_override.dart';
+import 'providers/language_provider.dart';
 
 void main() {
   runZonedGuarded(() async {
@@ -141,6 +142,8 @@ class MainNavigationScreen extends ConsumerWidget {
       loading: () => false,
       error: (_, __) => false,
     );
+    final translator = ref.watch(languageProvider);
+    final translate = (String key) => translator(key);
     debugPrint('isAuthenticated=$isAuthenticated');
 
     return Scaffold(
@@ -164,31 +167,31 @@ class MainNavigationScreen extends ConsumerWidget {
         selectedFontSize: context.responsiveFontSize(12),
         unselectedFontSize: context.responsiveFontSize(10),
         iconSize: context.responsiveIconSize(24),
-        items: const [
+        items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home),
-            label: 'Home',
+            icon: const Icon(Icons.home_outlined),
+            activeIcon: const Icon(Icons.home),
+            label: translate('home'),
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.book_outlined),
-            activeIcon: Icon(Icons.book),
-            label: 'Study',
+            icon: const Icon(Icons.book_outlined),
+            activeIcon: const Icon(Icons.book),
+            label: translate('study'),
           ),
           BottomNavigationBarItem(
-            icon: Icon(FontAwesomeIcons.personPraying),
-            activeIcon: Icon(FontAwesomeIcons.personPraying),
-            label: 'Prayer',
+            icon: const Icon(FontAwesomeIcons.personPraying),
+            activeIcon: const Icon(FontAwesomeIcons.personPraying),
+            label: translate('prayer'),
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.health_and_safety_outlined),
-            activeIcon: Icon(Icons.health_and_safety),
-            label: 'Health',
+            icon: const Icon(Icons.health_and_safety_outlined),
+            activeIcon: const Icon(Icons.health_and_safety),
+            label: translate('health'),
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.more_horiz),
-            activeIcon: Icon(Icons.more_horiz),
-            label: 'More',
+            icon: const Icon(Icons.more_horiz),
+            activeIcon: const Icon(Icons.more_horiz),
+            label: translate('more'),
           ),
         ],
       ),
@@ -248,6 +251,8 @@ class MainNavigationScreen extends ConsumerWidget {
   }
 
   void _showMoreBottomSheet(BuildContext context, WidgetRef ref) {
+    final translator = ref.read(languageProvider);
+    final translate = (String key) => translator(key);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -257,6 +262,7 @@ class MainNavigationScreen extends ConsumerWidget {
   }
 
   Widget _buildMoreBottomSheet(BuildContext context, WidgetRef ref) {
+    final translate = ref.watch(languageProvider);
     final roleService = RoleAccessService.instance;
     final canAccessRoleGated = roleService.canAccessRoleGatedFeatures();
     final userEmail = ref.watch(authStateProvider).maybeWhen(
@@ -306,7 +312,7 @@ class MainNavigationScreen extends ConsumerWidget {
           Padding(
             padding: context.responsivePadding,
             child: Text(
-              'More Features',
+            translate('more_features'),
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                     fontSize: context.responsiveFontSize(20),
@@ -334,7 +340,7 @@ class MainNavigationScreen extends ConsumerWidget {
                           2),
                   Expanded(
                     child: Text(
-                      'Account pending admin approval. Limited features available.',
+                      translate('account_pending_approval'),
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.onErrorContainer,
                         fontWeight: FontWeight.w500,
@@ -398,15 +404,15 @@ class MainNavigationScreen extends ConsumerWidget {
                     'label': 'Recipes',
                     'route': AppConstants.recipesRoute
                   },
-                    {
-                      'icon': Icons.people,
-                      'label': 'BOD Trustees',
-                      'route': AppConstants.bodTrusteesRoute,
-                      'allowedRoles': ['admin', 'bod', 'trustee']
-                    },
+                  {
+                    'icon': Icons.people,
+                    'label': 'BOD Trustees',
+                    'route': AppConstants.bodTrusteesRoute,
+                    'allowedRoles': ['admin', 'bod', 'trustee']
+                  },
                   ],
-                {
-                  'icon': Icons.person,
+                  {
+                    'icon': Icons.person,
                   'label': 'Profile',
                   'route': AppConstants.profileRoute
                 },
@@ -421,7 +427,7 @@ class MainNavigationScreen extends ConsumerWidget {
                     'icon': Icons.verified_user,
                     'label': 'Claim Admin Role (Temp)',
                     'action': 'claimAdminRole',
-                  },
+                },
                 {
                   'icon': Icons.auto_stories,
                   'label': 'Kids Stories',
@@ -645,21 +651,22 @@ class MainNavigationScreen extends ConsumerWidget {
   }
 
   Future<void> _claimAdminRole(BuildContext context, WidgetRef ref) async {
+    final translate = ref.read(languageProvider);
     try {
       final ok = await ref.read(firebaseDatabaseServiceProvider).claimAdminRole();
       if (!context.mounted) return;
       if (ok) {
         RoleAccessService.instance.clearCache();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Admin role claimed. Sign out and sign in again.'),
+          SnackBar(
+            content: Text(translate('admin_role_claimed')),
             backgroundColor: Colors.green,
           ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Claim failed. Confirm Cloud Function is deployed.'),
+          SnackBar(
+            content: Text(translate('claim_failed')),
             backgroundColor: Colors.red,
           ),
         );
@@ -667,8 +674,8 @@ class MainNavigationScreen extends ConsumerWidget {
     } catch (_) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not claim admin role right now.'),
+        SnackBar(
+          content: Text(translate('could_not_claim_admin')),
           backgroundColor: Colors.red,
         ),
       );
@@ -678,6 +685,7 @@ class MainNavigationScreen extends ConsumerWidget {
   Widget _buildNavigationDrawer(BuildContext context, bool isAuthenticated) {
     return Consumer(
       builder: (context, ref, _) {
+        final translate = ref.watch(languageProvider);
         final roleService = RoleAccessService.instance;
         final canAccessRoleGated = roleService.canAccessRoleGatedFeatures();
 
@@ -724,7 +732,7 @@ class MainNavigationScreen extends ConsumerWidget {
                               ),
                     ),
                     Text(
-                      'Christian Community',
+                      translate('christian_community'),
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: Theme.of(context)
                                 .colorScheme
@@ -774,7 +782,7 @@ class MainNavigationScreen extends ConsumerWidget {
                   ),
                 ),
               ],
-              _buildDrawerSection(context, 'Main Features', [
+              _buildDrawerSection(context, translate('main_features'), [
                 _buildDrawerItem(
                     context, Icons.home, 'Home', AppConstants.homeRoute),
                 if (canAccessRoleGated) ...[
@@ -790,7 +798,7 @@ class MainNavigationScreen extends ConsumerWidget {
               ]),
               if (canAccessRoleGated) ...[
                 const Divider(),
-                _buildDrawerSection(context, 'Community', [
+                _buildDrawerSection(context, translate('community'), [
                   _buildDrawerItem(context, Icons.volunteer_activism,
                       'Missions', AppConstants.missionsRoute),
                   _buildDrawerItem(

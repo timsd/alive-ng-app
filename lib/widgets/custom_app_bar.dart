@@ -113,7 +113,7 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
     if (showBackButton && leading == null) {
       effectiveLeading = IconButton(
         icon: LayoutFixUtils.responsiveIcon(
-          Icons.arrow_back,
+          Icons.chevron_left,
           context: context,
         ),
         onPressed: onBackPressed ?? () {
@@ -315,7 +315,7 @@ class SliverCustomAppBar extends StatelessWidget {
     if (showBackButton && leading == null) {
       effectiveLeading = IconButton(
         icon: LayoutFixUtils.responsiveIcon(
-          Icons.arrow_back,
+          Icons.chevron_left,
           context: context,
         ),
         onPressed: onBackPressed ?? () => Navigator.of(context).pop(),
@@ -441,7 +441,7 @@ class _SearchAppBarState extends State<SearchAppBar> {
     if (widget.showBackButton && widget.leading == null) {
       effectiveLeading = IconButton(
         icon: LayoutFixUtils.responsiveIcon(
-          Icons.arrow_back,
+          Icons.chevron_left,
           context: context,
         ),
         onPressed: widget.onBackPressed ?? () => Navigator.of(context).pop(),
@@ -565,7 +565,7 @@ class TabAppBar extends StatelessWidget implements PreferredSizeWidget {
     if (showBackButton && leading == null) {
       effectiveLeading = IconButton(
         icon: LayoutFixUtils.responsiveIcon(
-          Icons.arrow_back,
+          Icons.chevron_left,
           context: context,
         ),
         onPressed: onBackPressed ?? () => Navigator.of(context).pop(),
@@ -674,7 +674,7 @@ class ProfileAppBar extends StatelessWidget implements PreferredSizeWidget {
       leading: showBackButton
           ? IconButton(
               icon: LayoutFixUtils.responsiveIcon(
-                Icons.arrow_back,
+                Icons.chevron_left,
                 context: context,
               ),
               onPressed: onBackPressed ?? () => Navigator.of(context).pop(),

@@ -105,7 +105,7 @@ class _TestimoniesScreenState extends ConsumerState<TestimoniesScreen>
                       ),
                       Text(
                         translate('share_anonymously'),
-                        style: TextStyle(
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           fontSize: ResponsiveUtils.getResponsiveFontSize(
                               context, 14),
                         ),
@@ -204,7 +204,7 @@ class _TestimoniesScreenState extends ConsumerState<TestimoniesScreen>
             return Center(
               child: Text(
                 '${translate('error')}: ${snapshot.error}',
-                style: TextStyle(
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     fontSize:
                         ResponsiveUtils.getResponsiveFontSize(context, 14)),
               ),
@@ -219,7 +219,7 @@ class _TestimoniesScreenState extends ConsumerState<TestimoniesScreen>
                 isMyTestimonies
                     ? translate('no_my_testimonies')
                     : translate('no_testimonies'),
-                style: TextStyle(
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     fontSize:
                         ResponsiveUtils.getResponsiveFontSize(context, 16)),
               ),
@@ -253,7 +253,8 @@ class _TestimoniesScreenState extends ConsumerState<TestimoniesScreen>
                             child: testimony.userAvatarUrl == null
                                 ? Text(testimony.userName.isNotEmpty
                                     ? testimony.userName[0].toUpperCase()
-                                    : '?')
+                                    : '?',
+                                    style: TextStyle(color: Theme.of(context).colorScheme.primary))
                                 : null,
                           ),
                           SizedBox(
@@ -304,7 +305,7 @@ class _TestimoniesScreenState extends ConsumerState<TestimoniesScreen>
                               context, 12)),
                       Text(
                         testimony.content,
-                        style: TextStyle(
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           fontSize: ResponsiveUtils.getResponsiveFontSize(
                               context, 14),
                         ),
@@ -329,19 +330,19 @@ class _TestimoniesScreenState extends ConsumerState<TestimoniesScreen>
       ),
       decoration: BoxDecoration(
         color: isApproved
-            ? Colors.green.withValues(alpha: 0.1)
-            : Colors.orange.withValues(alpha: 0.1),
+            ? Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.1)
+            : Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(
             ResponsiveUtils.getResponsiveBorderRadiusValue(context, 12)),
         border: Border.all(
-          color: isApproved ? Colors.green : Colors.orange,
+          color: isApproved ? Theme.of(context).colorScheme.tertiary : Theme.of(context).colorScheme.secondary,
           width: 1,
         ),
       ),
       child: Text(
         isApproved ? translate('approved') : translate('pending'),
-        style: TextStyle(
-          color: isApproved ? Colors.green : Colors.orange,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: isApproved ? Theme.of(context).colorScheme.tertiary : Theme.of(context).colorScheme.secondary,
           fontSize: ResponsiveUtils.getResponsiveFontSize(context, 10),
           fontWeight: FontWeight.bold,
         ),

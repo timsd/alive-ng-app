@@ -18,91 +18,71 @@ class QuickActionsGrid extends ConsumerWidget {
       QuickAction(
         icon: Icons.child_care,
         title: 'Kid Mission',
-        subtitle: 'Children\'s ministry activities',
-        color: Theme.of(context).brightness == Brightness.dark 
-            ? Colors.pink.shade300 
-            : Colors.pink,
+        subtitle: 'Children\'s ministry',
+        color: const Color(0xFFF43F5E), // Rose 500
         route: '/kid-mission',
       ),
       QuickAction(
         icon: Icons.trending_up,
         title: 'Discipleship',
-        subtitle: 'Track spiritual growth',
-        color: Theme.of(context).brightness == Brightness.dark 
-            ? Colors.green.shade300 
-            : Colors.green,
+        subtitle: 'Track growth',
+        color: const Color(0xFF10B981), // Emerald 500
         route: '/discipleship-tracker',
       ),
       QuickAction(
         icon: Icons.quiz,
         title: 'Bible Quizzes',
-        subtitle: 'Test your Bible knowledge',
-        color: Theme.of(context).brightness == Brightness.dark 
-            ? Colors.blue.shade300 
-            : Colors.blue,
+        subtitle: 'Test knowledge',
+        color: const Color(0xFF3B82F6), // Blue 500
         route: '/bible-quizzes',
       ),
       QuickAction(
         icon: Icons.restaurant,
         title: 'Recipes',
-        subtitle: 'Nutritious meal ideas',
-        color: Theme.of(context).brightness == Brightness.dark 
-            ? Colors.orange.shade300 
-            : Colors.orange,
+        subtitle: 'Healthy meals',
+        color: const Color(0xFFF59E0B), // Amber 500
         route: '/healthy-recipes',
       ),
       QuickAction(
         icon: Icons.public,
         title: translate('missions'),
-        subtitle: TextFormatter.formatActivityType('global_outreach'),
-        color: Theme.of(context).brightness == Brightness.dark 
-            ? Colors.cyan.shade300 
-            : Colors.cyan,
+        subtitle: 'Global outreach',
+        color: const Color(0xFF0EA5E9), // Sky 500
         route: '/missions',
       ),
       QuickAction(
         icon: Icons.record_voice_over,
         title: 'Testimonies',
-        subtitle: 'Share your story',
-        color: Theme.of(context).brightness == Brightness.dark 
-            ? Colors.amber.shade300 
-            : Colors.amber,
+        subtitle: 'Share story',
+        color: const Color(0xFF8B5CF6), // Violet 500
         route: '/testimonies',
       ),
       QuickAction(
         icon: Icons.auto_stories,
         title: 'Kids Stories',
-        subtitle: 'Bible stories for children',
-        color: Theme.of(context).brightness == Brightness.dark 
-            ? Colors.deepOrange.shade300 
-            : Colors.deepOrange,
+        subtitle: 'Bible stories',
+        color: const Color(0xFFF97316), // Orange 500
         route: '/kids-stories',
       ),
       QuickAction(
         icon: Icons.library_books,
         title: 'Library',
-        subtitle: 'Books, articles & resources',
-        color: Theme.of(context).brightness == Brightness.dark 
-            ? Colors.teal.shade300 
-            : Colors.teal,
+        subtitle: 'Resources',
+        color: const Color(0xFF14B8A6), // Teal 500
         route: '/library',
       ),
       QuickAction(
         icon: Icons.podcasts,
         title: 'Podcasts',
-        subtitle: 'Audio content & sermons',
-        color: Theme.of(context).brightness == Brightness.dark 
-            ? Colors.purple.shade300 
-            : Colors.purple,
+        subtitle: 'Audio content',
+        color: const Color(0xFFD946EF), // Fuchsia 500
         route: '/podcasts',
       ),
       QuickAction(
         icon: Icons.school,
         title: 'Lessons',
-        subtitle: 'Learn & grow in faith',
-        color: Theme.of(context).brightness == Brightness.dark 
-            ? Colors.indigo.shade300 
-            : Colors.indigo,
+        subtitle: 'Learn & grow',
+        color: const Color(0xFF6366F1), // Indigo 500
         route: '/interactive-lessons',
       ),
     ];
@@ -216,50 +196,47 @@ class QuickActionCard extends StatelessWidget {
             padding: const EdgeInsets.all(8), // Further reduced padding
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  action.color.withValues(alpha: 0.1),
-                  action.color.withValues(alpha: 0.05),
-                ],
+              color: Theme.of(context).colorScheme.surface,
+              border: Border.all(
+                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1),
+                width: 1,
               ),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min, // Prevent overflow
+              mainAxisSize: MainAxisSize.min,
               children: [
                 // Icon container with fixed size
                 Container(
-                  padding: const EdgeInsets.all(8), // Further reduced padding
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: action.color.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(10), // Smaller radius
+                    color: action.color.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
                   ),
                   child: Icon(
                     action.icon,
                     color: action.color,
-                    size: 20, // Further reduced icon size
+                    size: 24,
                   ),
                 ),
-                const SizedBox(height: 6), // Further reduced spacing
+                const SizedBox(height: 10),
                 // Title with flexible constraints
                 Flexible(
                   child: LayoutFixUtils.responsiveText(
                     action.title,
                     context: context,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w700,
                           color: Theme.of(context).colorScheme.onSurface,
-                          fontSize: 11, // Further reduced font size
+                          fontSize: 13,
                         ),
                     textAlign: TextAlign.center,
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const SizedBox(height: 2), // Minimal spacing
+                const SizedBox(height: 2),
                 // Subtitle with flexible constraints
                 Flexible(
                   child: LayoutFixUtils.responsiveText(
@@ -269,8 +246,8 @@ class QuickActionCard extends StatelessWidget {
                           color: Theme.of(context)
                               .colorScheme
                               .onSurface
-                              .withValues(alpha: 0.6),
-                          fontSize: 9, // Further reduced font size
+                              .withValues(alpha: 0.5),
+                          fontSize: 10,
                         ),
                     textAlign: TextAlign.center,
                     maxLines: 1,

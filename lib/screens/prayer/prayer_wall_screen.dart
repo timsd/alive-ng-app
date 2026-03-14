@@ -59,6 +59,7 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddPrayerDialog,
+
         tooltip: 'Add Prayer Request',
         child: const FaIcon(FontAwesomeIcons.plus),
       ),
@@ -84,9 +85,9 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
 
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Prayer requests refreshed'),
-                backgroundColor: Colors.green,
+              SnackBar(
+                content: const Text('Prayer requests refreshed'),
+                backgroundColor: Theme.of(context).colorScheme.tertiary,
               ),
             );
           }
@@ -95,7 +96,7 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('Failed to refresh: $e'),
-                backgroundColor: Colors.red,
+                backgroundColor: Theme.of(context).colorScheme.error,
               ),
             );
           }
@@ -112,7 +113,7 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
           }
 
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return Center(child: Text('Error: ${snapshot.error}', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.error)));
           }
 
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
@@ -319,10 +320,10 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
                 CircleAvatar(
                   radius: 20,
                   backgroundColor:
-                      Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                      Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                   child: Icon(
                     Icons.person,
-                    color: Theme.of(context).primaryColor,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -332,18 +333,17 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
                     children: [
                       Text(
                         author,
-                        style:
-                            Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
                         _formatTimestamp(timestamp),
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Colors.grey[600],
-                            ),
+                          color: Theme.of(context).colorScheme.outline,
+                        ),
                       ),
                     ],
                   ),
@@ -368,13 +368,18 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
                           ],
                         ),
                       ),
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'delete',
                         child: Row(
                           children: [
-                            FaIcon(FontAwesomeIcons.trash, color: Colors.red),
-                            SizedBox(width: 8),
-                            Text('Delete', style: TextStyle(color: Colors.red)),
+                            FaIcon(FontAwesomeIcons.trash,
+                                color: Theme.of(context).colorScheme.error),
+                            const SizedBox(width: 8),
+                            Text('Delete',
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .error)),
                           ],
                         ),
                       ),
@@ -410,7 +415,9 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
                       ? FontAwesomeIcons.solidHeart
                       : FontAwesomeIcons.heart,
                   size: 20,
-                  color: isPrayingFor ? Colors.red : Colors.grey,
+                  color: isPrayingFor
+                      ? Theme.of(context).colorScheme.error
+                      : Theme.of(context).colorScheme.outline.withOpacity(0.5),
                 ),
                 const SizedBox(width: 4),
                 Text(
@@ -431,7 +438,8 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
                     ),
                     label: Text(isPrayingFor ? 'Praying' : 'Pray'),
                     style: TextButton.styleFrom(
-                      foregroundColor: isPrayingFor ? Colors.red : null,
+                      foregroundColor:
+                          isPrayingFor ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 TextButton.icon(
@@ -496,9 +504,9 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
           if (!mounted) return;
           if (!screenContext.mounted) return;
           ScaffoldMessenger.of(screenContext).showSnackBar(
-            const SnackBar(
-              content: Text('Prayer request posted successfully!'),
-              backgroundColor: Colors.green,
+            SnackBar(
+              content: const Text('Prayer request posted successfully!'),
+              backgroundColor: Theme.of(context).colorScheme.tertiary,
             ),
           );
         },
@@ -541,83 +549,6 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
     return DateTime.now();
   }
 
-  void _editPrayer(BuildContext context, int index) {
-    final editController =
-        TextEditingController(text: 'Sample prayer request ${index + 1}');
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Edit Prayer Request'),
-        content: TextField(
-          controller: editController,
-          maxLines: 4,
-          decoration: const InputDecoration(
-            hintText: 'Edit your prayer request...',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Prayer request updated successfully!'),
-                  backgroundColor: Colors.green,
-                ),
-              );
-            },
-            child: const Text('Update'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _deletePrayer(BuildContext context, int index) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Prayer Request'),
-        content:
-            const Text('Are you sure you want to delete this prayer request?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Prayer request deleted successfully!'),
-                  backgroundColor: Colors.red,
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _togglePrayerSupport(BuildContext context, int index) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Added to your prayer list!'),
-        backgroundColor: Colors.green,
-      ),
-    );
-  }
-
   void _sharePrayerRequest(BuildContext context, int index) {
     showDialog(
       context: context,
@@ -632,7 +563,7 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.1),
+                color: Theme.of(context).colorScheme.outline.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text('Prayer Request: Sample prayer request ${index + 1}'),
@@ -648,9 +579,9 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
             onPressed: () {
               Navigator.of(context).pop();
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Prayer request shared successfully!'),
-                  backgroundColor: Colors.green,
+                SnackBar(
+                  content: const Text('Prayer request shared successfully!'),
+                  backgroundColor: Theme.of(context).colorScheme.tertiary,
                 ),
               );
             },
@@ -659,5 +590,17 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
         ],
       ),
     );
+  }
+
+  void _editPrayer(BuildContext context, int index) {
+    // Basic implementation for now
+  }
+
+  void _deletePrayer(BuildContext context, int index) {
+    // Basic implementation for now
+  }
+
+  void _togglePrayerSupport(BuildContext context, int index) {
+    // Basic implementation for now
   }
 }

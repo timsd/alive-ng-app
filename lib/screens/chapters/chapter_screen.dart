@@ -8,6 +8,8 @@ import '../../config/meeting_links_config.dart';
 import '../conference/enhanced_jitsi_meet_screen.dart';
 import '../../providers/firebase_auth_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../utils/responsive_utils.dart';
+import 'package:intl/intl.dart';
 
 class ChapterScreen extends StatefulWidget {
   const ChapterScreen({super.key});
@@ -89,13 +91,14 @@ class _ChapterScreenState extends State<ChapterScreen>
       appBar: CustomAppBar(
         title: 'Chapters',
         showBackButton: true,
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: Colors.white,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
+          indicatorColor: Theme.of(context).colorScheme.onPrimary,
+          labelColor: Theme.of(context).colorScheme.onPrimary,
+          unselectedLabelColor:
+              Theme.of(context).colorScheme.onPrimary.withOpacity(0.7),
           isScrollable: true,
           tabAlignment: TabAlignment.start,
           tabs: const [
@@ -170,19 +173,17 @@ class _ChapterScreenState extends State<ChapterScreen>
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Card(
-        color: Theme.of(context).primaryColor.withValues(alpha: 0.08),
+        color: Theme.of(context).primaryColor.withOpacity(0.08),
         child: Padding(
           padding: const EdgeInsets.all(12.0),
           child: Row(
             children: [
               Icon(Icons.video_call, color: Theme.of(context).primaryColor),
               const SizedBox(width: 8),
-              const Expanded(
-                child: Text(
+              Expanded(
+                child: const Text(
                   'General Meeting is available',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.w600),
                 ),
               ),
               ElevatedButton.icon(
@@ -210,9 +211,11 @@ class _ChapterScreenState extends State<ChapterScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'My Chapter Statistics',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
         ),
         const SizedBox(height: 16),
         LayoutBuilder(builder: (context, constraints) {
@@ -229,25 +232,25 @@ class _ChapterScreenState extends State<ChapterScreen>
                 'Chapters',
                 '${_userStatistics['totalChapters'] ?? 0}',
                 Icons.group,
-                Colors.blue,
+                Theme.of(context).colorScheme.primary,
               ),
               _buildStatCard(
                 'Activities',
                 '${_userStatistics['totalActivities'] ?? 0}',
                 Icons.event,
-                Colors.green,
+                Theme.of(context).colorScheme.tertiary,
               ),
               _buildStatCard(
                 'Tasks',
                 '${_userStatistics['totalTasks'] ?? 0}',
                 Icons.task,
-                Colors.orange,
+                Theme.of(context).colorScheme.secondary,
               ),
               _buildStatCard(
                 'Completion Rate',
                 '${_userStatistics['activityCompletionRate'] ?? 0}%',
                 Icons.check_circle,
-                Colors.purple,
+                Theme.of(context).colorScheme.primary,
               ),
             ],
           );
@@ -269,15 +272,16 @@ class _ChapterScreenState extends State<ChapterScreen>
             const SizedBox(height: 8),
             Text(
               value,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
             ),
             Text(
               title,
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -292,9 +296,11 @@ class _ChapterScreenState extends State<ChapterScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Recent Activities',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
         ),
         const SizedBox(height: 12),
         if (recentActivities.isEmpty)
@@ -319,9 +325,11 @@ class _ChapterScreenState extends State<ChapterScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Upcoming Tasks',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
         ),
         const SizedBox(height: 12),
         if (upcomingTasks.isEmpty)
@@ -378,7 +386,7 @@ class _ChapterScreenState extends State<ChapterScreen>
             children: [
               Expanded(
                 child: DropdownButtonFormField<WorkersType?>(
-                  initialValue: _selectedType,
+                  value: _selectedType,
                   decoration: const InputDecoration(
                     labelText: 'Worker Type',
                     border: OutlineInputBorder(),
@@ -407,127 +415,64 @@ class _ChapterScreenState extends State<ChapterScreen>
   }
 
   Widget _buildMyChaptersTab() {
-    return _userMemberships.isEmpty
-        ? const Center(child: Text('You are not a member of any chapters'))
-        : ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: _userMemberships.length,
-            itemBuilder: (context, index) {
-              return _buildMembershipCard(_userMemberships[index]);
-            },
-          );
-  }
+    if (_userMemberships.isEmpty) {
+      return const Center(child: Text('You are not a member of any chapters'));
+    }
 
-  Widget _buildActivitiesTab() {
-    return _userActivities.isEmpty
-        ? const Center(child: Text('No activities assigned'))
-        : ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: _userActivities.length,
-            itemBuilder: (context, index) {
-              return _buildActivityCard(_userActivities[index]);
-            },
-          );
-  }
-
-  Widget _buildTasksTab() {
-    return _userTasks.isEmpty
-        ? const Center(child: Text('No tasks assigned'))
-        : ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: _userTasks.length,
-            itemBuilder: (context, index) {
-              return _buildTaskCard(_userTasks[index]);
-            },
-          );
-  }
-
-  Widget _buildChapterCard(Chapter chapter) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: AppTheme.primaryColor,
-          child: Text(
-            chapter.name.substring(0, 1).toUpperCase(),
-            style: const TextStyle(
-                color: Colors.white, fontWeight: FontWeight.bold),
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _userMemberships.length,
+      itemBuilder: (context, index) {
+        final membership = _userMemberships[index];
+        return Card(
+          child: ListTile(
+            leading: const Icon(Icons.group),
+            title: Text('Chapter: ${membership.chapterId}'),
+            subtitle: Text('Role: ${membership.role}'),
+            trailing: const Icon(Icons.arrow_forward_ios),
+            onTap: () =>
+                _navigateToChapterDetails(null, chapterId: membership.chapterId),
           ),
-        ),
-        title: Text(
-          chapter.name,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(_chapterService.getTypeDescription(chapter.type)),
-            Text(
-              chapter.description,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-        trailing: const Icon(Icons.arrow_forward_ios),
-        onTap: () => _navigateToChapterDetails(chapter),
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildMembershipCard(ChapterMember membership) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: _getRoleColor(membership.role),
-          child: Icon(
-            _getRoleIcon(membership.role),
-            color: Colors.white,
-          ),
-        ),
-        title: Text(
-          'Chapter ID: ${membership.chapterId}',
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(_chapterService.getRoleDescription(membership.role)),
-            Text('Joined: ${_formatDate(membership.joinedAt)}'),
-          ],
-        ),
-        trailing: const Icon(Icons.arrow_forward_ios),
-        onTap: () =>
-            _navigateToChapterDetails(null, chapterId: membership.chapterId),
-      ),
+  Widget _buildActivitiesTab() {
+    if (_userActivities.isEmpty) {
+      return const Center(child: Text('No activities found'));
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _userActivities.length,
+      itemBuilder: (context, index) {
+        return _buildActivityCard(_userActivities[index]);
+      },
+    );
+  }
+
+  Widget _buildTasksTab() {
+    if (_userTasks.isEmpty) {
+      return const Center(child: Text('No tasks found'));
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _userTasks.length,
+      itemBuilder: (context, index) {
+        return _buildTaskCard(_userTasks[index]);
+      },
     );
   }
 
   Widget _buildActivityCard(ChapterActivity activity) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: _getActivityStatusColor(activity.status),
-          child: Icon(
-            _getActivityTypeIcon(activity.type),
-            color: Colors.white,
-          ),
-        ),
-        title: Text(
-          activity.title,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(_chapterService.getActivityDescription(activity.type)),
-            Text('Date: ${_formatDate(activity.scheduledAt)}'),
-            Text('Status: ${activity.status.name.toUpperCase()}'),
-          ],
-        ),
-        trailing: const Icon(Icons.arrow_forward_ios),
+        title: Text(activity.title),
+        subtitle: Text(_formatDate(activity.scheduledAt)),
+        trailing: Chip(label: Text(activity.status.toString().split('.').last)),
         onTap: () => _navigateToActivityDetails(activity),
       ),
     );
@@ -535,127 +480,39 @@ class _ChapterScreenState extends State<ChapterScreen>
 
   Widget _buildTaskCard(ChapterTask task) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: _getTaskPriorityColor(task.priority),
-          child: Text(
-            task.priority.toString(),
-            style: const TextStyle(
-                color: Colors.white, fontWeight: FontWeight.bold),
-          ),
+        title: Text(task.title),
+        subtitle: Text('Due: ${_formatDate(task.dueDate)}'),
+        trailing: Checkbox(
+          value: task.status == ActivityStatus.completed,
+          onChanged: (value) => _completeTask(task),
         ),
-        title: Text(
-          task.title,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              task.description,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            Text('Due: ${_formatDate(task.dueDate)}'),
-            Text('Status: ${task.status.name.toUpperCase()}'),
-          ],
-        ),
-        trailing: task.status == ActivityStatus.completed
-            ? const Icon(Icons.check_circle, color: Colors.green)
-            : IconButton(
-                icon: const Icon(Icons.check),
-                onPressed: () => _completeTask(task),
-              ),
       ),
     );
   }
 
-  Widget? _buildFloatingActionButton() {
-    if (_tabController.index == 1) {
-      // Browse tab - Create chapter
-      return FloatingActionButton(
-        onPressed: _createChapter,
-        backgroundColor: AppTheme.primaryColor,
-        child: const Icon(Icons.add),
-      );
-    }
-    return null;
+  Widget _buildChapterCard(Chapter chapter) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        title: Text(chapter.name),
+        subtitle: Text(_chapterService.getTypeDescription(chapter.type)),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => _navigateToChapterDetails(chapter),
+      ),
+    );
   }
 
-  // Helper methods
-  Color _getRoleColor(MemberRole role) {
-    switch (role) {
-      case MemberRole.coordinator:
-        return Colors.red;
-      case MemberRole.director:
-        return Colors.purple;
-      case MemberRole.bod:
-        return Colors.blue;
-      case MemberRole.trustee:
-        return Colors.green;
-      case MemberRole.member:
-        return Colors.grey;
-    }
-  }
-
-  IconData _getRoleIcon(MemberRole role) {
-    switch (role) {
-      case MemberRole.coordinator:
-        return Icons.admin_panel_settings;
-      case MemberRole.director:
-        return Icons.business;
-      case MemberRole.bod:
-        return Icons.corporate_fare;
-      case MemberRole.trustee:
-        return Icons.verified_user;
-      case MemberRole.member:
-        return Icons.person;
-    }
-  }
-
-  Color _getActivityStatusColor(ActivityStatus status) {
-    switch (status) {
-      case ActivityStatus.planned:
-        return Colors.blue;
-      case ActivityStatus.ongoing:
-        return Colors.orange;
-      case ActivityStatus.completed:
-        return Colors.green;
-      case ActivityStatus.cancelled:
-        return Colors.red;
-    }
-  }
-
-  IconData _getActivityTypeIcon(ActivityType type) {
-    switch (type) {
-      case ActivityType.evangelism:
-        return Icons.campaign;
-      case ActivityType.outreach:
-        return Icons.volunteer_activism;
-      case ActivityType.training:
-        return Icons.school;
-      case ActivityType.meeting:
-        return Icons.meeting_room;
-      case ActivityType.conference:
-        return Icons.event_seat;
-      case ActivityType.workshop:
-        return Icons.build;
-      case ActivityType.service:
-        return Icons.handshake;
-      case ActivityType.other:
-        return Icons.more_horiz;
-    }
-  }
-
-  Color _getTaskPriorityColor(int priority) {
-    if (priority >= 8) return Colors.red;
-    if (priority >= 5) return Colors.orange;
-    return Colors.blue;
+  Widget _buildFloatingActionButton() {
+    return FloatingActionButton(
+      onPressed: _createChapter,
+      child: const Icon(Icons.add),
+    );
   }
 
   String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
+    return DateFormat('MMM dd, yyyy HH:mm').format(date);
   }
 
   // Navigation methods
@@ -694,15 +551,6 @@ class _ChapterScreenState extends State<ChapterScreen>
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Close'),
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Opening chapter management...')),
-              );
-            },
-            child: const Text('Manage'),
-          ),
         ],
       ),
     );
@@ -738,96 +586,14 @@ class _ChapterScreenState extends State<ChapterScreen>
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Close'),
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Managing activity: ${activity.title}')),
-              );
-            },
-            child: const Text('Edit'),
-          ),
         ],
       ),
     );
   }
 
-  // Action methods
   void _createChapter() {
-    final nameController = TextEditingController();
-    final locationController = TextEditingController();
-    final leaderController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Create New Chapter'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Chapter Name',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: locationController,
-                decoration: const InputDecoration(
-                  labelText: 'Location',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: leaderController,
-                decoration: const InputDecoration(
-                  labelText: 'Chapter Leader',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              nameController.dispose();
-              locationController.dispose();
-              leaderController.dispose();
-              Navigator.of(context).pop();
-            },
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (nameController.text.isNotEmpty &&
-                  locationController.text.isNotEmpty &&
-                  leaderController.text.isNotEmpty) {
-                Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Creating chapter: ${nameController.text}'),
-                  ),
-                );
-                nameController.dispose();
-                locationController.dispose();
-                leaderController.dispose();
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Please fill in all fields'),
-                  ),
-                );
-              }
-            },
-            child: const Text('Create'),
-          ),
-        ],
-      ),
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Chapter creation not implemented in this view')),
     );
   }
 
@@ -835,15 +601,10 @@ class _ChapterScreenState extends State<ChapterScreen>
     try {
       await _chapterService.completeTask(task.id);
       _loadData();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Task completed successfully')),
-        );
-      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error completing task: $e')),
+          SnackBar(content: Text('Error: $e')),
         );
       }
     }

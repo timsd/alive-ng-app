@@ -60,7 +60,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error loading data: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -86,7 +86,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error loading users: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -125,10 +125,10 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
+      return Scaffold(
         body: Center(
           child: CircularProgressIndicator(
-            color: Colors.green,
+            color: Theme.of(context).colorScheme.primary,
           ),
         ),
       );
@@ -138,8 +138,8 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
 
       appBar: AppBar(
         title: const Text('Role Management'),
-        backgroundColor: Colors.indigo,
-        foregroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -263,7 +263,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Card(
-              color: Colors.indigo.shade50,
+              color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
               child: Padding(
                 padding: const EdgeInsets.all(12.0),
                 child: Row(
@@ -277,18 +277,17 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'User Management',
-                            style: TextStyle(
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
                               fontWeight: FontWeight.bold,
-                              color: Colors.indigo,
+                              color: Theme.of(context).colorScheme.primary,
                             ),
                           ),
                           Text(
                             'Managing ${_filteredUsers.length} users. Promote or demote users as needed.',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.indigo,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -358,7 +357,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
       elevation: 2,
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: _getRoleColor(user.role),
+          backgroundColor: _getRoleColor(context, user.role),
           backgroundImage:
               user.avatarUrl != null ? CustomImage.provider(user.avatarUrl!) : null,
           child: user.avatarUrl == null
@@ -392,7 +391,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: _getRoleColor(user.role).withValues(alpha: 0.2),
+                    color: _getRoleColor(context, user.role).withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -400,7 +399,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
-                      color: _getRoleColor(user.role),
+                        color: _getRoleColor(context, user.role),
                     ),
                   ),
                 ),
@@ -415,22 +414,20 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
                       color: Colors.green.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Text(
+                    child: Text(
                       'NC',
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green,
-                      ),
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.tertiary,
+                          ),
                     ),
                   ),
                 if (user.isNewConvert) const SizedBox(width: 8),
                 if (user.chapterId != null)
                   Text(
                     user.chapterId!,
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Colors.grey.shade600,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
               ],
@@ -498,23 +495,24 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
               )
             : Icon(
                 Icons.lock_outline,
-                color: Colors.grey.shade400,
+                color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
               ),
       ),
     );
   }
 
-  Color _getRoleColor(String role) {
+  Color _getRoleColor(BuildContext context, String role) {
+    final colorScheme = Theme.of(context).colorScheme;
     switch (role) {
       case 'admin':
-        return Colors.red;
+        return colorScheme.error;
       case 'leader':
-        return Colors.purple;
+        return colorScheme.tertiary;
       case 'coordinator':
-        return Colors.blue;
+        return colorScheme.primary;
       case 'member':
       default:
-        return Colors.green;
+        return colorScheme.secondary;
     }
   }
 
@@ -688,7 +686,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('Past ${user.role.toUpperCase()} role archived successfully for historical records.'),
-                backgroundColor: Colors.blue,
+                backgroundColor: Theme.of(context).colorScheme.primary,
               ),
             );
           }
@@ -704,7 +702,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
             content: Text(
               '${user.fullName} has been $action to ${newRole.toUpperCase()}',
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: Theme.of(context).colorScheme.tertiary,
           ),
         );
       }
@@ -715,7 +713,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error updating user role: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -738,8 +736,8 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
             ),
             child: const Text('Archive'),
           ),
@@ -756,7 +754,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('${user.fullName} has been archived'),
-              backgroundColor: Colors.orange,
+              backgroundColor: Theme.of(context).colorScheme.secondary,
             ),
           );
         }
@@ -766,7 +764,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Error archiving user: $e'),
-              backgroundColor: Colors.red,
+              backgroundColor: Theme.of(context).colorScheme.error,
             ),
           );
         }
@@ -897,7 +895,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
                       margin: const EdgeInsets.symmetric(vertical: 4),
                       child: ListTile(
                         leading: CircleAvatar(
-                          backgroundColor: _getRoleColor(record.role),
+                          backgroundColor: _getRoleColor(context, record.role),
                           child: const Icon(Icons.history, color: Colors.white, size: 20),
                         ),
                         title: Text(record.role.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold)),

@@ -84,7 +84,7 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error loading archived users: $e'),
-          backgroundColor: Colors.red,
+          backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
     }
@@ -105,10 +105,10 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
+      return Scaffold(
         body: Center(
           child: CircularProgressIndicator(
-            color: Colors.green,
+            color: Theme.of(context).colorScheme.primary,
           ),
         ),
       );
@@ -116,7 +116,7 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
 
     if (!_hasAccess) {
       return Scaffold(
-        appBar: const CustomAppBar(
+        appBar: CustomAppBar(
           title: 'Access Denied',
           showBackButton: true,
           backgroundColor: Colors.red,
@@ -145,9 +145,8 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
                   height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
               Text(
                 'You do not have permission to access archived users.',
-                style: TextStyle(
-                  fontSize: ResponsiveUtils.getResponsiveFontSize(context, 16),
-                  color: Colors.grey,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -155,9 +154,8 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
                   height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
               Text(
                 'This section is restricted to Leaders,\nCoordinators, and Administrators only.',
-                style: TextStyle(
-                  fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
-                  color: Colors.grey,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -171,8 +169,8 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
       appBar: CustomAppBar(
         title: 'Archived Users',
         showBackButton: true,
-        backgroundColor: Colors.orange,
-        foregroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.secondary,
+        foregroundColor: Theme.of(context).colorScheme.onSecondary,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -220,15 +218,15 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
             padding: EdgeInsets.symmetric(
                 horizontal: ResponsiveUtils.getResponsivePaddingValue(context)),
             child: Card(
-              color: Colors.orange.shade50,
+              color: Theme.of(context).colorScheme.secondaryContainer.withValues(alpha: 0.3),
               child: Padding(
                 padding: EdgeInsets.all(
                     ResponsiveUtils.getResponsiveSpacing(context, 12)),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.info_outline,
-                      color: Colors.orange,
+                      color: Theme.of(context).colorScheme.secondary,
                     ),
                     SizedBox(
                         width:
@@ -237,19 +235,17 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Archived Users',
-                            style: TextStyle(
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
                               fontWeight: FontWeight.bold,
-                              color: Colors.orange,
+                              color: Theme.of(context).colorScheme.secondary,
                             ),
                           ),
                           Text(
                             'Users who have left the organization. Found ${_filteredUsers.length} archived users.',
-                            style: TextStyle(
-                              fontSize: ResponsiveUtils.getResponsiveFontSize(
-                                  context, 12),
-                              color: Colors.orange,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -273,7 +269,7 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
                         Icon(
                           Icons.archive_outlined,
                           size: ResponsiveUtils.getResponsiveIconSize(context, 64),
-                          color: Colors.grey.shade400,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
                         ),
                         SizedBox(
                             height: ResponsiveUtils.getResponsiveSpacing(
@@ -295,10 +291,8 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
                           _searchQuery.isEmpty
                               ? 'Users who leave the organization will appear here'
                               : 'Try adjusting your search terms',
-                          style: TextStyle(
-                            fontSize: ResponsiveUtils.getResponsiveFontSize(
-                                context, 14),
-                            color: Colors.grey.shade500,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -328,14 +322,14 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
       elevation: 2,
       child: ExpansionTile(
         leading: CircleAvatar(
-          backgroundColor: Colors.orange,
+          backgroundColor: Theme.of(context).colorScheme.secondary,
           backgroundImage: user.avatarUrl != null
               ? CustomImage.provider(user.avatarUrl!)
               : null,
           child: user.avatarUrl == null
-              ? const Icon(
+              ? Icon(
                   Icons.person,
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.onSecondary,
                 )
               : null,
         ),
@@ -350,8 +344,8 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
           children: [
             Text(
               user.email ?? 'No email',
-              style: const TextStyle(
-                color: Colors.grey,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
             SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 4)),
@@ -364,18 +358,16 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
                     vertical: ResponsiveUtils.getResponsiveSpacing(context, 2),
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.orange.shade100,
+                    color: Theme.of(context).colorScheme.secondaryContainer,
                     borderRadius: BorderRadius.circular(
                         ResponsiveUtils.getResponsiveBorderRadiusValue(
                             context, 12)),
                   ),
                   child: Text(
                     'ARCHIVED',
-                    style: TextStyle(
-                      fontSize:
-                          ResponsiveUtils.getResponsiveFontSize(context, 10),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: Colors.orange.shade700,
+                      color: Theme.of(context).colorScheme.onSecondaryContainer,
                     ),
                   ),
                 ),
@@ -383,11 +375,9 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
                     width: ResponsiveUtils.getResponsiveSpacing(context, 8)),
                 Text(
                   user.role.toUpperCase(),
-                  style: TextStyle(
-                    fontSize:
-                        ResponsiveUtils.getResponsiveFontSize(context, 10),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade600,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
                 if (user.isNewConvert) ...[
@@ -448,8 +438,8 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
                           icon: const Icon(Icons.restore),
                           label: const Text('Restore User'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            foregroundColor: Colors.white,
+                            backgroundColor: Theme.of(context).colorScheme.tertiary,
+                            foregroundColor: Theme.of(context).colorScheme.onTertiary,
                           ),
                         ),
                       ),
@@ -462,8 +452,8 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
                           icon: const Icon(Icons.delete_forever),
                           label: const Text('Delete'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red,
-                            foregroundColor: Colors.white,
+                            backgroundColor: Theme.of(context).colorScheme.error,
+                            foregroundColor: Theme.of(context).colorScheme.onError,
                           ),
                         ),
                       ),
@@ -489,9 +479,9 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
             width: ResponsiveUtils.getResponsiveSpacing(context, 80),
             child: Text(
               '$label:',
-              style: const TextStyle(
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
                 fontWeight: FontWeight.w500,
-                color: Colors.grey,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ),
@@ -522,7 +512,7 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
       messenger.showSnackBar(
         SnackBar(
           content: Text('${user.fullName} has been restored'),
-          backgroundColor: Colors.green,
+          backgroundColor: Theme.of(context).colorScheme.tertiary,
         ),
       );
       await _loadArchivedUsers();
@@ -532,7 +522,7 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
       messenger.showSnackBar(
         SnackBar(
           content: Text('Error restoring user: $e'),
-          backgroundColor: Colors.red,
+          backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
     }
@@ -554,8 +544,8 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
             ),
             child: const Text('Delete'),
           ),
@@ -605,7 +595,7 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
         messenger.showSnackBar(
           SnackBar(
             content: Text('${user.fullName} has been permanently deleted'),
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
         await _loadArchivedUsers();
@@ -615,7 +605,7 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
         messenger.showSnackBar(
           SnackBar(
             content: Text('Error deleting user: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }

@@ -386,23 +386,31 @@ class ConferenceMeeting {
 
   factory ConferenceMeeting.fromJson(Map<String, dynamic> json) {
     return ConferenceMeeting(
-      id: json['id'] as String,
-      title: json['title'] as String,
-      description: json['description'] as String,
-      scheduledTime: DateTime.parse(json['scheduled_time'] as String),
-      duration: json['duration'] as int,
-      hostId: json['host_id'] as String,
-      hostName: json['host_name'] as String,
-      meetingType: json['meeting_type'] as String,
+      id: json['id'] as String? ?? '',
+      title: json['title'] as String? ?? 'Meeting',
+      description: json['description'] as String? ?? '',
+      scheduledTime: json['scheduled_time'] != null ? DateTime.parse(json['scheduled_time'] as String) : DateTime.now(),
+      duration: json['duration'] as int? ?? 60,
+      hostId: json['host_id'] as String? ?? '',
+      hostName: json['host_name'] as String? ?? 'Host',
+      meetingType: json['meeting_type'] as String? ?? 'group',
       participants: List<String>.from(json['participants'] as List? ?? []),
-      maxParticipants: json['max_participants'] as int,
+      maxParticipants: json['max_participants'] as int? ?? 100,
       isRecurring: json['is_recurring'] as bool? ?? false,
-      meetingLink: json['meeting_link'] as String,
-      status: json['status'] as String,
-      roomName: json['room_name'] as String,
+      meetingLink: json['meeting_link'] as String? ?? '',
+      status: json['status'] as String? ?? 'planned',
+      roomName: json['room_name'] as String? ?? '',
       recordingLink: json['recording_link'] as String?,
     );
   }
+
+  factory ConferenceMeeting.fromMap(Map<String, dynamic> map, [String? id]) {
+    final data = Map<String, dynamic>.from(map);
+    if (id != null) data['id'] = id;
+    return ConferenceMeeting.fromJson(data);
+  }
+
+  Map<String, dynamic> toMap() => toJson();
 
   Map<String, dynamic> toJson() {
     return {

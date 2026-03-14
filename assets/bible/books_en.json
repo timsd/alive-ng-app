@@ -13,7 +13,7 @@
     "name": "1 Corinthians",
     "abbreviation": "1Corinthians",
     "chapters": 16,
-    "testament": "old",
+    "testament": "new",
     "order": 2,
     "translations": {
       "ASV": "1 Corinthians"
@@ -23,7 +23,7 @@
     "name": "1 John",
     "abbreviation": "1John",
     "chapters": 5,
-    "testament": "old",
+    "testament": "new",
     "order": 3,
     "translations": {
       "ASV": "1 John"
@@ -43,7 +43,7 @@
     "name": "1 Peter",
     "abbreviation": "1Peter",
     "chapters": 5,
-    "testament": "old",
+    "testament": "new",
     "order": 5,
     "translations": {
       "ASV": "1 Peter"
@@ -63,7 +63,7 @@
     "name": "1 Thessalonians",
     "abbreviation": "1Thessalonians",
     "chapters": 5,
-    "testament": "old",
+    "testament": "new",
     "order": 7,
     "translations": {
       "ASV": "1 Thessalonians"
@@ -73,7 +73,7 @@
     "name": "1 Timothy",
     "abbreviation": "1Timothy",
     "chapters": 6,
-    "testament": "old",
+    "testament": "new",
     "order": 8,
     "translations": {
       "ASV": "1 Timothy"
@@ -93,7 +93,7 @@
     "name": "2 Corinthians",
     "abbreviation": "2Corinthians",
     "chapters": 13,
-    "testament": "old",
+    "testament": "new",
     "order": 10,
     "translations": {
       "ASV": "2 Corinthians"
@@ -103,7 +103,7 @@
     "name": "2 John",
     "abbreviation": "2John",
     "chapters": 1,
-    "testament": "old",
+    "testament": "new",
     "order": 11,
     "translations": {
       "ASV": "2 John"
@@ -123,7 +123,7 @@
     "name": "2 Peter",
     "abbreviation": "2Peter",
     "chapters": 3,
-    "testament": "old",
+    "testament": "new",
     "order": 13,
     "translations": {
       "ASV": "2 Peter"
@@ -143,7 +143,7 @@
     "name": "2 Thessalonians",
     "abbreviation": "2Thessalonians",
     "chapters": 3,
-    "testament": "old",
+    "testament": "new",
     "order": 15,
     "translations": {
       "ASV": "2 Thessalonians"
@@ -153,7 +153,7 @@
     "name": "2 Timothy",
     "abbreviation": "2Timothy",
     "chapters": 4,
-    "testament": "old",
+    "testament": "new",
     "order": 16,
     "translations": {
       "ASV": "2 Timothy"
@@ -163,7 +163,7 @@
     "name": "3 John",
     "abbreviation": "3John",
     "chapters": 1,
-    "testament": "old",
+    "testament": "new",
     "order": 17,
     "translations": {
       "ASV": "3 John"
@@ -173,7 +173,7 @@
     "name": "Acts",
     "abbreviation": "Acts",
     "chapters": 28,
-    "testament": "old",
+    "testament": "new",
     "order": 18,
     "translations": {
       "ASV": "Acts"
@@ -193,7 +193,7 @@
     "name": "Colossians",
     "abbreviation": "Colo",
     "chapters": 4,
-    "testament": "old",
+    "testament": "new",
     "order": 20,
     "translations": {
       "ASV": "Colossians"
@@ -233,7 +233,7 @@
     "name": "Ephesians",
     "abbreviation": "Ephe",
     "chapters": 6,
-    "testament": "old",
+    "testament": "new",
     "order": 24,
     "translations": {
       "ASV": "Ephesians"
@@ -283,7 +283,7 @@
     "name": "Galatians",
     "abbreviation": "Gala",
     "chapters": 6,
-    "testament": "old",
+    "testament": "new",
     "order": 29,
     "translations": {
       "ASV": "Galatians"
@@ -323,7 +323,7 @@
     "name": "Hebrews",
     "abbreviation": "Hebr",
     "chapters": 13,
-    "testament": "old",
+    "testament": "new",
     "order": 33,
     "translations": {
       "ASV": "Hebrews"
@@ -353,7 +353,7 @@
     "name": "James",
     "abbreviation": "Jame",
     "chapters": 5,
-    "testament": "old",
+    "testament": "new",
     "order": 36,
     "translations": {
       "ASV": "James"
@@ -403,7 +403,7 @@
     "name": "Jonah",
     "abbreviation": "Jona",
     "chapters": 4,
-    "testament": "new",
+    "testament": "old",
     "order": 41,
     "translations": {
       "ASV": "Jonah"
@@ -413,7 +413,7 @@
     "name": "Joshua",
     "abbreviation": "Josh",
     "chapters": 24,
-    "testament": "new",
+    "testament": "old",
     "order": 42,
     "translations": {
       "ASV": "Joshua"
@@ -433,7 +433,7 @@
     "name": "Judges",
     "abbreviation": "Judg",
     "chapters": 21,
-    "testament": "new",
+    "testament": "old",
     "order": 44,
     "translations": {
       "ASV": "Judges"
@@ -443,7 +443,7 @@
     "name": "Lamentations",
     "abbreviation": "Lame",
     "chapters": 5,
-    "testament": "new",
+    "testament": "old",
     "order": 45,
     "translations": {
       "ASV": "Lamentations"
@@ -453,7 +453,7 @@
     "name": "Leviticus",
     "abbreviation": "Levi",
     "chapters": 27,
-    "testament": "new",
+    "testament": "old",
     "order": 46,
     "translations": {
       "ASV": "Leviticus"
@@ -473,7 +473,7 @@
     "name": "Malachi",
     "abbreviation": "Mala",
     "chapters": 4,
-    "testament": "new",
+    "testament": "old",
     "order": 48,
     "translations": {
       "ASV": "Malachi"
@@ -503,7 +503,7 @@
     "name": "Micah",
     "abbreviation": "Mica",
     "chapters": 7,
-    "testament": "new",
+    "testament": "old",
     "order": 51,
     "translations": {
       "ASV": "Micah"
@@ -513,7 +513,7 @@
     "name": "Nahum",
     "abbreviation": "Nahu",
     "chapters": 3,
-    "testament": "new",
+    "testament": "old",
     "order": 52,
     "translations": {
       "ASV": "Nahum"
@@ -523,7 +523,7 @@
     "name": "Nehemiah",
     "abbreviation": "Nehe",
     "chapters": 13,
-    "testament": "new",
+    "testament": "old",
     "order": 53,
     "translations": {
       "ASV": "Nehemiah"
@@ -533,7 +533,7 @@
     "name": "Numbers",
     "abbreviation": "Numb",
     "chapters": 36,
-    "testament": "new",
+    "testament": "old",
     "order": 54,
     "translations": {
       "ASV": "Numbers"
@@ -543,7 +543,7 @@
     "name": "Obadiah",
     "abbreviation": "Obad",
     "chapters": 1,
-    "testament": "new",
+    "testament": "old",
     "order": 55,
     "translations": {
       "ASV": "Obadiah"
@@ -573,7 +573,7 @@
     "name": "Proverbs",
     "abbreviation": "Prov",
     "chapters": 31,
-    "testament": "new",
+    "testament": "old",
     "order": 58,
     "translations": {
       "ASV": "Proverbs"
@@ -583,7 +583,7 @@
     "name": "Psalms",
     "abbreviation": "Psal",
     "chapters": 150,
-    "testament": "new",
+    "testament": "old",
     "order": 59,
     "translations": {
       "ASV": "Psalms"
@@ -613,7 +613,7 @@
     "name": "Ruth",
     "abbreviation": "Ruth",
     "chapters": 4,
-    "testament": "new",
+    "testament": "old",
     "order": 62,
     "translations": {
       "ASV": "Ruth"
@@ -623,7 +623,7 @@
     "name": "Song of Solomon",
     "abbreviation": "Sonof",
     "chapters": 8,
-    "testament": "new",
+    "testament": "old",
     "order": 63,
     "translations": {
       "ASV": "Song of Solomon"
@@ -643,7 +643,7 @@
     "name": "Zechariah",
     "abbreviation": "Zech",
     "chapters": 14,
-    "testament": "new",
+    "testament": "old",
     "order": 65,
     "translations": {
       "ASV": "Zechariah"
@@ -653,7 +653,7 @@
     "name": "Zephaniah",
     "abbreviation": "Zeph",
     "chapters": 3,
-    "testament": "new",
+    "testament": "old",
     "order": 66,
     "translations": {
       "ASV": "Zephaniah"

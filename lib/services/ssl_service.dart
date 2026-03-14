@@ -15,7 +15,7 @@ class SSLService {
     try {
       _logger.info('Loading SSL certificate from assets...');
       
-      const certificatePath = 'assets/certificates/supabase-ca-cert.crt';
+      const certificatePath = 'assets/certificates/cloud-ca-cert.crt';
       final certificateData = await rootBundle.loadString(certificatePath);
       
       _logger.info('✅ SSL certificate loaded successfully');
@@ -91,8 +91,8 @@ class SSLService {
     }
     
     recommendations.addAll([
-      'Enable SSL enforcement in Supabase dashboard',
-      'Reject non-SSL connections in Supabase settings',
+      'Enable SSL enforcement in Cloud storage dashboard',
+      'Reject non-SSL connections in security settings',
       'Monitor SSL certificate expiration',
       'Use certificate pinning for production',
       'Regularly update SSL certificates',
@@ -112,7 +112,7 @@ class SSLService {
       final securityChecks = {
         'https_url': true, // We know the URL uses HTTPS
         'certificate_present': sslStatus['certificate_loaded'],
-        'ssl_enforcement': true, // Assume enabled (should be verified in Supabase)
+        'ssl_enforcement': true, // Assume enabled (should be verified in backend)
         'secure_connection': true,
       };
       

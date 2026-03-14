@@ -159,14 +159,10 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final translate = ref.watch(translationProvider);
-    final themeMode = ref.watch(themeModeProvider);
 
     return Scaffold(
       appBar: CustomAppBar(
         title: translate('profile'),
-        elevation: 0,
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         actions: [
           IconButton(
             onPressed: () {
@@ -212,8 +208,17 @@ class ProfileScreen extends ConsumerWidget {
                             tablet: 32,
                             desktop: 40)),
 
+                    // Management Section (Admin/BOD only)
+                    _buildManagementSection(context, translate, ref),
+                    SizedBox(
+                        height: ResponsiveUtils.getResponsiveValue(
+                            context: context,
+                            mobile: 24,
+                            tablet: 32,
+                            desktop: 40)),
+
                     // Settings Section
-                    _buildSettingsSection(context, translate, ref, themeMode),
+                    _buildSettingsSection(context, translate, ref),
                     SizedBox(
                         height: ResponsiveUtils.getResponsiveValue(
                             context: context,
@@ -314,12 +319,8 @@ class ProfileScreen extends ConsumerWidget {
                 userProfile?.fullName ?? translate('guest_user'),
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
-                      fontSize: ResponsiveUtils.getResponsiveValue(
-                          context: context,
-                          mobile: 20,
-                          tablet: 24,
-                          desktop: 28),
                     ),
+                textAlign: TextAlign.center,
               ),
               SizedBox(
                   height: ResponsiveUtils.getResponsiveValue(
@@ -331,12 +332,8 @@ class ProfileScreen extends ConsumerWidget {
                           .colorScheme
                           .onSurface
                           .withValues(alpha: 0.7),
-                      fontSize: ResponsiveUtils.getResponsiveValue(
-                          context: context,
-                          mobile: 14,
-                          tablet: 16,
-                          desktop: 18),
                     ),
+                textAlign: TextAlign.center,
               ),
               SizedBox(
                   height: ResponsiveUtils.getResponsiveValue(
@@ -377,7 +374,7 @@ class ProfileScreen extends ConsumerWidget {
                 ),
                 child: Text(
                   translate('edit_profile'),
-                  style: TextStyle(
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
                     fontSize: ResponsiveUtils.getResponsiveValue(
                         context: context, mobile: 14, tablet: 16, desktop: 18),
                   ),
@@ -530,7 +527,7 @@ class ProfileScreen extends ConsumerWidget {
                 translate('prayers'),
                 '${stats['prayers_offered'] ?? 0}',
                 Icons.favorite,
-                Colors.red,
+                Theme.of(context).colorScheme.error,
               ),
             ),
             Container(
@@ -546,7 +543,7 @@ class ProfileScreen extends ConsumerWidget {
                 translate('studies'),
                 '${stats['study_sessions_completed'] ?? 0}',
                 Icons.book,
-                Colors.blue,
+                Theme.of(context).colorScheme.primary,
               ),
             ),
             Container(
@@ -562,7 +559,7 @@ class ProfileScreen extends ConsumerWidget {
                 translate('streak'),
                 '${stats['current_streak'] ?? 0}',
                 Icons.local_fire_department,
-                Colors.orange,
+                Theme.of(context).colorScheme.secondary,
               ),
             ),
           ],
@@ -575,7 +572,7 @@ class ProfileScreen extends ConsumerWidget {
                 translate('prayers'),
                 '0',
                 Icons.favorite,
-                Colors.red,
+                Theme.of(context).colorScheme.error,
               ),
             ),
             Container(
@@ -591,7 +588,7 @@ class ProfileScreen extends ConsumerWidget {
                 translate('studies'),
                 '0',
                 Icons.book,
-                Colors.blue,
+                Theme.of(context).colorScheme.primary,
               ),
             ),
             Container(
@@ -607,7 +604,7 @@ class ProfileScreen extends ConsumerWidget {
                 translate('streak'),
                 '0',
                 Icons.local_fire_department,
-                Colors.orange,
+                Theme.of(context).colorScheme.secondary,
               ),
             ),
           ],
@@ -620,7 +617,7 @@ class ProfileScreen extends ConsumerWidget {
                 translate('prayers'),
                 '0',
                 Icons.favorite,
-                Colors.red,
+                Theme.of(context).colorScheme.error,
               ),
             ),
             Container(
@@ -636,7 +633,7 @@ class ProfileScreen extends ConsumerWidget {
                 translate('studies'),
                 '0',
                 Icons.book,
-                Colors.blue,
+                Theme.of(context).colorScheme.primary,
               ),
             ),
             Container(
@@ -652,7 +649,7 @@ class ProfileScreen extends ConsumerWidget {
                 translate('streak'),
                 '0',
                 Icons.local_fire_department,
-                Colors.orange,
+                Theme.of(context).colorScheme.secondary,
               ),
             ),
           ],
@@ -685,23 +682,185 @@ class ProfileScreen extends ConsumerWidget {
         ),
         Text(
           label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
                 color: Theme.of(context)
                     .colorScheme
                     .onSurface
                     .withValues(alpha: 0.7),
-                fontSize: ResponsiveUtils.getResponsiveValue(
-                    context: context, mobile: 12, tablet: 14, desktop: 16),
               ),
         ),
       ],
     );
   }
 
-  Widget _buildSettingsSection(BuildContext context,
-      String Function(String) translate, WidgetRef ref, ThemeMode themeMode) {
-    // Watch current locale inside this method to avoid undefined identifier
-    final currentLocale = ref.watch(localeProvider);
+  Widget _buildManagementSection(
+      BuildContext context, String Function(String) translate, WidgetRef ref) {
+    final userProfileAsync = ref.watch(userProfileProvider);
+    final firebaseUser = ref.watch(firebaseUserProvider).value;
+
+    return userProfileAsync.when(
+      data: (profile) {
+        final role = profile?.role ?? 'user';
+        final canAccessAdmin = ['admin', 'staff'].contains(role);
+        final canAccessBOD = ['admin', 'bod', 'trustee'].contains(role);
+        final canClaimAdmin = firebaseUser != null &&
+            (firebaseUser.email == 'alivenigeria2011@gmail.com' ||
+                firebaseUser.email?.endsWith('@gmail.com') == true);
+
+        if (!canAccessAdmin && !canAccessBOD && !canClaimAdmin) {
+          return const SizedBox.shrink();
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: EdgeInsets.symmetric(
+                  horizontal: ResponsiveUtils.getResponsiveValue(
+                      context: context, mobile: 20, tablet: 24, desktop: 28)),
+              child: Text(
+                translate('administrative'),
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+            ),
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveValue(
+                    context: context, mobile: 16, tablet: 20, desktop: 24)),
+            Container(
+              margin: EdgeInsets.symmetric(
+                  horizontal: ResponsiveUtils.getResponsiveValue(
+                      context: context, mobile: 20, tablet: 24, desktop: 28)),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(
+                    ResponsiveUtils.getResponsiveValue(
+                        context: context, mobile: 16, tablet: 20, desktop: 24)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .shadow
+                        .withValues(alpha: 0.1),
+                    blurRadius: ResponsiveUtils.getResponsiveValue(
+                        context: context, mobile: 8, tablet: 10, desktop: 12),
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  if (canAccessAdmin) ...[
+                    ListTile(
+                      leading: Icon(
+                        Icons.admin_panel_settings,
+                        color: Theme.of(context).colorScheme.primary,
+                        size: ResponsiveUtils.getResponsiveValue(
+                            context: context,
+                            mobile: 24,
+                            tablet: 28,
+                            desktop: 32),
+                      ),
+                      title: Text(
+                        translate('admin_dashboard'),
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      ),
+                      trailing: Icon(
+                        Icons.arrow_forward_ios,
+                        size: ResponsiveUtils.getResponsiveValue(
+                            context: context,
+                            mobile: 16,
+                            tablet: 18,
+                            desktop: 20),
+                      ),
+                      onTap: () {
+                        context.push(AppConstants.adminRoute);
+                      },
+                    ),
+                    const Divider(height: 1),
+                  ],
+                  if (canAccessBOD) ...[
+                    ListTile(
+                      leading: Icon(
+                        Icons.people,
+                        color: Theme.of(context).colorScheme.primary,
+                        size: ResponsiveUtils.getResponsiveValue(
+                            context: context,
+                            mobile: 24,
+                            tablet: 28,
+                            desktop: 32),
+                      ),
+                      title: Text(
+                        translate('bod_trustees'),
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      ),
+                      trailing: Icon(
+                        Icons.arrow_forward_ios,
+                        size: ResponsiveUtils.getResponsiveValue(
+                            context: context,
+                            mobile: 16,
+                            tablet: 18,
+                            desktop: 20),
+                      ),
+                      onTap: () {
+                        context.push(AppConstants.bodTrusteesRoute);
+                      },
+                    ),
+                    const Divider(height: 1),
+                  ],
+                  if (canClaimAdmin)
+                    ListTile(
+                      leading: Icon(
+                        Icons.verified_user,
+                        color: Theme.of(context).colorScheme.secondary,
+                        size: ResponsiveUtils.getResponsiveValue(
+                            context: context,
+                            mobile: 24,
+                            tablet: 28,
+                            desktop: 32),
+                      ),
+                      title: Text(
+                        'Claim Admin Role (Temp)',
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      ),
+                      onTap: () async {
+                        try {
+                          final firestore = FirestoreService.instance;
+                          await firestore.upsertProfile(profile!.id, {
+                            'role': 'admin',
+                            'is_approved': true,
+                            'approval_status': 'approved',
+                          });
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text('Admin role claimed!')),
+                            );
+                            ref.invalidate(userProfileProvider);
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error: $e')),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+
+  Widget _buildSettingsSection(
+      BuildContext context, String Function(String) translate, WidgetRef ref) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -713,8 +872,6 @@ class ProfileScreen extends ConsumerWidget {
             translate('preferences'),
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
-                  fontSize: ResponsiveUtils.getResponsiveValue(
-                      context: context, mobile: 18, tablet: 22, desktop: 26),
                 ),
           ),
         ),
@@ -743,75 +900,6 @@ class ProfileScreen extends ConsumerWidget {
             children: [
               ListTile(
                 leading: Icon(
-                  themeMode == ThemeMode.dark
-                      ? Icons.dark_mode
-                      : Icons.light_mode,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: ResponsiveUtils.getResponsiveValue(
-                      context: context, mobile: 24, tablet: 28, desktop: 32),
-                ),
-                title: Text(
-                  translate('theme'),
-                  style: TextStyle(
-                    fontSize: ResponsiveUtils.getResponsiveValue(
-                        context: context, mobile: 16, tablet: 18, desktop: 20),
-                  ),
-                ),
-                subtitle: Text(
-                  themeMode == ThemeMode.dark
-                      ? translate('dark_mode')
-                      : themeMode == ThemeMode.light
-                          ? translate('light_mode')
-                          : translate('system_mode'),
-                  style: TextStyle(
-                    fontSize: ResponsiveUtils.getResponsiveValue(
-                        context: context, mobile: 14, tablet: 16, desktop: 18),
-                  ),
-                ),
-                trailing: Icon(
-                  Icons.arrow_forward_ios,
-                  size: ResponsiveUtils.getResponsiveValue(
-                      context: context, mobile: 16, tablet: 18, desktop: 20),
-                ),
-                onTap: () {
-                  _showThemeDialog(context, ref, translate);
-                },
-              ),
-              const Divider(height: 1),
-              ListTile(
-                leading: Icon(
-                  Icons.language,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: ResponsiveUtils.getResponsiveValue(
-                      context: context, mobile: 24, tablet: 28, desktop: 32),
-                ),
-                title: Text(
-                  translate('language'),
-                  style: TextStyle(
-                    fontSize: ResponsiveUtils.getResponsiveValue(
-                        context: context, mobile: 16, tablet: 18, desktop: 20),
-                  ),
-                ),
-                subtitle: Text(
-                  AppConstants.supportedLanguages[currentLocale.languageCode] ??
-                      translate('english'),
-                  style: TextStyle(
-                    fontSize: ResponsiveUtils.getResponsiveValue(
-                        context: context, mobile: 14, tablet: 16, desktop: 18),
-                  ),
-                ),
-                trailing: Icon(
-                  Icons.arrow_forward_ios,
-                  size: ResponsiveUtils.getResponsiveValue(
-                      context: context, mobile: 16, tablet: 18, desktop: 20),
-                ),
-                onTap: () {
-                  _showLanguageSelector(context, ref, translate);
-                },
-              ),
-              const Divider(height: 1),
-              ListTile(
-                leading: Icon(
                   Icons.notifications,
                   color: Theme.of(context).colorScheme.primary,
                   size: ResponsiveUtils.getResponsiveValue(
@@ -819,14 +907,15 @@ class ProfileScreen extends ConsumerWidget {
                 ),
                 title: Text(
                   translate('notifications'),
-                  style: TextStyle(
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     fontSize: ResponsiveUtils.getResponsiveValue(
                         context: context, mobile: 16, tablet: 18, desktop: 20),
                   ),
                 ),
                 subtitle: Text(
                   translate('manage_notifications'),
-                  style: TextStyle(
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     fontSize: ResponsiveUtils.getResponsiveValue(
                         context: context, mobile: 14, tablet: 16, desktop: 18),
                   ),
@@ -862,6 +951,7 @@ class ProfileScreen extends ConsumerWidget {
                   fontWeight: FontWeight.bold,
                   fontSize: ResponsiveUtils.getResponsiveValue(
                       context: context, mobile: 18, tablet: 22, desktop: 26),
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
           ),
         ),
@@ -879,7 +969,7 @@ class ProfileScreen extends ConsumerWidget {
                     context: context, mobile: 16, tablet: 20, desktop: 24)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
+                color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.1),
                 blurRadius: ResponsiveUtils.getResponsiveValue(
                     context: context, mobile: 8, tablet: 10, desktop: 12),
                 offset: const Offset(0, 2),
@@ -897,7 +987,7 @@ class ProfileScreen extends ConsumerWidget {
                 ),
                 title: Text(
                   translate('help_support'),
-                  style: TextStyle(
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     fontSize: ResponsiveUtils.getResponsiveValue(
                         context: context, mobile: 16, tablet: 18, desktop: 20),
                   ),
@@ -947,7 +1037,7 @@ class ProfileScreen extends ConsumerWidget {
                 ),
                 title: Text(
                   translate('terms_conditions'),
-                  style: TextStyle(
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     fontSize: ResponsiveUtils.getResponsiveValue(
                         context: context, mobile: 16, tablet: 18, desktop: 20),
                   ),
@@ -972,7 +1062,7 @@ class ProfileScreen extends ConsumerWidget {
                 ),
                 title: Text(
                   translate('about_app'),
-                  style: TextStyle(
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     fontSize: ResponsiveUtils.getResponsiveValue(
                         context: context, mobile: 16, tablet: 18, desktop: 20),
                   ),
@@ -997,7 +1087,7 @@ class ProfileScreen extends ConsumerWidget {
                 ),
                 title: Text(
                   translate('about_alive'),
-                  style: TextStyle(
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     fontSize: ResponsiveUtils.getResponsiveValue(
                         context: context, mobile: 16, tablet: 18, desktop: 20),
                   ),
@@ -1022,7 +1112,7 @@ class ProfileScreen extends ConsumerWidget {
                 ),
                 title: Text(
                   translate('sign_out'),
-                  style: TextStyle(
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: Theme.of(context).colorScheme.error,
                     fontSize: ResponsiveUtils.getResponsiveValue(
                         context: context, mobile: 16, tablet: 18, desktop: 20),
@@ -1046,7 +1136,7 @@ class ProfileScreen extends ConsumerWidget {
       builder: (context) => AlertDialog(
         title: Text(
           translate('choose_theme'),
-          style: TextStyle(
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
             fontSize: ResponsiveUtils.getResponsiveValue(
                 context: context, mobile: 18, tablet: 20, desktop: 22),
           ),
@@ -1065,7 +1155,7 @@ class ProfileScreen extends ConsumerWidget {
                   RadioListTile<ThemeMode>(
                     title: Text(
                       translate('light_mode'),
-                      style: TextStyle(
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         fontSize: ResponsiveUtils.getResponsiveValue(
                             context: context,
                             mobile: 16,
@@ -1078,7 +1168,7 @@ class ProfileScreen extends ConsumerWidget {
                   RadioListTile<ThemeMode>(
                     title: Text(
                       translate('dark_mode'),
-                      style: TextStyle(
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         fontSize: ResponsiveUtils.getResponsiveValue(
                             context: context,
                             mobile: 16,
@@ -1091,7 +1181,7 @@ class ProfileScreen extends ConsumerWidget {
                   RadioListTile<ThemeMode>(
                     title: Text(
                       translate('system_mode'),
-                      style: TextStyle(
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         fontSize: ResponsiveUtils.getResponsiveValue(
                             context: context,
                             mobile: 16,
@@ -1110,8 +1200,8 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  void _showLanguageSelector(
-      BuildContext context, WidgetRef ref, String Function(String) translate) {
+  void _showLanguageSelector(BuildContext context, WidgetRef ref) {
+    final translate = ref.read(languageProvider);
     showModalBottomSheet(
       context: context,
       shape: RoundedRectangleBorder(
@@ -1156,7 +1246,7 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                   title: Text(
                     name,
-                    style: TextStyle(
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       fontSize: ResponsiveUtils.getResponsiveValue(
                           context: context,
                           mobile: 16,
@@ -1184,14 +1274,14 @@ class ProfileScreen extends ConsumerWidget {
       builder: (context) => AlertDialog(
         title: Text(
           translate('sign_out'),
-          style: TextStyle(
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
             fontSize: ResponsiveUtils.getResponsiveValue(
                 context: context, mobile: 18, tablet: 20, desktop: 22),
           ),
         ),
         content: Text(
           translate('sign_out_confirmation'),
-          style: TextStyle(
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
             fontSize: ResponsiveUtils.getResponsiveValue(
                 context: context, mobile: 16, tablet: 18, desktop: 20),
           ),
@@ -1201,7 +1291,7 @@ class ProfileScreen extends ConsumerWidget {
             onPressed: () => Navigator.of(context).pop(),
             child: Text(
               translate('cancel'),
-              style: TextStyle(
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
                 fontSize: ResponsiveUtils.getResponsiveValue(
                     context: context, mobile: 14, tablet: 16, desktop: 18),
               ),
@@ -1221,9 +1311,10 @@ class ProfileScreen extends ConsumerWidget {
             ),
             child: Text(
               translate('sign_out'),
-              style: TextStyle(
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
                 fontSize: ResponsiveUtils.getResponsiveValue(
                     context: context, mobile: 14, tablet: 16, desktop: 18),
+                color: Theme.of(context).colorScheme.onError,
               ),
             ),
           ),

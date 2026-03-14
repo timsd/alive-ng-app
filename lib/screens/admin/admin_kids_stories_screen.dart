@@ -69,14 +69,14 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
         
         if (mounted) {
            ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Document successfully extracted!'), backgroundColor: Colors.green),
+            SnackBar(content: Text('Document successfully extracted!'), backgroundColor: Theme.of(context).colorScheme.tertiary),
           );
         }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to extract: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Failed to extract: $e'), backgroundColor: Theme.of(context).colorScheme.error),
         );
       }
     } finally {
@@ -153,14 +153,14 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Story published successfully!'), backgroundColor: Colors.green),
+          SnackBar(content: Text('Story published successfully!'), backgroundColor: Theme.of(context).colorScheme.tertiary),
         );
         Navigator.pop(context); // Return to previous screen
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Save failed: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Save failed: $e'), backgroundColor: Theme.of(context).colorScheme.error),
         );
       }
     } finally {
@@ -177,7 +177,7 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
         title: const Text('Add Kids Story'),
       ),
       body: _isSaving
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary))
           : SingleChildScrollView(
               padding: const EdgeInsets.all(16.0),
               child: Form(

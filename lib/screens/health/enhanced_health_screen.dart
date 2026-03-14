@@ -84,8 +84,8 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
     return Scaffold(
       appBar: AppBar(
         title: Text(translate('health_wellness')),
-        backgroundColor: Colors.green.shade700,
-        foregroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
@@ -125,7 +125,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.error_outline,
-              size: context.responsiveIconSize(64), color: Colors.red.shade300),
+              size: context.responsiveIconSize(64), color: Theme.of(context).colorScheme.error),
           SizedBox(
               height: ResponsiveUtils.getResponsiveValue(
                   context: context, mobile: 16.0, tablet: 18.0, desktop: 20.0)),
@@ -187,7 +187,10 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
         decoration: BoxDecoration(
           borderRadius: context.responsiveBorderRadius,
           gradient: LinearGradient(
-            colors: [Colors.green.shade400, Colors.green.shade600],
+            colors: [
+              Theme.of(context).colorScheme.primaryContainer,
+              Theme.of(context).colorScheme.primary,
+            ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -197,10 +200,9 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
           children: [
             Text(
               'Welcome to Wholesome Living',
-              style: TextStyle(
-                fontSize: context.responsiveFontSize(24),
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.onPrimary,
               ),
             ),
             SizedBox(
@@ -211,9 +213,8 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                     desktop: 12.0)),
             Text(
               'Embrace the 8 natural laws of health',
-              style: TextStyle(
-                fontSize: context.responsiveFontSize(16),
-                color: Colors.white70,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.7),
               ),
             ),
             SizedBox(
@@ -224,10 +225,9 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                     desktop: 16.0)),
             Text(
               '"Beloved, I wish above all things that thou mayest prosper and be in health, even as thy soul prospereth." - 3 John 1:2',
-              style: TextStyle(
-                fontSize: context.responsiveFontSize(14),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 fontStyle: FontStyle.italic,
-                color: Colors.white.withValues(alpha: 0.9),
+                color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.9),
               ),
             ),
           ],
@@ -244,7 +244,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
             'Tracking Days',
             '${_statistics['totalDays'] ?? 0}',
             Icons.calendar_today,
-            Colors.blue,
+            Theme.of(context).colorScheme.primary,
           ),
         ),
         SizedBox(
@@ -255,7 +255,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
             'Average Score',
             '${(_statistics['averageScore'] ?? 0.0).toStringAsFixed(1)}/10',
             Icons.star,
-            Colors.orange,
+            Theme.of(context).colorScheme.secondary,
           ),
         ),
         SizedBox(
@@ -266,7 +266,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
             'Current Streak',
             '${_statistics['streakDays'] ?? 0} days',
             Icons.local_fire_department,
-            Colors.red,
+            Theme.of(context).colorScheme.error,
           ),
         ),
       ],
@@ -290,8 +290,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                     desktop: 12.0)),
             Text(
               value,
-              style: TextStyle(
-                fontSize: context.responsiveFontSize(18),
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -300,9 +299,8 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                     context: context, mobile: 4.0, tablet: 5.0, desktop: 6.0)),
             Text(
               title,
-              style: TextStyle(
-                fontSize: context.responsiveFontSize(12),
-                color: Colors.grey.shade600,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
             ),
@@ -321,7 +319,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
             children: [
               Icon(Icons.add_circle_outline,
                   size: context.responsiveIconSize(48),
-                  color: Colors.grey.shade400),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4)),
               SizedBox(
                   height: ResponsiveUtils.getResponsiveValue(
                       context: context,
@@ -356,14 +354,12 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
               children: [
                 LayoutFixUtils.safeText(
                   'Today\'s Progress',
-                  style: TextStyle(
-                      fontSize: context.responsiveFontSize(18),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold),
                 ),
                 Text(
                   '${(_todayTracker!.completionPercentage / 10).toStringAsFixed(1)}/10',
-                  style: TextStyle(
-                    fontSize: context.responsiveFontSize(16),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: _getScoreColor(
                         _todayTracker!.completionPercentage / 10),
@@ -408,7 +404,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
             width: ResponsiveUtils.getResponsiveValue(
                 context: context, mobile: 80, tablet: 90, desktop: 100),
             child: LayoutFixUtils.safeText(label,
-                style: TextStyle(fontSize: context.responsiveFontSize(12))),
+                style: Theme.of(context).textTheme.bodySmall),
           ),
           Expanded(
             child: LinearProgressIndicator(
@@ -425,7 +421,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                   context: context, mobile: 8, tablet: 10, desktop: 12)),
           Text(
             '${(progress * 100).round()}%',
-            style: TextStyle(fontSize: context.responsiveFontSize(12)),
+            style: Theme.of(context).textTheme.bodySmall,
           ),
         ],
       ),
@@ -433,9 +429,9 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
   }
 
   Color _getScoreColor(double score) {
-    if (score >= 8) return Colors.green;
-    if (score >= 6) return Colors.orange;
-    return Colors.red;
+    if (score >= 8) return Theme.of(context).colorScheme.tertiary;
+    if (score >= 6) return Theme.of(context).colorScheme.secondary;
+    return Theme.of(context).colorScheme.error;
   }
 
   Widget _buildQuickActions() {
@@ -447,8 +443,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
           children: [
             Text(
               'Quick Actions',
-              style: TextStyle(
-                  fontSize: context.responsiveFontSize(18),
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold),
             ),
             SizedBox(
@@ -460,19 +455,19 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                 _buildActionButton(
                   'Meal Plans',
                   Icons.restaurant_menu,
-                  Colors.green,
+                  Theme.of(context).colorScheme.tertiary,
                   () => _tabController.animateTo(1),
                 ),
                 _buildActionButton(
                   'Daily Tips',
                   Icons.lightbulb_outline,
-                  Colors.blue,
+                  Theme.of(context).colorScheme.primary,
                   () => _tabController.animateTo(2),
                 ),
                 _buildActionButton(
                   'Track Today',
                   Icons.add_circle,
-                  Colors.orange,
+                  Theme.of(context).colorScheme.secondary,
                   () => _tabController.animateTo(3),
                 ),
               ],
@@ -507,7 +502,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                   context: context, mobile: 8, tablet: 10, desktop: 12)),
           Text(
             label,
-            style: TextStyle(fontSize: context.responsiveFontSize(12)),
+            style: Theme.of(context).textTheme.bodySmall,
             textAlign: TextAlign.center,
           ),
         ],
@@ -523,8 +518,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
         children: [
           Text(
             'Nigerian Vegetarian Meal Plans',
-            style: TextStyle(
-                fontSize: context.responsiveFontSize(20),
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold),
           ),
           SizedBox(
@@ -532,7 +526,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                   context: context, mobile: 8, tablet: 10, desktop: 12)),
           Text(
             'Wholesome meals based on Adventist health principles',
-            style: TextStyle(color: Colors.grey.shade600),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
           ),
           SizedBox(
               height: ResponsiveUtils.getResponsiveValue(
@@ -575,8 +569,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                 Expanded(
                   child: Text(
                     mealPlan.title,
-                    style: TextStyle(
-                      fontSize: context.responsiveFontSize(16),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -588,15 +581,14 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                       vertical: ResponsiveUtils.getResponsiveValue(
                           context: context, mobile: 4, tablet: 6, desktop: 8)),
                   decoration: BoxDecoration(
-                    color: Colors.green.shade100,
+                    color: Theme.of(context).colorScheme.tertiaryContainer,
                     borderRadius: context.responsiveBorderRadius,
                   ),
                   child: Text(
                     mealPlan.region.name.toUpperCase(),
-                    style: TextStyle(
-                      fontSize: context.responsiveFontSize(10),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: Colors.green.shade700,
+                      color: Theme.of(context).colorScheme.onTertiaryContainer,
                     ),
                   ),
                 ),
@@ -607,7 +599,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                     context: context, mobile: 8, tablet: 10, desktop: 12)),
             Text(
               mealPlan.description,
-              style: TextStyle(color: Colors.grey.shade600),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
             SizedBox(
                 height: ResponsiveUtils.getResponsiveValue(
@@ -616,30 +608,28 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
               children: [
                 Icon(Icons.schedule,
                     size: context.responsiveIconSize(16),
-                    color: Colors.grey.shade600),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
                 SizedBox(
                     width: ResponsiveUtils.getResponsiveValue(
                         context: context, mobile: 4, tablet: 6, desktop: 8)),
                 Text(
                   '${mealPlan.days.length} days',
-                  style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: context.responsiveFontSize(12)),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant),
                 ),
                 SizedBox(
                     width: ResponsiveUtils.getResponsiveValue(
                         context: context, mobile: 16, tablet: 20, desktop: 24)),
                 Icon(Icons.restaurant_menu,
                     size: context.responsiveIconSize(16),
-                    color: Colors.grey.shade600),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
                 SizedBox(
                     width: ResponsiveUtils.getResponsiveValue(
                         context: context, mobile: 4, tablet: 6, desktop: 8)),
                 Text(
                   '${mealPlan.days.length} meals',
-                  style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: context.responsiveFontSize(12)),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant),
                 ),
               ],
             ),
@@ -658,7 +648,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                             style: TextStyle(
                                 fontSize: context.responsiveFontSize(10)),
                           ),
-                          backgroundColor: Colors.blue.shade50,
+                          backgroundColor: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.1),
                           materialTapTargetSize:
                               MaterialTapTargetSize.shrinkWrap,
                         ))
@@ -679,8 +669,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
         children: [
           Text(
             'Wholesome Living Tips',
-            style: TextStyle(
-                fontSize: context.responsiveFontSize(20),
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold),
           ),
           SizedBox(
@@ -688,7 +677,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                   context: context, mobile: 8, tablet: 10, desktop: 12)),
           Text(
             'Practical guidance for healthy Christian living',
-            style: TextStyle(color: Colors.grey.shade600),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
           ),
           SizedBox(
               height: ResponsiveUtils.getResponsiveValue(
@@ -731,12 +720,12 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                 Container(
                   padding: context.responsivePadding,
                   decoration: BoxDecoration(
-                    color: Colors.blue.shade100,
+                    color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.2),
                     borderRadius: context.responsiveBorderRadius,
                   ),
                   child: Icon(
                     Icons.lightbulb,
-                    color: Colors.blue.shade700,
+                    color: Theme.of(context).colorScheme.primary,
                     size: context.responsiveIconSize(20),
                   ),
                 ),
@@ -746,8 +735,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                 Expanded(
                   child: Text(
                     tip.title,
-                    style: TextStyle(
-                      fontSize: context.responsiveFontSize(16),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -759,8 +747,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                     context: context, mobile: 12, tablet: 16, desktop: 20)),
             Text(
               tip.content,
-              style: TextStyle(
-                  fontSize: context.responsiveFontSize(14), height: 1.5),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.5),
             ),
             if (tip.bibleVerse != null) ...[
               SizedBox(
@@ -769,15 +756,15 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
               Container(
                 padding: context.responsivePadding,
                 decoration: BoxDecoration(
-                  color: Colors.green.shade50,
+                  color: Theme.of(context).colorScheme.tertiaryContainer.withValues(alpha: 0.1),
                   borderRadius: context.responsiveBorderRadius,
-                  border: Border.all(color: Colors.green.shade200),
+                  border: Border.all(color: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
                     Icon(
                       Icons.menu_book,
-                      color: Colors.green.shade700,
+                      color: Theme.of(context).colorScheme.tertiary,
                       size: context.responsiveIconSize(16),
                     ),
                     SizedBox(
@@ -789,10 +776,9 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                     Expanded(
                       child: Text(
                         tip.bibleVerse!,
-                        style: TextStyle(
-                          fontSize: context.responsiveFontSize(12),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           fontStyle: FontStyle.italic,
-                          color: Colors.green.shade700,
+                          color: Theme.of(context).colorScheme.tertiary,
                         ),
                       ),
                     ),
@@ -810,12 +796,11 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                 children: tip.tags
                     .take(3)
                     .map((tag) => Chip(
-                          label: Text(
-                            tag,
-                            style: TextStyle(
-                                fontSize: context.responsiveFontSize(10)),
-                          ),
-                          backgroundColor: Colors.grey.shade100,
+                           label: Text(
+                             tag,
+                             style: Theme.of(context).textTheme.labelSmall,
+                           ),
+                          backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                           materialTapTargetSize:
                               MaterialTapTargetSize.shrinkWrap,
                         ))
@@ -836,8 +821,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
         children: [
           Text(
             'Lifestyle Tracker',
-            style: TextStyle(
-                fontSize: context.responsiveFontSize(20),
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold),
           ),
           SizedBox(
@@ -845,7 +829,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                   context: context, mobile: 8, tablet: 10, desktop: 12)),
           Text(
             'Track the 8 natural laws of health daily',
-            style: TextStyle(color: Colors.grey.shade600),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
           ),
           SizedBox(
               height: ResponsiveUtils.getResponsiveValue(
@@ -866,8 +850,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
           children: [
             Text(
               'Today\'s Health Tracking',
-              style: TextStyle(
-                  fontSize: context.responsiveFontSize(18),
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold),
             ),
             SizedBox(
@@ -900,8 +883,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
         children: [
           Text(
             'Health Insights',
-            style: TextStyle(
-                fontSize: context.responsiveFontSize(20),
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold),
           ),
           SizedBox(
@@ -909,7 +891,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                   context: context, mobile: 8, tablet: 10, desktop: 12)),
           Text(
             'Personalized recommendations for better health',
-            style: TextStyle(color: Colors.grey.shade600),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
           ),
           SizedBox(
               height: ResponsiveUtils.getResponsiveValue(
@@ -923,7 +905,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                     Icon(
                       Icons.insights,
                       size: context.responsiveIconSize(48),
-                      color: Colors.grey.shade400,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
                     ),
                     SizedBox(
                         height: ResponsiveUtils.getResponsiveValue(
@@ -933,8 +915,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                             desktop: 24)),
                     Text(
                       'No insights available',
-                      style:
-                          TextStyle(fontSize: context.responsiveFontSize(16)),
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
                     SizedBox(
                         height: ResponsiveUtils.getResponsiveValue(
@@ -973,16 +954,16 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
     switch (insight.category.toLowerCase()) {
       case 'urgent':
       case 'critical':
-        priorityColor = Colors.red;
+        priorityColor = Theme.of(context).colorScheme.error;
         priorityIcon = Icons.priority_high;
         break;
       case 'warning':
       case 'moderate':
-        priorityColor = Colors.orange;
+        priorityColor = Theme.of(context).colorScheme.secondary;
         priorityIcon = Icons.warning;
         break;
       default:
-        priorityColor = Colors.blue;
+        priorityColor = Theme.of(context).colorScheme.primary;
         priorityIcon = Icons.info;
     }
 
@@ -1015,8 +996,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                 Expanded(
                   child: Text(
                     insight.title,
-                    style: TextStyle(
-                      fontSize: context.responsiveFontSize(16),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -1028,7 +1008,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                     context: context, mobile: 12, tablet: 16, desktop: 20)),
             Text(
               insight.content,
-              style: TextStyle(fontSize: context.responsiveFontSize(14)),
+            style: Theme.of(context).textTheme.bodyMedium,
             ),
             SizedBox(
                 height: ResponsiveUtils.getResponsiveValue(
@@ -1036,10 +1016,9 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
             if (insight.recommendations.isNotEmpty)
               Text(
                 'Recommendations: ${insight.recommendations.join(', ')}',
-                style: TextStyle(
-                  fontSize: context.responsiveFontSize(14),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.w500,
-                  color: Colors.green.shade700,
+                  color: Theme.of(context).colorScheme.tertiary,
                 ),
               ),
             if (insight.data.containsKey('bibleVerse') &&
@@ -1050,15 +1029,15 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
               Container(
                 padding: context.responsivePadding,
                 decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
+                  color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.1),
                   borderRadius: context.responsiveBorderRadius,
-                  border: Border.all(color: Colors.blue.shade200),
+                  border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
                     Icon(
                       Icons.menu_book,
-                      color: Colors.blue.shade700,
+                      color: Theme.of(context).colorScheme.primary,
                       size: context.responsiveIconSize(16),
                     ),
                     SizedBox(
@@ -1070,10 +1049,9 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                     Expanded(
                       child: Text(
                         insight.data['bibleVerse'] as String,
-                        style: TextStyle(
-                          fontSize: context.responsiveFontSize(12),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           fontStyle: FontStyle.italic,
-                          color: Colors.blue.shade700,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
                     ),
@@ -1177,7 +1155,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(translate('health_data_saved')),
-                  backgroundColor: Colors.green,
+                  backgroundColor: Theme.of(context).colorScheme.tertiary,
                 ),
               );
             },

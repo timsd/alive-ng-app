@@ -103,7 +103,7 @@ class _DonationDialogState extends State<DonationDialog> {
             content: Text(
               'Thank you for your donation! You can now download ${widget.material.title}.',
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: Theme.of(context).colorScheme.tertiary,
             duration: const Duration(seconds: 4),
           ),
         );
@@ -115,7 +115,7 @@ class _DonationDialogState extends State<DonationDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Payment failed: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -164,16 +164,14 @@ class _DonationDialogState extends State<DonationDialog> {
                       children: [
                         Text(
                           'Support Our Ministry',
-                          style: TextStyle(
-                            fontSize: context.responsiveFontSize(20),
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         Text(
                           'Help us spread the gospel forward',
-                          style: TextStyle(
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                            fontSize: context.responsiveFontSize(14),
                           ),
                         ),
                       ],
@@ -207,9 +205,8 @@ class _DonationDialogState extends State<DonationDialog> {
                   children: [
                     Text(
                       'Material: ${widget.material.title}',
-                      style: TextStyle(
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
-                        fontSize: context.responsiveFontSize(16),
                       ),
                     ),
                     SizedBox(
@@ -221,9 +218,8 @@ class _DonationDialogState extends State<DonationDialog> {
                     )),
                     Text(
                       widget.material.category,
-                      style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                        fontSize: context.responsiveFontSize(14),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
                     if (widget.material.description.isNotEmpty) ...[
@@ -236,9 +232,8 @@ class _DonationDialogState extends State<DonationDialog> {
                       )),
                       Text(
                         widget.material.description,
-                        style: TextStyle(
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55),
-                          fontSize: context.responsiveFontSize(13),
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -259,7 +254,7 @@ class _DonationDialogState extends State<DonationDialog> {
               // Donation Amount
               Text(
                 'Donation Amount (USD)',
-                style: TextStyle(
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w600,
                   color: Theme.of(context).colorScheme.onSurface,
                 ),
@@ -313,8 +308,7 @@ class _DonationDialogState extends State<DonationDialog> {
               )),
               Text(
                 _minimumAmountText,
-                style: TextStyle(
-                  fontSize: context.responsiveFontSize(12),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
@@ -348,14 +342,12 @@ class _DonationDialogState extends State<DonationDialog> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('Secured by Paystack',
-                              style: TextStyle(
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                 fontWeight: FontWeight.w600,
-                                fontSize: context.responsiveFontSize(14),
                                 color: Theme.of(context).colorScheme.onSurface,
                               )),
                           Text('Pay with card, bank transfer, USSD, QR or USSD',
-                              style: TextStyle(
-                                fontSize: context.responsiveFontSize(12),
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                 color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                               )),
                         ],
@@ -372,9 +364,9 @@ class _DonationDialogState extends State<DonationDialog> {
               // Optional Notes
               Text(
                 'Message (Optional)',
-                style: TextStyle(
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: Colors.grey[800],
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               SizedBox(
@@ -407,7 +399,7 @@ class _DonationDialogState extends State<DonationDialog> {
               Container(
                 padding: context.responsivePadding,
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                   borderRadius: context.responsiveBorderRadius,
                 ),
                 child: Row(
@@ -427,9 +419,8 @@ class _DonationDialogState extends State<DonationDialog> {
                     Expanded(
                       child: Text(
                         'Your donation helps us continue spreading the gospel and supporting our ministry efforts.',
-                        style: TextStyle(
-                          fontSize: context.responsiveFontSize(12),
-                          color: AppTheme.primaryColor,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
                     ),
@@ -470,8 +461,8 @@ class _DonationDialogState extends State<DonationDialog> {
                           ? null
                           : _processDonation,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor,
-                        foregroundColor: Colors.white,
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Theme.of(context).colorScheme.onPrimary,
                         padding: EdgeInsets.symmetric(
                           vertical: ResponsiveUtils.getResponsiveValue(
                             context: context,
@@ -489,19 +480,20 @@ class _DonationDialogState extends State<DonationDialog> {
                         ),
                       ),
                       child: _isProcessing
-                          ? const SizedBox(
+                          ? SizedBox(
                               height: 20,
                               width: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
                                 valueColor:
-                                    AlwaysStoppedAnimation<Color>(Colors.white),
+                                    AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.onPrimary),
                               ),
                             )
                           : Text(
                               'Donate \$${_donationAmount.toStringAsFixed(2)}',
-                              style: const TextStyle(
+                              style: Theme.of(context).textTheme.labelLarge?.copyWith(
                                 fontWeight: FontWeight.w600,
+                                color: Theme.of(context).colorScheme.onPrimary,
                               ),
                             ),
                     ),
@@ -513,31 +505,5 @@ class _DonationDialogState extends State<DonationDialog> {
         ),
       ),
     );
-  }
-
-  String _getPaymentMethodName(PaymentMethod method) {
-    switch (method) {
-      case PaymentMethod.paystack:
-        return 'Paystack (Nigeria & International)';
-      case PaymentMethod.bankTransfer:
-        return 'Bank Transfer';
-      case PaymentMethod.mobileMoney:
-        return 'Mobile Money';
-      case PaymentMethod.paypal:
-        return 'PayPal';
-    }
-  }
-
-  String _getPaymentMethodDescription(PaymentMethod method) {
-    switch (method) {
-      case PaymentMethod.paystack:
-        return 'Pay with Nigerian banks, cards, and international payments';
-      case PaymentMethod.bankTransfer:
-        return 'Direct bank transfer';
-      case PaymentMethod.mobileMoney:
-        return 'Mobile money services';
-      case PaymentMethod.paypal:
-        return 'Secure payment with PayPal';
-    }
   }
 }

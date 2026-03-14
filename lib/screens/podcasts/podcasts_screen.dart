@@ -211,11 +211,12 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
                     const SizedBox(height: 16),
                     Text(
                       'No podcasts found',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
                             color: Theme.of(context)
                                 .colorScheme
                                 .onSurface
                                 .withValues(alpha: 0.7),
+                            fontWeight: FontWeight.bold,
                           ),
                     ),
                     const SizedBox(height: 8),
@@ -447,13 +448,13 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
                         borderRadius: BorderRadius.circular(
                             ResponsiveUtils.getResponsiveSpacing(context, 12)),
                         backgroundColor: Theme.of(context)
-                            .primaryColor
+                            .colorScheme.primary
                             .withValues(alpha: 0.1),
                         placeholder: Icon(
                           Icons.headset,
                           size: ResponsiveUtils.getResponsiveIconSize(
                               context, 50),
-                          color: Theme.of(context).primaryColor,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
                       SizedBox(
@@ -543,13 +544,13 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
                           height: 40,
                           decoration: BoxDecoration(
                             color: Theme.of(context)
-                                .primaryColor
+                                .colorScheme.primary
                                 .withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(
                             Icons.play_arrow,
-                            color: Theme.of(context).primaryColor,
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                         ),
                         title: Text(sampleEpisode['title']!),

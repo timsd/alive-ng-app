@@ -70,7 +70,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error loading documents: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -110,8 +110,8 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Board Documents'),
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         actions: [
           IconButton(
             icon: const Icon(Icons.upload_file),
@@ -125,10 +125,10 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
           Container(
             padding: ResponsiveUtils.getResponsivePadding(context),
             decoration: BoxDecoration(
-              color: Colors.grey.shade50,
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(
                   ResponsiveUtils.getResponsiveBorderRadiusValue(context, 12)),
-              border: Border.all(color: Colors.grey.shade200),
+              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
             ),
             child: Column(
               children: [
@@ -216,8 +216,8 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
           // Documents List
           Expanded(
             child: _isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(color: Colors.green),
+                ? Center(
+                    child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary),
                   )
                 : _filteredDocuments.isEmpty
                     ? Center(
@@ -238,7 +238,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                               style: TextStyle(
                                 fontSize: ResponsiveUtils.getResponsiveFontSize(
                                     context, 18),
-                                color: Colors.grey,
+                                color: Theme.of(context).colorScheme.outline,
                               ),
                             ),
                           ],
@@ -269,44 +269,44 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
     switch (document.fileType.toLowerCase()) {
       case 'pdf':
         fileIcon = Icons.picture_as_pdf;
-        fileIconColor = Colors.red;
+        fileIconColor = Theme.of(context).colorScheme.error;
         break;
       case 'doc':
       case 'docx':
         fileIcon = Icons.description;
-        fileIconColor = Colors.blue;
+        fileIconColor = Theme.of(context).colorScheme.secondary;
         break;
       case 'xls':
       case 'xlsx':
         fileIcon = Icons.table_chart;
-        fileIconColor = Colors.green;
+        fileIconColor = Theme.of(context).colorScheme.tertiary;
         break;
       case 'ppt':
       case 'pptx':
         fileIcon = Icons.slideshow;
-        fileIconColor = Colors.orange;
+        fileIconColor = Colors.orange; // Keep orange as it's common for ppt, but maybe use a theme color if possible
         break;
       default:
         fileIcon = Icons.insert_drive_file;
-        fileIconColor = Colors.grey;
+        fileIconColor = Theme.of(context).colorScheme.outline;
     }
 
     Color accessLevelColor;
     switch (document.accessLevel) {
       case 'public':
-        accessLevelColor = Colors.green;
+        accessLevelColor = Theme.of(context).colorScheme.tertiary;
         break;
       case 'board_only':
-        accessLevelColor = Colors.blue;
+        accessLevelColor = Theme.of(context).colorScheme.secondary;
         break;
       case 'trustees_only':
         accessLevelColor = Colors.orange;
         break;
       case 'admin_only':
-        accessLevelColor = Colors.red;
+        accessLevelColor = Theme.of(context).colorScheme.error;
         break;
       default:
-        accessLevelColor = Colors.grey;
+        accessLevelColor = Theme.of(context).colorScheme.outline;
     }
 
     return Card(
@@ -337,7 +337,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                       children: [
                         Text(
                           document.title,
-                          style: TextStyle(
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontSize: ResponsiveUtils.getResponsiveFontSize(
                                 context, 16),
                             fontWeight: FontWeight.bold,
@@ -348,10 +348,10 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                                 context, 4)),
                         Text(
                           document.fileName,
-                          style: TextStyle(
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             fontSize: ResponsiveUtils.getResponsiveFontSize(
                                 context, 12),
-                            color: Colors.grey.shade600,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -388,8 +388,8 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                   height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
               Text(
                 document.description,
-                style: const TextStyle(
-                  color: Colors.grey,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
               SizedBox(
@@ -409,20 +409,20 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                                   context, 2),
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.green.withValues(alpha: 0.1),
+                              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(
                                   ResponsiveUtils
                                       .getResponsiveBorderRadiusValue(
                                           context, 8)),
                               border: Border.all(
-                                  color: Colors.green.withValues(alpha: 0.3)),
+                                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)),
                             ),
                             child: Text(
                               '#$tag',
                               style: TextStyle(
                                 fontSize: ResponsiveUtils.getResponsiveFontSize(
                                     context, 10),
-                                color: Colors.green,
+                                color: Theme.of(context).colorScheme.primary,
                               ),
                             ),
                           ))
@@ -492,7 +492,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                           ResponsiveUtils.getResponsiveSpacing(context, 2),
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.blue.withValues(alpha: 0.1),
+                      color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(
                           ResponsiveUtils.getResponsiveBorderRadiusValue(
                               context, 8)),
@@ -504,7 +504,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                         fontSize:
                             ResponsiveUtils.getResponsiveFontSize(context, 10),
                         fontWeight: FontWeight.bold,
-                        color: Colors.blue,
+                        color: Theme.of(context).colorScheme.secondary,
                       ),
                     ),
                   ),
@@ -538,9 +538,9 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
             children: [
               Row(
                 children: [
-                  const Text(
+                  Text(
                     'File: ',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   Expanded(
                     child: Text(document.fileName),
@@ -551,9 +551,9 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                   height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
               Row(
                 children: [
-                  const Text(
+                  Text(
                     'Size: ',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   Text(_formatFileSize(document.fileSize)),
                 ],
@@ -562,9 +562,9 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                   height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
               Row(
                 children: [
-                  const Text(
+                  Text(
                     'Uploaded by: ',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   Text(document.uploadedBy),
                 ],
@@ -573,9 +573,9 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                   height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
               Row(
                 children: [
-                  const Text(
+                  Text(
                     'Date: ',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   Text(DateFormat('MMM dd, yyyy HH:mm')
                       .format(document.uploadedAt)),
@@ -585,14 +585,14 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                   height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
               Text(
                 document.description,
-                style: const TextStyle(fontStyle: FontStyle.italic),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontStyle: FontStyle.italic),
               ),
               if (document.tags.isNotEmpty) ...[
                 SizedBox(
                     height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-                const Text(
+                Text(
                   'Tags:',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 SizedBox(
                     height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
@@ -606,12 +606,13 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                               style: TextStyle(
                                   fontSize:
                                       ResponsiveUtils.getResponsiveFontSize(
-                                          context, 12)),
+                                          context, 12),
+                                  color: Theme.of(context).colorScheme.primary),
                             ),
                             backgroundColor:
-                                Colors.green.withValues(alpha: 0.1),
+                                Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                             side: BorderSide(
-                                color: Colors.green.withValues(alpha: 0.3)),
+                                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)),
                           ))
                       .toList(),
                 ),
@@ -667,7 +668,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error downloading document: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -697,7 +698,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                   subtitle: Text(
                     selectedFile?.name ?? 'No file selected',
                     style: TextStyle(
-                      color: selectedFile != null ? Colors.green : Colors.grey,
+                      color: selectedFile != null ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.outline,
                     ),
                   ),
                   trailing: const Icon(Icons.attach_file),
@@ -732,7 +733,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                         messenger.showSnackBar(
                           SnackBar(
                             content: Text('Error selecting file: $e'),
-                            backgroundColor: Colors.red,
+                            backgroundColor: Theme.of(context).colorScheme.error,
                           ),
                         );
                       }
@@ -827,7 +828,10 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                   );
                 }
               },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Theme.of(context).colorScheme.onPrimary,
+              ),
               child: Text('Upload',
                   style: TextStyle(
                       color: Theme.of(context).colorScheme.onPrimary)),
@@ -849,9 +853,9 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
       // Show loading indicator
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Uploading document...'),
-            backgroundColor: Colors.blue,
+          SnackBar(
+            content: const Text('Uploading document...'),
+            backgroundColor: Theme.of(context).colorScheme.secondary,
             duration: Duration(seconds: 2),
           ),
         );
@@ -898,9 +902,9 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Document uploaded successfully'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: const Text('Document uploaded successfully'),
+            backgroundColor: Theme.of(context).colorScheme.tertiary,
           ),
         );
       }
@@ -912,7 +916,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error uploading document: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }

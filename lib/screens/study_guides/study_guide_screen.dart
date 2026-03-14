@@ -137,8 +137,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
           children: [
             Text(
               'Welcome to Study Guides',
-              style: TextStyle(
-                fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 24, tablet: 28, desktop: 32),
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: Theme.of(context).colorScheme.onPrimary,
               ),
@@ -146,8 +145,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
             SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 8, tablet: 10, desktop: 12)),
             Text(
               'Deepen your understanding of Scripture through structured Bible studies',
-              style: TextStyle(
-                fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 16, tablet: 18, desktop: 20),
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                 color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.7),
               ),
             ),
@@ -160,9 +158,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
               ),
               child: Text(
                 'Browse Study Guides',
-                style: TextStyle(
-                  fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 14, tablet: 16, desktop: 18),
-                ),
+                style: Theme.of(context).textTheme.labelLarge,
               ),
             ),
           ],
@@ -179,7 +175,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
             'Total Studies',
             '${_statistics['totalStudies'] ?? 0}',
             Icons.library_books,
-            Colors.blue,
+            Theme.of(context).colorScheme.primary,
           ),
         ),
         SizedBox(width: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
@@ -188,7 +184,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
             'Completed',
             '${_statistics['completedStudies'] ?? 0}',
             Icons.check_circle,
-            Colors.green,
+            Theme.of(context).colorScheme.tertiary,
           ),
         ),
         SizedBox(width: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
@@ -197,7 +193,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
             'In Progress',
             '${_statistics['inProgressStudies'] ?? 0}',
             Icons.schedule,
-            Colors.orange,
+            Theme.of(context).colorScheme.secondary,
           ),
         ),
       ],
@@ -215,17 +211,15 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
             SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 8, tablet: 10, desktop: 12)),
             Text(
               value,
-              style: TextStyle(
-                fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 24, tablet: 28, desktop: 32),
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             Text(
               title,
-              style: TextStyle(
-                fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 14, desktop: 16),
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -242,10 +236,9 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
       children: [
         Text(
           'Featured Study Guides',
-          style: TextStyle(
-            fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 20, tablet: 24, desktop: 28),
-            fontWeight: FontWeight.bold,
-          ),
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
         ),
         SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
         ...featuredGuides.map((guide) => _buildStudyGuideCard(guide)),
@@ -265,10 +258,9 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
       children: [
         Text(
           'Recent Progress',
-          style: TextStyle(
-            fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 20, tablet: 24, desktop: 28),
-            fontWeight: FontWeight.bold,
-          ),
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
         ),
         SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
         ...recentProgress.map((progress) => _buildProgressCard(progress)),
@@ -285,7 +277,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
               ? Center(
                   child: Text(
                     'No study guides found',
-                    style: TextStyle(fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 16, tablet: 18, desktop: 20)),
+                    style: Theme.of(context).textTheme.titleMedium,
                   ),
                 )
               : ListView.builder(
@@ -403,17 +395,15 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
                       children: [
                         Text(
                           guide.title,
-                          style: TextStyle(
-                            fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 18, tablet: 20, desktop: 22),
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 4, tablet: 6, desktop: 8)),
                         Text(
                           guide.description,
-                          style: TextStyle(
-                            fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 14, tablet: 16, desktop: 18),
-                            color: Colors.grey[600],
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -427,11 +417,11 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
               SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
               Row(
                 children: [
-                  _buildInfoChip(guide.type.name.toUpperCase(), Colors.blue),
+                  _buildInfoChip(guide.type.name.toUpperCase(), Theme.of(context).colorScheme.primary),
                   SizedBox(width: ResponsiveUtils.getResponsiveValue(context: context, mobile: 8, tablet: 10, desktop: 12)),
-                  _buildInfoChip(guide.difficulty.name.toUpperCase(), Colors.orange),
+                  _buildInfoChip(guide.difficulty.name.toUpperCase(), Theme.of(context).colorScheme.secondary),
                   SizedBox(width: ResponsiveUtils.getResponsiveValue(context: context, mobile: 8, tablet: 10, desktop: 12)),
-                  _buildInfoChip('${guide.estimatedDurationMinutes}min', Colors.green),
+                  _buildInfoChip('${guide.estimatedDurationMinutes}min', Theme.of(context).colorScheme.tertiary),
                 ],
               ),
               if (userProgress.status != StudyStatus.notStarted) ...[
@@ -441,16 +431,15 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
                   backgroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.15),
                   valueColor: AlwaysStoppedAnimation<Color>(
                     userProgress.status == StudyStatus.completed
-                        ? Colors.green
-                        : AppTheme.primaryColor,
+                        ? Theme.of(context).colorScheme.tertiary
+                        : Theme.of(context).colorScheme.primary,
                   ),
                 ),
                 SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 4, tablet: 6, desktop: 8)),
                 Text(
                   '${userProgress.progressPercentage.toInt()}% Complete',
-                  style: TextStyle(
-                    fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 14, desktop: 16),
-                    color: Colors.grey[600],
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -467,16 +456,16 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.timeline, size: ResponsiveUtils.getResponsiveValue(context: context, mobile: 64, tablet: 72, desktop: 80), color: Colors.grey),
+            Icon(Icons.timeline, size: ResponsiveUtils.getResponsiveValue(context: context, mobile: 64, tablet: 72, desktop: 80), color: Theme.of(context).colorScheme.outline),
             SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 16, tablet: 20, desktop: 24)),
             Text(
               'No study progress yet',
-              style: TextStyle(fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 18, tablet: 20, desktop: 22), color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
             ),
             SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 8, tablet: 10, desktop: 12)),
             Text(
               'Start a study guide to track your progress',
-              style: TextStyle(fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 14, tablet: 16, desktop: 18), color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
             ),
           ],
         ),
@@ -524,8 +513,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
                   Expanded(
                     child: Text(
                       studyGuide.title,
-                      style: TextStyle(
-                        fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 16, tablet: 18, desktop: 20),
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -536,11 +524,11 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
               SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 8, tablet: 10, desktop: 12)),
               LinearProgressIndicator(
                 value: progress.progressPercentage / 100,
-                backgroundColor: Colors.grey[300],
+                backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                 valueColor: AlwaysStoppedAnimation<Color>(
                   progress.status == StudyStatus.completed
-                      ? Colors.green
-                      : AppTheme.primaryColor,
+                      ? Theme.of(context).colorScheme.tertiary
+                      : Theme.of(context).colorScheme.primary,
                 ),
               ),
               SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 8, tablet: 10, desktop: 12)),
@@ -549,15 +537,13 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
                 children: [
                   Text(
                     '${progress.progressPercentage.toInt()}% Complete',
-                    style: TextStyle(
-                      fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 14, desktop: 16),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                   Text(
                     'Lesson ${progress.currentLessonNumber}',
-                    style: TextStyle(
-                      fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 14, desktop: 16),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
@@ -567,8 +553,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
                 SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 4, tablet: 6, desktop: 8)),
                 Text(
                   'Time spent: ${_formatDuration(progress.totalTimeSpentMinutes)}',
-                  style: TextStyle(
-                    fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 14, desktop: 16),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
@@ -588,8 +573,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
         children: [
           Text(
             'Study Statistics',
-            style: TextStyle(
-              fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 24, tablet: 28, desktop: 32),
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -612,7 +596,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
                 'Completion Rate',
                 '${_statistics['completionRate'] ?? 0}%',
                 Icons.trending_up,
-                Colors.green,
+                Theme.of(context).colorScheme.tertiary,
               ),
             ),
             SizedBox(width: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
@@ -621,7 +605,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
                 'Total Time',
                 _formatDuration(_statistics['totalTimeSpentMinutes'] ?? 0),
                 Icons.access_time,
-                Colors.blue,
+                Theme.of(context).colorScheme.primary,
               ),
             ),
           ],
@@ -634,16 +618,25 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
                 'Average Progress',
                 '${(_statistics['averageProgress'] ?? 0.0).toInt()}%',
                 Icons.analytics,
-                Colors.purple,
+                Theme.of(context).colorScheme.primary,
               ),
             ),
             SizedBox(width: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
             Expanded(
               child: _buildStatCard(
-                'Active Studies',
+                'Completed',
+                '${_statistics['completedStudies'] ?? 0}',
+                Icons.check_circle,
+                Theme.of(context).colorScheme.tertiary,
+              ),
+            ),
+            SizedBox(width: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
+            Expanded(
+              child: _buildStatCard(
+                'In Progress',
                 '${_statistics['inProgressStudies'] ?? 0}',
-                Icons.play_circle,
-                Colors.orange,
+                Icons.schedule,
+                Theme.of(context).colorScheme.secondary,
               ),
             ),
           ],
@@ -668,8 +661,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
           children: [
             Text(
               'Study Types Distribution',
-              style: TextStyle(
-                fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 18, tablet: 20, desktop: 22),
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -682,12 +674,11 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
                   children: [
                     Text(
                       entry.key.toUpperCase(),
-                      style: TextStyle(fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 14, tablet: 16, desktop: 18)),
+                      style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     Text(
                       '${entry.value}',
-                      style: TextStyle(
-                        fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 14, tablet: 16, desktop: 18),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -707,19 +698,19 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
     
     switch (status) {
       case StudyStatus.notStarted:
-        color = Colors.grey;
+        color = Theme.of(context).colorScheme.outline;
         text = 'Not Started';
         break;
       case StudyStatus.inProgress:
-        color = Colors.orange;
+        color = Theme.of(context).colorScheme.secondary;
         text = 'In Progress';
         break;
       case StudyStatus.completed:
-        color = Colors.green;
+        color = Theme.of(context).colorScheme.tertiary;
         text = 'Completed';
         break;
       case StudyStatus.reviewed:
-        color = Colors.blue;
+        color = Theme.of(context).colorScheme.primary;
         text = 'Reviewed';
         break;
     }
@@ -736,8 +727,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
       ),
       child: Text(
         text,
-        style: TextStyle(
-          fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 14, desktop: 16),
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
           color: color,
           fontWeight: FontWeight.w500,
         ),
@@ -757,8 +747,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
       ),
       child: Text(
         text,
-        style: TextStyle(
-          fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 10, tablet: 12, desktop: 14),
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
           color: color,
           fontWeight: FontWeight.w500,
         ),
@@ -832,9 +821,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
         return AlertDialog(
           title: Text(
             'Study Guide: ${guide.title}',
-            style: TextStyle(
-              fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 18, tablet: 20, desktop: 22),
-            ),
+            style: Theme.of(context).textTheme.titleLarge,
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -842,45 +829,33 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
             children: [
               Text(
                 'Description: ${guide.description}',
-                style: TextStyle(
-                  fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 14, tablet: 16, desktop: 18),
-                ),
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
               SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 8, tablet: 10, desktop: 12)),
               Text(
                 'Type: ${guide.type.name.toUpperCase()}',
-                style: TextStyle(
-                  fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 14, tablet: 16, desktop: 18),
-                ),
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
               SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 8, tablet: 10, desktop: 12)),
               Text(
                 'Difficulty: ${guide.difficulty.name.toUpperCase()}',
-                style: TextStyle(
-                  fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 14, tablet: 16, desktop: 18),
-                ),
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
               SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 8, tablet: 10, desktop: 12)),
               Text(
                 'Duration: ${guide.estimatedDurationMinutes} minutes',
-                style: TextStyle(
-                  fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 14, tablet: 16, desktop: 18),
-                ),
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
               if (progress != null) ...[
                 SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 8, tablet: 10, desktop: 12)),
                 Text(
                   'Progress: ${progress.progressPercentage.toInt()}%',
-                  style: TextStyle(
-                    fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 14, tablet: 16, desktop: 18),
-                  ),
+                  style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 8, tablet: 10, desktop: 12)),
                 Text(
                   'Current Lesson: ${progress.currentLessonNumber}',
-                  style: TextStyle(
-                    fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 14, tablet: 16, desktop: 18),
-                  ),
+                  style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ],
             ],
@@ -890,9 +865,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
               onPressed: () => Navigator.of(context).pop(),
               child: Text(
                 'Close',
-                style: TextStyle(
-                  fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 14, tablet: 16, desktop: 18),
-                ),
+                style: Theme.of(context).textTheme.labelLarge,
               ),
             ),
             ElevatedButton(

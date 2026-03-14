@@ -12,7 +12,8 @@ import '../../utils/logger.dart';
 import '../../services/material_sync_service.dart';
 
 class StorageAdminScreen extends StatefulWidget {
-  const StorageAdminScreen({super.key});
+  final String? initialBucket;
+  const StorageAdminScreen({super.key, this.initialBucket});
 
   @override
   State<StorageAdminScreen> createState() => _StorageAdminScreenState();
@@ -33,7 +34,9 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
     'profile-pictures',
     'tract-avatars',
     'podcast-covers',
-    'meeting-files'
+    'meeting-files',
+    'system-backups',
+    'app-logs'
   ];
 
   // File lists for each bucket
@@ -44,6 +47,12 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: _buckets.length, vsync: this);
+    if (widget.initialBucket != null) {
+      final index = _buckets.indexOf(widget.initialBucket!);
+      if (index != -1) {
+        _tabController.index = index;
+      }
+    }
     _initializeBuckets();
     _loadAllBucketFiles();
   }
@@ -402,6 +411,10 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
         return Colors.orange;
       case 'meeting-files':
         return Colors.teal;
+      case 'system-backups':
+        return Colors.blueGrey;
+      case 'app-logs':
+        return Colors.deepOrange;
       default:
         return Colors.grey;
     }
@@ -423,6 +436,10 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
         return Icons.headset;
       case 'meeting-files':
         return Icons.folder;
+      case 'system-backups':
+        return Icons.backup;
+      case 'app-logs':
+        return Icons.history_edu;
       default:
         return Icons.file_present;
     }

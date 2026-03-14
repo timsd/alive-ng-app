@@ -159,6 +159,16 @@ class ChapterService {
     }
   }
 
+  Future<void> updateChapterFields(String id, Map<String, dynamic> data) async {
+    try {
+      final updatedData = Map<String, dynamic>.from(data);
+      updatedData['updated_at'] = FieldValue.serverTimestamp();
+      await _firestore.collection('chapters').doc(id).update(updatedData);
+    } catch (e) {
+      throw DatabaseException('Failed to update chapter fields', originalError: e);
+    }
+  }
+
   Future<void> deleteChapter(String chapterId) async {
     try {
       // Soft delete

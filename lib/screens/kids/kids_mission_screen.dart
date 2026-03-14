@@ -34,7 +34,7 @@ class KidsMissionScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      appBar: const CustomAppBar(
+      appBar: CustomAppBar(
         title: 'Kids Mission',
         showBackButton: true,
       ),
@@ -363,16 +363,16 @@ class KidsMissionScreen extends ConsumerWidget {
                      ),
                    ),
                  ),
-              const Text(
+              Text(
                 'Activity Details',
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               Text(mission.description),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Instructions:',
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               Text(mission.instructions.isNotEmpty ? mission.instructions.join('\n') : '1. Read the activity description\n2. Gather required materials\n3. Follow the step-by-step guide\n4. Share your results with friends'),

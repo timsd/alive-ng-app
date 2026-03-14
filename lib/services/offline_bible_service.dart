@@ -172,6 +172,34 @@ class OfflineBibleService {
     }
   }
 
+  // Get full Bible book
+  Future<List<BibleChapter>> getBibleBookFull({
+    required String book,
+    required int totalChapters,
+    String? version,
+    String? language,
+  }) async {
+    try {
+      final List<BibleChapter> allChapters = [];
+      for (int i = 1; i <= totalChapters; i++) {
+        final chapter = await getBibleChapter(
+          book: book,
+          chapter: i,
+          version: version,
+          language: language,
+        );
+        if (chapter != null) {
+          allChapters.add(chapter);
+        }
+      }
+      return allChapters;
+    } catch (e) {
+      _logger.error('Error getting full Bible book', e);
+      // Return what we have so far if some chapters fail, or rethrow
+      return [];
+    }
+  }
+
   // Search Bible verses
   Future<List<BibleSearchResult>> searchBibleVerses({
     required String query,

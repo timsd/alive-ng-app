@@ -531,71 +531,73 @@ class _TractManagementTabState extends State<_TractManagementTab> {
                   final tract = tracts[index];
                   return Card(
                     margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  leading: Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: Colors.orange.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.article,
-                      color: Colors.orange,
-                    ),
-                  ),
-                  title: Text(
-                    tract.title,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${tract.author} • ${tract.pages} pages'),
-                      Text(
-                        tract.category.tractDisplayName,
-                        style: const TextStyle(
+                    child: ListTile(
+                      leading: Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.article,
                           color: Colors.orange,
-                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                    ],
-                  ),
-                  trailing: PopupMenuButton<String>(
-                    onSelected: (value) {
-                      switch (value) {
-                        case 'edit':
-                          _showEditTractDialog(tract);
-                          break;
-                        case 'delete':
-                          _showDeleteTractDialog(tract);
-                          break;
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(
-                        value: 'edit',
-                        child: Row(
-                          children: [
-                            Icon(Icons.edit),
-                            SizedBox(width: 8),
-                            Text('Edit'),
-                          ],
-                        ),
+                      title: Text(
+                        tract.title,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete, color: Colors.red),
-                            SizedBox(width: 8),
-                            Text('Delete', style: TextStyle(color: Colors.red)),
-                          ],
-                        ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('${tract.author} • ${tract.pages} pages'),
+                          Text(
+                            tract.category.tractDisplayName,
+                            style: const TextStyle(
+                              color: Colors.orange,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
+                      trailing: PopupMenuButton<String>(
+                        onSelected: (value) {
+                          switch (value) {
+                            case 'edit':
+                              _showEditTractDialog(tract);
+                              break;
+                            case 'delete':
+                              _showDeleteTractDialog(tract);
+                              break;
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: 'edit',
+                            child: Row(
+                              children: [
+                                Icon(Icons.edit),
+                                SizedBox(width: 8),
+                                Text('Edit'),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete, color: Colors.red),
+                                SizedBox(width: 8),
+                                Text('Delete', style: TextStyle(color: Colors.red)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               );
             },
           ),
@@ -768,7 +770,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
     super.initState();
     if (widget.tract != null) {
       _titleController.text = widget.tract!.title;
-      _authorController.text = widget.tract!.author;
+      _authorController.text = widget.tract!.author ?? '';
       _descriptionController.text = widget.tract!.description;
       _pagesController.text = widget.tract!.pages.toString();
       _tagsController.text = widget.tract!.tags.join(', ');
@@ -1565,8 +1567,10 @@ class _PodcastManagementTabState extends State<_PodcastManagementTab> {
                 ),
               );
             },
-          ),
-        ),
+          );
+        },
+      ),
+    ),
       ],
     );
   }

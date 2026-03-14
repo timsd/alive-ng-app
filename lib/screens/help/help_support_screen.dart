@@ -18,6 +18,15 @@ class HelpSupportScreen extends ConsumerStatefulWidget {
 class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
     with TickerProviderStateMixin {
   late TabController _tabController;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  String _selectedCategory = 'All';
+  String _selectedFeedbackType = 'General';
+  
+  final List<TextEditingController> _feedbackControllers = [
+    TextEditingController(), // email
+    TextEditingController(), // message
+  ];
 
   @override
   void initState() {
@@ -26,11 +35,20 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
     _tabController.addListener(() {
       setState(() {});
     });
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.toLowerCase();
+      });
+    });
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _searchController.dispose();
+    for (var controller in _feedbackControllers) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -42,9 +60,6 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
       appBar: CustomAppBar(
         title: translate('help_support'),
         showBackButton: true,
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Theme.of(context).colorScheme.onPrimary,
-        elevation: 0,
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Theme.of(context).colorScheme.onPrimary,
@@ -116,6 +131,13 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
       ),
     ];
 
+    var filteredFaqs = faqs.where((faq) {
+      final matchesSearch = faq.question.toLowerCase().contains(_searchQuery) ||
+          faq.answer.toLowerCase().contains(_searchQuery);
+      final matchesCategory = _selectedCategory == 'All' || faq.category == _selectedCategory;
+      return matchesSearch && matchesCategory;
+    }).toList();
+
     return LayoutFixUtils.safeColumn(
       padding: ResponsiveUtils.getResponsivePadding(context),
       children: [
@@ -124,9 +146,16 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
           margin: EdgeInsets.only(
               bottom: ResponsiveUtils.getResponsiveSpacing(context, 16)),
           child: TextField(
+            controller: _searchController,
             decoration: InputDecoration(
               hintText: translate('search_faq'),
               prefixIcon: const Icon(Icons.search),
+              suffixIcon: _searchQuery.isNotEmpty 
+                ? IconButton(
+                    icon: const Icon(Icons.clear),
+                    onPressed: () => _searchController.clear(),
+                  )
+                : null,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -139,14 +168,28 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
         _buildFAQCategories(context, translate, faqs),
         SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
         // FAQ List
-        ...faqs.map((faq) => _buildFAQItem(context, faq)),
+        if (filteredFaqs.isEmpty)
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: Column(
+                children: [
+                  Icon(Icons.search_off, size: 48, color: Theme.of(context).colorScheme.outline),
+                  const SizedBox(height: 16),
+                  Text(translate('no_results_found'), style: Theme.of(context).textTheme.bodyLarge),
+                ],
+              ),
+            ),
+          )
+        else
+          ...filteredFaqs.map((faq) => _buildFAQItem(context, faq)),
       ],
     );
   }
 
   Widget _buildFAQCategories(BuildContext context,
       String Function(String) translate, List<FAQItem> faqs) {
-    final categories = faqs.map((faq) => faq.category).toSet().toList();
+    final categories = ['All', ...faqs.map((faq) => faq.category).toSet()];
 
     return SizedBox(
       height: ResponsiveUtils.getResponsiveValue<double>(
@@ -165,9 +208,11 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
                 right: ResponsiveUtils.getResponsiveSpacing(context, 8)),
             child: FilterChip(
               label: Text(category),
-              selected: false,
+              selected: _selectedCategory == category,
               onSelected: (selected) {
-                // Filter FAQs by category
+                setState(() {
+                  _selectedCategory = category;
+                });
               },
             ),
           );
@@ -185,14 +230,12 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
           faq.question,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
-                fontSize: ResponsiveUtils.getResponsiveFontSize(context, 16),
               ),
         ),
         subtitle: Text(
           faq.category,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
                 color: Theme.of(context).colorScheme.primary,
-                fontSize: ResponsiveUtils.getResponsiveFontSize(context, 12),
               ),
         ),
         children: [
@@ -200,10 +243,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
             padding: ResponsiveUtils.getResponsivePadding(context),
             child: Text(
               faq.answer,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontSize:
-                        ResponsiveUtils.getResponsiveFontSize(context, 14),
-                  ),
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
           ),
         ],
@@ -218,37 +258,37 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
         title: translate('getting_started'),
         description: translate('getting_started_desc'),
         icon: Icons.play_circle_outline,
-        color: Colors.green,
+        color: Theme.of(context).colorScheme.tertiary,
       ),
       GuideItem(
         title: translate('using_prayer_wall'),
         description: translate('prayer_wall_guide_desc'),
         icon: Icons.favorite_outline,
-        color: Colors.purple,
+        color: Theme.of(context).colorScheme.secondary,
       ),
       GuideItem(
         title: translate('study_guides_tutorial'),
         description: translate('study_guides_desc'),
         icon: Icons.book_outlined,
-        color: Colors.blue,
+        color: Theme.of(context).colorScheme.primary,
       ),
       GuideItem(
         title: translate('health_tracking_guide'),
         description: translate('health_tracking_desc'),
         icon: Icons.health_and_safety_outlined,
-        color: Colors.orange,
+        color: Theme.of(context).colorScheme.secondary,
       ),
       GuideItem(
         title: translate('chapter_management'),
         description: translate('chapter_management_desc'),
         icon: Icons.group_outlined,
-        color: Colors.teal,
+        color: Theme.of(context).colorScheme.tertiary,
       ),
       GuideItem(
-        title: translate('notification_settings'),
+        title: translate('notification_settings_guide'),
         description: translate('notification_settings_desc'),
         icon: Icons.notifications_outlined,
-        color: Colors.indigo,
+        color: Theme.of(context).colorScheme.primary,
       ),
     ];
 
@@ -259,7 +299,6 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
           translate('user_guides'),
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
-                fontSize: ResponsiveUtils.getResponsiveFontSize(context, 20),
               ),
         ),
         SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
@@ -285,14 +324,11 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
           guide.title,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
-                fontSize: ResponsiveUtils.getResponsiveFontSize(context, 16),
               ),
         ),
         subtitle: Text(
           guide.description,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
-              ),
+          style: Theme.of(context).textTheme.bodyMedium,
         ),
         trailing: Icon(
           Icons.arrow_forward_ios,
@@ -331,8 +367,6 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
                 translate('need_help'),
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
-                      fontSize:
-                          ResponsiveUtils.getResponsiveFontSize(context, 20),
                     ),
               ),
               SizedBox(
@@ -340,10 +374,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
               Text(
                 translate('contact_us_message'),
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontSize:
-                          ResponsiveUtils.getResponsiveFontSize(context, 14),
-                    ),
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
             ],
           ),
@@ -390,8 +421,6 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
                   translate('office_hours'),
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
-                        fontSize:
-                            ResponsiveUtils.getResponsiveFontSize(context, 16),
                       ),
                 ),
                 SizedBox(
@@ -429,14 +458,11 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
           title,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
-                fontSize: ResponsiveUtils.getResponsiveFontSize(context, 16),
               ),
         ),
         subtitle: Text(
           subtitle,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
-              ),
+          style: Theme.of(context).textTheme.bodyMedium,
         ),
         trailing: Icon(
           Icons.launch,
@@ -456,15 +482,12 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
         children: [
           Text(
             day,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
-                ),
+            style: Theme.of(context).textTheme.bodyMedium,
           ),
           Text(
             hours,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.w500,
-                  fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
                 ),
           ),
         ],
@@ -474,8 +497,6 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
 
   Widget _buildFeedbackTab(
       BuildContext context, String Function(String) translate) {
-    final feedbackController = TextEditingController();
-    final emailController = TextEditingController();
     String selectedFeedbackType = 'General';
 
     return LayoutFixUtils.safeColumn(
@@ -485,13 +506,12 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
           translate('send_feedback'),
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
-                fontSize: ResponsiveUtils.getResponsiveFontSize(context, 20),
               ),
         ),
         SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
         // Feedback Type
         DropdownButtonFormField<String>(
-          initialValue: selectedFeedbackType,
+          value: _selectedFeedbackType,
           decoration: InputDecoration(
             labelText: translate('feedback_type'),
             border: OutlineInputBorder(
@@ -511,15 +531,17 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
                   ))
               .toList(),
           onChanged: (value) {
-            setState(() {
-              selectedFeedbackType = value!;
-            });
+            if (value != null) {
+              setState(() {
+                _selectedFeedbackType = value;
+              });
+            }
           },
         ),
         SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
         // Email Field
         TextField(
-          controller: emailController,
+          controller: _feedbackControllers[0],
           decoration: InputDecoration(
             labelText: translate('email_optional'),
             hintText: translate('enter_email'),
@@ -532,7 +554,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
         SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
         // Feedback Message
         TextField(
-          controller: feedbackController,
+          controller: _feedbackControllers[1],
           decoration: InputDecoration(
             labelText: translate('feedback_message'),
             hintText: translate('describe_feedback'),
@@ -548,8 +570,12 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
-            onPressed: () => _submitFeedback(context, feedbackController.text,
-                emailController.text, selectedFeedbackType),
+            onPressed: () => _submitFeedback(
+              context, 
+              _feedbackControllers[1].text,
+              _feedbackControllers[0].text, 
+              _selectedFeedbackType,
+            ),
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.primary,
               foregroundColor: Theme.of(context).colorScheme.onPrimary,
@@ -562,10 +588,11 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
             ),
             child: Text(
               translate('submit_feedback'),
-              style: TextStyle(
-                fontSize: ResponsiveUtils.getResponsiveFontSize(context, 16),
-                fontWeight: FontWeight.w600,
-              ),
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  fontSize: ResponsiveUtils.getResponsiveFontSize(context, 16),
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.onPrimary,
+                ),
             ),
           ),
         ),
@@ -671,8 +698,11 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
     );
 
     // Clear the form
+    for (var controller in _feedbackControllers) {
+      controller.clear();
+    }
     setState(() {
-      // Reset controllers would go here
+      _selectedFeedbackType = 'General';
     });
   }
 }

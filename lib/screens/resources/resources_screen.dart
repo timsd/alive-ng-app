@@ -272,10 +272,8 @@ class _ResourcesScreenState extends ConsumerState<ResourcesScreen> {
                         ),
                         child: Text(
                           resource.type.name.toUpperCase(),
-                          style: TextStyle(
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
                             color: Theme.of(context).colorScheme.onSecondary,
-                            fontSize: ResponsiveUtils.getResponsiveFontSize(
-                                context, 10),
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -340,9 +338,7 @@ class _ResourcesScreenState extends ConsumerState<ResourcesScreen> {
                                 context, 4)),
                         Text(
                           '${resource.downloads}',
-                          style: TextStyle(
-                            fontSize: ResponsiveUtils.getResponsiveFontSize(
-                                context, 12),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: Theme.of(context)
                                 .colorScheme
                                 .onSurface
@@ -573,7 +569,7 @@ class _ResourcesScreenState extends ConsumerState<ResourcesScreen> {
                               SnackBar(
                                 content: Text(
                                     '${translate('downloading')} ${resource.title}...'),
-                                backgroundColor: Colors.green,
+                                backgroundColor: Theme.of(context).colorScheme.tertiary,
                               ),
                             );
                           } else {
@@ -584,7 +580,7 @@ class _ResourcesScreenState extends ConsumerState<ResourcesScreen> {
                           messenger.showSnackBar(
                             SnackBar(
                               content: Text('Download failed: $e'),
-                              backgroundColor: Colors.red,
+                              backgroundColor: Theme.of(context).colorScheme.error,
                             ),
                           );
                         }
@@ -596,9 +592,8 @@ class _ResourcesScreenState extends ConsumerState<ResourcesScreen> {
                       ),
                       label: Text(
                         translate('download'),
-                        style: TextStyle(
-                          fontSize: ResponsiveUtils.getResponsiveFontSize(
-                              context, 16),
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: Theme.of(context).colorScheme.onPrimary,
                         ),
                       ),
                       style: ElevatedButton.styleFrom(

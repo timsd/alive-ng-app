@@ -1,7 +1,6 @@
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import '../models/app_models.dart' hide BibleVerse;
-import '../models/daily_verse_model.dart';
 import 'offline_bible_service.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
@@ -153,7 +152,7 @@ class DailyVerseGenerationService {
         final book = booksList[random.nextInt(booksList.length)];
         final chapterNum = random.nextInt(book['chapters']) + 1;
         
-        final chapterData = await OfflineBibleService.instance.getBibleChapter(
+        final chapterData = await OfflineBibleService().getBibleChapter(
           book: book['name'], 
           chapter: chapterNum, 
           version: 'KJV', 
@@ -215,6 +214,8 @@ class DailyVerseGenerationService {
       _logger.error('Error getting next unused verse: $e');
       return null;
     }
+  }
+
   /// Mark a verse as used in the tracking table (No-op now)
   Future<void> _markVerseAsUsed(String reference, String translation) async {}
 

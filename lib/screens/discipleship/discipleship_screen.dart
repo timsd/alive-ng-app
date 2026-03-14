@@ -5,6 +5,7 @@ import '../../services/discipleship_service.dart';
 import '../../services/auth_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/responsive_utils.dart';
+import '../admin/board_reports_screen.dart';
 
 class DiscipleshipScreen extends StatefulWidget {
   const DiscipleshipScreen({super.key});
@@ -103,6 +104,8 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
           indicatorColor: Theme.of(context).colorScheme.primary,
           labelColor: Theme.of(context).colorScheme.primary,
           unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+          labelStyle: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold),
+          unselectedLabelStyle: Theme.of(context).textTheme.labelLarge,
           isScrollable: true,
           tabs: const [
             Tab(text: 'Overview'),
@@ -152,7 +155,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                   'Total Contacts',
                   _statistics['totalContacts']?.toString() ?? '0',
                   Icons.people,
-                  Colors.blue,
+                  Theme.of(context).colorScheme.primary,
                 ),
               ),
               SizedBox(width: ResponsiveUtils.getResponsiveValue(
@@ -166,7 +169,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                   'Active Contacts',
                   _statistics['activeContacts']?.toString() ?? '0',
                   Icons.person_add,
-                  Colors.green,
+                  Theme.of(context).colorScheme.tertiary,
                 ),
               ),
             ],
@@ -184,7 +187,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                   'Baptisms',
                   _statistics['totalBaptisms']?.toString() ?? '0',
                   Icons.water_drop,
-                  Colors.purple,
+                  Theme.of(context).colorScheme.secondary,
                 ),
               ),
               SizedBox(width: ResponsiveUtils.getResponsiveValue(
@@ -198,7 +201,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                   'Study Sessions',
                   _statistics['totalStudySessions']?.toString() ?? '0',
                   Icons.book,
-                  Colors.orange,
+                  Theme.of(context).colorScheme.primary,
                 ),
               ),
             ],
@@ -219,10 +222,9 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                 children: [
                   Text(
                     'Discipleship Levels',
-                    style: TextStyle(
-                      fontSize: context.responsiveFontSize(18), 
-                      fontWeight: FontWeight.bold
-                    ),
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                   ),
                   SizedBox(height: ResponsiveUtils.getResponsiveValue(
                     context: context,
@@ -251,10 +253,9 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                 children: [
                   Text(
                     'Recent Activity (Last 30 Days)',
-                    style: TextStyle(
-                      fontSize: context.responsiveFontSize(18), 
-                      fontWeight: FontWeight.bold
-                    ),
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                   ),
                   SizedBox(height: ResponsiveUtils.getResponsiveValue(
                     context: context,
@@ -285,16 +286,15 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                         child: Column(
                           children: [
                             Text(
-                              _statistics['recentActivity']?['studySessions']
-                                      ?.toString() ??
-                                  '0',
-                              style: TextStyle(
-                                fontSize: context.responsiveFontSize(24),
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green
+                                _statistics['recentActivity']?['studySessions']
+                                        ?.toString() ??
+                                    '0',
+                                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: Theme.of(context).colorScheme.tertiary,
+                                    ),
                               ),
-                            ),
-                            const Text('Study Sessions'),
+                              Text('Study Sessions', style: Theme.of(context).textTheme.labelMedium),
                           ],
                         ),
                       ),
@@ -455,8 +455,38 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
   }
 
   Widget _buildReportsTab() {
-    return const Center(
-      child: Text('Reports functionality coming soon'),
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.analytics, size: 64, color: Colors.grey),
+          const SizedBox(height: 16),
+          const Text(
+            'Discipleship Reports',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'View and generate detailed reports on discipleship progress.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const BoardReportsScreen(initialCategory: 'discipleship'),
+              ),
+            ),
+            icon: const Icon(Icons.assessment),
+            label: const Text('View Discipleship Reports'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -476,15 +506,14 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
             )),
             Text(
               value,
-              style: TextStyle(
-                fontSize: context.responsiveFontSize(24), 
-                fontWeight: FontWeight.bold, 
-                color: color
-              ),
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
             ),
             Text(
               title,
-              style: TextStyle(fontSize: context.responsiveFontSize(12)),
+              style: Theme.of(context).textTheme.labelSmall,
               textAlign: TextAlign.center,
             ),
           ],

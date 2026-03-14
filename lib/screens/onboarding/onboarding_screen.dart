@@ -26,7 +26,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       'title': 'Welcome to ALIVE Nigeria',
       'body': 'Join our vibrant community united by Prayer, Study, Missions, and Health.',
       'icon': Icons.public,
-      'color': Colors.blue,
+      'color': null, // default primary
     },
     {
       'title': 'Roles & Organization',
@@ -119,7 +119,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     title: item['title'] as String,
                     body: item['body'] as String,
                     icon: item['icon'] as IconData,
-                    iconColor: item['color'] as Color,
+                    iconColor: (item['color'] as Color?) ?? Theme.of(context).colorScheme.primary,
                     extra: index == 0 ? _dynamicContent : null,
                   );
                 },

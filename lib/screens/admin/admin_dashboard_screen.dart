@@ -11,9 +11,13 @@ import '../../constants/app_constants.dart';
 import 'content_management_screen.dart';
 import '../../models/podcast_models.dart';
 import 'storage_admin_screen.dart';
+import 'admin_claims_preview_screen.dart';
+import 'role_management_screen.dart';
+import 'board_reports_screen.dart';
 import '../../services/firebase_database_service.dart';
 import '../../services/admin_service.dart';
 import '../../services/admin_notification_service.dart';
+import '../../utils/responsive_utils.dart';
 
 import 'package:url_launcher/url_launcher.dart';
 
@@ -74,7 +78,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error loading dashboard: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -150,22 +154,21 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
+      return Scaffold(
         body: Center(
           child: CircularProgressIndicator(
-            color: Colors.green,
+            color: Theme.of(context).colorScheme.primary,
           ),
         ),
       );
     }
 
     if (!_hasAccess) {
-      return const Scaffold(
+      return Scaffold(
         appBar: CustomAppBar(
-          title: 'Access Denied',
           showBackButton: true,
-          backgroundColor: Colors.red,
-          foregroundColor: Colors.white,
+          backgroundColor: Theme.of(context).colorScheme.error,
+          foregroundColor: Theme.of(context).colorScheme.onError,
         ),
         body: Center(
           child: Column(
@@ -173,24 +176,22 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
             children: [
               Icon(
                 Icons.admin_panel_settings_outlined,
-                size: 80,
-                color: Colors.red,
+                size: ResponsiveUtils.getResponsiveIconSize(context, 80),
+                color: Theme.of(context).colorScheme.error,
               ),
               SizedBox(height: 16),
               Text(
                 'Admin Access Required',
-                style: TextStyle(
-                  fontSize: 24,
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: Colors.red,
+                  color: Theme.of(context).colorScheme.error,
                 ),
               ),
               SizedBox(height: 8),
               Text(
                 'You need administrator privileges to access this dashboard.',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -202,10 +203,9 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
 
     return Scaffold(
       appBar: CustomAppBar(
-        title: 'Admin Dashboard',
         showBackButton: true,
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -285,7 +285,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('Export failed: $e'),
-                      backgroundColor: Colors.red,
+                      backgroundColor: Theme.of(context).colorScheme.error,
                     ),
                   );
                 }
@@ -344,7 +344,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('Chat export failed: $e'),
-                      backgroundColor: Colors.red,
+                      backgroundColor: Theme.of(context).colorScheme.error,
                     ),
                   );
                 }
@@ -439,11 +439,11 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                 padding: const EdgeInsets.all(16.0),
                 child: Row(
                   children: [
-                    const CircleAvatar(
-                      backgroundColor: Colors.green,
+                    CircleAvatar(
+                      backgroundColor: Theme.of(context).colorScheme.primary,
                       child: Icon(
                         Icons.admin_panel_settings,
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onPrimary,
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -453,16 +453,15 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                         children: [
                           Text(
                             'Welcome, ${_currentUser?.email ?? 'Administrator'}',
-                            style: const TextStyle(
-                              fontSize: 18,
+                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                               fontWeight: FontWeight.bold,
-                              color: Colors.green,
+                              color: Theme.of(context).colorScheme.primary,
                             ),
                           ),
-                          const Text(
+                          Text(
                             'ALIVE Nigeria Admin Dashboard',
-                            style: TextStyle(
-                              color: Colors.green,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.primary,
                             ),
                           ),
                         ],
@@ -476,10 +475,9 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
             const SizedBox(height: 24),
 
             // Statistics Cards
-            const Text(
+            Text(
               'System Overview',
-              style: TextStyle(
-                fontSize: 20,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -510,10 +508,9 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
             const SizedBox(height: 24),
 
             // Podcast Stats
-            const Text(
+            Text(
               'Podcast Stats',
-              style: TextStyle(
-                fontSize: 20,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -605,10 +602,9 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
             const SizedBox(height: 32),
 
             // Management Sections
-            const Text(
+            Text(
               'Management Tools',
-              style: TextStyle(
-                fontSize: 20,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -741,7 +737,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
               [
                 _buildActionTile(
                   'File Storage',
-                  'Manage Supabase storage buckets and files',
+                  'Manage Firebase Cloud Storage buckets and files',
                   Icons.folder_outlined,
                   () => _navigateToStorageAdmin(),
                 ),
@@ -774,6 +770,15 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
               Icons.settings_outlined,
               [
                 _buildActionTile(
+                  'Admin Claims Preview',
+                  'Preview admin capabilities and role status',
+                  Icons.verified_user_outlined,
+                  () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (ctx) => const AdminClaimsPreviewScreen()),
+                  ),
+                ),
+                _buildActionTile(
                   'App Configuration',
                   'Configure app settings and preferences',
                   Icons.tune_outlined,
@@ -802,31 +807,52 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
   Widget _buildStatCard(
       String title, String value, IconData icon, Color color) {
     return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
+      elevation: 4,
+      shadowColor: color.withValues(alpha: 0.2),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white,
+              color.withValues(alpha: 0.05),
+            ],
+          ),
+        ),
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
-            Icon(
-              icon,
-              size: 32,
-              color: color,
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                size: ResponsiveUtils.getResponsiveIconSize(context, 28),
+                color: color,
+              ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Text(
               value,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.w900,
                 color: color,
+                letterSpacing: -1,
               ),
             ),
             const SizedBox(height: 4),
             Text(
-              title,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.grey,
+              title.toUpperCase(),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
               ),
               textAlign: TextAlign.center,
             ),
@@ -839,30 +865,41 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
   Widget _buildManagementSection(
       String title, IconData icon, List<Widget> children) {
     return Card(
-      elevation: 2,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(
-                  icon,
-                  color: Colors.green,
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    icon,
+                    size: 20,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontSize: 18,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: Colors.green,
+                    fontSize: 20,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             ...children,
           ],
         ),
@@ -873,27 +910,37 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
   Widget _buildActionTile(
       String title, String subtitle, IconData icon, VoidCallback onTap) {
     return ListTile(
-      leading: Icon(
-        icon,
-        color: Colors.green,
+      contentPadding: EdgeInsets.zero,
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(
+          icon,
+          color: Theme.of(context).colorScheme.primary,
+          size: 22,
+        ),
       ),
       title: Text(
         title,
-        style: const TextStyle(
-          fontWeight: FontWeight.w500,
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w600,
+          fontSize: 16,
         ),
       ),
       subtitle: Text(
         subtitle,
-        style: const TextStyle(
-          fontSize: 12,
-          color: Colors.grey,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          fontSize: 13,
         ),
       ),
-      trailing: const Icon(
+      trailing: Icon(
         Icons.arrow_forward_ios,
-        size: 16,
-        color: Colors.grey,
+        size: ResponsiveUtils.getResponsiveIconSize(context, 14),
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
       ),
       onTap: onTap,
     );
@@ -931,34 +978,55 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
   }
 
   void _navigateToChapterManagement() {
-    _showComingSoon('Chapter Management');
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ContentManagementScreen(contentType: 'chapters'),
+      ),
+    );
   }
 
   void _navigateToCoordinatorAssignment() {
-    _showComingSoon('Coordinator Assignment');
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const RoleManagementScreen(),
+      ),
+    );
   }
 
   void _navigateToChapterReports() {
-    _showComingSoon('Chapter Reports');
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const BoardReportsScreen(),
+      ),
+    );
   }
 
   void _navigateToAppSettings() {
-    _showComingSoon('App Settings');
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ContentManagementScreen(contentType: 'settings'),
+      ),
+    );
   }
 
   void _navigateToBackupSettings() {
-    _showComingSoon('Backup Settings');
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const StorageAdminScreen(initialBucket: 'system-backups'),
+      ),
+    );
   }
 
   void _navigateToSystemLogs() {
-    _showComingSoon('System Logs');
-  }
-
-  void _showComingSoon(String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$feature feature coming soon'),
-        backgroundColor: Colors.green,
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const StorageAdminScreen(initialBucket: 'app-logs'),
       ),
     );
   }

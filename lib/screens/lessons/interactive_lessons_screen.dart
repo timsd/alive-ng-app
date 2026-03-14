@@ -138,7 +138,7 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
                       borderRadius: context.responsiveBorderRadius,
                     ),
                     filled: true,
-                    fillColor: Colors.grey.shade100,
+                    fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                   ),
                   onChanged: _applySearchFilter,
                 ),
@@ -183,7 +183,7 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
             controller: _tabController,
             isScrollable: true,
             labelColor: Theme.of(context).primaryColor,
-            unselectedLabelColor: Colors.grey,
+            unselectedLabelColor: Theme.of(context).colorScheme.outline,
             indicatorColor: Theme.of(context).primaryColor,
             tabs: [
               Tab(text: translate('all_lessons')),
@@ -231,7 +231,7 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
         ),
       ),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)),
         borderRadius: context.responsiveBorderRadius,
       ),
       child: DropdownButtonHideUnderline(
@@ -264,7 +264,7 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
             Icon(
               Icons.school_outlined,
               size: context.responsiveIconSize(64),
-              color: Colors.grey.shade400,
+              color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
             ),
             SizedBox(height: ResponsiveUtils.getResponsiveValue(
               context: context,
@@ -274,10 +274,9 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
             )),
             Text(
               ref.read(translationProvider)('no_lessons_found'),
-              style: TextStyle(
-                fontSize: context.responsiveFontSize(18),
-                color: Colors.grey.shade600,
-              ),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.outline,
+                ),
             ),
           ],
         ),
@@ -326,8 +325,7 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
                   Expanded(
                     child: Text(
                       lesson['title'],
-                      style: TextStyle(
-                        fontSize: context.responsiveFontSize(18),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -335,7 +333,7 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
                   IconButton(
                     icon: Icon(
                       isFavorite ? Icons.favorite : Icons.favorite_border,
-                      color: isFavorite ? Colors.red : Colors.grey,
+                      color: isFavorite ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.outline,
                     ),
                     onPressed: () => _toggleFavorite(index),
                   ),
@@ -350,9 +348,8 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
               // Description
               Text(
                 lesson['description'],
-                style: TextStyle(
-                  color: Colors.grey.shade600,
-                  fontSize: context.responsiveFontSize(14),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
               SizedBox(height: ResponsiveUtils.getResponsiveValue(
@@ -394,9 +391,9 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
                     Expanded(
                       child: LinearProgressIndicator(
                         value: progress,
-                        backgroundColor: Colors.grey.shade300,
+                        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                         valueColor: AlwaysStoppedAnimation<Color>(
-                          isCompleted ? Colors.green : Theme.of(context).primaryColor,
+                          isCompleted ? Theme.of(context).colorScheme.tertiary : Theme.of(context).colorScheme.primary,
                         ),
                       ),
                     ),
@@ -439,9 +436,8 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
                     )),
                     Text(
                       'Completed',
-                      style: TextStyle(
-                        color: Colors.green,
-                        fontSize: context.responsiveFontSize(12),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.tertiary,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -477,9 +473,8 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
       ),
       child: Text(
         text,
-        style: TextStyle(
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
           color: color,
-          fontSize: context.responsiveFontSize(12),
           fontWeight: FontWeight.w500,
         ),
       ),
@@ -511,7 +506,7 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
             )),
             Row(
               children: [
-                Icon(Icons.category, size: context.responsiveIconSize(16), color: Colors.grey.shade600),
+                Icon(Icons.category, size: context.responsiveIconSize(16), color: Theme.of(context).colorScheme.outline),
                 SizedBox(width: ResponsiveUtils.getResponsiveValue(
                   context: context,
                   mobile: 4.0,
@@ -529,7 +524,7 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
             )),
             Row(
               children: [
-                Icon(Icons.signal_cellular_alt, size: context.responsiveIconSize(16), color: Colors.grey.shade600),
+                Icon(Icons.signal_cellular_alt, size: context.responsiveIconSize(16), color: Theme.of(context).colorScheme.outline),
                 SizedBox(width: ResponsiveUtils.getResponsiveValue(
                   context: context,
                   mobile: 4.0,
@@ -547,7 +542,7 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
             )),
             Row(
               children: [
-                Icon(Icons.access_time, size: context.responsiveIconSize(16), color: Colors.grey.shade600),
+                Icon(Icons.access_time, size: context.responsiveIconSize(16), color: Theme.of(context).colorScheme.outline),
                 SizedBox(width: ResponsiveUtils.getResponsiveValue(
                   context: context,
                   mobile: 4.0,
@@ -570,7 +565,7 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('Opening lesson: ${lesson['title']}'),
-                  backgroundColor: Colors.green,
+                  backgroundColor: Theme.of(context).colorScheme.tertiary,
                 ),
               );
             },

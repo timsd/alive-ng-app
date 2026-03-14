@@ -11,14 +11,29 @@ Tract _$TractFromJson(Map<String, dynamic> json) => Tract(
       title: json['title'] as String,
       description: json['description'] as String,
       category: json['category'] as String,
-      pdfUrl: json['pdfUrl'] as String,
+      pdfUrl: json['pdfUrl'] as String?,
       localPdfPath: json['localPdfPath'] as String?,
       imageUrl: json['imageUrl'] as String?,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: DateTime.parse(json['updatedAt'] as String),
-      isDownloaded: json['isDownloaded'] as bool,
-      order: (json['order'] as num).toInt(),
-      language: json['language'] as String,
+      createdAt: json['createdAt'] == null
+          ? null
+          : DateTime.parse(json['createdAt'] as String),
+      updatedAt: json['updatedAt'] == null
+          ? null
+          : DateTime.parse(json['updatedAt'] as String),
+      isDownloaded: json['isDownloaded'] as bool? ?? false,
+      order: (json['order'] as num?)?.toInt() ?? 0,
+      language: json['language'] as String? ?? 'en',
+      author: json['author'] as String?,
+      pages: (json['pages'] as num?)?.toInt(),
+      featured: json['featured'] as bool? ?? false,
+      tags:
+          (json['tags'] as List<dynamic>?)?.map((e) => e as String).toList() ??
+              const [],
+      coverImage: json['coverImage'] as String?,
+      coverImages: (json['coverImages'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
     );
 
 Map<String, dynamic> _$TractToJson(Tract instance) => <String, dynamic>{
@@ -29,11 +44,17 @@ Map<String, dynamic> _$TractToJson(Tract instance) => <String, dynamic>{
       'pdfUrl': instance.pdfUrl,
       'localPdfPath': instance.localPdfPath,
       'imageUrl': instance.imageUrl,
-      'createdAt': instance.createdAt.toIso8601String(),
-      'updatedAt': instance.updatedAt.toIso8601String(),
+      'createdAt': instance.createdAt?.toIso8601String(),
+      'updatedAt': instance.updatedAt?.toIso8601String(),
       'isDownloaded': instance.isDownloaded,
       'order': instance.order,
       'language': instance.language,
+      'author': instance.author,
+      'pages': instance.pages,
+      'featured': instance.featured,
+      'tags': instance.tags,
+      'coverImage': instance.coverImage,
+      'coverImages': instance.coverImages,
     };
 
 TractContent _$TractContentFromJson(Map<String, dynamic> json) => TractContent(
@@ -120,42 +141,37 @@ Map<String, dynamic> _$TractCategoryToJson(TractCategory instance) =>
 
 TractProgress _$TractProgressFromJson(Map<String, dynamic> json) =>
     TractProgress(
+      id: json['id'] as String,
       userId: json['userId'] as String,
       tractId: json['tractId'] as String,
-      currentQuestionIndex: (json['currentQuestionIndex'] as num).toInt(),
-      currentAnswers: Map<String, String>.from(json['currentAnswers'] as Map),
-      lastUpdated: DateTime.parse(json['lastUpdated'] as String),
+      currentPage: (json['currentPage'] as num).toInt(),
       isCompleted: json['isCompleted'] as bool,
-      progressPercentage: (json['progressPercentage'] as num).toDouble(),
+      lastUpdated: DateTime.parse(json['lastUpdated'] as String),
     );
 
 Map<String, dynamic> _$TractProgressToJson(TractProgress instance) =>
     <String, dynamic>{
+      'id': instance.id,
       'userId': instance.userId,
       'tractId': instance.tractId,
-      'currentQuestionIndex': instance.currentQuestionIndex,
-      'currentAnswers': instance.currentAnswers,
-      'lastUpdated': instance.lastUpdated.toIso8601String(),
+      'currentPage': instance.currentPage,
       'isCompleted': instance.isCompleted,
-      'progressPercentage': instance.progressPercentage,
+      'lastUpdated': instance.lastUpdated.toIso8601String(),
     };
 
 TractStatistics _$TractStatisticsFromJson(Map<String, dynamic> json) =>
     TractStatistics(
-      tractId: json['tractId'] as String,
-      totalCompletions: (json['totalCompletions'] as num).toInt(),
-      averageScore: (json['averageScore'] as num).toDouble(),
+      totalTracts: (json['totalTracts'] as num).toInt(),
       totalDownloads: (json['totalDownloads'] as num).toInt(),
-      lastCompleted: DateTime.parse(json['lastCompleted'] as String),
-      questionStats: Map<String, int>.from(json['questionStats'] as Map),
+      activeReaders: (json['activeReaders'] as num).toInt(),
+      categoryDistribution:
+          Map<String, int>.from(json['categoryDistribution'] as Map),
     );
 
 Map<String, dynamic> _$TractStatisticsToJson(TractStatistics instance) =>
     <String, dynamic>{
-      'tractId': instance.tractId,
-      'totalCompletions': instance.totalCompletions,
-      'averageScore': instance.averageScore,
+      'totalTracts': instance.totalTracts,
       'totalDownloads': instance.totalDownloads,
-      'lastCompleted': instance.lastCompleted.toIso8601String(),
-      'questionStats': instance.questionStats,
+      'activeReaders': instance.activeReaders,
+      'categoryDistribution': instance.categoryDistribution,
     };

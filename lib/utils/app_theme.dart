@@ -33,30 +33,30 @@ class AppTheme {
   static const Color darkBorderColor = darkBorder;
   
   // Core spiritual palette - Light Theme
-  static const Color lightBackground = Color(0xFFF8FAFC); // Crisp, cool white
+  static const Color lightBackground = Color(0xFFF1F5F9); // Lighter background (Slate 50/100)
   static const Color lightForeground = Color(0xFF0F172A); // Deep slate black
   
   static const Color lightCard = Color(0xFFFFFFFF); // Pure white
   static const Color lightCardForeground = Color(0xFF0F172A); 
   
-  // Primary - Deep spiritual blue
-  static const Color lightPrimary = Color(0xFFF8FAFC); // Crisp, cool white (Requested)
-  static const Color lightPrimaryForeground = Color(0xFF0F172A); // Deep slate black for contrast
-  static const Color lightPrimaryGlow = Color(0xFFE2E8F0); 
+  // Primary - Deep spiritual slate
+  static const Color lightPrimary = Color(0xFF1E293B); // Slate 800 (Rich, professional)
+  static const Color lightPrimaryForeground = Color(0xFFFFFFFF); 
+  static const Color lightPrimaryGlow = Color(0xFF334155); 
   
   // Secondary - Warm divine gold
   static const Color lightSecondary = Color(0xFFFEF08A); 
   static const Color lightSecondaryForeground = Color(0xFF1E3A8A); 
-  static const Color lightGold = Color(0xFFEAB308); // Brilliant gold
+  static const Color lightGold = Color(0xFFD4AF37); // Classic ALIVE Gold
   static const Color lightGoldForeground = Color(0xFFFFFFFF); 
   
   // Accent - Life/growth green
   static const Color lightAccent = Color(0xFFDCFCE7); 
   static const Color lightAccentForeground = Color(0xFF14532D); 
-  static const Color lightEmerald = Color(0xFF10B981); // Vibrant emerald
+  static const Color lightEmerald = Color(0xFF059669); // Professional emerald
   static const Color lightEmeraldForeground = Color(0xFFFFFFFF); 
   
-  static const Color lightMuted = Color(0xFFF1F5F9); 
+  static const Color lightMuted = Color(0xFFF8FAFC); 
   static const Color lightMutedForeground = Color(0xFF64748B); // Slate 500
   
   static const Color lightDestructive = Color(0xFFEF4444); 
@@ -132,12 +132,12 @@ class AppTheme {
         brightness: Brightness.light,
         primary: lightPrimary,
         onPrimary: lightPrimaryForeground,
-        primaryContainer: Color(0xFF4A5568),
-        onPrimaryContainer: lightPrimaryForeground,
+        primaryContainer: Color(0xFFF1F5F9),
+        onPrimaryContainer: lightPrimary,
         secondary: lightGold,
         onSecondary: lightGoldForeground,
         secondaryContainer: lightSecondary,
-        onSecondaryContainer: lightSecondaryForeground,
+        onSecondaryContainer: Color(0xFF1E3A8A),
         tertiary: lightEmerald,
         onTertiary: lightEmeraldForeground,
         tertiaryContainer: lightAccent,
@@ -148,10 +148,10 @@ class AppTheme {
         onErrorContainer: Color(0xFFB71C1C),
         surface: lightCard,
         onSurface: lightCardForeground,
-        surfaceContainerHighest: lightMuted,
-        onSurfaceVariant: lightMutedForeground,
-        outline: lightBorder,
-        outlineVariant: Color(0xFFE8DDD1),
+        surfaceContainerHighest: Color(0xFFF8FAFC),
+        onSurfaceVariant: Color(0xFF475569), // Slate 600
+        outline: Color(0xFFE2E8F0), // Slate 200
+        outlineVariant: Color(0xFFCBD5E1), // Slate 300
         shadow: Color(0xFF000000),
         scrim: Color(0xFF000000),
         inverseSurface: darkCard,
@@ -318,25 +318,25 @@ class AppTheme {
       // Standard Text Hierarchy — visible in light mode (dark text on light bg)
       textTheme: const TextTheme(
         // Display — hero banners & splash screens
-        displayLarge:   TextStyle(fontSize: 57, fontWeight: FontWeight.w700, letterSpacing: -0.25, color: lightCardForeground),
-        displayMedium:  TextStyle(fontSize: 45, fontWeight: FontWeight.w700, color: lightCardForeground),
-        displaySmall:   TextStyle(fontSize: 36, fontWeight: FontWeight.w600, color: lightCardForeground),
+        displayLarge:   TextStyle(fontSize: 57, fontWeight: FontWeight.w700, letterSpacing: -0.25, color: lightCardForeground, fontFamily: 'Inter'),
+        displayMedium:  TextStyle(fontSize: 45, fontWeight: FontWeight.w700, color: lightCardForeground, fontFamily: 'Inter'),
+        displaySmall:   TextStyle(fontSize: 36, fontWeight: FontWeight.w600, color: lightCardForeground, fontFamily: 'Inter'),
         // Headline — screen/section titles
-        headlineLarge:  TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: lightCardForeground),
-        headlineMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: lightCardForeground),
-        headlineSmall:  TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: lightCardForeground),
+        headlineLarge:  TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: lightCardForeground, fontFamily: 'Inter'),
+        headlineMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: lightCardForeground, fontFamily: 'Inter'),
+        headlineSmall:  TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: lightCardForeground, fontFamily: 'Inter'),
         // Title — card headers, dialog titles
-        titleLarge:     TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: lightCardForeground),
-        titleMedium:    TextStyle(fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 0.15, color: lightCardForeground),
-        titleSmall:     TextStyle(fontSize: 14, fontWeight: FontWeight.w500, letterSpacing: 0.1, color: lightCardForeground),
+        titleLarge:     TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: lightCardForeground, fontFamily: 'Inter'),
+        titleMedium:    TextStyle(fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 0.15, color: lightCardForeground, fontFamily: 'Inter'),
+        titleSmall:     TextStyle(fontSize: 14, fontWeight: FontWeight.w500, letterSpacing: 0.1, color: lightCardForeground, fontFamily: 'Inter'),
         // Body — main content
-        bodyLarge:      TextStyle(fontSize: 16, fontWeight: FontWeight.w400, letterSpacing: 0.5, height: 1.5, color: lightCardForeground),
-        bodyMedium:     TextStyle(fontSize: 14, fontWeight: FontWeight.w400, letterSpacing: 0.25, height: 1.4, color: lightCardForeground),
-        bodySmall:      TextStyle(fontSize: 12, fontWeight: FontWeight.w400, letterSpacing: 0.4, height: 1.4, color: lightMutedForeground),
+        bodyLarge:      TextStyle(fontSize: 16, fontWeight: FontWeight.w400, letterSpacing: 0.5, height: 1.5, color: lightCardForeground, fontFamily: 'Inter'),
+        bodyMedium:     TextStyle(fontSize: 14, fontWeight: FontWeight.w400, letterSpacing: 0.25, height: 1.4, color: lightCardForeground, fontFamily: 'Inter'),
+        bodySmall:      TextStyle(fontSize: 12, fontWeight: FontWeight.w400, letterSpacing: 0.4, height: 1.4, color: lightMutedForeground, fontFamily: 'Inter'),
         // Label — buttons, chips, tabs, captions
-        labelLarge:     TextStyle(fontSize: 14, fontWeight: FontWeight.w600, letterSpacing: 0.1, color: lightCardForeground),
-        labelMedium:    TextStyle(fontSize: 12, fontWeight: FontWeight.w500, letterSpacing: 0.5, color: lightMutedForeground),
-        labelSmall:     TextStyle(fontSize: 11, fontWeight: FontWeight.w500, letterSpacing: 0.5, color: lightMutedForeground),
+        labelLarge:     TextStyle(fontSize: 14, fontWeight: FontWeight.w600, letterSpacing: 0.1, color: lightCardForeground, fontFamily: 'Inter'),
+        labelMedium:    TextStyle(fontSize: 12, fontWeight: FontWeight.w500, letterSpacing: 0.5, color: lightMutedForeground, fontFamily: 'Inter'),
+        labelSmall:     TextStyle(fontSize: 11, fontWeight: FontWeight.w500, letterSpacing: 0.5, color: lightMutedForeground, fontFamily: 'Inter'),
       ),
     );
   }
@@ -536,21 +536,21 @@ class AppTheme {
 
       // Standard Text Hierarchy — visible in dark mode (light text on dark bg)
       textTheme: const TextTheme(
-        displayLarge:   TextStyle(fontSize: 57, fontWeight: FontWeight.w700, letterSpacing: -0.25, color: darkCardForeground),
-        displayMedium:  TextStyle(fontSize: 45, fontWeight: FontWeight.w700, color: darkCardForeground),
-        displaySmall:   TextStyle(fontSize: 36, fontWeight: FontWeight.w600, color: darkCardForeground),
-        headlineLarge:  TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: darkCardForeground),
-        headlineMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: darkCardForeground),
-        headlineSmall:  TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: darkCardForeground),
-        titleLarge:     TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: darkCardForeground),
-        titleMedium:    TextStyle(fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 0.15, color: darkCardForeground),
-        titleSmall:     TextStyle(fontSize: 14, fontWeight: FontWeight.w500, letterSpacing: 0.1, color: darkCardForeground),
-        bodyLarge:      TextStyle(fontSize: 16, fontWeight: FontWeight.w400, letterSpacing: 0.5, height: 1.5, color: darkCardForeground),
-        bodyMedium:     TextStyle(fontSize: 14, fontWeight: FontWeight.w400, letterSpacing: 0.25, height: 1.4, color: darkCardForeground),
-        bodySmall:      TextStyle(fontSize: 12, fontWeight: FontWeight.w400, letterSpacing: 0.4, height: 1.4, color: darkMutedForeground),
-        labelLarge:     TextStyle(fontSize: 14, fontWeight: FontWeight.w600, letterSpacing: 0.1, color: darkCardForeground),
-        labelMedium:    TextStyle(fontSize: 12, fontWeight: FontWeight.w500, letterSpacing: 0.5, color: darkMutedForeground),
-        labelSmall:     TextStyle(fontSize: 11, fontWeight: FontWeight.w500, letterSpacing: 0.5, color: darkMutedForeground),
+        displayLarge:   TextStyle(fontSize: 57, fontWeight: FontWeight.w700, letterSpacing: -0.25, color: darkCardForeground, fontFamily: 'Inter'),
+        displayMedium:  TextStyle(fontSize: 45, fontWeight: FontWeight.w700, color: darkCardForeground, fontFamily: 'Inter'),
+        displaySmall:   TextStyle(fontSize: 36, fontWeight: FontWeight.w600, color: darkCardForeground, fontFamily: 'Inter'),
+        headlineLarge:  TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: darkCardForeground, fontFamily: 'Inter'),
+        headlineMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: darkCardForeground, fontFamily: 'Inter'),
+        headlineSmall:  TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: darkCardForeground, fontFamily: 'Inter'),
+        titleLarge:     TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: darkCardForeground, fontFamily: 'Inter'),
+        titleMedium:    TextStyle(fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 0.15, color: darkCardForeground, fontFamily: 'Inter'),
+        titleSmall:     TextStyle(fontSize: 14, fontWeight: FontWeight.w500, letterSpacing: 0.1, color: darkCardForeground, fontFamily: 'Inter'),
+        bodyLarge:      TextStyle(fontSize: 16, fontWeight: FontWeight.w400, letterSpacing: 0.5, height: 1.5, color: darkCardForeground, fontFamily: 'Inter'),
+        bodyMedium:     TextStyle(fontSize: 14, fontWeight: FontWeight.w400, letterSpacing: 0.25, height: 1.4, color: darkCardForeground, fontFamily: 'Inter'),
+        bodySmall:      TextStyle(fontSize: 12, fontWeight: FontWeight.w400, letterSpacing: 0.4, height: 1.4, color: darkMutedForeground, fontFamily: 'Inter'),
+        labelLarge:     TextStyle(fontSize: 14, fontWeight: FontWeight.w600, letterSpacing: 0.1, color: darkCardForeground, fontFamily: 'Inter'),
+        labelMedium:    TextStyle(fontSize: 12, fontWeight: FontWeight.w500, letterSpacing: 0.5, color: darkMutedForeground, fontFamily: 'Inter'),
+        labelSmall:     TextStyle(fontSize: 11, fontWeight: FontWeight.w500, letterSpacing: 0.5, color: darkMutedForeground, fontFamily: 'Inter'),
       ),
     );
   }

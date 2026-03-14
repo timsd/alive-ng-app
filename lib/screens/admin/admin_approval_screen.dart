@@ -61,7 +61,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
         messenger.showSnackBar(
           SnackBar(
             content: Text('Error loading users: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -85,7 +85,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
         messenger.showSnackBar(
           SnackBar(
             content: Text('${user.fullName ?? 'User'} approved successfully'),
-            backgroundColor: Colors.green,
+            backgroundColor: Theme.of(context).colorScheme.tertiary,
           ),
         );
       }
@@ -94,7 +94,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
         messenger.showSnackBar(
           SnackBar(
             content: Text('Error approving user: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -119,7 +119,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
         messenger.showSnackBar(
           SnackBar(
             content: Text('${user.fullName ?? 'User'} rejected'),
-            backgroundColor: Colors.orange,
+            backgroundColor: Theme.of(context).colorScheme.secondary,
           ),
         );
       }
@@ -128,7 +128,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
         messenger.showSnackBar(
           SnackBar(
             content: Text('Error rejecting user: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -139,7 +139,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(user.fullName ?? 'User Details'),
+        title: Text(user.fullName ?? 'User Details', style: Theme.of(context).textTheme.titleLarge),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -150,13 +150,13 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
               _buildDetailRow('Address', user.address ?? 'Not provided'),
               _buildDetailRow('Bio', user.bio ?? 'Not provided'),
               const SizedBox(height: 16),
-              const Text('Verification Details:', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text('Verification Details:', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               _buildDetailRow('Local Chapter', user.localChapter ?? 'Not provided'),
               _buildDetailRow('Local Church', user.localChurch ?? 'Not provided'),
               _buildDetailRow('Conference', user.conference ?? 'Not provided'),
               const SizedBox(height: 16),
-              const Text('Commitment Details:', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text('Commitment Details:', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               _buildDetailRow('Commitment Type', user.commitmentType ?? 'Not specified'),
               if (user.financialCommitment != null)
@@ -180,7 +180,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
                 Navigator.of(context).pop();
                 _showRejectDialog(user);
               },
-              child: const Text('Reject', style: TextStyle(color: Colors.red)),
+              child: Text('Reject', style: TextStyle(color: Theme.of(context).colorScheme.error)),
             ),
             ElevatedButton(
               onPressed: () {
@@ -229,7 +229,10 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
                 _rejectUser(user, reasonController.text.trim());
               }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
             child: const Text('Reject'),
           ),
         ],
@@ -247,7 +250,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
             width: 120,
             child: Text(
               '$label:',
-              style: const TextStyle(fontWeight: FontWeight.w500),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
             ),
           ),
           Expanded(
@@ -264,15 +267,15 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
     
     switch (user.approvalStatus) {
       case 'approved':
-        statusColor = Colors.green;
+        statusColor = Theme.of(context).colorScheme.tertiary;
         statusIcon = Icons.check_circle;
         break;
       case 'rejected':
-        statusColor = Colors.red;
+        statusColor = Theme.of(context).colorScheme.error;
         statusIcon = Icons.cancel;
         break;
       default:
-        statusColor = Colors.orange;
+        statusColor = Theme.of(context).colorScheme.secondary;
         statusIcon = Icons.pending;
     }
 
@@ -310,7 +313,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
             if (user.localChapter != null || user.localChurch != null)
               Text(
                 '${user.localChapter ?? ''} ${user.localChurch != null ? '• ${user.localChurch}' : ''}',
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.outline),
               ),
           ],
         ),
@@ -319,11 +322,11 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.close, color: Colors.red),
+                    icon: Icon(Icons.close, color: Theme.of(context).colorScheme.error),
                     onPressed: () => _showRejectDialog(user),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.check, color: Colors.green),
+                    icon: Icon(Icons.check, color: Theme.of(context).colorScheme.tertiary),
                     onPressed: () => _approveUser(user),
                   ),
                 ],
@@ -343,15 +346,12 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
             Icon(
               Icons.people_outline,
               size: 64,
-              color: Colors.grey[400],
+              color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 16),
             Text(
               emptyMessage,
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-              ),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.outline),
             ),
           ],
         ),

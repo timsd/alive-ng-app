@@ -11,6 +11,7 @@ class BoardReport {
   final String category; // 'financial', 'operational', 'strategic', 'ministry'
   final List<String> attachments;
   final String status; // 'draft', 'submitted', 'reviewed', 'approved'
+  final Map<String, dynamic>? metadata;
 
   BoardReport({
     required this.id,
@@ -24,6 +25,7 @@ class BoardReport {
     required this.category,
     this.attachments = const [],
     this.status = 'draft',
+    this.metadata,
   });
 
   factory BoardReport.fromJson(Map<String, dynamic> json) {
@@ -42,6 +44,7 @@ class BoardReport {
       category: json['category'] ?? 'operational',
       attachments: List<String>.from(json['attachments'] ?? []),
       status: json['status'] ?? 'draft',
+      metadata: json['metadata'] != null ? Map<String, dynamic>.from(json['metadata']) : null,
     );
   }
 
@@ -58,6 +61,7 @@ class BoardReport {
       'category': category,
       'attachments': attachments,
       'status': status,
+      'metadata': metadata,
     };
   }
 }

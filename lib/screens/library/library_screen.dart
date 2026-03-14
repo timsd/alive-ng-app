@@ -209,10 +209,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
       padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(
           context: context, mobile: 16, tablet: 20, desktop: 24)),
       child: filteredBooks.isEmpty
-          ? const Center(
+          ? Center(
               child: Text(
                 'No books found matching your search criteria',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             )
           : GridView.builder(
@@ -240,10 +242,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
       padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(
           context: context, mobile: 16, tablet: 20, desktop: 24)),
       child: filteredArticles.isEmpty
-          ? const Center(
+          ? Center(
               child: Text(
                 'No articles found matching your search criteria',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             )
           : ListView.builder(
@@ -262,10 +266,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
       padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(
           context: context, mobile: 16, tablet: 20, desktop: 24)),
       child: filteredAudio.isEmpty
-          ? const Center(
+          ? Center(
               child: Text(
                 'No audio content found matching your search criteria',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             )
           : ListView.builder(
@@ -284,10 +290,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
       padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(
           context: context, mobile: 16, tablet: 20, desktop: 24)),
       child: filteredVideos.isEmpty
-          ? const Center(
+          ? Center(
               child: Text(
                 'No videos found matching your search criteria',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             )
           : GridView.builder(
@@ -349,7 +357,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 height: ResponsiveUtils.getResponsiveValue(
                     context: context, mobile: 80, tablet: 90, desktop: 100),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color:
@@ -361,7 +369,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                   Icons.menu_book,
                   size: ResponsiveUtils.getResponsiveValue(
                       context: context, mobile: 32, tablet: 36, desktop: 40),
-                  color: Theme.of(context).primaryColor,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
               const SizedBox(width: 16),
@@ -373,11 +381,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                       book['title'],
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
-                            fontSize: ResponsiveUtils.getResponsiveValue(
-                                context: context,
-                                mobile: 16,
-                                tablet: 18,
-                                desktop: 20),
                           ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -386,23 +389,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     Text(
                       'By ${book['author']}',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.color
-                                ?.withValues(alpha: 0.7),
-                            fontSize: ResponsiveUtils.getResponsiveValue(
-                                context: context,
-                                mobile: 14,
-                                tablet: 15,
-                                desktop: 16),
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                           ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       book['category'],
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).primaryColor,
+                            color: Theme.of(context).colorScheme.primary,
                             fontSize: ResponsiveUtils.getResponsiveValue(
                                 context: context,
                                 mobile: 12,
@@ -474,14 +468,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color:
-                          Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                          Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       article['category'],
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).primaryColor,
-                            fontSize: 12,
+                            color: Theme.of(context).colorScheme.primary,
+                fontSize: 12,
                           ),
                     ),
                   ),
@@ -489,7 +483,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                   Icon(
                     Icons.arrow_forward_ios,
                     size: 16,
-                    color: Colors.grey[600],
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ],
               ),
@@ -520,18 +514,18 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 width: 60,
                 height: 60,
                 decoration: BoxDecoration(
-                  color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(30),
                   border: Border.all(
                     color:
-                        Theme.of(context).primaryColor.withValues(alpha: 0.3),
+                        Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
                     width: 1,
                   ),
                 ),
                 child: Icon(
                   Icons.play_arrow,
                   size: 32,
-                  color: Theme.of(context).primaryColor,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
               const SizedBox(width: 16),
@@ -574,7 +568,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               IconButton(
                 onPressed: () => _downloadAudio(audio['title']),
                 icon: const Icon(Icons.download),
-                color: Colors.grey[600],
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ],
           ),
@@ -600,7 +594,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               child: Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.vertical(
                     top: Radius.circular(ResponsiveUtils.getResponsiveValue(
                         context: context, mobile: 12, tablet: 14, desktop: 16)),
@@ -621,7 +615,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                           mobile: 48,
                           tablet: 56,
                           desktop: 64),
-                      color: Colors.grey[600],
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                     Container(
                       padding: EdgeInsets.all(
@@ -631,7 +625,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                               tablet: 10,
                               desktop: 12)),
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.7),
+                        color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.7),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -697,7 +691,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                             horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: Theme.of(context)
-                              .primaryColor
+                              .colorScheme.primary
                               .withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -705,7 +699,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                           video['category'],
                           style:
                               Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Theme.of(context).primaryColor,
+                                    color: Theme.of(context).colorScheme.primary,
                                     fontSize: 12,
                                   ),
                         ),
@@ -775,7 +769,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
             onPressed: () => Navigator.of(context).pop(),
             child: Text(
               'Cancel',
-              style: TextStyle(
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
                 fontSize: ResponsiveUtils.getResponsiveValue(
                     context: context, mobile: 14, tablet: 15, desktop: 16),
               ),
@@ -788,7 +782,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
             },
             child: Text(
               'Apply',
-              style: TextStyle(
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
                 fontSize: ResponsiveUtils.getResponsiveValue(
                     context: context, mobile: 14, tablet: 15, desktop: 16),
               ),

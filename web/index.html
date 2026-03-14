@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <!--
     If you are serving your web app in a path other than the root, change the
@@ -28,7 +29,7 @@
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="icon" type="image/png" href="favicon.png" />
 
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
@@ -36,7 +37,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
   <script>
-    (function() {
+    (function () {
       try {
         var host = location.hostname;
         if (host && host !== 'localhost' && host !== '127.0.0.1') {
@@ -45,7 +46,7 @@
           s.async = true;
           document.head.appendChild(s);
         }
-      } catch (_) {}
+      } catch (_) { }
     })();
   </script>
 
@@ -57,83 +58,429 @@
   <link rel="preconnect" href="https://firebase.googleapis.com" crossorigin>
   <link rel="preconnect" href="https://www.googleapis.com" crossorigin>
   <style>
-    body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; overflow-x: hidden; }
-    .header { display:flex; align-items:center; justify-content:space-between; padding: 12px 20px; border-bottom:1px solid #E2E8F0; background:#ffffff; position: sticky; top:0; z-index: 1001; }
-    .brand { display:flex; align-items:center; gap:10px; color:#2D3748; font-weight:800; letter-spacing: 0.04em; }
-    .brand img { width:36px; height:36px; border-radius:8px; }
-    .header-actions { display:flex; gap:8px; flex-wrap: nowrap; align-items:center; flex-shrink:1; }
-    .btn-cta { display:inline-flex; align-items:center; gap:6px; padding:8px 10px; border-radius:10px; border:1px solid #CBD5E0; background:#F7FAFC; color:#1F2937; text-decoration:none; font-weight:700; cursor:pointer; white-space:nowrap; font-size:13px; }
-    .btn-cta svg { width:16px; height:16px; }
-    .btn-cta.primary { background:#2D3748; color:#F7F5F0; border-color:#2D3748; }
-    .btn-cta.gold { background:#D4AF37; color:#1A1F2E; border-color:#D4AF37; }
-    .hero { padding: 48px 24px; text-align: center; background: linear-gradient(180deg, #FCFBF9 0%, #F5F1E8 100%); }
-    .hero h1 { margin: 0 0 8px; font-size: 32px; color: #2D3748; }
-    .hero p { margin: 0 0 24px; font-size: 16px; color: #4A5568; }
-    .available-label { margin: 0 0 16px; font-size: 14px; color: #718096; }
-    .store-buttons { display: grid; grid-template-columns: repeat(3, minmax(160px, auto)); gap: 12px; justify-content: center; justify-items: center; align-items: center; }
-    .store-buttons a, .store-buttons button { display: inline-block; padding: 12px 16px; border-radius: 8px; text-decoration: none; font-weight: 600; }
-    .store-buttons .btn-cta { display:flex; flex-direction:row; align-items:center; gap:8px; text-align:left; background:#FFFFFF; border:1.5px solid #D1D5DB; border-radius:12px; box-shadow:0 1px 2px rgba(0,0,0,0.04); padding:10px 14px; }
-    .store-buttons .btn-cta svg { width:20px; height:20px; color:#6B7280; }
-    .btn-cta .cta-label { font-weight:700; color:#1F2937; }
-    .btn-cta .cta-sub { display:none; }
-    .legal-links { margin-top: 24px; font-size: 14px; }
-    .legal-links a { color: #2D3748; text-decoration: none; margin: 0 8px; }
-    .cta { margin-top: 28px; }
-    .cta button { padding: 12px 18px; border-radius: 8px; border: none; font-weight: 700; background: #0069c0; color: white; cursor: pointer; }
-    .cta button:hover { background: #0055a0; }
-    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 3000; }
-    .modal { width: min(960px, 94vw); max-width: 960px; height: auto; max-height: 92vh; background: #fff; border-radius: 12px; box-shadow: 0 24px 48px rgba(0,0,0,0.25); overflow: hidden; margin: 8px; }
-    .modal-header { padding: 16px 20px; border-bottom: 1px solid #E2E8F0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; }
-    .modal-title { font-size: 18px; font-weight: 700; color: #2D3748; }
-    .modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: #4A5568; }
-    .modal-body { display: grid; grid-template-columns: 1fr 1.2fr; gap: 0; }
-    .modal-controls { display:flex; align-items:center; gap:12px; flex-wrap: wrap; }
-    .projects-list { border-right: 1px solid #E2E8F0; max-height: calc(92vh - 60px); overflow: auto; }
-    .projects-item { padding: 14px 16px; border-bottom: 1px solid #EDF2F7; cursor: pointer; }
-    .projects-item:hover { background: #F7FAFC; }
-    .projects-item-title { font-weight: 600; color: #2D3748; }
-    .projects-item-sub { font-size: 12px; color: #718096; }
-    .project-detail { padding: 16px 20px; max-height: calc(92vh - 60px); overflow: auto; }
-    .project-actions { margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap; }
-    .btn { padding: 10px 14px; border-radius: 8px; border: 1px solid #CBD5E0; background: #F7FAFC; color: #2D3748; cursor: pointer; }
-    .btn.primary { background: #2D3748; color: #F7FAFC; border-color: #2D3748; }
-    .btn.warn { background: #D4AF37; color: #1A1F2E; border-color: #D4AF37; }
+    body {
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      margin: 0;
+      overflow-x: hidden;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      border-bottom: 1px solid #E2E8F0;
+      background: #ffffff;
+      position: sticky;
+      top: 0;
+      z-index: 1001;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #2D3748;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+    }
+
+    .brand img {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: nowrap;
+      align-items: center;
+      flex-shrink: 1;
+    }
+
+    .btn-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid #CBD5E0;
+      background: #F7FAFC;
+      color: #1F2937;
+      text-decoration: none;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      font-size: 13px;
+    }
+
+    .btn-cta svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .btn-cta.primary {
+      background: #2D3748;
+      color: #F7F5F0;
+      border-color: #2D3748;
+    }
+
+    .btn-cta.gold {
+      background: #D4AF37;
+      color: #1A1F2E;
+      border-color: #D4AF37;
+    }
+
+    .hero {
+      padding: 48px 24px;
+      text-align: center;
+      background: linear-gradient(180deg, #FCFBF9 0%, #F5F1E8 100%);
+    }
+
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: 32px;
+      color: #2D3748;
+    }
+
+    .hero p {
+      margin: 0 0 24px;
+      font-size: 16px;
+      color: #4A5568;
+    }
+
+    .available-label {
+      margin: 0 0 16px;
+      font-size: 14px;
+      color: #718096;
+    }
+
+    .store-buttons {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(160px, auto));
+      gap: 12px;
+      justify-content: center;
+      justify-items: center;
+      align-items: center;
+    }
+
+    .store-buttons a,
+    .store-buttons button {
+      display: inline-block;
+      padding: 12px 16px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .store-buttons .btn-cta {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
+      text-align: left;
+      background: #FFFFFF;
+      border: 1.5px solid #D1D5DB;
+      border-radius: 12px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+      padding: 10px 14px;
+    }
+
+    .store-buttons .btn-cta svg {
+      width: 20px;
+      height: 20px;
+      color: #6B7280;
+    }
+
+    .btn-cta .cta-label {
+      font-weight: 700;
+      color: #1F2937;
+    }
+
+    .btn-cta .cta-sub {
+      display: none;
+    }
+
+    .legal-links {
+      margin-top: 24px;
+      font-size: 14px;
+    }
+
+    .legal-links a {
+      color: #2D3748;
+      text-decoration: none;
+      margin: 0 8px;
+    }
+
+    .cta {
+      margin-top: 28px;
+    }
+
+    .cta button {
+      padding: 12px 18px;
+      border-radius: 8px;
+      border: none;
+      font-weight: 700;
+      background: #0069c0;
+      color: white;
+      cursor: pointer;
+    }
+
+    .cta button:hover {
+      background: #0055a0;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 3000;
+    }
+
+    .modal {
+      width: min(960px, 94vw);
+      max-width: 960px;
+      height: auto;
+      max-height: 92vh;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.25);
+      overflow: hidden;
+      margin: 8px;
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid #E2E8F0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #2D3748;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: #4A5568;
+    }
+
+    .modal-body {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 0;
+    }
+
+    .modal-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .projects-list {
+      border-right: 1px solid #E2E8F0;
+      max-height: calc(92vh - 60px);
+      overflow: auto;
+    }
+
+    .projects-item {
+      padding: 14px 16px;
+      border-bottom: 1px solid #EDF2F7;
+      cursor: pointer;
+    }
+
+    .projects-item:hover {
+      background: #F7FAFC;
+    }
+
+    .projects-item-title {
+      font-weight: 600;
+      color: #2D3748;
+    }
+
+    .projects-item-sub {
+      font-size: 12px;
+      color: #718096;
+    }
+
+    .project-detail {
+      padding: 16px 20px;
+      max-height: calc(92vh - 60px);
+      overflow: auto;
+    }
+
+    .project-actions {
+      margin-top: 16px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid #CBD5E0;
+      background: #F7FAFC;
+      color: #2D3748;
+      cursor: pointer;
+    }
+
+    .btn.primary {
+      background: #2D3748;
+      color: #F7FAFC;
+      border-color: #2D3748;
+    }
+
+    .btn.warn {
+      background: #D4AF37;
+      color: #1A1F2E;
+      border-color: #D4AF37;
+    }
+
     /* Mobile adjustments */
     @media (max-width: 640px) {
-      .store-buttons { grid-template-columns: repeat(3, minmax(100px, 1fr)); gap:8px; }
-      .store-buttons .btn-cta svg { width:18px; height:18px; }
-      .btn-cta .cta-label { font-size:12px; }
-      .btn-cta .cta-sub { font-size:11px; }
-      .brand img { width:28px; height:28px; }
-      .header-actions { gap:6px; }
-      .btn-cta { padding:6px 8px; font-weight:600; font-size:12px; }
-      .btn-cta svg { width:14px; height:14px; }
-      .modal { width: 96vw; }
-      .modal-header { flex-direction: column; align-items: flex-start; }
-      .modal-title { margin-bottom: 8px; }
-      .modal-body { grid-template-columns: 1fr; }
-      .modal-controls { gap:8px; }
-      .projects-list { border-right: none; border-bottom: 1px solid #E2E8F0; max-height: 44vh; }
-      .project-detail { max-height: 44vh; }
-      .btn { padding:8px 10px; }
+      .store-buttons {
+        grid-template-columns: repeat(3, minmax(100px, 1fr));
+        gap: 8px;
+      }
+
+      .store-buttons .btn-cta svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      .btn-cta .cta-label {
+        font-size: 12px;
+      }
+
+      .btn-cta .cta-sub {
+        font-size: 11px;
+      }
+
+      .brand img {
+        width: 28px;
+        height: 28px;
+      }
+
+      .header-actions {
+        gap: 6px;
+      }
+
+      .btn-cta {
+        padding: 6px 8px;
+        font-weight: 600;
+        font-size: 12px;
+      }
+
+      .btn-cta svg {
+        width: 14px;
+        height: 14px;
+      }
+
+      .modal {
+        width: 96vw;
+      }
+
+      .modal-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .modal-title {
+        margin-bottom: 8px;
+      }
+
+      .modal-body {
+        grid-template-columns: 1fr;
+      }
+
+      .modal-controls {
+        gap: 8px;
+      }
+
+      .projects-list {
+        border-right: none;
+        border-bottom: 1px solid #E2E8F0;
+        max-height: 44vh;
+      }
+
+      .project-detail {
+        max-height: 44vh;
+      }
+
+      .btn {
+        padding: 8px 10px;
+      }
     }
+
     @media (max-width: 480px) {
-      .store-buttons { grid-template-columns: repeat(3, minmax(100px, 1fr)); gap:8px; }
-      .store-buttons .btn-cta svg { width:18px; height:18px; }
-      .btn-cta .cta-label { font-size:12px; }
-      .btn-cta .cta-sub { font-size:11px; }
-      .header { padding:8px 12px; }
-      .brand img { width:24px; height:24px; }
-      .header-actions { gap:4px; }
-      .btn-cta { padding:5px 7px; font-size:11px; }
-      .btn-cta svg { width:12px; height:12px; }
+      .store-buttons {
+        grid-template-columns: repeat(3, minmax(100px, 1fr));
+        gap: 8px;
+      }
+
+      .store-buttons .btn-cta svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      .btn-cta .cta-label {
+        font-size: 12px;
+      }
+
+      .btn-cta .cta-sub {
+        font-size: 11px;
+      }
+
+      .header {
+        padding: 8px 12px;
+      }
+
+      .brand img {
+        width: 24px;
+        height: 24px;
+      }
+
+      .header-actions {
+        gap: 4px;
+      }
+
+      .btn-cta {
+        padding: 5px 7px;
+        font-size: 11px;
+      }
+
+      .btn-cta svg {
+        width: 12px;
+        height: 12px;
+      }
     }
+
     @media (max-width: 360px) {
-      .header-actions { gap:3px; }
-      .btn-cta { padding:4px 6px; font-size:10px; }
+      .header-actions {
+        gap: 3px;
+      }
+
+      .btn-cta {
+        padding: 4px 6px;
+        font-size: 10px;
+      }
     }
   </style>
 </head>
+
 <body>
   <header class="header">
     <div class="brand">
@@ -144,103 +491,147 @@
   </header>
   <section class="hero">
     <h1>Welcome</h1>
-    <p>ALIVE Nigeria community app for prayer, study, health tracking, missions, and more, towards growing together in faith and service.</p>
-     <div class="available-label">Available on the following</div>
+    <p>ALIVE Nigeria community app for prayer, study, health tracking, missions, and more, towards growing together in
+      faith and service.</p>
+    <div class="available-label">Available on the following</div>
     <div class="store-buttons">
-      <a class="btn-cta" href="https://play.google.com/store/apps/details?id=com.alive.alivengandroidapp" target="_blank" rel="noopener" aria-label="Google Play">
-        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 4l11 8L3 20V4zm12 8l6-4-3 4 3 4-6-4zM3 20l11-8 3 2-12 7c-1 .6-2-.1-2-1z"/></svg>
+      <a class="btn-cta" href="https://play.google.com/store/apps/details?id=com.alive.alivengandroidapp"
+        target="_blank" rel="noopener" aria-label="Google Play">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M3 4l11 8L3 20V4zm12 8l6-4-3 4 3 4-6-4zM3 20l11-8 3 2-12 7c-1 .6-2-.1-2-1z" />
+        </svg>
         <span class="cta-label">Android</span>
       </a>
       <button id="open-web-app" class="btn-cta" aria-label="Open Web App">
-        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 4h18v12H3V4zm0 14h18v2H3v-2zm3-11h12v6H6V7z"/></svg>
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M3 4h18v12H3V4zm0 14h18v2H3v-2zm3-11h12v6H6V7z" />
+        </svg>
         <span class="cta-label">Web App</span>
       </button>
-      <a class="btn-cta" href="https://apps.apple.com/app/id000000000" target="_blank" rel="noopener" aria-label="App Store">
-        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.5 2c-.7.6-1.5 1.6-1.5 2.7 0 1.2.6 2.2 1.3 2.8-.8.1-1.6.2-2.3.2-2.1 0-3.9-.7-5.3-2-1.6-1.4-2.6-3.3-2.4-5.2 2.3.1 4.2 1 5.3 2.5.9 1.3 1.7 2.4 3.6 2.6C15.5 3.7 16.3 2.8 16.5 2zM20.5 13.3c-.5-1.2-1.1-2.4-2-3.4-1.1-1.3-2.5-2.1-4.1-2.1-1.8 0-3 .9-3.8.9-.8 0-2.1-.9-3.5-.9-1.6 0-3 .9-4.1 2.2-1.4 1.7-2.5 4.3-2.5 6.7 0 2.9 1.3 5 3.3 5 1.3 0 2.2-.9 3.6-.9 1.3 0 2.3.9 3.6.9 1.3 0 2.1-.9 3.6-.9 1.5 0 2.4.9 3.6.9 1.8 0 3-2.1 3-5.3 0-1-.2-2.1-.2-2.1z"/></svg>
+      <a class="btn-cta" href="https://apps.apple.com/app/id000000000" target="_blank" rel="noopener"
+        aria-label="App Store">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path
+            d="M16.5 2c-.7.6-1.5 1.6-1.5 2.7 0 1.2.6 2.2 1.3 2.8-.8.1-1.6.2-2.3.2-2.1 0-3.9-.7-5.3-2-1.6-1.4-2.6-3.3-2.4-5.2 2.3.1 4.2 1 5.3 2.5.9 1.3 1.7 2.4 3.6 2.6C15.5 3.7 16.3 2.8 16.5 2zM20.5 13.3c-.5-1.2-1.1-2.4-2-3.4-1.1-1.3-2.5-2.1-4.1-2.1-1.8 0-3 .9-3.8.9-.8 0-2.1-.9-3.5-.9-1.6 0-3 .9-4.1 2.2-1.4 1.7-2.5 4.3-2.5 6.7 0 2.9 1.3 5 3.3 5 1.3 0 2.2-.9 3.6-.9 1.3 0 2.3.9 3.6.9 1.3 0 2.1-.9 3.6-.9 1.5 0 2.4.9 3.6.9 1.8 0 3-2.1 3-5.3 0-1-.2-2.1-.2-2.1z" />
+        </svg>
         <span class="cta-label">iOS</span>
-        </a>
+      </a>
     </div>
   </section>
-  <div id="app-loading-overlay" class="modal-overlay" style="z-index:4000; display:none;">
-    <div class="modal" style="width:auto;max-width:280px;">
-      <div style="padding:14px 16px; display:flex; flex-direction:column; align-items:center; gap:12px;">
-        <div style="width:28px;height:28px;border-radius:50%;background:
-          conic-gradient(from 0deg,#2D3748 0deg,#CBD5E0 120deg,#E2E8F0 240deg,#2D3748 360deg);
-          mask: radial-gradient(circle at center, transparent 55%, black 56%);
-          -webkit-mask: radial-gradient(circle at center, transparent 55%, black 56%);
-          animation:spin 0.9s linear infinite;"></div>
-        <div id="loading-text" style="color:#4A5568;font-size:13px;">Preparing…</div>
+  <div id="app-loading-overlay" class="modal-overlay" style="z-index:4000; display:none; background: #ffffff; flex-direction: column;">
+    <div style="display:flex; flex-direction:column; align-items:center; gap:32px;">
+      <div class="brand" style="flex-direction:column; gap:20px;">
+        <img src="icons/Icon-192.png" alt="ALIVE Logo" style="width:100px;height:100px;border-radius:24px;box-shadow: 0 20px 40px rgba(0,0,0,0.08);">
+        <span style="font-size:24px; font-weight:800; color:#1E293B; letter-spacing:-0.02em;">ALIVE-NG</span>
       </div>
+      
+      <div style="width:240px; height:6px; background:#F1F5F9; border-radius:10px; overflow:hidden; border: 1px solid #E2E8F0;">
+        <div id="loading-progress" style="width:10%; height:100%; background: linear-gradient(90deg, #2D3748, #4A5568); border-radius:10px; transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 0 10px rgba(45, 55, 72, 0.2);"></div>
+      </div>
+      
+      <div id="loading-text" style="color:#64748B; font-size:13px; font-weight:700; letter-spacing:0.1em; text-transform: uppercase;">Initializing System…</div>
     </div>
   </div>
   <style>
-    @keyframes spin { to { transform: rotate(360deg); } }
-    @keyframes bounce { 0%, 80%, 100% { transform: scale(0.8); opacity: 0.6; } 40% { transform: scale(1); opacity: 1; } }
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes bounce {
+
+      0%,
+      80%,
+      100% {
+        transform: scale(0.8);
+        opacity: 0.6;
+      }
+
+      40% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
   </style>
-  
+
   <!-- Featured Grid -->
   <section id="featured-grid" style="padding: 24px;">
     <div style="
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
       gap: 16px;">
-      
+
       <!-- Projects -->
       <div style="border: 1px solid #E2E8F0; border-radius: 8px; overflow: hidden; background: #fff;">
-        <div style="height: 140px; background: url('https://images.unsplash.com/photo-1593914370442-49d414beca24?q=80&w=1031&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D') center/cover, #EDF2F7;"></div>
+        <div
+          style="height: 140px; background: url('https://images.unsplash.com/photo-1593914370442-49d414beca24?q=80&w=1031&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D') center/cover, #EDF2F7;">
+        </div>
         <div style="padding: 16px;">
-          <div style="font-size: 12px; color: #718096; text-transform: uppercase; letter-spacing: 0.06em;">Projects</div>
-          <div style="font-size: 18px; font-weight: 600; color: #2D3748; margin-top: 4px;">Missions &amp; Outreaches</div>
+          <div style="font-size: 12px; color: #718096; text-transform: uppercase; letter-spacing: 0.06em;">Projects
+          </div>
+          <div style="font-size: 18px; font-weight: 600; color: #2D3748; margin-top: 4px;">Missions &amp; Outreaches
+          </div>
           <div style="margin-top: 12px;">
-            <button id="open-projects" style="padding: 10px 14px; border-radius: 6px; border: 1px solid #CBD5E0; background: #F7FAFC; color: #2D3748; cursor: pointer;">
+            <button id="open-projects"
+              style="padding: 10px 14px; border-radius: 6px; border: 1px solid #CBD5E0; background: #F7FAFC; color: #2D3748; cursor: pointer;">
               View Projects
             </button>
           </div>
         </div>
       </div>
-      
+
       <!-- News -->
       <div style="border: 1px solid #E2E8F0; border-radius: 8px; overflow: hidden; background: #fff;">
-        <div style="height: 140px; background: url('https://images.unsplash.com/photo-1518779578993-ec3579fee39f?auto=format&fit=crop&w=1200&q=80') center/cover, #EDF2F7;"></div>
+        <div
+          style="height: 140px; background: url('https://images.unsplash.com/photo-1518779578993-ec3579fee39f?auto=format&fit=crop&w=1200&q=80') center/cover, #EDF2F7;">
+        </div>
         <div style="padding: 16px;">
           <div style="font-size: 12px; color: #718096; text-transform: uppercase; letter-spacing: 0.06em;">News</div>
           <div style="font-size: 18px; font-weight: 600; color: #2D3748; margin-top: 4px;">ALIVE Nigeria News</div>
           <div style="margin-top: 12px;">
-            <a href="https://alivenigeria.org/news" target="_blank" rel="noopener" style="display:inline-block; padding: 10px 14px; border-radius: 6px; background: #2D3748; color: #F7FAFC; text-decoration: none;">
+            <a href="https://alivenigeria.org/news" target="_blank" rel="noopener"
+              style="display:inline-block; padding: 10px 14px; border-radius: 6px; background: #2D3748; color: #F7FAFC; text-decoration: none;">
               Read Now
             </a>
           </div>
         </div>
       </div>
-      
+
       <!-- Blog -->
       <div style="border: 1px solid #E2E8F0; border-radius: 8px; overflow: hidden; background: #fff;">
-        <div style="height: 140px; background: url('https://media.istockphoto.com/id/1449034129/photo/blogging-for-beginners-how-to-start-blog-word-blog-and-laptop-mobile-phone-notebook-and.jpg?s=612x612&w=0&k=20&c=-NTl4B30g2wiXj8jaXRWIwD5rcUUsT_b0oltHmrvgKU=') center/cover, #FEF3C7;"></div>
+        <div
+          style="height: 140px; background: url('https://media.istockphoto.com/id/1449034129/photo/blogging-for-beginners-how-to-start-blog-word-blog-and-laptop-mobile-phone-notebook-and.jpg?s=612x612&w=0&k=20&c=-NTl4B30g2wiXj8jaXRWIwD5rcUUsT_b0oltHmrvgKU=') center/cover, #FEF3C7;">
+        </div>
         <div style="padding: 16px;">
           <div style="font-size: 12px; color: #718096; text-transform: uppercase; letter-spacing: 0.06em;">Blog</div>
           <div style="font-size: 18px; font-weight: 600; color: #2D3748; margin-top: 4px;">Articles &amp; Insights</div>
           <div style="margin-top: 12px;">
-            <a href="https://alivenigeria.org/blogs" target="_blank" rel="noopener" style="display:inline-block; padding: 10px 14px; border-radius: 6px; background: #2D3748; color: #F7FAFC; text-decoration: none;">
+            <a href="https://alivenigeria.org/blogs" target="_blank" rel="noopener"
+              style="display:inline-block; padding: 10px 14px; border-radius: 6px; background: #2D3748; color: #F7FAFC; text-decoration: none;">
               Read Now
             </a>
           </div>
         </div>
       </div>
-      
+
       <!-- Events -->
       <div style="border: 1px solid #E2E8F0; border-radius: 8px; overflow: hidden; background: #fff;">
-        <div style="height: 140px; background: url('https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D') center/cover, #EDE9FE;"></div>
+        <div
+          style="height: 140px; background: url('https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D') center/cover, #EDE9FE;">
+        </div>
         <div style="padding: 16px;">
           <div style="font-size: 12px; color: #718096; text-transform: uppercase; letter-spacing: 0.06em;">Events</div>
           <div style="font-size: 18px; font-weight: 600; color: #2D3748; margin-top: 4px;">Upcoming Programs</div>
           <div style="margin-top: 12px;">
-            <a href="https://alivenigeria.org/events" target="_blank" rel="noopener" style="display:inline-block; padding: 10px 14px; border-radius: 6px; background: #D4AF37; color: #1A1F2E; text-decoration: none;">
+            <a href="https://alivenigeria.org/events" target="_blank" rel="noopener"
+              style="display:inline-block; padding: 10px 14px; border-radius: 6px; background: #D4AF37; color: #1A1F2E; text-decoration: none;">
               View Now
             </a>
           </div>
         </div>
       </div>
-      
+
     </div>
   </section>
   <!-- Firebase Configuration -->
@@ -282,36 +673,48 @@
       var firebaseAvailable = (typeof firebase !== 'undefined' && firebase && typeof firebase.initializeApp === 'function');
       if (firebaseAvailable) {
         const firebaseConfig = {
-          apiKey: "AIzaSyDmpl9Idp9Q0ult4BfWPg5J7A1URQOpDoU",
-          authDomain: "alive-ng-flutter-app.firebaseapp.com",
-          projectId: "alive-ng-flutter-app",
-          storageBucket: "alive-ng-flutter-app.firebasestorage.app",
-          messagingSenderId: "234909240985",
-          appId: "1:234909240985:web:9d703098e9fcce3e8e3208",
-          measurementId: "G-CC6JE7224Q"
+          apiKey: "{{FIREBASE_API_KEY}}",
+          authDomain: "{{FIREBASE_AUTH_DOMAIN}}",
+          projectId: "{{FIREBASE_PROJECT_ID}}",
+          storageBucket: "{{FIREBASE_STORAGE_BUCKET}}",
+          messagingSenderId: "{{FIREBASE_MESSAGING_SENDER_ID}}",
+          appId: "{{FIREBASE_APP_ID}}",
+          measurementId: "{{FIREBASE_MEASUREMENT_ID}}"
         };
         firebase.initializeApp(firebaseConfig);
-        const messaging = firebase.messaging();
-        messaging.getToken({ 
-          vapidKey: 'BMFvrKu5q_mKn80IaIsX3hREab1nodMrdKDlMGOL_lVCIuTwxq4mTZiFG1SYUcCy6G-TrjK9X4H08Jll1PQjkYg' 
-        }).then(function(currentToken) {
-          if (currentToken) {
-            console.log('Registration token available.');
-          } else {
-            console.log('No registration token available.');
+        const messaging = (function() {
+          try {
+            var host = location.hostname;
+            // Only initialize messaging on production-like hosts to avoid DWDS/Proxy hangs in dev
+            if (host && host !== 'localhost' && host !== '127.0.0.1') {
+              const m = firebase.messaging();
+              m.getToken({
+                vapidKey: '{{WEB_PUSH_CERT_KEY}}'
+              }).then(function (currentToken) {
+                if (currentToken) {
+                  console.log('Registration token available.');
+                } else {
+                  console.log('No registration token available.');
+                }
+              }).catch(function (err) {
+                console.log('An error occurred while retrieving token. ', err);
+              });
+              m.onMessage(function (payload) {
+                console.log('Message received. ', payload);
+              });
+              return m;
+            }
+          } catch (e) {
+            console.warn('Messaging initialization skipped or failed:', e);
           }
-        }).catch(function(err) {
-          console.log('An error occurred while retrieving token. ', err);
-        });
-        messaging.onMessage(function(payload) {
-          console.log('Message received. ', payload);
-        });
-        
+          return null;
+        })();
+
         // Initialize Analytics if supported
         try {
           firebase.analytics();
-        } catch (_) {}
-        firebase.auth().onAuthStateChanged(async function(user) {
+        } catch (_) { }
+        firebase.auth().onAuthStateChanged(async function (user) {
           try {
             if (!user) {
               window._isAdmin = false;
@@ -326,16 +729,16 @@
             window._isLoggedIn = false;
           }
         });
-        if ('serviceWorker' in navigator) {
+        if ('serviceWorker' in navigator && messaging) {
           try {
             var host = location.hostname;
             if (host && host !== 'localhost' && host !== '127.0.0.1') {
               navigator.serviceWorker.register('/firebase-messaging-sw.js')
-                .then(function(registration) {
+                .then(function (registration) {
                   console.log('Service Worker registered with scope:', registration.scope);
-                  try { messaging.useServiceWorker(registration); } catch (_) {}
+                  try { messaging.useServiceWorker(registration); } catch (_) { }
                 })
-                .catch(function(error) {
+                .catch(function (error) {
                   console.log('Service Worker registration failed:', error);
                 });
             }
@@ -353,34 +756,38 @@
   <script>
     var _bootAttempts = 0;
     function loadFlutterApp(startRoute) {
-      try { 
-        document.getElementById('app-loading-overlay').style.display = 'flex'; 
-        document.getElementById('loading-text').textContent = 'Preparing…';
-      } catch (_) {}
-      try { 
+      try {
+        document.getElementById('app-loading-overlay').style.display = 'flex';
+        document.getElementById('loading-text').textContent = 'Preparing Resources…';
+        document.getElementById('loading-progress').style.width = '30%';
+      } catch (_) { }
+      try {
         if (startRoute && !sessionStorage.getItem('start_route')) {
           sessionStorage.setItem('start_route', startRoute);
         }
-      } catch (_) {}
+      } catch (_) { }
       try {
         if (typeof grecaptcha !== 'undefined' && grecaptcha.enterprise) {
-          grecaptcha.enterprise.ready(function() {
+          grecaptcha.enterprise.ready(function () {
             try {
-              grecaptcha.enterprise.execute('6LcKstkrAAAAAMWfR5Ki5eBh1TdCLQD-e7ofMi4S', {action: 'open_web_app'})
-                .then(function(token) { try { sessionStorage.setItem('recaptcha_token', token); } catch (_) {} })
-                .catch(function() {});
-            } catch (_) {}
+              grecaptcha.enterprise.execute('6LcKstkrAAAAAMWfR5Ki5eBh1TdCLQD-e7ofMi4S', { action: 'open_web_app' })
+                .then(function (token) { try { sessionStorage.setItem('recaptcha_token', token); } catch (_) { } })
+                .catch(function () { });
+            } catch (_) { }
           });
         }
-      } catch (_) {}
-      var _readyCheckTimer = setInterval(function() {
+      } catch (_) { }
+      var _readyCheckTimer = setInterval(function () {
         try {
           var ready = !!(document.querySelector('flt-glass-pane') || document.getElementById('flutter'));
           if (ready) {
-            document.getElementById('app-loading-overlay').style.display = 'none';
+            document.getElementById('loading-progress').style.width = '100%';
+            setTimeout(function() {
+              document.getElementById('app-loading-overlay').style.display = 'none';
+            }, 300);
             clearInterval(_readyCheckTimer);
           }
-        } catch (_) {}
+        } catch (_) { }
       }, 200);
       if (!window._flutterLoading && !window._flutterBootstrapped && !document.getElementById('flutter-bootstrap-script')) {
         window._flutterLoading = true;
@@ -390,57 +797,60 @@
           if (type.includes('2g') || type.includes('slow-2g')) {
             window.flutterConfiguration = { renderer: 'html' };
           }
-        } catch (_) {}
+        } catch (_) { }
         var script = document.createElement('script');
         script.id = 'flutter-bootstrap-script';
         script.src = 'flutter_bootstrap.js';
         script.async = true;
-        script.addEventListener('load', function() {
-          try { console.log('flutter_bootstrap.js loaded'); } catch (_) {}
-          try { document.getElementById('loading-text').textContent = 'Starting…'; } catch (_) {}
+        script.addEventListener('load', function () {
+          try { console.log('flutter_bootstrap.js loaded'); } catch (_) { }
+          try { 
+            document.getElementById('loading-text').textContent = 'Starting Engine…'; 
+            document.getElementById('loading-progress').style.width = '70%';
+          } catch (_) { }
           window._flutterBootstrapped = true;
           window._flutterLoading = false;
         });
-        script.addEventListener('error', function() {
-          try { console.error('Failed to load flutter_bootstrap.js'); } catch (_) {}
-          try { document.getElementById('app-loading-overlay').style.display = 'none'; alert('Failed to load app. Please refresh and try again.'); } catch (_) {}
-          try { clearInterval(_readyCheckTimer); } catch (_) {}
+        script.addEventListener('error', function () {
+          try { console.error('Failed to load flutter_bootstrap.js'); } catch (_) { }
+          try { document.getElementById('app-loading-overlay').style.display = 'none'; alert('Failed to load app. Please refresh and try again.'); } catch (_) { }
+          try { clearInterval(_readyCheckTimer); } catch (_) { }
           window._flutterLoading = false;
         });
         document.body.appendChild(script);
         _bootAttempts++;
       }
       // Removed auto-retry to avoid reloading bootstrap script and redeclaration errors
-      setTimeout(function() {
+      setTimeout(function () {
         try {
           var notReady = !(document.querySelector('flt-glass-pane') || document.getElementById('flutter'));
           if (notReady) {
             document.getElementById('loading-text').textContent = 'Still preparing…';
           }
-        } catch (_) {}
+        } catch (_) { }
       }, 1500);
     }
-    (function() {
+    (function () {
       function showError(msg) {
         try {
           var overlay = document.getElementById('app-loading-overlay');
           var textEl = document.getElementById('loading-text');
           overlay.style.display = 'flex';
           textEl.textContent = 'Error: ' + String(msg || 'Unknown');
-        } catch (_) {}
+        } catch (_) { }
       }
-      window.addEventListener('error', function(e) {
-        try { window._lastError = e.error || e.message; } catch (_) {}
+      window.addEventListener('error', function (e) {
+        try { window._lastError = e.error || e.message; } catch (_) { }
         var m = (e.error && e.error.message) || e.message || 'Unknown';
         showError(m);
       });
-      window.addEventListener('unhandledrejection', function(e) {
-        try { window._lastError = e.reason; } catch (_) {}
+      window.addEventListener('unhandledrejection', function (e) {
+        try { window._lastError = e.reason; } catch (_) { }
         var m = e && e.reason ? (e.reason.message || String(e.reason)) : 'Unhandled rejection';
         showError(m);
       });
     })();
-    document.getElementById('open-web-app')?.addEventListener('click', function() {
+    document.getElementById('open-web-app')?.addEventListener('click', function () {
       if (window._isLoggedIn) {
         loadFlutterApp('/');
       } else {
@@ -466,16 +876,16 @@
         if (appPath) {
           loadFlutterApp(appPath);
         }
-      } catch (_) {}
+      } catch (_) { }
     })();
-    document.getElementById('loading-close')?.addEventListener('click', function() {
-      try { 
-        document.getElementById('app-loading-overlay').style.display = 'none'; 
+    document.getElementById('loading-close')?.addEventListener('click', function () {
+      try {
+        document.getElementById('app-loading-overlay').style.display = 'none';
         document.getElementById('loading-bar').style.width = '0%';
         document.getElementById('loading-percent').textContent = '0%';
-      } catch (_) {}
+      } catch (_) { }
     });
-    document.getElementById('open-projects')?.addEventListener('click', function() {
+    document.getElementById('open-projects')?.addEventListener('click', function () {
       openProjectsModal();
     });
 
@@ -497,11 +907,7 @@
           .orderBy('priority', 'asc')
           .onSnapshot((snap) => {
             if (snap.empty) {
-              _projects = [
-                { id: 'impact-hub', title: 'Impact Hub Center', summary: 'Community discipleship and outreach facility', goal: 35000000, raised: 8000000, status: 'active', image_url: 'https://images.unsplash.com/photo-1593914370442-49d414beca24?q=80&w=1031&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D' },
-                { id: 'vehicle-purchase', title: 'Vehicle Purchase', summary: 'Mission vehicle for outreach logistics', goal: 18000000, raised: 0, status: 'active', image_url: 'https://images.unsplash.com/photo-1597685204565-110abf469a1e?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D' },
-                { id: 'media-studio', title: 'Media Studio Setup', summary: 'Podcast and content production equipment', goal: 9000000, raised: 0, status: 'planning', image_url: 'https://images.unsplash.com/photo-1769699167906-a44d5ae50abb?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D' },
-              ];
+              _projects = [];
             } else {
               _projects = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             }
@@ -509,27 +915,19 @@
             renderProjectsList();
           }, (err) => {
             console.error('Projects snapshot error', err);
-            _projects = [
-              { id: 'impact-hub', title: 'Impact Hub Center', summary: 'Discipleship and Outreach facility', goal: 35000000, raised: 8000000, status: 'active', image_url: 'https://images.unsplash.com/photo-1593914370442-49d414beca24?q=80&w=1031&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D' },
-              { id: 'vehicle-purchase', title: 'Vehicle Purchase', summary: 'Mission vehicle for outreach logistics', goal: 18000000, raised: 0, status: 'active', image_url: 'https://images.unsplash.com/photo-1597685204565-110abf469a1e?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D' },
-              { id: 'media-studio', title: 'Media Studio Setup', summary: 'Podcast and content production equipment', goal: 9000000, raised: 0, status: 'planning', image_url: 'https://images.unsplash.com/photo-1769699167906-a44d5ae50abb?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D' },
-            ];
+            _projects = [];
             applyFiltersAndSort();
             renderProjectsList();
           });
       } catch (e) {
         // Fallback sample data if Firestore unavailable
-        _projects = [
-          { id: 'impact-hub', title: 'Impact Hub Center', summary: 'Discipleship and Outreach facility', goal: 35000000, raised: 8000000, status: 'active', image_url: 'https://source.unsplash.com/HxCIh4TsO1w/1200x800' },
-          { id: 'vehicle-purchase', title: 'Vehicle Purchase', summary: 'Mission vehicle for outreach logistics', goal: 18000000, raised: 0, status: 'active', image_url: 'https://source.unsplash.com/zRetWvOnbf0/1200x800' },
-          { id: 'media-studio', title: 'Media Studio Setup', summary: 'Podcast and content production equipment', goal: 9000000, raised: 0, status: 'planning', image_url: 'https://source.unsplash.com/rSZEhnhoK00/1200x800' },
-        ];
+        _projects = [];
         applyFiltersAndSort();
       }
     }
 
     function openProjectsModal() {
-      try { firebase.analytics().logEvent('view_project_list'); } catch (_) {}
+      try { firebase.analytics().logEvent('view_project_list'); } catch (_) { }
       const overlay = document.getElementById('projects-modal');
       overlay.style.display = 'flex';
       if (_projects.length === 0) {
@@ -546,11 +944,11 @@
           _unsubscribeProjects();
           _unsubscribeProjects = null;
         }
-      } catch (_) {}
+      } catch (_) { }
     }
 
     document.getElementById('projects-close')?.addEventListener('click', closeProjectsModal);
-    document.getElementById('projects-modal')?.addEventListener('click', function(e) {
+    document.getElementById('projects-modal')?.addEventListener('click', function (e) {
       if (e.target === document.getElementById('projects-modal')) {
         closeProjectsModal();
       }
@@ -605,7 +1003,7 @@
       const goal = formatCurrency(p.goal, currencyCode);
       const raised = formatCurrency(p.raised || 0, currencyCode);
       const statusBadge = p.status ? `<span style="padding:4px 8px;border-radius:999px;background:#EDF2F7;color:#2D3748;font-size:12px;">${escapeHtml(p.status)}</span>` : '';
-        const image = p.image_url ? `<img src="${escapeHtml(p.image_url)}" alt="${escapeHtml(p.title)}" style="width:100%;height:220px;object-fit:cover;border-radius:8px;"/>`
+      const image = p.image_url ? `<img src="${escapeHtml(p.image_url)}" alt="${escapeHtml(p.title)}" style="width:100%;height:220px;object-fit:cover;border-radius:8px;"/>`
         : `<img src="https://images.unsplash.com/photo-1593914370442-49d414beca24?q=80&w=1031&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="Project image" style="width:100%;height:220px;object-fit:cover;border-radius:8px;"/>`;
       const adminVisible = !!window._isAdmin;
       el.innerHTML = `
@@ -624,19 +1022,13 @@
         </div>
       `;
       document.getElementById(`donate-${p.id}`)?.addEventListener('click', () => {
-        try { firebase.analytics().logEvent('begin_checkout', { items: [{ item_id: p.id, item_name: p.title }] }); } catch (_) {}
-        try { sessionStorage.setItem('selected_project_id', p.id); } catch (_) {}
-        try { sessionStorage.setItem('start_route', '/donation'); } catch (_) {}
-        try { closeProjectsModal(); } catch (_) {}
-        
-        if (window._flutterBootstrapped) {
-           window.location.hash = '/donation';
-        } else {
-           loadFlutterApp(null);
-        }
+        try { firebase.analytics().logEvent('begin_checkout', { items: [{ item_id: p.id, item_name: p.title }] }); } catch (_) { }
+        try { sessionStorage.setItem('selected_project_id', p.id); } catch (_) { }
+        // Navigate to the standalone HTML donation page
+        window.location.href = `donation.html?projectId=${p.id}`;
       });
       document.getElementById(`admin-note-${p.id}`)?.addEventListener('click', () => {
-        alert('Admins can update project details inside the ALIVE app. Open the app and use the Admin section.');
+        alert('Admins can update project details inside the ALIVE-NG app. Open the app and use the Admin section.');
       });
     }
 
@@ -651,10 +1043,10 @@
     }
     function formatCurrency(n, currencyCode = 'NGN') {
       if (typeof n !== 'number') return n || '';
-      return new Intl.NumberFormat(currencyCode === 'NGN' ? 'en-NG' : 'en-US', { 
-        style: 'currency', 
-        currency: currencyCode, 
-        maximumFractionDigits: 0 
+      return new Intl.NumberFormat(currencyCode === 'NGN' ? 'en-NG' : 'en-US', {
+        style: 'currency',
+        currency: currencyCode,
+        maximumFractionDigits: 0
       }).format(n);
     }
   </script>
@@ -664,26 +1056,41 @@
         <div style="font-weight:700; color:#2D3748;">Links</div>
         <div style="margin-top:8px;">
           <a href="privacy-policy.html" style="display:block; color:#2D3748; text-decoration:none;">Privacy Policy</a>
-          <a href="terms-conditions.html" style="display:block; color:#2D3748; text-decoration:none;">Terms &amp; Conditions</a>
+          <a href="terms-conditions.html" style="display:block; color:#2D3748; text-decoration:none;">Terms &amp;
+            Conditions</a>
         </div>
       </div>
       <div>
         <div style="font-weight:700; color:#2D3748;">Contact</div>
         <div style="margin-top:8px;">
-          <a href="mailto:alivenigeria2011@gmail.com" style="display:block; color:#2D3748; text-decoration:none;">Email Us</a>
-          <a href="tel:+2347068548865" style="display:block; color:#2D3748; text-decoration:none; margin-top:4px;">Call Us</a>
+          <a href="mailto:alivenigeria2011@gmail.com" style="display:block; color:#2D3748; text-decoration:none;">Email
+            Us</a>
+          <a href="tel:+2347068548865" style="display:block; color:#2D3748; text-decoration:none; margin-top:4px;">Call
+            Us</a>
         </div>
       </div>
       <div style="align-self:start;">
-        <div style="display:flex; gap:12px; align-items:center; justify-content:flex-start; flex-wrap:wrap; padding-top:24px;">
-          <a href="https://www.youtube.com/@AlivenigeriaSDA" target="_blank" rel="noopener" aria-label="YouTube" style="color:#2D3748;">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M23.5 6.2a4 4 0 0 0-2.8-2.8C18.8 3 12 3 12 3s-6.8 0-8.7.4A4 4 0 0 0 .5 6.2 41.4 41.4 0 0 0 0 12a41.4 41.4 0 0 0 .5 5.8 4 4 0 0 0 2.8 2.8C5.2 21 12 21 12 21s6.8 0 8.7-.4a4 4 0 0 0 2.8-2.8A41.4 41.4 0 0 0 24 12a41.4 41.4 0 0 0-.5-5.8zM9.8 15.3V8.7L15.5 12z"/></svg>
+        <div
+          style="display:flex; gap:12px; align-items:center; justify-content:flex-start; flex-wrap:wrap; padding-top:24px;">
+          <a href="https://www.youtube.com/@AlivenigeriaSDA" target="_blank" rel="noopener" aria-label="YouTube"
+            style="color:#2D3748;">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+              <path
+                d="M23.5 6.2a4 4 0 0 0-2.8-2.8C18.8 3 12 3 12 3s-6.8 0-8.7.4A4 4 0 0 0 .5 6.2 41.4 41.4 0 0 0 0 12a41.4 41.4 0 0 0 .5 5.8 4 4 0 0 0 2.8 2.8C5.2 21 12 21 12 21s6.8 0 8.7-.4a4 4 0 0 0 2.8-2.8A41.4 41.4 0 0 0 24 12a41.4 41.4 0 0 0-.5-5.8zM9.8 15.3V8.7L15.5 12z" />
+            </svg>
           </a>
-          <a href="https://x.com/ALIVENIGERIA1" target="_blank" rel="noopener" aria-label="Twitter/X" style="color:#2D3748;">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M3 3h5.5l4.5 6L18 3h3l-6.9 8.2L21 21h-5.5l-4.9-6.5L9 21H6l7-8.2L3 3z"/></svg>
+          <a href="https://x.com/ALIVENIGERIA1" target="_blank" rel="noopener" aria-label="Twitter/X"
+            style="color:#2D3748;">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+              <path d="M3 3h5.5l4.5 6L18 3h3l-6.9 8.2L21 21h-5.5l-4.9-6.5L9 21H6l7-8.2L3 3z" />
+            </svg>
           </a>
-          <a href="https://www.instagram.com/alive.nigeria" target="_blank" rel="noopener" aria-label="Instagram" style="color:#2D3748;">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm5 4a6 6 0 1 0 0 12 6 6 0 0 0 0-12zm6.5-1.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></svg>
+          <a href="https://www.instagram.com/alive.nigeria" target="_blank" rel="noopener" aria-label="Instagram"
+            style="color:#2D3748;">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+              <path
+                d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm5 4a6 6 0 1 0 0 12 6 6 0 0 0 0-12zm6.5-1.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z" />
+            </svg>
           </a>
         </div>
       </div>
@@ -692,4 +1099,5 @@
     <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
   </footer>
 </body>
+
 </html>

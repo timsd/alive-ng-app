@@ -9,6 +9,7 @@ import '../../models/donation_models.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../utils/web_launch_params.dart';
 import '../../providers/firebase_auth_provider.dart';
+import '../../widgets/custom_app_bar.dart';
 
 class DonationScreen extends ConsumerStatefulWidget {
   const DonationScreen({super.key});
@@ -64,6 +65,32 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
     _animationController.forward();
 
     _loadSelectedProject();
+    _fetchExchangeRate();
+  }
+
+  double _exchangeRate = 1650.0; // Default fallback
+  Future<void> _fetchExchangeRate() async {
+    // Only use Admin setting from Firestore
+    try {
+      final settingDoc = await FirebaseFirestore.instance
+          .collection('app_settings')
+          .where('setting_key', isEqualTo: 'usd_to_ngn_rate')
+          .get();
+      if (settingDoc.docs.isNotEmpty) {
+        final data = settingDoc.docs.first.data();
+        if (data['is_active'] != false && data['setting_value'] != null) {
+          final rate = double.tryParse(data['setting_value'].toString());
+          if (rate != null) {
+            setState(() => _exchangeRate = rate);
+            debugPrint('Using Admin Exchange Rate: $_exchangeRate');
+            return;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Firestore exchange rate fetch failed: $e');
+    }
+    debugPrint('Using hardcoded fallback Exchange Rate: $_exchangeRate');
   }
 
   @override
@@ -84,28 +111,12 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: Text(
-          'Support ALIVE',
-          style: TextStyle(
-            fontSize: ResponsiveUtils.getResponsiveValue(
-              context: context,
-              mobile: 20,
-              tablet: 22,
-              desktop: 24,
-            ),
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        backgroundColor:
-            theme.appBarTheme.backgroundColor ?? theme.colorScheme.surface,
-        foregroundColor:
-            theme.appBarTheme.foregroundColor ?? theme.colorScheme.onSurface,
-        elevation: 0.5,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
-        ),
+      appBar: CustomAppBar(
+        title: 'Support ALIVE',
+        showBackButton: true,
+        showThemeToggle: true,
+        showLanguageToggle: true,
+        showDonationButton: false, // Already on donation screen
       ),
       body: AnimatedBuilder(
         animation: _animationController,
@@ -148,18 +159,104 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                                 _selectedProjectTitle != null
                                     ? 'You are donating to: $_selectedProjectTitle'
                                     : 'You are donating to: Selected Project',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
+                                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
                                   fontSize: context.responsiveFontSize(14),
                                 ),
                               ),
                             ),
                             TextButton(
-                              onPressed: _clearSelectedProject,
-                              child: const Text('Change'),
-                            ),
-                          ],
+                                onPressed: _clearSelectedProject,
+                                child: const Text('Change'),
+                              ),
+                            ],
+                          ),
                         ),
+                      if (_selectedProjectId != null)
+                        FutureBuilder<DocumentSnapshot>(
+                        future: FirebaseFirestore.instance.collection('projects').doc(_selectedProjectId).get(),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData || !snapshot.data!.exists) return const SizedBox.shrink();
+                          final data = snapshot.data!.data() as Map<String, dynamic>;
+                          final goal = (data['goal'] as num?)?.toDouble() ?? 0;
+                          final raised = (data['raised'] as num?)?.toDouble() ?? 0;
+                          if (goal <= 0) return const SizedBox.shrink();
+
+                          double displayGoal = goal;
+                          double displayRaised = raised;
+                          if (_selectedCurrency == 'USD') {
+                            displayGoal = goal / _exchangeRate;
+                            displayRaised = raised / _exchangeRate;
+                          }
+
+                          return Container(
+                            margin: const EdgeInsets.only(top: 12),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).cardColor,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.1)),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.05),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Project Goal',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0.5,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                                    ),
+                                    Text(
+                                      '${((raised / goal) * 100).toInt()}%',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w900,
+                                        color: theme.colorScheme.secondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: LinearProgressIndicator(
+                                    value: (raised / goal).clamp(0.0, 1.0).toDouble(),
+                                    minHeight: 10,
+                                    backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                                    valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.secondary),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Raised: ${_selectedCurrency == 'USD' ? '\$' : '₦'}${_formatCompact(displayRaised)}',
+                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                    ),
+                                    Text(
+                                      'Goal: ${_selectedCurrency == 'USD' ? '\$' : '₦'}${_formatCompact(displayGoal)}',
+                                      style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          );
+                        },
                       ),
                     _buildHeader(context, theme, isDark),
                     SizedBox(
@@ -230,17 +327,17 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
           end: Alignment.bottomRight,
           colors: isDark
               ? [
-                  theme.primaryColor.withValues(alpha: 0.2),
+                  theme.colorScheme.primary.withValues(alpha: 0.2),
                   theme.colorScheme.secondary.withValues(alpha: 0.1),
                 ]
               : [
-                  theme.primaryColor.withValues(alpha: 0.1),
+                  theme.colorScheme.primary.withValues(alpha: 0.1),
                   theme.colorScheme.secondary.withValues(alpha: 0.05),
                 ],
         ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: theme.primaryColor.withValues(alpha: 0.2),
+          color: theme.colorScheme.primary.withValues(alpha: 0.2),
           width: 1,
         ),
       ),
@@ -265,30 +362,16 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
           Text(
             'You Can Be a Part of Something Bigger.',
-            style: TextStyle(
-              fontSize: ResponsiveUtils.getResponsiveValue(
-                context: context,
-                mobile: 24,
-                tablet: 28,
-                desktop: 32,
-              ),
+            style: theme.textTheme.headlineMedium?.copyWith(
               fontWeight: FontWeight.bold,
-              color: theme.colorScheme.onSurface,
             ),
             textAlign: TextAlign.center,
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
           Text(
             'For more than 14 years, ALIVE NG Ministries has helped connect thousands of people with God\'s word and established churches around Nigeria. We can help connect new generations to the life-changing wisdom of the Bible.',
-            style: TextStyle(
-              fontSize: ResponsiveUtils.getResponsiveValue(
-                context: context,
-                mobile: 16,
-                tablet: 18,
-                desktop: 20,
-              ),
+            style: theme.textTheme.bodyLarge?.copyWith(
               color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
-              height: 1.5,
             ),
             textAlign: TextAlign.center,
           ),
@@ -303,16 +386,9 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       children: [
         Text(
           'Choose Your Giving Method',
-          style: TextStyle(
-            fontSize: ResponsiveUtils.getResponsiveValue(
-              context: context,
-              mobile: 20,
-              tablet: 22,
-              desktop: 24,
-            ),
-            fontWeight: FontWeight.bold,
-            color: theme.colorScheme.onSurface,
-          ),
+          style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
         ),
         SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
         Row(
@@ -389,7 +465,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
             SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
             Text(
               title,
-              style: TextStyle(
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontSize: ResponsiveUtils.getResponsiveValue(
                   context: context,
                   mobile: 16,
@@ -406,7 +482,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
             SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 4)),
             Text(
               subtitle,
-              style: TextStyle(
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 fontSize: ResponsiveUtils.getResponsiveValue(
                   context: context,
                   mobile: 12,
@@ -434,16 +510,9 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
               _isMonthlySelected
                   ? 'Enter an amount to give monthly'
                   : 'Enter an amount to give one time',
-              style: TextStyle(
-                fontSize: ResponsiveUtils.getResponsiveValue(
-                  context: context,
-                  mobile: 18,
-                  tablet: 20,
-                  desktop: 22,
-                ),
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.onSurface,
-              ),
+              style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             _buildCurrencySelector(context, theme),
           ],
@@ -472,15 +541,15 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
             value: currency,
             child: Text(
               currency,
-              style: TextStyle(
-                fontSize: ResponsiveUtils.getResponsiveValue(
-                  context: context,
-                  mobile: 14,
-                  tablet: 16,
-                  desktop: 18,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontSize: ResponsiveUtils.getResponsiveValue(
+                    context: context,
+                    mobile: 14,
+                    tablet: 16,
+                    desktop: 18,
+                  ),
+                  fontWeight: FontWeight.w600,
                 ),
-                fontWeight: FontWeight.w600,
-              ),
             ),
           );
         }).toList(),
@@ -532,18 +601,18 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
               ),
             ),
             decoration: BoxDecoration(
-              color: isSelected ? theme.primaryColor : theme.cardColor,
+              color: isSelected ? theme.colorScheme.primary : theme.cardColor,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isSelected
-                    ? theme.primaryColor
+                    ? theme.colorScheme.primary
                     : theme.dividerColor.withValues(alpha: 0.3),
                 width: isSelected ? 2 : 1,
               ),
               boxShadow: isSelected
                   ? [
                       BoxShadow(
-                        color: theme.primaryColor.withValues(alpha: 0.3),
+                        color: theme.colorScheme.primary.withValues(alpha: 0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
@@ -552,7 +621,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
             ),
             child: Text(
               label,
-              style: TextStyle(
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontSize: ResponsiveUtils.getResponsiveValue(
                   context: context,
                   mobile: 18,
@@ -575,7 +644,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       children: [
         Text(
           'Other Amount',
-          style: TextStyle(
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
             fontSize: ResponsiveUtils.getResponsiveValue(
               context: context,
               mobile: 16,
@@ -590,7 +659,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
         TextField(
           controller: _customAmountController,
           keyboardType: TextInputType.number,
-          style: TextStyle(
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
             fontSize: ResponsiveUtils.getResponsiveValue(
               context: context,
               mobile: 18,
@@ -601,7 +670,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
           ),
           decoration: InputDecoration(
             prefixText: _selectedCurrency == 'USD' ? '\$ ' : '₦ ',
-            prefixStyle: TextStyle(
+            prefixStyle: Theme.of(context).textTheme.titleLarge?.copyWith(
               fontSize: ResponsiveUtils.getResponsiveValue(
                 context: context,
                 mobile: 18,
@@ -609,7 +678,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                 desktop: 22,
               ),
               fontWeight: FontWeight.bold,
-              color: theme.primaryColor,
+              color: theme.colorScheme.primary,
             ),
             hintText: 'Enter amount',
             border: OutlineInputBorder(
@@ -619,7 +688,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: theme.primaryColor, width: 2),
+              borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
             ),
             filled: true,
             fillColor: theme.cardColor,
@@ -651,18 +720,12 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
               value: _coverProcessingFees,
               onChanged: (value) =>
                   setState(() => _coverProcessingFees = value ?? false),
-              activeColor: theme.primaryColor,
+              activeColor: theme.colorScheme.primary,
             ),
             Expanded(
               child: Text(
                 'I would like to add 3.5% to cover processing fees so that my donation goes a little further.',
-                style: TextStyle(
-                  fontSize: ResponsiveUtils.getResponsiveValue(
-                    context: context,
-                    mobile: 14,
-                    tablet: 16,
-                    desktop: 18,
-                  ),
+                style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
                 ),
               ),
@@ -690,15 +753,9 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                 bottom: ResponsiveUtils.getResponsiveSpacing(context, 8)),
             child: Text(
               'Total: ${_selectedCurrency == 'USD' ? '\$' : '₦'}${totalAmount.toStringAsFixed(2)}',
-              style: TextStyle(
-                fontSize: ResponsiveUtils.getResponsiveValue(
-                  context: context,
-                  mobile: 16,
-                  tablet: 18,
-                  desktop: 20,
-                ),
+              style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: theme.primaryColor,
+                color: theme.colorScheme.primary,
               ),
             ),
           ),
@@ -715,7 +772,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                 ? _processDonation
                 : null,
             style: ElevatedButton.styleFrom(
-              backgroundColor: theme.primaryColor,
+              backgroundColor: theme.colorScheme.primary,
               foregroundColor: theme.colorScheme.onPrimary,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -725,17 +782,11 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                 ResponsiveUtils.getResponsiveValue(context: context, mobile: 44, tablet: 48, desktop: 52),
               ),
               elevation: isEnabled ? 8 : 0,
-              shadowColor: theme.primaryColor.withValues(alpha: 0.3),
+              shadowColor: theme.colorScheme.primary.withValues(alpha: 0.3),
             ),
             child: Text(
               _isMonthlySelected ? 'Start Monthly Giving' : 'Donate One-Time',
-              style: TextStyle(
-                fontSize: ResponsiveUtils.getResponsiveValue(
-                  context: context,
-                  mobile: 18,
-                  tablet: 20,
-                  desktop: 22,
-                ),
+              style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -744,13 +795,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
         SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
         Text(
           'Your donation helps make the life-changing wisdom of the Bible accessible to all.',
-          style: TextStyle(
-            fontSize: ResponsiveUtils.getResponsiveValue(
-              context: context,
-              mobile: 14,
-              tablet: 16,
-              desktop: 18,
-            ),
+          style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
             fontStyle: FontStyle.italic,
           ),
@@ -766,8 +811,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       children: [
         Text(
           'Your Details',
-          style: TextStyle(
-            fontSize: context.responsiveFontSize(18),
+          style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.bold,
             color: theme.colorScheme.onSurface,
           ),
@@ -840,13 +884,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       children: [
         Text(
           'Your Gift Will:',
-          style: TextStyle(
-            fontSize: ResponsiveUtils.getResponsiveValue(
-              context: context,
-              mobile: 24,
-              tablet: 26,
-              desktop: 28,
-            ),
+          style: theme.textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.bold,
             color: theme.colorScheme.onSurface,
           ),
@@ -881,12 +919,12 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: theme.primaryColor.withValues(alpha: 0.1),
+              color: theme.colorScheme.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               item['icon'] as IconData,
-              color: theme.primaryColor,
+              color: theme.colorScheme.primary,
               size: ResponsiveUtils.getResponsiveValue(
                 context: context,
                 mobile: 24,
@@ -902,13 +940,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
               children: [
                 Text(
                   item['title'] as String,
-                  style: TextStyle(
-                    fontSize: ResponsiveUtils.getResponsiveValue(
-                      context: context,
-                      mobile: 18,
-                      tablet: 20,
-                      desktop: 22,
-                    ),
+                  style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: theme.colorScheme.onSurface,
                   ),
@@ -917,13 +949,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                     height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
                 Text(
                   item['description'] as String,
-                  style: TextStyle(
-                    fontSize: ResponsiveUtils.getResponsiveValue(
-                      context: context,
-                      mobile: 14,
-                      tablet: 16,
-                      desktop: 18,
-                    ),
+                  style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                     height: 1.4,
                   ),
@@ -946,17 +972,17 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
           end: Alignment.bottomRight,
           colors: isDark
               ? [
-                  theme.primaryColor.withValues(alpha: 0.1),
+                  theme.colorScheme.primary.withValues(alpha: 0.1),
                   theme.colorScheme.secondary.withValues(alpha: 0.05),
                 ]
               : [
-                  theme.primaryColor.withValues(alpha: 0.05),
+                  theme.colorScheme.primary.withValues(alpha: 0.05),
                   theme.colorScheme.secondary.withValues(alpha: 0.02),
                 ],
         ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: theme.primaryColor.withValues(alpha: 0.2),
+          color: theme.colorScheme.primary.withValues(alpha: 0.2),
           width: 1,
         ),
       ),
@@ -965,13 +991,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
         children: [
           Text(
             'Other Ways to Give',
-            style: TextStyle(
-              fontSize: ResponsiveUtils.getResponsiveValue(
-                context: context,
-                mobile: 22,
-                tablet: 24,
-                desktop: 26,
-              ),
+            style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
               color: theme.colorScheme.onSurface,
             ),
@@ -1016,7 +1036,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
           children: [
             Icon(
               icon,
-              color: theme.primaryColor,
+              color: theme.colorScheme.primary,
               size: ResponsiveUtils.getResponsiveValue(
                 context: context,
                 mobile: 24,
@@ -1134,6 +1154,12 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       );
 
       if (paymentResult['success'] == true) {
+        // Update Project Raised in Firestore
+        if (_selectedProjectId != null) {
+          final amountNgn = currency == 'NGN' ? _selectedAmount : _selectedAmount * _exchangeRate;
+          await _updateProjectRaised(_selectedProjectId!, amountNgn);
+        }
+
         // Show success
         if (!rootCtx.mounted) return;
         showDialog(
@@ -1226,8 +1252,15 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
 
   Future<void> _loadSelectedProject() async {
     try {
-      final projectId = getSelectedProjectId();
-      if (projectId == null) return;
+      // Check for URL param first (robustness for external links)
+      String? projectId;
+      if (Uri.base.queryParameters.containsKey('projectId')) {
+        projectId = Uri.base.queryParameters['projectId'];
+      } else {
+        projectId = getSelectedProjectId();
+      }
+      
+      if (projectId == null || projectId == 'general_mission') return;
       _selectedProjectId = projectId;
       try {
         final doc = await FirebaseFirestore.instance
@@ -1344,10 +1377,10 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                         // Badge color per status (mirrors web badges)
                         Color statusColor;
                         switch (status.toLowerCase()) {
-                          case 'active': statusColor = Colors.green; break;
-                          case 'planning': statusColor = Colors.orange; break;
-                          case 'completed': statusColor = Colors.blue; break;
-                          default: statusColor = theme.colorScheme.secondary;
+                          case 'active': statusColor = theme.colorScheme.tertiary; break;
+                          case 'planning': statusColor = theme.colorScheme.secondary; break;
+                          case 'completed': statusColor = theme.colorScheme.primary; break;
+                          default: statusColor = theme.colorScheme.outline;
                         }
 
                         return Card(
@@ -1423,7 +1456,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                                       const SizedBox(height: 4),
                                       Text(
                                         // Goal and raised are stored in NGN — matching web formatCurrency()
-                                        '₦${_formatNgn(raised.toDouble())} raised of ₦${_formatNgn(goal.toDouble())}',
+                                        '₦${_formatCompact(raised.toDouble())} raised of ₦${_formatCompact(goal.toDouble())}',
                                         style: theme.textTheme.labelMedium,
                                       ),
                                     ],
@@ -1467,10 +1500,9 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
     );
   }
 
-  /// Fetches projects ordered by 'priority' ascending — exactly matching the
-  /// web modal's fetchProjects() which does .orderBy('priority', 'asc').
+  /// Fetches projects ordered by 'priority' ascending.
   /// Shows all statuses so users can see active, planning, and completed projects.
-  /// Fallback uses the same hardcoded projects as the web modal (Impact Hub, Vehicle, Media Studio).
+  /// Relies strictly on Firestore data managed by the Admin.
   Future<List<Map<String, dynamic>>> _fetchProjects() async {
     try {
       final snapshot = await FirebaseFirestore.instance
@@ -1481,21 +1513,31 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
         return snapshot.docs.map((d) => {'id': d.id, ...d.data()}).toList();
       }
     } catch (_) {}
-    // Fallback: same real project data as the web modal (used when Firestore unavailable)
-    return [
-      {'id': 'impact-hub', 'title': 'Impact Hub Center', 'summary': 'Community discipleship and outreach facility', 'goal': 35000000, 'raised': 8000000, 'status': 'active', 'priority': 1, 'image_url': 'https://images.unsplash.com/photo-1593914370442-49d414beca24?q=80&w=1031&auto=format&fit=crop'},
-      {'id': 'vehicle-purchase', 'title': 'Vehicle Purchase', 'summary': 'Mission vehicle for outreach logistics', 'goal': 18000000, 'raised': 0, 'status': 'active', 'priority': 2, 'image_url': 'https://images.unsplash.com/photo-1597685204565-110abf469a1e?q=80&w=870&auto=format&fit=crop'},
-      {'id': 'media-studio', 'title': 'Media Studio Setup', 'summary': 'Podcast and content production equipment', 'goal': 9000000, 'raised': 0, 'status': 'planning', 'priority': 3, 'image_url': 'https://images.unsplash.com/photo-1769699167906-a44d5ae50abb?q=80&w=387&auto=format&fit=crop'},
-    ];
+    // Removed hardcoded fallback projects to rely strictly on Admin data
+    return [];
   }
 
-  /// Formats a number as NGN with compact suffix (e.g. 35,000,000 → 35M)
-  String _formatNgn(double value) {
+  /// Formats a number with compact suffix
+  String _formatCompact(double value) {
     if (value >= 1000000) {
       return '${(value / 1000000).toStringAsFixed(value % 1000000 == 0 ? 0 : 1)}M';
     } else if (value >= 1000) {
       return '${(value / 1000).toStringAsFixed(value % 1000 == 0 ? 0 : 1)}K';
     }
     return value.toStringAsFixed(0);
+  }
+
+  Future<void> _updateProjectRaised(String projectId, double amountNgn) async {
+    try {
+      final projectRef = FirebaseFirestore.instance.collection('projects').doc(projectId);
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        final snapshot = await transaction.get(projectRef);
+        if (!snapshot.exists) return;
+        final currentRaised = (snapshot.data()?['raised'] as num?)?.toDouble() ?? 0;
+        transaction.update(projectRef, {'raised': currentRaised + amountNgn});
+      });
+    } catch (e) {
+      debugPrint('Error updating project raised: $e');
+    }
   }
 }

@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
-class ResponsiveLayout extends StatelessWidget {
+class CustomResponsiveLayout extends StatelessWidget {
   final Widget mobile;
   final Widget? tablet;
   final Widget? desktop;
   final double mobileBreakpoint;
   final double tabletBreakpoint;
 
-  const ResponsiveLayout({
+  const CustomResponsiveLayout({
     super.key,
     required this.mobile,
     this.tablet,
@@ -32,13 +32,13 @@ class ResponsiveLayout extends StatelessWidget {
   }
 }
 
-class ResponsiveBuilder extends StatelessWidget {
+class CustomResponsiveBuilder extends StatelessWidget {
   final Widget Function(BuildContext context, BoxConstraints constraints,
       DeviceType deviceType) builder;
   final double mobileBreakpoint;
   final double tabletBreakpoint;
 
-  const ResponsiveBuilder({
+  const CustomResponsiveBuilder({
     super.key,
     required this.builder,
     this.mobileBreakpoint = 600,
@@ -102,7 +102,7 @@ class AdaptiveGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ResponsiveBuilder(
+    return CustomResponsiveBuilder(
       mobileBreakpoint: mobileBreakpoint,
       tabletBreakpoint: tabletBreakpoint,
       builder: (context, constraints, deviceType) {

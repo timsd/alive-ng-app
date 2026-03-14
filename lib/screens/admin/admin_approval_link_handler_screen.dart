@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../services/approval_link_service.dart';
+import '../../utils/responsive_utils.dart';
 
 class AdminApprovalLinkHandlerScreen extends StatefulWidget {
   const AdminApprovalLinkHandlerScreen({super.key});
@@ -52,9 +53,16 @@ class _AdminApprovalLinkHandlerScreenState extends State<AdminApprovalLinkHandle
             : Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(_result ? Icons.check_circle : Icons.error, size: 64, color: _result ? Colors.green : Colors.red),
+                  Icon(
+                    _result ? Icons.check_circle : Icons.error,
+                    size: ResponsiveUtils.getResponsiveIconSize(context, 64),
+                    color: _result ? Theme.of(context).colorScheme.tertiary : Theme.of(context).colorScheme.error,
+                  ),
                   const SizedBox(height: 16),
-                  Text(_message ?? ''),
+                  Text(
+                    _message ?? '',
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
                 ],
               ),
       ),

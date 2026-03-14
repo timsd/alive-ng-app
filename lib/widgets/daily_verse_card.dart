@@ -161,10 +161,10 @@ class _DailyVerseCardState extends ConsumerState<DailyVerseCard> {
                   Text(
                     '"${widget.verse!.verse}"',
                     softWrap: true,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontStyle: FontStyle.italic,
                           height: 1.4,
-                          fontWeight: FontWeight.w400,
+                          fontWeight: FontWeight.w500,
                           color: Theme.of(context).colorScheme.onSurface,
                         ),
                   ),

@@ -711,10 +711,10 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
         DropdownButtonFormField<String>(
           initialValue: _commitmentType,
           decoration: _signupDecoration(context, 'Commitment Type', Icons.volunteer_activism_outlined),
-          items: const [
-            DropdownMenuItem(value: 'financial', child: Text('Financial')),
-            DropdownMenuItem(value: 'active_availability', child: Text('Active Availability')),
-            DropdownMenuItem(value: 'both', child: Text('Both')),
+          items: [
+            DropdownMenuItem(value: 'financial', child: Text('Financial', style: Theme.of(context).textTheme.bodyMedium)),
+            DropdownMenuItem(value: 'active_availability', child: Text('Active Availability', style: Theme.of(context).textTheme.bodyMedium)),
+            DropdownMenuItem(value: 'both', child: Text('Both', style: Theme.of(context).textTheme.bodyMedium)),
           ],
           onChanged: (value) => setState(() => _commitmentType = value ?? 'both'),
         ),

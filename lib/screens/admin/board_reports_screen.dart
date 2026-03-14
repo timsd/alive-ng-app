@@ -7,7 +7,14 @@ import '../../config/meeting_links_config.dart';
 import '../conference/enhanced_jitsi_meet_screen.dart';
 
 class BoardReportsScreen extends StatefulWidget {
-  const BoardReportsScreen({super.key});
+  final String? initialCategory;
+  final String? initialChapter;
+
+  const BoardReportsScreen({
+    super.key,
+    this.initialCategory,
+    this.initialChapter,
+  });
 
   @override
   State<BoardReportsScreen> createState() => _BoardReportsScreenState();
@@ -20,6 +27,7 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
   bool _isLoading = true;
   String _selectedCategory = 'all';
   String _selectedStatus = 'all';
+  String _selectedChapter = 'all';
 
   final List<String> _categories = [
     'all',
@@ -39,6 +47,12 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialCategory != null) {
+      _selectedCategory = widget.initialCategory!;
+    }
+    if (widget.initialChapter != null) {
+      _selectedChapter = widget.initialChapter!;
+    }
     _loadReports();
   }
 
@@ -71,7 +85,9 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
           _selectedCategory == 'all' || report.category == _selectedCategory;
       final statusMatch =
           _selectedStatus == 'all' || report.status == _selectedStatus;
-      return categoryMatch && statusMatch;
+      final chapterMatch = _selectedChapter == 'all' ||
+          (report.metadata != null && report.metadata?['chapter'] == _selectedChapter);
+      return categoryMatch && statusMatch && chapterMatch;
     }).toList();
   }
 
@@ -80,141 +96,138 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Board Reports'),
-        backgroundColor: Colors.green,
+        centerTitle: true,
+        backgroundColor: Colors.green.shade700,
         foregroundColor: Colors.white,
         actions: [
           IconButton(
-            icon: const Icon(Icons.add),
+            icon: const Icon(Icons.add_chart),
             onPressed: () => _showCreateReportDialog(),
+            tooltip: 'Create New Report',
           ),
         ],
       ),
       body: Column(
         children: [
           // BOD quick-join banner
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            child: Card(
-              color: Theme.of(context).primaryColor.withValues(alpha: 0.08),
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Row(
-                  children: [
-                    Icon(Icons.video_call, color: Theme.of(context).primaryColor),
-                    const SizedBox(width: 8),
-                    const Expanded(
-                      child: Text(
-                        'Board of Directors Meeting is available',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
+          Container(
+            padding: const EdgeInsets.all(12),
+            color: Colors.green.shade50,
+            child: Row(
+              children: [
+                Icon(Icons.video_call, color: Colors.green.shade700),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Board Meeting Now Active',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const EnhancedJitsiMeetScreen(
+                          meetingType: MeetingType.board,
+                          isModerator: true,
                         ),
                       ),
-                    ),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const EnhancedJitsiMeetScreen(
-                              meetingType: MeetingType.board,
-                              isModerator: true,
-                            ),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.play_arrow),
-                      label: const Text('Join'),
-                    ),
-                  ],
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green.shade700,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Join'),
                 ),
-              ),
+              ],
             ),
           ),
           // Filters
-          Container(
+          Padding(
             padding: const EdgeInsets.all(16),
-            color: Colors.grey.shade100,
             child: Row(
               children: [
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    initialValue: _selectedCategory,
+                    value: _selectedCategory,
                     decoration: const InputDecoration(
                       labelText: 'Category',
                       border: OutlineInputBorder(),
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12),
                     ),
-                    items: _categories.map((category) {
-                      return DropdownMenuItem(
-                        value: category,
-                        child: Text(category.toUpperCase()),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setState(() => _selectedCategory = value!);
-                    },
+                    items: _categories.map((c) => DropdownMenuItem(
+                      value: c,
+                      child: Text(c.toUpperCase()),
+                    )).toList(),
+                    onChanged: (val) => setState(() => _selectedCategory = val!),
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    initialValue: _selectedStatus,
+                    value: _selectedStatus,
                     decoration: const InputDecoration(
                       labelText: 'Status',
                       border: OutlineInputBorder(),
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12),
                     ),
-                    items: _statuses.map((status) {
-                      return DropdownMenuItem(
-                        value: status,
-                        child: Text(status.toUpperCase()),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setState(() => _selectedStatus = value!);
-                    },
+                    items: _statuses.map((s) => DropdownMenuItem(
+                      value: s,
+                      child: Text(s.toUpperCase()),
+                    )).toList(),
+                    onChanged: (val) => setState(() => _selectedStatus = val!),
                   ),
                 ),
               ],
             ),
           ),
-
-          // Reports List
           Expanded(
             child: _isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(color: Colors.green),
-                  )
+                ? const Center(child: CircularProgressIndicator())
                 : _filteredReports.isEmpty
-                    ? const Center(
+                    ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(
-                              Icons.assessment_outlined,
-                              size: 64,
-                              color: Colors.grey,
-                            ),
-                            SizedBox(height: 16),
-                            Text(
-                              'No reports found',
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: Colors.grey,
-                              ),
-                            ),
+                            Icon(Icons.description_outlined, size: 64, color: Colors.grey.shade400),
+                            const SizedBox(height: 16),
+                            Text('No reports matching current filters', style: TextStyle(color: Colors.grey.shade600)),
                           ],
                         ),
                       )
                     : RefreshIndicator(
                         onRefresh: _loadReports,
                         child: ListView.builder(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
                           itemCount: _filteredReports.length,
                           itemBuilder: (context, index) {
                             final report = _filteredReports[index];
-                            return _buildReportCard(report);
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: _getCategoryColor(report.category),
+                                  child: Icon(_getCategoryIcon(report.category), color: Colors.white, size: 20),
+                                ),
+                                title: Text(report.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                subtitle: Text('Submitted by: ${report.authorName}\nID: ${report.id}'),
+                                trailing: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    _buildStatusBadge(report.status),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      DateFormat('MMM dd, yyyy').format(report.createdAt),
+                                      style: const TextStyle(fontSize: 10),
+                                    ),
+                                  ],
+                                ),
+                                isThreeLine: true,
+                                onTap: () => _viewReportDetails(report),
+                              ),
+                            );
                           },
                         ),
                       ),
@@ -224,317 +237,191 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
     );
   }
 
-  Widget _buildReportCard(BoardReport report) {
-    Color statusColor;
-    switch (report.status) {
-      case 'approved':
-        statusColor = Colors.green;
-        break;
-      case 'submitted':
-        statusColor = Colors.blue;
-        break;
-      case 'reviewed':
-        statusColor = Colors.orange;
-        break;
-      default:
-        statusColor = Colors.grey;
+  Color _getCategoryColor(String category) {
+    switch (category) {
+      case 'financial': return Colors.blue;
+      case 'operational': return Colors.orange;
+      case 'strategic': return Colors.purple;
+      case 'ministry': return Colors.green;
+      default: return Colors.grey;
     }
+  }
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      child: InkWell(
-        onTap: () => _viewReport(report),
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      report.title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: statusColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: statusColor),
-                    ),
-                    child: Text(
-                      report.status.toUpperCase(),
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: statusColor,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                report.description,
-                style: const TextStyle(
-                  color: Colors.grey,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Icon(
-                    Icons.person,
-                    size: 16,
-                    color: Colors.grey.shade600,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    report.authorName,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Icon(
-                    Icons.calendar_today,
-                    size: 16,
-                    color: Colors.grey.shade600,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    DateFormat('MMM dd, yyyy').format(report.createdAt),
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.green.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      report.category.toUpperCase(),
-                      style: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
+  IconData _getCategoryIcon(String category) {
+    switch (category) {
+      case 'financial': return Icons.attach_money;
+      case 'operational': return Icons.settings;
+      case 'strategic': return Icons.trending_up;
+      case 'ministry': return Icons.church;
+      default: return Icons.report;
+    }
+  }
+
+  Widget _buildStatusBadge(String status) {
+    Color color;
+    switch (status) {
+      case 'approved': color = Colors.green; break;
+      case 'reviewed': color = Colors.blue; break;
+      case 'submitted': color = Colors.orange; break;
+      default: color = Colors.grey;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color),
+      ),
+      child: Text(
+        status.toUpperCase(),
+        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
       ),
     );
   }
 
-  void _viewReport(BoardReport report) {
+  void _viewReportDetails(BoardReport report) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(report.title),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Author: ${report.authorName}',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Created: ${DateFormat('MMM dd, yyyy HH:mm').format(report.createdAt)}',
-                style: TextStyle(color: Colors.grey.shade600),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                report.description,
-                style: const TextStyle(fontStyle: FontStyle.italic),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Content:',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Text(report.content),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-          if (report.status == 'draft')
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _submitReport(report);
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-              child:
-                  const Text('Submit', style: TextStyle(color: Colors.white)),
+      builder: (context) {
+        final theme = Theme.of(context);
+        return AlertDialog(
+          backgroundColor: theme.dialogBackgroundColor,
+          title: Text(report.title, style: TextStyle(color: theme.colorScheme.onSurface)),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Description:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green.shade800)),
+                Text(report.description, style: TextStyle(color: theme.colorScheme.onSurface)),
+                const SizedBox(height: 16),
+                Text('Content:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green.shade800)),
+                Text(report.content, style: TextStyle(color: theme.colorScheme.onSurface)),
+                const SizedBox(height: 16),
+                Text('Meta Information:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green.shade800)),
+                Text('Author: ${report.authorName}', style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.7))),
+                Text('Created: ${DateFormat('MMM dd, yyyy HH:mm').format(report.createdAt)}', style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.7))),
+                Text('Category: ${report.category.toUpperCase()}', style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.7))),
+                Text('Status: ${report.status.toUpperCase()}', style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.7))),
+              ],
             ),
-        ],
-      ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+            if (report.status == 'submitted')
+              ElevatedButton(
+                onPressed: () async {
+                  final success = await _firebaseService.updateBoardReportStatus(report.id, 'reviewed');
+                  if (success && context.mounted) {
+                    Navigator.pop(context);
+                    _loadReports();
+                  }
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+                child: const Text('Mark Reviewed'),
+              ),
+            if (report.status == 'reviewed')
+              ElevatedButton(
+                onPressed: () async {
+                  final success = await _firebaseService.updateBoardReportStatus(report.id, 'approved');
+                  if (success && context.mounted) {
+                    Navigator.pop(context);
+                    _loadReports();
+                  }
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+                child: const Text('Approve'),
+              ),
+          ],
+        );
+      },
     );
   }
 
-  void _showCreateReportDialog() {
+  Future<void> _showCreateReportDialog() async {
     final titleController = TextEditingController();
     final descriptionController = TextEditingController();
     final contentController = TextEditingController();
-    String selectedCategory = 'operational';
+    String selectedCat = 'operational';
 
-    showDialog(
+    await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Create New Report'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                decoration: const InputDecoration(
-                  labelText: 'Report Title',
-                  border: OutlineInputBorder(),
-                ),
+      builder: (context) {
+        final theme = Theme.of(context);
+        return StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            backgroundColor: theme.dialogBackgroundColor,
+            title: Text('Create New Board Report', style: TextStyle(color: theme.colorScheme.onSurface)),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: titleController,
+                    decoration: const InputDecoration(labelText: 'Report Title'),
+                    style: TextStyle(color: theme.colorScheme.onSurface),
+                  ),
+                  TextField(
+                    controller: descriptionController,
+                    decoration: const InputDecoration(labelText: 'Short Description'),
+                    style: TextStyle(color: theme.colorScheme.onSurface),
+                  ),
+                  TextField(
+                    controller: contentController,
+                    decoration: const InputDecoration(labelText: 'Full Content'),
+                    maxLines: 5,
+                    style: TextStyle(color: theme.colorScheme.onSurface),
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: selectedCat,
+                    dropdownColor: theme.cardColor,
+                    style: TextStyle(color: theme.colorScheme.onSurface),
+                    decoration: const InputDecoration(labelText: 'Category'),
+                    items: _categories.skip(1).map((c) => DropdownMenuItem(
+                      value: c,
+                      child: Text(c.toUpperCase()),
+                    )).toList(),
+                    onChanged: (val) => setDialogState(() => selectedCat = val!),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: descriptionController,
-                decoration: const InputDecoration(
-                  labelText: 'Description',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 2,
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                initialValue: selectedCategory,
-                decoration: const InputDecoration(
-                  labelText: 'Category',
-                  border: OutlineInputBorder(),
-                ),
-                items: _categories.skip(1).map((category) {
-                  return DropdownMenuItem(
-                    value: category,
-                    child: Text(category.toUpperCase()),
-                  );
-                }).toList(),
-                onChanged: (value) => selectedCategory = value!,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: contentController,
-                decoration: const InputDecoration(
-                  labelText: 'Report Content',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 5,
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+              ElevatedButton(
+                onPressed: () async {
+                  if (titleController.text.isNotEmpty && contentController.text.isNotEmpty) {
+                    final report = {
+                      'title': titleController.text,
+                      'description': descriptionController.text,
+                      'content': contentController.text,
+                      'category': selectedCat,
+                      'status': 'submitted',
+                      'authorId': _authService.currentUser?.uid ?? 'unknown',
+                      'authorName': _authService.currentUser?.displayName ?? 'Admin',
+                      'createdAt': DateTime.now().toIso8601String(),
+                    };
+                    
+                    final success = await _firebaseService.addBoardReport(report);
+                    if (success && context.mounted) {
+                      Navigator.pop(context);
+                      _loadReports();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Report submitted successfully')),
+                      );
+                    }
+                  }
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+                child: const Text('Submit Report'),
               ),
             ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (titleController.text.isNotEmpty &&
-                  contentController.text.isNotEmpty) {
-                _createReport(
-                  titleController.text,
-                  descriptionController.text,
-                  contentController.text,
-                  selectedCategory,
-                );
-                Navigator.pop(context);
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-            child: const Text('Create', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _createReport(
-      String title, String description, String content, String category) {
-    final newReport = BoardReport(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      title: title,
-      description: description,
-      content: content,
-      authorId: _authService.currentUser?.uid ?? '',
-      authorName: _authService.currentUser?.displayName ?? 'Unknown',
-      createdAt: DateTime.now(),
-      category: category,
-      status: 'draft',
-    );
-
-    setState(() {
-      _reports.insert(0, newReport);
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Report created successfully'),
-        backgroundColor: Colors.green,
-      ),
-    );
-  }
-
-  void _submitReport(BoardReport report) {
-    setState(() {
-      final index = _reports.indexWhere((r) => r.id == report.id);
-      if (index != -1) {
-        _reports[index] = BoardReport(
-          id: report.id,
-          title: report.title,
-          description: report.description,
-          content: report.content,
-          authorId: report.authorId,
-          authorName: report.authorName,
-          createdAt: report.createdAt,
-          updatedAt: DateTime.now(),
-          category: report.category,
-          status: 'submitted',
         );
-      }
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Report submitted for review'),
-        backgroundColor: Colors.green,
-      ),
+      },
     );
   }
 }
-
-
-
-
