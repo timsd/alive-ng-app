@@ -510,19 +510,20 @@ class _TractManagementTabState extends State<_TractManagementTab> {
             stream: FirebaseFirestore.instance.collection('tracts').snapshots(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                 return const Center(child: CircularProgressIndicator());
+                return const Center(child: CircularProgressIndicator());
               }
               if (snapshot.hasError) {
-                 return const Center(child: Text('Error loading tracts'));
+                return const Center(child: Text('Error loading tracts'));
               }
               final tracts = snapshot.data?.docs.map((doc) {
-                final data = doc.data() as Map<String, dynamic>;
-                data['id'] = doc.id;
-                return Tract.fromJson(data);
-              }).toList() ?? [];
-              
+                    final data = doc.data() as Map<String, dynamic>;
+                    data['id'] = doc.id;
+                    return Tract.fromJson(data);
+                  }).toList() ??
+                  [];
+
               if (tracts.isEmpty) {
-                 return const Center(child: Text('No tracts available.'));
+                return const Center(child: Text('No tracts available.'));
               }
               return ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -589,7 +590,8 @@ class _TractManagementTabState extends State<_TractManagementTab> {
                               children: [
                                 Icon(Icons.delete, color: Colors.red),
                                 SizedBox(width: 8),
-                                Text('Delete', style: TextStyle(color: Colors.red)),
+                                Text('Delete',
+                                    style: TextStyle(color: Colors.red)),
                               ],
                             ),
                           ),
@@ -802,15 +804,16 @@ class _TractFormDialogState extends State<_TractFormDialog> {
       final firebaseService = FirebaseDatabaseService.instance;
       final docs = await firebaseService.getCollection('tract_categories',
           orderBy: 'order');
-      final names = docs
+      final categoryNames = docs
           .where((d) => (d['isActive'] as bool?) != false)
           .map((d) => d['name'] as String)
           .toList();
-      // 'names' could be used for advanced categorization if implemented
       if (!mounted) return;
       setState(() {
-        _tractCategories = [];
-        _selectedCategoryName ??= null;
+        _tractCategories = categoryNames;
+        if (_selectedCategoryName == null && categoryNames.isNotEmpty) {
+          _selectedCategoryName = categoryNames.first;
+        }
         _loadingTractCategories = false;
       });
     } catch (e) {
@@ -946,7 +949,10 @@ class _TractFormDialogState extends State<_TractFormDialog> {
                               onChanged: (value) {
                                 setState(() {
                                   _selectedCategoryName = value;
-                                  _selectedCategory = value?.toLowerCase().replaceAll(' ', '') ?? 'biblesays';
+                                  _selectedCategory = value
+                                          ?.toLowerCase()
+                                          .replaceAll(' ', '') ??
+                                      'biblesays';
                                 });
                               },
                               validator: (value) {
@@ -1454,7 +1460,12 @@ class _PodcastManagementTabState extends State<_PodcastManagementTab> {
                 .snapshots(),
             builder: (context, snapshot) {
               if (snapshot.hasError) {
-                return Center(child: Text('Error: ${snapshot.error}'));
+                return const Center(
+                  child: Text(
+                    'Unable to load podcasts right now.',
+                    textAlign: TextAlign.center,
+                  ),
+                );
               }
               if (!snapshot.hasData) {
                 return const Center(child: CircularProgressIndicator());
@@ -1472,105 +1483,107 @@ class _PodcastManagementTabState extends State<_PodcastManagementTab> {
                   final data = doc.data() as Map<String, dynamic>;
                   data['id'] = doc.id;
                   final podcast = Podcast.fromJson(data);
-                  
+
                   return Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  leading: Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: podcast.coverImage != null
-                        ? CustomImage(
-                            imageUrl: podcast.coverImage,
-                            width: 50,
-                            height: 50,
-                            fit: BoxFit.cover,
-                            borderRadius: BorderRadius.circular(8),
-                            placeholder: const Icon(
-                              Icons.mic,
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      leading: Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: podcast.coverImage != null
+                            ? CustomImage(
+                                imageUrl: podcast.coverImage,
+                                width: 50,
+                                height: 50,
+                                fit: BoxFit.cover,
+                                borderRadius: BorderRadius.circular(8),
+                                placeholder: const Icon(
+                                  Icons.mic,
+                                  color: Colors.blue,
+                                ),
+                              )
+                            : const Icon(
+                                Icons.mic,
+                                color: Colors.blue,
+                              ),
+                      ),
+                      title: Text(
+                        podcast.title,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                              '${podcast.host} • ${podcast.episodes} episodes'),
+                          Text(
+                            podcast.category.displayName,
+                            style: const TextStyle(
                               color: Colors.blue,
+                              fontWeight: FontWeight.w500,
                             ),
-                          )
-                        : const Icon(
-                            Icons.mic,
-                            color: Colors.blue,
                           ),
-                  ),
-                  title: Text(
-                    podcast.title,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${podcast.host} • ${podcast.episodes} episodes'),
-                      Text(
-                        podcast.category.displayName,
-                        style: const TextStyle(
-                          color: Colors.blue,
-                          fontWeight: FontWeight.w500,
-                        ),
+                        ],
                       ),
-                    ],
-                  ),
-                  trailing: PopupMenuButton<String>(
-                    onSelected: (value) {
-                      switch (value) {
-                        case 'edit':
-                          _showEditPodcastDialog(podcast);
-                          break;
-                        case 'episodes':
-                          _showEpisodesDialog(podcast);
-                          break;
-                        case 'delete':
-                          _showDeletePodcastDialog(podcast);
-                          break;
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(
-                        value: 'edit',
-                        child: Row(
-                          children: [
-                            Icon(Icons.edit),
-                            SizedBox(width: 8),
-                            Text('Edit'),
-                          ],
-                        ),
+                      trailing: PopupMenuButton<String>(
+                        onSelected: (value) {
+                          switch (value) {
+                            case 'edit':
+                              _showEditPodcastDialog(podcast);
+                              break;
+                            case 'episodes':
+                              _showEpisodesDialog(podcast);
+                              break;
+                            case 'delete':
+                              _showDeletePodcastDialog(podcast);
+                              break;
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: 'edit',
+                            child: Row(
+                              children: [
+                                Icon(Icons.edit),
+                                SizedBox(width: 8),
+                                Text('Edit'),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'episodes',
+                            child: Row(
+                              children: [
+                                Icon(Icons.queue_music),
+                                SizedBox(width: 8),
+                                Text('Manage Episodes'),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete, color: Colors.red),
+                                SizedBox(width: 8),
+                                Text('Delete',
+                                    style: TextStyle(color: Colors.red)),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                      const PopupMenuItem(
-                        value: 'episodes',
-                        child: Row(
-                          children: [
-                            Icon(Icons.queue_music),
-                            SizedBox(width: 8),
-                            Text('Manage Episodes'),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete, color: Colors.red),
-                            SizedBox(width: 8),
-                            Text('Delete', style: TextStyle(color: Colors.red)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                    ),
+                  );
+                },
               );
             },
-          );
-        },
-      ),
-    ),
+          ),
+        ),
       ],
     );
   }

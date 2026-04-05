@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/pdf_extractor_service.dart';
 import '../../services/firebase_database_service.dart';
 import '../../models/kids_models.dart';
+
 class AdminKidsStoriesScreen extends StatefulWidget {
   const AdminKidsStoriesScreen({super.key});
 
@@ -22,12 +23,14 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _contentController = TextEditingController();
   final TextEditingController _moralLessonController = TextEditingController();
-  final TextEditingController _bibleReferenceController = TextEditingController();
-  final TextEditingController _durationController = TextEditingController(text: '10');
+  final TextEditingController _bibleReferenceController =
+      TextEditingController();
+  final TextEditingController _durationController =
+      TextEditingController(text: '10');
 
   AgeGroup _selectedAgeGroup = AgeGroup.age_3_6;
   StoryCategory _selectedCategory = StoryCategory.oldTestament;
-  
+
   Uint8List? _coverImageBytes;
   String? _coverImageName;
   Uint8List? _audioBytes;
@@ -57,7 +60,7 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
 
       if (result != null && result.files.single.bytes != null) {
         setState(() => _isExtracting = true);
-        
+
         final text = await _pdfExtractor.extractTextFromBytes(
           result.files.single.bytes!,
           result.files.single.name,
@@ -66,17 +69,21 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
         setState(() {
           _contentController.text = text;
         });
-        
+
         if (mounted) {
-           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Document successfully extracted!'), backgroundColor: Theme.of(context).colorScheme.tertiary),
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text('Document successfully extracted!'),
+                backgroundColor: Theme.of(context).colorScheme.tertiary),
           );
         }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to extract: $e'), backgroundColor: Theme.of(context).colorScheme.error),
+          SnackBar(
+              content: Text('Failed to extract: $e'),
+              backgroundColor: Theme.of(context).colorScheme.error),
         );
       }
     } finally {
@@ -108,28 +115,30 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
 
   Future<void> _saveStory() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     setState(() => _isSaving = true);
-    
+
     try {
       String? uploadedImageUrl;
       String? uploadedAudioUrl;
 
       // 1. Upload Media
       if (_coverImageBytes != null && _coverImageName != null) {
-        final path = 'kids_stories/images/${DateTime.now().millisecondsSinceEpoch}_$_coverImageName';
+        final path =
+            'kids_stories/images/${DateTime.now().millisecondsSinceEpoch}_$_coverImageName';
         uploadedImageUrl = await _dbService.uploadFile(path, _coverImageBytes!);
       }
 
       if (_audioBytes != null && _audioName != null) {
-        final path = 'kids_stories/audio/${DateTime.now().millisecondsSinceEpoch}_$_audioName';
+        final path =
+            'kids_stories/audio/${DateTime.now().millisecondsSinceEpoch}_$_audioName';
         uploadedAudioUrl = await _dbService.uploadFile(path, _audioBytes!);
       }
 
       // 2. Build Document Payload
       final durationStr = _durationController.text.trim();
       final durationInt = int.tryParse(durationStr) ?? 10;
-      
+
       final payload = {
         'title': _titleController.text.trim(),
         'subtitle': _subtitleController.text.trim(),
@@ -148,19 +157,23 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
         'created_at': FieldValue.serverTimestamp(),
       };
 
-      // 3. Save to Firebase 
+      // 3. Save to Firebase
       await _dbService.firestore.collection('kids_stories').add(payload);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Story published successfully!'), backgroundColor: Theme.of(context).colorScheme.tertiary),
+          SnackBar(
+              content: Text('Story published successfully!'),
+              backgroundColor: Theme.of(context).colorScheme.tertiary),
         );
         Navigator.pop(context); // Return to previous screen
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Save failed: $e'), backgroundColor: Theme.of(context).colorScheme.error),
+          SnackBar(
+              content: Text('Save failed: $e'),
+              backgroundColor: Theme.of(context).colorScheme.error),
         );
       }
     } finally {
@@ -177,7 +190,9 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
         title: const Text('Add Kids Story'),
       ),
       body: _isSaving
-          ? Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary))
+          ? Center(
+              child: CircularProgressIndicator(
+                  color: Theme.of(context).colorScheme.primary))
           : SingleChildScrollView(
               padding: const EdgeInsets.all(16.0),
               child: Form(
@@ -196,23 +211,39 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
                           children: [
                             Text(
                               'Zero-Code Document Extractor',
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                color: Theme.of(context).colorScheme.onPrimaryContainer,
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onPrimaryContainer,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                             ),
                             const SizedBox(height: 8),
                             Text(
                               'Upload a PDF or TXT file of the story. We will extract all text automatically directly on your device without using cloud bandwidth.',
-                              style: TextStyle(color: Theme.of(context).colorScheme.onPrimaryContainer.withValues(alpha: 200 / 255.0)),
+                              style: TextStyle(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onPrimaryContainer
+                                      .withValues(alpha: 200 / 255.0)),
                             ),
                             const SizedBox(height: 16),
                             ElevatedButton.icon(
-                              onPressed: _isExtracting ? null : _extractFromDocument,
-                              icon: _isExtracting 
-                                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                              onPressed:
+                                  _isExtracting ? null : _extractFromDocument,
+                              icon: _isExtracting
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2))
                                   : const Icon(Icons.picture_as_pdf),
-                              label: Text(_isExtracting ? 'Extracting...' : 'Upload & Extract Document'),
+                              label: Text(_isExtracting
+                                  ? 'Extracting...'
+                                  : 'Upload & Extract Document'),
                             ),
                           ],
                         ),
@@ -221,7 +252,8 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
                     const SizedBox(height: 24),
 
                     // Media Uploads
-                    Text('Media', style: Theme.of(context).textTheme.titleLarge),
+                    Text('Media',
+                        style: Theme.of(context).textTheme.titleLarge),
                     const SizedBox(height: 8),
                     Row(
                       children: [
@@ -229,7 +261,8 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
                           child: OutlinedButton.icon(
                             onPressed: _pickCoverImage,
                             icon: const Icon(Icons.image),
-                            label: Text(_coverImageName ?? 'Select Cover Image'),
+                            label:
+                                Text(_coverImageName ?? 'Select Cover Image'),
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -245,41 +278,52 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
                     const SizedBox(height: 24),
 
                     // Inputs
-                    Text('Story Details', style: Theme.of(context).textTheme.titleLarge),
+                    Text('Story Details',
+                        style: Theme.of(context).textTheme.titleLarge),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _titleController,
-                      decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder()),
+                      decoration: const InputDecoration(
+                          labelText: 'Title', border: OutlineInputBorder()),
                       validator: (v) => v!.isEmpty ? 'Required' : null,
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _subtitleController,
-                      decoration: const InputDecoration(labelText: 'Subtitle', border: OutlineInputBorder()),
+                      decoration: const InputDecoration(
+                          labelText: 'Subtitle', border: OutlineInputBorder()),
                     ),
                     const SizedBox(height: 16),
-                    
+
                     Row(
                       children: [
                         Expanded(
                           child: DropdownButtonFormField<StoryCategory>(
-                            value: _selectedCategory,
-                            decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder()),
+                            initialValue: _selectedCategory,
+                            decoration: const InputDecoration(
+                                labelText: 'Category',
+                                border: OutlineInputBorder()),
                             items: StoryCategory.values.map((c) {
-                              return DropdownMenuItem(value: c, child: Text(c.displayName));
+                              return DropdownMenuItem(
+                                  value: c, child: Text(c.displayName));
                             }).toList(),
-                            onChanged: (v) => setState(() => _selectedCategory = v!),
+                            onChanged: (v) =>
+                                setState(() => _selectedCategory = v!),
                           ),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
                           child: DropdownButtonFormField<AgeGroup>(
-                            value: _selectedAgeGroup,
-                            decoration: const InputDecoration(labelText: 'Age Group', border: OutlineInputBorder()),
+                            initialValue: _selectedAgeGroup,
+                            decoration: const InputDecoration(
+                                labelText: 'Age Group',
+                                border: OutlineInputBorder()),
                             items: AgeGroup.values.map((a) {
-                              return DropdownMenuItem(value: a, child: Text(a.displayName));
+                              return DropdownMenuItem(
+                                  value: a, child: Text(a.displayName));
                             }).toList(),
-                            onChanged: (v) => setState(() => _selectedAgeGroup = v!),
+                            onChanged: (v) =>
+                                setState(() => _selectedAgeGroup = v!),
                           ),
                         ),
                       ],
@@ -288,24 +332,32 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
 
                     TextFormField(
                       controller: _durationController,
-                      decoration: const InputDecoration(labelText: 'Duration (Minutes)', border: OutlineInputBorder()),
+                      decoration: const InputDecoration(
+                          labelText: 'Duration (Minutes)',
+                          border: OutlineInputBorder()),
                       keyboardType: TextInputType.number,
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _bibleReferenceController,
-                      decoration: const InputDecoration(labelText: 'Bible Reference', border: OutlineInputBorder()),
+                      decoration: const InputDecoration(
+                          labelText: 'Bible Reference',
+                          border: OutlineInputBorder()),
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _moralLessonController,
-                      decoration: const InputDecoration(labelText: 'Moral Lesson', border: OutlineInputBorder()),
+                      decoration: const InputDecoration(
+                          labelText: 'Moral Lesson',
+                          border: OutlineInputBorder()),
                       maxLines: 2,
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _descriptionController,
-                      decoration: const InputDecoration(labelText: 'Short Description', border: OutlineInputBorder()),
+                      decoration: const InputDecoration(
+                          labelText: 'Short Description',
+                          border: OutlineInputBorder()),
                       maxLines: 3,
                     ),
                     const SizedBox(height: 16),
@@ -314,25 +366,30 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
                     TextFormField(
                       controller: _contentController,
                       decoration: const InputDecoration(
-                        labelText: 'Full Story Content', 
+                        labelText: 'Full Story Content',
                         alignLabelWithHint: true,
                         border: OutlineInputBorder(),
-                        hintText: 'You can type manually or use the PDF extractor above.',
+                        hintText:
+                            'You can type manually or use the PDF extractor above.',
                       ),
                       maxLines: 15,
                     ),
-                    
+
                     const SizedBox(height: 32),
                     SizedBox(
                       width: double.infinity,
                       height: 50,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).colorScheme.primary,
-                          foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                          backgroundColor:
+                              Theme.of(context).colorScheme.primary,
+                          foregroundColor:
+                              Theme.of(context).colorScheme.onPrimary,
                         ),
                         onPressed: _saveStory,
-                        child: const Text('Save Story', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        child: const Text('Save Story',
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold)),
                       ),
                     ),
                     const SizedBox(height: 40),

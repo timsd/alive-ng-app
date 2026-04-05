@@ -6,6 +6,9 @@ import '../../constants/app_constants.dart';
 import '../../services/kids_content_service.dart';
 import '../../services/role_access_service.dart';
 import '../../utils/app_utils.dart';
+import '../../utils/error_handler.dart';
+import '../../widgets/error_widget.dart';
+import '../../widgets/loading_widget.dart';
 
 class KidsContentAdminScreen extends ConsumerStatefulWidget {
   const KidsContentAdminScreen({super.key, this.bypassGuard = false});
@@ -252,14 +255,24 @@ class _MemoryVersesTabState extends State<_MemoryVersesTab> {
       future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const LoadingWidget(message: 'Loading memory verses...');
         }
         if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
+          return AppErrorWidget(
+            title: 'Unable to load memory verses',
+            message: ErrorHandler.getUserFriendlyMessage(snapshot.error),
+            actionText: 'Retry',
+            onAction: refresh,
+          );
         }
         final items = snapshot.data ?? [];
         if (items.isEmpty) {
-          return const Center(child: Text('No memory verses found'));
+          return const EmptyStateWidget(
+            title: 'No memory verses yet',
+            message:
+                'Add a memory verse to make it available in the kids area.',
+            icon: Icons.menu_book_outlined,
+          );
         }
         return ListView.separated(
           padding: const EdgeInsets.all(16),
@@ -340,14 +353,24 @@ class _PrayerActivitiesTabState extends State<_PrayerActivitiesTab> {
       future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const LoadingWidget(message: 'Loading prayer activities...');
         }
         if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
+          return AppErrorWidget(
+            title: 'Unable to load prayer activities',
+            message: ErrorHandler.getUserFriendlyMessage(snapshot.error),
+            actionText: 'Retry',
+            onAction: refresh,
+          );
         }
         final items = snapshot.data ?? [];
         if (items.isEmpty) {
-          return const Center(child: Text('No prayer activities found'));
+          return const EmptyStateWidget(
+            title: 'No prayer activities yet',
+            message:
+                'Create a prayer activity so children can use it in the app.',
+            icon: Icons.favorite_outline,
+          );
         }
         return ListView.separated(
           padding: const EdgeInsets.all(16),
@@ -428,14 +451,24 @@ class _ServiceProjectsTabState extends State<_ServiceProjectsTab> {
       future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const LoadingWidget(message: 'Loading service projects...');
         }
         if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
+          return AppErrorWidget(
+            title: 'Unable to load service projects',
+            message: ErrorHandler.getUserFriendlyMessage(snapshot.error),
+            actionText: 'Retry',
+            onAction: refresh,
+          );
         }
         final items = snapshot.data ?? [];
         if (items.isEmpty) {
-          return const Center(child: Text('No service projects found'));
+          return const EmptyStateWidget(
+            title: 'No service projects yet',
+            message:
+                'Add a service project to populate the kids mission section.',
+            icon: Icons.volunteer_activism_outlined,
+          );
         }
         return ListView.separated(
           padding: const EdgeInsets.all(16),
@@ -515,14 +548,23 @@ class _KidsStoriesTabState extends State<_KidsStoriesTab> {
       future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const LoadingWidget(message: 'Loading kids stories...');
         }
         if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
+          return AppErrorWidget(
+            title: 'Unable to load kids stories',
+            message: ErrorHandler.getUserFriendlyMessage(snapshot.error),
+            actionText: 'Retry',
+            onAction: refresh,
+          );
         }
         final items = snapshot.data ?? [];
         if (items.isEmpty) {
-          return const Center(child: Text('No stories found'));
+          return const EmptyStateWidget(
+            title: 'No stories yet',
+            message: 'Add a story to make it visible in the kids stories area.',
+            icon: Icons.auto_stories_outlined,
+          );
         }
         return ListView.separated(
           padding: const EdgeInsets.all(16),
@@ -602,14 +644,24 @@ class _LearningResourcesTabState extends State<_LearningResourcesTab> {
       future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const LoadingWidget(message: 'Loading learning resources...');
         }
         if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
+          return AppErrorWidget(
+            title: 'Unable to load learning resources',
+            message: ErrorHandler.getUserFriendlyMessage(snapshot.error),
+            actionText: 'Retry',
+            onAction: refresh,
+          );
         }
         final items = snapshot.data ?? [];
         if (items.isEmpty) {
-          return const Center(child: Text('No learning resources found'));
+          return const EmptyStateWidget(
+            title: 'No learning resources yet',
+            message:
+                'Add a learning resource so it becomes available in the kids section.',
+            icon: Icons.school_outlined,
+          );
         }
         return ListView.separated(
           padding: const EdgeInsets.all(16),

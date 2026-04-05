@@ -514,14 +514,39 @@ class OfflineBibleService {
         .replaceAll(':', '')
         .replaceAll(';', '');
     final noPunctUnderscore = noPunct.replaceAll(' ', '_');
+    final leadingNumberSeparated =
+        collapsed.replaceFirstMapped(RegExp(r'^([1-3])\s+'), (match) {
+      return '${match.group(1)}_';
+    });
+    final leadingNumberDashed =
+        collapsed.replaceFirstMapped(RegExp(r'^([1-3])\s+'), (match) {
+      return '${match.group(1)}-';
+    });
+    final compactNumberName =
+        collapsed.replaceFirstMapped(RegExp(r'^([1-3])\s+'), (match) {
+      return match.group(1)!;
+    });
+    String ordinalPrefix = '';
+    if (collapsed.startsWith('1 ')) {
+      ordinalPrefix = collapsed.replaceFirst('1 ', 'first ');
+    } else if (collapsed.startsWith('2 ')) {
+      ordinalPrefix = collapsed.replaceFirst('2 ', 'second ');
+    } else if (collapsed.startsWith('3 ')) {
+      ordinalPrefix = collapsed.replaceFirst('3 ', 'third ');
+    }
 
     final names = <String>{
+      raw,
       lower,
       collapsed,
       underscore,
       dash,
       noPunct,
       noPunctUnderscore,
+      leadingNumberSeparated,
+      leadingNumberDashed,
+      compactNumberName,
+      ordinalPrefix,
     }.where((n) => n.isNotEmpty);
 
     return names

@@ -35,7 +35,8 @@ class _RoleManagementContent extends StatefulWidget {
 }
 
 class _RoleManagementContentState extends State<_RoleManagementContent> {
-  final FirebaseDatabaseService _databaseService = FirebaseDatabaseService.instance;
+  final FirebaseDatabaseService _databaseService =
+      FirebaseDatabaseService.instance;
   final AuthService _authService = AuthService.instance;
   bool _isLoading = true;
   String? _currentUserId;
@@ -77,7 +78,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
     try {
       // Fetch users from Firebase
       final users = await _databaseService.getAllUsers();
-      
+
       setState(() {
         _users = users;
       });
@@ -135,7 +136,6 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
     }
 
     return Scaffold(
-
       appBar: AppBar(
         title: const Text('Role Management'),
         backgroundColor: Theme.of(context).colorScheme.primary,
@@ -263,7 +263,10 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Card(
-              color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
+              color: Theme.of(context)
+                  .colorScheme
+                  .primaryContainer
+                  .withValues(alpha: 0.3),
               child: Padding(
                 padding: const EdgeInsets.all(12.0),
                 child: Row(
@@ -279,16 +282,22 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
                         children: [
                           Text(
                             'User Management',
-                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleSmall
+                                ?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
                           ),
                           Text(
                             'Managing ${_filteredUsers.length} users. Promote or demote users as needed.',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
+                                    ),
                           ),
                         ],
                       ),
@@ -358,8 +367,9 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: _getRoleColor(context, user.role),
-          backgroundImage:
-              user.avatarUrl != null ? CustomImage.provider(user.avatarUrl!) : null,
+          backgroundImage: user.avatarUrl != null
+              ? CustomImage.provider(user.avatarUrl!)
+              : null,
           child: user.avatarUrl == null
               ? const Icon(
                   Icons.person,
@@ -391,7 +401,8 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: _getRoleColor(context, user.role).withValues(alpha: 0.2),
+                    color: _getRoleColor(context, user.role)
+                        .withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -399,7 +410,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
-                        color: _getRoleColor(context, user.role),
+                      color: _getRoleColor(context, user.role),
                     ),
                   ),
                 ),
@@ -416,7 +427,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
                     ),
                     child: Text(
                       'NC',
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: Theme.of(context).colorScheme.tertiary,
                           ),
@@ -427,8 +438,8 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
                   Text(
                     user.chapterId!,
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                   ),
               ],
             ),
@@ -495,7 +506,10 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
               )
             : Icon(
                 Icons.lock_outline,
-                color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurfaceVariant
+                    .withValues(alpha: 0.4),
               ),
       ),
     );
@@ -678,14 +692,16 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
       UserProfile user, String newRole, String action) async {
     try {
       // Auto-archive leadership roles when they change (e.g. term expires)
-      if (['admin', 'leader', 'coordinator'].contains(user.role) && user.role != newRole) {
+      if (['admin', 'leader', 'coordinator'].contains(user.role) &&
+          user.role != newRole) {
         final archiveRecord = await _showArchiveRoleDialog(user);
         if (archiveRecord != null) {
           await _databaseService.archiveLeadershipRole(archiveRecord);
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Past ${user.role.toUpperCase()} role archived successfully for historical records.'),
+                content: Text(
+                    'Past ${user.role.toUpperCase()} role archived successfully for historical records.'),
                 backgroundColor: Theme.of(context).colorScheme.primary,
               ),
             );
@@ -749,7 +765,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
       try {
         // Archive user in Firebase
         await _databaseService.archiveUser(user.id);
-        
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -789,18 +805,21 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('${user.fullName} is no longer a ${user.role.toUpperCase()}. Do you want to archive their past tenure for historical records?'),
+                  Text(
+                      '${user.fullName} is no longer a ${user.role.toUpperCase()}. Do you want to archive their past tenure for historical records?'),
                   const SizedBox(height: 16),
                   SwitchListTile(
                     title: const Text('Archive Role'),
                     value: shouldArchive,
-                    onChanged: (val) => setDialogState(() => shouldArchive = val),
+                    onChanged: (val) =>
+                        setDialogState(() => shouldArchive = val),
                   ),
                   if (shouldArchive) ...[
                     const SizedBox(height: 16),
                     ListTile(
                       title: const Text('Start Date'),
-                      subtitle: Text(DateFormat('MMM d, yyyy').format(startDate)),
+                      subtitle:
+                          Text(DateFormat('MMM d, yyyy').format(startDate)),
                       trailing: const Icon(Icons.calendar_today),
                       onTap: () async {
                         final picked = await showDatePicker(
@@ -880,11 +899,17 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
                   return const Center(child: CircularProgressIndicator());
                 }
                 if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
+                  return const Center(
+                    child: Text(
+                      'Unable to load leadership history right now.',
+                      textAlign: TextAlign.center,
+                    ),
+                  );
                 }
                 final records = snapshot.data ?? [];
                 if (records.isEmpty) {
-                  return const Center(child: Text('No past leadership records found.'));
+                  return const Center(
+                      child: Text('No past leadership records found.'));
                 }
                 return ListView.builder(
                   shrinkWrap: true,
@@ -896,10 +921,14 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
                       child: ListTile(
                         leading: CircleAvatar(
                           backgroundColor: _getRoleColor(context, record.role),
-                          child: const Icon(Icons.history, color: Colors.white, size: 20),
+                          child: const Icon(Icons.history,
+                              color: Colors.white, size: 20),
                         ),
-                        title: Text(record.role.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text('${DateFormat('MMM yyyy').format(record.startDate)} - ${DateFormat('MMM yyyy').format(record.endDate)}'),
+                        title: Text(record.role.toUpperCase(),
+                            style:
+                                const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text(
+                            '${DateFormat('MMM yyyy').format(record.startDate)} - ${DateFormat('MMM yyyy').format(record.endDate)}'),
                       ),
                     );
                   },
@@ -924,7 +953,3 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
     super.dispose();
   }
 }
-
-
-
-

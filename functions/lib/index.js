@@ -37,7 +37,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ingestTractPdfContent = exports.setUserRoleAndClaims = exports.claimAdminRole = exports.generateStreamChatToken = exports.consumeApprovalToken = exports.syncApprovedTestimonyToPrayerFeed = exports.sendReceiptOnCompletion = exports.paystackWebhook = exports.initPaystackSubscription = exports.initPaystackTransaction = exports.sendEmail = void 0;
-const functions = __importStar(require("firebase-functions"));
+const functions = __importStar(require("firebase-functions/v1"));
 const params_1 = require("firebase-functions/params");
 const admin = __importStar(require("firebase-admin"));
 const node_crypto_1 = __importDefault(require("node:crypto"));

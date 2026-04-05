@@ -215,8 +215,8 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
         showHintButton: false,
       );
 
-      // Hide animation after 3 seconds and load new verse
-      Future.delayed(const Duration(seconds: 3), () {
+      // Keep the celebration brief so the feedback feels immediate.
+      Future.delayed(const Duration(milliseconds: 1400), () {
         state = state.copyWith(showStarAnimation: false);
         loadNewVerse();
       });
@@ -242,7 +242,9 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
 
   void checkPartialMatch(String input) {
     if (state.currentVerse == null ||
-        state.gameMode != GameMode.voiceRecitation) return;
+        state.gameMode != GameMode.voiceRecitation) {
+      return;
+    }
 
     final correctText = state.currentVerse!.text[state.selectedVersion] ??
         state.currentVerse!.text.values.first;
@@ -254,7 +256,9 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
   }
 
   bool _areFillInGapWordsCorrect(String userAnswer, String correctAnswer) {
-    if (userAnswer.contains('__blank__')) return false;
+    if (userAnswer.contains('__blank__')) {
+      return false;
+    }
     return _isAnswerCorrect(userAnswer, correctAnswer);
   }
 
@@ -313,8 +317,12 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
     if (a.isEmpty) return b.length;
     if (b.isEmpty) return a.length;
     final dp = List.generate(a.length + 1, (i) => List.filled(b.length + 1, 0));
-    for (int i = 0; i <= a.length; i++) dp[i][0] = i;
-    for (int j = 0; j <= b.length; j++) dp[0][j] = j;
+    for (int i = 0; i <= a.length; i++) {
+      dp[i][0] = i;
+    }
+    for (int j = 0; j <= b.length; j++) {
+      dp[0][j] = j;
+    }
     for (int i = 1; i <= a.length; i++) {
       for (int j = 1; j <= b.length; j++) {
         dp[i][j] = a[i - 1] == b[j - 1]
@@ -405,27 +413,32 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
   void _initializeTts() async {
     _tts = FlutterTts();
     await _tts.setLanguage('en-NG'); // Nigerian English
-    await _tts.setSpeechRate(0.5);
+    await _tts.setSpeechRate(0.58);
+    await _tts.setQueueMode(0);
+    await _tts.awaitSpeakCompletion(true);
   }
 
   void _startListening() async {
     if (_speechEnabled) {
       ref.read(bibleGameProvider.notifier).resetVoicePrompt();
       ref.read(bibleGameProvider.notifier).setListening(true);
+      await _tts.stop();
       await _speech.listen(
         onResult: (result) {
-          ref
-              .read(bibleGameProvider.notifier)
-              .updateUserInput(result.recognizedWords);
-          _textController.text = result.recognizedWords;
+          final transcript = result.recognizedWords.trim();
+          if (transcript.isEmpty) return;
 
-          ref
-              .read(bibleGameProvider.notifier)
-              .checkPartialMatch(result.recognizedWords);
+          ref.read(bibleGameProvider.notifier).updateUserInput(transcript);
+          _textController.value = TextEditingValue(
+            text: transcript,
+            selection: TextSelection.collapsed(offset: transcript.length),
+          );
+
+          ref.read(bibleGameProvider.notifier).checkPartialMatch(transcript);
 
           final gameState = ref.read(bibleGameProvider);
           if (gameState.showStarAnimation) {
-            _speech.stop();
+            _speech.cancel();
             ref.read(bibleGameProvider.notifier).setListening(false);
           }
         },
@@ -456,7 +469,7 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
   }
 
   void _playSuccessSound() async {
-    // Play a celebratory sound using TTS
+    await _tts.stop();
     await _tts.speak('Word Perfect! Well Done!');
   }
 
@@ -699,7 +712,7 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
             const SizedBox(width: 16),
             Expanded(
               child: DropdownButtonFormField<String>(
-                value: gameState.selectedVersion,
+                initialValue: gameState.selectedVersion,
                 items: supportedVersions
                     .map((v) => DropdownMenuItem<String>(
                           value: v,

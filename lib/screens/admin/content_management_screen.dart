@@ -1886,6 +1886,8 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     }
   }
 
+  // Seed template content into Firestore so admin-managed records become
+  // the source of truth instead of leaving chapter structures hardcoded in UI.
   Future<void> _seedSampleChapters() async {
     setState(() => _isLoading = true);
     try {
@@ -1917,6 +1919,8 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     }
   }
 
+  // Seed template content into Firestore so the live admin experience owns
+  // project content, while the app can still fall back safely when offline.
   Future<void> _seedSampleProjects({bool showDialog = false}) async {
     setState(() => _isLoading = true);
     try {

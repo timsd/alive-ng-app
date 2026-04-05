@@ -14,6 +14,185 @@ class KidsContentService {
   static const String _kidsStoriesCollection = 'kids_stories';
   static const String _learningResourcesCollection = 'learning_resources';
 
+  static final List<Map<String, dynamic>> _offlineMemoryVerses = [
+    {
+      'id': 'mv_001',
+      'category': 'Love',
+      'verse':
+          'For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life.',
+      'reference': 'John 3:16',
+      'ageGroup': 'all',
+      'difficulty': 'easy',
+      'theme': 'Gods Love',
+    },
+    {
+      'id': 'mv_002',
+      'category': 'Obedience',
+      'verse': 'Children, obey your parents in the Lord, for this is right.',
+      'reference': 'Ephesians 6:1',
+      'ageGroup': 'young',
+      'difficulty': 'easy',
+      'theme': 'Family',
+    },
+    {
+      'id': 'mv_003',
+      'category': 'Sabbath',
+      'verse': 'Remember the Sabbath day by keeping it holy.',
+      'reference': 'Exodus 20:8',
+      'ageGroup': 'all',
+      'difficulty': 'easy',
+      'theme': 'Sabbath',
+    },
+    {
+      'id': 'mv_004',
+      'category': 'Prayer',
+      'verse':
+          'Do not be anxious about anything, but in every situation, by prayer and petition, with thanksgiving, present your requests to God.',
+      'reference': 'Philippians 4:6',
+      'ageGroup': 'older',
+      'difficulty': 'medium',
+      'theme': 'Prayer',
+    },
+  ];
+
+  static final List<Map<String, dynamic>> _offlinePrayerActivities = [
+    {
+      'id': 'pa_001',
+      'type': 'morning',
+      'title': 'Good Morning Prayer',
+      'content':
+          'Dear Jesus, thank You for this new day. Please help me to be kind, obedient, and loving today. Guide my steps and keep me safe. Amen.',
+      'ageGroup': 'young',
+      'duration': '1 minute',
+      'category': 'Daily Prayers',
+    },
+    {
+      'id': 'pa_002',
+      'type': 'meal',
+      'title': 'Mealtime Blessing',
+      'content':
+          'Dear God, thank You for this food. Bless it to nourish our bodies. Help us remember those who are hungry and teach us to share. Amen.',
+      'ageGroup': 'all',
+      'duration': '30 seconds',
+      'category': 'Meal Prayers',
+    },
+    {
+      'id': 'pa_003',
+      'type': 'bedtime',
+      'title': 'Bedtime Prayer',
+      'content':
+          'Dear Jesus, thank You for watching over me today. Forgive me for any wrong I have done. Please give me peaceful sleep and sweet dreams. Amen.',
+      'ageGroup': 'young',
+      'duration': '1 minute',
+      'category': 'Daily Prayers',
+    },
+  ];
+
+  static final List<Map<String, dynamic>> _offlineServiceProjects = [
+    {
+      'id': 'sp_001',
+      'title': 'Helping Elderly Neighbors',
+      'description':
+          'Visit elderly neighbors to help with simple tasks like carrying groceries, reading to them, or just spending time together.',
+      'ageGroup': 'all',
+      'duration': '1-2 hours',
+      'category': 'Community Service',
+      'difficulty': 'easy',
+      'impact': 'Brings joy and assistance to elderly community members',
+    },
+    {
+      'id': 'sp_002',
+      'title': 'Food Bank Collection',
+      'description':
+          'Organize a food drive at church or school to collect non-perishable items for local food banks.',
+      'ageGroup': 'older',
+      'duration': '2-4 weeks',
+      'category': 'Hunger Relief',
+      'difficulty': 'medium',
+      'impact': 'Provides meals for families in need',
+    },
+    {
+      'id': 'sp_003',
+      'title': 'Environmental Cleanup',
+      'description':
+          'Organize a neighborhood or park cleanup to care for Gods creation by picking up litter and planting flowers.',
+      'ageGroup': 'all',
+      'duration': '2-3 hours',
+      'category': 'Environmental',
+      'difficulty': 'easy',
+      'impact': 'Beautifies community and protects environment',
+    },
+  ];
+
+  static final List<Map<String, dynamic>> _offlineKidsStories = [
+    {
+      'id': 'ks_001',
+      'title': 'The Special Day - Sabbath',
+      'content':
+          'Long ago, God created the world in six days. On the seventh day, He rested and made it holy. This special day is called the Sabbath.',
+      'category': 'Sabbath',
+      'ageGroup': 'young',
+      'moralLesson':
+          'The Sabbath is Gods special gift to us for rest and worship.',
+      'bibleReference': 'Genesis 2:2-3',
+      'sdaDoctrine': 'Sabbath Observance',
+      'duration': '3 minutes',
+    },
+    {
+      'id': 'ks_002',
+      'title': 'Jesus is Coming Back',
+      'content':
+          'Jesus promised His disciples that He would come back to take them to heaven.',
+      'category': 'Second Coming',
+      'ageGroup': 'all',
+      'moralLesson':
+          'Jesus loves us and is preparing a wonderful home for us in heaven.',
+      'bibleReference': 'John 14:1-3',
+      'sdaDoctrine': 'Second Coming of Christ',
+      'duration': '4 minutes',
+    },
+    {
+      'id': 'ks_003',
+      'title': 'The Power of Prayer',
+      'content':
+          'Daniel prayed to God three times every day, even when it was dangerous.',
+      'category': 'Prayer',
+      'ageGroup': 'all',
+      'moralLesson':
+          'God always hears our prayers and will protect those who trust in Him.',
+      'bibleReference': 'Daniel 6:10-23',
+      'sdaDoctrine': 'Prayer and Faith',
+      'duration': '5 minutes',
+    },
+  ];
+
+  static final List<Map<String, dynamic>> _offlineLearningResources = [
+    {
+      'id': 'lr_001',
+      'title': 'Bible Heroes Activity Sheet',
+      'subject': 'Bible',
+      'category': 'Activity',
+      'ageGroup': 'young',
+      'resourceType': 'worksheet',
+    },
+    {
+      'id': 'lr_002',
+      'title': 'Sabbath Coloring Guide',
+      'subject': 'Sabbath',
+      'category': 'Art',
+      'ageGroup': 'young',
+      'resourceType': 'printable',
+    },
+    {
+      'id': 'lr_003',
+      'title': 'Junior Bible Study Notes',
+      'subject': 'Bible',
+      'category': 'Study',
+      'ageGroup': 'older',
+      'resourceType': 'study_guide',
+    },
+  ];
+
   /// Initialize kids content with default data
   static Future<void> initializeKidsContent() async {
     try {
@@ -515,22 +694,35 @@ class KidsContentService {
     String? ageGroup,
     String? difficulty,
   }) async {
-    Query query = _firestore.collection(_memoryVersesCollection);
+    try {
+      Query query = _firestore.collection(_memoryVersesCollection);
 
-    if (category != null) {
-      query = query.where('category', isEqualTo: category);
-    }
-    if (ageGroup != null) {
-      query = query.where('ageGroup', whereIn: [ageGroup, 'all']);
-    }
-    if (difficulty != null) {
-      query = query.where('difficulty', isEqualTo: difficulty);
-    }
+      if (category != null) {
+        query = query.where('category', isEqualTo: category);
+      }
+      if (ageGroup != null) {
+        query = query.where('ageGroup', whereIn: [ageGroup, 'all']);
+      }
+      if (difficulty != null) {
+        query = query.where('difficulty', isEqualTo: difficulty);
+      }
 
-    final snapshot = await query.get();
-    return snapshot.docs
-        .map((doc) => {'id': doc.id, ...doc.data() as Map<String, dynamic>})
-        .toList();
+      final snapshot = await query.get();
+      return snapshot.docs
+          .map((doc) => {'id': doc.id, ...doc.data() as Map<String, dynamic>})
+          .toList();
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied' || e.code == 'unavailable') {
+        return _filterOfflineItems(
+          _offlineMemoryVerses,
+          category: category,
+          ageGroup: ageGroup,
+          qualifierKey: 'difficulty',
+          qualifierValue: difficulty,
+        );
+      }
+      rethrow;
+    }
   }
 
   /// Get prayer activities by type
@@ -539,22 +731,35 @@ class KidsContentService {
     String? ageGroup,
     String? category,
   }) async {
-    Query query = _firestore.collection(_prayerActivitiesCollection);
+    try {
+      Query query = _firestore.collection(_prayerActivitiesCollection);
 
-    if (type != null) {
-      query = query.where('type', isEqualTo: type);
-    }
-    if (ageGroup != null) {
-      query = query.where('ageGroup', whereIn: [ageGroup, 'all']);
-    }
-    if (category != null) {
-      query = query.where('category', isEqualTo: category);
-    }
+      if (type != null) {
+        query = query.where('type', isEqualTo: type);
+      }
+      if (ageGroup != null) {
+        query = query.where('ageGroup', whereIn: [ageGroup, 'all']);
+      }
+      if (category != null) {
+        query = query.where('category', isEqualTo: category);
+      }
 
-    final snapshot = await query.get();
-    return snapshot.docs
-        .map((doc) => {'id': doc.id, ...doc.data() as Map<String, dynamic>})
-        .toList();
+      final snapshot = await query.get();
+      return snapshot.docs
+          .map((doc) => {'id': doc.id, ...doc.data() as Map<String, dynamic>})
+          .toList();
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied' || e.code == 'unavailable') {
+        return _filterOfflineItems(
+          _offlinePrayerActivities,
+          category: category,
+          ageGroup: ageGroup,
+          qualifierKey: 'type',
+          qualifierValue: type,
+        );
+      }
+      rethrow;
+    }
   }
 
   /// Get service projects by category
@@ -563,22 +768,35 @@ class KidsContentService {
     String? ageGroup,
     String? difficulty,
   }) async {
-    Query query = _firestore.collection(_serviceProjectsCollection);
+    try {
+      Query query = _firestore.collection(_serviceProjectsCollection);
 
-    if (category != null) {
-      query = query.where('category', isEqualTo: category);
-    }
-    if (ageGroup != null) {
-      query = query.where('ageGroup', whereIn: [ageGroup, 'all']);
-    }
-    if (difficulty != null) {
-      query = query.where('difficulty', isEqualTo: difficulty);
-    }
+      if (category != null) {
+        query = query.where('category', isEqualTo: category);
+      }
+      if (ageGroup != null) {
+        query = query.where('ageGroup', whereIn: [ageGroup, 'all']);
+      }
+      if (difficulty != null) {
+        query = query.where('difficulty', isEqualTo: difficulty);
+      }
 
-    final snapshot = await query.get();
-    return snapshot.docs
-        .map((doc) => {'id': doc.id, ...doc.data() as Map<String, dynamic>})
-        .toList();
+      final snapshot = await query.get();
+      return snapshot.docs
+          .map((doc) => {'id': doc.id, ...doc.data() as Map<String, dynamic>})
+          .toList();
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied' || e.code == 'unavailable') {
+        return _filterOfflineItems(
+          _offlineServiceProjects,
+          category: category,
+          ageGroup: ageGroup,
+          qualifierKey: 'difficulty',
+          qualifierValue: difficulty,
+        );
+      }
+      rethrow;
+    }
   }
 
   /// Get kids stories by category
@@ -587,22 +805,35 @@ class KidsContentService {
     String? ageGroup,
     String? sdaDoctrine,
   }) async {
-    Query query = _firestore.collection(_kidsStoriesCollection);
+    try {
+      Query query = _firestore.collection(_kidsStoriesCollection);
 
-    if (category != null) {
-      query = query.where('category', isEqualTo: category);
-    }
-    if (ageGroup != null) {
-      query = query.where('ageGroup', whereIn: [ageGroup, 'all']);
-    }
-    if (sdaDoctrine != null) {
-      query = query.where('sdaDoctrine', isEqualTo: sdaDoctrine);
-    }
+      if (category != null) {
+        query = query.where('category', isEqualTo: category);
+      }
+      if (ageGroup != null) {
+        query = query.where('ageGroup', whereIn: [ageGroup, 'all']);
+      }
+      if (sdaDoctrine != null) {
+        query = query.where('sdaDoctrine', isEqualTo: sdaDoctrine);
+      }
 
-    final snapshot = await query.get();
-    return snapshot.docs
-        .map((doc) => {'id': doc.id, ...doc.data() as Map<String, dynamic>})
-        .toList();
+      final snapshot = await query.get();
+      return snapshot.docs
+          .map((doc) => {'id': doc.id, ...doc.data() as Map<String, dynamic>})
+          .toList();
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied' || e.code == 'unavailable') {
+        return _filterOfflineItems(
+          _offlineKidsStories,
+          category: category,
+          ageGroup: ageGroup,
+          qualifierKey: 'sdaDoctrine',
+          qualifierValue: sdaDoctrine,
+        );
+      }
+      rethrow;
+    }
   }
 
   /// Get all categories for memory verses
@@ -651,6 +882,31 @@ class KidsContentService {
 
     prayers.shuffle();
     return prayers.first;
+  }
+
+  static List<Map<String, dynamic>> _filterOfflineItems(
+    List<Map<String, dynamic>> items, {
+    String? category,
+    String? ageGroup,
+    String? qualifierKey,
+    String? qualifierValue,
+  }) {
+    return items
+        .where((item) {
+          final categoryMatch =
+              category == null || item['category']?.toString() == category;
+          final ageGroupValue = item['ageGroup']?.toString();
+          final ageGroupMatch = ageGroup == null ||
+              ageGroupValue == null ||
+              ageGroupValue == ageGroup ||
+              ageGroupValue == 'all';
+          final qualifierMatch = qualifierKey == null ||
+              qualifierValue == null ||
+              item[qualifierKey]?.toString() == qualifierValue;
+          return categoryMatch && ageGroupMatch && qualifierMatch;
+        })
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
   }
 
   // Admin update/delete helpers
@@ -1010,20 +1266,33 @@ Future<List<Map<String, dynamic>>> getLearningResources({
   String? ageGroup,
   String? resourceType,
 }) async {
-  Query query = FirebaseFirestore.instance.collection('learning_resources');
-  if (category != null) {
-    query = query.where('category', isEqualTo: category);
+  try {
+    Query query = FirebaseFirestore.instance.collection('learning_resources');
+    if (category != null) {
+      query = query.where('category', isEqualTo: category);
+    }
+    if (ageGroup != null) {
+      query = query.where('ageGroup', whereIn: [ageGroup, 'all']);
+    }
+    if (resourceType != null) {
+      query = query.where('resourceType', isEqualTo: resourceType);
+    }
+    final snapshot = await query.get();
+    return snapshot.docs
+        .map((doc) => {'id': doc.id, ...doc.data() as Map<String, dynamic>})
+        .toList();
+  } on FirebaseException catch (e) {
+    if (e.code == 'permission-denied' || e.code == 'unavailable') {
+      return KidsContentService._filterOfflineItems(
+        KidsContentService._offlineLearningResources,
+        category: category,
+        ageGroup: ageGroup,
+        qualifierKey: 'resourceType',
+        qualifierValue: resourceType,
+      );
+    }
+    rethrow;
   }
-  if (ageGroup != null) {
-    query = query.where('ageGroup', whereIn: [ageGroup, 'all']);
-  }
-  if (resourceType != null) {
-    query = query.where('resourceType', isEqualTo: resourceType);
-  }
-  final snapshot = await query.get();
-  return snapshot.docs
-      .map((doc) => {'id': doc.id, ...doc.data() as Map<String, dynamic>})
-      .toList();
 }
 
 Future<String> createLearningResource(Map<String, dynamic> resource) async {

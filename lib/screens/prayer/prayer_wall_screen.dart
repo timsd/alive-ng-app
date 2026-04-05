@@ -485,7 +485,10 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
                   size: 20,
                   color: isPrayingFor
                       ? Theme.of(context).colorScheme.error
-                      : Theme.of(context).colorScheme.outline.withOpacity(0.5),
+                      : Theme.of(context)
+                          .colorScheme
+                          .outline
+                          .withValues(alpha: 0.5),
                 ),
                 const SizedBox(width: 4),
                 Text(
@@ -632,8 +635,14 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.outline.withOpacity(0.1),
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .outlineVariant
+                      .withValues(alpha: 0.6),
+                ),
               ),
               child: Text('Prayer Request: Sample prayer request ${index + 1}'),
             ),

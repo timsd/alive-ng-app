@@ -588,7 +588,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                                 Text(
                                   _selectedBook.isEmpty
                                       ? 'Select a book to begin reading'
-                                      : 'No verses found for $_selectedBook $_selectedChapter',
+                                      : 'No verses found for $_selectedBook $_selectedChapter yet. Try switching version or language.',
                                   style: TextStyle(
                                     color: colorScheme.onSurface
                                         .withValues(alpha: 0.6),
@@ -1311,30 +1311,51 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 600;
     final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
 
     return Column(
       children: [
         Container(
           padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-          color: colorScheme.primary.withValues(alpha: 0.1),
+          decoration: BoxDecoration(
+            color: colorScheme.surfaceContainerHighest,
+            border: Border(
+              bottom: BorderSide(
+                color: colorScheme.outlineVariant.withValues(alpha: 0.7),
+              ),
+            ),
+          ),
           child: TextField(
             style: TextStyle(
               fontSize: isSmallScreen ? 14 : 16,
-              color: Theme.of(context).textTheme.bodyLarge?.color,
+              color: theme.textTheme.bodyLarge?.color,
             ),
             decoration: InputDecoration(
               labelText: 'Search verses...',
               labelStyle: TextStyle(
                 fontSize: isSmallScreen ? 14 : 16,
-                color: Theme.of(context).textTheme.bodyMedium?.color,
+                color: colorScheme.onSurfaceVariant,
               ),
+              hintText: 'Type a verse, phrase, or keyword',
+              hintStyle: TextStyle(color: colorScheme.onSurfaceVariant),
+              filled: true,
+              fillColor: colorScheme.surface,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(isSmallScreen ? 8 : 12),
+                borderSide: BorderSide(color: colorScheme.outlineVariant),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(isSmallScreen ? 8 : 12),
+                borderSide: BorderSide(color: colorScheme.outlineVariant),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(isSmallScreen ? 8 : 12),
+                borderSide: BorderSide(color: colorScheme.primary, width: 1.4),
               ),
               prefixIcon: Icon(
                 Icons.search,
                 size: isSmallScreen ? 20 : 24,
-                color: Theme.of(context).iconTheme.color,
+                color: colorScheme.onSurfaceVariant,
               ),
               contentPadding: EdgeInsets.symmetric(
                 horizontal: isSmallScreen ? 12 : 16,
@@ -1515,10 +1536,23 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                   ),
                   const SizedBox(height: 12),
                   TextField(
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Search topic or Bible reference...',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.search),
+                      filled: true,
+                      fillColor: colorScheme.surfaceContainerHighest,
+                      border: const OutlineInputBorder(),
+                      enabledBorder: OutlineInputBorder(
+                        borderSide:
+                            BorderSide(color: colorScheme.outlineVariant),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide:
+                            BorderSide(color: colorScheme.primary, width: 1.4),
+                      ),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
                     ),
                     onSubmitted: (query) {
                       if (query.trim().isEmpty) return;

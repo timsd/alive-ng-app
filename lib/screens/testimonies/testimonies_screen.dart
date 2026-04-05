@@ -51,10 +51,13 @@ class _TestimoniesScreenState extends ConsumerState<TestimoniesScreen>
     final contentController = TextEditingController();
     bool isAnonymous = false;
     final translate = ref.read(translationProvider);
+    final theme = Theme.of(context);
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: theme.colorScheme.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
             top: Radius.circular(
@@ -98,6 +101,12 @@ class _TestimoniesScreenState extends ConsumerState<TestimoniesScreen>
                     children: [
                       Checkbox(
                         value: isAnonymous,
+                        fillColor: WidgetStateProperty.resolveWith((states) {
+                          if (states.contains(WidgetState.selected)) {
+                            return theme.colorScheme.primary;
+                          }
+                          return theme.colorScheme.surfaceContainerHighest;
+                        }),
                         onChanged: (value) {
                           setModalState(() {
                             isAnonymous = value ?? false;
@@ -221,6 +230,13 @@ class _TestimoniesScreenState extends ConsumerState<TestimoniesScreen>
             itemBuilder: (context, index) {
               final testimony = testimonies[index];
               return CustomCard(
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color:
+                      Theme.of(context).colorScheme.outlineVariant.withValues(
+                            alpha: 0.4,
+                          ),
+                ),
                 child: Padding(
                   padding: ResponsiveUtils.getResponsivePadding(context),
                   child: Column(
@@ -243,9 +259,11 @@ class _TestimoniesScreenState extends ConsumerState<TestimoniesScreen>
                                         ? testimony.userName[0].toUpperCase()
                                         : '?',
                                     style: TextStyle(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .primary))
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  )
                                 : null,
                           ),
                           SizedBox(
@@ -265,6 +283,9 @@ class _TestimoniesScreenState extends ConsumerState<TestimoniesScreen>
                                             .titleMedium
                                             ?.copyWith(
                                               fontWeight: FontWeight.bold,
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurface,
                                               fontSize: ResponsiveUtils
                                                   .getResponsiveFontSize(
                                                       context, 16),
@@ -282,6 +303,9 @@ class _TestimoniesScreenState extends ConsumerState<TestimoniesScreen>
                                       .textTheme
                                       .bodySmall
                                       ?.copyWith(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant,
                                         fontSize: ResponsiveUtils
                                             .getResponsiveFontSize(context, 12),
                                       ),
@@ -297,6 +321,8 @@ class _TestimoniesScreenState extends ConsumerState<TestimoniesScreen>
                       Text(
                         testimony.content,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurface,
+                              height: 1.55,
                               fontSize: ResponsiveUtils.getResponsiveFontSize(
                                   context, 14),
                             ),

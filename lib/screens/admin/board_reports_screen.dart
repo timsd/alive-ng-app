@@ -21,7 +21,8 @@ class BoardReportsScreen extends StatefulWidget {
 }
 
 class _BoardReportsScreenState extends State<BoardReportsScreen> {
-  final FirebaseDatabaseService _firebaseService = FirebaseDatabaseService.instance;
+  final FirebaseDatabaseService _firebaseService =
+      FirebaseDatabaseService.instance;
   final AuthService _authService = AuthService.instance;
   List<BoardReport> _reports = [];
   bool _isLoading = true;
@@ -86,7 +87,8 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
       final statusMatch =
           _selectedStatus == 'all' || report.status == _selectedStatus;
       final chapterMatch = _selectedChapter == 'all' ||
-          (report.metadata != null && report.metadata?['chapter'] == _selectedChapter);
+          (report.metadata != null &&
+              report.metadata?['chapter'] == _selectedChapter);
       return categoryMatch && statusMatch && chapterMatch;
     }).toList();
   }
@@ -150,32 +152,37 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
               children: [
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: _selectedCategory,
+                    initialValue: _selectedCategory,
                     decoration: const InputDecoration(
                       labelText: 'Category',
                       border: OutlineInputBorder(),
                       contentPadding: EdgeInsets.symmetric(horizontal: 12),
                     ),
-                    items: _categories.map((c) => DropdownMenuItem(
-                      value: c,
-                      child: Text(c.toUpperCase()),
-                    )).toList(),
-                    onChanged: (val) => setState(() => _selectedCategory = val!),
+                    items: _categories
+                        .map((c) => DropdownMenuItem(
+                              value: c,
+                              child: Text(c.toUpperCase()),
+                            ))
+                        .toList(),
+                    onChanged: (val) =>
+                        setState(() => _selectedCategory = val!),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: _selectedStatus,
+                    initialValue: _selectedStatus,
                     decoration: const InputDecoration(
                       labelText: 'Status',
                       border: OutlineInputBorder(),
                       contentPadding: EdgeInsets.symmetric(horizontal: 12),
                     ),
-                    items: _statuses.map((s) => DropdownMenuItem(
-                      value: s,
-                      child: Text(s.toUpperCase()),
-                    )).toList(),
+                    items: _statuses
+                        .map((s) => DropdownMenuItem(
+                              value: s,
+                              child: Text(s.toUpperCase()),
+                            ))
+                        .toList(),
                     onChanged: (val) => setState(() => _selectedStatus = val!),
                   ),
                 ),
@@ -190,9 +197,11 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.description_outlined, size: 64, color: Colors.grey.shade400),
+                            Icon(Icons.description_outlined,
+                                size: 64, color: Colors.grey.shade400),
                             const SizedBox(height: 16),
-                            Text('No reports matching current filters', style: TextStyle(color: Colors.grey.shade600)),
+                            Text('No reports matching current filters',
+                                style: TextStyle(color: Colors.grey.shade600)),
                           ],
                         ),
                       )
@@ -207,11 +216,16 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
                               margin: const EdgeInsets.only(bottom: 12),
                               child: ListTile(
                                 leading: CircleAvatar(
-                                  backgroundColor: _getCategoryColor(report.category),
-                                  child: Icon(_getCategoryIcon(report.category), color: Colors.white, size: 20),
+                                  backgroundColor:
+                                      _getCategoryColor(report.category),
+                                  child: Icon(_getCategoryIcon(report.category),
+                                      color: Colors.white, size: 20),
                                 ),
-                                title: Text(report.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                subtitle: Text('Submitted by: ${report.authorName}\nID: ${report.id}'),
+                                title: Text(report.title,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold)),
+                                subtitle: Text(
+                                    'Submitted by: ${report.authorName}\nID: ${report.id}'),
                                 trailing: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   crossAxisAlignment: CrossAxisAlignment.end,
@@ -219,7 +233,8 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
                                     _buildStatusBadge(report.status),
                                     const SizedBox(height: 4),
                                     Text(
-                                      DateFormat('MMM dd, yyyy').format(report.createdAt),
+                                      DateFormat('MMM dd, yyyy')
+                                          .format(report.createdAt),
                                       style: const TextStyle(fontSize: 10),
                                     ),
                                   ],
@@ -239,31 +254,48 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
 
   Color _getCategoryColor(String category) {
     switch (category) {
-      case 'financial': return Colors.blue;
-      case 'operational': return Colors.orange;
-      case 'strategic': return Colors.purple;
-      case 'ministry': return Colors.green;
-      default: return Colors.grey;
+      case 'financial':
+        return Colors.blue;
+      case 'operational':
+        return Colors.orange;
+      case 'strategic':
+        return Colors.purple;
+      case 'ministry':
+        return Colors.green;
+      default:
+        return Colors.grey;
     }
   }
 
   IconData _getCategoryIcon(String category) {
     switch (category) {
-      case 'financial': return Icons.attach_money;
-      case 'operational': return Icons.settings;
-      case 'strategic': return Icons.trending_up;
-      case 'ministry': return Icons.church;
-      default: return Icons.report;
+      case 'financial':
+        return Icons.attach_money;
+      case 'operational':
+        return Icons.settings;
+      case 'strategic':
+        return Icons.trending_up;
+      case 'ministry':
+        return Icons.church;
+      default:
+        return Icons.report;
     }
   }
 
   Widget _buildStatusBadge(String status) {
     Color color;
     switch (status) {
-      case 'approved': color = Colors.green; break;
-      case 'reviewed': color = Colors.blue; break;
-      case 'submitted': color = Colors.orange; break;
-      default: color = Colors.grey;
+      case 'approved':
+        color = Colors.green;
+        break;
+      case 'reviewed':
+        color = Colors.blue;
+        break;
+      case 'submitted':
+        color = Colors.orange;
+        break;
+      default:
+        color = Colors.grey;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -274,7 +306,8 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
       ),
       child: Text(
         status.toUpperCase(),
-        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
+        style:
+            TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -285,23 +318,49 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
       builder: (context) {
         final theme = Theme.of(context);
         return AlertDialog(
-          backgroundColor: theme.dialogBackgroundColor,
-          title: Text(report.title, style: TextStyle(color: theme.colorScheme.onSurface)),
+          backgroundColor:
+              theme.dialogTheme.backgroundColor ?? theme.colorScheme.surface,
+          title: Text(report.title,
+              style: TextStyle(color: theme.colorScheme.onSurface)),
           content: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Description:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green.shade800)),
-                Text(report.description, style: TextStyle(color: theme.colorScheme.onSurface)),
+                Text('Description:',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green.shade800)),
+                Text(report.description,
+                    style: TextStyle(color: theme.colorScheme.onSurface)),
                 const SizedBox(height: 16),
-                Text('Content:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green.shade800)),
-                Text(report.content, style: TextStyle(color: theme.colorScheme.onSurface)),
+                Text('Content:',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green.shade800)),
+                Text(report.content,
+                    style: TextStyle(color: theme.colorScheme.onSurface)),
                 const SizedBox(height: 16),
-                Text('Meta Information:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green.shade800)),
-                Text('Author: ${report.authorName}', style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.7))),
-                Text('Created: ${DateFormat('MMM dd, yyyy HH:mm').format(report.createdAt)}', style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.7))),
-                Text('Category: ${report.category.toUpperCase()}', style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.7))),
-                Text('Status: ${report.status.toUpperCase()}', style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.7))),
+                Text('Meta Information:',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green.shade800)),
+                Text('Author: ${report.authorName}',
+                    style: TextStyle(
+                        color: theme.colorScheme.onSurface
+                            .withValues(alpha: 0.7))),
+                Text(
+                    'Created: ${DateFormat('MMM dd, yyyy HH:mm').format(report.createdAt)}',
+                    style: TextStyle(
+                        color: theme.colorScheme.onSurface
+                            .withValues(alpha: 0.7))),
+                Text('Category: ${report.category.toUpperCase()}',
+                    style: TextStyle(
+                        color: theme.colorScheme.onSurface
+                            .withValues(alpha: 0.7))),
+                Text('Status: ${report.status.toUpperCase()}',
+                    style: TextStyle(
+                        color: theme.colorScheme.onSurface
+                            .withValues(alpha: 0.7))),
               ],
             ),
           ),
@@ -313,25 +372,31 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
             if (report.status == 'submitted')
               ElevatedButton(
                 onPressed: () async {
-                  final success = await _firebaseService.updateBoardReportStatus(report.id, 'reviewed');
+                  final success = await _firebaseService
+                      .updateBoardReportStatus(report.id, 'reviewed');
                   if (success && context.mounted) {
                     Navigator.pop(context);
                     _loadReports();
                   }
                 },
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white),
                 child: const Text('Mark Reviewed'),
               ),
             if (report.status == 'reviewed')
               ElevatedButton(
                 onPressed: () async {
-                  final success = await _firebaseService.updateBoardReportStatus(report.id, 'approved');
+                  final success = await _firebaseService
+                      .updateBoardReportStatus(report.id, 'approved');
                   if (success && context.mounted) {
                     Navigator.pop(context);
                     _loadReports();
                   }
                 },
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white),
                 child: const Text('Approve'),
               ),
           ],
@@ -352,48 +417,60 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
         final theme = Theme.of(context);
         return StatefulBuilder(
           builder: (context, setDialogState) => AlertDialog(
-            backgroundColor: theme.dialogBackgroundColor,
-            title: Text('Create New Board Report', style: TextStyle(color: theme.colorScheme.onSurface)),
+            backgroundColor:
+                theme.dialogTheme.backgroundColor ?? theme.colorScheme.surface,
+            title: Text('Create New Board Report',
+                style: TextStyle(color: theme.colorScheme.onSurface)),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   TextField(
                     controller: titleController,
-                    decoration: const InputDecoration(labelText: 'Report Title'),
+                    decoration:
+                        const InputDecoration(labelText: 'Report Title'),
                     style: TextStyle(color: theme.colorScheme.onSurface),
                   ),
                   TextField(
                     controller: descriptionController,
-                    decoration: const InputDecoration(labelText: 'Short Description'),
+                    decoration:
+                        const InputDecoration(labelText: 'Short Description'),
                     style: TextStyle(color: theme.colorScheme.onSurface),
                   ),
                   TextField(
                     controller: contentController,
-                    decoration: const InputDecoration(labelText: 'Full Content'),
+                    decoration:
+                        const InputDecoration(labelText: 'Full Content'),
                     maxLines: 5,
                     style: TextStyle(color: theme.colorScheme.onSurface),
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    value: selectedCat,
+                    initialValue: selectedCat,
                     dropdownColor: theme.cardColor,
                     style: TextStyle(color: theme.colorScheme.onSurface),
                     decoration: const InputDecoration(labelText: 'Category'),
-                    items: _categories.skip(1).map((c) => DropdownMenuItem(
-                      value: c,
-                      child: Text(c.toUpperCase()),
-                    )).toList(),
-                    onChanged: (val) => setDialogState(() => selectedCat = val!),
+                    items: _categories
+                        .skip(1)
+                        .map((c) => DropdownMenuItem(
+                              value: c,
+                              child: Text(c.toUpperCase()),
+                            ))
+                        .toList(),
+                    onChanged: (val) =>
+                        setDialogState(() => selectedCat = val!),
                   ),
                 ],
               ),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+              TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel')),
               ElevatedButton(
                 onPressed: () async {
-                  if (titleController.text.isNotEmpty && contentController.text.isNotEmpty) {
+                  if (titleController.text.isNotEmpty &&
+                      contentController.text.isNotEmpty) {
                     final report = {
                       'title': titleController.text,
                       'description': descriptionController.text,
@@ -401,21 +478,26 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
                       'category': selectedCat,
                       'status': 'submitted',
                       'authorId': _authService.currentUser?.uid ?? 'unknown',
-                      'authorName': _authService.currentUser?.displayName ?? 'Admin',
+                      'authorName':
+                          _authService.currentUser?.displayName ?? 'Admin',
                       'createdAt': DateTime.now().toIso8601String(),
                     };
-                    
-                    final success = await _firebaseService.addBoardReport(report);
+
+                    final success =
+                        await _firebaseService.addBoardReport(report);
                     if (success && context.mounted) {
                       Navigator.pop(context);
                       _loadReports();
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Report submitted successfully')),
+                        const SnackBar(
+                            content: Text('Report submitted successfully')),
                       );
                     }
                   }
                 },
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white),
                 child: const Text('Submit Report'),
               ),
             ],

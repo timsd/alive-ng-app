@@ -50,9 +50,18 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "Dependencies updated." -ForegroundColor Green
 
+# Configure Environment
+Write-Host "Configuring web environment..." -ForegroundColor Cyan
+dart scripts/configure_web.dart
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Failed to configure web environment." -ForegroundColor Red
+    exit 1
+}
+Write-Host "Environment configured." -ForegroundColor Green
+
 # Build web app
 Write-Host "Building web app..." -ForegroundColor Cyan
-flutter build web --release --web-renderer canvaskit
+flutter build web --release --no-wasm-dry-run
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Failed to build web app." -ForegroundColor Red
     exit 1

@@ -297,7 +297,7 @@ class _AdminStudyGuidesScreenState extends State<AdminStudyGuidesScreen> {
                       children: [
                         Expanded(
                           child: DropdownButtonFormField<StudyGuideType>(
-                            value: _selectedType,
+                            initialValue: _selectedType,
                             decoration: const InputDecoration(
                                 labelText: 'Type',
                                 border: OutlineInputBorder()),
@@ -312,7 +312,7 @@ class _AdminStudyGuidesScreenState extends State<AdminStudyGuidesScreen> {
                         const SizedBox(width: 16),
                         Expanded(
                           child: DropdownButtonFormField<StudyDifficulty>(
-                            value: _selectedDifficulty,
+                            initialValue: _selectedDifficulty,
                             decoration: const InputDecoration(
                                 labelText: 'Difficulty',
                                 border: OutlineInputBorder()),
