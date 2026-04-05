@@ -15,8 +15,6 @@ import 'admin_claims_preview_screen.dart';
 import 'role_management_screen.dart';
 import 'board_reports_screen.dart';
 import '../../services/firebase_database_service.dart';
-import '../../services/admin_service.dart';
-import '../../services/admin_notification_service.dart';
 import '../../utils/responsive_utils.dart';
 
 import 'package:url_launcher/url_launcher.dart';
@@ -151,6 +149,22 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
     }
   }
 
+  BoxDecoration _panelDecoration(BuildContext context, {Color? tint}) {
+    final theme = Theme.of(context);
+    return BoxDecoration(
+      color: tint ?? theme.colorScheme.surface,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: theme.colorScheme.outlineVariant),
+      boxShadow: [
+        BoxShadow(
+          color: theme.colorScheme.shadow.withValues(alpha: 0.08),
+          blurRadius: 18,
+          offset: const Offset(0, 8),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -183,16 +197,16 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
               Text(
                 'Admin Access Required',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.error,
-                ),
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
               ),
               SizedBox(height: 8),
               Text(
                 'You need administrator privileges to access this dashboard.',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -433,8 +447,11 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Welcome Card
-            Card(
-              color: Colors.green.shade50,
+            Container(
+              decoration: _panelDecoration(
+                context,
+                tint: Theme.of(context).colorScheme.primaryContainer,
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Row(
@@ -453,16 +470,25 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                         children: [
                           Text(
                             'Welcome, ${_currentUser?.email ?? 'Administrator'}',
-                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineSmall
+                                ?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color:
+                                      Theme.of(context).colorScheme.onSurface,
+                                ),
                           ),
                           Text(
                             'ALIVE Nigeria Admin Dashboard',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
                           ),
                         ],
                       ),
@@ -478,8 +504,8 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
             Text(
               'System Overview',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             const SizedBox(height: 16),
 
@@ -511,8 +537,8 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
             Text(
               'Podcast Stats',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             const SizedBox(height: 16),
             Row(
@@ -538,21 +564,24 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
             ),
 
             const SizedBox(height: 12),
-            Card(
+            Container(
+              decoration: _panelDecoration(context),
               child: Padding(
                 padding: const EdgeInsets.all(12.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(
+                    Row(
                       children: [
-                        Icon(Icons.legend_toggle, color: Colors.blue),
-                        SizedBox(width: 8),
+                        Icon(Icons.legend_toggle,
+                            color: Theme.of(context).colorScheme.primary),
+                        const SizedBox(width: 8),
                         Text(
                           'Podcast Categories Breakdown',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                       ],
@@ -564,9 +593,13 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                       children: _podcastCategoryCounts.entries.map((e) {
                         final display = _displayPodcastCategory(e.key);
                         return Chip(
-                          avatar: const Icon(Icons.label,
-                              size: 18, color: Colors.blue),
+                          avatar: Icon(Icons.label,
+                              size: 18,
+                              color: Theme.of(context).colorScheme.primary),
                           label: Text('$display: ${e.value}'),
+                          side: BorderSide(
+                            color: Theme.of(context).colorScheme.outlineVariant,
+                          ),
                         );
                       }).toList(),
                     ),
@@ -605,8 +638,8 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
             Text(
               'Management Tools',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             const SizedBox(height: 16),
 
@@ -806,10 +839,14 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
 
   Widget _buildStatCard(
       String title, String value, IconData icon, Color color) {
+    final theme = Theme.of(context);
     return Card(
-      elevation: 4,
+      elevation: 0,
       shadowColor: color.withValues(alpha: 0.2),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: theme.colorScheme.outlineVariant),
+      ),
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
@@ -817,7 +854,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Colors.white,
+              theme.colorScheme.surface,
               color.withValues(alpha: 0.05),
             ],
           ),
@@ -841,19 +878,19 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
             Text(
               value,
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w900,
-                color: color,
-                letterSpacing: -1,
-              ),
+                    fontWeight: FontWeight.w900,
+                    color: color,
+                    letterSpacing: -1,
+                  ),
             ),
             const SizedBox(height: 4),
             Text(
               title.toUpperCase(),
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-              ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
+                  ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -864,12 +901,8 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
 
   Widget _buildManagementSection(
       String title, IconData icon, List<Widget> children) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.shade200),
-      ),
+    return Container(
+      decoration: _panelDecoration(context),
       child: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -880,7 +913,10 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
@@ -893,9 +929,9 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                 Text(
                   title,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
-                  ),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                      ),
                 ),
               ],
             ),
@@ -914,8 +950,11 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: Colors.grey.shade50,
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
         ),
         child: Icon(
           icon,
@@ -926,16 +965,16 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
       title: Text(
         title,
         style: Theme.of(context).textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.w600,
-          fontSize: 16,
-        ),
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
+            ),
       ),
       subtitle: Text(
         subtitle,
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-          fontSize: 13,
-        ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontSize: 13,
+            ),
       ),
       trailing: Icon(
         Icons.arrow_forward_ios,
@@ -981,7 +1020,8 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const ContentManagementScreen(contentType: 'chapters'),
+        builder: (context) =>
+            const ContentManagementScreen(contentType: 'chapters'),
       ),
     );
   }
@@ -1008,7 +1048,8 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const ContentManagementScreen(contentType: 'settings'),
+        builder: (context) =>
+            const ContentManagementScreen(contentType: 'settings'),
       ),
     );
   }
@@ -1017,7 +1058,8 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const StorageAdminScreen(initialBucket: 'system-backups'),
+        builder: (context) =>
+            const StorageAdminScreen(initialBucket: 'system-backups'),
       ),
     );
   }
@@ -1026,7 +1068,8 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const StorageAdminScreen(initialBucket: 'app-logs'),
+        builder: (context) =>
+            const StorageAdminScreen(initialBucket: 'app-logs'),
       ),
     );
   }

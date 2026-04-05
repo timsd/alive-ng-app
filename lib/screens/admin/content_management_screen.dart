@@ -18,21 +18,23 @@ import 'board_reports_screen.dart';
 
 class ContentManagementScreen extends StatefulWidget {
   final String? contentType;
-  
+
   const ContentManagementScreen({
     super.key,
     this.contentType,
   });
 
   @override
-  State<ContentManagementScreen> createState() => _ContentManagementScreenState();
+  State<ContentManagementScreen> createState() =>
+      _ContentManagementScreenState();
 }
 
 class _ContentManagementScreenState extends State<ContentManagementScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final FirebaseDatabaseService _firebaseService = FirebaseDatabaseService.instance;
-  
+  final FirebaseDatabaseService _firebaseService =
+      FirebaseDatabaseService.instance;
+
   bool _isLoading = false;
   List<Map<String, dynamic>> _contentPages = [];
   List<Map<String, dynamic>> _announcements = [];
@@ -41,12 +43,32 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
   List<Chapter> _chapters = [];
   List<Map<String, dynamic>> _projects = [];
 
+  Widget _buildSectionHeader(
+      BuildContext context, String title, Widget action) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          LayoutFixUtils.safeText(
+            title,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                ),
+          ),
+          action,
+        ],
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 6, vsync: this);
     _loadAllContent();
-    
+
     // Set initial tab based on content type
     if (widget.contentType != null) {
       switch (widget.contentType) {
@@ -79,7 +101,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
 
   Future<void> _loadAllContent() async {
     setState(() => _isLoading = true);
-    
+
     try {
       await Future.wait([
         _loadContentPages(),
@@ -102,7 +124,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
           .collection('content_pages')
           .orderBy('created_at', descending: true)
           .get();
-      
+
       setState(() {
         _contentPages = snapshot.docs.map((doc) {
           final data = doc.data();
@@ -120,7 +142,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
           .collection('announcements')
           .orderBy('created_at', descending: true)
           .get();
-      
+
       setState(() {
         _announcements = snapshot.docs.map((doc) {
           final data = doc.data();
@@ -138,7 +160,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
           .collection('app_settings')
           .orderBy('category')
           .get();
-      
+
       setState(() {
         _appSettings = snapshot.docs.map((doc) {
           final data = doc.data();
@@ -156,7 +178,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
           .collection('featured_content')
           .orderBy('created_at', descending: true)
           .get();
-      
+
       setState(() {
         _featuredContent = snapshot.docs.map((doc) {
           final data = doc.data();
@@ -171,13 +193,13 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
   Future<void> _loadChapters() async {
     try {
       final chapters = await ChapterService().getChapters();
-      
+
       if (chapters.isEmpty) {
         // Automatically seed sample chapters from constants if the collection is empty
         await _seedSampleChapters();
         return;
       }
-      
+
       setState(() {
         _chapters = chapters;
       });
@@ -211,28 +233,39 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
           title: Text(
             'Content Management',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onPrimary,
+                ),
           ),
-          backgroundColor: Colors.green.shade700,
-          elevation: 2,
-          shadowColor: Colors.black26,
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          elevation: 0,
+          shadowColor: Theme.of(context).colorScheme.shadow,
           centerTitle: true,
           bottom: TabBar(
             controller: _tabController,
-            labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
-            indicatorColor: Colors.white,
+            labelStyle:
+                const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+            unselectedLabelStyle:
+                const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+            indicatorColor: Theme.of(context).colorScheme.onPrimary,
+            labelColor: Theme.of(context).colorScheme.onPrimary,
+            unselectedLabelColor:
+                Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.76),
             indicatorWeight: 4,
             indicatorSize: TabBarIndicatorSize.label,
             tabs: const [
               Tab(text: 'Pages', icon: Icon(Icons.article_outlined, size: 20)),
-              Tab(text: 'Announcements', icon: Icon(Icons.campaign_outlined, size: 20)),
-              Tab(text: 'Settings', icon: Icon(Icons.settings_outlined, size: 20)),
+              Tab(
+                  text: 'Announcements',
+                  icon: Icon(Icons.campaign_outlined, size: 20)),
+              Tab(
+                  text: 'Settings',
+                  icon: Icon(Icons.settings_outlined, size: 20)),
               Tab(text: 'Featured', icon: Icon(Icons.star_outline, size: 20)),
               Tab(text: 'Chapters', icon: Icon(Icons.group_outlined, size: 20)),
-              Tab(text: 'Projects', icon: Icon(Icons.account_tree_outlined, size: 20)),
+              Tab(
+                  text: 'Projects',
+                  icon: Icon(Icons.account_tree_outlined, size: 20)),
             ],
           ),
         ),
@@ -256,40 +289,21 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
   Widget _buildContentPagesTab() {
     return LayoutFixUtils.safeColumn(
       children: [
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        _buildSectionHeader(
+          context,
+          'Content Pages (${_contentPages.length})',
+          Row(
             children: [
-              LayoutFixUtils.safeText(
-                'Content Pages (${_contentPages.length})',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.5,
-                ),
+              ElevatedButton.icon(
+                onPressed: () => _showContentPageDialog(),
+                icon: const Icon(Icons.add),
+                label: const Text('New Page'),
               ),
-              Row(
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: () => _showContentPageDialog(),
-                    icon: const Icon(Icons.add),
-                    label: const Text('New Page'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  ElevatedButton.icon(
-                    onPressed: _editOnboardingPage,
-                    icon: const Icon(Icons.flag),
-                    label: const Text('Edit Onboarding'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ],
+              const SizedBox(width: 12),
+              OutlinedButton.icon(
+                onPressed: _editOnboardingPage,
+                icon: const Icon(Icons.flag),
+                label: const Text('Edit Onboarding'),
               ),
             ],
           ),
@@ -334,18 +348,25 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
 
   Widget _buildContentPageCard(Map<String, dynamic> page) {
     final isPublished = page['is_published'] ?? false;
-    final publishDate = page['publish_date'] != null 
-        ? DateTime.parse(page['publish_date']) 
+    final publishDate = page['publish_date'] != null
+        ? DateTime.parse(page['publish_date'])
         : null;
-    
+
     return Card(
+      elevation: 0,
       margin: const EdgeInsets.only(bottom: 12.0),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: isPublished ? Colors.green : Colors.orange,
+          backgroundColor: isPublished
+              ? Theme.of(context).colorScheme.tertiary
+              : Theme.of(context).colorScheme.secondary,
           child: Icon(
             isPublished ? Icons.public : Icons.drafts,
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.onPrimary,
           ),
         ),
         title: Text(
@@ -358,11 +379,13 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
             LayoutFixUtils.safeText(page['slug'] ?? ''),
             const SizedBox(height: 4),
             LayoutFixUtils.safeText(
-              isPublished 
+              isPublished
                   ? 'Published${publishDate != null ? ' on ${publishDate.day}/${publishDate.month}/${publishDate.year}' : ''}'
                   : 'Draft',
               style: TextStyle(
-                color: isPublished ? Colors.green : Colors.orange,
+                color: isPublished
+                    ? Theme.of(context).colorScheme.tertiary
+                    : Theme.of(context).colorScheme.secondary,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -381,7 +404,8 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
             PopupMenuItem(
               value: isPublished ? 'unpublish' : 'publish',
               child: ListTile(
-                leading: Icon(isPublished ? Icons.visibility_off : Icons.visibility),
+                leading:
+                    Icon(isPublished ? Icons.visibility_off : Icons.visibility),
                 title: Text(isPublished ? 'Unpublish' : 'Publish'),
                 contentPadding: EdgeInsets.zero,
               ),
@@ -390,7 +414,9 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
               value: 'delete',
               child: ListTile(
                 leading: const Icon(Icons.delete, color: Colors.red),
-                title: Text('Delete', style: TextStyle(color: Theme.of(context).colorScheme.onError)),
+                title: Text('Delete',
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onError)),
                 contentPadding: EdgeInsets.zero,
               ),
             ),
@@ -404,28 +430,13 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
   Widget _buildAnnouncementsTab() {
     return LayoutFixUtils.safeColumn(
       children: [
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              LayoutFixUtils.safeText(
-                'Announcements (${_announcements.length})',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              ElevatedButton.icon(
-                onPressed: () => _showAnnouncementDialog(),
-                icon: const Icon(Icons.add),
-                label: const Text('New Announcement'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                ),
-              ),
-            ],
+        _buildSectionHeader(
+          context,
+          'Announcements (${_announcements.length})',
+          ElevatedButton.icon(
+            onPressed: () => _showAnnouncementDialog(),
+            icon: const Icon(Icons.add),
+            label: const Text('New Announcement'),
           ),
         ),
         Expanded(
@@ -454,16 +465,23 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     final isActive = announcement['is_active'] ?? false;
     final priority = announcement['priority'] ?? 'normal';
     final targetAudience = announcement['target_audience'] ?? 'all';
-    
+
     Color priorityColor = Colors.blue;
     if (priority == 'high') priorityColor = Colors.red;
     if (priority == 'urgent') priorityColor = Colors.deepOrange;
-    
+
     return Card(
+      elevation: 0,
       margin: const EdgeInsets.only(bottom: 12.0),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: isActive ? Colors.green : Colors.grey,
+          backgroundColor: isActive
+              ? Theme.of(context).colorScheme.tertiary
+              : Theme.of(context).colorScheme.outline,
           child: const Icon(
             Icons.campaign,
             color: Colors.white,
@@ -481,7 +499,8 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: priorityColor,
                     borderRadius: BorderRadius.circular(12),
@@ -526,7 +545,9 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
               value: 'delete',
               child: ListTile(
                 leading: const Icon(Icons.delete, color: Colors.red),
-                title: Text('Delete', style: TextStyle(color: Theme.of(context).colorScheme.onError)),
+                title: Text('Delete',
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onError)),
                 contentPadding: EdgeInsets.zero,
               ),
             ),
@@ -554,9 +575,9 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
               Text(
                 'App Settings (${_appSettings.length})',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.5,
-                ),
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5,
+                    ),
               ),
               ElevatedButton.icon(
                 onPressed: () => _showAppSettingDialog(),
@@ -593,7 +614,8 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     );
   }
 
-  Widget _buildSettingsCategoryCard(String category, List<Map<String, dynamic>> settings) {
+  Widget _buildSettingsCategoryCard(
+      String category, List<Map<String, dynamic>> settings) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16.0),
       child: ExpansionTile(
@@ -603,14 +625,15 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Text('${settings.length} settings'),
-        children: settings.map((setting) => _buildSettingTile(setting)).toList(),
+        children:
+            settings.map((setting) => _buildSettingTile(setting)).toList(),
       ),
     );
   }
 
   Widget _buildSettingTile(Map<String, dynamic> setting) {
     final isPublic = setting['is_public'] ?? false;
-    
+
     return ListTile(
       leading: Icon(
         isPublic ? Icons.public : Icons.lock,
@@ -654,9 +677,9 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
               Text(
                 'Featured Content (${_featuredContent.length})',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.5,
-                ),
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5,
+                    ),
               ),
               ElevatedButton.icon(
                 onPressed: () => _showFeaturedContentDialog(),
@@ -695,7 +718,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
   Widget _buildFeaturedContentCard(Map<String, dynamic> content) {
     final isActive = content['is_active'] ?? false;
     final contentType = content['content_type'] ?? 'general';
-    
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12.0),
       child: ListTile(
@@ -743,7 +766,9 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
               value: 'delete',
               child: ListTile(
                 leading: const Icon(Icons.delete, color: Colors.red),
-                title: Text('Delete', style: TextStyle(color: Theme.of(context).colorScheme.onError)),
+                title: Text('Delete',
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onError)),
                 contentPadding: EdgeInsets.zero,
               ),
             ),
@@ -765,9 +790,9 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
               LayoutFixUtils.safeText(
                 'Chapters (${_chapters.length})',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.5,
-                ),
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5,
+                    ),
               ),
               ElevatedButton.icon(
                 onPressed: () => _showChapterDialog(),
@@ -823,14 +848,22 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
                     chapter.type.name.toUpperCase(),
-                    style: const TextStyle(fontSize: 10, color: Colors.blue, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -851,7 +884,8 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                     ),
                   ),
                   icon: const Icon(Icons.person_add, size: 16),
-                  label: const Text('Assign Coordinator', style: TextStyle(fontSize: 12)),
+                  label: const Text('Assign Coordinator',
+                      style: TextStyle(fontSize: 12)),
                   style: TextButton.styleFrom(
                     padding: EdgeInsets.zero,
                     visualDensity: VisualDensity.compact,
@@ -862,11 +896,13 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                   onPressed: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => BoardReportsScreen(initialChapter: chapter.name),
+                      builder: (context) =>
+                          BoardReportsScreen(initialChapter: chapter.name),
                     ),
                   ),
                   icon: const Icon(Icons.analytics, size: 16),
-                  label: const Text('Chapter Report', style: TextStyle(fontSize: 12)),
+                  label: const Text('Chapter Report',
+                      style: TextStyle(fontSize: 12)),
                   style: TextButton.styleFrom(
                     padding: EdgeInsets.zero,
                     visualDensity: VisualDensity.compact,
@@ -889,7 +925,8 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
             PopupMenuItem(
               value: chapter.isActive ? 'deactivate' : 'activate',
               child: ListTile(
-                leading: Icon(chapter.isActive ? Icons.pause : Icons.play_arrow),
+                leading:
+                    Icon(chapter.isActive ? Icons.pause : Icons.play_arrow),
                 title: Text(chapter.isActive ? 'Deactivate' : 'Activate'),
                 contentPadding: EdgeInsets.zero,
               ),
@@ -898,7 +935,8 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
               value: 'delete',
               child: ListTile(
                 leading: const Icon(Icons.delete, color: Colors.red),
-                title: Text('Delete', style: const TextStyle(color: Colors.red)),
+                title:
+                    Text('Delete', style: const TextStyle(color: Colors.red)),
                 contentPadding: EdgeInsets.zero,
               ),
             ),
@@ -928,8 +966,10 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
 
   Future<void> _toggleChapterActive(Chapter chapter, bool active) async {
     try {
-      await ChapterService().updateChapterFields(chapter.id, {'is_active': active});
-      ToastUtils.showSuccess('Chapter ${active ? 'activated' : 'deactivated'} successfully');
+      await ChapterService()
+          .updateChapterFields(chapter.id, {'is_active': active});
+      ToastUtils.showSuccess(
+          'Chapter ${active ? 'activated' : 'deactivated'} successfully');
       _loadChapters();
     } catch (e) {
       ToastUtils.showError('Error updating chapter: $e');
@@ -941,7 +981,8 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Chapter'),
-        content: Text('Are you sure you want to delete "${chapter.name}"? This action cannot be undone.'),
+        content: Text(
+            'Are you sure you want to delete "${chapter.name}"? This action cannot be undone.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -970,7 +1011,8 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
   void _showChapterDialog({Chapter? chapter}) {
     final isEditing = chapter != null;
     final nameController = TextEditingController(text: chapter?.name ?? '');
-    final descriptionController = TextEditingController(text: chapter?.description ?? '');
+    final descriptionController =
+        TextEditingController(text: chapter?.description ?? '');
     WorkersType selectedType = chapter?.type ?? WorkersType.main;
     bool isActive = chapter?.isActive ?? true;
 
@@ -1005,7 +1047,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<WorkersType>(
-                      value: selectedType,
+                      initialValue: selectedType,
                       decoration: const InputDecoration(
                         labelText: 'Chapter Type',
                         border: OutlineInputBorder(),
@@ -1055,7 +1097,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                         ToastUtils.showSuccess('Chapter updated');
                       } else {
                         await ChapterService().createChapter(Chapter(
-                          id: '', 
+                          id: '',
                           name: nameController.text.trim(),
                           description: descriptionController.text.trim(),
                           type: selectedType,
@@ -1101,7 +1143,8 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     }
   }
 
-  void _handleAnnouncementAction(String action, Map<String, dynamic> announcement) {
+  void _handleAnnouncementAction(
+      String action, Map<String, dynamic> announcement) {
     switch (action) {
       case 'edit':
         _showAnnouncementDialog(announcement: announcement);
@@ -1129,7 +1172,8 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     }
   }
 
-  void _handleFeaturedContentAction(String action, Map<String, dynamic> content) {
+  void _handleFeaturedContentAction(
+      String action, Map<String, dynamic> content) {
     switch (action) {
       case 'edit':
         _showFeaturedContentDialog(content: content);
@@ -1149,17 +1193,23 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
   // Dialog methods (placeholder implementations)
   void _showContentPageDialog({Map<String, dynamic>? page}) {
     final isEditing = page != null && page.isNotEmpty;
-    final titleController = TextEditingController(text: page?['title'] ?? 'Onboarding');
-    final slugController = TextEditingController(text: page?['slug'] ?? 'onboarding');
-    final languageController = TextEditingController(text: page?['language'] ?? 'en');
-    final contentController = TextEditingController(text: page?['content'] ?? '');
+    final titleController =
+        TextEditingController(text: page?['title'] ?? 'Onboarding');
+    final slugController =
+        TextEditingController(text: page?['slug'] ?? 'onboarding');
+    final languageController =
+        TextEditingController(text: page?['language'] ?? 'en');
+    final contentController =
+        TextEditingController(text: page?['content'] ?? '');
     bool isPublished = page?['is_published'] ?? false;
 
     showDialog<void>(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text(isEditing ? 'Edit Onboarding Content' : 'Create Onboarding Content'),
+          title: Text(isEditing
+              ? 'Edit Onboarding Content'
+              : 'Create Onboarding Content'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1269,7 +1319,8 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AnnouncementEditorScreen(announcement: announcement),
+        builder: (context) =>
+            AnnouncementEditorScreen(announcement: announcement),
       ),
     ).then((_) => _loadAnnouncements());
   }
@@ -1293,45 +1344,51 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
   }
 
   // Database operations
-  Future<void> _toggleContentPagePublish(Map<String, dynamic> page, bool publish) async {
+  Future<void> _toggleContentPagePublish(
+      Map<String, dynamic> page, bool publish) async {
     try {
       await _firebaseService.firestore
           .collection('content_pages')
           .doc(page['id'])
           .update({
-            'is_published': publish,
-            'publish_date': publish ? DateTime.now().toIso8601String() : null,
-          });
-      
-      ToastUtils.showSuccess('Page ${publish ? 'published' : 'unpublished'} successfully');
+        'is_published': publish,
+        'publish_date': publish ? DateTime.now().toIso8601String() : null,
+      });
+
+      ToastUtils.showSuccess(
+          'Page ${publish ? 'published' : 'unpublished'} successfully');
       _loadContentPages();
     } catch (e) {
       ToastUtils.showError('Error updating page: $e');
     }
   }
 
-  Future<void> _toggleAnnouncementActive(Map<String, dynamic> announcement, bool active) async {
+  Future<void> _toggleAnnouncementActive(
+      Map<String, dynamic> announcement, bool active) async {
     try {
       await _firebaseService.firestore
           .collection('announcements')
           .doc(announcement['id'])
           .update({'is_active': active});
-      
-      ToastUtils.showSuccess('Announcement ${active ? 'activated' : 'deactivated'} successfully');
+
+      ToastUtils.showSuccess(
+          'Announcement ${active ? 'activated' : 'deactivated'} successfully');
       _loadAnnouncements();
     } catch (e) {
       ToastUtils.showError('Error updating announcement: $e');
     }
   }
 
-  Future<void> _toggleFeaturedContentActive(Map<String, dynamic> content, bool active) async {
+  Future<void> _toggleFeaturedContentActive(
+      Map<String, dynamic> content, bool active) async {
     try {
       await _firebaseService.firestore
           .collection('featured_content')
           .doc(content['id'])
           .update({'is_active': active});
-      
-      ToastUtils.showSuccess('Featured content ${active ? 'activated' : 'deactivated'} successfully');
+
+      ToastUtils.showSuccess(
+          'Featured content ${active ? 'activated' : 'deactivated'} successfully');
       _loadFeaturedContent();
     } catch (e) {
       ToastUtils.showError('Error updating featured content: $e');
@@ -1364,7 +1421,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
             .collection('content_pages')
             .doc(page['id'])
             .delete();
-        
+
         ToastUtils.showSuccess('Content page deleted successfully');
         _loadContentPages();
       } catch (e) {
@@ -1378,7 +1435,8 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Announcement'),
-        content: Text('Are you sure you want to delete "${announcement['title']}"?'),
+        content:
+            Text('Are you sure you want to delete "${announcement['title']}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -1399,7 +1457,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
             .collection('announcements')
             .doc(announcement['id'])
             .delete();
-        
+
         ToastUtils.showSuccess('Announcement deleted successfully');
         _loadAnnouncements();
       } catch (e) {
@@ -1434,7 +1492,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
             .collection('app_settings')
             .doc(setting['id'])
             .delete();
-        
+
         ToastUtils.showSuccess('App setting deleted successfully');
         _loadAppSettings();
       } catch (e) {
@@ -1469,7 +1527,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
             .collection('featured_content')
             .doc(content['id'])
             .delete();
-        
+
         ToastUtils.showSuccess('Featured content deleted successfully');
         _loadFeaturedContent();
       } catch (e) {
@@ -1477,6 +1535,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
       }
     }
   }
+
   Widget _buildProjectsTab() {
     return LayoutFixUtils.safeColumn(
       children: [
@@ -1488,9 +1547,9 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
               LayoutFixUtils.safeText(
                 'Projects (${_projects.length})',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.5,
-                ),
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5,
+                    ),
               ),
               ElevatedButton.icon(
                 onPressed: () => _showProjectDialog(),
@@ -1531,7 +1590,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     final raised = (project['raised'] ?? 0).toDouble();
     final percent = goal > 0 ? (raised / goal).clamp(0.0, 1.0) : 0.0;
     final status = project['status'] ?? 'active';
-    
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12.0),
       child: ExpansionTile(
@@ -1546,14 +1605,16 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(project['summary'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis),
+            Text(project['summary'] ?? '',
+                maxLines: 1, overflow: TextOverflow.ellipsis),
             const SizedBox(height: 8),
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
                 value: percent,
                 backgroundColor: Colors.grey.shade200,
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.green.shade600),
+                valueColor:
+                    AlwaysStoppedAnimation<Color>(Colors.green.shade600),
                 minHeight: 8,
               ),
             ),
@@ -1563,7 +1624,8 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
               children: [
                 Text(
                   'Raised: ${NumberFormat.simpleCurrency(name: 'NGN').format(raised)}',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.bold),
                 ),
                 Text(
                   'Goal: ${NumberFormat.simpleCurrency(name: 'NGN').format(goal)}',
@@ -1606,20 +1668,25 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Description:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const Text('Description:',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
                 Text(project['description'] ?? 'No description provided.'),
                 const SizedBox(height: 12),
                 if (project['image_url'] != null) ...[
-                  const Text('Image URL:', style: TextStyle(fontWeight: FontWeight.bold)),
-                  Text(project['image_url'], style: const TextStyle(fontSize: 12, color: Colors.blue)),
+                  const Text('Image URL:',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text(project['image_url'],
+                      style: const TextStyle(fontSize: 12, color: Colors.blue)),
                 ],
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    const Text('Status: ', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text('Status: ',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
                     _buildStatusBadge(status),
                     const Spacer(),
-                    const Text('Priority: ', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text('Priority: ',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
                     Text('${project['priority'] ?? 100}'),
                   ],
                 ),
@@ -1634,34 +1701,49 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
   Widget _buildStatusBadge(String status) {
     Color color;
     switch (status) {
-      case 'active': color = Colors.green; break;
-      case 'planning': color = Colors.blue; break;
-      case 'completed': color = Colors.purple; break;
-      default: color = Colors.grey;
+      case 'active':
+        color = Colors.green;
+        break;
+      case 'planning':
+        color = Colors.blue;
+        break;
+      case 'completed':
+        color = Colors.purple;
+        break;
+      default:
+        color = Colors.grey;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         border: Border.all(color: color),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
         status.toUpperCase(),
-        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
+        style:
+            TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
       ),
     );
   }
 
   Future<void> _showProjectDialog({Map<String, dynamic>? project}) async {
     final isEditing = project != null;
-    final titleController = TextEditingController(text: project?['title'] ?? '');
-    final summaryController = TextEditingController(text: project?['summary'] ?? '');
-    final descriptionController = TextEditingController(text: project?['description'] ?? '');
-    final goalController = TextEditingController(text: (project?['goal'] ?? 0).toString());
-    final raisedController = TextEditingController(text: (project?['raised'] ?? 0).toString());
-    final imageUrlController = TextEditingController(text: project?['image_url'] ?? '');
-    final priorityController = TextEditingController(text: (project?['priority'] ?? 100).toString());
+    final titleController =
+        TextEditingController(text: project?['title'] ?? '');
+    final summaryController =
+        TextEditingController(text: project?['summary'] ?? '');
+    final descriptionController =
+        TextEditingController(text: project?['description'] ?? '');
+    final goalController =
+        TextEditingController(text: (project?['goal'] ?? 0).toString());
+    final raisedController =
+        TextEditingController(text: (project?['raised'] ?? 0).toString());
+    final imageUrlController =
+        TextEditingController(text: project?['image_url'] ?? '');
+    final priorityController =
+        TextEditingController(text: (project?['priority'] ?? 100).toString());
     String status = project?['status'] ?? 'active';
 
     final result = await showDialog<bool>(
@@ -1675,7 +1757,8 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
               children: [
                 TextField(
                   controller: titleController,
-                  decoration: const InputDecoration(labelText: 'Project Title *'),
+                  decoration:
+                      const InputDecoration(labelText: 'Project Title *'),
                 ),
                 TextField(
                   controller: summaryController,
@@ -1683,17 +1766,20 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                 ),
                 TextField(
                   controller: descriptionController,
-                  decoration: const InputDecoration(labelText: 'Full Description'),
+                  decoration:
+                      const InputDecoration(labelText: 'Full Description'),
                   maxLines: 3,
                 ),
                 TextField(
                   controller: goalController,
-                  decoration: const InputDecoration(labelText: 'Goal Amount (NGN)'),
+                  decoration:
+                      const InputDecoration(labelText: 'Goal Amount (NGN)'),
                   keyboardType: TextInputType.number,
                 ),
                 TextField(
                   controller: raisedController,
-                  decoration: const InputDecoration(labelText: 'Amount Raised (NGN)'),
+                  decoration:
+                      const InputDecoration(labelText: 'Amount Raised (NGN)'),
                   keyboardType: TextInputType.number,
                 ),
                 TextField(
@@ -1702,23 +1788,31 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                 ),
                 TextField(
                   controller: priorityController,
-                  decoration: const InputDecoration(labelText: 'Priority (ascending)'),
+                  decoration:
+                      const InputDecoration(labelText: 'Priority (ascending)'),
                   keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value: status,
+                  initialValue: status,
                   decoration: const InputDecoration(labelText: 'Status'),
                   items: ['active', 'planning', 'completed']
-                      .map((s) => DropdownMenuItem(value: s, child: Text(s.toUpperCase())))
+                      .map((s) => DropdownMenuItem(
+                          value: s, child: Text(s.toUpperCase())))
                       .toList(),
-                  onChanged: (val) => setDialogState(() => status = val!),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setDialogState(() => status = val);
+                    }
+                  },
                 ),
               ],
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel')),
             ElevatedButton(
               onPressed: () {
                 if (titleController.text.isEmpty) {
@@ -1766,9 +1860,12 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Project'),
-        content: Text('Are you sure you want to delete "${project['title']}"? This will also affect the donation page.'),
+        content: Text(
+            'Are you sure you want to delete "${project['title']}"? This will also affect the donation page.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
@@ -1793,7 +1890,8 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     setState(() => _isLoading = true);
     try {
       for (final name in ChapterConstants.availableChapters) {
-        final description = ChapterConstants.chapterDescriptions[name] ?? 'ALIVE Nigeria $name Chapter';
+        final description = ChapterConstants.chapterDescriptions[name] ??
+            'ALIVE Nigeria $name Chapter';
         final chapter = Chapter(
           id: '', // Will be generated by Firestore
           name: name,
@@ -1807,7 +1905,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
         );
         await ChapterService().createChapter(chapter);
       }
-      
+
       final chapters = await ChapterService().getChapters();
       setState(() {
         _chapters = chapters;
@@ -1826,32 +1924,38 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
         {
           'title': 'Impact Hub Center',
           'summary': 'Community discipleship and outreach facility',
-          'description': 'A central hub for training, discipleship, and community engagement.',
+          'description':
+              'A central hub for training, discipleship, and community engagement.',
           'goal': 35000000.0,
           'raised': 8000000.0,
           'status': 'active',
           'priority': 1,
-          'image_url': 'https://images.unsplash.com/photo-1593914370442-49d414beca24?q=80&w=1031&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+          'image_url':
+              'https://images.unsplash.com/photo-1593914370442-49d414beca24?q=80&w=1031&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
         },
         {
           'title': 'Vehicle Purchase',
           'summary': 'Mission vehicle for outreach logistics',
-          'description': 'Reliable transportation for mission trips and logistics across Nigeria.',
+          'description':
+              'Reliable transportation for mission trips and logistics across Nigeria.',
           'goal': 18000000.0,
           'raised': 0.0,
           'status': 'active',
           'priority': 2,
-          'image_url': 'https://images.unsplash.com/photo-1597685204565-110abf469a1e?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+          'image_url':
+              'https://images.unsplash.com/photo-1597685204565-110abf469a1e?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
         },
         {
           'title': 'Media Studio Setup',
           'summary': 'Podcast and content production equipment',
-          'description': 'Equipping the ministry with high-quality media production capabilities.',
+          'description':
+              'Equipping the ministry with high-quality media production capabilities.',
           'goal': 9000000.0,
           'raised': 0.0,
           'status': 'planning',
           'priority': 3,
-          'image_url': 'https://images.unsplash.com/photo-1769699167906-a44d5ae50abb?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+          'image_url':
+              'https://images.unsplash.com/photo-1769699167906-a44d5ae50abb?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
         },
       ];
 

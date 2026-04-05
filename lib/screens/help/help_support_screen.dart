@@ -535,7 +535,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
         SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
         // Feedback Type
         DropdownButtonFormField<String>(
-          value: _selectedFeedbackType,
+          initialValue: _selectedFeedbackType,
           decoration: InputDecoration(
             labelText: translate('feedback_type'),
             border: OutlineInputBorder(

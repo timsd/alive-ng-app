@@ -40,7 +40,6 @@ exports.ingestTractPdfContent = exports.setUserRoleAndClaims = exports.claimAdmi
 const functions = __importStar(require("firebase-functions"));
 const params_1 = require("firebase-functions/params");
 const admin = __importStar(require("firebase-admin"));
-const node_fetch_1 = __importDefault(require("node-fetch"));
 const node_crypto_1 = __importDefault(require("node:crypto"));
 admin.initializeApp();
 const db = admin.firestore();
@@ -64,7 +63,7 @@ async function _sendViaResend(params) {
         subject: params.subject,
         html: params.html,
     };
-    const resp = await (0, node_fetch_1.default)('https://api.resend.com/emails', {
+    const resp = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
             Authorization: `Bearer ${apiKey}`,
@@ -133,7 +132,7 @@ exports.initPaystackTransaction = functions
         currency: currency || 'NGN',
         metadata,
     };
-    const resp = await (0, node_fetch_1.default)('https://api.paystack.co/transaction/initialize', {
+    const resp = await fetch('https://api.paystack.co/transaction/initialize', {
         method: 'POST',
         headers: {
             Authorization: `Bearer ${secret}`,
@@ -181,7 +180,7 @@ exports.initPaystackSubscription = functions
         },
         plan: planCode,
     };
-    const resp = await (0, node_fetch_1.default)('https://api.paystack.co/transaction/initialize', {
+    const resp = await fetch('https://api.paystack.co/transaction/initialize', {
         method: 'POST',
         headers: {
             Authorization: `Bearer ${secret}`,
@@ -477,7 +476,7 @@ exports.ingestTractPdfContent = functions.firestore
         return;
     }
     try {
-        const response = await (0, node_fetch_1.default)(pdfUrl);
+        const response = await fetch(pdfUrl);
         if (!response.ok) {
             throw new Error(`Failed to fetch PDF (${response.status})`);
         }

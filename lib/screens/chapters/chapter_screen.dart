@@ -404,7 +404,7 @@ class _ChapterScreenState extends State<ChapterScreen>
             children: [
               Expanded(
                 child: DropdownButtonFormField<WorkersType?>(
-                  value: _selectedType,
+                  initialValue: _selectedType,
                   decoration: const InputDecoration(
                     labelText: 'Worker Type',
                     border: OutlineInputBorder(),

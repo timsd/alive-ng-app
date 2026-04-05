@@ -3,23 +3,23 @@ import 'enhanced_jitsi_meet_screen.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../services/firebase_database_service.dart';
 import '../../models/app_models.dart';
 import '../../utils/responsive_utils.dart';
 import '../../config/app_config.dart';
-import '../../config/meeting_links_config.dart';
 import '../../widgets/custom_app_bar.dart';
 
 class ConferencePlatformScreen extends StatefulWidget {
   const ConferencePlatformScreen({super.key});
 
   @override
-  State<ConferencePlatformScreen> createState() => _ConferencePlatformScreenState();
+  State<ConferencePlatformScreen> createState() =>
+      _ConferencePlatformScreenState();
 }
 
 class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
-  final FirebaseDatabaseService _firebaseService = FirebaseDatabaseService.instance;
+  final FirebaseDatabaseService _firebaseService =
+      FirebaseDatabaseService.instance;
   bool _isLoading = true;
   bool _hasAccess = false;
   User? _currentUser;
@@ -27,15 +27,6 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
   List<ConferenceMeeting> _upcomingMeetings = [];
   List<ConferenceMeeting> _pastMeetings = [];
   int _selectedTabIndex = 0;
-
-  bool _canStartGeneralMeeting() {
-    final role = (_userProfile?.role ?? '').toLowerCase();
-    return role == 'admin' ||
-        role == 'bod' ||
-        role == 'director' ||
-        role == 'chapter_leader' ||
-        role == 'moderator';
-  }
 
   @override
   void initState() {
@@ -63,21 +54,27 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
       });
     }
   }
-  
+
   Future<void> _loadMeetings() async {
     try {
       final now = DateTime.now();
       final snapshot = await FirebaseFirestore.instance
           .collection('conference_meetings')
-          .where('scheduled_time', isGreaterThanOrEqualTo: now.toIso8601String())
+          .where('scheduled_time',
+              isGreaterThanOrEqualTo: now.toIso8601String())
           .orderBy('scheduled_time')
           .get();
-      
-      final meetings = snapshot.docs.map<ConferenceMeeting>((doc) => ConferenceMeeting.fromMap(doc.data(), doc.id)).toList();
-      
+
+      final meetings = snapshot.docs
+          .map<ConferenceMeeting>(
+              (doc) => ConferenceMeeting.fromMap(doc.data(), doc.id))
+          .toList();
+
       setState(() {
-        _upcomingMeetings = meetings.where((m) => m.scheduledTime.isAfter(now)).toList();
-        _pastMeetings = meetings.where((m) => m.scheduledTime.isBefore(now)).toList();
+        _upcomingMeetings =
+            meetings.where((m) => m.scheduledTime.isAfter(now)).toList();
+        _pastMeetings =
+            meetings.where((m) => m.scheduledTime.isBefore(now)).toList();
       });
 
       if (meetings.isEmpty && !AppConfig.isLiveMode) {
@@ -86,7 +83,8 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
             ConferenceMeeting(
               id: '1',
               title: 'Chapter Coordinators Monthly Meeting',
-              description: 'Monthly coordination meeting for all chapter coordinators',
+              description:
+                  'Monthly coordination meeting for all chapter coordinators',
               scheduledTime: now.add(const Duration(days: 2)),
               duration: 60,
               hostId: 'host1',
@@ -97,14 +95,16 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
               isRecurring: true,
               meetingLink: 'https://meet.alive.ng/chapter-coord-001',
               status: 'scheduled',
-              roomName: 'chapter-coord-monthly-${DateTime.now().millisecondsSinceEpoch}',
+              roomName:
+                  'chapter-coord-monthly-${DateTime.now().millisecondsSinceEpoch}',
             ),
           ];
           _pastMeetings = [
             ConferenceMeeting(
               id: '3',
               title: 'Lagos Chapters Joint Meeting',
-              description: 'Joint meeting for Lagos 1, Lagos 2, and Lagos 3 chapters',
+              description:
+                  'Joint meeting for Lagos 1, Lagos 2, and Lagos 3 chapters',
               scheduledTime: now.subtract(const Duration(days: 3)),
               duration: 90,
               hostId: 'host3',
@@ -162,7 +162,8 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
                 ),
                 color: Colors.grey,
               ),
-              SizedBox(height: ResponsiveUtils.getResponsiveValue(
+              SizedBox(
+                  height: ResponsiveUtils.getResponsiveValue(
                 context: context,
                 mobile: 16.0,
                 tablet: 20.0,
@@ -171,16 +172,17 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
               Text(
                 'Access Denied',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  fontSize: ResponsiveUtils.getResponsiveValue(
-                    context: context,
-                    mobile: 24.0,
-                    tablet: 28.0,
-                    desktop: 32.0,
-                  ),
-                ),
+                      fontWeight: FontWeight.bold,
+                      fontSize: ResponsiveUtils.getResponsiveValue(
+                        context: context,
+                        mobile: 24.0,
+                        tablet: 28.0,
+                        desktop: 32.0,
+                      ),
+                    ),
               ),
-              SizedBox(height: ResponsiveUtils.getResponsiveValue(
+              SizedBox(
+                  height: ResponsiveUtils.getResponsiveValue(
                 context: context,
                 mobile: 8.0,
                 tablet: 10.0,
@@ -190,8 +192,8 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
                 'You do not have permission to access the conference platform.',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey,
-                ),
+                      color: Colors.grey,
+                    ),
               ),
             ],
           ),
@@ -240,7 +242,10 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
                     ),
                   ),
                   border: Border.all(
-                    color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.3),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .secondary
+                        .withValues(alpha: 0.3),
                   ),
                 ),
                 padding: EdgeInsets.all(
@@ -258,7 +263,8 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
                       Icons.info_outline,
                       color: Theme.of(context).colorScheme.secondary,
                     ),
-                    SizedBox(width: ResponsiveUtils.getResponsiveValue(
+                    SizedBox(
+                        width: ResponsiveUtils.getResponsiveValue(
                       context: context,
                       mobile: 8.0,
                       tablet: 10.0,
@@ -268,8 +274,10 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
                       child: Text(
                         'Demo mode: showing sample meetings. Connect Firebase to view and schedule live meetings.',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
                       ),
                     ),
                     OutlinedButton(
@@ -280,7 +288,6 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
                 ),
               ),
             ),
-          
           Container(
             padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(
               context: context,
@@ -292,7 +299,9 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: _canScheduleMeeting() ? _showScheduleMeetingDialog : null,
+                    onPressed: _canScheduleMeeting()
+                        ? _showScheduleMeetingDialog
+                        : null,
                     icon: const Icon(Icons.add),
                     label: const Text('Schedule Meeting'),
                   ),
@@ -308,7 +317,6 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
               ],
             ),
           ),
-          
           Container(
             margin: EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
@@ -323,15 +331,21 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
                     child: Container(
                       padding: EdgeInsets.symmetric(vertical: 12),
                       decoration: BoxDecoration(
-                        color: _selectedTabIndex == 0 ? Theme.of(context).colorScheme.primary : Colors.transparent,
+                        color: _selectedTabIndex == 0
+                            ? Theme.of(context).colorScheme.primary
+                            : Colors.transparent,
                         borderRadius: BorderRadius.circular(25),
                       ),
                       child: Text(
                         'Upcoming (${_upcomingMeetings.length})',
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: _selectedTabIndex == 0 ? Colors.white : Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                              color: _selectedTabIndex == 0
+                                  ? Colors.white
+                                  : Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                            ),
                       ),
                     ),
                   ),
@@ -342,15 +356,21 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
                     child: Container(
                       padding: EdgeInsets.symmetric(vertical: 12),
                       decoration: BoxDecoration(
-                        color: _selectedTabIndex == 1 ? Theme.of(context).colorScheme.primary : Colors.transparent,
+                        color: _selectedTabIndex == 1
+                            ? Theme.of(context).colorScheme.primary
+                            : Colors.transparent,
                         borderRadius: BorderRadius.circular(25),
                       ),
                       child: Text(
                         'Past (${_pastMeetings.length})',
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: _selectedTabIndex == 1 ? Colors.white : Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                              color: _selectedTabIndex == 1
+                                  ? Colors.white
+                                  : Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                            ),
                       ),
                     ),
                   ),
@@ -358,9 +378,10 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
               ],
             ),
           ),
-          
           Expanded(
-            child: _selectedTabIndex == 0 ? _buildMeetingsList(_upcomingMeetings) : _buildMeetingsList(_pastMeetings),
+            child: _selectedTabIndex == 0
+                ? _buildMeetingsList(_upcomingMeetings)
+                : _buildMeetingsList(_pastMeetings),
           ),
         ],
       ),
@@ -377,7 +398,10 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
             SizedBox(height: 16),
             Text(
               'No Meetings Found',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              style: Theme.of(context)
+                  .textTheme
+                  .titleLarge
+                  ?.copyWith(fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -399,24 +423,34 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(meeting.title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+            Text(meeting.title,
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.bold)),
             SizedBox(height: 4),
-            Text(meeting.description, style: Theme.of(context).textTheme.bodySmall),
+            Text(meeting.description,
+                style: Theme.of(context).textTheme.bodySmall),
             SizedBox(height: 12),
             Row(
               children: [
                 Icon(Icons.access_time, size: 16),
                 SizedBox(width: 4),
-                Text(meeting.scheduledTime.toString(), style: Theme.of(context).textTheme.bodySmall),
+                Text(meeting.scheduledTime.toString(),
+                    style: Theme.of(context).textTheme.bodySmall),
               ],
             ),
             SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                TextButton(onPressed: () => _shareMeeting(meeting), child: Text('Share')),
+                TextButton(
+                    onPressed: () => _shareMeeting(meeting),
+                    child: Text('Share')),
                 SizedBox(width: 8),
-                ElevatedButton(onPressed: () => _joinMeeting(meeting), child: Text('Join')),
+                ElevatedButton(
+                    onPressed: () => _joinMeeting(meeting),
+                    child: Text('Join')),
               ],
             ),
           ],
@@ -428,9 +462,10 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
   bool _canScheduleMeeting() {
     if (_currentUser == null) return false;
     final userRole = _userProfile?.role ?? 'member';
-    return ['coordinator', 'director', 'bod_member', 'admin'].contains(userRole);
+    return ['coordinator', 'director', 'bod_member', 'admin']
+        .contains(userRole);
   }
-  
+
   Future<void> _showScheduleMeetingDialog() async {
     final titleController = TextEditingController();
     final descriptionController = TextEditingController();
@@ -441,7 +476,8 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text('Schedule Meeting', style: Theme.of(context).textTheme.titleLarge),
+          title: Text('Schedule Meeting',
+              style: Theme.of(context).textTheme.titleLarge),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -486,20 +522,30 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
                   },
                 ),
                 DropdownButtonFormField<String>(
-                  value: selectedType,
+                  initialValue: selectedType,
                   decoration: const InputDecoration(labelText: 'Meeting Type'),
                   items: const [
-                    DropdownMenuItem(value: 'general', child: Text('General Meeting')),
-                    DropdownMenuItem(value: 'chapter_meeting', child: Text('Chapter Meeting')),
-                    DropdownMenuItem(value: 'committee', child: Text('Committee Meeting')),
+                    DropdownMenuItem(
+                        value: 'general', child: Text('General Meeting')),
+                    DropdownMenuItem(
+                        value: 'chapter_meeting',
+                        child: Text('Chapter Meeting')),
+                    DropdownMenuItem(
+                        value: 'committee', child: Text('Committee Meeting')),
                   ],
-                  onChanged: (value) => setDialogState(() => selectedType = value!),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setDialogState(() => selectedType = value);
+                    }
+                  },
                 ),
               ],
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel')),
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
               child: const Text('Schedule'),
@@ -511,7 +557,8 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
 
     if (result == true) {
       try {
-        final roomName = '${titleController.text.toLowerCase().replaceAll(' ', '-')}-${DateTime.now().millisecondsSinceEpoch}';
+        final roomName =
+            '${titleController.text.toLowerCase().replaceAll(' ', '-')}-${DateTime.now().millisecondsSinceEpoch}';
         final meeting = ConferenceMeeting(
           id: '',
           title: titleController.text,
@@ -529,7 +576,9 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
           roomName: roomName,
         );
 
-        await FirebaseFirestore.instance.collection('conference_meetings').add(meeting.toMap());
+        await FirebaseFirestore.instance
+            .collection('conference_meetings')
+            .add(meeting.toMap());
         _loadMeetings();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -539,19 +588,22 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error scheduling meeting: $e'), backgroundColor: Colors.red),
+            SnackBar(
+                content: Text('Error scheduling meeting: $e'),
+                backgroundColor: Colors.red),
           );
         }
       }
     }
   }
-  
+
   Future<void> _showJoinMeetingDialog() async {
     final roomController = TextEditingController();
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Join Custom Meeting', style: Theme.of(context).textTheme.titleLarge),
+        title: Text('Join Custom Meeting',
+            style: Theme.of(context).textTheme.titleLarge),
         content: TextField(
           controller: roomController,
           decoration: const InputDecoration(
@@ -560,7 +612,9 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, roomController.text),
             child: const Text('Join'),
@@ -574,7 +628,8 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
         MaterialPageRoute(
           builder: (context) => EnhancedJitsiMeetScreen(
             customRoomName: result,
-            isModerator: _userProfile?.role == 'admin' || _userProfile?.role == 'moderator',
+            isModerator: _userProfile?.role == 'admin' ||
+                _userProfile?.role == 'moderator',
           ),
         ),
       );
@@ -586,7 +641,8 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
       MaterialPageRoute(
         builder: (context) => EnhancedJitsiMeetScreen(
           customRoomName: meeting.roomName,
-          isModerator: _userProfile?.role == 'admin' || _userProfile?.role == 'moderator',
+          isModerator: _userProfile?.role == 'admin' ||
+              _userProfile?.role == 'moderator',
         ),
       ),
     );
@@ -597,6 +653,7 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
 Title: ${meeting.title}
 Join here: ${meeting.meetingLink}''';
     Clipboard.setData(ClipboardData(text: shareText));
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Meeting details copied to clipboard!')));
+    ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Meeting details copied to clipboard!')));
   }
 }

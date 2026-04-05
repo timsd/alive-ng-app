@@ -1,7 +1,6 @@
 import * as functions from 'firebase-functions';
 import { defineSecret, defineString } from 'firebase-functions/params';
 import * as admin from 'firebase-admin';
-import fetch from 'node-fetch';
 import crypto from 'node:crypto';
 
 admin.initializeApp();
