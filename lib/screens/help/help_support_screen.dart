@@ -22,7 +22,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
   String _searchQuery = '';
   String _selectedCategory = 'All';
   String _selectedFeedbackType = 'General';
-  
+
   final List<TextEditingController> _feedbackControllers = [
     TextEditingController(), // email
     TextEditingController(), // message
@@ -55,16 +55,25 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
   @override
   Widget build(BuildContext context) {
     final translate = ref.watch(translationProvider);
+    final theme = Theme.of(context);
 
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: CustomAppBar(
         title: translate('help_support'),
         showBackButton: true,
+        backgroundColor: theme.colorScheme.primary,
+        foregroundColor: theme.colorScheme.onPrimary,
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: Theme.of(context).colorScheme.onPrimary,
-          labelColor: Theme.of(context).colorScheme.onPrimary,
-          unselectedLabelColor: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.7),
+          indicatorColor: theme.colorScheme.onPrimary,
+          labelColor: theme.colorScheme.onPrimary,
+          unselectedLabelColor:
+              theme.colorScheme.onPrimary.withValues(alpha: 0.7),
+          labelStyle: theme.textTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+          unselectedLabelStyle: theme.textTheme.labelLarge,
           tabs: [
             Tab(
               icon: const Icon(Icons.help_outline),
@@ -134,7 +143,8 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
     var filteredFaqs = faqs.where((faq) {
       final matchesSearch = faq.question.toLowerCase().contains(_searchQuery) ||
           faq.answer.toLowerCase().contains(_searchQuery);
-      final matchesCategory = _selectedCategory == 'All' || faq.category == _selectedCategory;
+      final matchesCategory =
+          _selectedCategory == 'All' || faq.category == _selectedCategory;
       return matchesSearch && matchesCategory;
     }).toList();
 
@@ -150,12 +160,12 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
             decoration: InputDecoration(
               hintText: translate('search_faq'),
               prefixIcon: const Icon(Icons.search),
-              suffixIcon: _searchQuery.isNotEmpty 
-                ? IconButton(
-                    icon: const Icon(Icons.clear),
-                    onPressed: () => _searchController.clear(),
-                  )
-                : null,
+              suffixIcon: _searchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () => _searchController.clear(),
+                    )
+                  : null,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -174,9 +184,11 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
               padding: const EdgeInsets.all(32.0),
               child: Column(
                 children: [
-                  Icon(Icons.search_off, size: 48, color: Theme.of(context).colorScheme.outline),
+                  Icon(Icons.search_off,
+                      size: 48, color: Theme.of(context).colorScheme.outline),
                   const SizedBox(height: 16),
-                  Text(translate('no_results_found'), style: Theme.of(context).textTheme.bodyLarge),
+                  Text(translate('no_results_found'),
+                      style: Theme.of(context).textTheme.bodyLarge),
                 ],
               ),
             ),
@@ -214,6 +226,11 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
                   _selectedCategory = category;
                 });
               },
+              side: BorderSide(
+                color: _selectedCategory == category
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.outlineVariant,
+              ),
             ),
           );
         },
@@ -343,6 +360,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
 
   Widget _buildContactTab(
       BuildContext context, String Function(String) translate) {
+    final theme = Theme.of(context);
     return LayoutFixUtils.safeColumn(
       padding: ResponsiveUtils.getResponsivePadding(context),
       children: [
@@ -351,8 +369,16 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
           width: double.infinity,
           padding: ResponsiveUtils.getResponsivePadding(context),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              colors: [
+                theme.colorScheme.primaryContainer,
+                theme.colorScheme.surface,
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: theme.colorScheme.outlineVariant),
           ),
           child: Column(
             children: [
@@ -497,8 +523,6 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
 
   Widget _buildFeedbackTab(
       BuildContext context, String Function(String) translate) {
-    String selectedFeedbackType = 'General';
-
     return LayoutFixUtils.safeColumn(
       padding: ResponsiveUtils.getResponsivePadding(context),
       children: [
@@ -571,9 +595,9 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
           width: double.infinity,
           child: ElevatedButton(
             onPressed: () => _submitFeedback(
-              context, 
+              context,
               _feedbackControllers[1].text,
-              _feedbackControllers[0].text, 
+              _feedbackControllers[0].text,
               _selectedFeedbackType,
             ),
             style: ElevatedButton.styleFrom(
@@ -588,11 +612,12 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
             ),
             child: Text(
               translate('submit_feedback'),
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  fontSize: ResponsiveUtils.getResponsiveFontSize(context, 16),
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onPrimary,
-                ),
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    fontSize:
+                        ResponsiveUtils.getResponsiveFontSize(context, 16),
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onPrimary,
+                  ),
             ),
           ),
         ),

@@ -11,7 +11,6 @@ import 'dart:convert';
 import '../../config/app_config.dart';
 import '../../services/tts_service.dart';
 import '../../services/user_statistics_service.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class BibleReaderScreen extends ConsumerStatefulWidget {
@@ -76,7 +75,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
       final keys = prefs.getKeys().where((k) => k.startsWith('highlight_'));
       final newHighlightColors = <String, Color>{};
       final newHighlightedVerses = <String>{};
-      
+
       for (final key in keys) {
         final verseKey = key.replaceFirst('highlight_', '');
         final colorValue = prefs.getInt(key);
@@ -85,7 +84,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
           newHighlightedVerses.add(verseKey);
         }
       }
-      
+
       if (mounted) {
         setState(() {
           _verseHighlightColors = newHighlightColors;
@@ -101,14 +100,18 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
       final languageCode = _languageCodes[_selectedLanguage] ?? 'en';
       _versionsForLanguage = await _resolveVersionsForLanguage(languageCode);
 
-      if (_versionsForLanguage.isNotEmpty && !_versionsForLanguage.contains(_selectedVersion)) {
+      if (_versionsForLanguage.isNotEmpty &&
+          !_versionsForLanguage.contains(_selectedVersion)) {
         _selectedVersion = _versionsForLanguage.first;
       }
-      
+
       final books = await _offlineBible.getBibleBooks(language: languageCode);
       if (books.isNotEmpty) {
         // Reorder books according to BibleData.allBooks
-        final orderMap = {for (var i = 0; i < BibleData.allBooks.length; i++) BibleData.allBooks[i]: i};
+        final orderMap = {
+          for (var i = 0; i < BibleData.allBooks.length; i++)
+            BibleData.allBooks[i]: i
+        };
         books.sort((a, b) {
           final orderA = orderMap[a.name];
           final orderB = orderMap[b.name];
@@ -153,7 +156,8 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
       return ['BM'];
     }
 
-    final versions = await _offlineBible.getAvailableVersions(language: languageCode);
+    final versions =
+        await _offlineBible.getAvailableVersions(language: languageCode);
     return versions.map((v) => v.code).toList();
   }
 
@@ -176,8 +180,8 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
       return true;
     }
 
-    final targetIndex =
-        _books.indexWhere((book) => book.name.toLowerCase() == parsedBook.toLowerCase());
+    final targetIndex = _books.indexWhere(
+        (book) => book.name.toLowerCase() == parsedBook.toLowerCase());
     if (targetIndex == -1) {
       await _loadVerse(reference);
       return false;
@@ -239,7 +243,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
     try {
       final languageCode = _languageCodes[_selectedLanguage] ?? 'en';
       final currentBook = _books[_currentBookIndex];
-      
+
       final List<Map<String, dynamic>> allVerses = [];
       final chapters = await _offlineBible.getBibleBookFull(
         book: _selectedBook,
@@ -262,7 +266,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
         _chapterVerses = allVerses;
         _selectedChapter = 1; // Default to start
       });
-      
+
       _statisticsService.recordChapterRead(_selectedBook, 1);
     } catch (e) {
       if (mounted) {
@@ -456,9 +460,10 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
-    
+
     final headerBgColor = isDark ? colorScheme.surface : colorScheme.primary;
-    final headerTextColor = isDark ? colorScheme.onSurface : colorScheme.onPrimary;
+    final headerTextColor =
+        isDark ? colorScheme.onSurface : colorScheme.onPrimary;
 
     return Scaffold(
       backgroundColor: headerBgColor,
@@ -513,10 +518,11 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
-    
+
     // In light mode we use the brand primary color for the background, in dark mode we use the surface color.
     final headerBgColor = isDark ? colorScheme.surface : colorScheme.primary;
-    final headerTextColor = isDark ? colorScheme.onSurface : colorScheme.onPrimary;
+    final headerTextColor =
+        isDark ? colorScheme.onSurface : colorScheme.onPrimary;
 
     return Container(
       color: headerBgColor,
@@ -527,9 +533,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
             width: double.infinity,
             padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
             child: Text(
-              _selectedBook.isEmpty
-                  ? 'Bible Reader'
-                  : _selectedBook,
+              _selectedBook.isEmpty ? 'Bible Reader' : _selectedBook,
               style: TextStyle(
                 color: headerTextColor,
                 fontSize: isSmallScreen ? 24 : (isMediumScreen ? 26 : 28),
@@ -566,159 +570,154 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                   ),
                 ],
               ),
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _chapterVerses.isEmpty
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(32),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.menu_book_outlined,
-                                  size: 48,
-                                  color: colorScheme.onSurface
-                                      .withValues(alpha: 0.4)),
-                              const SizedBox(height: 16),
-                              Text(
-                                _selectedBook.isEmpty
-                                    ? 'Select a book to begin reading'
-                                    : 'No verses found for $_selectedBook $_selectedChapter',
-                                style: TextStyle(
-                                  color: colorScheme.onSurface
-                                      .withValues(alpha: 0.6),
-                                  fontSize: 16,
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _chapterVerses.isEmpty
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(32),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.menu_book_outlined,
+                                    size: 48,
+                                    color: colorScheme.onSurface
+                                        .withValues(alpha: 0.4)),
+                                const SizedBox(height: 16),
+                                Text(
+                                  _selectedBook.isEmpty
+                                      ? 'Select a book to begin reading'
+                                      : 'No verses found for $_selectedBook $_selectedChapter',
+                                  style: TextStyle(
+                                    color: colorScheme.onSurface
+                                        .withValues(alpha: 0.6),
+                                    fontSize: 16,
+                                  ),
+                                  textAlign: TextAlign.center,
                                 ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                      )
-                    : SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            ..._chapterVerses.asMap().entries.map((entry) {
-                              final index = entry.key;
-                              final verse = entry.value;
-                              final isSelected =
-                                  _selectedVerseIndex == index;
-                              final verseKey =
-                                  '$_selectedBook:$_selectedChapter:${verse['verse']}';
-                              final highlightColor =
-                                  _verseHighlightColors[verseKey];
+                        )
+                      : SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              ..._chapterVerses.asMap().entries.map((entry) {
+                                final index = entry.key;
+                                final verse = entry.value;
+                                final isSelected = _selectedVerseIndex == index;
+                                final verseKey =
+                                    '$_selectedBook:$_selectedChapter:${verse['verse']}';
+                                final highlightColor =
+                                    _verseHighlightColors[verseKey];
 
-                              return Padding(
-                                padding: EdgeInsets.only(
-                                    bottom: isSmallScreen ? 4 : 6),
-                                child: GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      _selectedVerseIndex =
-                                          isSelected ? null : index;
-                                    });
-                                    if (!isSelected) {
-                                      _showVerseActionSheet(
-                                          verse, verseKey);
-                                    }
-                                  },
-                                  onLongPress: () {
-                                    setState(() {
-                                      _selectedVerseIndex = index;
-                                      _currentVerse = models.BibleVerse(
-                                        number: verse['verse'],
-                                        text: verse['text'],
-                                      );
-                                    });
-                                    _showVerseActionSheet(verse, verseKey);
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: highlightColor
-                                              ?.withValues(alpha: 0.2) ??
-                                          (isSelected
-                                              ? colorScheme.primary
-                                                  .withValues(alpha: 0.1)
-                                              : null),
-                                      borderRadius:
-                                          BorderRadius.circular(8),
-                                      border: isSelected
-                                          ? Border.all(
-                                              color: colorScheme.primary
-                                                  .withValues(alpha: 0.3),
-                                              width: 1)
-                                          : null,
-                                    ),
-                                    child: RichText(
-                                      text: TextSpan(
-                                        style: TextStyle(
-                                          color: colorScheme.onSurface,
-                                          fontSize: isSmallScreen
-                                              ? 16
-                                              : (isMediumScreen ? 17 : 18),
-                                          height: 1.6,
-                                          fontFamily: 'Georgia',
-                                        ),
-                                        children: [
-                                          TextSpan(
-                                            text:
-                                                '${verse['verse']} ',
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: isSmallScreen
-                                                  ? 14
-                                                  : (isMediumScreen
-                                                      ? 15
-                                                      : 16),
-                                              color: colorScheme.secondary,
-                                            ),
+                                return Padding(
+                                  padding: EdgeInsets.only(
+                                      bottom: isSmallScreen ? 4 : 6),
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _selectedVerseIndex =
+                                            isSelected ? null : index;
+                                      });
+                                      if (!isSelected) {
+                                        _showVerseActionSheet(verse, verseKey);
+                                      }
+                                    },
+                                    onLongPress: () {
+                                      setState(() {
+                                        _selectedVerseIndex = index;
+                                        _currentVerse = models.BibleVerse(
+                                          number: verse['verse'],
+                                          text: verse['text'],
+                                        );
+                                      });
+                                      _showVerseActionSheet(verse, verseKey);
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: highlightColor?.withValues(
+                                                alpha: 0.2) ??
+                                            (isSelected
+                                                ? colorScheme.primary
+                                                    .withValues(alpha: 0.1)
+                                                : null),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: isSelected
+                                            ? Border.all(
+                                                color: colorScheme.primary
+                                                    .withValues(alpha: 0.3),
+                                                width: 1)
+                                            : null,
+                                      ),
+                                      child: RichText(
+                                        text: TextSpan(
+                                          style: TextStyle(
+                                            color: colorScheme.onSurface,
+                                            fontSize: isSmallScreen
+                                                ? 16
+                                                : (isMediumScreen ? 17 : 18),
+                                            height: 1.6,
+                                            fontFamily: 'Georgia',
                                           ),
-                                          TextSpan(
-                                              text: verse['text']),
-                                        ],
+                                          children: [
+                                            TextSpan(
+                                              text: '${verse['verse']} ',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: isSmallScreen
+                                                    ? 14
+                                                    : (isMediumScreen
+                                                        ? 15
+                                                        : 16),
+                                                color: colorScheme.secondary,
+                                              ),
+                                            ),
+                                            TextSpan(text: verse['text']),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
-                              );
-                            }),
-                          ],
+                                );
+                              }),
+                            ],
+                          ),
                         ),
-                      ),
-          ),
-        ),
-
-        // Bottom Navigation Bar - Responsive
-        Container(
-          padding: EdgeInsets.all(isSmallScreen ? 8 : 16),
-          child: Container(
-            padding: EdgeInsets.symmetric(
-                horizontal: isSmallScreen ? 8 : 16,
-                vertical: isSmallScreen ? 8 : 12),
-            decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(50),
-              border: Border.all(
-                  color: colorScheme.outline.withValues(alpha: 0.2)),
-              boxShadow: [
-                BoxShadow(
-                  color: colorScheme.shadow.withValues(alpha: 0.08),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
             ),
-            child: isSmallScreen
-                ? _buildCompactNavigation()
-                : _buildFullNavigation(),
           ),
-        ),
-      ],
-    ),
-  );
+
+          // Bottom Navigation Bar - Responsive
+          Container(
+            padding: EdgeInsets.all(isSmallScreen ? 8 : 16),
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                  horizontal: isSmallScreen ? 8 : 16,
+                  vertical: isSmallScreen ? 8 : 12),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(50),
+                border: Border.all(
+                    color: colorScheme.outline.withValues(alpha: 0.2)),
+                boxShadow: [
+                  BoxShadow(
+                    color: colorScheme.shadow.withValues(alpha: 0.08),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: isSmallScreen
+                  ? _buildCompactNavigation()
+                  : _buildFullNavigation(),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildCompactNavigation() {
@@ -805,8 +804,8 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
         ),
 
         const SizedBox(width: 4),
- 
-         // Next Chapter Button
+
+        // Next Chapter Button
         _buildNavButton(
           icon: Icons.arrow_forward_ios,
           onTap: _navigateToNextChapter,
@@ -904,8 +903,8 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
         ),
 
         const SizedBox(width: 12),
- 
-         // Next Chapter Button
+
+        // Next Chapter Button
         _buildNavButton(
           icon: Icons.arrow_forward_ios,
           onTap: _navigateToNextChapter,
@@ -1059,11 +1058,11 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
 
   void _showChapterSelector() {
     if (_books.isEmpty || _selectedBook.isEmpty) return;
-    
+
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 600;
-    
+
     final currentBook = _books[_currentBookIndex];
     final maxChapters = currentBook.chapters;
 
@@ -1117,9 +1116,11 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                     child: Container(
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: isSelected 
-                            ? Theme.of(context).colorScheme.secondary 
-                            : Theme.of(context).colorScheme.surfaceContainerHighest,
+                        color: isSelected
+                            ? Theme.of(context).colorScheme.secondary
+                            : Theme.of(context)
+                                .colorScheme
+                                .surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                           color: isSelected
@@ -1131,7 +1132,8 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                         chapter.toString(),
                         style: TextStyle(
                           fontSize: 16,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          fontWeight:
+                              isSelected ? FontWeight.bold : FontWeight.normal,
                           color: isSelected
                               ? Theme.of(context).colorScheme.onSecondary
                               : Theme.of(context).colorScheme.onSurfaceVariant,
@@ -1585,8 +1587,8 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
   Future<void> _saveHighlights() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final data = _verseHighlightColors.map((key, color) =>
-          MapEntry(key, color.toARGB32()));
+      final data = _verseHighlightColors
+          .map((key, color) => MapEntry(key, color.toARGB32()));
       await prefs.setString('verse_highlights', json.encode(data));
     } catch (_) {}
   }
@@ -1594,8 +1596,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
   /// Show a bottom sheet with verse actions: highlight colors, copy, bookmark, read aloud, notes
   void _showVerseActionSheet(Map<String, dynamic> verse, String verseKey) {
     final colorScheme = Theme.of(context).colorScheme;
-    final reference =
-        '$_selectedBook $_selectedChapter:${verse['verse']}';
+    final reference = '$_selectedBook $_selectedChapter:${verse['verse']}';
     final verseText = verse['text'] ?? '';
 
     final highlightColors = [
@@ -1668,13 +1669,12 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(
-                            color: colorScheme.onSurface
-                                .withValues(alpha: 0.3)),
+                            color:
+                                colorScheme.onSurface.withValues(alpha: 0.3)),
                       ),
                       child: Icon(Icons.close,
                           size: 16,
-                          color: colorScheme.onSurface
-                              .withValues(alpha: 0.5)),
+                          color: colorScheme.onSurface.withValues(alpha: 0.5)),
                     ),
                   ),
                   ...highlightColors.map((color) => GestureDetector(
@@ -1689,13 +1689,11 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                         child: Container(
                           width: 32,
                           height: 32,
-                          margin:
-                              const EdgeInsets.symmetric(horizontal: 6),
+                          margin: const EdgeInsets.symmetric(horizontal: 6),
                           decoration: BoxDecoration(
                             color: color,
                             shape: BoxShape.circle,
-                            border: _verseHighlightColors[verseKey] ==
-                                    color
+                            border: _verseHighlightColors[verseKey] == color
                                 ? Border.all(
                                     color: colorScheme.primary, width: 2)
                                 : null,
@@ -1715,8 +1713,8 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                     icon: Icons.copy_outlined,
                     label: 'Copy',
                     onTap: () {
-                      Clipboard.setData(ClipboardData(
-                          text: '$reference\n$verseText'));
+                      Clipboard.setData(
+                          ClipboardData(text: '$reference\n$verseText'));
                       Navigator.pop(ctx);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
@@ -1731,18 +1729,14 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                     icon: Icons.bookmark_outline,
                     label: 'Bookmark',
                     onTap: () async {
-                      final prefs =
-                          await SharedPreferences.getInstance();
-                      final bookmarks = prefs.getStringList(
-                              'bible_bookmarks') ??
-                          [];
+                      final prefs = await SharedPreferences.getInstance();
+                      final bookmarks =
+                          prefs.getStringList('bible_bookmarks') ?? [];
                       final entry =
                           '$reference|$verseText|${DateTime.now().toIso8601String()}';
-                      if (!bookmarks
-                          .any((b) => b.startsWith(reference))) {
+                      if (!bookmarks.any((b) => b.startsWith(reference))) {
                         bookmarks.add(entry);
-                        await prefs.setStringList(
-                            'bible_bookmarks', bookmarks);
+                        await prefs.setStringList('bible_bookmarks', bookmarks);
                       }
                       if (ctx.mounted) Navigator.pop(ctx);
                       if (mounted) {
@@ -1824,9 +1818,9 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
     final prefs = await SharedPreferences.getInstance();
     final existingNote = prefs.getString('note_$reference') ?? '';
     final controller = TextEditingController(text: existingNote);
-    final colorScheme = Theme.of(context).colorScheme;
 
     if (!mounted) return;
+    final colorScheme = Theme.of(context).colorScheme;
 
     showDialog(
       context: context,
@@ -1843,17 +1837,16 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
           style: TextStyle(color: colorScheme.onSurface),
           decoration: InputDecoration(
             hintText: 'Write your thoughts...',
-            hintStyle: TextStyle(
-                color: colorScheme.onSurface.withValues(alpha: 0.4)),
-            border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12)),
+            hintStyle:
+                TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.4)),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel',
-                style: TextStyle(color: colorScheme.onSurface)),
+            child:
+                Text('Cancel', style: TextStyle(color: colorScheme.onSurface)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -1902,5 +1895,4 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
       }
     }
   }
-
 }

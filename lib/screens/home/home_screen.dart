@@ -20,37 +20,55 @@ class HomeScreen extends ConsumerWidget {
     final authState = ref.watch(authStateProvider);
     final isGuest = ref.watch(isGuestModeProvider);
     final translate = ref.watch(translationProvider);
+    final theme = Theme.of(context);
 
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: CustomAppBar(
         title: 'Home',
-        // Actions include language, theme, and support automatically
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-      body: authState.when(
-        data: (user) =>
-            _buildHomeContent(context, ref, user, isGuest, translate),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              LayoutFixUtils.responsiveIcon(
-                Icons.error,
-                context: context,
-                baseSize: 64,
-                color: Theme.of(context).colorScheme.error,
-              ),
-              SizedBox(height: context.isMobile ? 12 : 16),
-              Text(
-                'Error: $error',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontSize: ResponsiveUtils.getResponsiveFontSize(context, 16),
-                ),
-                textAlign: TextAlign.center,
-              ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              theme.colorScheme.primary.withValues(alpha: 0.08),
+              theme.scaffoldBackgroundColor,
+              theme.colorScheme.secondary.withValues(alpha: 0.04),
             ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: authState.when(
+          data: (user) =>
+              _buildHomeContent(context, ref, user, isGuest, translate),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, stack) => Center(
+            child: Padding(
+              padding: ResponsiveUtils.getResponsivePadding(context),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  LayoutFixUtils.responsiveIcon(
+                    Icons.error,
+                    context: context,
+                    baseSize: 64,
+                    color: theme.colorScheme.error,
+                  ),
+                  SizedBox(height: context.isMobile ? 12 : 16),
+                  Text(
+                    'Error: $error',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontSize:
+                          ResponsiveUtils.getResponsiveFontSize(context, 16),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -66,11 +84,10 @@ class HomeScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Greeting Header
+          _buildHeroCard(context, translate),
+          SizedBox(height: context.isMobile ? 20 : 28),
           const GreetingHeader(),
           SizedBox(height: context.isMobile ? 16 : 24),
-
-          // Daily Bible Verse Section
           Text(
             translate('daily_verse'),
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -94,23 +111,83 @@ class HomeScreen extends ConsumerWidget {
             ),
           ),
           SizedBox(height: context.isMobile ? 20 : 28),
-
           if (user != null && !isGuest) ...[
-            // Authenticated User Content
             const RoleVisibility(
               allowedRoles: ['member', 'admin', 'leader'],
               child: QuickActionsGrid(),
             ),
           ] else ...[
-            // Guest Content
             Consumer(
               builder: (context, ref, _) {
                 return const QuickActionsGrid();
               },
             ),
             SizedBox(height: context.isMobile ? 16 : 24),
-            // Removed sign-in/up prompt for cleaner guest experience
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeroCard(BuildContext context, Function translate) {
+    final theme = Theme.of(context);
+    return Container(
+      width: double.infinity,
+      padding: ResponsiveUtils.getResponsivePadding(context),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            theme.colorScheme.primary,
+            theme.colorScheme.secondary,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.shadow.withValues(alpha: 0.16),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'ALIVE Nigeria',
+            style: theme.textTheme.headlineSmall?.copyWith(
+              color: theme.colorScheme.onPrimary,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Bible-based resources, prayer, and mission tools arranged for a cleaner daily experience.',
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: theme.colorScheme.onPrimary.withValues(alpha: 0.88),
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.onPrimary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: theme.colorScheme.onPrimary.withValues(alpha: 0.18),
+              ),
+            ),
+            child: Text(
+              '${translate('daily_verse')} | ${translate('study')} | ${translate('prayer')}',
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: theme.colorScheme.onPrimary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
         ],
       ),
     );

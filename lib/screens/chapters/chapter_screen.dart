@@ -2,13 +2,11 @@ import 'package:flutter/material.dart';
 import '../../models/chapter_models.dart';
 import '../../services/chapter_service.dart';
 import '../../services/auth_service.dart';
-import '../../utils/app_theme.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../config/meeting_links_config.dart';
 import '../conference/enhanced_jitsi_meet_screen.dart';
 import '../../providers/firebase_auth_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../utils/responsive_utils.dart';
 import 'package:intl/intl.dart';
 
 class ChapterScreen extends StatefulWidget {
@@ -87,18 +85,19 @@ class _ChapterScreenState extends State<ChapterScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: CustomAppBar(
         title: 'Chapters',
         showBackButton: true,
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Theme.of(context).colorScheme.onPrimary,
+        backgroundColor: theme.colorScheme.primary,
+        foregroundColor: theme.colorScheme.onPrimary,
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: Theme.of(context).colorScheme.onPrimary,
-          labelColor: Theme.of(context).colorScheme.onPrimary,
+          indicatorColor: theme.colorScheme.onPrimary,
+          labelColor: theme.colorScheme.onPrimary,
           unselectedLabelColor:
-              Theme.of(context).colorScheme.onPrimary.withOpacity(0.7),
+              theme.colorScheme.onPrimary.withValues(alpha: 0.7),
           isScrollable: true,
           tabAlignment: TabAlignment.start,
           tabs: const [
@@ -173,7 +172,14 @@ class _ChapterScreenState extends State<ChapterScreen>
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Card(
-        color: Theme.of(context).primaryColor.withOpacity(0.08),
+        color: Theme.of(context).colorScheme.primaryContainer,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
+        ),
         child: Padding(
           padding: const EdgeInsets.all(12.0),
           child: Row(
@@ -181,9 +187,11 @@ class _ChapterScreenState extends State<ChapterScreen>
               Icon(Icons.video_call, color: Theme.of(context).primaryColor),
               const SizedBox(width: 8),
               Expanded(
-                child: const Text(
+                child: Text(
                   'General Meeting is available',
-                  style: TextStyle(fontWeight: FontWeight.w600),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                 ),
               ),
               ElevatedButton.icon(
@@ -262,7 +270,11 @@ class _ChapterScreenState extends State<ChapterScreen>
   Widget _buildStatCard(
       String title, String value, IconData icon, Color color) {
     return Card(
-      elevation: 4,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -367,7 +379,13 @@ class _ChapterScreenState extends State<ChapterScreen>
   Widget _buildSearchAndFilter() {
     return Container(
       padding: const EdgeInsets.all(16),
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        border: Border(
+          bottom:
+              BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+        ),
+      ),
       child: Column(
         children: [
           TextField(
@@ -430,8 +448,8 @@ class _ChapterScreenState extends State<ChapterScreen>
             title: Text('Chapter: ${membership.chapterId}'),
             subtitle: Text('Role: ${membership.role}'),
             trailing: const Icon(Icons.arrow_forward_ios),
-            onTap: () =>
-                _navigateToChapterDetails(null, chapterId: membership.chapterId),
+            onTap: () => _navigateToChapterDetails(null,
+                chapterId: membership.chapterId),
           ),
         );
       },
@@ -469,6 +487,11 @@ class _ChapterScreenState extends State<ChapterScreen>
   Widget _buildActivityCard(ChapterActivity activity) {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
       child: ListTile(
         title: Text(activity.title),
         subtitle: Text(_formatDate(activity.scheduledAt)),
@@ -481,6 +504,11 @@ class _ChapterScreenState extends State<ChapterScreen>
   Widget _buildTaskCard(ChapterTask task) {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
       child: ListTile(
         title: Text(task.title),
         subtitle: Text('Due: ${_formatDate(task.dueDate)}'),
@@ -495,6 +523,11 @@ class _ChapterScreenState extends State<ChapterScreen>
   Widget _buildChapterCard(Chapter chapter) {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
       child: ListTile(
         title: Text(chapter.name),
         subtitle: Text(_chapterService.getTypeDescription(chapter.type)),
@@ -593,7 +626,8 @@ class _ChapterScreenState extends State<ChapterScreen>
 
   void _createChapter() {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Chapter creation not implemented in this view')),
+      const SnackBar(
+          content: Text('Chapter creation not implemented in this view')),
     );
   }
 

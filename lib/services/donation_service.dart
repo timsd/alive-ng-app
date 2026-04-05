@@ -326,7 +326,8 @@ class DonationService {
   }
 
   // Record user download
-  Future<void> recordDownload(String materialId, [String materialTitle = '']) async {
+  Future<void> recordDownload(String materialId,
+      [String materialTitle = '']) async {
     try {
       final userId = _auth.currentUser?.uid;
       if (userId == null) return;
@@ -631,7 +632,8 @@ class DonationService {
         );
         return {
           'success': false,
-          'message': 'Payment initialized. Complete checkout to finalize donation.',
+          'message':
+              'Payment initialized. Complete checkout to finalize donation.',
           'donation_id': donationId,
           'initialized': true,
         };
@@ -716,13 +718,16 @@ class DonationService {
         'full_name': fullName,
         'email': email,
         'phone': phone,
-        if (itemType != null && itemType.trim().isNotEmpty) 'item_type': itemType,
-        if (quantity != null && quantity.trim().isNotEmpty) 'quantity': quantity,
+        if (itemType != null && itemType.trim().isNotEmpty)
+          'item_type': itemType,
+        if (quantity != null && quantity.trim().isNotEmpty)
+          'quantity': quantity,
         if (estimatedValue != null && estimatedValue.trim().isNotEmpty)
           'estimated_value': estimatedValue,
         if (deliveryPreference != null && deliveryPreference.trim().isNotEmpty)
           'delivery_preference': deliveryPreference,
-        if (location != null && location.trim().isNotEmpty) 'location': location,
+        if (location != null && location.trim().isNotEmpty)
+          'location': location,
         if (skillsOrService != null && skillsOrService.trim().isNotEmpty)
           'skills_or_service': skillsOrService,
         if (availability != null && availability.trim().isNotEmpty)

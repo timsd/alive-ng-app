@@ -98,7 +98,8 @@ class AboutAppScreen extends ConsumerWidget {
                     if (!twoColumns) {
                       return Column(
                         children: children
-                            .expand((child) => [child, const SizedBox(height: 16)])
+                            .expand(
+                                (child) => [child, const SizedBox(height: 16)])
                             .take(children.length * 2 - 1)
                             .toList(),
                       );
@@ -270,8 +271,7 @@ class AboutAppScreen extends ConsumerWidget {
                         text: 'Send Feedback',
                         icon: Icons.send_rounded,
                         isFullWidth: !isDark,
-                        onPressed: () =>
-                            _launchEmail('dammyolodude@gmail.com'),
+                        onPressed: () => _launchEmail('dammyolodude@gmail.com'),
                       ),
                     ],
                   ),

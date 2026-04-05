@@ -80,7 +80,8 @@ class AboutAliveScreen extends ConsumerWidget {
                     if (!twoColumns) {
                       return Column(
                         children: content
-                            .expand((child) => [child, const SizedBox(height: 16)])
+                            .expand(
+                                (child) => [child, const SizedBox(height: 16)])
                             .take(content.length * 2 - 1)
                             .toList(),
                       );
@@ -203,7 +204,8 @@ class AboutAliveScreen extends ConsumerWidget {
                       const SizedBox(height: 10),
                       const _LeaderTile(
                         name: 'Godstime Esuku',
-                        role: 'Speaker and Director, ALIVE Mission Training Center (AMTC)',
+                        role:
+                            'Speaker and Director, ALIVE Mission Training Center (AMTC)',
                         icon: Icons.school_rounded,
                       ),
                       const SizedBox(height: 10),
@@ -276,7 +278,8 @@ class AboutAliveScreen extends ConsumerWidget {
                         icon: Icons.public_rounded,
                         title: 'Website',
                         value: 'www.alivenigeria.org',
-                        onTap: () => _launchWebsite('https://www.alivenigeria.org'),
+                        onTap: () =>
+                            _launchWebsite('https://www.alivenigeria.org'),
                       ),
                     ],
                   ),

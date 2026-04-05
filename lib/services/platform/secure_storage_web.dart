@@ -10,7 +10,8 @@ class IOSOptions {
 }
 
 class KeychainAccessibility {
-  static const firstUnlockThisDevice = KeychainAccessibility._('first_unlock_this_device');
+  static const firstUnlockThisDevice =
+      KeychainAccessibility._('first_unlock_this_device');
   final String value;
   const KeychainAccessibility._(this.value);
 }

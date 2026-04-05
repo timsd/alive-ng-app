@@ -120,38 +120,58 @@ class _ResourcesScreenState extends ConsumerState<ResourcesScreen> {
   }
 
   Widget _buildHeader(BuildContext context, String Function(String) translate) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          translate('resources_title'),
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                fontSize: ResponsiveUtils.getResponsiveValue(
-                  context: context,
-                  mobile: 24.0,
-                  tablet: 28.0,
-                  desktop: 32.0,
-                ),
-              ),
+    final theme = Theme.of(context);
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(
+        context: context,
+        mobile: 20.0,
+        tablet: 24.0,
+        desktop: 28.0,
+      )),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            theme.colorScheme.primaryContainer,
+            theme.colorScheme.surface,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
-        Text(
-          translate('resources_subtitle'),
-          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Theme.of(context)
-                    .colorScheme
-                    .onSurface
-                    .withValues(alpha: 0.7),
-                fontSize: ResponsiveUtils.getResponsiveValue(
-                  context: context,
-                  mobile: 16.0,
-                  tablet: 18.0,
-                  desktop: 20.0,
-                ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            translate('resources_title'),
+            style: theme.textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+              fontSize: ResponsiveUtils.getResponsiveValue(
+                context: context,
+                mobile: 24.0,
+                tablet: 28.0,
+                desktop: 32.0,
               ),
-        ),
-      ],
+            ),
+          ),
+          SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
+          Text(
+            translate('resources_subtitle'),
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontSize: ResponsiveUtils.getResponsiveValue(
+                context: context,
+                mobile: 16.0,
+                tablet: 18.0,
+                desktop: 20.0,
+              ),
+              height: 1.45,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -177,6 +197,11 @@ class _ResourcesScreenState extends ConsumerState<ResourcesScreen> {
                 });
               },
               backgroundColor: Theme.of(context).colorScheme.surface,
+              side: BorderSide(
+                color: isSelected
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.outlineVariant,
+              ),
               selectedColor:
                   Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
               checkmarkColor: Theme.of(context).colorScheme.primary,
@@ -216,16 +241,19 @@ class _ResourcesScreenState extends ConsumerState<ResourcesScreen> {
   }
 
   Widget _buildResourceCard(BuildContext context, Resource resource) {
+    final theme = Theme.of(context);
     return Card(
-      elevation: 2,
+      elevation: 0,
+      color: theme.colorScheme.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(
-            ResponsiveUtils.getResponsiveBorderRadiusValue(context, 12)),
+            ResponsiveUtils.getResponsiveBorderRadiusValue(context, 18)),
+        side: BorderSide(color: theme.colorScheme.outlineVariant),
       ),
       child: InkWell(
         onTap: () => _showResourceDetails(context, resource),
         borderRadius: BorderRadius.circular(
-            ResponsiveUtils.getResponsiveBorderRadiusValue(context, 12)),
+            ResponsiveUtils.getResponsiveBorderRadiusValue(context, 18)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -237,7 +265,7 @@ class _ResourcesScreenState extends ConsumerState<ResourcesScreen> {
                   borderRadius: BorderRadius.vertical(
                     top: Radius.circular(
                         ResponsiveUtils.getResponsiveBorderRadiusValue(
-                            context, 12)),
+                            context, 18)),
                   ),
                   color: Theme.of(context)
                       .colorScheme
@@ -272,10 +300,14 @@ class _ResourcesScreenState extends ConsumerState<ResourcesScreen> {
                         ),
                         child: Text(
                           resource.type.name.toUpperCase(),
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onSecondary,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelSmall
+                              ?.copyWith(
+                                color:
+                                    Theme.of(context).colorScheme.onSecondary,
+                                fontWeight: FontWeight.bold,
+                              ),
                         ),
                       ),
                     ),
@@ -338,12 +370,13 @@ class _ResourcesScreenState extends ConsumerState<ResourcesScreen> {
                                 context, 4)),
                         Text(
                           '${resource.downloads}',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurface
-                                .withValues(alpha: 0.6),
-                          ),
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.6),
+                                  ),
                         ),
                       ],
                     ),
@@ -556,6 +589,8 @@ class _ResourcesScreenState extends ConsumerState<ResourcesScreen> {
                       onPressed: () async {
                         final navigator = Navigator.of(context);
                         final messenger = ScaffoldMessenger.of(context);
+                        final tertiary = Theme.of(context).colorScheme.tertiary;
+                        final errorColor = Theme.of(context).colorScheme.error;
                         try {
                           // Launch the download URL
                           final Uri downloadUri =
@@ -569,7 +604,7 @@ class _ResourcesScreenState extends ConsumerState<ResourcesScreen> {
                               SnackBar(
                                 content: Text(
                                     '${translate('downloading')} ${resource.title}...'),
-                                backgroundColor: Theme.of(context).colorScheme.tertiary,
+                                backgroundColor: tertiary,
                               ),
                             );
                           } else {
@@ -580,7 +615,7 @@ class _ResourcesScreenState extends ConsumerState<ResourcesScreen> {
                           messenger.showSnackBar(
                             SnackBar(
                               content: Text('Download failed: $e'),
-                              backgroundColor: Theme.of(context).colorScheme.error,
+                              backgroundColor: errorColor,
                             ),
                           );
                         }
@@ -593,8 +628,8 @@ class _ResourcesScreenState extends ConsumerState<ResourcesScreen> {
                       label: Text(
                         translate('download'),
                         style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: Theme.of(context).colorScheme.onPrimary,
-                        ),
+                              color: Theme.of(context).colorScheme.onPrimary,
+                            ),
                       ),
                       style: ElevatedButton.styleFrom(
                         padding: EdgeInsets.symmetric(

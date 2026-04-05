@@ -127,7 +127,8 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
 
     final items = <_MoreItem>[
       const _MoreItem('Daily Verse', Icons.today, AppConstants.dailyRoute),
-      const _MoreItem('Update Profile', Icons.person, AppConstants.profileRoute),
+      const _MoreItem(
+          'Update Profile', Icons.person, AppConstants.profileRoute),
       const _MoreItem('Study', Icons.school, AppConstants.studyRoute),
       const _MoreItem('Home Remedies & Food', Icons.health_and_safety,
           AppConstants.enhancedHealthRoute),
@@ -155,7 +156,8 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
           'Privacy Policy', Icons.privacy_tip, AppConstants.privacyPolicyRoute),
       const _MoreItem(
           'Terms & Conditions', Icons.gavel, AppConstants.termsConditionsRoute),
-      const _MoreItem('About App', Icons.info_outline, AppConstants.aboutAppRoute),
+      const _MoreItem(
+          'About App', Icons.info_outline, AppConstants.aboutAppRoute),
       const _MoreItem('About ALIVE', Icons.info, AppConstants.aboutAliveRoute),
       const _MoreItem('Sign Out', Icons.logout, null),
       _MoreItem('Delete Account', Icons.delete_forever, null,
@@ -365,7 +367,8 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error),
             child: const Text('Delete'),
           ),
         ],
@@ -392,21 +395,25 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
 
   Future<void> _handleClaimAdminRole(BuildContext context) async {
     try {
-      final ok = await ref.read(firebaseDatabaseServiceProvider).claimAdminRole();
+      final ok =
+          await ref.read(firebaseDatabaseServiceProvider).claimAdminRole();
       if (!context.mounted) return;
       if (ok) {
         await FirebaseAuth.instance.currentUser?.getIdToken(true);
+        if (!context.mounted) return;
         RoleAccessService.instance.clearCache();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Admin role claim successful. Your access is refreshing now.'),
+            content: Text(
+                'Admin role claim successful. Your access is refreshing now.'),
             backgroundColor: Theme.of(context).colorScheme.tertiary,
           ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Admin role claim failed. Check Cloud Functions deployment.'),
+            content: Text(
+                'Admin role claim failed. Check Cloud Functions deployment.'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );

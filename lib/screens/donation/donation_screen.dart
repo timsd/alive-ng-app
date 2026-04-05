@@ -159,28 +159,40 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                                 _selectedProjectTitle != null
                                     ? 'You are donating to: $_selectedProjectTitle'
                                     : 'You are donating to: Selected Project',
-                                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: context.responsiveFontSize(14),
-                                ),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleSmall
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: context.responsiveFontSize(14),
+                                    ),
                               ),
                             ),
                             TextButton(
-                                onPressed: _clearSelectedProject,
-                                child: const Text('Change'),
-                              ),
-                            ],
-                          ),
+                              onPressed: _clearSelectedProject,
+                              child: const Text('Change'),
+                            ),
+                          ],
                         ),
-                      if (_selectedProjectId != null)
-                        FutureBuilder<DocumentSnapshot>(
-                        future: FirebaseFirestore.instance.collection('projects').doc(_selectedProjectId).get(),
+                      ),
+                    if (_selectedProjectId != null)
+                      FutureBuilder<DocumentSnapshot>(
+                        future: FirebaseFirestore.instance
+                            .collection('projects')
+                            .doc(_selectedProjectId)
+                            .get(),
                         builder: (context, snapshot) {
-                          if (!snapshot.hasData || !snapshot.data!.exists) return const SizedBox.shrink();
-                          final data = snapshot.data!.data() as Map<String, dynamic>;
+                          if (!snapshot.hasData || !snapshot.data!.exists) {
+                            return const SizedBox.shrink();
+                          }
+                          final data =
+                              snapshot.data!.data() as Map<String, dynamic>;
                           final goal = (data['goal'] as num?)?.toDouble() ?? 0;
-                          final raised = (data['raised'] as num?)?.toDouble() ?? 0;
-                          if (goal <= 0) return const SizedBox.shrink();
+                          final raised =
+                              (data['raised'] as num?)?.toDouble() ?? 0;
+                          if (goal <= 0) {
+                            return const SizedBox.shrink();
+                          }
 
                           double displayGoal = goal;
                           double displayRaised = raised;
@@ -195,7 +207,10 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                             decoration: BoxDecoration(
                               color: Theme.of(context).cardColor,
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.1)),
+                              border: Border.all(
+                                  color: Theme.of(context)
+                                      .dividerColor
+                                      .withValues(alpha: 0.1)),
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withValues(alpha: 0.05),
@@ -208,7 +223,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
                                       'Project Goal',
@@ -233,23 +249,33 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(6),
                                   child: LinearProgressIndicator(
-                                    value: (raised / goal).clamp(0.0, 1.0).toDouble(),
+                                    value: (raised / goal)
+                                        .clamp(0.0, 1.0)
+                                        .toDouble(),
                                     minHeight: 10,
-                                    backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                                    valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.secondary),
+                                    backgroundColor: theme
+                                        .colorScheme.surfaceContainerHighest,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        theme.colorScheme.secondary),
                                   ),
                                 ),
                                 const SizedBox(height: 8),
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
                                       'Raised: ${_selectedCurrency == 'USD' ? '\$' : '₦'}${_formatCompact(displayRaised)}',
-                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                      style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold),
                                     ),
                                     Text(
                                       'Goal: ${_selectedCurrency == 'USD' ? '\$' : '₦'}${_formatCompact(displayGoal)}',
-                                      style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          color: theme.colorScheme.onSurface
+                                              .withValues(alpha: 0.6)),
                                     ),
                                   ],
                                 ),
@@ -271,11 +297,14 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                         label: const Text('View Projects & Donate to a Cause'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: theme.colorScheme.secondary,
-                          side: BorderSide(color: theme.colorScheme.secondary, width: 1.5),
+                          side: BorderSide(
+                              color: theme.colorScheme.secondary, width: 1.5),
                           padding: EdgeInsets.symmetric(
-                            vertical: ResponsiveUtils.getResponsiveSpacing(context, 14),
+                            vertical: ResponsiveUtils.getResponsiveSpacing(
+                                context, 14),
                           ),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
                         ),
                       ),
                     ),
@@ -387,8 +416,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
         Text(
           'Choose Your Giving Method',
           style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+            fontWeight: FontWeight.bold,
+          ),
         ),
         SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
         Row(
@@ -430,9 +459,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
         duration: const Duration(milliseconds: 300),
         padding: ResponsiveUtils.getResponsivePadding(context),
         decoration: BoxDecoration(
-          color: isSelected
-              ? theme.colorScheme.primary
-              : theme.cardColor,
+          color: isSelected ? theme.colorScheme.primary : theme.cardColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected
@@ -454,7 +481,9 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
           children: [
             Icon(
               icon,
-              color: isSelected ? theme.colorScheme.onPrimary : theme.iconTheme.color,
+              color: isSelected
+                  ? theme.colorScheme.onPrimary
+                  : theme.iconTheme.color,
               size: ResponsiveUtils.getResponsiveValue(
                 context: context,
                 mobile: 32,
@@ -466,31 +495,31 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
             Text(
               title,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontSize: ResponsiveUtils.getResponsiveValue(
-                  context: context,
-                  mobile: 16,
-                  tablet: 18,
-                  desktop: 20,
-                ),
-                fontWeight: FontWeight.bold,
-                color: isSelected
-                    ? theme.colorScheme.onPrimary
-                    : theme.colorScheme.onSurface,
-              ),
+                    fontSize: ResponsiveUtils.getResponsiveValue(
+                      context: context,
+                      mobile: 16,
+                      tablet: 18,
+                      desktop: 20,
+                    ),
+                    fontWeight: FontWeight.bold,
+                    color: isSelected
+                        ? theme.colorScheme.onPrimary
+                        : theme.colorScheme.onSurface,
+                  ),
               textAlign: TextAlign.center,
             ),
             SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 4)),
             Text(
               subtitle,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                fontSize: ResponsiveUtils.getResponsiveValue(
-                  context: context,
-                  mobile: 12,
-                  tablet: 14,
-                  desktop: 16,
-                ),
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
+                    fontSize: ResponsiveUtils.getResponsiveValue(
+                      context: context,
+                      mobile: 12,
+                      tablet: 14,
+                      desktop: 16,
+                    ),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -511,8 +540,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                   ? 'Enter an amount to give monthly'
                   : 'Enter an amount to give one time',
               style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                fontWeight: FontWeight.bold,
+              ),
             ),
             _buildCurrencySelector(context, theme),
           ],
@@ -541,15 +570,15 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
             value: currency,
             child: Text(
               currency,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontSize: ResponsiveUtils.getResponsiveValue(
-                    context: context,
-                    mobile: 14,
-                    tablet: 16,
-                    desktop: 18,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontSize: ResponsiveUtils.getResponsiveValue(
+                      context: context,
+                      mobile: 14,
+                      tablet: 16,
+                      desktop: 18,
+                    ),
+                    fontWeight: FontWeight.w600,
                   ),
-                  fontWeight: FontWeight.w600,
-                ),
             ),
           );
         }).toList(),
@@ -622,15 +651,17 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
             child: Text(
               label,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontSize: ResponsiveUtils.getResponsiveValue(
-                  context: context,
-                  mobile: 18,
-                  tablet: 20,
-                  desktop: 22,
-                ),
-                fontWeight: FontWeight.bold,
-                color: isSelected ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface,
-              ),
+                    fontSize: ResponsiveUtils.getResponsiveValue(
+                      context: context,
+                      mobile: 18,
+                      tablet: 20,
+                      desktop: 22,
+                    ),
+                    fontWeight: FontWeight.bold,
+                    color: isSelected
+                        ? theme.colorScheme.onPrimary
+                        : theme.colorScheme.onSurface,
+                  ),
             ),
           ),
         );
@@ -645,41 +676,41 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
         Text(
           'Other Amount',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontSize: ResponsiveUtils.getResponsiveValue(
-              context: context,
-              mobile: 16,
-              tablet: 18,
-              desktop: 20,
-            ),
-            fontWeight: FontWeight.w600,
-            color: theme.colorScheme.onSurface,
-          ),
+                fontSize: ResponsiveUtils.getResponsiveValue(
+                  context: context,
+                  mobile: 16,
+                  tablet: 18,
+                  desktop: 20,
+                ),
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface,
+              ),
         ),
         SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
         TextField(
           controller: _customAmountController,
           keyboardType: TextInputType.number,
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontSize: ResponsiveUtils.getResponsiveValue(
-              context: context,
-              mobile: 18,
-              tablet: 20,
-              desktop: 22,
-            ),
-            fontWeight: FontWeight.bold,
-          ),
+                fontSize: ResponsiveUtils.getResponsiveValue(
+                  context: context,
+                  mobile: 18,
+                  tablet: 20,
+                  desktop: 22,
+                ),
+                fontWeight: FontWeight.bold,
+              ),
           decoration: InputDecoration(
             prefixText: _selectedCurrency == 'USD' ? '\$ ' : '₦ ',
             prefixStyle: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontSize: ResponsiveUtils.getResponsiveValue(
-                context: context,
-                mobile: 18,
-                tablet: 20,
-                desktop: 22,
-              ),
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.primary,
-            ),
+                  fontSize: ResponsiveUtils.getResponsiveValue(
+                    context: context,
+                    mobile: 18,
+                    tablet: 20,
+                    desktop: 22,
+                  ),
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.primary,
+                ),
             hintText: 'Enter amount',
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
@@ -688,7 +719,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
+              borderSide:
+                  BorderSide(color: theme.colorScheme.primary, width: 2),
             ),
             filled: true,
             fillColor: theme.cardColor,
@@ -778,8 +810,10 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                 borderRadius: BorderRadius.circular(12),
               ),
               minimumSize: Size(
-                ResponsiveUtils.getResponsiveValue(context: context, mobile: 140, tablet: 160, desktop: 180),
-                ResponsiveUtils.getResponsiveValue(context: context, mobile: 44, tablet: 48, desktop: 52),
+                ResponsiveUtils.getResponsiveValue(
+                    context: context, mobile: 140, tablet: 160, desktop: 180),
+                ResponsiveUtils.getResponsiveValue(
+                    context: context, mobile: 44, tablet: 48, desktop: 52),
               ),
               elevation: isEnabled ? 8 : 0,
               shadowColor: theme.colorScheme.primary.withValues(alpha: 0.3),
@@ -1165,7 +1199,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
           builder: (ctx) {
             final dialogTheme = Theme.of(ctx);
             return AlertDialog(
-              backgroundColor: dialogTheme.dialogBackgroundColor,
+              backgroundColor: dialogTheme.dialogTheme.backgroundColor ??
+                  dialogTheme.colorScheme.surface,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -1205,7 +1240,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                     'Reference: ${paymentResult['transaction_id'] ?? donation.id}',
                     style: TextStyle(
                       fontSize: 12,
-                      color: dialogTheme.colorScheme.onSurface.withValues(alpha: 0.6),
+                      color: dialogTheme.colorScheme.onSurface
+                          .withValues(alpha: 0.6),
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -1239,7 +1275,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
           context: rootCtx,
           builder: (ctx) {
             final dialogTheme = Theme.of(ctx);
-            final donationLabel = _selectedProjectTitle ?? 'your selected support';
+            final donationLabel =
+                _selectedProjectTitle ?? 'your selected support';
             return AlertDialog(
               title: const Text('Checkout Started'),
               content: Text(
@@ -1280,7 +1317,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       } else {
         projectId = getSelectedProjectId();
       }
-      
+
       if (projectId == null || projectId == 'general_mission') return;
       _selectedProjectId = projectId;
       try {
@@ -1348,7 +1385,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                     Expanded(
                       child: Text(
                         'Ministry Projects',
-                        style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                        style: theme.textTheme.titleLarge
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                     ),
                     IconButton(
@@ -1366,14 +1404,20 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
                     }
-                    if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                    if (snapshot.hasError ||
+                        !snapshot.hasData ||
+                        snapshot.data!.isEmpty) {
                       return Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.folder_off, size: 48, color: theme.colorScheme.onSurface.withValues(alpha: 0.4)),
+                            Icon(Icons.folder_off,
+                                size: 48,
+                                color: theme.colorScheme.onSurface
+                                    .withValues(alpha: 0.4)),
                             const SizedBox(height: 12),
-                            Text('No projects available at this time', style: theme.textTheme.bodyLarge),
+                            Text('No projects available at this time',
+                                style: theme.textTheme.bodyLarge),
                           ],
                         ),
                       );
@@ -1386,10 +1430,12 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                       itemBuilder: (ctx4, i) {
                         final project = projects[i];
                         final id = project['id'] as String? ?? '';
-                        final title = (project['title'] as String?) ?? 'Unnamed Project';
+                        final title =
+                            (project['title'] as String?) ?? 'Unnamed Project';
                         // 'summary' is short caption, 'description' is full text — matching web modal
                         final summary = (project['summary'] as String?) ?? '';
-                        final description = (project['description'] as String?) ?? '';
+                        final description =
+                            (project['description'] as String?) ?? '';
                         final goal = project['goal'] as num?;
                         final raised = (project['raised'] as num?) ?? 0;
                         final status = (project['status'] as String?) ?? '';
@@ -1398,10 +1444,17 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                         // Badge color per status (mirrors web badges)
                         Color statusColor;
                         switch (status.toLowerCase()) {
-                          case 'active': statusColor = theme.colorScheme.tertiary; break;
-                          case 'planning': statusColor = theme.colorScheme.secondary; break;
-                          case 'completed': statusColor = theme.colorScheme.primary; break;
-                          default: statusColor = theme.colorScheme.outline;
+                          case 'active':
+                            statusColor = theme.colorScheme.tertiary;
+                            break;
+                          case 'planning':
+                            statusColor = theme.colorScheme.secondary;
+                            break;
+                          case 'completed':
+                            statusColor = theme.colorScheme.primary;
+                            break;
+                          default:
+                            statusColor = theme.colorScheme.outline;
                         }
 
                         return Card(
@@ -1419,7 +1472,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                                   fit: BoxFit.cover,
                                   errorBuilder: (_, __, ___) => Container(
                                     height: 80,
-                                    color: theme.colorScheme.surfaceContainerHighest,
+                                    color: theme
+                                        .colorScheme.surfaceContainerHighest,
                                   ),
                                 ),
                               Padding(
@@ -1433,19 +1487,29 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                                         Expanded(
                                           child: Text(title,
                                               style: theme.textTheme.titleMedium
-                                                  ?.copyWith(fontWeight: FontWeight.bold)),
+                                                  ?.copyWith(
+                                                      fontWeight:
+                                                          FontWeight.bold)),
                                         ),
                                         if (status.isNotEmpty)
                                           Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 8, vertical: 3),
                                             decoration: BoxDecoration(
-                                              color: statusColor.withValues(alpha: 0.12),
-                                              borderRadius: BorderRadius.circular(999),
-                                              border: Border.all(color: statusColor.withValues(alpha: 0.4)),
+                                              color: statusColor.withValues(
+                                                  alpha: 0.12),
+                                              borderRadius:
+                                                  BorderRadius.circular(999),
+                                              border: Border.all(
+                                                  color: statusColor.withValues(
+                                                      alpha: 0.4)),
                                             ),
                                             child: Text(
                                               status,
-                                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: statusColor),
+                                              style: TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: statusColor),
                                             ),
                                           ),
                                       ],
@@ -1453,14 +1517,18 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                                     // Summary (short caption)
                                     if (summary.isNotEmpty) ...[
                                       const SizedBox(height: 6),
-                                      Text(summary, style: theme.textTheme.bodyMedium,
-                                          maxLines: 2, overflow: TextOverflow.ellipsis),
+                                      Text(summary,
+                                          style: theme.textTheme.bodyMedium,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis),
                                     ],
                                     // Full description
                                     if (description.isNotEmpty) ...[
                                       const SizedBox(height: 4),
-                                      Text(description, style: theme.textTheme.bodySmall,
-                                          maxLines: 3, overflow: TextOverflow.ellipsis),
+                                      Text(description,
+                                          style: theme.textTheme.bodySmall,
+                                          maxLines: 3,
+                                          overflow: TextOverflow.ellipsis),
                                     ],
                                     // Goal / raised progress bar (NGN currency — same as web modal)
                                     if (goal != null && goal > 0) ...[
@@ -1468,9 +1536,13 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                                       ClipRRect(
                                         borderRadius: BorderRadius.circular(4),
                                         child: LinearProgressIndicator(
-                                          value: (raised / goal).clamp(0.0, 1.0).toDouble(),
+                                          value: (raised / goal)
+                                              .clamp(0.0, 1.0)
+                                              .toDouble(),
                                           minHeight: 6,
-                                          backgroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.15),
+                                          backgroundColor: theme
+                                              .colorScheme.onSurface
+                                              .withValues(alpha: 0.15),
                                           color: theme.colorScheme.secondary,
                                         ),
                                       ),
@@ -1493,13 +1565,20 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                                           });
                                           setSelectedProjectId(id);
                                         },
-                                        icon: const Icon(Icons.volunteer_activism),
-                                        label: const Text('Donate for this item'),
+                                        icon: const Icon(
+                                            Icons.volunteer_activism),
+                                        label:
+                                            const Text('Donate for this item'),
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor: theme.colorScheme.secondary,
-                                          foregroundColor: theme.colorScheme.onSecondary,
-                                          minimumSize: const Size(double.infinity, 44),
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                          backgroundColor:
+                                              theme.colorScheme.secondary,
+                                          foregroundColor:
+                                              theme.colorScheme.onSecondary,
+                                          minimumSize:
+                                              const Size(double.infinity, 44),
+                                          shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(10)),
                                         ),
                                       ),
                                     ),
@@ -1547,5 +1626,4 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
     }
     return value.toStringAsFixed(0);
   }
-
 }

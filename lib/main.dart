@@ -144,7 +144,6 @@ class MainNavigationScreen extends ConsumerWidget {
       error: (_, __) => false,
     );
     final translator = ref.watch(languageProvider);
-    final translate = (String key) => translator(key);
     debugPrint('isAuthenticated=$isAuthenticated');
 
     return Scaffold(
@@ -172,27 +171,27 @@ class MainNavigationScreen extends ConsumerWidget {
           BottomNavigationBarItem(
             icon: const Icon(Icons.home_outlined),
             activeIcon: const Icon(Icons.home),
-            label: translate('home'),
+            label: translator('home'),
           ),
           BottomNavigationBarItem(
             icon: const Icon(Icons.book_outlined),
             activeIcon: const Icon(Icons.book),
-            label: translate('study'),
+            label: translator('study'),
           ),
           BottomNavigationBarItem(
             icon: const Icon(FontAwesomeIcons.personPraying),
             activeIcon: const Icon(FontAwesomeIcons.personPraying),
-            label: translate('prayer'),
+            label: translator('prayer'),
           ),
           BottomNavigationBarItem(
             icon: const Icon(Icons.health_and_safety_outlined),
             activeIcon: const Icon(Icons.health_and_safety),
-            label: translate('health'),
+            label: translator('health'),
           ),
           BottomNavigationBarItem(
             icon: const Icon(Icons.more_horiz),
             activeIcon: const Icon(Icons.more_horiz),
-            label: translate('more'),
+            label: translator('more'),
           ),
         ],
       ),
@@ -252,8 +251,6 @@ class MainNavigationScreen extends ConsumerWidget {
   }
 
   void _showMoreBottomSheet(BuildContext context, WidgetRef ref) {
-    final translator = ref.read(languageProvider);
-    final translate = (String key) => translator(key);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -313,7 +310,7 @@ class MainNavigationScreen extends ConsumerWidget {
           Padding(
             padding: context.responsivePadding,
             child: Text(
-            translate('more_features'),
+              translate('more_features'),
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                     fontSize: context.responsiveFontSize(20),
@@ -359,15 +356,15 @@ class MainNavigationScreen extends ConsumerWidget {
           Expanded(
             child: Builder(builder: (context) {
               final items = <Map<String, dynamic>>[
-                  if (canAccessRoleGated) ...[
-                    {
-                      'icon': Icons.health_and_safety,
-                      'label': 'Health',
-                      'route': AppConstants.enhancedHealthRoute
-                    },
-                    {
-                      'icon': Icons.calendar_today,
-                      'label': 'Daily',
+                if (canAccessRoleGated) ...[
+                  {
+                    'icon': Icons.health_and_safety,
+                    'label': 'Health',
+                    'route': AppConstants.enhancedHealthRoute
+                  },
+                  {
+                    'icon': Icons.calendar_today,
+                    'label': 'Daily',
                     'route': AppConstants.dailyRoute
                   },
                   {
@@ -411,9 +408,9 @@ class MainNavigationScreen extends ConsumerWidget {
                     'route': AppConstants.bodTrusteesRoute,
                     'allowedRoles': ['admin', 'bod', 'trustee']
                   },
-                  ],
-                  {
-                    'icon': Icons.person,
+                ],
+                {
+                  'icon': Icons.person,
                   'label': 'Profile',
                   'route': AppConstants.profileRoute
                 },
@@ -428,7 +425,7 @@ class MainNavigationScreen extends ConsumerWidget {
                     'icon': Icons.verified_user,
                     'label': 'Claim Admin Role (Temp)',
                     'action': 'claimAdminRole',
-                },
+                  },
                 {
                   'icon': Icons.auto_stories,
                   'label': 'Kids Stories',
@@ -472,30 +469,73 @@ class MainNavigationScreen extends ConsumerWidget {
                 },
               ];
               return GridView.builder(
-                padding: context.responsivePadding,
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: crossAxisCount,
-                  mainAxisSpacing: context.responsivePadding.top,
-                  crossAxisSpacing: context.responsivePadding.left,
-                  childAspectRatio: ResponsiveUtils.getResponsiveValue(
-                    context: context,
-                    mobile: 1.1,
-                    tablet: 1.0,
-                    desktop: 0.95,
+                  padding: context.responsivePadding,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossAxisCount,
+                    mainAxisSpacing: context.responsivePadding.top,
+                    crossAxisSpacing: context.responsivePadding.left,
+                    childAspectRatio: ResponsiveUtils.getResponsiveValue(
+                      context: context,
+                      mobile: 1.1,
+                      tablet: 1.0,
+                      desktop: 0.95,
+                    ),
                   ),
-                ),
-                itemCount: items.length,
-                itemBuilder: (context, index) {
-                  final item = items[index];
-                if (item['guestOnly'] == true) {
-                  return Consumer(builder: (context, ref, _) {
-                    final authState = ref.watch(authStateProvider);
-                    final isAuthenticated = authState.maybeWhen(
-                      data: (user) => user != null,
-                      orElse: () => false,
-                    );
-                    if (isAuthenticated) {
-                      return const SizedBox.shrink();
+                  itemCount: items.length,
+                  itemBuilder: (context, index) {
+                    final item = items[index];
+                    if (item['guestOnly'] == true) {
+                      return Consumer(builder: (context, ref, _) {
+                        final authState = ref.watch(authStateProvider);
+                        final isAuthenticated = authState.maybeWhen(
+                          data: (user) => user != null,
+                          orElse: () => false,
+                        );
+                        if (isAuthenticated) {
+                          return const SizedBox.shrink();
+                        }
+                        return _buildMoreItem(
+                          context,
+                          item['icon'] as IconData,
+                          item['label'] as String,
+                          item['route'] as String?,
+                        );
+                      });
+                    }
+                    if (item['roleOnly'] == true) {
+                      return RoleVisibility(
+                        allowedRoles: const ['admin'],
+                        child: _buildMoreItem(
+                          context,
+                          item['icon'] as IconData,
+                          item['label'] as String,
+                          item['route'] as String?,
+                          roleOnly: true,
+                        ),
+                      );
+                    }
+                    if (item['allowedRoles'] is List) {
+                      final allowedRoles = (item['allowedRoles'] as List)
+                          .map((e) => e.toString())
+                          .toList();
+                      return RoleVisibility(
+                        allowedRoles: allowedRoles,
+                        child: _buildMoreItem(
+                          context,
+                          item['icon'] as IconData,
+                          item['label'] as String,
+                          item['route'] as String?,
+                        ),
+                      );
+                    }
+                    if (item['action'] == 'claimAdminRole') {
+                      return _buildMoreItem(
+                        context,
+                        item['icon'] as IconData,
+                        item['label'] as String,
+                        null,
+                        onTap: () => _claimAdminRole(context, ref),
+                      );
                     }
                     return _buildMoreItem(
                       context,
@@ -504,49 +544,6 @@ class MainNavigationScreen extends ConsumerWidget {
                       item['route'] as String?,
                     );
                   });
-                }
-                if (item['roleOnly'] == true) {
-                  return RoleVisibility(
-                    allowedRoles: const ['admin'],
-                    child: _buildMoreItem(
-                      context,
-                      item['icon'] as IconData,
-                      item['label'] as String,
-                      item['route'] as String?,
-                      roleOnly: true,
-                    ),
-                  );
-                }
-                if (item['allowedRoles'] is List) {
-                  final allowedRoles = (item['allowedRoles'] as List)
-                      .map((e) => e.toString())
-                      .toList();
-                  return RoleVisibility(
-                    allowedRoles: allowedRoles,
-                    child: _buildMoreItem(
-                      context,
-                      item['icon'] as IconData,
-                      item['label'] as String,
-                      item['route'] as String?,
-                    ),
-                  );
-                }
-                if (item['action'] == 'claimAdminRole') {
-                  return _buildMoreItem(
-                    context,
-                    item['icon'] as IconData,
-                    item['label'] as String,
-                    null,
-                    onTap: () => _claimAdminRole(context, ref),
-                  );
-                }
-                return _buildMoreItem(
-                  context,
-                  item['icon'] as IconData,
-                  item['label'] as String,
-                  item['route'] as String?,
-                );
-              });
             }),
           ),
         ],
@@ -654,10 +651,12 @@ class MainNavigationScreen extends ConsumerWidget {
   Future<void> _claimAdminRole(BuildContext context, WidgetRef ref) async {
     final translate = ref.read(languageProvider);
     try {
-      final ok = await ref.read(firebaseDatabaseServiceProvider).claimAdminRole();
+      final ok =
+          await ref.read(firebaseDatabaseServiceProvider).claimAdminRole();
       if (!context.mounted) return;
       if (ok) {
         await FirebaseAuth.instance.currentUser?.getIdToken(true);
+        if (!context.mounted) return;
         RoleAccessService.instance.clearCache();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
