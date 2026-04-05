@@ -39,38 +39,52 @@ class CustomDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: titleWidget ?? (title != null ? Row(
-        children: [
-          if (icon != null) ...[
-            icon!,
-            const SizedBox(width: 12),
-          ],
-          Expanded(
-            child: Text(
-              title!,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
+    final theme = Theme.of(context);
+    final maxWidth = MediaQuery.of(context).size.width < 720 ? 560.0 : 680.0;
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: maxWidth,
+          minWidth: MediaQuery.of(context).size.width < 480 ? 280 : 340,
+        ),
+        child: AlertDialog(
+          title: titleWidget ?? (title != null ? Row(
+            children: [
+              if (icon != null) ...[
+                icon!,
+                const SizedBox(width: 12),
+              ],
+              Expanded(
+                child: Text(
+                  title!,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
-            ),
+            ],
+          ) : null),
+          content: contentWidget ?? (content != null ? Text(
+            content!,
+            style: theme.textTheme.bodyMedium,
+          ) : null),
+          actions: actions,
+          contentPadding: contentPadding ?? const EdgeInsets.fromLTRB(28, 20, 28, 24),
+          titlePadding: titlePadding ?? const EdgeInsets.fromLTRB(28, 28, 28, 0),
+          actionsPadding: actionsPadding ?? const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          actionsAlignment: actionsAlignment ?? MainAxisAlignment.end,
+          backgroundColor: backgroundColor,
+          elevation: elevation,
+          shape: shape ?? RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
           ),
-        ],
-      ) : null),
-      content: contentWidget ?? (content != null ? Text(
-        content!,
-        style: Theme.of(context).textTheme.bodyMedium,
-      ) : null),
-      actions: actions,
-      contentPadding: contentPadding ?? const EdgeInsets.fromLTRB(24, 20, 24, 24),
-      titlePadding: titlePadding ?? const EdgeInsets.fromLTRB(24, 24, 24, 0),
-      actionsPadding: actionsPadding ?? const EdgeInsets.fromLTRB(24, 0, 24, 24),
-      actionsAlignment: actionsAlignment ?? MainAxisAlignment.end,
-      backgroundColor: backgroundColor,
-      elevation: elevation,
-      shape: shape ?? RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+          scrollable: scrollable,
+          insetPadding: theme.dialogTheme.insetPadding,
+          surfaceTintColor: Colors.transparent,
+          actionsOverflowButtonSpacing: 12,
+        ),
       ),
-      scrollable: scrollable,
     );
   }
 
@@ -95,6 +109,7 @@ class CustomDialog extends StatelessWidget {
     return showDialog<T>(
       context: context,
       barrierDismissible: barrierDismissible,
+      useSafeArea: true,
       builder: (context) => CustomDialog(
         title: title,
         titleWidget: titleWidget,
@@ -449,36 +464,44 @@ class BottomSheetDialog {
       isDismissible: isDismissible,
       enableDrag: enableDrag,
       backgroundColor: backgroundColor ?? Theme.of(context).colorScheme.surface,
+      useSafeArea: true,
+      isScrollControlled: true,
       shape: shape ?? const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      constraints: height != null ? BoxConstraints(maxHeight: height) : null,
-      builder: (context) => Container(
-        padding: padding ?? const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (enableDrag)
-              Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(2),
+      constraints: BoxConstraints(
+        maxHeight: height ?? MediaQuery.of(context).size.height * 0.88,
+        maxWidth: 860,
+      ),
+      builder: (context) => SafeArea(
+        top: false,
+        child: Container(
+          padding: padding ?? const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (enableDrag)
+                Container(
+                  width: 44,
+                  height: 5,
+                  margin: const EdgeInsets.only(bottom: 18),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
                 ),
-              ),
-            if (title != null) ...[
-              Text(
-                title,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
+              if (title != null) ...[
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 18),
+              ],
+              Flexible(child: child),
             ],
-            Flexible(child: child),
-          ],
+          ),
         ),
       ),
     );

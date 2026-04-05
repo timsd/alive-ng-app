@@ -673,13 +673,13 @@
       var firebaseAvailable = (typeof firebase !== 'undefined' && firebase && typeof firebase.initializeApp === 'function');
       if (firebaseAvailable) {
         const firebaseConfig = {
-          apiKey: "{{FIREBASE_API_KEY}}",
-          authDomain: "{{FIREBASE_AUTH_DOMAIN}}",
-          projectId: "{{FIREBASE_PROJECT_ID}}",
-          storageBucket: "{{FIREBASE_STORAGE_BUCKET}}",
-          messagingSenderId: "{{FIREBASE_MESSAGING_SENDER_ID}}",
-          appId: "{{FIREBASE_APP_ID}}",
-          measurementId: "{{FIREBASE_MEASUREMENT_ID}}"
+          apiKey: "AIzaSyDmpl9Idp9Q0ult4BfWPg5J7A1URQOpDoU",
+          authDomain: "alive-ng-flutter-app.firebaseapp.com",
+          projectId: "alive-ng-flutter-app",
+          storageBucket: "alive-ng-flutter-app.firebasestorage.app",
+          messagingSenderId: "234909240985",
+          appId: "1:234909240985:web:9d703098e9fcce3e8e3208",
+          measurementId: "G-CC6JE7224Q"
         };
         firebase.initializeApp(firebaseConfig);
         const messaging = (function() {
@@ -689,7 +689,7 @@
             if (host && host !== 'localhost' && host !== '127.0.0.1') {
               const m = firebase.messaging();
               m.getToken({
-                vapidKey: '{{WEB_PUSH_CERT_KEY}}'
+                vapidKey: 'BMFvrKu5q_mKn80IaIsX3hREab1nodMrdKDlMGOL_lVCIuTwxq4mTZiFG1SYUcCy6G-TrjK9X4H08Jll1PQjkYg'
               }).then(function (currentToken) {
                 if (currentToken) {
                   console.log('Registration token available.');
@@ -771,7 +771,7 @@
           grecaptcha.enterprise.ready(function () {
             try {
               grecaptcha.enterprise.execute('6LcKstkrAAAAAMWfR5Ki5eBh1TdCLQD-e7ofMi4S', { action: 'open_web_app' })
-                .then(function (token) { try { sessionStorage.setItem('recaptcha_token', token); } catch (_) { } })
+                .then(function () { })
                 .catch(function () { });
             } catch (_) { }
           });
@@ -1000,8 +1000,13 @@
     function showProjectDetail(p) {
       const el = document.getElementById('project-detail');
       const currencyCode = p.currency || 'NGN';
-      const goal = formatCurrency(p.goal, currencyCode);
-      const raised = formatCurrency(p.raised || 0, currencyCode);
+      const goalValue = Number(p.goal || 0);
+      const raisedValue = Number(p.raised || 0);
+      const remainingValue = Math.max(goalValue - raisedValue, 0);
+      const percentValue = goalValue > 0 ? Math.min((raisedValue / goalValue) * 100, 100) : 0;
+      const goal = formatCurrency(goalValue, currencyCode);
+      const raised = formatCurrency(raisedValue, currencyCode);
+      const remaining = formatCurrency(remainingValue, currencyCode);
       const statusBadge = p.status ? `<span style="padding:4px 8px;border-radius:999px;background:#EDF2F7;color:#2D3748;font-size:12px;">${escapeHtml(p.status)}</span>` : '';
       const image = p.image_url ? `<img src="${escapeHtml(p.image_url)}" alt="${escapeHtml(p.title)}" style="width:100%;height:220px;object-fit:cover;border-radius:8px;"/>`
         : `<img src="https://images.unsplash.com/photo-1593914370442-49d414beca24?q=80&w=1031&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="Project image" style="width:100%;height:220px;object-fit:cover;border-radius:8px;"/>`;
@@ -1013,8 +1018,17 @@
           ${statusBadge}
         </div>
         <div style="margin-top:8px;color:#4A5568">${escapeHtml(p.summary || '')}</div>
-        <div style="margin-top:12px;color:#2D3748;font-weight:600">Goal: ${goal}</div>
-        <div style="margin-top:4px;color:#2D3748;">Raised: ${raised}</div>
+        <div style="margin-top:14px;padding:14px;border-radius:14px;background:#F8FAFC;border:1px solid #E2E8F0;">
+          <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+            <div style="color:#2D3748;font-weight:600">Goal: ${goal}</div>
+            <div style="color:#2D3748;font-weight:600">Raised: ${raised}</div>
+            <div style="color:#475569;font-weight:600">Remaining: ${remaining}</div>
+          </div>
+          <div style="margin-top:10px;height:8px;border-radius:999px;background:#E2E8F0;overflow:hidden;">
+            <div style="width:${percentValue}%;height:100%;background:linear-gradient(90deg,#D4AF37,#F59E0B);border-radius:999px;"></div>
+          </div>
+          <div style="margin-top:8px;font-size:12px;color:#64748B;">${percentValue.toFixed(0)}% of target reached. Figures refresh automatically when new donations are confirmed.</div>
+        </div>
         ${p.description ? `<div style="margin-top:12px;color:#4A5568">${escapeHtml(p.description)}</div>` : ''}
         <div class="project-actions">
           <button class="btn primary" id="donate-${p.id}">Donate for this item</button>

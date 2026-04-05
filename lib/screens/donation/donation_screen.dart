@@ -1128,7 +1128,9 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       final donation = await donationService.createDonation(
         type: type,
         amount: totalAmount,
+        currency: currency,
         paymentMethod: PaymentMethod.paystack,
+        materialTitle: _selectedProjectTitle,
         notes: isMonthly ? 'Monthly giving' : 'One-time donation',
         metadata: {
           'recurring': isMonthly,
@@ -1153,13 +1155,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
         isRecurringMonthly: isMonthly,
       );
 
+      final checkoutInitialized = paymentResult['initialized'] == true;
       if (paymentResult['success'] == true) {
-        // Update Project Raised in Firestore
-        if (_selectedProjectId != null) {
-          final amountNgn = currency == 'NGN' ? _selectedAmount : _selectedAmount * _exchangeRate;
-          await _updateProjectRaised(_selectedProjectId!, amountNgn);
-        }
-
         // Show success
         if (!rootCtx.mounted) return;
         showDialog(
@@ -1194,7 +1191,9 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Your donation was successful.',
+                    _selectedProjectTitle != null
+                        ? 'Your donation for $_selectedProjectTitle was successful.'
+                        : 'Your donation was successful.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: dialogTheme.colorScheme.onSurface,
@@ -1229,6 +1228,28 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                     ),
                     child: const Text('Close'),
                   ),
+                ),
+              ],
+            );
+          },
+        );
+      } else if (checkoutInitialized) {
+        if (!rootCtx.mounted) return;
+        showDialog(
+          context: rootCtx,
+          builder: (ctx) {
+            final dialogTheme = Theme.of(ctx);
+            final donationLabel = _selectedProjectTitle ?? 'your selected support';
+            return AlertDialog(
+              title: const Text('Checkout Started'),
+              content: Text(
+                'Your donation for $donationLabel has been initialized. Complete the payment to receive your confirmation email and recorded receipt.',
+                style: dialogTheme.textTheme.bodyMedium,
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('OK'),
                 ),
               ],
             );
@@ -1527,17 +1548,4 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
     return value.toStringAsFixed(0);
   }
 
-  Future<void> _updateProjectRaised(String projectId, double amountNgn) async {
-    try {
-      final projectRef = FirebaseFirestore.instance.collection('projects').doc(projectId);
-      await FirebaseFirestore.instance.runTransaction((transaction) async {
-        final snapshot = await transaction.get(projectRef);
-        if (!snapshot.exists) return;
-        final currentRaised = (snapshot.data()?['raised'] as num?)?.toDouble() ?? 0;
-        transaction.update(projectRef, {'raised': currentRaised + amountNgn});
-      });
-    } catch (e) {
-      debugPrint('Error updating project raised: $e');
-    }
-  }
 }

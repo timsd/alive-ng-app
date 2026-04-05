@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alive_flutter_app/constants/app_constants.dart';
@@ -35,23 +36,15 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
         showDonationButton: true,
       ),
       drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary),
-              child: Align(
-                alignment: Alignment.bottomLeft,
-                child: Text(
-                  'More',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: Theme.of(context).colorScheme.onPrimary,
-                  ),
-                ),
-              ),
-            ),
-            ..._buildMoreItems(context),
-          ],
+        child: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+            children: [
+              _buildMoreHeader(context),
+              const SizedBox(height: 16),
+              ..._buildMoreItems(context),
+            ],
+          ),
         ),
       ),
       body: widget.child,
@@ -190,26 +183,128 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
 
     return items
         .map(
-          (item) => ListTile(
-            leading: Icon(item.icon),
-            title: Text(item.label),
-            onTap: () {
-              Navigator.of(context).pop();
-              if (item.route != null) {
-                context.go(item.route!);
-                return;
-              }
-              if (item.action != null) {
-                item.action!.call();
-                return;
-              }
-              if (item.label == 'Sign Out') {
-                _handleSignOut(context);
-              }
-            },
+          (item) => Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Material(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(18),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(18),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  if (item.route != null) {
+                    context.go(item.route!);
+                    return;
+                  }
+                  if (item.action != null) {
+                    item.action!.call();
+                    return;
+                  }
+                  if (item.label == 'Sign Out') {
+                    _handleSignOut(context);
+                  }
+                },
+                child: Ink(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .outlineVariant
+                          .withValues(alpha: 0.9),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .shadow
+                            .withValues(alpha: 0.06),
+                        blurRadius: 18,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: ListTile(
+                    leading: Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .primaryContainer
+                            .withValues(alpha: 0.8),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        item.icon,
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                      ),
+                    ),
+                    title: Text(
+                      item.label,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                    trailing: Icon(
+                      item.label == 'Sign Out' || item.label == 'Delete Account'
+                          ? Icons.arrow_forward
+                          : Icons.chevron_right,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
         )
         .toList();
+  }
+
+  Widget _buildMoreHeader(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            colorScheme.primary,
+            colorScheme.secondary,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.shadow.withValues(alpha: 0.14),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'More',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  color: colorScheme.onPrimary,
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Quick access to your account, ministry tools, support, and app information.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onPrimary.withValues(alpha: 0.84),
+                  height: 1.4,
+                ),
+          ),
+        ],
+      ),
+    );
   }
 
   int _getCurrentIndex(String location) {
@@ -300,10 +395,11 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
       final ok = await ref.read(firebaseDatabaseServiceProvider).claimAdminRole();
       if (!context.mounted) return;
       if (ok) {
+        await FirebaseAuth.instance.currentUser?.getIdToken(true);
         RoleAccessService.instance.clearCache();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Admin role claim successful. Please sign out and sign in again.'),
+            content: Text('Admin role claim successful. Your access is refreshing now.'),
             backgroundColor: Theme.of(context).colorScheme.tertiary,
           ),
         );

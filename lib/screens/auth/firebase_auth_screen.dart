@@ -365,7 +365,7 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
 
         // Welcome Message
         Text(
-          translate('welcome 🤗'),
+          translate('welcome'),
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                 fontSize: ResponsiveUtils.getResponsiveValue(
                   context: context,
@@ -465,7 +465,7 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.secondary,
-              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+              foregroundColor: Theme.of(context).colorScheme.onSecondary,
               padding: EdgeInsets.symmetric(
                 vertical: ResponsiveUtils.getResponsiveValue(
                   context: context,
@@ -918,10 +918,16 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
   }
 
   Future<void> _handleDirectSignIn() async {
+    if (_isSignUp) {
+      setState(() {
+        _isSignUp = false;
+      });
+      return;
+    }
+
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
-      _isSignUp = false;
       _isLoading = true;
     });
 
@@ -947,9 +953,12 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
   }
 
   Future<void> _handleDirectSignUp() async {
-    setState(() {
-      _isSignUp = true;
-    });
+    if (!_isSignUp) {
+      setState(() {
+        _isSignUp = true;
+      });
+      return;
+    }
 
     if (!_formKey.currentState!.validate()) return;
 

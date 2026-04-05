@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'config/firebase_config.dart';
 import 'config/development_config.dart';
 import 'services/kids_content_service.dart';
@@ -656,18 +657,19 @@ class MainNavigationScreen extends ConsumerWidget {
       final ok = await ref.read(firebaseDatabaseServiceProvider).claimAdminRole();
       if (!context.mounted) return;
       if (ok) {
+        await FirebaseAuth.instance.currentUser?.getIdToken(true);
         RoleAccessService.instance.clearCache();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(translate('admin_role_claimed')),
-            backgroundColor: Colors.green,
+            backgroundColor: Theme.of(context).colorScheme.tertiary,
           ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(translate('claim_failed')),
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -676,7 +678,7 @@ class MainNavigationScreen extends ConsumerWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(translate('could_not_claim_admin')),
-          backgroundColor: Colors.red,
+          backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
     }

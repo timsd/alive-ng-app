@@ -56,7 +56,13 @@ class CustomCard extends StatelessWidget {
       case CardVariant.elevated:
         cardColor = color ?? colorScheme.surface;
         cardElevation = elevation ?? 2;
-        cardBorder = border;
+        cardBorder = border ??
+            Border.all(
+              color: colorScheme.outline.withValues(
+                alpha: theme.brightness == Brightness.dark ? 0.55 : 0.75,
+              ),
+              width: 1,
+            );
         break;
       case CardVariant.outlined:
         cardColor = color ?? colorScheme.surface;
@@ -83,9 +89,13 @@ class CustomCard extends StatelessWidget {
         border: cardBorder,
         boxShadow: cardElevation > 0 ? [
           BoxShadow(
-            color: shadowColor ?? Colors.black.withValues(alpha: 0.1),
-            blurRadius: cardElevation * 2,
-            offset: Offset(0, cardElevation),
+            color: shadowColor ??
+                (theme.brightness == Brightness.dark
+                    ? Colors.black.withValues(alpha: 0.22)
+                    : colorScheme.shadow.withValues(alpha: 0.08)),
+            blurRadius: theme.brightness == Brightness.dark ? 20 : 12,
+            spreadRadius: theme.brightness == Brightness.dark ? -6 : -4,
+            offset: Offset(0, cardElevation + 2),
           ),
         ] : null,
       ),

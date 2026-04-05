@@ -47,7 +47,8 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
   List<String> _versionsForLanguage = [];
 
   final OfflineBibleService _offlineBible = OfflineBibleService();
-  String _selectedLanguage = 'Yoruba';
+  String _selectedLanguage = 'English';
+  bool _didApplyInitialReference = false;
   final Map<String, String> _languageCodes = {
     'English': 'en',
     'Yoruba': 'yo',
@@ -98,19 +99,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
     setState(() => _isLoading = true);
     try {
       final languageCode = _languageCodes[_selectedLanguage] ?? 'en';
-      // Mapped versions based on requirements
-      if (_selectedLanguage == 'English') {
-        _versionsForLanguage = ['ASV', 'KJV', 'NASB', 'NIV', 'NKJV', 'NLT'];
-      } else if (_selectedLanguage == 'Hausa') {
-        _versionsForLanguage = ['HAUSA']; // Verify with actual assets later
-      } else if (_selectedLanguage == 'Igbo') {
-        _versionsForLanguage = ['IGBO'];
-      } else if (_selectedLanguage == 'Yoruba') {
-        _versionsForLanguage = ['BM'];
-      } else {
-        final versions = await _offlineBible.getAvailableVersions(language: languageCode);
-        _versionsForLanguage = versions.map((v) => v.code).toList();
-      }
+      _versionsForLanguage = await _resolveVersionsForLanguage(languageCode);
 
       if (_versionsForLanguage.isNotEmpty && !_versionsForLanguage.contains(_selectedVersion)) {
         _selectedVersion = _versionsForLanguage.first;
@@ -121,15 +110,26 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
         // Reorder books according to BibleData.allBooks
         final orderMap = {for (var i = 0; i < BibleData.allBooks.length; i++) BibleData.allBooks[i]: i};
         books.sort((a, b) {
-          final orderA = orderMap[a.name] ?? 999;
-          final orderB = orderMap[b.name] ?? 999;
-          return orderA.compareTo(orderB);
+          final orderA = orderMap[a.name];
+          final orderB = orderMap[b.name];
+          if (orderA != null && orderB != null) {
+            return orderA.compareTo(orderB);
+          }
+          return a.order.compareTo(b.order);
         });
         _books = books;
         _currentBookIndex = 0;
         _selectedBook = _books[_currentBookIndex].name;
         _selectedChapter = 1;
-        await _loadChapter();
+        if (widget.initialReference != null && !_didApplyInitialReference) {
+          final applied = await _openReference(widget.initialReference!);
+          _didApplyInitialReference = true;
+          if (!applied) {
+            await _loadChapter();
+          }
+        } else {
+          await _loadChapter();
+        }
       } else {
         // Fallback: keep empty state when no local books available
         _selectedBook = '';
@@ -137,6 +137,61 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
     } finally {
       setState(() => _isLoading = false);
     }
+  }
+
+  Future<List<String>> _resolveVersionsForLanguage(String languageCode) async {
+    if (languageCode == 'en') {
+      return ['ASV', 'KJV', 'NASB', 'NIV', 'NKJV', 'NLT'];
+    }
+    if (languageCode == 'ha') {
+      return ['HAU'];
+    }
+    if (languageCode == 'ig') {
+      return ['IGBOB'];
+    }
+    if (languageCode == 'yo') {
+      return ['BM'];
+    }
+
+    final versions = await _offlineBible.getAvailableVersions(language: languageCode);
+    return versions.map((v) => v.code).toList();
+  }
+
+  Future<bool> _openReference(String reference) async {
+    final parsed = BibleData.parseReference(reference);
+    if (parsed['isValid'] != true) {
+      await _loadVerse(reference);
+      return false;
+    }
+
+    final parsedBook = parsed['book'] as String;
+    final parsedChapter = parsed['chapter'] as int;
+    final hasExactBook = _books.any((book) => book.name == parsedBook);
+
+    if (!hasExactBook && _selectedLanguage != 'English') {
+      setState(() {
+        _selectedLanguage = 'English';
+      });
+      await _loadBooksAndInit();
+      return true;
+    }
+
+    final targetIndex =
+        _books.indexWhere((book) => book.name.toLowerCase() == parsedBook.toLowerCase());
+    if (targetIndex == -1) {
+      await _loadVerse(reference);
+      return false;
+    }
+
+    setState(() {
+      _currentBookIndex = targetIndex;
+      _selectedBook = _books[targetIndex].name;
+      _selectedChapter = parsedChapter;
+    });
+
+    await _loadChapter();
+    await _loadVerse(reference);
+    return true;
   }
 
   Future<void> _loadChapter() async {
@@ -1335,16 +1390,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                         onTap: () {
                           _tabController.animateTo(0);
                           _searchController.text = verse.reference;
-                          final parsed =
-                              BibleData.parseReference(verse.reference);
-                          if (parsed['isValid']) {
-                            setState(() {
-                              _selectedBook = parsed['book'];
-                              _selectedChapter = parsed['chapter'];
-                            });
-                            _loadChapter();
-                            _loadVerse(verse.reference);
-                          }
+                          _openReference(verse.reference);
                         },
                       ),
                     );

@@ -71,6 +71,7 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
     showDialog(
       context: context,
       builder: (BuildContext context) {
+        final theme = Theme.of(context);
         return AlertDialog(
           title: Text(translate('language')),
           content: Column(
@@ -81,8 +82,14 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
                 title: Text(language.name),
                 subtitle: Text(language.code.toUpperCase()),
                 trailing: isSelected
-                    ? const Icon(Icons.check_circle, color: Colors.green)
-                    : const Icon(Icons.circle_outlined, color: Colors.grey),
+                    ? Icon(
+                        Icons.check_circle,
+                        color: theme.colorScheme.primary,
+                      )
+                    : Icon(
+                        Icons.circle_outlined,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                 selected: isSelected,
                 onTap: () {
                   ref.read(localeProvider.notifier).setLocale(language.code);

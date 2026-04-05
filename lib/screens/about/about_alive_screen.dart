@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import '../../providers/language_provider.dart';
+import '../../utils/app_theme.dart';
 import '../../utils/responsive_utils.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../widgets/custom_card.dart';
 
 class AboutAliveScreen extends ConsumerWidget {
   const AboutAliveScreen({super.key});
@@ -12,279 +15,282 @@ class AboutAliveScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(translationProvider);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final horizontalPadding = ResponsiveUtils.getResponsiveValue<double>(
+      context: context,
+      mobile: 16,
+      tablet: 24,
+      desktop: 32,
+    );
+
     return Scaffold(
       appBar: CustomAppBar(
-        title: t('About ALIVE'),
+        title: t('about_alive'),
         showBackButton: true,
       ),
-      body: SingleChildScrollView(
-        padding: context.responsivePadding,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ALIVE Logo and Title
-            Center(
-              child: Column(
-                children: [
-                  Container(
-                    width: ResponsiveUtils.getResponsiveValue(
-                      context: context,
-                      mobile: 120.0,
-                      tablet: 140.0,
-                      desktop: 160.0,
-                    ),
-                    height: ResponsiveUtils.getResponsiveValue(
-                      context: context,
-                      mobile: 120.0,
-                      tablet: 140.0,
-                      desktop: 160.0,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface,
-                      borderRadius: context.responsiveBorderRadius,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Theme.of(context).shadowColor.withValues(alpha: 0.3),
-                          spreadRadius: 2,
-                          blurRadius: 5,
-                          offset: const Offset(0, 3),
-                        ),
+      body: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              colorScheme.surface,
+              theme.scaffoldBackgroundColor,
+            ],
+          ),
+        ),
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1080),
+            child: ListView(
+              padding: EdgeInsets.fromLTRB(
+                horizontalPadding,
+                20,
+                horizontalPadding,
+                32,
+              ),
+              children: [
+                _AliveHeroCard(
+                  title: 'ALIVE Nigeria',
+                  subtitle: t('app_tagline'),
+                  description:
+                      'A.L.I.V.E is an acronym for Africans Living In View of Eternity. ALIVE-Nigeria is the Nigerian chapter of this movement, committed to a Bible-based, youth-led revival across Africa.',
+                ),
+                const SizedBox(height: 20),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final twoColumns = constraints.maxWidth >= 780;
+                    final content = [
+                      const _StatementCard(
+                        title: 'Mission Statement',
+                        icon: Icons.flag_rounded,
+                        description:
+                            'Our mission is to prepare Africa for the imminent return of Jesus Christ. Through biblical spiritual training and evangelistic efforts, we challenge African Seventh-day Adventist young adults to live with authentic biblical excellence, develop a missionary volunteer spirit, support missionary movements across Africa, and make meaningful impact in neglected areas.',
+                      ),
+                      const _StatementCard(
+                        title: 'Vision Statement',
+                        icon: Icons.visibility_rounded,
+                        description:
+                            'At ALIVE, our vision is to ignite and sustain a Bible-based, youth-led revival movement across the continent of Africa, empowering every Seventh-day Adventist young professional to become a dedicated missionary with a deep personal relationship with Jesus Christ and commitment to His Great Commission.',
+                      ),
+                    ];
+
+                    if (!twoColumns) {
+                      return Column(
+                        children: content
+                            .expand((child) => [child, const SizedBox(height: 16)])
+                            .take(content.length * 2 - 1)
+                            .toList(),
+                      );
+                    }
+
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: content[0]),
+                        const SizedBox(width: 16),
+                        Expanded(child: content[1]),
                       ],
-                    ),
-                    child: Padding(
-                      padding: context.responsivePadding,
-                      child: SvgPicture.asset(
-                        'assets/images/alive_logo.svg',
-                        fit: BoxFit.contain,
-                        colorFilter: ColorFilter.mode(
-                          Theme.of(context).colorScheme.primary,
-                          BlendMode.srcIn,
+                    );
+                  },
+                ),
+                const SizedBox(height: 20),
+                CustomCard(
+                  borderRadius: BorderRadius.circular(22),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'About ALIVE',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
-                    ),
-                  ),
-                  SizedBox(height: context.responsivePadding.top),
-                  Text(
-                    t('ALIVE NG'),
-                    style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                  SizedBox(height: context.responsivePadding.top / 2),
-                  Text(
-                    t('app_tagline'),
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                      fontStyle: FontStyle.italic,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-
-            SizedBox(height: context.responsivePadding.top * 1.5),
-
-            // Mission Section
-            _buildSection(
-              context,
-              'Our Mission',
-              'To reach every soul with the Gospel of Jesus Christ and train them to become effective disciples.',
-            ),
-
-            // Vision Section
-            _buildSection(
-              context,
-              'Our Vision',
-              'A Nigeria where every person has heard the Gospel and has the opportunity to accept Jesus Christ as their personal Savior.',
-            ),
-
-            // Why Join Us Section
-            _buildSection(
-              context,
-              'Why Join Us',
-              'Join a community of believers committed to spiritual growth, evangelism, and making a lasting impact for Christ in Nigeria and beyond.',
-            ),
-
-            // Leadership Section
-            Text(
-              'Leadership Team',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
-            SizedBox(height: context.responsivePadding.top),
-
-            _buildLeaderCard(
-              context,
-              'Nwoko Patience Mfon',
-              'Executive President',
-              Icons.person,
-            ),
-
-            _buildLeaderCard(
-              context,
-              'Caleb Peters',
-              'Secretary/Communication Director',
-              Icons.chat,
-            ),
-
-            _buildLeaderCard(
-              context,
-              'Godstime Esuku',
-              'Speaker / Director: ALIVE Mission Training Center (AMTC)',
-              Icons.school,
-            ),
-
-            _buildLeaderCard(
-              context,
-              'Timothy Olodude',
-              'Treasure / Director of Logistics',
-              Icons.account_balance_wallet,
-            ),
-
-            _buildLeaderCard(
-              context,
-              'Emenike Ekechi',
-              'Director: Evangelism/Programming/Health',
-              Icons.health_and_safety,
-            ),
-
-            SizedBox(height: context.responsivePadding.top * 1.5),
-
-            // Contact Section
-            Text(
-              'Contact Us',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
-            SizedBox(height: context.responsivePadding.top),
-
-            Card(
-              elevation: 4,
-              margin: context.responsiveMargin,
-              child: Padding(
-                padding: context.responsivePadding,
-                child: Column(
-                  children: [
-                    InkWell(
-                      onTap: () => _launchEmail('alivenigeria2011@gmail.com'),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.email,
-                            color: Theme.of(context).colorScheme.primary,
-                            size: context.responsiveIconSize(24),
-                          ),
-                          SizedBox(width: context.responsivePadding.left / 2),
-                          Expanded(
-                            child: Text(
-                              'alivenigeria2011@gmail.com',
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Theme.of(context).colorScheme.primary,
-                                decoration: TextDecoration.underline,
-                              ),
-                            ),
-                          ),
-                        ],
+                      const SizedBox(height: 12),
+                      Text(
+                        'We are men, women, graduates, working professionals, and student volunteers whose hearts are burdened for spreading God\'s Word and works. ALIVE Nigeria exists to challenge and equip believers with tools for individual missionary work, spiritual growth, mentorship, and service.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          height: 1.7,
+                        ),
                       ),
-                    ),
-                    SizedBox(height: context.responsivePadding.top / 2),
-                    InkWell(
-                      onTap: () => _launchPhone('+2347068548865'),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.phone,
-                            color: Theme.of(context).colorScheme.primary,
-                            size: context.responsiveIconSize(24),
-                          ),
-                          SizedBox(width: context.responsivePadding.left / 2),
-                          Text(
-                            '+2347068548865',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Theme.of(context).colorScheme.primary,
-                              decoration: TextDecoration.underline,
-                            ),
-                          ),
-                        ],
+                      const SizedBox(height: 14),
+                      _QuoteBlock(
+                        text:
+                            'The Lord has appointed the youth to be His helping hand. {ChS 30.1}',
                       ),
+                      const SizedBox(height: 12),
+                      _QuoteBlock(
+                        text:
+                            'With such an army of workers as our youth, rightly trained, how soon the message of a crucified, risen, and soon-coming Saviour might be carried to the whole world. Education, p. 271. {ChS 30.2}',
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        'Join us today and let us take the good news of the Gospel to places where no one wants to go.',
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: colorScheme.primary,
+                          height: 1.6,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'What ALIVE emphasizes',
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 16,
+                  runSpacing: 16,
+                  children: const [
+                    _PillarCard(
+                      icon: Icons.campaign_rounded,
+                      title: 'Evangelism',
+                      description:
+                          'Taking the Gospel seriously and making outreach part of everyday ministry life.',
+                    ),
+                    _PillarCard(
+                      icon: Icons.school_rounded,
+                      title: 'Discipleship',
+                      description:
+                          'Helping people mature in Scripture, character, and practical obedience to Christ.',
+                    ),
+                    _PillarCard(
+                      icon: Icons.volunteer_activism_rounded,
+                      title: 'Prayer and care',
+                      description:
+                          'Supporting members spiritually while building a culture of intercession and encouragement.',
+                    ),
+                    _PillarCard(
+                      icon: Icons.health_and_safety_rounded,
+                      title: 'Wholesome living',
+                      description:
+                          'Promoting healthy, balanced living that reflects stewardship of body, mind, and mission.',
                     ),
                   ],
                 ),
-              ),
+                const SizedBox(height: 20),
+                CustomCard(
+                  borderRadius: BorderRadius.circular(22),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Leadership team',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      const _LeaderTile(
+                        name: 'Nwoko Patience Mfon',
+                        role: 'Executive President',
+                        icon: Icons.person_rounded,
+                      ),
+                      const SizedBox(height: 10),
+                      const _LeaderTile(
+                        name: 'Caleb Peters',
+                        role: 'Secretary and Communication Director',
+                        icon: Icons.chat_rounded,
+                      ),
+                      const SizedBox(height: 10),
+                      const _LeaderTile(
+                        name: 'Godstime Esuku',
+                        role: 'Speaker and Director, ALIVE Mission Training Center (AMTC)',
+                        icon: Icons.school_rounded,
+                      ),
+                      const SizedBox(height: 10),
+                      const _LeaderTile(
+                        name: 'Timothy Olodude',
+                        role: 'Treasurer and Director of Logistics',
+                        icon: Icons.account_balance_wallet_rounded,
+                      ),
+                      const SizedBox(height: 10),
+                      const _LeaderTile(
+                        name: 'Emenike Ekechi',
+                        role: 'Director, Evangelism, Programming, and Health',
+                        icon: Icons.health_and_safety_rounded,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                CustomCard(
+                  variant: CardVariant.filled,
+                  borderRadius: BorderRadius.circular(22),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'How the app supports the ministry',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        'The ALIVE app extends the ministry beyond physical gatherings. It helps members access study materials, testimonies, events, prayer support, donation options, conference participation, and resources from one organized place.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          height: 1.65,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                CustomCard(
+                  borderRadius: BorderRadius.circular(22),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Contact ALIVE',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      _ContactTile(
+                        icon: Icons.email_rounded,
+                        title: 'Email',
+                        value: 'alivenigeria2011@gmail.com',
+                        onTap: () => _launchEmail('alivenigeria2011@gmail.com'),
+                      ),
+                      const SizedBox(height: 10),
+                      _ContactTile(
+                        icon: Icons.phone_rounded,
+                        title: 'Phone',
+                        value: '+2347068548865',
+                        onTap: () => _launchPhone('+2347068548865'),
+                      ),
+                      const SizedBox(height: 10),
+                      _ContactTile(
+                        icon: Icons.public_rounded,
+                        title: 'Website',
+                        value: 'www.alivenigeria.org',
+                        onTap: () => _launchWebsite('https://www.alivenigeria.org'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-
-            // Developer attribution removed per request
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildSection(BuildContext context, String title, String content) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-        ),
-        SizedBox(height: context.responsivePadding.top / 2),
-        Text(
-          content,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            height: 1.6,
-          ),
-          textAlign: TextAlign.justify,
-        ),
-        SizedBox(height: context.responsivePadding.top * 1.5),
-      ],
-    );
-  }
-
-  Widget _buildLeaderCard(BuildContext context, String name, String position, IconData icon) {
-    return Card(
-      margin: EdgeInsets.only(bottom: context.responsivePadding.top / 2),
-      child: ListTile(
-        contentPadding: context.responsivePadding,
-        leading: CircleAvatar(
-          radius: ResponsiveUtils.getResponsiveValue(
-            context: context,
-            mobile: 20.0,
-            tablet: 24.0,
-            desktop: 28.0,
-          ),
-          backgroundColor: Theme.of(context).colorScheme.primary,
-          child: Icon(
-            icon,
-            color: Theme.of(context).colorScheme.onPrimary,
-            size: context.responsiveIconSize(20),
-          ),
-        ),
-        title: Text(
-          name,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        subtitle: Text(
-          position,
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-      ),
-    );
-  }
-
-  void _launchEmail(String email) async {
-    final Uri emailUri = Uri(
+  Future<void> _launchEmail(String email) async {
+    final emailUri = Uri(
       scheme: 'mailto',
       path: email,
       query: 'subject=ALIVE Nigeria Inquiry',
@@ -295,8 +301,8 @@ class AboutAliveScreen extends ConsumerWidget {
     }
   }
 
-  void _launchPhone(String phone) async {
-    final Uri phoneUri = Uri(
+  Future<void> _launchPhone(String phone) async {
+    final phoneUri = Uri(
       scheme: 'tel',
       path: phone,
     );
@@ -305,8 +311,495 @@ class AboutAliveScreen extends ConsumerWidget {
       await launchUrl(phoneUri);
     }
   }
+
+  Future<void> _launchWebsite(String url) async {
+    final websiteUri = Uri.parse(url);
+    if (await canLaunchUrl(websiteUri)) {
+      await launchUrl(websiteUri, mode: LaunchMode.externalApplication);
+    }
+  }
 }
 
+class _AliveHeroCard extends StatelessWidget {
+  const _AliveHeroCard({
+    required this.title,
+    required this.subtitle,
+    required this.description,
+  });
 
+  final String title;
+  final String subtitle;
+  final String description;
 
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
 
+    return Container(
+      decoration: BoxDecoration(
+        gradient: isDark
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  const Color(0xFF182238),
+                  colorScheme.surface,
+                ],
+              )
+            : LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  const Color(0xFFFFFFFF),
+                  const Color(0xFFF7FAFC),
+                ],
+              ),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(
+          color: colorScheme.outline.withValues(alpha: 0.7),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isDark
+                ? Colors.black.withValues(alpha: 0.22)
+                : colorScheme.shadow.withValues(alpha: 0.08),
+            blurRadius: 24,
+            spreadRadius: -10,
+            offset: const Offset(0, 18),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(24),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final stacked = constraints.maxWidth < 700;
+          final intro = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 78,
+                height: 78,
+                decoration: BoxDecoration(
+                  gradient: AppTheme.getPrimaryGradient(context),
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                padding: const EdgeInsets.all(16),
+                child: SvgPicture.asset(
+                  'assets/images/alive_logo.svg',
+                  colorFilter: ColorFilter.mode(
+                    colorScheme.onPrimary,
+                    BlendMode.srcIn,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                title,
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                subtitle,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: colorScheme.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                description,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  height: 1.65,
+                ),
+              ),
+            ],
+          );
+
+          final sideCard = Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: colorScheme.primary.withValues(alpha: 0.2),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Core heartbeat',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _MiniPoint(text: 'Gospel-centered witness'),
+                _MiniPoint(text: 'Prayerful community life'),
+                _MiniPoint(text: 'Training for mission'),
+                _MiniPoint(text: 'Healthy Christian living'),
+              ],
+            ),
+          );
+
+          if (stacked) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                intro,
+                const SizedBox(height: 18),
+                sideCard,
+              ],
+            );
+          }
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: intro),
+              const SizedBox(width: 24),
+              SizedBox(
+                width: 280,
+                child: sideCard,
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _StatementCard extends StatelessWidget {
+  const _StatementCard({
+    required this.title,
+    required this.icon,
+    required this.description,
+  });
+
+  final String title;
+  final IconData icon;
+  final String description;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return CustomCard(
+      borderRadius: BorderRadius.circular(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(
+              icon,
+              color: colorScheme.primary,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            title,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            description,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              height: 1.6,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PillarCard extends StatelessWidget {
+  const _PillarCard({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final width = ResponsiveUtils.getResponsiveValue<double>(
+      context: context,
+      mobile: double.infinity,
+      tablet: 320,
+      desktop: 240,
+    );
+
+    return SizedBox(
+      width: width,
+      child: CustomCard(
+        variant: CardVariant.outlined,
+        borderRadius: BorderRadius.circular(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              icon,
+              color: colorScheme.primary,
+              size: 24,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              description,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+                height: 1.55,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LeaderTile extends StatelessWidget {
+  const _LeaderTile({
+    required this.name,
+    required this.role,
+    required this.icon,
+  });
+
+  final String name;
+  final String role;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: colorScheme.outline.withValues(alpha: 0.7),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(
+              icon,
+              color: colorScheme.primary,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  role,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ContactTile extends StatelessWidget {
+  const _ContactTile({
+    required this.icon,
+    required this.title,
+    required this.value,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String value;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Ink(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: colorScheme.outline.withValues(alpha: 0.7),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: colorScheme.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                icon,
+                color: colorScheme.primary,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.open_in_new_rounded,
+              size: 18,
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MiniPoint extends StatelessWidget {
+  const _MiniPoint({
+    required this.text,
+  });
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 5),
+            child: Icon(
+              Icons.circle,
+              size: 8,
+              color: colorScheme.primary,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuoteBlock extends StatelessWidget {
+  const _QuoteBlock({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: colorScheme.primary.withValues(alpha: 0.18),
+        ),
+      ),
+      child: Text(
+        text,
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: colorScheme.onSurface,
+          height: 1.65,
+          fontStyle: FontStyle.italic,
+        ),
+      ),
+    );
+  }
+}

@@ -49,6 +49,7 @@ class CustomButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
 
     // Determine button colors based on variant
     Color backgroundColor;
@@ -171,10 +172,10 @@ class CustomButton extends StatelessWidget {
           padding: buttonPadding,
           side: BorderSide(
             color: borderColor ?? foregroundColor,
-            width: 1.5,
+            width: 1.6,
           ),
           shape: RoundedRectangleBorder(
-            borderRadius: borderRadius ?? BorderRadius.circular(8),
+            borderRadius: borderRadius ?? BorderRadius.circular(12),
           ),
         ),
         child: buttonChild,
@@ -187,8 +188,17 @@ class CustomButton extends StatelessWidget {
           foregroundColor: foregroundColor,
           padding: buttonPadding,
           elevation: variant == ButtonVariant.primary ? 2 : 1,
+          shadowColor: isDark
+              ? backgroundColor.withValues(alpha: 0.22)
+              : Colors.black.withValues(alpha: 0.08),
+          side: BorderSide(
+            color: isDark
+                ? colorScheme.outline.withValues(alpha: 0.7)
+                : Colors.transparent,
+            width: 1,
+          ),
           shape: RoundedRectangleBorder(
-            borderRadius: borderRadius ?? BorderRadius.circular(8),
+            borderRadius: borderRadius ?? BorderRadius.circular(12),
           ),
         ),
         child: buttonChild,

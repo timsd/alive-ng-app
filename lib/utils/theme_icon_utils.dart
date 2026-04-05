@@ -9,10 +9,12 @@ class ThemeIconUtils {
     Color? darkColor,
     double opacity = 1.0,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     final baseColor = isDark 
-        ? (darkColor ?? Colors.white)
-        : (lightColor ?? Colors.black87);
+        ? (darkColor ?? colorScheme.onSurface)
+        : (lightColor ?? colorScheme.onSurface);
     return baseColor.withValues(alpha: opacity);
   }
 
@@ -109,8 +111,8 @@ class ThemeIconUtils {
         : (lightBackgroundColor ?? Theme.of(context).colorScheme.primary);
     
     final iconColor = isDark
-        ? (darkIconColor ?? Colors.white)
-        : (lightIconColor ?? Colors.white);
+        ? (darkIconColor ?? Theme.of(context).colorScheme.onSecondary)
+        : (lightIconColor ?? Theme.of(context).colorScheme.onPrimary);
 
     return FloatingActionButton(
       onPressed: onPressed,
@@ -150,9 +152,9 @@ class ThemeIconUtils {
       case TextColorType.error:
         return colorScheme.error;
       case TextColorType.success:
-        return Colors.green;
+        return colorScheme.tertiary;
       case TextColorType.warning:
-        return Colors.orange;
+        return colorScheme.secondary;
     }
   }
 
@@ -160,8 +162,8 @@ class ThemeIconUtils {
   static Color getBorderColor(BuildContext context, {double opacity = 0.12}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return isDark
-        ? Colors.white.withValues(alpha: opacity)
-        : Colors.black.withValues(alpha: opacity);
+        ? Theme.of(context).colorScheme.outline.withValues(alpha: opacity * 2)
+        : Theme.of(context).colorScheme.outline.withValues(alpha: opacity * 2);
   }
 
   /// Get theme-aware shadow color
@@ -169,7 +171,7 @@ class ThemeIconUtils {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return isDark
         ? Colors.black.withValues(alpha: opacity * 2)
-        : Colors.black.withValues(alpha: opacity);
+        : Theme.of(context).colorScheme.shadow.withValues(alpha: opacity);
   }
 
   /// Create theme-aware container
@@ -265,7 +267,7 @@ class ThemeIconUtils {
         label,
         style: TextStyle(
           color: selected
-              ? (isDark ? Colors.black : Colors.white)
+              ? (isDark ? colorScheme.onPrimary : colorScheme.onPrimary)
               : getTextColor(context),
           fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14.0),
         ),
@@ -275,15 +277,15 @@ class ThemeIconUtils {
               icon,
               size: ResponsiveUtils.getResponsiveIconSize(context, 18.0),
               color: selected
-                  ? (isDark ? Colors.black : Colors.white)
+                  ? (isDark ? colorScheme.onPrimary : colorScheme.onPrimary)
                   : getIconColor(context),
             )
           : null,
       selected: selected,
       onSelected: onTap != null ? (_) => onTap() : null,
-      backgroundColor: isDark ? colorScheme.surface : Colors.grey[100],
+      backgroundColor: isDark ? colorScheme.surfaceContainerHighest : colorScheme.surfaceContainerHighest,
       selectedColor: selectedColor ?? colorScheme.primary,
-      checkmarkColor: isDark ? Colors.black : Colors.white,
+      checkmarkColor: colorScheme.onPrimary,
       side: BorderSide(
         color: getBorderColor(context),
         width: 1.0,

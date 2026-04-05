@@ -44,64 +44,79 @@ class CustomBottomSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final effectivePadding = padding ?? const EdgeInsets.all(16);
+    final effectivePadding = padding ?? const EdgeInsets.all(20);
     
-    return Container(
-      height: height,
-      constraints: constraints,
-      decoration: BoxDecoration(
-        color: backgroundColor ?? theme.colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (showDragHandle)
-            Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(top: 12, bottom: 8),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(2),
+    return SafeArea(
+      top: false,
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: ConstrainedBox(
+          constraints: constraints ??
+              BoxConstraints(
+                maxWidth: 860,
+                maxHeight: height ?? MediaQuery.of(context).size.height * 0.88,
+              ),
+          child: Container(
+            height: height,
+            decoration: BoxDecoration(
+              color: backgroundColor ?? theme.bottomSheetTheme.modalBackgroundColor ?? theme.colorScheme.surface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              border: Border.all(
+                color: theme.colorScheme.outline.withValues(alpha: 0.7),
               ),
             ),
-          if (title != null || titleWidget != null)
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                effectivePadding.horizontal / 2,
-                showDragHandle ? 8 : effectivePadding.vertical / 2,
-                effectivePadding.horizontal / 2,
-                8,
-              ),
-              child: titleWidget ?? Text(
-                title!,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (showDragHandle)
+                  Container(
+                    width: 44,
+                    height: 5,
+                    margin: const EdgeInsets.only(top: 14, bottom: 10),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                if (title != null || titleWidget != null)
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      effectivePadding.horizontal / 2,
+                      showDragHandle ? 10 : effectivePadding.vertical / 2,
+                      effectivePadding.horizontal / 2,
+                      10,
+                    ),
+                    child: titleWidget ?? Text(
+                      title!,
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                Flexible(
+                  child: Padding(
+                    padding: effectivePadding,
+                    child: child,
+                  ),
                 ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          Flexible(
-            child: Padding(
-              padding: effectivePadding,
-              child: child,
+                if (actions != null && actions!.isNotEmpty)
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      effectivePadding.horizontal / 2,
+                      8,
+                      effectivePadding.horizontal / 2,
+                      effectivePadding.vertical / 2,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: actions!,
+                    ),
+                  ),
+              ],
             ),
           ),
-          if (actions != null && actions!.isNotEmpty)
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                effectivePadding.horizontal / 2,
-                8,
-                effectivePadding.horizontal / 2,
-                effectivePadding.vertical / 2,
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: actions!,
-              ),
-            ),
-        ],
+        ),
       ),
     );
   }
@@ -134,7 +149,8 @@ class CustomBottomSheet extends StatelessWidget {
       shape: shape,
       clipBehavior: clipBehavior,
       constraints: constraints,
-      isScrollControlled: isScrollControlled,
+      isScrollControlled: true,
+      useSafeArea: true,
       useRootNavigator: useRootNavigator,
       routeSettings: routeSettings,
       transitionAnimationController: transitionAnimationController,
@@ -572,6 +588,8 @@ class _ListBottomSheetTile<T> extends StatelessWidget {
     }
     
     return ListTile(
+      iconColor: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+      textColor: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface,
       leading: leading,
       title: Text(
         item.title,

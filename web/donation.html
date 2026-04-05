@@ -125,6 +125,10 @@
             color: white;
         }
 
+        .remaining-text {
+            color: rgba(255, 255, 255, 0.78);
+        }
+
         .header h1 {
             font-size: 24px;
             font-weight: 800;
@@ -270,6 +274,10 @@
                     <span class="raised-text">Raised: <span id="raised-amt">₦2,250,000</span></span>
                     <span class="goal-text">Goal: <span id="goal-amt">₦5,000,000</span></span>
                 </div>
+                <div class="progress-stats" style="margin-top: 6px;">
+                    <span class="remaining-text">Remaining: <span id="remaining-amt">₦2,750,000</span></span>
+                    <span class="goal-text">Realtime tracking</span>
+                </div>
             </div>
         </div>
 
@@ -338,6 +346,7 @@
         let currentSymbol = '₦';
         let exchangeRate = 1650; // Dynamic fallback
         let projectData = null;
+        let unsubscribeProject = null;
 
         async function fetchExchangeRate() {
             // Only use Admin Override from Firestore
@@ -384,9 +393,28 @@
             
             document.getElementById('raised-amt').innerText = formatCurrency(displayRaised, currentCurrency);
             document.getElementById('goal-amt').innerText = formatCurrency(displayGoal, currentCurrency);
+            document.getElementById('remaining-amt').innerText = formatCurrency(
+                Math.max(displayGoal - displayRaised, 0),
+                currentCurrency
+            );
             
             const percent = goal > 0 ? (raised / goal) * 100 : 0;
             document.getElementById('progress-fill').style.width = Math.min(percent, 100) + '%';
+        }
+
+        function subscribeToProject(projectId) {
+            if (!firebaseAvailable || !projectId) return;
+            if (unsubscribeProject) {
+                unsubscribeProject();
+                unsubscribeProject = null;
+            }
+            unsubscribeProject = db.collection('projects').doc(projectId).onSnapshot((doc) => {
+                if (!doc.exists) return;
+                projectData = { id: doc.id, ...doc.data() };
+                updateUIWithProject();
+            }, (error) => {
+                console.warn("Realtime project update failed:", error);
+            });
         }
 
         async function setCurrency(currency, symbol) {
@@ -417,6 +445,7 @@
                         const doc = await db.collection('projects').doc('general_mission').get();
                         if (doc.exists) {
                             projectData = { id: doc.id, ...doc.data() };
+                            subscribeToProject(doc.id);
                             await updateUIWithProject();
                         }
                      } catch(e) {}
@@ -430,11 +459,46 @@
                     projectData = { id: doc.id, ...doc.data() };
                     // Extra safety: save back to session storage
                     sessionStorage.setItem('selected_project_id', projectId);
+                    subscribeToProject(projectId);
                     await updateUIWithProject();
                 }
             } catch (e) {
                 console.error("Error loading project:", e);
             }
+        }
+
+        function generateReference() {
+            return 'don_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+        }
+
+        function generateGuestId() {
+            return 'guest_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+        }
+
+        async function createPendingDonationRecord(reference, payload) {
+            if (!firebaseAvailable) return;
+
+            await db.collection('donation_records').doc(reference).set({
+                guest_id: generateGuestId(),
+                user_email: payload.email,
+                user_name: payload.name || 'Guest Donor',
+                amount: payload.amount,
+                amount_ngn: payload.amountNgn,
+                currency: payload.currency,
+                payment_method: 'paystack',
+                status: 'pending',
+                donation_type: payload.projectId ? 'project' : 'general',
+                project_id: payload.projectId || null,
+                project_title: payload.projectTitle || 'General Mission Fund',
+                metadata: {
+                    source: 'web_donation_html',
+                    project_id: payload.projectId || 'general_mission',
+                    project_title: payload.projectTitle || 'General Mission Fund',
+                    amount_ngn: payload.amountNgn
+                },
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            }, { merge: true });
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
@@ -453,30 +517,55 @@
             }
 
             const amount = parseFloat(amountInput);
+            const amountNgn = currentCurrency === 'NGN' ? amount : amount * exchangeRate;
+            const projectId = projectData?.id || sessionStorage.getItem('selected_project_id') || 'general_mission';
+            const projectTitle = projectData?.title || projectData?.name || 'General Mission Fund';
+            const reference = generateReference();
             const PK = 'pk_live_2c83ec0083f461344b6e11753a87ed4f7f365d4a';
+
+            try {
+                await createPendingDonationRecord(reference, {
+                    email: email,
+                    name: name,
+                    amount: amount,
+                    amountNgn: amountNgn,
+                    currency: currentCurrency,
+                    projectId: projectId,
+                    projectTitle: projectTitle
+                });
+            } catch (e) {
+                console.error('Could not prepare donation record:', e);
+                alert('We could not prepare your donation securely right now. Please try again in a moment.');
+                return;
+            }
 
             const handler = PaystackPop.setup({
                 key: PK,
                 email: email,
                 amount: Math.round(amount * 100), // in kobo or cents
                 currency: currentCurrency,
+                ref: reference,
                 metadata: {
                     custom_fields: [
                         { display_name: "Full Name", variable_name: "full_name", value: name },
                         {
                             display_name: "Project Goal",
                             variable_name: "project_id",
-                            value: sessionStorage.getItem('selected_project_id') || 'general_mission'
+                            value: projectId
+                        },
+                        {
+                            display_name: "Project Title",
+                            variable_name: "project_title",
+                            value: projectTitle
+                        },
+                        {
+                            display_name: "Amount (NGN)",
+                            variable_name: "amount_ngn",
+                            value: String(amountNgn)
                         }
                     ]
                 },
                 callback: async function (response) {
-                    // Success! Update Firestore if it was a project donation
-                    if (projectData) {
-                        const amountNgn = currentCurrency === 'NGN' ? amount : amount * exchangeRate;
-                        await updateProjectRaised(projectData.id, amountNgn);
-                    }
-                    
                     alert('Thank you for your generous support! Reference: ' + response.reference);
                     window.location.href = 'index.html';
                 },
@@ -485,23 +574,6 @@
                 }
             });
             handler.openIframe();
-        }
-
-        async function updateProjectRaised(projectId, amountNgn) {
-            if (!firebaseAvailable || !projectId) return;
-            
-            try {
-                await db.runTransaction(async (transaction) => {
-                    const projectRef = db.collection('projects').doc(projectId);
-                    const doc = await transaction.get(projectRef);
-                    if (!doc.exists) return;
-                    const newRaised = (doc.data().raised || 0) + amountNgn;
-                    transaction.update(projectRef, { raised: newRaised });
-                });
-                console.log("Firestore updated successfully");
-            } catch (e) {
-                console.error("Transaction failed: ", e);
-            }
         }
     </script>
 </body>

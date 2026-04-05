@@ -161,6 +161,7 @@ class DonationService {
   Future<DonationRecord> createDonation({
     required DonationType type,
     required double amount,
+    required String currency,
     required PaymentMethod paymentMethod,
     String? materialId,
     String? materialTitle,
@@ -199,7 +200,7 @@ class DonationService {
         userEmail: userEmail,
         type: type,
         amount: amount,
-        currency: DonationConstants.defaultCurrency,
+        currency: currency,
         status: DonationStatus.pending,
         paymentMethod: paymentMethod,
         materialId: materialId,
@@ -245,7 +246,13 @@ class DonationService {
       }
 
       if (metadata != null) {
-        updates['metadata'] = metadata;
+        final existing =
+            (await _db.collection('donation_records').doc(donationId).get())
+                .data();
+        updates['metadata'] = {
+          ...?((existing?['metadata'] as Map<String, dynamic>?)),
+          ...metadata,
+        };
       }
 
       if (status == DonationStatus.completed) {
@@ -591,6 +598,10 @@ class DonationService {
         'donation_id': donationId,
         'donation_type': donation.type.name,
         'material_title': donation.materialTitle,
+        if (donation.metadata?['project_title'] != null)
+          'project_title': donation.metadata!['project_title'],
+        if (donation.metadata?['project_id'] != null)
+          'project_id': donation.metadata!['project_id'],
         'currency': currency,
         'recurring': isRecurringMonthly,
         if (donation.materialId != null) 'material_id': donation.materialId,
@@ -622,6 +633,7 @@ class DonationService {
           'success': false,
           'message': 'Payment initialized. Complete checkout to finalize donation.',
           'donation_id': donationId,
+          'initialized': true,
         };
       } else if (paymentResult.success) {
         // Update donation status to completed
@@ -640,6 +652,7 @@ class DonationService {
           'message': 'Payment processed successfully',
           'donation_id': donationId,
           'transaction_id': paymentResult.reference,
+          'initialized': false,
         };
       } else {
         // Update donation status to failed
@@ -656,6 +669,7 @@ class DonationService {
           'success': false,
           'message': paymentResult.message,
           'donation_id': donationId,
+          'initialized': false,
         };
       }
     } catch (e) {
@@ -675,6 +689,7 @@ class DonationService {
         'success': false,
         'message': 'Payment processing error: $e',
         'donation_id': donationId,
+        'initialized': false,
       };
     }
   }

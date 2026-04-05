@@ -73,9 +73,9 @@ class AppTheme {
   static const Color darkCard = Color(0xFF151D2F); // Elevated dark surface
   static const Color darkCardForeground = Color(0xFFF8FAFC); 
   
-  static const Color darkPrimary = Color(0xFF151D2F); // Elevated dark surface (Requested)
-  static const Color darkPrimaryForeground = Color(0xFFF8FAFC); // Brilliant white for contrast
-  static const Color darkPrimaryGlow = Color(0xFF1E293B); 
+  static const Color darkPrimary = Color(0xFFE4C56A); // Warm gold for stronger contrast
+  static const Color darkPrimaryForeground = Color(0xFF0B0F19); // Deep background for contrast
+  static const Color darkPrimaryGlow = Color(0xFFF3DD97); 
   
   static const Color darkSecondary = Color(0xFF1E293B); 
   static const Color darkSecondaryForeground = Color(0xFFF1F5F9); 
@@ -126,6 +126,8 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
+      scaffoldBackgroundColor: lightBackground,
+      canvasColor: lightBackground,
       
       // Color Scheme
       colorScheme: const ColorScheme.light(
@@ -165,6 +167,7 @@ class AppTheme {
         backgroundColor: lightCard,
         foregroundColor: lightCardForeground,
         elevation: 0,
+        scrolledUnderElevation: 0,
         centerTitle: true,
         titleTextStyle: TextStyle(
           fontSize: 18,
@@ -175,6 +178,12 @@ class AppTheme {
         iconTheme: IconThemeData(
           color: lightCardForeground,
         ),
+      ),
+      iconTheme: const IconThemeData(
+        color: lightCardForeground,
+      ),
+      primaryIconTheme: const IconThemeData(
+        color: lightPrimaryForeground,
       ),
       
       // Bottom Navigation Bar Theme
@@ -200,7 +209,11 @@ class AppTheme {
         elevation: 2,
         shadowColor: lightPrimary.withValues(alpha: 0.15),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(
+            color: lightBorder,
+            width: 1,
+          ),
         ),
         margin: const EdgeInsets.all(8),
       ),
@@ -214,7 +227,11 @@ class AppTheme {
           shadowColor: lightPrimary.withValues(alpha: 0.3),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          side: const BorderSide(
+            color: lightBorder,
+            width: 1,
           ),
           textStyle: const TextStyle(
             fontSize: 16,
@@ -247,7 +264,7 @@ class AppTheme {
           side: const BorderSide(color: lightBorder, width: 1.5),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
           ),
           textStyle: const TextStyle(
             fontSize: 16,
@@ -262,23 +279,23 @@ class AppTheme {
         filled: true,
         fillColor: lightBackground,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: lightBorder, width: 1.5),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: lightBorder, width: 1.5),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: lightPrimary, width: 2),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: lightDestructive, width: 1.5),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: lightDestructive, width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -311,6 +328,50 @@ class AppTheme {
         color: lightBorder,
         thickness: 1,
         space: 1,
+      ),
+      listTileTheme: const ListTileThemeData(
+        iconColor: lightCardForeground,
+        textColor: lightCardForeground,
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: lightCard,
+        surfaceTintColor: Colors.transparent,
+        elevation: 12,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: const BorderSide(
+            color: lightBorder,
+            width: 1,
+          ),
+        ),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: lightCard,
+        surfaceTintColor: Colors.transparent,
+        modalBackgroundColor: lightCard,
+        showDragHandle: true,
+        constraints: BoxConstraints(maxWidth: 860),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          side: BorderSide(
+            color: lightBorder,
+            width: 1,
+          ),
+        ),
+      ),
+      drawerTheme: const DrawerThemeData(
+        backgroundColor: lightCard,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.only(
+            topRight: Radius.circular(24),
+            bottomRight: Radius.circular(24),
+          ),
+          side: BorderSide(
+            color: lightBorder,
+            width: 1,
+          ),
+        ),
       ),
       
       fontFamily: 'Inter',
@@ -345,16 +406,18 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
+      scaffoldBackgroundColor: darkBackground,
+      canvasColor: darkBackground,
       
       // Color Scheme
       colorScheme: const ColorScheme.dark(
         brightness: Brightness.dark,
         primary: darkPrimary,
         onPrimary: darkPrimaryForeground,
-        primaryContainer: Color(0xFF4A5568),
+        primaryContainer: Color(0xFF423617),
         onPrimaryContainer: darkForeground,
-        secondary: darkGold,
-        onSecondary: darkGoldForeground,
+        secondary: darkEmerald,
+        onSecondary: darkEmeraldForeground,
         secondaryContainer: darkSecondary,
         onSecondaryContainer: darkSecondaryForeground,
         tertiary: darkEmerald,
@@ -384,6 +447,7 @@ class AppTheme {
         backgroundColor: darkCard,
         foregroundColor: darkCardForeground,
         elevation: 0,
+        scrolledUnderElevation: 0,
         centerTitle: true,
         titleTextStyle: TextStyle(
           fontSize: 18,
@@ -394,6 +458,12 @@ class AppTheme {
         iconTheme: IconThemeData(
           color: darkCardForeground,
         ),
+      ),
+      iconTheme: const IconThemeData(
+        color: darkCardForeground,
+      ),
+      primaryIconTheme: const IconThemeData(
+        color: darkPrimaryForeground,
       ),
       
       // Bottom Navigation Bar Theme
@@ -416,10 +486,14 @@ class AppTheme {
       // Card Theme
       cardTheme: CardThemeData(
         color: darkCard,
-        elevation: 4,
+        elevation: 8,
         shadowColor: Colors.black.withValues(alpha: 0.3),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(
+            color: darkBorder,
+            width: 1,
+          ),
         ),
         margin: const EdgeInsets.all(8),
       ),
@@ -429,11 +503,15 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: darkPrimary,
           foregroundColor: darkPrimaryForeground,
-          elevation: 4,
+          elevation: 3,
           shadowColor: darkPrimary.withValues(alpha: 0.3),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          side: const BorderSide(
+            color: darkBorder,
+            width: 1,
           ),
           textStyle: const TextStyle(
             fontSize: 16,
@@ -463,10 +541,10 @@ class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: darkPrimary,
-          side: const BorderSide(color: darkBorder, width: 1.5),
+          side: const BorderSide(color: darkPrimary, width: 1.5),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
           ),
           textStyle: const TextStyle(
             fontSize: 16,
@@ -481,23 +559,23 @@ class AppTheme {
         filled: true,
         fillColor: darkBackground,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: darkBorder, width: 1.5),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: darkBorder, width: 1.5),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: darkPrimary, width: 2),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: darkDestructive, width: 1.5),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: darkDestructive, width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -530,6 +608,50 @@ class AppTheme {
         color: darkBorder,
         thickness: 1,
         space: 1,
+      ),
+      listTileTheme: const ListTileThemeData(
+        iconColor: darkCardForeground,
+        textColor: darkCardForeground,
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: darkCard,
+        surfaceTintColor: Colors.transparent,
+        elevation: 16,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: const BorderSide(
+            color: darkBorder,
+            width: 1,
+          ),
+        ),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: darkCard,
+        surfaceTintColor: Colors.transparent,
+        modalBackgroundColor: darkCard,
+        showDragHandle: true,
+        constraints: BoxConstraints(maxWidth: 860),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          side: BorderSide(
+            color: darkBorder,
+            width: 1,
+          ),
+        ),
+      ),
+      drawerTheme: const DrawerThemeData(
+        backgroundColor: darkCard,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.only(
+            topRight: Radius.circular(24),
+            bottomRight: Radius.circular(24),
+          ),
+          side: BorderSide(
+            color: darkBorder,
+            width: 1,
+          ),
+        ),
       ),
       
       fontFamily: 'Inter',

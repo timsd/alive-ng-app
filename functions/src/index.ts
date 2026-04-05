@@ -199,22 +199,54 @@ export const paystackWebhook = functions
       paid_at: data?.paid_at,
     };
     if (type === 'charge.success') {
-      await docRef.set(
-        {
-          status: 'completed',
-          transaction_id: data?.id?.toString(),
-          completed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          metadata: meta,
-        },
-        { merge: true },
-      );
+      await db.runTransaction(async (tx) => {
+        const donationSnap = await tx.get(docRef);
+        const existing = donationSnap.data() as Record<string, any> | undefined;
+        const alreadyCompleted = existing?.status === 'completed';
+        const metadata = {
+          ...(existing?.metadata || {}),
+          ...(data?.metadata || {}),
+          ...meta,
+        };
+        const amountNgn = Number(
+          metadata.amount_ngn ?? existing?.amount_ngn ?? existing?.amount ?? 0,
+        );
+        const projectId = String(
+          metadata.project_id ?? existing?.project_id ?? '',
+        ).trim();
+
+        tx.set(
+          docRef,
+          {
+            status: 'completed',
+            transaction_id: data?.id?.toString(),
+            completed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            metadata,
+          },
+          { merge: true },
+        );
+
+        if (!alreadyCompleted && projectId && Number.isFinite(amountNgn) && amountNgn > 0) {
+          const projectRef = db.collection('projects').doc(projectId);
+          const projectSnap = await tx.get(projectRef);
+          if (projectSnap.exists) {
+            tx.update(projectRef, {
+              raised: admin.firestore.FieldValue.increment(amountNgn),
+              updated_at: new Date().toISOString(),
+            });
+          }
+        }
+      });
     } else if (type === 'charge.failed' || type === 'charge.abandoned') {
       await docRef.set(
         {
           status: 'failed',
           updated_at: new Date().toISOString(),
-          metadata: meta,
+          metadata: {
+            ...(data?.metadata || {}),
+            ...meta,
+          },
         },
         { merge: true },
       );
@@ -222,7 +254,10 @@ export const paystackWebhook = functions
       await docRef.set(
         {
           updated_at: new Date().toISOString(),
-          metadata: meta,
+          metadata: {
+            ...(data?.metadata || {}),
+            ...meta,
+          },
         },
         { merge: true },
       );
@@ -244,7 +279,11 @@ export const sendReceiptOnCompletion = functions
     const reference = context.params.reference as string;
     const amount = after.amount as number | undefined;
     const currency = after.currency as string | undefined;
-    const title = after.material_title as string | undefined;
+    const title =
+      (after.material_title as string | undefined) ||
+      (after.project_title as string | undefined) ||
+      (after.metadata?.project_title as string | undefined) ||
+      (after.metadata?.material_title as string | undefined);
     await sendReceiptEmail({
       to: email,
       reference,
@@ -619,9 +658,9 @@ async function sendReceiptEmail(params: {
       <div style="text-align:center; padding:16px;">
         <img src="${logoUrl}" alt="ALIVE-NG" height="48" />
       </div>
-      <h2 style="text-align:center;">Donation Receipt</h2>
+      <h2 style="text-align:center;">Thank You for Your Support</h2>
       <p>Dear donor,</p>
-      <p>Thank you for your generous support. Below are the details of your donation.</p>
+      <p>We appreciate your generous support for ALIVE-NG. Your giving helps the ministry continue its work with clarity, care, and impact.</p>
       <table style="width:100%; border-collapse:collapse;">
         <tr><td style="padding:8px;">Reference</td><td style="padding:8px;"><strong>${params.reference}</strong></td></tr>
         <tr><td style="padding:8px;">Amount</td><td style="padding:8px;"><strong>${fmtAmount} ${params.currency || ''}</strong></td></tr>

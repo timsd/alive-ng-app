@@ -1,4 +1,4 @@
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:web/web.dart' as web;
 
 class AndroidOptions {
   const AndroidOptions({bool? encryptedSharedPreferences});
@@ -18,54 +18,68 @@ class KeychainAccessibility {
 class FlutterSecureStorage {
   const FlutterSecureStorage({AndroidOptions? aOptions, IOSOptions? iOptions});
 
+  static const String _keysIndex = '_secure_keys';
+  static String _valueKey(String key) => '_secure_$key';
+
+  List<String> _readKeys() {
+    final raw = web.window.sessionStorage.getItem(_keysIndex);
+    if (raw == null || raw.isEmpty) return <String>[];
+    return raw
+        .split('\n')
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty)
+        .toList();
+  }
+
+  void _writeKeys(List<String> keys) {
+    if (keys.isEmpty) {
+      web.window.sessionStorage.removeItem(_keysIndex);
+      return;
+    }
+    web.window.sessionStorage.setItem(_keysIndex, keys.join('\n'));
+  }
+
   Future<void> write({required String key, String? value}) async {
-    final prefs = await SharedPreferences.getInstance();
-    final keys = prefs.getStringList('_secure_keys') ?? <String>[];
+    final keys = _readKeys();
     if (!keys.contains(key)) {
       keys.add(key);
-      await prefs.setStringList('_secure_keys', keys);
+      _writeKeys(keys);
     }
     if (value == null) {
-      await prefs.remove('_secure_$key');
+      web.window.sessionStorage.removeItem(_valueKey(key));
     } else {
-      await prefs.setString('_secure_$key', value);
+      web.window.sessionStorage.setItem(_valueKey(key), value);
     }
   }
 
   Future<String?> read({required String key}) async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('_secure_$key');
+    return web.window.sessionStorage.getItem(_valueKey(key));
   }
 
   Future<void> delete({required String key}) async {
-    final prefs = await SharedPreferences.getInstance();
-    final keys = prefs.getStringList('_secure_keys') ?? <String>[];
+    final keys = _readKeys();
     keys.remove(key);
-    await prefs.setStringList('_secure_keys', keys);
-    await prefs.remove('_secure_$key');
+    _writeKeys(keys);
+    web.window.sessionStorage.removeItem(_valueKey(key));
   }
 
   Future<void> deleteAll() async {
-    final prefs = await SharedPreferences.getInstance();
-    final keys = prefs.getStringList('_secure_keys') ?? <String>[];
+    final keys = _readKeys();
     for (final k in keys) {
-      await prefs.remove('_secure_$k');
+      web.window.sessionStorage.removeItem(_valueKey(k));
     }
-    await prefs.remove('_secure_keys');
+    web.window.sessionStorage.removeItem(_keysIndex);
   }
 
   Future<bool> containsKey({required String key}) async {
-    final prefs = await SharedPreferences.getInstance();
-    final keys = prefs.getStringList('_secure_keys') ?? <String>[];
-    return keys.contains(key);
+    return web.window.sessionStorage.getItem(_valueKey(key)) != null;
   }
 
   Future<Map<String, String>> readAll() async {
-    final prefs = await SharedPreferences.getInstance();
-    final keys = prefs.getStringList('_secure_keys') ?? <String>[];
+    final keys = _readKeys();
     final Map<String, String> result = {};
     for (final k in keys) {
-      final v = prefs.getString('_secure_$k');
+      final v = web.window.sessionStorage.getItem(_valueKey(k));
       if (v != null) {
         result[k] = v;
       }

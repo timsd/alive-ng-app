@@ -73,6 +73,7 @@ class _DonationDialogState extends State<DonationDialog> {
       final donation = await _donationService.createDonation(
         type: widget.donationType,
         amount: _donationAmount,
+        currency: 'NGN',
         paymentMethod: PaymentMethod.paystack,
         materialId: widget.material.id,
         materialTitle: widget.material.title,
@@ -90,18 +91,20 @@ class _DonationDialogState extends State<DonationDialog> {
         currency: 'NGN',
         email: donation.userEmail,
       );
-      if (paymentResult['success'] != true) {
+      if (paymentResult['success'] != true &&
+          paymentResult['initialized'] != true) {
         throw Exception(paymentResult['message'] ?? 'Payment failed');
       }
 
       if (mounted) {
-        Navigator.of(context)
-            .pop(true); // Return true to indicate successful donation
+        Navigator.of(context).pop(true);
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Thank you for your donation! You can now download ${widget.material.title}.',
+              paymentResult['initialized'] == true
+                  ? 'Checkout opened for ${widget.material.title}. Complete payment to receive confirmation and unlock access.'
+                  : 'Thank you for your donation! You can now download ${widget.material.title}.',
             ),
             backgroundColor: Theme.of(context).colorScheme.tertiary,
             duration: const Duration(seconds: 4),
