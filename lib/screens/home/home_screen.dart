@@ -26,8 +26,6 @@ class HomeScreen extends ConsumerWidget {
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: CustomAppBar(
         title: 'Home',
-        backgroundColor: Colors.transparent,
-        elevation: 0,
       ),
       body: Container(
         decoration: BoxDecoration(
@@ -84,8 +82,6 @@ class HomeScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeroCard(context, translate),
-          SizedBox(height: context.isMobile ? 20 : 28),
           const GreetingHeader(),
           SizedBox(height: context.isMobile ? 16 : 24),
           Text(
@@ -124,70 +120,6 @@ class HomeScreen extends ConsumerWidget {
             ),
             SizedBox(height: context.isMobile ? 16 : 24),
           ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeroCard(BuildContext context, Function translate) {
-    final theme = Theme.of(context);
-    return Container(
-      width: double.infinity,
-      padding: ResponsiveUtils.getResponsivePadding(context),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            theme.colorScheme.primary,
-            theme.colorScheme.secondary,
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: theme.colorScheme.shadow.withValues(alpha: 0.16),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'ALIVE Nigeria',
-            style: theme.textTheme.headlineSmall?.copyWith(
-              color: theme.colorScheme.onPrimary,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'Bible-based resources, prayer, and mission tools arranged for a cleaner daily experience.',
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.colorScheme.onPrimary.withValues(alpha: 0.88),
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.onPrimary.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                color: theme.colorScheme.onPrimary.withValues(alpha: 0.18),
-              ),
-            ),
-            child: Text(
-              '${translate('daily_verse')} | ${translate('study')} | ${translate('prayer')}',
-              style: theme.textTheme.labelLarge?.copyWith(
-                color: theme.colorScheme.onPrimary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
         ],
       ),
     );

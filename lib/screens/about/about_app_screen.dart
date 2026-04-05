@@ -14,6 +14,14 @@ import '../../widgets/custom_card.dart';
 class AboutAppScreen extends ConsumerWidget {
   const AboutAppScreen({super.key});
 
+  String _formatVersionLabel(PackageInfo packageInfo) {
+    final build = packageInfo.buildNumber.trim();
+    if (build.isEmpty || build == '0') {
+      return 'Version ${packageInfo.version}';
+    }
+    return 'Version ${packageInfo.version} • Build $build';
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(translationProvider);
@@ -70,7 +78,7 @@ class AboutAppScreen extends ConsumerWidget {
                     future: PackageInfo.fromPlatform(),
                     builder: (context, snapshot) {
                       final versionText = snapshot.hasData
-                          ? 'Version ${snapshot.data!.version} (${snapshot.data!.buildNumber})'
+                          ? _formatVersionLabel(snapshot.data!)
                           : 'Version information loading...';
                       return _VersionBadge(text: versionText);
                     },
@@ -179,7 +187,7 @@ class AboutAppScreen extends ConsumerWidget {
                         future: PackageInfo.fromPlatform(),
                         builder: (context, snapshot) {
                           final versionText = snapshot.hasData
-                              ? 'Version ${snapshot.data!.version} (${snapshot.data!.buildNumber})'
+                              ? _formatVersionLabel(snapshot.data!)
                               : 'Version information loading...';
                           return Row(
                             children: [

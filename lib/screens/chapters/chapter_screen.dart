@@ -8,6 +8,8 @@ import '../conference/enhanced_jitsi_meet_screen.dart';
 import '../../providers/firebase_auth_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../constants/app_constants.dart';
+import 'package:go_router/go_router.dart';
 
 class ChapterScreen extends StatefulWidget {
   const ChapterScreen({super.key});
@@ -51,7 +53,10 @@ class _ChapterScreenState extends State<ChapterScreen>
 
     try {
       _currentUserId = _authService.currentUser?.uid;
-      if (_currentUserId == null) return;
+      if (_currentUserId == null) {
+        setState(() => _isLoading = false);
+        return;
+      }
 
       final results = await Future.wait([
         _chapterService.getChapters(
@@ -77,7 +82,7 @@ class _ChapterScreenState extends State<ChapterScreen>
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading data: $e')),
+          SnackBar(content: Text('Unable to load chapter data right now.')),
         );
       }
     }
@@ -111,17 +116,71 @@ class _ChapterScreenState extends State<ChapterScreen>
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : TabBarView(
-              controller: _tabController,
-              children: [
-                _buildOverviewTab(),
-                _buildBrowseTab(),
-                _buildMyChaptersTab(),
-                _buildActivitiesTab(),
-                _buildTasksTab(),
-              ],
-            ),
+          : _currentUserId == null
+              ? _buildSignedOutState()
+              : TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildOverviewTab(),
+                    _buildBrowseTab(),
+                    _buildMyChaptersTab(),
+                    _buildActivitiesTab(),
+                    _buildTasksTab(),
+                  ],
+                ),
       floatingActionButton: _buildFloatingActionButton(),
+    );
+  }
+
+  Widget _buildSignedOutState() {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460),
+          child: Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+              side: BorderSide(color: theme.colorScheme.outlineVariant),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.groups_rounded,
+                      size: 52, color: theme.colorScheme.primary),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Sign in to access chapters',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Chapter activities, reports, and tasks are available after sign-in so we can load your membership and assignments correctly.',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      height: 1.5,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: () => context.go(AppConstants.authRoute),
+                    icon: const Icon(Icons.login),
+                    label: const Text('Sign In'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 

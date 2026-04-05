@@ -768,7 +768,6 @@ class FirebaseDatabaseService {
     }
   }
 
-
   Future<bool> addBoardReport(Map<String, dynamic> reportData) async {
     try {
       await _firestore.collection('board_reports').add({
@@ -795,7 +794,6 @@ class FirebaseDatabaseService {
     }
   }
 
-
   Future<bool> addBoardDecision(Map<String, dynamic> decisionData) async {
     try {
       await _firestore.collection('board_decisions').add({
@@ -810,25 +808,28 @@ class FirebaseDatabaseService {
     }
   }
 
-  Future<bool> castBoardVote(String decisionId, Map<String, dynamic> voteData) async {
+  Future<bool> castBoardVote(
+      String decisionId, Map<String, dynamic> voteData) async {
     try {
-      final decisionRef = _firestore.collection('board_decisions').doc(decisionId);
-      
+      final decisionRef =
+          _firestore.collection('board_decisions').doc(decisionId);
+
       await _firestore.runTransaction((transaction) async {
         final snapshot = await transaction.get(decisionRef);
         if (!snapshot.exists) throw Exception('Decision not found');
-        
-        final List<dynamic> currentVotes = List.from(snapshot.data()?['votes'] ?? []);
-        
+
+        final List<dynamic> currentVotes =
+            List.from(snapshot.data()?['votes'] ?? []);
+
         // Remove existing vote from same user if any
         currentVotes.removeWhere((v) => v['voter_id'] == voteData['voter_id']);
-        
+
         // Add new vote
         currentVotes.add({
           ...voteData,
           'voted_at': DateTime.now().toIso8601String(),
         });
-        
+
         transaction.update(decisionRef, {'votes': currentVotes});
       });
       return true;
@@ -1128,10 +1129,8 @@ class FirebaseDatabaseService {
   // Projects Management Methods
   Future<List<Map<String, dynamic>>> getProjects() async {
     try {
-      final snapshot = await _firestore
-          .collection('projects')
-          .orderBy('priority')
-          .get();
+      final snapshot =
+          await _firestore.collection('projects').orderBy('priority').get();
 
       return snapshot.docs.map((doc) {
         final data = doc.data();
@@ -1149,7 +1148,18 @@ class FirebaseDatabaseService {
       projectData['created_at'] = FieldValue.serverTimestamp();
       if (projectData['raised'] == null) projectData['raised'] = 0;
       if (projectData['priority'] == null) projectData['priority'] = 100;
-      
+      projectData['currency'] ??= 'NGN';
+      projectData['summary'] ??= '';
+      projectData['description'] ??= '';
+      projectData['status'] ??= 'planning';
+      projectData['cta_label'] ??= 'Donate for this item';
+
+      final customId = (projectData['id'] as String?)?.trim();
+      if (customId != null && customId.isNotEmpty) {
+        await _firestore.collection('projects').doc(customId).set(projectData);
+        return customId;
+      }
+
       final docRef = await _firestore.collection('projects').add(projectData);
       return docRef.id;
     } catch (e) {
@@ -1158,10 +1168,16 @@ class FirebaseDatabaseService {
     }
   }
 
-  Future<void> updateProject(String projectId, Map<String, dynamic> projectData) async {
+  Future<void> updateProject(
+      String projectId, Map<String, dynamic> projectData) async {
     try {
       projectData['updated_at'] = FieldValue.serverTimestamp();
-      await _firestore.collection('projects').doc(projectId).update(projectData);
+      projectData['currency'] ??= 'NGN';
+      projectData['cta_label'] ??= 'Donate for this item';
+      await _firestore
+          .collection('projects')
+          .doc(projectId)
+          .update(projectData);
     } catch (e) {
       _logger.error('Error updating project: $e');
       throw DatabaseException('Failed to update project', originalError: e);

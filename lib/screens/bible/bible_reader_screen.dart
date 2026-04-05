@@ -12,6 +12,7 @@ import '../../config/app_config.dart';
 import '../../services/tts_service.dart';
 import '../../services/user_statistics_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
 
 class BibleReaderScreen extends ConsumerStatefulWidget {
   final String? initialReference;
@@ -1722,6 +1723,16 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                           backgroundColor: colorScheme.primary,
                           duration: const Duration(seconds: 2),
                         ),
+                      );
+                    },
+                  ),
+                  _buildActionButton(
+                    icon: Icons.share_outlined,
+                    label: 'Share',
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      SharePlus.instance.share(
+                        ShareParams(text: '$reference\n$verseText'),
                       );
                     },
                   ),

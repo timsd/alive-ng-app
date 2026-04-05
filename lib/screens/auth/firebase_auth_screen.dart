@@ -160,6 +160,7 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
         data: (_) {
           // Success - navigate to home
           if (mounted) {
+            ref.read(isGuestModeProvider.notifier).state = false;
             context.go('/');
           }
         },

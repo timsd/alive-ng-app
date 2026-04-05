@@ -9,6 +9,7 @@ import '../../widgets/custom_card.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_input.dart';
+import '../../utils/error_handler.dart';
 
 class TestimoniesScreen extends ConsumerStatefulWidget {
   const TestimoniesScreen({super.key});
@@ -106,9 +107,9 @@ class _TestimoniesScreenState extends ConsumerState<TestimoniesScreen>
                       Text(
                         translate('share_anonymously'),
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontSize: ResponsiveUtils.getResponsiveFontSize(
-                              context, 14),
-                        ),
+                              fontSize: ResponsiveUtils.getResponsiveFontSize(
+                                  context, 14),
+                            ),
                       ),
                     ],
                   ),
@@ -160,6 +161,7 @@ class _TestimoniesScreenState extends ConsumerState<TestimoniesScreen>
   @override
   Widget build(BuildContext context) {
     final translate = ref.watch(translationProvider);
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: CustomAppBar(
         title: translate('testimonies'),
@@ -180,6 +182,8 @@ class _TestimoniesScreenState extends ConsumerState<TestimoniesScreen>
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddTestimonyDialog,
+        backgroundColor: theme.colorScheme.primary,
+        foregroundColor: theme.colorScheme.onPrimary,
         child: Icon(
           Icons.add,
           size: ResponsiveUtils.getResponsiveIconSize(context, 24),
@@ -190,7 +194,6 @@ class _TestimoniesScreenState extends ConsumerState<TestimoniesScreen>
 
   Widget _buildTestimonyList(
       Future<List<Testimony>> future, bool isMyTestimonies) {
-    final translate = ref.watch(translationProvider);
     return RefreshIndicator(
       onRefresh: () async => _refreshTestimonies(),
       child: FutureBuilder<List<Testimony>>(
@@ -201,29 +204,13 @@ class _TestimoniesScreenState extends ConsumerState<TestimoniesScreen>
           }
 
           if (snapshot.hasError) {
-            return Center(
-              child: Text(
-                '${translate('error')}: ${snapshot.error}',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontSize:
-                        ResponsiveUtils.getResponsiveFontSize(context, 14)),
-              ),
-            );
+            return _buildErrorState(context, snapshot.error);
           }
 
           final testimonies = snapshot.data ?? [];
 
           if (testimonies.isEmpty) {
-            return Center(
-              child: Text(
-                isMyTestimonies
-                    ? translate('no_my_testimonies')
-                    : translate('no_testimonies'),
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontSize:
-                        ResponsiveUtils.getResponsiveFontSize(context, 16)),
-              ),
-            );
+            return _buildEmptyState(context, isMyTestimonies);
           }
 
           return ListView.separated(
@@ -251,10 +238,14 @@ class _TestimoniesScreenState extends ConsumerState<TestimoniesScreen>
                                 ? NetworkImage(testimony.userAvatarUrl!)
                                 : null,
                             child: testimony.userAvatarUrl == null
-                                ? Text(testimony.userName.isNotEmpty
-                                    ? testimony.userName[0].toUpperCase()
-                                    : '?',
-                                    style: TextStyle(color: Theme.of(context).colorScheme.primary))
+                                ? Text(
+                                    testimony.userName.isNotEmpty
+                                        ? testimony.userName[0].toUpperCase()
+                                        : '?',
+                                    style: TextStyle(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primary))
                                 : null,
                           ),
                           SizedBox(
@@ -306,9 +297,9 @@ class _TestimoniesScreenState extends ConsumerState<TestimoniesScreen>
                       Text(
                         testimony.content,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontSize: ResponsiveUtils.getResponsiveFontSize(
-                              context, 14),
-                        ),
+                              fontSize: ResponsiveUtils.getResponsiveFontSize(
+                                  context, 14),
+                            ),
                       ),
                     ],
                   ),
@@ -317,6 +308,108 @@ class _TestimoniesScreenState extends ConsumerState<TestimoniesScreen>
             },
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context, bool isMyTestimonies) {
+    final translate = ref.watch(translationProvider);
+    final theme = Theme.of(context);
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: CustomCard(
+          borderRadius: BorderRadius.circular(22),
+          child: Padding(
+            padding: ResponsiveUtils.getResponsivePadding(context),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isMyTestimonies ? Icons.edit_note : Icons.forum_outlined,
+                  size: ResponsiveUtils.getResponsiveIconSize(context, 48),
+                  color: theme.colorScheme.primary,
+                ),
+                SizedBox(
+                    height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
+                Text(
+                  isMyTestimonies
+                      ? translate('no_my_testimonies')
+                      : translate('no_testimonies'),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(
+                    height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
+                Text(
+                  isMyTestimonies
+                      ? 'Your shared testimonies will appear here after submission.'
+                      : 'Approved testimonies from the community will appear here when available.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    height: 1.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(BuildContext context, Object? error) {
+    final theme = Theme.of(context);
+    final friendlyMessage = ErrorHandler.getUserFriendlyMessage(error);
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 440),
+        child: CustomCard(
+          borderRadius: BorderRadius.circular(22),
+          child: Padding(
+            padding: ResponsiveUtils.getResponsivePadding(context),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.cloud_off_rounded,
+                  size: ResponsiveUtils.getResponsiveIconSize(context, 50),
+                  color: theme.colorScheme.error,
+                ),
+                SizedBox(
+                    height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
+                Text(
+                  'Unable to load testimonies right now',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(
+                    height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
+                Text(
+                  friendlyMessage,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    height: 1.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(
+                    height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
+                OutlinedButton.icon(
+                  onPressed: _refreshTestimonies,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Try Again'),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -335,17 +428,21 @@ class _TestimoniesScreenState extends ConsumerState<TestimoniesScreen>
         borderRadius: BorderRadius.circular(
             ResponsiveUtils.getResponsiveBorderRadiusValue(context, 12)),
         border: Border.all(
-          color: isApproved ? Theme.of(context).colorScheme.tertiary : Theme.of(context).colorScheme.secondary,
+          color: isApproved
+              ? Theme.of(context).colorScheme.tertiary
+              : Theme.of(context).colorScheme.secondary,
           width: 1,
         ),
       ),
       child: Text(
         isApproved ? translate('approved') : translate('pending'),
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: isApproved ? Theme.of(context).colorScheme.tertiary : Theme.of(context).colorScheme.secondary,
-          fontSize: ResponsiveUtils.getResponsiveFontSize(context, 10),
-          fontWeight: FontWeight.bold,
-        ),
+              color: isApproved
+                  ? Theme.of(context).colorScheme.tertiary
+                  : Theme.of(context).colorScheme.secondary,
+              fontSize: ResponsiveUtils.getResponsiveFontSize(context, 10),
+              fontWeight: FontWeight.bold,
+            ),
       ),
     );
   }

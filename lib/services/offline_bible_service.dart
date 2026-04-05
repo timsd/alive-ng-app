@@ -151,7 +151,7 @@ class OfflineBibleService {
       // Try to get from local database first
       final cachedChapter =
           await _dbHelper.getChapter(book, chapter, versionCode, languageCode);
-      if (cachedChapter != null) {
+      if (cachedChapter != null && cachedChapter.verses.isNotEmpty) {
         return cachedChapter;
       }
 

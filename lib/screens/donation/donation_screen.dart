@@ -20,6 +20,54 @@ class DonationScreen extends ConsumerStatefulWidget {
 
 class _DonationScreenState extends ConsumerState<DonationScreen>
     with TickerProviderStateMixin {
+  static const List<Map<String, dynamic>> _fallbackProjects = [
+    {
+      'id': 'impact_hub_center',
+      'title': 'Impact Hub Center',
+      'summary': 'Community discipleship and outreach facility',
+      'description':
+          'A central hub for training, discipleship, and community engagement.',
+      'goal': 35000000.0,
+      'raised': 8000000.0,
+      'currency': 'NGN',
+      'status': 'active',
+      'priority': 1,
+      'cta_label': 'Donate for this item',
+      'image_url':
+          'https://images.unsplash.com/photo-1593914370442-49d414beca24?q=80&w=1031&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+    },
+    {
+      'id': 'vehicle_purchase',
+      'title': 'Vehicle Purchase',
+      'summary': 'Mission vehicle for outreach logistics',
+      'description':
+          'Reliable transportation for mission trips and logistics across Nigeria.',
+      'goal': 18000000.0,
+      'raised': 0.0,
+      'currency': 'NGN',
+      'status': 'active',
+      'priority': 2,
+      'cta_label': 'Donate for this item',
+      'image_url':
+          'https://images.unsplash.com/photo-1597685204565-110abf469a1e?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+    },
+    {
+      'id': 'media_studio_setup',
+      'title': 'Media Studio Setup',
+      'summary': 'Podcast and content production equipment',
+      'description':
+          'Equipping the ministry with high-quality media production capabilities.',
+      'goal': 9000000.0,
+      'raised': 0.0,
+      'currency': 'NGN',
+      'status': 'planning',
+      'priority': 3,
+      'cta_label': 'Donate for this item',
+      'image_url':
+          'https://images.unsplash.com/photo-1769699167906-a44d5ae50abb?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+    },
+  ];
+
   bool _isMonthlySelected = true;
   String _selectedCurrency = 'USD';
   double _selectedAmount = 0;
@@ -457,6 +505,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
+        constraints: const BoxConstraints(minHeight: 176),
         padding: ResponsiveUtils.getResponsivePadding(context),
         decoration: BoxDecoration(
           color: isSelected ? theme.colorScheme.primary : theme.cardColor,
@@ -478,6 +527,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
               : null,
         ),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               icon,
@@ -494,14 +544,14 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
             SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
             Text(
               title,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     fontSize: ResponsiveUtils.getResponsiveValue(
                       context: context,
-                      mobile: 16,
-                      tablet: 18,
-                      desktop: 20,
+                      mobile: 15,
+                      tablet: 16,
+                      desktop: 18,
                     ),
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w700,
                     color: isSelected
                         ? theme.colorScheme.onPrimary
                         : theme.colorScheme.onSurface,
@@ -515,10 +565,13 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                     fontSize: ResponsiveUtils.getResponsiveValue(
                       context: context,
                       mobile: 12,
-                      tablet: 14,
-                      desktop: 16,
+                      tablet: 13,
+                      desktop: 14,
                     ),
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    color: isSelected
+                        ? theme.colorScheme.onPrimary.withValues(alpha: 0.84)
+                        : theme.colorScheme.onSurfaceVariant,
+                    height: 1.35,
                   ),
               textAlign: TextAlign.center,
             ),
@@ -1329,9 +1382,21 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
         if (data != null) {
           _selectedProjectTitle =
               (data['title'] as String?) ?? (data['name'] as String?);
+        } else {
+          final fallback =
+              _fallbackProjects.cast<Map<String, dynamic>?>().firstWhere(
+                    (project) => project?['id'] == projectId,
+                    orElse: () => null,
+                  );
+          _selectedProjectTitle = fallback?['title'] as String?;
         }
       } catch (_) {
-        // ignore fetch errors; will still proceed with projectId only
+        final fallback =
+            _fallbackProjects.cast<Map<String, dynamic>?>().firstWhere(
+                  (project) => project?['id'] == projectId,
+                  orElse: () => null,
+                );
+        _selectedProjectTitle = fallback?['title'] as String?;
       }
       setState(() {});
       clearSelectedProjectId();
@@ -1440,6 +1505,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                         final raised = (project['raised'] as num?) ?? 0;
                         final status = (project['status'] as String?) ?? '';
                         final imageUrl = project['image_url'] as String?;
+                        final ctaLabel = (project['cta_label'] as String?) ??
+                            'Donate for this item';
 
                         // Badge color per status (mirrors web badges)
                         Color statusColor;
@@ -1567,15 +1634,14 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                                         },
                                         icon: const Icon(
                                             Icons.volunteer_activism),
-                                        label:
-                                            const Text('Donate for this item'),
+                                        label: Text(ctaLabel),
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor:
                                               theme.colorScheme.secondary,
                                           foregroundColor:
                                               theme.colorScheme.onSecondary,
                                           minimumSize:
-                                              const Size(double.infinity, 44),
+                                              const Size(double.infinity, 48),
                                           shape: RoundedRectangleBorder(
                                               borderRadius:
                                                   BorderRadius.circular(10)),
@@ -1613,8 +1679,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
         return snapshot.docs.map((d) => {'id': d.id, ...d.data()}).toList();
       }
     } catch (_) {}
-    // Removed hardcoded fallback projects to rely strictly on Admin data
-    return [];
+    return _fallbackProjects;
   }
 
   /// Formats a number with compact suffix

@@ -38,6 +38,9 @@ void main() {
         debugPrint('Firebase init timeout; continuing app startup');
       });
       firebaseReady = true;
+      if (kIsWeb) {
+        await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
+      }
     } catch (e) {
       debugPrint('Firebase init failed: $e');
     }

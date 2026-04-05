@@ -278,8 +278,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     ResponsiveUtils.getResponsivePaddingWithBase(context, 16),
                 child: LinearProgressIndicator(
                   value: (_currentPage + 1) / 3,
-                  backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
+                  backgroundColor:
+                      Theme.of(context).colorScheme.surfaceContainerHighest,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                      Theme.of(context).colorScheme.primary),
                 ),
               ),
 
@@ -290,8 +292,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 child: Text(
                   'Section ${_currentPage + 1} of 3',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.outline,
-                  ),
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
                 ),
               ),
 
@@ -320,8 +322,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       ElevatedButton(
                         onPressed: _previousPage,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                          foregroundColor: Theme.of(context).colorScheme.onSurface,
+                          backgroundColor: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest,
+                          foregroundColor:
+                              Theme.of(context).colorScheme.onSurface,
                         ),
                         child: const Text('Previous'),
                       )
@@ -331,8 +336,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       ElevatedButton(
                         onPressed: _nextPage,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).colorScheme.primary,
-                          foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                          backgroundColor:
+                              Theme.of(context).colorScheme.primary,
+                          foregroundColor:
+                              Theme.of(context).colorScheme.onPrimary,
                         ),
                         child: const Text('Next'),
                       )
@@ -340,8 +347,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       ElevatedButton(
                         onPressed: _isLoading ? null : _saveProfile,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).colorScheme.primary,
-                          foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                          backgroundColor:
+                              Theme.of(context).colorScheme.primary,
+                          foregroundColor:
+                              Theme.of(context).colorScheme.onPrimary,
                         ),
                         child: _isLoading
                             ? SizedBox(
@@ -374,15 +383,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           Text(
             'Basic Information',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+                  fontWeight: FontWeight.bold,
+                ),
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
           LayoutFixUtils.safeText(
             'Update your basic information. Note: Email cannot be changed.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
 
@@ -447,15 +456,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           Text(
             'Profile Details',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+                  fontWeight: FontWeight.bold,
+                ),
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
           LayoutFixUtils.safeText(
             'Update your profile details. This information is important for community engagement.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
           TextFormField(
@@ -518,9 +527,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               border: const OutlineInputBorder(),
               prefixIcon: const Icon(Icons.star),
               filled: true,
-              fillColor: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.grey.shade800
-                  : Colors.grey.shade50,
+              fillColor: Theme.of(context).colorScheme.surfaceContainer,
             ),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
@@ -580,15 +587,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           Text(
             'Commitment & Engagement',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+                  fontWeight: FontWeight.bold,
+                ),
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
           LayoutFixUtils.safeText(
             'Update your commitment and engagement preferences.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
           TextFormField(
@@ -616,8 +623,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           Text(
             'How do you plan to contribute?',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+                  fontWeight: FontWeight.bold,
+                ),
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
           LayoutFixUtils.safeColumn(
@@ -658,8 +665,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         ? 'I plan to be actively available for service and activities'
                         : 'I plan to contribute both financially and through active service',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
               ),
             ],
           ),
@@ -675,8 +682,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         Text(
           'Profile Picture',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
+                fontWeight: FontWeight.w600,
+              ),
         ),
         SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
         Row(
@@ -734,9 +741,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             ResponsiveUtils.getResponsiveSpacing(context, 8)),
                     TextButton.icon(
                       onPressed: _removeProfilePicture,
-                      icon: Icon(Icons.delete, color: Theme.of(context).colorScheme.error),
+                      icon: Icon(Icons.delete,
+                          color: Theme.of(context).colorScheme.error),
                       label: Text('Remove Picture',
-                          style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                          style: TextStyle(
+                              color: Theme.of(context).colorScheme.error)),
                     ),
                   ],
                 ],

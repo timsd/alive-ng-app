@@ -67,7 +67,7 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
   void _showLanguageSelector(BuildContext context, WidgetRef ref) {
     final translate = ref.read(translationProvider);
     final currentLocale = ref.watch(localeProvider);
-    
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -123,26 +123,27 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
           Icons.chevron_left,
           context: context,
         ),
-        onPressed: onBackPressed ?? () {
-          final navigator = Navigator.of(context);
-          if (navigator.canPop()) {
-            navigator.pop();
-            return;
-          }
-          if (context.mounted) {
-            context.go(AppConstants.homeRoute);
-          }
-        },
+        onPressed: onBackPressed ??
+            () {
+              final navigator = Navigator.of(context);
+              if (navigator.canPop()) {
+                navigator.pop();
+                return;
+              }
+              if (context.mounted) {
+                context.go(AppConstants.homeRoute);
+              }
+            },
       );
     }
 
     // Build toggle actions
     List<Widget> toggleActions = [];
-    
+
     if (showThemeToggle) {
       IconData themeIcon;
       String themeTooltip;
-      
+
       switch (themeMode) {
         case ThemeMode.system:
           themeIcon = Icons.brightness_auto;
@@ -157,7 +158,7 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
           themeTooltip = 'Dark Mode';
           break;
       }
-      
+
       toggleActions.add(
         IconButton(
           icon: LayoutFixUtils.responsiveIcon(
@@ -180,7 +181,8 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
             context: context,
           ),
           onPressed: () => _showLanguageSelector(context, ref),
-          tooltip: '${translate('language')} (${currentLocale.languageCode.toUpperCase()})',
+          tooltip:
+              '${translate('language')} (${currentLocale.languageCode.toUpperCase()})',
         ),
       );
     }
@@ -220,9 +222,17 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
         theme.appBarTheme.foregroundColor ??
         computedContrast;
 
-    final TextStyle? resolvedTitleStyle =
-        (titleTextStyle ?? theme.appBarTheme.titleTextStyle ?? theme.textTheme.titleLarge)
-            ?.copyWith(color: resolvedForeground);
+    final TextStyle? resolvedTitleStyle = (titleTextStyle ??
+            theme.appBarTheme.titleTextStyle ??
+            theme.textTheme.titleLarge)
+        ?.copyWith(color: resolvedForeground);
+    final ShapeBorder resolvedShape = shape ??
+        Border(
+          bottom: BorderSide(
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.9),
+            width: 1,
+          ),
+        );
 
     return AppBar(
       title: titleWidget ??
@@ -247,7 +257,7 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
       systemOverlayStyle:
           systemOverlayStyle ?? theme.appBarTheme.systemOverlayStyle,
       bottom: bottom,
-      shape: shape,
+      shape: resolvedShape,
       toolbarHeight: toolbarHeight,
     );
   }
@@ -663,11 +673,14 @@ class ProfileAppBar extends StatelessWidget implements PreferredSizeWidget {
     Widget avatarWidget = avatar ??
         CircleAvatar(
           radius: 20,
-          backgroundImage: avatarUrl != null ? CustomImage.provider(avatarUrl!) : null,
-          child: avatarUrl == null ? LayoutFixUtils.responsiveIcon(
-            Icons.person,
-            context: context,
-          ) : null,
+          backgroundImage:
+              avatarUrl != null ? CustomImage.provider(avatarUrl!) : null,
+          child: avatarUrl == null
+              ? LayoutFixUtils.responsiveIcon(
+                  Icons.person,
+                  context: context,
+                )
+              : null,
         );
 
     if (onAvatarTap != null) {
@@ -732,7 +745,3 @@ class ProfileAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Size get preferredSize => Size.fromHeight(toolbarHeight);
 }
-
-
-
-

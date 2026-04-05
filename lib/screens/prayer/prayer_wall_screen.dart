@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/add_prayer_request_dialog.dart';
+import '../../utils/error_handler.dart';
 
 class PrayerWallScreen extends ConsumerStatefulWidget {
   const PrayerWallScreen({super.key});
@@ -27,6 +28,52 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  Widget _buildLoadErrorState(
+      BuildContext context, String title, Object? error) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: BorderSide(color: theme.colorScheme.outlineVariant),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.cloud_off_rounded,
+                      size: 48, color: theme.colorScheme.error),
+                  const SizedBox(height: 16),
+                  Text(
+                    title,
+                    style: theme.textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    ErrorHandler.getUserFriendlyMessage(error),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      height: 1.45,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -59,7 +106,6 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddPrayerDialog,
-
         tooltip: 'Add Prayer Request',
         child: const FaIcon(FontAwesomeIcons.plus),
       ),
@@ -113,7 +159,11 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
           }
 
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.error)));
+            return _buildLoadErrorState(
+              context,
+              'Unable to load public prayers',
+              snapshot.error,
+            );
           }
 
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
@@ -175,7 +225,11 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
         }
 
         if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
+          return _buildLoadErrorState(
+            context,
+            'Unable to load your prayer requests',
+            snapshot.error,
+          );
         }
 
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
@@ -233,7 +287,11 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
         }
 
         if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
+          return _buildLoadErrorState(
+            context,
+            'Unable to load supported prayers',
+            snapshot.error,
+          );
         }
 
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
@@ -259,7 +317,11 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
             }
 
             if (prayerSnapshot.hasError) {
-              return Center(child: Text('Error: ${prayerSnapshot.error}'));
+              return _buildLoadErrorState(
+                context,
+                'Unable to load supported prayer details',
+                prayerSnapshot.error,
+              );
             }
 
             if (!prayerSnapshot.hasData || prayerSnapshot.data!.docs.isEmpty) {
@@ -319,8 +381,10 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
               children: [
                 CircleAvatar(
                   radius: 20,
-                  backgroundColor:
-                      Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                  backgroundColor: Theme.of(context)
+                      .colorScheme
+                      .primary
+                      .withValues(alpha: 0.1),
                   child: Icon(
                     Icons.person,
                     color: Theme.of(context).colorScheme.primary,
@@ -333,17 +397,18 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
                     children: [
                       Text(
                         author,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
                         _formatTimestamp(timestamp),
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.outline,
-                        ),
+                              color: Theme.of(context).colorScheme.outline,
+                            ),
                       ),
                     ],
                   ),
@@ -376,10 +441,13 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
                                 color: Theme.of(context).colorScheme.error),
                             const SizedBox(width: 8),
                             Text('Delete',
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .error)),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .error)),
                           ],
                         ),
                       ),
@@ -438,8 +506,9 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
                     ),
                     label: Text(isPrayingFor ? 'Praying' : 'Pray'),
                     style: TextButton.styleFrom(
-                      foregroundColor:
-                          isPrayingFor ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.onSurfaceVariant,
+                      foregroundColor: isPrayingFor
+                          ? Theme.of(context).colorScheme.error
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 TextButton.icon(

@@ -51,6 +51,13 @@ class TestimonyService {
       // Client-side sort as fallback if orderBy was skipped
       testimonies.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return testimonies;
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied' || e.code == 'unavailable') {
+        _logger.warning(
+            'Public testimonies unavailable, returning empty list: ${e.message}');
+        return <Testimony>[];
+      }
+      rethrow;
     } catch (e) {
       if (e is AppException) rethrow;
       _logger.error('Error fetching testimonies', e);
@@ -63,7 +70,7 @@ class TestimonyService {
     try {
       final user = _authService.currentUser;
       if (user == null) {
-        throw AuthException('User not authenticated');
+        return <Testimony>[];
       }
 
       QuerySnapshot snapshot;
@@ -93,6 +100,13 @@ class TestimonyService {
 
       testimonies.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return testimonies;
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied' || e.code == 'unavailable') {
+        _logger.warning(
+            'My testimonies unavailable, returning empty list: ${e.message}');
+        return <Testimony>[];
+      }
+      rethrow;
     } catch (e) {
       if (e is AppException) rethrow;
       _logger.error('Error fetching my testimonies', e);

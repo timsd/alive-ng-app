@@ -5,6 +5,8 @@ import '../../widgets/custom_app_bar.dart';
 import '../../utils/responsive_utils.dart';
 import '../../utils/layout_fix_utils.dart';
 import '../../models/kids_models.dart';
+import '../../utils/error_handler.dart';
+
 class KidsStoriesScreen extends ConsumerStatefulWidget {
   const KidsStoriesScreen({super.key});
 
@@ -41,31 +43,57 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
                   padding: const EdgeInsets.only(bottom: 12.0),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: Image.network(story.illustrationUrl!, height: 150, width: double.infinity, fit: BoxFit.cover,
+                    child: Image.network(
+                      story.illustrationUrl!,
+                      height: 150,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) => Container(
-                        height: 150, color: Theme.of(context).colorScheme.surfaceContainer, child: Icon(Icons.broken_image, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                        height: 150,
+                        color: Theme.of(context).colorScheme.surfaceContainer,
+                        child: Icon(Icons.broken_image,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant),
                       ),
                     ),
                   ),
                 ),
               Text(
                 story.description,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontStyle: FontStyle.italic),
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(fontStyle: FontStyle.italic),
               ),
               const SizedBox(height: 16),
               if (story.content != null && story.content!.isNotEmpty) ...[
-                Text('Content:', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+                Text('Content:',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleSmall
+                        ?.copyWith(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
-                Text(story.content!, style: Theme.of(context).textTheme.bodyMedium),
+                Text(story.content!,
+                    style: Theme.of(context).textTheme.bodyMedium),
                 const SizedBox(height: 16),
               ],
-              Text('Moral Lesson:', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+              Text('Moral Lesson:',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleSmall
+                      ?.copyWith(fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
-              Text(story.moralLesson, style: Theme.of(context).textTheme.bodyMedium),
+              Text(story.moralLesson,
+                  style: Theme.of(context).textTheme.bodyMedium),
               const SizedBox(height: 12),
-              Text('Bible Reference:', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+              Text('Bible Reference:',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleSmall
+                      ?.copyWith(fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
-              Text(story.bibleReference, style: Theme.of(context).textTheme.bodyMedium),
+              Text(story.bibleReference,
+                  style: Theme.of(context).textTheme.bodyMedium),
             ],
           ),
         ),
@@ -88,26 +116,32 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
 
   // Reactive Firestore Stream
   Stream<List<BibleStory>> _getStoriesStream() {
-    return FirebaseFirestore.instance.collection('kids_stories').snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        
-        // Defaults for legacy parsing logic
-        data['duration'] = data['duration'] ?? 10;
-        data['completed'] = data['completed'] ?? false;
-        data['favorite'] = data['favorite'] ?? false;
-        data['tags'] = data['tags'] ?? [];
-        data['moralLesson'] = data['moralLesson'] ?? '';
-        data['bibleReference'] = data['bibleReference'] ?? '';
-        data['subtitle'] = data['subtitle'] ?? '';
+    return FirebaseFirestore.instance
+        .collection('kids_stories')
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) {
+            final data = doc.data();
+            data['id'] = doc.id;
 
-        try {
-          return BibleStory.fromJson(data);
-        } catch (e) {
-          return null; // Ignore corrupted mappings locally while migrating
-        }
-      }).whereType<BibleStory>().toList();
+            // Defaults for legacy parsing logic
+            data['duration'] = data['duration'] ?? 10;
+            data['completed'] = data['completed'] ?? false;
+            data['favorite'] = data['favorite'] ?? false;
+            data['tags'] = data['tags'] ?? [];
+            data['moralLesson'] = data['moralLesson'] ?? '';
+            data['bibleReference'] = data['bibleReference'] ?? '';
+            data['subtitle'] = data['subtitle'] ?? '';
+
+            try {
+              return BibleStory.fromJson(data);
+            } catch (e) {
+              return null; // Ignore corrupted mappings locally while migrating
+            }
+          })
+          .whereType<BibleStory>()
+          .toList();
     });
   }
 
@@ -129,96 +163,209 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
         ),
       ),
       body: StreamBuilder<List<BibleStory>>(
-        stream: _getStoriesStream(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(child: Text('Failed to load stories: ${snapshot.error}'));
-          }
+          stream: _getStoriesStream(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError) {
+              return _buildLoadStateCard(
+                context,
+                title: 'Unable to load kids stories',
+                message: ErrorHandler.getUserFriendlyMessage(snapshot.error),
+                icon: Icons.cloud_off_rounded,
+              );
+            }
 
-          final stories = snapshot.data ?? [];
+            final stories = snapshot.data ?? [];
 
-          return Column(
-            children: [
-              // Search and Filter Bar
-              Container(
-                padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(context: context, mobile: 12.0, tablet: 16.0, desktop: 20.0)),
-                child: Column(
-                  children: [
-                    TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        hintText: 'Search stories...',
-                        prefixIcon: const Icon(Icons.search),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(ResponsiveUtils.getResponsiveValue(context: context, mobile: 10.0, tablet: 12.0, desktop: 14.0)),
+            return Column(
+              children: [
+                // Search and Filter Bar
+                Container(
+                  padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(
+                      context: context,
+                      mobile: 12.0,
+                      tablet: 16.0,
+                      desktop: 20.0)),
+                  child: Column(
+                    children: [
+                      TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText: 'Search stories...',
+                          prefixIcon: const Icon(Icons.search),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(
+                                ResponsiveUtils.getResponsiveValue(
+                                    context: context,
+                                    mobile: 10.0,
+                                    tablet: 12.0,
+                                    desktop: 14.0)),
+                          ),
                         ),
+                        onChanged: (value) => setState(() {}),
                       ),
-                      onChanged: (value) => setState(() {}),
-                    ),
-                    SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 10.0, tablet: 12.0, desktop: 14.0)),
-                    LayoutFixUtils.safeRow(
-                      children: [
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
-                            initialValue: _selectedAgeGroup,
-                            decoration: InputDecoration(
-                              labelText: 'Age Group',
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(ResponsiveUtils.getResponsiveValue(context: context, mobile: 6, tablet: 8, desktop: 10))),
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: ResponsiveUtils.getResponsiveValue(context: context, mobile: 10, tablet: 12, desktop: 14),
-                                vertical: ResponsiveUtils.getResponsiveValue(context: context, mobile: 6, tablet: 8, desktop: 10),
+                      SizedBox(
+                          height: ResponsiveUtils.getResponsiveValue(
+                              context: context,
+                              mobile: 10.0,
+                              tablet: 12.0,
+                              desktop: 14.0)),
+                      LayoutFixUtils.safeRow(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              initialValue: _selectedAgeGroup,
+                              decoration: InputDecoration(
+                                labelText: 'Age Group',
+                                border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(
+                                        ResponsiveUtils.getResponsiveValue(
+                                            context: context,
+                                            mobile: 6,
+                                            tablet: 8,
+                                            desktop: 10))),
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal:
+                                      ResponsiveUtils.getResponsiveValue(
+                                          context: context,
+                                          mobile: 10,
+                                          tablet: 12,
+                                          desktop: 14),
+                                  vertical: ResponsiveUtils.getResponsiveValue(
+                                      context: context,
+                                      mobile: 6,
+                                      tablet: 8,
+                                      desktop: 10),
+                                ),
                               ),
+                              items: [
+                                const DropdownMenuItem(
+                                    value: 'All', child: Text('All Ages')),
+                                ...AgeGroup.values.map((age) =>
+                                    DropdownMenuItem(
+                                        value: age.displayName,
+                                        child: Text(age.displayName))),
+                              ],
+                              onChanged: (value) =>
+                                  setState(() => _selectedAgeGroup = value!),
                             ),
-                            items: [
-                              const DropdownMenuItem(value: 'All', child: Text('All Ages')),
-                              ...AgeGroup.values.map((age) => DropdownMenuItem(value: age.displayName, child: Text(age.displayName))),
-                            ],
-                            onChanged: (value) => setState(() => _selectedAgeGroup = value!),
                           ),
-                        ),
-                        SizedBox(width: ResponsiveUtils.getResponsiveValue(context: context, mobile: 10.0, tablet: 12.0, desktop: 14.0)),
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
-                            initialValue: _selectedCategory,
-                            decoration: InputDecoration(
-                              labelText: 'Category',
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(ResponsiveUtils.getResponsiveValue(context: context, mobile: 6, tablet: 8, desktop: 10))),
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: ResponsiveUtils.getResponsiveValue(context: context, mobile: 10, tablet: 12, desktop: 14),
-                                vertical: ResponsiveUtils.getResponsiveValue(context: context, mobile: 6, tablet: 8, desktop: 10),
+                          SizedBox(
+                              width: ResponsiveUtils.getResponsiveValue(
+                                  context: context,
+                                  mobile: 10.0,
+                                  tablet: 12.0,
+                                  desktop: 14.0)),
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              initialValue: _selectedCategory,
+                              decoration: InputDecoration(
+                                labelText: 'Category',
+                                border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(
+                                        ResponsiveUtils.getResponsiveValue(
+                                            context: context,
+                                            mobile: 6,
+                                            tablet: 8,
+                                            desktop: 10))),
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal:
+                                      ResponsiveUtils.getResponsiveValue(
+                                          context: context,
+                                          mobile: 10,
+                                          tablet: 12,
+                                          desktop: 14),
+                                  vertical: ResponsiveUtils.getResponsiveValue(
+                                      context: context,
+                                      mobile: 6,
+                                      tablet: 8,
+                                      desktop: 10),
+                                ),
                               ),
+                              items: [
+                                const DropdownMenuItem(
+                                    value: 'All', child: Text('All Stories')),
+                                ...StoryCategory.values.map((cat) =>
+                                    DropdownMenuItem(
+                                        value: cat.displayName,
+                                        child: Text(cat.displayName))),
+                              ],
+                              onChanged: (value) =>
+                                  setState(() => _selectedCategory = value!),
                             ),
-                            items: [
-                              const DropdownMenuItem(value: 'All', child: Text('All Stories')),
-                              ...StoryCategory.values.map((cat) => DropdownMenuItem(value: cat.displayName, child: Text(cat.displayName))),
-                            ],
-                            onChanged: (value) => setState(() => _selectedCategory = value!),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Tab Content
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildBibleStoriesTab(stories),
+                      _buildFavoritesTab(stories),
+                      _buildRecentlyReadTab(stories),
+                      _buildDownloadedTab(stories),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          }),
+    );
+  }
+
+  Widget _buildLoadStateCard(
+    BuildContext context, {
+    required String title,
+    required String message,
+    required IconData icon,
+  }) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(22),
+              side: BorderSide(color: theme.colorScheme.outlineVariant),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 48, color: theme.colorScheme.primary),
+                  const SizedBox(height: 16),
+                  Text(
+                    title,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
                     ),
-                  ],
-                ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    message,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      height: 1.5,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
               ),
-              
-              // Tab Content
-              Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildBibleStoriesTab(stories),
-                    _buildFavoritesTab(stories),
-                    _buildRecentlyReadTab(stories),
-                    _buildDownloadedTab(stories),
-                  ],
-                ),
-              ),
-            ],
-          );
-        }
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -229,9 +376,12 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.auto_stories, size: 56, color: Theme.of(context).colorScheme.onSurfaceVariant),
+            Icon(Icons.auto_stories,
+                size: 56,
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
             const SizedBox(height: 16),
-            Text('No stories found in CMS', style: Theme.of(context).textTheme.titleMedium),
+            Text('No stories found in CMS',
+                style: Theme.of(context).textTheme.titleMedium),
           ],
         ),
       );
@@ -240,10 +390,16 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
     // Filter
     final filteredStories = stories.where((story) {
       final matchesSearch = _searchController.text.isEmpty ||
-          story.title.toLowerCase().contains(_searchController.text.toLowerCase()) ||
-          story.description.toLowerCase().contains(_searchController.text.toLowerCase());
-      final matchesAge = _selectedAgeGroup == 'All' || story.ageGroup.displayName == _selectedAgeGroup;
-      final matchesCategory = _selectedCategory == 'All' || story.category.displayName == _selectedCategory;
+          story.title
+              .toLowerCase()
+              .contains(_searchController.text.toLowerCase()) ||
+          story.description
+              .toLowerCase()
+              .contains(_searchController.text.toLowerCase());
+      final matchesAge = _selectedAgeGroup == 'All' ||
+          story.ageGroup.displayName == _selectedAgeGroup;
+      final matchesCategory = _selectedCategory == 'All' ||
+          story.category.displayName == _selectedCategory;
       return matchesSearch && matchesAge && matchesCategory;
     }).toList();
 
@@ -252,73 +408,101 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.search_off, size: 56, color: Theme.of(context).colorScheme.onSurfaceVariant),
+            Icon(Icons.search_off,
+                size: 56,
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
             const SizedBox(height: 16),
-            Text('No stories match your filters', style: Theme.of(context).textTheme.titleMedium),
+            Text('No stories match your filters',
+                style: Theme.of(context).textTheme.titleMedium),
           ],
         ),
       );
     }
 
     return GridView.builder(
-      padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
+      padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(
+          context: context, mobile: 12, tablet: 16, desktop: 20)),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: MediaQuery.of(context).size.width > 600 ? 3 : 2,
         childAspectRatio: 0.8,
-        crossAxisSpacing: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20),
-        mainAxisSpacing: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20),
+        crossAxisSpacing: ResponsiveUtils.getResponsiveValue(
+            context: context, mobile: 12, tablet: 16, desktop: 20),
+        mainAxisSpacing: ResponsiveUtils.getResponsiveValue(
+            context: context, mobile: 12, tablet: 16, desktop: 20),
       ),
       itemCount: filteredStories.length,
       itemBuilder: (context, index) {
         final story = filteredStories[index];
-        return _buildStoryCardFromData(context, story, _favoriteStories.contains(story.id), false);
+        return _buildStoryCardFromData(
+            context, story, _favoriteStories.contains(story.id), false);
       },
     );
   }
 
   Widget _buildFavoritesTab(List<BibleStory> stories) {
-    final favoriteStories = stories.where((story) => _favoriteStories.contains(story.id)).toList();
-    
+    final favoriteStories =
+        stories.where((story) => _favoriteStories.contains(story.id)).toList();
+
     if (favoriteStories.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.favorite_border, size: ResponsiveUtils.getResponsiveValue(context: context, mobile: 56, tablet: 64, desktop: 72), color: Theme.of(context).colorScheme.onSurfaceVariant),
-            SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 14, tablet: 16, desktop: 18)),
-            Text('No favorite stories yet', style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-            SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 6, tablet: 8, desktop: 10)),
-            Text('Tap the heart icon on any story to add it to your favorites', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.8)), textAlign: TextAlign.center),
+            Icon(Icons.favorite_border,
+                size: ResponsiveUtils.getResponsiveValue(
+                    context: context, mobile: 56, tablet: 64, desktop: 72),
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveValue(
+                    context: context, mobile: 14, tablet: 16, desktop: 18)),
+            Text('No favorite stories yet',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveValue(
+                    context: context, mobile: 6, tablet: 8, desktop: 10)),
+            Text('Tap the heart icon on any story to add it to your favorites',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurfaceVariant
+                        .withValues(alpha: 0.8)),
+                textAlign: TextAlign.center),
           ],
         ),
       );
     }
-    
+
     return GridView.builder(
-      padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
+      padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(
+          context: context, mobile: 12, tablet: 16, desktop: 20)),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: MediaQuery.of(context).size.width > 600 ? 3 : 2,
         childAspectRatio: 0.8,
-        crossAxisSpacing: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20),
-        mainAxisSpacing: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20),
+        crossAxisSpacing: ResponsiveUtils.getResponsiveValue(
+            context: context, mobile: 12, tablet: 16, desktop: 20),
+        mainAxisSpacing: ResponsiveUtils.getResponsiveValue(
+            context: context, mobile: 12, tablet: 16, desktop: 20),
       ),
       itemCount: favoriteStories.length,
       itemBuilder: (context, index) {
-        return _buildStoryCardFromData(context, favoriteStories[index], true, false);
+        return _buildStoryCardFromData(
+            context, favoriteStories[index], true, false);
       },
     );
   }
 
   Widget _buildRecentlyReadTab(List<BibleStory> stories) {
-    // Mocked out temporarily until Progress Tracking is fully implemented natively inside Firebase. 
+    // Mocked out temporarily until Progress Tracking is fully implemented natively inside Firebase.
     // Showing top 5 as "recently read" for UI continuity
     final recent = stories.take(5).toList();
     if (recent.isEmpty) {
       return const Center(child: Text("Read stories to track them here"));
     }
-    
+
     return ListView.builder(
-      padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
+      padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(
+          context: context, mobile: 12, tablet: 16, desktop: 20)),
       itemCount: recent.length,
       itemBuilder: (context, index) {
         return _buildRecentStoryItem(context, recent[index]);
@@ -328,28 +512,35 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
 
   Widget _buildDownloadedTab(List<BibleStory> stories) {
     // Only display stories where audio/image URL exists indicating media readiness
-    final downloaded = stories.where((s) => s.audioUrl != null || s.illustrationUrl != null).toList();
-    
+    final downloaded = stories
+        .where((s) => s.audioUrl != null || s.illustrationUrl != null)
+        .toList();
+
     if (downloaded.isEmpty) {
-       return const Center(child: Text("No items fully cashed on device"));
+      return const Center(child: Text("No items fully cashed on device"));
     }
 
     return GridView.builder(
-      padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
+      padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(
+          context: context, mobile: 12, tablet: 16, desktop: 20)),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: MediaQuery.of(context).size.width > 600 ? 3 : 2,
         childAspectRatio: 0.8,
-        crossAxisSpacing: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20),
-        mainAxisSpacing: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20),
+        crossAxisSpacing: ResponsiveUtils.getResponsiveValue(
+            context: context, mobile: 12, tablet: 16, desktop: 20),
+        mainAxisSpacing: ResponsiveUtils.getResponsiveValue(
+            context: context, mobile: 12, tablet: 16, desktop: 20),
       ),
-      itemCount: downloaded.length, 
+      itemCount: downloaded.length,
       itemBuilder: (context, index) {
-        return _buildStoryCardFromData(context, downloaded[index], _favoriteStories.contains(downloaded[index].id), true);
+        return _buildStoryCardFromData(context, downloaded[index],
+            _favoriteStories.contains(downloaded[index].id), true);
       },
     );
   }
 
-  Widget _buildStoryCardFromData(BuildContext context, BibleStory story, bool isFavorite, bool isDownloaded) {
+  Widget _buildStoryCardFromData(BuildContext context, BibleStory story,
+      bool isFavorite, bool isDownloaded) {
     final categoryColors = {
       StoryCategory.oldTestament: Theme.of(context).colorScheme.primary,
       StoryCategory.newTestament: Theme.of(context).colorScheme.tertiary,
@@ -358,18 +549,25 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
       StoryCategory.sdaDoctrines: Theme.of(context).colorScheme.tertiary,
       StoryCategory.sdaValues: Theme.of(context).colorScheme.primary,
     };
-    final color = categoryColors[story.category] ?? Theme.of(context).colorScheme.primary;
+    final color =
+        categoryColors[story.category] ?? Theme.of(context).colorScheme.primary;
 
     return Card(
       elevation: 0,
       color: Theme.of(context).colorScheme.surfaceContainer,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(ResponsiveUtils.getResponsiveValue(context: context, mobile: 14, tablet: 16, desktop: 18)),
-        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4)),
+        borderRadius: BorderRadius.circular(ResponsiveUtils.getResponsiveValue(
+            context: context, mobile: 14, tablet: 16, desktop: 18)),
+        side: BorderSide(
+            color: Theme.of(context)
+                .colorScheme
+                .outlineVariant
+                .withValues(alpha: 0.4)),
       ),
       child: InkWell(
         onTap: () => _openStoryReader(context, story),
-        borderRadius: BorderRadius.circular(ResponsiveUtils.getResponsiveValue(context: context, mobile: 14, tablet: 16, desktop: 18)),
+        borderRadius: BorderRadius.circular(ResponsiveUtils.getResponsiveValue(
+            context: context, mobile: 14, tablet: 16, desktop: 18)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -379,23 +577,30 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
               child: Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
-                    image: story.illustrationUrl != null 
-                    ? DecorationImage(
-                        image: NetworkImage(story.illustrationUrl!), 
-                        fit: BoxFit.cover,
-                        colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.shadow.withValues(alpha: 0.3), BlendMode.darken)
-                      )
-                    : null,
-                  gradient: story.illustrationUrl == null ? LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      color.withValues(alpha: 0.8),
-                      color.withValues(alpha: 0.6),
-                    ],
-                  ) : null,
+                  image: story.illustrationUrl != null
+                      ? DecorationImage(
+                          image: NetworkImage(story.illustrationUrl!),
+                          fit: BoxFit.cover,
+                          colorFilter: ColorFilter.mode(
+                              Theme.of(context)
+                                  .colorScheme
+                                  .shadow
+                                  .withValues(alpha: 0.3),
+                              BlendMode.darken))
+                      : null,
+                  gradient: story.illustrationUrl == null
+                      ? LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            color.withValues(alpha: 0.8),
+                            color.withValues(alpha: 0.6),
+                          ],
+                        )
+                      : null,
                   borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(ResponsiveUtils.getResponsiveValue(context: context, mobile: 14, tablet: 16, desktop: 18)),
+                    top: Radius.circular(ResponsiveUtils.getResponsiveValue(
+                        context: context, mobile: 14, tablet: 16, desktop: 18)),
                   ),
                 ),
                 child: Stack(
@@ -404,17 +609,25 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
                       Center(
                         child: Icon(
                           Icons.auto_stories,
-                          size: ResponsiveUtils.getResponsiveValue(context: context, mobile: 42, tablet: 48, desktop: 54),
+                          size: ResponsiveUtils.getResponsiveValue(
+                              context: context,
+                              mobile: 42,
+                              tablet: 48,
+                              desktop: 54),
                           color: Theme.of(context).colorScheme.onPrimary,
                         ),
                       ),
                     Positioned(
-                      top: ResponsiveUtils.getResponsiveValue(context: context, mobile: 6, tablet: 8, desktop: 10),
-                      right: ResponsiveUtils.getResponsiveValue(context: context, mobile: 6, tablet: 8, desktop: 10),
+                      top: ResponsiveUtils.getResponsiveValue(
+                          context: context, mobile: 6, tablet: 8, desktop: 10),
+                      right: ResponsiveUtils.getResponsiveValue(
+                          context: context, mobile: 6, tablet: 8, desktop: 10),
                       child: IconButton(
                         icon: Icon(
                           isFavorite ? Icons.favorite : Icons.favorite_border,
-                          color: isFavorite ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.onPrimary,
+                          color: isFavorite
+                              ? Theme.of(context).colorScheme.error
+                              : Theme.of(context).colorScheme.onPrimary,
                         ),
                         onPressed: () {
                           setState(() {
@@ -429,8 +642,16 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
                     ),
                     if (isDownloaded)
                       Positioned(
-                        top: ResponsiveUtils.getResponsiveValue(context: context, mobile: 6, tablet: 8, desktop: 10),
-                        left: ResponsiveUtils.getResponsiveValue(context: context, mobile: 6, tablet: 8, desktop: 10),
+                        top: ResponsiveUtils.getResponsiveValue(
+                            context: context,
+                            mobile: 6,
+                            tablet: 8,
+                            desktop: 10),
+                        left: ResponsiveUtils.getResponsiveValue(
+                            context: context,
+                            mobile: 6,
+                            tablet: 8,
+                            desktop: 10),
                         child: Container(
                           padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
@@ -452,25 +673,31 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
             Expanded(
               flex: 2,
               child: Padding(
-                padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(context: context, mobile: 10, tablet: 12, desktop: 14)),
+                padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(
+                    context: context, mobile: 10, tablet: 12, desktop: 14)),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       story.title,
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                            fontWeight: FontWeight.bold,
+                          ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 3, tablet: 4, desktop: 5)),
+                    SizedBox(
+                        height: ResponsiveUtils.getResponsiveValue(
+                            context: context,
+                            mobile: 3,
+                            tablet: 4,
+                            desktop: 5)),
                     Text(
                       story.category.displayName,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: color,
-                        fontWeight: FontWeight.w500,
-                      ),
+                            color: color,
+                            fontWeight: FontWeight.w500,
+                          ),
                     ),
                     const Spacer(),
                     LayoutFixUtils.safeRow(
@@ -478,34 +705,79 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
                       children: [
                         Container(
                           padding: EdgeInsets.symmetric(
-                            horizontal: ResponsiveUtils.getResponsiveValue(context: context, mobile: 5, tablet: 6, desktop: 7),
-                            vertical: ResponsiveUtils.getResponsiveValue(context: context, mobile: 1, tablet: 2, desktop: 3),
+                            horizontal: ResponsiveUtils.getResponsiveValue(
+                                context: context,
+                                mobile: 5,
+                                tablet: 6,
+                                desktop: 7),
+                            vertical: ResponsiveUtils.getResponsiveValue(
+                                context: context,
+                                mobile: 1,
+                                tablet: 2,
+                                desktop: 3),
                           ),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(ResponsiveUtils.getResponsiveValue(context: context, mobile: 6, tablet: 8, desktop: 10)),
+                            color: Theme.of(context)
+                                .colorScheme
+                                .surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(
+                                ResponsiveUtils.getResponsiveValue(
+                                    context: context,
+                                    mobile: 6,
+                                    tablet: 8,
+                                    desktop: 10)),
                           ),
                           child: Text(
                             story.ageGroup.displayName,
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 9, tablet: 10, desktop: 11),
-                            ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(
+                                  fontSize: ResponsiveUtils.getResponsiveValue(
+                                      context: context,
+                                      mobile: 9,
+                                      tablet: 10,
+                                      desktop: 11),
+                                ),
                           ),
                         ),
                         LayoutFixUtils.safeRow(
                           children: [
                             Icon(
                               Icons.schedule,
-                              size: ResponsiveUtils.getResponsiveValue(context: context, mobile: 10, tablet: 12, desktop: 14),
-                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                              size: ResponsiveUtils.getResponsiveValue(
+                                  context: context,
+                                  mobile: 10,
+                                  tablet: 12,
+                                  desktop: 14),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.6),
                             ),
-                            SizedBox(width: ResponsiveUtils.getResponsiveValue(context: context, mobile: 1, tablet: 2, desktop: 3)),
+                            SizedBox(
+                                width: ResponsiveUtils.getResponsiveValue(
+                                    context: context,
+                                    mobile: 1,
+                                    tablet: 2,
+                                    desktop: 3)),
                             LayoutFixUtils.safeText(
                               '${story.duration} min',
-                                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                  fontSize: ResponsiveUtils.getResponsiveValue(context: context, mobile: 9, tablet: 10, desktop: 11),
-                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                                ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(
+                                    fontSize:
+                                        ResponsiveUtils.getResponsiveValue(
+                                            context: context,
+                                            mobile: 9,
+                                            tablet: 10,
+                                            desktop: 11),
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.6),
+                                  ),
                             ),
                           ],
                         ),
@@ -525,27 +797,39 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
     return Card(
       elevation: 0,
       color: Theme.of(context).colorScheme.surfaceContainer,
-      margin: EdgeInsets.only(bottom: ResponsiveUtils.getResponsiveValue(context: context, mobile: 10, tablet: 12, desktop: 14)),
+      margin: EdgeInsets.only(
+          bottom: ResponsiveUtils.getResponsiveValue(
+              context: context, mobile: 10, tablet: 12, desktop: 14)),
       child: ListTile(
         leading: Container(
-          width: ResponsiveUtils.getResponsiveValue(context: context, mobile: 50, tablet: 56, desktop: 62),
-          height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 50, tablet: 56, desktop: 62),
+          width: ResponsiveUtils.getResponsiveValue(
+              context: context, mobile: 50, tablet: 56, desktop: 62),
+          height: ResponsiveUtils.getResponsiveValue(
+              context: context, mobile: 50, tablet: 56, desktop: 62),
           decoration: BoxDecoration(
-            image: story.illustrationUrl != null 
-              ? DecorationImage(image: NetworkImage(story.illustrationUrl!), fit: BoxFit.cover)
-              : null,
-            gradient: story.illustrationUrl == null ? LinearGradient(
-              colors: [
-                Theme.of(context).primaryColor.withValues(alpha: 0.8),
-                Theme.of(context).primaryColor.withValues(alpha: 0.6),
-              ],
-            ) : null,
-            borderRadius: BorderRadius.circular(ResponsiveUtils.getResponsiveValue(context: context, mobile: 6, tablet: 8, desktop: 10)),
+            image: story.illustrationUrl != null
+                ? DecorationImage(
+                    image: NetworkImage(story.illustrationUrl!),
+                    fit: BoxFit.cover)
+                : null,
+            gradient: story.illustrationUrl == null
+                ? LinearGradient(
+                    colors: [
+                      Theme.of(context).primaryColor.withValues(alpha: 0.8),
+                      Theme.of(context).primaryColor.withValues(alpha: 0.6),
+                    ],
+                  )
+                : null,
+            borderRadius: BorderRadius.circular(
+                ResponsiveUtils.getResponsiveValue(
+                    context: context, mobile: 6, tablet: 8, desktop: 10)),
           ),
-          child: story.illustrationUrl == null ? Icon(
-            Icons.auto_stories,
-            color: Theme.of(context).colorScheme.onPrimary,
-          ) : null,
+          child: story.illustrationUrl == null
+              ? Icon(
+                  Icons.auto_stories,
+                  color: Theme.of(context).colorScheme.onPrimary,
+                )
+              : null,
         ),
         title: Text(
           story.title,
@@ -558,24 +842,32 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
             Text(
               'Interactive Story Content Available',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.6),
+                  ),
             ),
-            SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 3, tablet: 4, desktop: 5)),
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveValue(
+                    context: context, mobile: 3, tablet: 4, desktop: 5)),
             Row(
               children: [
                 Icon(
                   Icons.check_circle,
-                  size: ResponsiveUtils.getResponsiveValue(context: context, mobile: 14, tablet: 16, desktop: 18),
+                  size: ResponsiveUtils.getResponsiveValue(
+                      context: context, mobile: 14, tablet: 16, desktop: 18),
                   color: Theme.of(context).colorScheme.tertiary,
                 ),
-                SizedBox(width: ResponsiveUtils.getResponsiveValue(context: context, mobile: 3, tablet: 4, desktop: 5)),
+                SizedBox(
+                    width: ResponsiveUtils.getResponsiveValue(
+                        context: context, mobile: 3, tablet: 4, desktop: 5)),
                 Text(
                   'Added recently',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.tertiary,
-                    fontWeight: FontWeight.w500,
-                  ),
+                        color: Theme.of(context).colorScheme.tertiary,
+                        fontWeight: FontWeight.w500,
+                      ),
                 ),
               ],
             ),

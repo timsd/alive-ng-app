@@ -20,6 +20,9 @@ class GreetingHeader extends ConsumerWidget {
     final userName = currentUser?.displayName ??
         currentUser?.email?.split('@').first ??
         'Friend';
+    final welcomeLabel = currentUser != null
+        ? 'Welcome, $userName'
+        : TextFormatter.formatText('welcome');
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -47,17 +50,21 @@ class GreetingHeader extends ConsumerWidget {
                       greeting,
                       context: context,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.9),
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onPrimary
+                                .withValues(alpha: 0.9),
                           ),
                     ),
                     const SizedBox(height: 4),
                     LayoutFixUtils.responsiveText(
-                      currentUser != null ? userName : TextFormatter.formatText('welcome'),
+                      welcomeLabel,
                       context: context,
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onPrimary,
-                            fontWeight: FontWeight.bold,
-                          ),
+                      style:
+                          Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                color: Theme.of(context).colorScheme.onPrimary,
+                                fontWeight: FontWeight.bold,
+                              ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -67,7 +74,10 @@ class GreetingHeader extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.2),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onPrimary
+                      .withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
@@ -83,7 +93,10 @@ class GreetingHeader extends ConsumerWidget {
             translate('continue_spiritual_journey'),
             context: context,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.8),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onPrimary
+                      .withValues(alpha: 0.8),
                 ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -98,10 +111,16 @@ class GreetingHeader extends ConsumerWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.2),
+                color: Theme.of(context)
+                    .colorScheme
+                    .onPrimary
+                    .withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(25),
                 border: Border.all(
-                  color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.3),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onPrimary
+                      .withValues(alpha: 0.3),
                 ),
               ),
               child: Row(
@@ -117,13 +136,14 @@ class GreetingHeader extends ConsumerWidget {
                     TextFormatter.formatText('join_us_in_spiritual_growth'),
                     context: context,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onPrimary,
-                      fontWeight: FontWeight.w600,
-                    ),
+                          color: Theme.of(context).colorScheme.onPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
                   ),
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.secondary,
                       borderRadius: BorderRadius.circular(15),
@@ -132,9 +152,9 @@ class GreetingHeader extends ConsumerWidget {
                       currentUser == null ? 'Join' : 'Member',
                       context: context,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSecondary,
-                        fontWeight: FontWeight.bold,
-                      ),
+                            color: Theme.of(context).colorScheme.onSecondary,
+                            fontWeight: FontWeight.bold,
+                          ),
                     ),
                   ),
                 ],
@@ -170,7 +190,3 @@ class GreetingHeader extends ConsumerWidget {
     }
   }
 }
-
-
-
-
