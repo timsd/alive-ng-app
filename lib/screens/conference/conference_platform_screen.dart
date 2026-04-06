@@ -122,10 +122,11 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
       }
     } catch (e) {
       if (mounted) {
+        final theme = Theme.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error loading meetings: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: theme.colorScheme.error,
           ),
         );
       }
@@ -134,6 +135,7 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     if (_isLoading) {
       return const Scaffold(
         body: Center(
@@ -160,7 +162,7 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
                   tablet: 72.0,
                   desktop: 80.0,
                 ),
-                color: Colors.grey,
+                color: theme.colorScheme.outline,
               ),
               SizedBox(
                   height: ResponsiveUtils.getResponsiveValue(
@@ -192,7 +194,7 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
                 'You do not have permission to access the conference platform.',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.grey,
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
               ),
             ],
@@ -333,7 +335,7 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
                       decoration: BoxDecoration(
                         color: _selectedTabIndex == 0
                             ? Theme.of(context).colorScheme.primary
-                            : Colors.transparent,
+                            : theme.colorScheme.surface,
                         borderRadius: BorderRadius.circular(25),
                       ),
                       child: Text(
@@ -341,7 +343,7 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.labelLarge?.copyWith(
                               color: _selectedTabIndex == 0
-                                  ? Colors.white
+                                  ? theme.colorScheme.onPrimary
                                   : Theme.of(context)
                                       .colorScheme
                                       .onSurfaceVariant,
@@ -358,7 +360,7 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
                       decoration: BoxDecoration(
                         color: _selectedTabIndex == 1
                             ? Theme.of(context).colorScheme.primary
-                            : Colors.transparent,
+                            : theme.colorScheme.surface,
                         borderRadius: BorderRadius.circular(25),
                       ),
                       child: Text(
@@ -366,7 +368,7 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.labelLarge?.copyWith(
                               color: _selectedTabIndex == 1
-                                  ? Colors.white
+                                  ? theme.colorScheme.onPrimary
                                   : Theme.of(context)
                                       .colorScheme
                                       .onSurfaceVariant,
@@ -389,12 +391,17 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
   }
 
   Widget _buildMeetingsList(List<ConferenceMeeting> meetings) {
+    final theme = Theme.of(context);
     if (meetings.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.event_available, size: 64, color: Colors.grey),
+            Icon(
+              Icons.event_available,
+              size: 64,
+              color: theme.colorScheme.outline,
+            ),
             SizedBox(height: 16),
             Text(
               'No Meetings Found',
@@ -417,6 +424,15 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
 
   Widget _buildMeetingCard(ConferenceMeeting meeting) {
     return Card(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(
+          color: Theme.of(context)
+              .colorScheme
+              .outlineVariant
+              .withValues(alpha: 0.6),
+        ),
+      ),
       margin: EdgeInsets.only(bottom: 16),
       child: Padding(
         padding: EdgeInsets.all(16),

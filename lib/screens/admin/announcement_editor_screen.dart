@@ -8,24 +8,25 @@ import '../../utils/text_formatter.dart';
 
 class AnnouncementEditorScreen extends StatefulWidget {
   final Map<String, dynamic>? announcement;
-  
+
   const AnnouncementEditorScreen({
     super.key,
     this.announcement,
   });
 
   @override
-  State<AnnouncementEditorScreen> createState() => _AnnouncementEditorScreenState();
+  State<AnnouncementEditorScreen> createState() =>
+      _AnnouncementEditorScreenState();
 }
 
 class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
   final _formKey = GlobalKey<FormState>();
-  
+
   late TextEditingController _titleController;
   late TextEditingController _messageController;
   late TextEditingController _actionUrlController;
   late TextEditingController _actionTextController;
-  
+
   bool _isLoading = false;
   bool _isActive = true;
   String _priority = 'medium';
@@ -33,7 +34,7 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
   String _targetAudience = 'all';
   DateTime? _scheduledFor;
   DateTime? _expiresAt;
-  
+
   final List<String> _priorities = ['low', 'medium', 'high', 'urgent'];
   final List<String> _types = [
     'general',
@@ -78,7 +79,7 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
       _priority = announcement['priority'] ?? 'medium';
       _type = announcement['type'] ?? 'general';
       _targetAudience = announcement['target_audience'] ?? 'all';
-      
+
       if (announcement['scheduled_for'] != null) {
         _scheduledFor = DateTime.parse(announcement['scheduled_for']);
       }
@@ -99,13 +100,16 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return RoleVisibility(
       allowedRoles: const ['admin', 'super_admin', 'content_manager'],
       child: Scaffold(
         appBar: AppBar(
-          title: Text(widget.announcement == null ? 'Create Announcement' : 'Edit Announcement'),
-          backgroundColor: Colors.blue,
-          foregroundColor: Colors.white,
+          title: Text(widget.announcement == null
+              ? 'Create Announcement'
+              : 'Edit Announcement'),
+          backgroundColor: theme.colorScheme.surface,
+          foregroundColor: theme.colorScheme.onSurface,
           actions: [
             IconButton(
               icon: const Icon(Icons.save),
@@ -125,14 +129,20 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                     children: [
                       // Status Card
                       Card(
-                        color: _isActive ? Colors.green.shade50 : Colors.grey.shade50,
+                        color: _isActive
+                            ? theme.colorScheme.tertiary.withValues(alpha: 0.12)
+                            : theme.colorScheme.surfaceContainerHighest,
                         child: Padding(
                           padding: const EdgeInsets.all(16.0),
                           child: Row(
                             children: [
                               Icon(
-                                _isActive ? Icons.campaign : Icons.pause_circle_outline,
-                                color: _isActive ? Colors.green : Colors.grey,
+                                _isActive
+                                    ? Icons.campaign
+                                    : Icons.pause_circle_outline,
+                                color: _isActive
+                                    ? theme.colorScheme.tertiary
+                                    : theme.colorScheme.onSurfaceVariant,
                               ),
                               const SizedBox(width: 12),
                               Expanded(
@@ -143,14 +153,17 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                                       _isActive ? 'Active' : 'Inactive',
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
-                                        color: _isActive ? Colors.green : Colors.grey,
+                                        color: _isActive
+                                            ? theme.colorScheme.tertiary
+                                            : theme
+                                                .colorScheme.onSurfaceVariant,
                                       ),
                                     ),
                                     Text(
-                                      _isActive 
+                                      _isActive
                                           ? 'This announcement will be shown to users'
                                           : 'This announcement is hidden from users',
-                                      style: const TextStyle(fontSize: 12),
+                                      style: theme.textTheme.bodySmall,
                                     ),
                                   ],
                                 ),
@@ -162,15 +175,15 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                                     _isActive = value;
                                   });
                                 },
-                                activeTrackColor: Colors.green,
+                                activeTrackColor: theme.colorScheme.tertiary,
                               ),
                             ],
                           ),
                         ),
                       ),
-                      
+
                       const SizedBox(height: 24),
-                      
+
                       // Basic Information
                       const Text(
                         'Basic Information',
@@ -180,7 +193,7 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      
+
                       TextFormField(
                         controller: _titleController,
                         decoration: const InputDecoration(
@@ -196,9 +209,9 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                           return null;
                         },
                       ),
-                      
+
                       const SizedBox(height: 16),
-                      
+
                       TextFormField(
                         controller: _messageController,
                         decoration: const InputDecoration(
@@ -215,9 +228,9 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                           return null;
                         },
                       ),
-                      
+
                       const SizedBox(height: 24),
-                      
+
                       // Classification
                       const Text(
                         'Classification',
@@ -227,7 +240,7 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      
+
                       Row(
                         children: [
                           Expanded(
@@ -273,7 +286,9 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                               items: _types.map((type) {
                                 return DropdownMenuItem(
                                   value: type,
-                                  child: Text(TextFormatter.formatNotificationType(type).toUpperCase()),
+                                  child: Text(
+                                      TextFormatter.formatNotificationType(type)
+                                          .toUpperCase()),
                                 );
                               }).toList(),
                               onChanged: (value) {
@@ -285,11 +300,11 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                           ),
                         ],
                       ),
-                      
+
                       const SizedBox(height: 16),
-                      
+
                       DropdownButtonFormField<String>(
-        initialValue: _targetAudience,
+                        initialValue: _targetAudience,
                         decoration: const InputDecoration(
                           labelText: 'Target Audience',
                           border: OutlineInputBorder(),
@@ -299,7 +314,8 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                         items: _audiences.map((audience) {
                           return DropdownMenuItem(
                             value: audience,
-                            child: Text(TextFormatter.formatRole(audience).toUpperCase()),
+                            child: Text(TextFormatter.formatRole(audience)
+                                .toUpperCase()),
                           );
                         }).toList(),
                         onChanged: (value) {
@@ -308,9 +324,9 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                           });
                         },
                       ),
-                      
+
                       const SizedBox(height: 24),
-                      
+
                       // Scheduling
                       const Text(
                         'Scheduling',
@@ -320,7 +336,7 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      
+
                       Row(
                         children: [
                           Expanded(
@@ -331,14 +347,19 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                                   labelText: 'Scheduled For',
                                   border: OutlineInputBorder(),
                                   prefixIcon: Icon(Icons.schedule),
-                                  helperText: 'Leave empty to publish immediately',
+                                  helperText:
+                                      'Leave empty to publish immediately',
                                 ),
                                 child: Text(
                                   _scheduledFor != null
                                       ? '${_scheduledFor!.day}/${_scheduledFor!.month}/${_scheduledFor!.year} ${_scheduledFor!.hour}:${_scheduledFor!.minute.toString().padLeft(2, '0')}'
                                       : 'Publish immediately',
                                   style: TextStyle(
-                                    color: _scheduledFor != null ? Theme.of(context).colorScheme.onSurface : Colors.grey,
+                                    color: _scheduledFor != null
+                                        ? Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                        : Colors.grey,
                                   ),
                                 ),
                               ),
@@ -358,9 +379,9 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                           ],
                         ],
                       ),
-                      
+
                       const SizedBox(height: 16),
-                      
+
                       Row(
                         children: [
                           Expanded(
@@ -378,7 +399,11 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                                       ? '${_expiresAt!.day}/${_expiresAt!.month}/${_expiresAt!.year} ${_expiresAt!.hour}:${_expiresAt!.minute.toString().padLeft(2, '0')}'
                                       : 'No expiry',
                                   style: TextStyle(
-                                    color: _expiresAt != null ? Theme.of(context).colorScheme.onSurface : Colors.grey,
+                                    color: _expiresAt != null
+                                        ? Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                        : Colors.grey,
                                   ),
                                 ),
                               ),
@@ -398,9 +423,9 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                           ],
                         ],
                       ),
-                      
+
                       const SizedBox(height: 24),
-                      
+
                       // Action Button (Optional)
                       const Text(
                         'Action Button (Optional)',
@@ -410,7 +435,7 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      
+
                       TextFormField(
                         controller: _actionTextController,
                         decoration: const InputDecoration(
@@ -420,14 +445,15 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                           prefixIcon: Icon(Icons.smart_button),
                         ),
                       ),
-                      
+
                       const SizedBox(height: 16),
-                      
+
                       TextFormField(
                         controller: _actionUrlController,
                         decoration: const InputDecoration(
                           labelText: 'Button URL',
-                          hintText: 'https://alivenigeria.org or /internal-page',
+                          hintText:
+                              'https://alivenigeria.org or /internal-page',
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.link),
                         ),
@@ -440,9 +466,9 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                           return null;
                         },
                       ),
-                      
+
                       const SizedBox(height: 32),
-                      
+
                       // Action Buttons
                       Row(
                         children: [
@@ -458,7 +484,9 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                             child: ElevatedButton.icon(
                               onPressed: _saveAnnouncement,
                               icon: const Icon(Icons.save),
-                              label: Text(widget.announcement == null ? 'Create' : 'Update'),
+                              label: Text(widget.announcement == null
+                                  ? 'Create'
+                                  : 'Update'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.blue,
                                 foregroundColor: Colors.white,
@@ -467,7 +495,7 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                           ),
                         ],
                       ),
-                      
+
                       const SizedBox(height: 16),
                     ],
                   ),
@@ -580,11 +608,11 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
         'is_active': _isActive,
         'scheduled_for': _scheduledFor?.toIso8601String(),
         'expires_at': _expiresAt?.toIso8601String(),
-        'action_text': _actionTextController.text.trim().isNotEmpty 
-            ? _actionTextController.text.trim() 
+        'action_text': _actionTextController.text.trim().isNotEmpty
+            ? _actionTextController.text.trim()
             : null,
-        'action_url': _actionUrlController.text.trim().isNotEmpty 
-            ? _actionUrlController.text.trim() 
+        'action_url': _actionUrlController.text.trim().isNotEmpty
+            ? _actionUrlController.text.trim()
             : null,
         'updated_at': DateTime.now().toIso8601String(),
       };
@@ -593,11 +621,11 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
         // Create new announcement
         announcementData['created_at'] = DateTime.now().toIso8601String();
         announcementData['created_by'] = FirebaseAuth.instance.currentUser?.uid;
-        
+
         await FirebaseFirestore.instance
             .collection('announcements')
             .add(announcementData);
-        
+
         ToastUtils.showSuccess('Announcement created successfully');
       } else {
         // Update existing announcement
@@ -605,7 +633,7 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
             .collection('announcements')
             .doc(widget.announcement!['id'])
             .update(announcementData);
-        
+
         ToastUtils.showSuccess('Announcement updated successfully');
       }
 
@@ -619,6 +647,3 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
     }
   }
 }
-
-
-

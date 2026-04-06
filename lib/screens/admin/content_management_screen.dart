@@ -1080,6 +1080,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                   icon: const Icon(Icons.save),
                   label: const Text('Save'),
                   onPressed: () async {
+                    final navigator = Navigator.of(context);
                     if (nameController.text.trim().isEmpty) {
                       ToastUtils.showError('Name is required');
                       return;
@@ -1111,7 +1112,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                       }
                       _loadChapters();
                       if (!mounted) return;
-                      Navigator.of(context).pop();
+                      navigator.pop();
                     } catch (e) {
                       ToastUtils.showError('Error saving chapter: $e');
                     }

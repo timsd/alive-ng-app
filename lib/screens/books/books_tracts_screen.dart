@@ -101,7 +101,7 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
                         tablet: 14.0,
                         desktop: 16.0)),
                 DropdownButtonFormField<String>(
-                  value: _selectedCategory,
+                  initialValue: _selectedCategory,
                   decoration: InputDecoration(
                     labelText: 'Category',
                     border: OutlineInputBorder(

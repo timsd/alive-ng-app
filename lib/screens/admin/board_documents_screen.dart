@@ -128,7 +128,8 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
               color: Theme.of(context).colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(
                   ResponsiveUtils.getResponsiveBorderRadiusValue(context, 12)),
-              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+              border: Border.all(
+                  color: Theme.of(context).colorScheme.outlineVariant),
             ),
             child: Column(
               children: [
@@ -217,7 +218,8 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
           Expanded(
             child: _isLoading
                 ? Center(
-                    child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary),
+                    child: CircularProgressIndicator(
+                        color: Theme.of(context).colorScheme.primary),
                   )
                 : _filteredDocuments.isEmpty
                     ? Center(
@@ -284,7 +286,8 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
       case 'ppt':
       case 'pptx':
         fileIcon = Icons.slideshow;
-        fileIconColor = Colors.orange; // Keep orange as it's common for ppt, but maybe use a theme color if possible
+        fileIconColor = Colors
+            .orange; // Keep orange as it's common for ppt, but maybe use a theme color if possible
         break;
       default:
         fileIcon = Icons.insert_drive_file;
@@ -337,22 +340,30 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                       children: [
                         Text(
                           document.title,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontSize: ResponsiveUtils.getResponsiveFontSize(
-                                context, 16),
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(
+                                fontSize: ResponsiveUtils.getResponsiveFontSize(
+                                    context, 16),
+                                fontWeight: FontWeight.bold,
+                              ),
                         ),
                         SizedBox(
                             height: ResponsiveUtils.getResponsiveSpacing(
                                 context, 4)),
                         Text(
                           document.fileName,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            fontSize: ResponsiveUtils.getResponsiveFontSize(
-                                context, 12),
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(
+                                fontSize: ResponsiveUtils.getResponsiveFontSize(
+                                    context, 12),
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                              ),
                         ),
                       ],
                     ),
@@ -389,8 +400,8 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
               Text(
                 document.description,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
               ),
               SizedBox(
                   height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
@@ -409,13 +420,19 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                                   context, 2),
                             ),
                             decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .primary
+                                  .withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(
                                   ResponsiveUtils
                                       .getResponsiveBorderRadiusValue(
                                           context, 8)),
                               border: Border.all(
-                                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)),
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .primary
+                                      .withValues(alpha: 0.3)),
                             ),
                             child: Text(
                               '#$tag',
@@ -492,7 +509,10 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                           ResponsiveUtils.getResponsiveSpacing(context, 2),
                     ),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .secondary
+                          .withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(
                           ResponsiveUtils.getResponsiveBorderRadiusValue(
                               context, 8)),
@@ -540,7 +560,10 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                 children: [
                   Text(
                     'File: ',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyLarge
+                        ?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   Expanded(
                     child: Text(document.fileName),
@@ -553,7 +576,10 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                 children: [
                   Text(
                     'Size: ',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyLarge
+                        ?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   Text(_formatFileSize(document.fileSize)),
                 ],
@@ -564,7 +590,10 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                 children: [
                   Text(
                     'Uploaded by: ',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyLarge
+                        ?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   Text(document.uploadedBy),
                 ],
@@ -575,7 +604,10 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                 children: [
                   Text(
                     'Date: ',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyLarge
+                        ?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   Text(DateFormat('MMM dd, yyyy HH:mm')
                       .format(document.uploadedAt)),
@@ -585,14 +617,20 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                   height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
               Text(
                 document.description,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontStyle: FontStyle.italic),
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(fontStyle: FontStyle.italic),
               ),
               if (document.tags.isNotEmpty) ...[
                 SizedBox(
                     height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
                 Text(
                   'Tags:',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleSmall
+                      ?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 SizedBox(
                     height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
@@ -609,10 +647,15 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                                           context, 12),
                                   color: Theme.of(context).colorScheme.primary),
                             ),
-                            backgroundColor:
-                                Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                            backgroundColor: Theme.of(context)
+                                .colorScheme
+                                .primary
+                                .withValues(alpha: 0.1),
                             side: BorderSide(
-                                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)),
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .primary
+                                    .withValues(alpha: 0.3)),
                           ))
                       .toList(),
                 ),
@@ -698,13 +741,16 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                   subtitle: Text(
                     selectedFile?.name ?? 'No file selected',
                     style: TextStyle(
-                      color: selectedFile != null ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.outline,
+                      color: selectedFile != null
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.outline,
                     ),
                   ),
                   trailing: const Icon(Icons.attach_file),
                   onTap: () async {
                     // Capture ScaffoldMessenger before async operation
                     final messenger = ScaffoldMessenger.of(context);
+                    final theme = Theme.of(context);
 
                     try {
                       FilePickerResult? result =
@@ -733,7 +779,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                         messenger.showSnackBar(
                           SnackBar(
                             content: Text('Error selecting file: $e'),
-                            backgroundColor: Theme.of(context).colorScheme.error,
+                            backgroundColor: theme.colorScheme.error,
                           ),
                         );
                       }
@@ -850,13 +896,16 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
       String accessLevel,
       String tagsText) async {
     try {
+      final messenger = ScaffoldMessenger.of(context);
+      final theme = Theme.of(context);
+
       // Show loading indicator
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(
             content: const Text('Uploading document...'),
-            backgroundColor: Theme.of(context).colorScheme.secondary,
-            duration: Duration(seconds: 2),
+            backgroundColor: theme.colorScheme.secondary,
+            duration: const Duration(seconds: 2),
           ),
         );
       }
@@ -900,23 +949,24 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
       await _databaseService.createDocument(
           'board_documents', document.toJson());
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Document uploaded successfully'),
-            backgroundColor: Theme.of(context).colorScheme.tertiary,
-          ),
-        );
-      }
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: const Text('Document uploaded successfully'),
+          backgroundColor: theme.colorScheme.tertiary,
+        ),
+      );
 
       // Reload documents to show the new upload
       await _loadDocuments();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        final messenger = ScaffoldMessenger.of(context);
+        final theme = Theme.of(context);
+        messenger.showSnackBar(
           SnackBar(
             content: Text('Error uploading document: $e'),
-            backgroundColor: Theme.of(context).colorScheme.error,
+            backgroundColor: theme.colorScheme.error,
           ),
         );
       }
