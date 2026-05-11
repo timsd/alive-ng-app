@@ -606,8 +606,9 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                         firstDate: DateTime.now(),
                         lastDate: DateTime.now().add(const Duration(days: 365)),
                       );
-                      if (date != null)
+                      if (date != null) {
                         setDialogState(() => selectedDeadline = date);
+                      }
                     },
                   ),
                 ],

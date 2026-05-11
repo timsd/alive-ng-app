@@ -87,7 +87,9 @@ class AboutAppScreen extends ConsumerWidget {
                 const SizedBox(height: 20),
                 LayoutBuilder(
                   builder: (context, constraints) {
-                    final twoColumns = constraints.maxWidth >= 760;
+                    const twoColumnBreakpoint = 760.0;
+                    final twoColumns =
+                        constraints.maxWidth >= twoColumnBreakpoint;
                     final children = const [
                       _InfoBlock(
                         icon: Icons.auto_stories_rounded,
@@ -341,7 +343,7 @@ class _HeroCard extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Colors.white,
+                  Color(0xFFFFFFFF),
                   const Color(0xFFF7FAFC),
                 ],
               ),

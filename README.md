@@ -119,6 +119,38 @@ lib/
 
 ### Platform-Specific Setup
 
+### Android Release Bundle For Google Play Testing
+
+Before building a Play Store bundle on another machine:
+
+1. Install Android Studio with Android SDK and Build Tools.
+2. Install a stable Flutter SDK that matches the project constraints.
+3. Ensure Java/JDK is installed and available to Gradle.
+4. Restore Firebase config files:
+   - `android/app/google-services.json`
+5. Restore Android signing files:
+   - `android/key.properties`
+   - `android/app/alive-release.keystore`
+
+Build steps:
+
+```bash
+flutter clean
+flutter pub get
+flutter build appbundle
+```
+
+Expected output:
+
+```text
+build/app/outputs/bundle/release/app-release.aab
+```
+
+Notes:
+- This repo now targets Android Gradle Plugin `8.9.1`.
+- This repo now targets Gradle `8.11.1`.
+- If a machine has unstable TLS/network issues during Gradle downloads, use a more reliable network before changing the repo config.
+
 #### Android
 - Minimum SDK: 21 (Android 5.0)
 - Target SDK: 33 (Android 13)

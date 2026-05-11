@@ -13,5 +13,5 @@ void main() {
   }
   
   var dups = counts.entries.where((e) => e.value > 1).toList();
-  print(dups);
+  stdout.writeln(dups);
 }

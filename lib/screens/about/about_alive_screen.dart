@@ -118,12 +118,12 @@ class AboutAliveScreen extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: 14),
-                      _QuoteBlock(
+                      const _QuoteBlock(
                         text:
                             'The Lord has appointed the youth to be His helping hand. {ChS 30.1}',
                       ),
                       const SizedBox(height: 12),
-                      _QuoteBlock(
+                      const _QuoteBlock(
                         text:
                             'With such an army of workers as our youth, rightly trained, how soon the message of a crucified, risen, and soon-coming Saviour might be carried to the whole world. Education, p. 271. {ChS 30.2}',
                       ),
@@ -351,11 +351,11 @@ class _AliveHeroCard extends StatelessWidget {
                   colorScheme.surface,
                 ],
               )
-            : LinearGradient(
+            : const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  const Color(0xFFFFFFFF),
+                  Color(0xFFFFFFFF),
                   const Color(0xFFF7FAFC),
                 ],
               ),
@@ -443,10 +443,10 @@ class _AliveHeroCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                _MiniPoint(text: 'Gospel-centered witness'),
-                _MiniPoint(text: 'Prayerful community life'),
-                _MiniPoint(text: 'Training for mission'),
-                _MiniPoint(text: 'Healthy Christian living'),
+                const _MiniPoint(text: 'Gospel-centered witness'),
+                const _MiniPoint(text: 'Prayerful community life'),
+                const _MiniPoint(text: 'Training for mission'),
+                const _MiniPoint(text: 'Healthy Christian living'),
               ],
             ),
           );

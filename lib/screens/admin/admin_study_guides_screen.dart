@@ -201,6 +201,8 @@ class _AdminStudyGuidesScreenState extends State<AdminStudyGuidesScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Study Guide Builder'),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
       ),
       body: _isSaving
           ? Center(

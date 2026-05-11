@@ -488,8 +488,10 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                                   ? 'Create'
                                   : 'Update'),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue,
-                                foregroundColor: Colors.white,
+                                backgroundColor:
+                                    Theme.of(context).colorScheme.primary,
+                                foregroundColor:
+                                    Theme.of(context).colorScheme.onPrimary,
                               ),
                             ),
                           ),
@@ -523,15 +525,15 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
   Color _getPriorityColor(String priority) {
     switch (priority) {
       case 'urgent':
-        return Colors.red;
+        return Theme.of(context).colorScheme.error;
       case 'high':
-        return Colors.orange;
+        return Theme.of(context).colorScheme.secondary;
       case 'medium':
-        return Colors.blue;
+        return Theme.of(context).colorScheme.primary;
       case 'low':
-        return Colors.grey;
+        return Theme.of(context).colorScheme.outline;
       default:
-        return Colors.grey;
+        return Theme.of(context).colorScheme.outline;
     }
   }
 

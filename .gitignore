@@ -84,6 +84,9 @@ logs/
  
 # Local Chrome downloaded by tooling
 /.local-chrome/
+/.gradle-build/
+/.gradle-build*/
+/android/gradle/*.zip
 
 # Local IDE/workspace metadata
 .trae/

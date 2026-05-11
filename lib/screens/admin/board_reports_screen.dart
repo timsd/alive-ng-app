@@ -95,12 +95,13 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Board Reports'),
         centerTitle: true,
-        backgroundColor: Colors.green.shade700,
-        foregroundColor: Colors.white,
+        backgroundColor: colorScheme.surface,
+        foregroundColor: colorScheme.onSurface,
         actions: [
           IconButton(
             icon: const Icon(Icons.add_chart),
@@ -114,10 +115,10 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
           // BOD quick-join banner
           Container(
             padding: const EdgeInsets.all(12),
-            color: Colors.green.shade50,
+            color: colorScheme.surfaceContainerHighest,
             child: Row(
               children: [
-                Icon(Icons.video_call, color: Colors.green.shade700),
+                Icon(Icons.video_call, color: colorScheme.tertiary),
                 const SizedBox(width: 8),
                 const Expanded(
                   child: Text(
@@ -137,8 +138,8 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
                     );
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green.shade700,
-                    foregroundColor: Colors.white,
+                    backgroundColor: colorScheme.tertiary,
+                    foregroundColor: colorScheme.onTertiary,
                   ),
                   child: const Text('Join'),
                 ),
@@ -198,10 +199,12 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.description_outlined,
-                                size: 64, color: Colors.grey.shade400),
+                                size: 64, color: colorScheme.outline),
                             const SizedBox(height: 16),
                             Text('No reports matching current filters',
-                                style: TextStyle(color: Colors.grey.shade600)),
+                                style: TextStyle(
+                                  color: colorScheme.onSurfaceVariant,
+                                )),
                           ],
                         ),
                       )
@@ -255,15 +258,15 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
   Color _getCategoryColor(String category) {
     switch (category) {
       case 'financial':
-        return Colors.blue;
+        return Theme.of(context).colorScheme.primary;
       case 'operational':
-        return Colors.orange;
+        return Theme.of(context).colorScheme.secondary;
       case 'strategic':
-        return Colors.purple;
+        return Theme.of(context).colorScheme.tertiary;
       case 'ministry':
-        return Colors.green;
+        return Theme.of(context).colorScheme.tertiary;
       default:
-        return Colors.grey;
+        return Theme.of(context).colorScheme.outline;
     }
   }
 
@@ -286,16 +289,16 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
     Color color;
     switch (status) {
       case 'approved':
-        color = Colors.green;
+        color = Theme.of(context).colorScheme.tertiary;
         break;
       case 'reviewed':
-        color = Colors.blue;
+        color = Theme.of(context).colorScheme.primary;
         break;
       case 'submitted':
-        color = Colors.orange;
+        color = Theme.of(context).colorScheme.secondary;
         break;
       default:
-        color = Colors.grey;
+        color = Theme.of(context).colorScheme.outline;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -329,21 +332,21 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
                 Text('Description:',
                     style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Colors.green.shade800)),
+                        color: theme.colorScheme.tertiary)),
                 Text(report.description,
                     style: TextStyle(color: theme.colorScheme.onSurface)),
                 const SizedBox(height: 16),
                 Text('Content:',
                     style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Colors.green.shade800)),
+                        color: theme.colorScheme.tertiary)),
                 Text(report.content,
                     style: TextStyle(color: theme.colorScheme.onSurface)),
                 const SizedBox(height: 16),
                 Text('Meta Information:',
                     style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Colors.green.shade800)),
+                        color: theme.colorScheme.tertiary)),
                 Text('Author: ${report.authorName}',
                     style: TextStyle(
                         color: theme.colorScheme.onSurface
@@ -380,8 +383,8 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
                   }
                 },
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    foregroundColor: Colors.white),
+                    backgroundColor: theme.colorScheme.primary,
+                    foregroundColor: theme.colorScheme.onPrimary),
                 child: const Text('Mark Reviewed'),
               ),
             if (report.status == 'reviewed')
@@ -395,8 +398,8 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
                   }
                 },
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white),
+                    backgroundColor: theme.colorScheme.tertiary,
+                    foregroundColor: theme.colorScheme.onTertiary),
                 child: const Text('Approve'),
               ),
           ],
@@ -496,8 +499,8 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
                   }
                 },
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white),
+                    backgroundColor: theme.colorScheme.tertiary,
+                    foregroundColor: theme.colorScheme.onTertiary),
                 child: const Text('Submit Report'),
               ),
             ],

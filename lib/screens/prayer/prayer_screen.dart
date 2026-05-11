@@ -53,6 +53,10 @@ class CreatePrayerRequestNotifier extends StateNotifier<AsyncValue<void>> {
         updatedAt: DateTime.now(),
       );
 
+      await ref
+          .read(firebaseDatabaseServiceProvider)
+          .createPrayerRequest(prayerRequest);
+
       state = const AsyncValue.data(null);
       ref.invalidate(prayerRequestsProvider);
     } catch (error, stackTrace) {

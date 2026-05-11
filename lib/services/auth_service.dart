@@ -21,8 +21,6 @@ class AuthService {
   static final Logger _logger = Logger('AuthService');
 
   static const String _googleSignInCancelled = 'GOOGLE_SIGNIN_CANCELLED';
-  static const String _googleSignInRedirecting = 'GOOGLE_SIGNIN_REDIRECTING';
-
   AuthService._({
     FirebaseDatabaseService? firebaseService,
     FirebaseAuth? auth,

@@ -71,9 +71,10 @@ class _AdminKidsMissionsScreenState extends State<AdminKidsMissionsScreen> {
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('Document successfully extracted!'),
-                backgroundColor: Colors.green),
+            SnackBar(
+              content: const Text('Document successfully extracted!'),
+              backgroundColor: Theme.of(context).colorScheme.tertiary,
+            ),
           );
         }
       }
@@ -175,6 +176,8 @@ class _AdminKidsMissionsScreenState extends State<AdminKidsMissionsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Add Kids Mission'),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
       ),
       body: _isSaving
           ? Center(

@@ -193,7 +193,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                 size: ResponsiveUtils.getResponsiveIconSize(context, 80),
                 color: Theme.of(context).colorScheme.error,
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               Text(
                 'Admin Access Required',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
@@ -201,7 +201,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                       color: Theme.of(context).colorScheme.error,
                     ),
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               Text(
                 'You need administrator privileges to access this dashboard.',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -429,10 +429,11 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                 }
               } catch (e) {
                 if (context.mounted) {
+                  final colorScheme = Theme.of(context).colorScheme;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('Chat messages export failed: $e'),
-                      backgroundColor: Colors.red,
+                      backgroundColor: colorScheme.error,
                     ),
                   );
                 }

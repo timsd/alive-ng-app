@@ -188,6 +188,8 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Add Kids Story'),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
       ),
       body: _isSaving
           ? Center(

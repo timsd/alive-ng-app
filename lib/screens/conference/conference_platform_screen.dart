@@ -308,7 +308,7 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
                     label: const Text('Schedule Meeting'),
                   ),
                 ),
-                SizedBox(width: 12),
+                const SizedBox(width: 12),
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: _showJoinMeetingDialog,
@@ -402,7 +402,7 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
               size: 64,
               color: theme.colorScheme.outline,
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Text(
               'No Meetings Found',
               style: Theme.of(context)
@@ -416,7 +416,7 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
     }
 
     return ListView.builder(
-      padding: EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       itemCount: meetings.length,
       itemBuilder: (context, index) => _buildMeetingCard(meetings[index]),
     );
@@ -433,9 +433,9 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
               .withValues(alpha: 0.6),
         ),
       ),
-      margin: EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 16),
       child: Padding(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -444,29 +444,29 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
                     .textTheme
                     .titleMedium
                     ?.copyWith(fontWeight: FontWeight.bold)),
-            SizedBox(height: 4),
+            const SizedBox(height: 4),
             Text(meeting.description,
                 style: Theme.of(context).textTheme.bodySmall),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             Row(
               children: [
-                Icon(Icons.access_time, size: 16),
-                SizedBox(width: 4),
+                const Icon(Icons.access_time, size: 16),
+                const SizedBox(width: 4),
                 Text(meeting.scheduledTime.toString(),
                     style: Theme.of(context).textTheme.bodySmall),
               ],
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 TextButton(
                     onPressed: () => _shareMeeting(meeting),
-                    child: Text('Share')),
-                SizedBox(width: 8),
+                    child: const Text('Share')),
+                const SizedBox(width: 8),
                 ElevatedButton(
                     onPressed: () => _joinMeeting(meeting),
-                    child: Text('Join')),
+                    child: const Text('Join')),
               ],
             ),
           ],
@@ -487,6 +487,8 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
     final descriptionController = TextEditingController();
     DateTime selectedDate = DateTime.now().add(const Duration(days: 1));
     String selectedType = 'general';
+    final messenger = ScaffoldMessenger.of(context);
+    final theme = Theme.of(context);
 
     final result = await showDialog<bool>(
       context: context,
@@ -519,6 +521,7 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
                       lastDate: DateTime.now().add(const Duration(days: 365)),
                     );
                     if (date != null) {
+                      if (!context.mounted) return;
                       final time = await showTimePicker(
                         context: context,
                         initialTime: TimeOfDay.fromDateTime(selectedDate),
@@ -597,16 +600,17 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
             .add(meeting.toMap());
         _loadMeetings();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          messenger.showSnackBar(
             const SnackBar(content: Text('Meeting scheduled successfully')),
           );
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          messenger.showSnackBar(
             SnackBar(
-                content: Text('Error scheduling meeting: $e'),
-                backgroundColor: Colors.red),
+              content: Text('Error scheduling meeting: $e'),
+              backgroundColor: theme.colorScheme.error,
+            ),
           );
         }
       }
@@ -615,6 +619,7 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
 
   Future<void> _showJoinMeetingDialog() async {
     final roomController = TextEditingController();
+    final navigator = Navigator.of(context);
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
@@ -640,7 +645,7 @@ class _ConferencePlatformScreenState extends State<ConferencePlatformScreen> {
     );
 
     if (result != null && result.isNotEmpty) {
-      Navigator.of(context).push(
+      navigator.push(
         MaterialPageRoute(
           builder: (context) => EnhancedJitsiMeetScreen(
             customRoomName: result,

@@ -88,8 +88,12 @@ class AppUpdateService {
     List<int> latestParts = latest.split('.').map((s) => int.tryParse(s) ?? 0).toList();
     
     // Pad lists if needed
-    while (currentParts.length < 3) currentParts.add(0);
-    while (latestParts.length < 3) latestParts.add(0);
+    while (currentParts.length < 3) {
+      currentParts.add(0);
+    }
+    while (latestParts.length < 3) {
+      latestParts.add(0);
+    }
     
     for (int i = 0; i < 3; i++) {
       if (latestParts[i] > currentParts[i]) return true;

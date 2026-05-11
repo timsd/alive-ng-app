@@ -104,11 +104,12 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     if (_isLoading) {
       return Scaffold(
         body: Center(
           child: CircularProgressIndicator(
-            color: Theme.of(context).colorScheme.primary,
+            color: theme.colorScheme.primary,
           ),
         ),
       );
@@ -119,8 +120,8 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
         appBar: CustomAppBar(
           title: 'Access Denied',
           showBackButton: true,
-          backgroundColor: Colors.red,
-          foregroundColor: Colors.white,
+          backgroundColor: theme.colorScheme.error,
+          foregroundColor: theme.colorScheme.onError,
         ),
         body: Center(
           child: Column(
@@ -129,16 +130,16 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
               Icon(
                 Icons.archive_outlined,
                 size: ResponsiveUtils.getResponsiveIconSize(context, 80),
-                color: Colors.red,
+                color: theme.colorScheme.error,
               ),
               SizedBox(
                   height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
               Text(
                 'Access Denied',
-                style: TextStyle(
+                style: theme.textTheme.headlineSmall?.copyWith(
                   fontSize: ResponsiveUtils.getResponsiveFontSize(context, 24),
                   fontWeight: FontWeight.bold,
-                  color: Colors.red,
+                  color: theme.colorScheme.error,
                 ),
               ),
               SizedBox(
@@ -146,8 +147,8 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
               Text(
                 'You do not have permission to access archived users.',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                 textAlign: TextAlign.center,
               ),
               SizedBox(
@@ -155,8 +156,8 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
               Text(
                 'This section is restricted to Leaders,\nCoordinators, and Administrators only.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -169,8 +170,8 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
       appBar: CustomAppBar(
         title: 'Archived Users',
         showBackButton: true,
-        backgroundColor: Theme.of(context).colorScheme.secondary,
-        foregroundColor: Theme.of(context).colorScheme.onSecondary,
+        backgroundColor: theme.colorScheme.secondary,
+        foregroundColor: theme.colorScheme.onSecondary,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -188,10 +189,19 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
               decoration: InputDecoration(
                 hintText: 'Search archived users...',
                 prefixIcon: const Icon(Icons.search),
+                filled: true,
+                fillColor: theme.colorScheme.surfaceContainerHighest,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(
                       ResponsiveUtils.getResponsiveBorderRadiusValue(
                           context, 10)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(
+                      ResponsiveUtils.getResponsiveBorderRadiusValue(
+                          context, 10)),
+                  borderSide:
+                      BorderSide(color: theme.colorScheme.outlineVariant),
                 ),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
@@ -218,7 +228,15 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
             padding: EdgeInsets.symmetric(
                 horizontal: ResponsiveUtils.getResponsivePaddingValue(context)),
             child: Card(
-              color: Theme.of(context).colorScheme.secondaryContainer.withValues(alpha: 0.3),
+              color:
+                  theme.colorScheme.secondaryContainer.withValues(alpha: 0.3),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+                side: BorderSide(
+                  color:
+                      theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
+                ),
+              ),
               child: Padding(
                 padding: EdgeInsets.all(
                     ResponsiveUtils.getResponsiveSpacing(context, 12)),
@@ -237,16 +255,23 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
                         children: [
                           Text(
                             'Archived Users',
-                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(context).colorScheme.secondary,
-                            ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleSmall
+                                ?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color:
+                                      Theme.of(context).colorScheme.secondary,
+                                ),
                           ),
                           Text(
                             'Users who have left the organization. Found ${_filteredUsers.length} archived users.',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
+                                    ),
                           ),
                         ],
                       ),
@@ -268,8 +293,12 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
                       children: [
                         Icon(
                           Icons.archive_outlined,
-                          size: ResponsiveUtils.getResponsiveIconSize(context, 64),
-                          color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                          size: ResponsiveUtils.getResponsiveIconSize(
+                              context, 64),
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurfaceVariant
+                              .withValues(alpha: 0.4),
                         ),
                         SizedBox(
                             height: ResponsiveUtils.getResponsiveSpacing(
@@ -291,9 +320,12 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
                           _searchQuery.isEmpty
                               ? 'Users who leave the organization will appear here'
                               : 'Try adjusting your search terms',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ),
                           textAlign: TextAlign.center,
                         ),
                       ],
@@ -345,8 +377,8 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
             Text(
               user.email ?? 'No email',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
             ),
             SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 4)),
             Row(
@@ -366,9 +398,11 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
                   child: Text(
                     'ARCHIVED',
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.onSecondaryContainer,
-                    ),
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSecondaryContainer,
+                        ),
                   ),
                 ),
                 SizedBox(
@@ -376,9 +410,9 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
                 Text(
                   user.role.toUpperCase(),
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                 ),
                 if (user.isNewConvert) ...[
                   SizedBox(
@@ -438,8 +472,10 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
                           icon: const Icon(Icons.restore),
                           label: const Text('Restore User'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).colorScheme.tertiary,
-                            foregroundColor: Theme.of(context).colorScheme.onTertiary,
+                            backgroundColor:
+                                Theme.of(context).colorScheme.tertiary,
+                            foregroundColor:
+                                Theme.of(context).colorScheme.onTertiary,
                           ),
                         ),
                       ),
@@ -452,8 +488,10 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
                           icon: const Icon(Icons.delete_forever),
                           label: const Text('Delete'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).colorScheme.error,
-                            foregroundColor: Theme.of(context).colorScheme.onError,
+                            backgroundColor:
+                                Theme.of(context).colorScheme.error,
+                            foregroundColor:
+                                Theme.of(context).colorScheme.onError,
                           ),
                         ),
                       ),
@@ -480,9 +518,9 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
             child: Text(
               '$label:',
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+                    fontWeight: FontWeight.w500,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
             ),
           ),
           Expanded(
@@ -503,6 +541,7 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
       // Update user profile to unarchive them
       // Store context in local variable before async gap
       final messenger = ScaffoldMessenger.of(context);
+      final theme = Theme.of(context);
 
       await FirebaseFirestore.instance.collection('users').doc(user.id).update({
         'is_archived': false,
@@ -512,7 +551,7 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
       messenger.showSnackBar(
         SnackBar(
           content: Text('${user.fullName} has been restored'),
-          backgroundColor: Theme.of(context).colorScheme.tertiary,
+          backgroundColor: theme.colorScheme.tertiary,
         ),
       );
       await _loadArchivedUsers();
@@ -529,6 +568,8 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
   }
 
   Future<void> _permanentlyDeleteUser(UserProfile user) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final theme = Theme.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -591,11 +632,10 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
 
         // Store context in local variable before async gap
         if (!mounted) return;
-        final messenger = ScaffoldMessenger.of(context);
         messenger.showSnackBar(
           SnackBar(
             content: Text('${user.fullName} has been permanently deleted'),
-            backgroundColor: Theme.of(context).colorScheme.error,
+            backgroundColor: theme.colorScheme.error,
           ),
         );
         await _loadArchivedUsers();
