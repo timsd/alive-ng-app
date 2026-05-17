@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
+import 'package:timeago/timeago.dart' as timeago;
+import 'package:url_launcher/url_launcher.dart';
+
 import '../../models/chat_models.dart';
-import '../../widgets/custom_image.dart';
-import '../../widgets/tag_chip.dart';
-import '../../utils/logger.dart';
 import '../../services/auth_service.dart';
 import '../../services/role_access_service.dart';
+import '../../utils/appwrite_user_extensions.dart';
+import '../../utils/logger.dart';
 import '../../utils/responsive_utils.dart';
-import 'package:timeago/timeago.dart' as timeago;
+import '../../widgets/custom_image.dart';
+import '../../widgets/tag_chip.dart';
 
 class ChatMessageWidget extends StatefulWidget {
   final ChatMessage message;
@@ -487,8 +490,17 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
   }
 
   Widget _buildActionButtons(ThemeData theme) {
+    final currentUserId = AuthService.instance.currentUser?.uid;
+
     return Container(
-      margin: EdgeInsets.only(left: ResponsiveUtils.getResponsiveValue(context: context, mobile: 8.0, tablet: 10.0, desktop: 12.0)),
+      margin: EdgeInsets.only(
+        left: ResponsiveUtils.getResponsiveValue(
+          context: context,
+          mobile: 8.0,
+          tablet: 10.0,
+          desktop: 12.0,
+        ),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -504,7 +516,8 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
             tooltip: 'Copy',
             visualDensity: VisualDensity.compact,
           ),
-          if (widget.message.senderId == 'current-user-id') ...[
+          if (currentUserId != null &&
+              widget.message.senderId == currentUserId) ...[
             IconButton(
               icon: Icon(Icons.edit, size: context.responsiveIconSize(18)),
               onPressed: () => widget.onEdit?.call(widget.message),
@@ -533,9 +546,10 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
     );
   }
 
-  void _launchUrl(String url) {
-    // Implement URL launching
-    // You can use url_launcher package
+  Future<void> _launchUrl(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 }
 

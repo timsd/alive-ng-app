@@ -61,6 +61,7 @@ firebase.web.env.json
 # Firebase Admin SDK Key
 firebase-admin-key.json
 node_modules
+.npm-cache/
  
 # Development-only tools and tests
 /tool/

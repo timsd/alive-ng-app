@@ -2,10 +2,36 @@
 
 A comprehensive Flutter application for the ALIVE-NG Ministry, providing features for spiritual growth, community engagement, health tracking, and mission activities.
 
+## Current Migration Status
+
+The app is mid-migration from Firebase/Jitsi/GetStream pieces to Appwrite and
+LiveKit. Do not remove remaining Firebase files only because Appwrite files now
+exist; several modules still import Firebase services and must be replaced one
+workflow at a time.
+
+- Authentication and profile creation are now wired through Appwrite services.
+- Chat is already using the existing `lib/screens/chat` UI with an
+  Appwrite-backed `ChatService` facade, Appwrite Storage attachments, mentions,
+  and LiveKit meeting entry points.
+- `appwrite.config.json` currently captures project settings and the
+  `createLiveKitToken` function, but not the full remote schema for TablesDB,
+  buckets, teams, webhooks, or messaging topics.
+- Appwrite CLI is pinned locally to `appwrite-cli@12.0.1`, but this Appwrite
+  `1.7.4` server still rejects CLI endpoint configuration, so remote
+  provisioning should use the SDK script for now.
+- Appwrite infrastructure schema is captured in
+  `scripts/appwrite_infrastructure_schema.mjs`; run `npm run appwrite:dry-run`
+  to review it before applying.
+- Your current server reports Appwrite `1.7.4`, so use
+  `APPWRITE_API_KEY=<master key> npm run appwrite:provision:legacy` for remote
+  provisioning unless the server is upgraded to a TablesDB release.
+- Coolify web hosting is supported through the root `Dockerfile`, which builds
+  Flutter web and serves it with Nginx.
+
 ## Features
 
 ### Core Functionality
-- **User Authentication**: Secure login/signup with Firebase Auth
+- **User Authentication**: Secure login/signup with Appwrite Auth
 - **Prayer Requests**: Submit and track prayer requests
 - **Health Activities**: Monitor physical and spiritual wellness
 - **Study Programs**: Access Bible studies and educational content
@@ -30,7 +56,8 @@ A comprehensive Flutter application for the ALIVE-NG Ministry, providing feature
 - **Provider Pattern**: Clean separation of business logic
 
 ### Data Layer
-- **Firebase**: Firestore, Auth, Storage, Messaging, Analytics, Crashlytics
+- **Appwrite**: Auth, project settings, functions, storage-backed chat, and in-progress data migration
+- **Firebase legacy**: Still present for modules that have not yet been fully migrated
 - **Local Storage**: SharedPreferences and Secure Storage
 - **Sync Service**: Automatic data synchronization
 
