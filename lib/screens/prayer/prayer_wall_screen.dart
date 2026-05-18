@@ -1,11 +1,32 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../widgets/custom_app_bar.dart';
-import '../../widgets/add_prayer_request_dialog.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
+import '../../models/app_models.dart';
+import '../../providers/auth_provider.dart';
+import '../../services/prayer_requests_service.dart';
 import '../../utils/error_handler.dart';
+import '../../widgets/add_prayer_request_dialog.dart';
+import '../../widgets/custom_app_bar.dart';
+
+final publicPrayerWallProvider =
+    FutureProvider.autoDispose<List<PrayerRequest>>((ref) {
+  return PrayerRequestsService.instance.fetchPrayerRequests();
+});
+
+final myPrayerWallProvider =
+    FutureProvider.autoDispose<List<PrayerRequest>>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return <PrayerRequest>[];
+  return PrayerRequestsService.instance.fetchUserPrayerRequests(user.uid);
+});
+
+final supportedPrayerWallProvider =
+    FutureProvider.autoDispose<List<PrayerRequest>>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return <PrayerRequest>[];
+  return PrayerRequestsService.instance.fetchSupportedPrayerRequests(user.uid);
+});
 
 class PrayerWallScreen extends ConsumerStatefulWidget {
   const PrayerWallScreen({super.key});
@@ -16,7 +37,7 @@ class PrayerWallScreen extends ConsumerStatefulWidget {
 
 class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
     with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+  late final TabController _tabController;
 
   @override
   void initState() {
@@ -30,8 +51,97 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
     super.dispose();
   }
 
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: CustomAppBar(
+        title: 'Prayer Wall',
+        showBackButton: true,
+        showThemeToggle: true,
+        showLanguageToggle: true,
+        showDonationButton: true,
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(icon: FaIcon(FontAwesomeIcons.globe), text: 'Public Prayers'),
+            Tab(icon: FaIcon(FontAwesomeIcons.user), text: 'My Prayers'),
+            Tab(
+              icon: FaIcon(FontAwesomeIcons.personPraying),
+              text: 'Praying For',
+            ),
+          ],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildPrayerList(publicPrayerWallProvider, emptyText: 'No prayer requests found'),
+          _buildPrayerList(myPrayerWallProvider, emptyText: 'You have not created any prayer requests yet'),
+          _buildPrayerList(supportedPrayerWallProvider, emptyText: 'You are not supporting any prayer requests yet'),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showAddPrayerDialog,
+        tooltip: 'Add Prayer Request',
+        child: const FaIcon(FontAwesomeIcons.plus),
+      ),
+    );
+  }
+
+  Widget _buildPrayerList(
+    AutoDisposeFutureProvider<List<PrayerRequest>> provider, {
+    required String emptyText,
+  }) {
+    final user = ref.watch(currentUserProvider);
+    final asyncRequests = ref.watch(provider);
+
+    return RefreshIndicator(
+      onRefresh: () async => ref.invalidate(provider),
+      child: asyncRequests.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => _buildLoadErrorState(
+          context,
+          'Unable to load prayers',
+          error,
+        ),
+        data: (requests) {
+          if (requests.isEmpty) {
+            return ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                SizedBox(height: MediaQuery.sizeOf(context).height * 0.25),
+                Center(child: Text(emptyText, textAlign: TextAlign.center)),
+              ],
+            );
+          }
+
+          return ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            itemCount: requests.length,
+            itemBuilder: (context, index) {
+              final request = requests[index];
+              return _PrayerCard(
+                request: request,
+                isOwner: user?.uid == request.userId,
+                onPray: () => _recordPrayer(request),
+                onShare: () => _sharePrayerRequest(request),
+                onDelete: user?.uid == request.userId
+                    ? () => _deletePrayer(request)
+                    : null,
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildLoadErrorState(
-      BuildContext context, String title, Object? error) {
+    BuildContext context,
+    String title,
+    Object? error,
+  ) {
     final theme = Theme.of(context);
     return Center(
       child: Padding(
@@ -41,7 +151,7 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
           child: Card(
             elevation: 0,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(12),
               side: BorderSide(color: theme.colorScheme.outlineVariant),
             ),
             child: Padding(
@@ -49,8 +159,11 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.cloud_off_rounded,
-                      size: 48, color: theme.colorScheme.error),
+                  Icon(
+                    Icons.cloud_off_rounded,
+                    size: 48,
+                    color: theme.colorScheme.error,
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     title,
@@ -76,460 +189,62 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: CustomAppBar(
-        title: 'Prayer Wall',
-        showBackButton: true,
-        showThemeToggle: true,
-        showLanguageToggle: true,
-        showDonationButton: true,
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(icon: FaIcon(FontAwesomeIcons.globe), text: 'Public Prayers'),
-            Tab(icon: FaIcon(FontAwesomeIcons.user), text: 'My Prayers'),
-            Tab(
-                icon: FaIcon(FontAwesomeIcons.personPraying),
-                text: 'Praying For'),
-          ],
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildPublicPrayersTab(),
-          _buildMyPrayersTab(),
-          _buildPrayingForTab(),
+  Future<void> _recordPrayer(PrayerRequest request) async {
+    final user = ref.read(currentUserProvider);
+    if (user == null) {
+      _showSnack('Please sign in to pray for requests', isError: true);
+      return;
+    }
+
+    try {
+      await PrayerRequestsService.instance.prayForRequest(request.id, user.uid);
+      ref.invalidate(publicPrayerWallProvider);
+      ref.invalidate(myPrayerWallProvider);
+      ref.invalidate(supportedPrayerWallProvider);
+      _showSnack('Thank you for praying for ${request.title}');
+    } catch (e) {
+      _showSnack('Failed to record prayer: $e', isError: true);
+    }
+  }
+
+  Future<void> _deletePrayer(PrayerRequest request) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete prayer request?'),
+        content: Text('This will remove "${request.title}" from the prayer wall.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddPrayerDialog,
-        tooltip: 'Add Prayer Request',
-        child: const FaIcon(FontAwesomeIcons.plus),
-      ),
     );
-  }
 
-  Widget _buildPublicPrayersTab() {
-    return RefreshIndicator(
-      onRefresh: () async {
-        // Refresh prayer requests from Firebase
-        try {
-          await FirebaseFirestore.instance
-              .collection('prayer_requests')
-              .orderBy('created_at', descending: true)
-              .limit(50)
-              .get();
-
-          setState(() {
-            // Update prayer requests list with fetched data
-            // In a real implementation, you would parse the response
-            // and update your prayer requests list
-          });
-
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: const Text('Prayer requests refreshed'),
-                backgroundColor: Theme.of(context).colorScheme.tertiary,
-              ),
-            );
-          }
-        } catch (e) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Failed to refresh: $e'),
-                backgroundColor: Theme.of(context).colorScheme.error,
-              ),
-            );
-          }
-        }
-      },
-      child: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('prayer_requests')
-            .limit(50)
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (snapshot.hasError) {
-            return _buildLoadErrorState(
-              context,
-              'Unable to load public prayers',
-              snapshot.error,
-            );
-          }
-
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text('No prayer requests found'));
-          }
-
-          final docs = snapshot.data!.docs.where((doc) {
-            final data = doc.data() as Map<String, dynamic>;
-            final notArchived = (data['status'] as String?) != 'archived';
-            final isPublic = data['is_public'] as bool? ?? true;
-            return notArchived && isPublic;
-          }).toList()
-            ..sort((a, b) {
-              final aData = a.data() as Map<String, dynamic>;
-              final bData = b.data() as Map<String, dynamic>;
-              return _asDateTime(bData['created_at'])
-                  .compareTo(_asDateTime(aData['created_at']));
-            });
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: docs.length,
-            itemBuilder: (context, index) {
-              final doc = docs[index];
-              final data = doc.data() as Map<String, dynamic>;
-
-              return _buildPrayerCard(
-                context,
-                index,
-                data['title'] ?? 'Prayer Request',
-                _resolveDescription(data),
-                data['author_name'] ?? 'Anonymous',
-                _asDateTime(data['created_at']),
-                data['prayer_count'] ?? 0,
-                false,
-              );
-            },
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildMyPrayersTab() {
-    final user = FirebaseAuth.instance.currentUser;
-
-    if (user == null) {
-      return const Center(child: Text('Please sign in to view your prayers'));
+    if (confirmed != true) return;
+    try {
+      await PrayerRequestsService.instance.deletePrayerRequest(request.id);
+      ref.invalidate(publicPrayerWallProvider);
+      ref.invalidate(myPrayerWallProvider);
+      ref.invalidate(supportedPrayerWallProvider);
+      _showSnack('Prayer request deleted');
+    } catch (e) {
+      _showSnack('Failed to delete prayer: $e', isError: true);
     }
-
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('prayer_requests')
-          .where('user_id', isEqualTo: user.uid)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        if (snapshot.hasError) {
-          return _buildLoadErrorState(
-            context,
-            'Unable to load your prayer requests',
-            snapshot.error,
-          );
-        }
-
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Center(
-              child: Text('You haven\'t created any prayer requests yet'));
-        }
-
-        final docs = snapshot.data!.docs.toList()
-          ..sort((a, b) {
-            final aData = a.data() as Map<String, dynamic>;
-            final bData = b.data() as Map<String, dynamic>;
-            return _asDateTime(bData['created_at'])
-                .compareTo(_asDateTime(aData['created_at']));
-          });
-
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: docs.length,
-          itemBuilder: (context, index) {
-            final doc = docs[index];
-            final data = doc.data() as Map<String, dynamic>;
-
-            return _buildPrayerCard(
-              context,
-              index,
-              data['title'] ?? 'My Prayer',
-              _resolveDescription(data),
-              'You',
-              _asDateTime(data['created_at']),
-              data['prayer_count'] ?? 0,
-              true,
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildPrayingForTab() {
-    final user = FirebaseAuth.instance.currentUser;
-
-    if (user == null) {
-      return const Center(
-          child: Text('Please sign in to view prayers you\'re supporting'));
-    }
-
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('prayer_supporters')
-          .where('user_id', isEqualTo: user.uid)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        if (snapshot.hasError) {
-          return _buildLoadErrorState(
-            context,
-            'Unable to load supported prayers',
-            snapshot.error,
-          );
-        }
-
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Center(
-              child: Text('You aren\'t supporting any prayer requests yet'));
-        }
-
-        // Get the prayer request IDs that the user is supporting
-        final prayerIds = snapshot.data!.docs.map((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          return data['prayer_id'] as String;
-        }).toList();
-
-        // Now fetch the actual prayer requests
-        return StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance
-              .collection('prayer_requests')
-              .where(FieldPath.documentId, whereIn: prayerIds)
-              .snapshots(),
-          builder: (context, prayerSnapshot) {
-            if (prayerSnapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-
-            if (prayerSnapshot.hasError) {
-              return _buildLoadErrorState(
-                context,
-                'Unable to load supported prayer details',
-                prayerSnapshot.error,
-              );
-            }
-
-            if (!prayerSnapshot.hasData || prayerSnapshot.data!.docs.isEmpty) {
-              return const Center(child: Text('No prayer requests found'));
-            }
-
-            return ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: prayerSnapshot.data!.docs.length,
-              itemBuilder: (context, index) {
-                final doc = prayerSnapshot.data!.docs[index];
-                final data = doc.data() as Map<String, dynamic>;
-
-                return _buildPrayerCard(
-                  context,
-                  index,
-                  data['title'] ?? 'Prayer Request',
-                  _resolveDescription(data),
-                  data['author_name'] ?? 'Community Member',
-                  _asDateTime(data['created_at']),
-                  data['prayer_count'] ?? 0,
-                  false,
-                  isPrayingFor: true,
-                );
-              },
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildPrayerCard(
-    BuildContext context,
-    int index,
-    String title,
-    String content,
-    String author,
-    DateTime timestamp,
-    int prayerCount,
-    bool isOwner, {
-    bool isPrayingFor = false,
-  }) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: Theme.of(context)
-                      .colorScheme
-                      .primary
-                      .withValues(alpha: 0.1),
-                  child: Icon(
-                    Icons.person,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        author,
-                        style:
-                            Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        _formatTimestamp(timestamp),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.outline,
-                            ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (isOwner)
-                  PopupMenuButton<String>(
-                    onSelected: (value) {
-                      if (value == 'edit') {
-                        _editPrayer(context, index);
-                      } else if (value == 'delete') {
-                        _deletePrayer(context, index);
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(
-                        value: 'edit',
-                        child: Row(
-                          children: [
-                            FaIcon(FontAwesomeIcons.pen),
-                            SizedBox(width: 8),
-                            Text('Edit'),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            FaIcon(FontAwesomeIcons.trash,
-                                color: Theme.of(context).colorScheme.error),
-                            const SizedBox(width: 8),
-                            Text('Delete',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.copyWith(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .error)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // Content
-            Text(
-              title,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              content,
-              style: Theme.of(context).textTheme.bodyMedium,
-              maxLines: 4,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 16),
-
-            // Actions
-            Row(
-              children: [
-                Icon(
-                  isPrayingFor
-                      ? FontAwesomeIcons.solidHeart
-                      : FontAwesomeIcons.heart,
-                  size: 20,
-                  color: isPrayingFor
-                      ? Theme.of(context).colorScheme.error
-                      : Theme.of(context)
-                          .colorScheme
-                          .outline
-                          .withValues(alpha: 0.5),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '$prayerCount praying',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const Spacer(),
-                if (!isOwner)
-                  TextButton.icon(
-                    onPressed: () {
-                      _togglePrayerSupport(context, index);
-                    },
-                    icon: Icon(
-                      isPrayingFor
-                          ? FontAwesomeIcons.solidHeart
-                          : FontAwesomeIcons.heart,
-                      size: 18,
-                    ),
-                    label: Text(isPrayingFor ? 'Praying' : 'Pray'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: isPrayingFor
-                          ? Theme.of(context).colorScheme.error
-                          : Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                TextButton.icon(
-                  onPressed: () {
-                    _sharePrayerRequest(context, index);
-                  },
-                  icon: const FaIcon(FontAwesomeIcons.share, size: 18),
-                  label: const Text('Share'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   void _showAddPrayerDialog() {
+    final user = ref.read(currentUserProvider);
+    if (user == null) {
+      _showSnack('Please sign in to create prayer requests', isError: true);
+      return;
+    }
+
     final screenContext = context;
     showDialog(
       context: context,
@@ -543,42 +258,26 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
           String? scriptureReference,
           required String urgencyLevel,
         }) async {
-          final user = FirebaseAuth.instance.currentUser;
-          if (user == null) {
-            throw Exception('User not authenticated');
-          }
+          final request = PrayerRequest(
+            id: '',
+            userId: user.uid,
+            title: title,
+            description: description,
+            category: category,
+            isAnonymous: isAnonymous,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
 
-          final displayName = user.displayName?.trim();
-          final emailPrefix = user.email?.split('@').first;
-          final visibleName = (displayName != null && displayName.isNotEmpty)
-              ? displayName
-              : ((emailPrefix != null && emailPrefix.isNotEmpty)
-                  ? emailPrefix
-                  : 'ALIVE Member');
+          await PrayerRequestsService.instance.createPrayerRequest(request);
+          ref.invalidate(publicPrayerWallProvider);
+          ref.invalidate(myPrayerWallProvider);
 
-          await FirebaseFirestore.instance.collection('prayer_requests').add({
-            'title': title,
-            'description': description,
-            'category': category,
-            'content': description,
-            'is_anonymous': isAnonymous,
-            'is_public': isPublic,
-            'scripture_reference': scriptureReference,
-            'urgency_level': urgencyLevel,
-            'author_name': isAnonymous ? 'Anonymous' : visibleName,
-            'user_id': user.uid,
-            'created_at': FieldValue.serverTimestamp(),
-            'updated_at': FieldValue.serverTimestamp(),
-            'prayer_count': 0,
-            'status': 'active',
-          });
-
-          if (!mounted) return;
           if (!screenContext.mounted) return;
           ScaffoldMessenger.of(screenContext).showSnackBar(
             SnackBar(
-              content: const Text('Prayer request posted successfully!'),
-              backgroundColor: Theme.of(context).colorScheme.tertiary,
+              content: const Text('Prayer request posted successfully'),
+              backgroundColor: Theme.of(screenContext).colorScheme.tertiary,
             ),
           );
         },
@@ -586,99 +285,160 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
     );
   }
 
-  String _resolveDescription(Map<String, dynamic> data) {
-    final value = (data['description'] ?? data['content'] ?? '').toString();
-    if (value.trim().isEmpty) return 'Please pray for this request';
-    return value;
-  }
-
-  String _formatTimestamp(DateTime timestamp) {
-    final now = DateTime.now();
-    final difference = now.difference(timestamp);
-
-    if (difference.inMinutes < 1) {
-      return 'Just now';
-    } else if (difference.inHours < 1) {
-      return '${difference.inMinutes}m ago';
-    } else if (difference.inDays < 1) {
-      return '${difference.inHours}h ago';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays}d ago';
-    } else {
-      return '${timestamp.day}/${timestamp.month}/${timestamp.year}';
-    }
-  }
-
-  DateTime _asDateTime(dynamic value) {
-    if (value is Timestamp) return value.toDate();
-    if (value is DateTime) return value;
-    if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
-    try {
-      final dynamicValue = value;
-      final DateTime? parsed = dynamicValue?.toDate() as DateTime?;
-      if (parsed != null) return parsed;
-    } catch (_) {}
-    return DateTime.now();
-  }
-
-  void _sharePrayerRequest(BuildContext context, int index) {
+  void _sharePrayerRequest(PrayerRequest request) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Share Prayer Request'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-                'Share this prayer request with others to join in prayer.'),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .outlineVariant
-                      .withValues(alpha: 0.6),
-                ),
-              ),
-              child: Text('Prayer Request: Sample prayer request ${index + 1}'),
-            ),
-          ],
+        content: Text(
+          '${request.title}\n\n${request.description}\n\nShare this prayer request with others to join in prayer.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Prayer request shared successfully!'),
-                  backgroundColor: Theme.of(context).colorScheme.tertiary,
-                ),
-              );
-            },
-            child: const Text('Share'),
+            child: const Text('Close'),
           ),
         ],
       ),
     );
   }
 
-  void _editPrayer(BuildContext context, int index) {
-    // Basic implementation for now
+  void _showSnack(String message, {bool isError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError
+            ? Theme.of(context).colorScheme.error
+            : Theme.of(context).colorScheme.tertiary,
+      ),
+    );
+  }
+}
+
+class _PrayerCard extends StatelessWidget {
+  final PrayerRequest request;
+  final bool isOwner;
+  final VoidCallback onPray;
+  final VoidCallback onShare;
+  final VoidCallback? onDelete;
+
+  const _PrayerCard({
+    required this.request,
+    required this.isOwner,
+    required this.onPray,
+    required this.onShare,
+    this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final author = request.isAnonymous ? 'Anonymous' : 'Community Member';
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: theme.colorScheme.primaryContainer,
+                  child: Icon(
+                    Icons.person,
+                    color: theme.colorScheme.onPrimaryContainer,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        author,
+                        style: theme.textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        _formatTimestamp(request.createdAt),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (onDelete != null)
+                  IconButton(
+                    tooltip: 'Delete',
+                    onPressed: onDelete,
+                    icon: const FaIcon(FontAwesomeIcons.trash, size: 18),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              request.title,
+              style: theme.textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              request.description,
+              style: theme.textTheme.bodyMedium,
+              maxLines: 5,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Icon(
+                  FontAwesomeIcons.heart,
+                  size: 18,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '${request.prayerCount} praying',
+                  style: theme.textTheme.bodySmall,
+                ),
+                const Spacer(),
+                if (!isOwner)
+                  TextButton.icon(
+                    onPressed: onPray,
+                    icon: const FaIcon(FontAwesomeIcons.handsPraying, size: 18),
+                    label: const Text('Pray'),
+                  ),
+                TextButton.icon(
+                  onPressed: onShare,
+                  icon: const FaIcon(FontAwesomeIcons.share, size: 18),
+                  label: const Text('Share'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
-  void _deletePrayer(BuildContext context, int index) {
-    // Basic implementation for now
-  }
-
-  void _togglePrayerSupport(BuildContext context, int index) {
-    // Basic implementation for now
+  String _formatTimestamp(DateTime timestamp) {
+    final difference = DateTime.now().difference(timestamp);
+    if (difference.inMinutes < 1) return 'Just now';
+    if (difference.inHours < 1) return '${difference.inMinutes}m ago';
+    if (difference.inDays < 1) return '${difference.inHours}h ago';
+    if (difference.inDays < 7) return '${difference.inDays}d ago';
+    return '${timestamp.day}/${timestamp.month}/${timestamp.year}';
   }
 }

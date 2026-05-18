@@ -45,6 +45,73 @@ class PrayerRequestsService {
     }
   }
 
+  Future<List<PrayerRequest>> fetchUserPrayerRequests(String userId) async {
+    try {
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.prayerRequestsCollectionId,
+        queries: [
+          Query.equal('user_id', userId),
+          Query.orderDesc('created_at'),
+          Query.limit(200),
+        ],
+      );
+
+      return response.documents
+          .map((doc) => PrayerRequest.fromJson(_documentData(doc)))
+          .toList();
+    } catch (e) {
+      _logger.error('Error fetching user prayer requests', e);
+      throw DatabaseException(
+        'Failed to fetch your prayer requests',
+        originalError: e,
+      );
+    }
+  }
+
+  Future<List<PrayerRequest>> fetchSupportedPrayerRequests(String userId) async {
+    try {
+      final interactions = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.prayerInteractionsCollectionId,
+        queries: [
+          Query.equal('user_id', userId),
+          Query.equal('type', 'pray'),
+          Query.orderDesc('created_at'),
+          Query.limit(100),
+        ],
+      );
+
+      final requestIds = interactions.documents
+          .map((doc) => doc.data['request_id'] as String?)
+          .whereType<String>()
+          .toSet()
+          .toList();
+
+      final requests = <PrayerRequest>[];
+      for (final id in requestIds) {
+        try {
+          final doc = await _databases.getDocument(
+            databaseId: AppwriteBackendConfig.databaseId,
+            collectionId: AppwriteBackendConfig.prayerRequestsCollectionId,
+            documentId: id,
+          );
+          requests.add(PrayerRequest.fromJson(_documentData(doc)));
+        } catch (_) {
+          // Ignore deleted or private requests that no longer resolve.
+        }
+      }
+      requests.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return requests;
+    } catch (e) {
+      _logger.error('Error fetching supported prayer requests', e);
+      throw DatabaseException(
+        'Failed to fetch prayers you support',
+        originalError: e,
+      );
+    }
+  }
+
   Future<PrayerRequest> createPrayerRequest(PrayerRequest request) async {
     try {
       final user = _authService.currentUser ?? await appwriteAccount.get();
