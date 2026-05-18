@@ -4,7 +4,7 @@ import '../../models/board_models.dart';
 import '../../services/firebase_database_service.dart';
 import '../../services/auth_service.dart';
 import '../../config/meeting_links_config.dart';
-import '../conference/enhanced_jitsi_meet_screen.dart';
+import '../conference/livekit_meeting_screen.dart';
 
 class BoardReportsScreen extends StatefulWidget {
   final String? initialCategory;
@@ -130,7 +130,7 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
                   onPressed: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (context) => const EnhancedJitsiMeetScreen(
+                        builder: (context) => const LiveKitMeetingScreen(
                           meetingType: MeetingType.board,
                           isModerator: true,
                         ),

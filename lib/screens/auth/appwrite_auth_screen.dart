@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../utils/text_formatter.dart';
 
-import '../../providers/firebase_auth_provider.dart';
+import '../../providers/appwrite_auth_provider.dart';
 import '../../providers/language_provider.dart';
 import '../../providers/guest_provider.dart';
 import '../../constants/app_constants.dart';
@@ -15,14 +15,14 @@ import '../../models/app_models.dart';
 import '../../utils/layout_fix_utils.dart';
 import 'package:flutter/foundation.dart';
 
-class FirebaseAuthScreen extends ConsumerStatefulWidget {
-  const FirebaseAuthScreen({super.key});
+class AppwriteAuthScreen extends ConsumerStatefulWidget {
+  const AppwriteAuthScreen({super.key});
 
   @override
-  ConsumerState<FirebaseAuthScreen> createState() => _FirebaseAuthScreenState();
+  ConsumerState<AppwriteAuthScreen> createState() => _AppwriteAuthScreenState();
 }
 
-class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
+class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -51,7 +51,7 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
   @override
   void initState() {
     super.initState();
-    debugPrint('FirebaseAuthScreen init');
+    debugPrint('AppwriteAuthScreen init');
     _checkBiometricAvailability();
   }
 
@@ -150,7 +150,7 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('FirebaseAuthScreen build');
+    debugPrint('AppwriteAuthScreen build');
     final translate = ref.watch(translationProvider);
     final signInState = ref.watch(signInControllerProvider);
 
@@ -1217,3 +1217,4 @@ class _FirebaseAuthScreenState extends ConsumerState<FirebaseAuthScreen> {
     }
   }
 }
+

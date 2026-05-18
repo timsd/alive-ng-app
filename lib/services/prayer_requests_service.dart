@@ -1,83 +1,120 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/prayer_request.dart';
+// ignore_for_file: deprecated_member_use
+
+import 'package:appwrite/appwrite.dart';
+
+import '../config/appwrite_backend_config.dart';
+import '../main.dart';
+import '../models/app_models.dart';
 import '../utils/app_exception.dart';
 import '../utils/logger.dart';
 import 'auth_service.dart';
 
 class PrayerRequestsService {
-  // Singleton pattern
-  static final PrayerRequestsService _instance = PrayerRequestsService._internal();
+  static final PrayerRequestsService _instance =
+      PrayerRequestsService._internal();
   factory PrayerRequestsService() => _instance;
   PrayerRequestsService._internal();
   static PrayerRequestsService get instance => _instance;
 
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  late final Databases _databases = Databases(appwriteClient);
   final AuthService _authService = AuthService.instance;
   final Logger _logger = Logger('PrayerRequestsService');
 
-  Future<List<PrayerRequest>> fetchPrayerRequests() async {
+  Future<List<PrayerRequest>> fetchPrayerRequests({String? category}) async {
     try {
-      final user = _authService.currentUser;
-      if (user == null) {
-        throw AuthException('User not authenticated');
+      final queries = <String>[Query.orderDesc('created_at'), Query.limit(200)];
+      if (category != null && category.trim().isNotEmpty) {
+        queries.add(Query.equal('category', category.trim()));
       }
 
-      final snapshot = await _firestore
-          .collection('prayer_requests')
-          .where('user_id', isEqualTo: user.uid)
-          .orderBy('created_at', descending: true)
-          .get();
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.prayerRequestsCollectionId,
+        queries: queries,
+      );
 
-      return snapshot.docs
-          .map((doc) => PrayerRequest.fromJson(doc.data()))
+      return response.documents
+          .map((doc) => PrayerRequest.fromJson(_documentData(doc)))
           .toList();
     } catch (e) {
       _logger.error('Error fetching prayer requests', e);
-      throw DatabaseException('Failed to fetch prayer requests', originalError: e);
+      throw DatabaseException(
+        'Failed to fetch prayer requests',
+        originalError: e,
+      );
     }
   }
 
-  Future<void> createPrayerRequest({
-    required String title,
-    required String description,
-    bool isAnonymous = false,
-  }) async {
+  Future<PrayerRequest> createPrayerRequest(PrayerRequest request) async {
     try {
-      final user = _authService.currentUser;
-      if (user == null) {
-        throw AuthException('User not authenticated');
-      }
+      final user = _authService.currentUser ?? await appwriteAccount.get();
+      final now = DateTime.now().toIso8601String();
+      final document = await _databases.createDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.prayerRequestsCollectionId,
+        documentId: ID.unique(),
+        data: {
+          'user_id': user.uid,
+          'userId': user.uid,
+          'requested_by': request.isAnonymous
+              ? 'Anonymous'
+              : (user.displayName?.trim().isNotEmpty == true
+                  ? user.displayName
+                  : 'ALIVE Member'),
+          'requestedById': user.uid,
+          'title': request.title,
+          'description': request.description,
+          'category': request.category,
+          'status': 'active',
+          'is_anonymous': request.isAnonymous,
+          'is_answered': false,
+          'prayer_count': 0,
+          'created_at': now,
+          'updated_at': now,
+        },
+      );
 
-      final docRef = _firestore.collection('prayer_requests').doc();
-      final data = {
-        'id': docRef.id,
-        'user_id': user.uid,
-        'title': title,
-        'description': description,
-        'is_anonymous': isAnonymous,
-        'prayer_count': 0,
-        'created_at': DateTime.now().toIso8601String(),
-        'updated_at': DateTime.now().toIso8601String(),
-      };
-
-      await docRef.set(data);
+      return PrayerRequest.fromJson(_documentData(document));
     } catch (e) {
       _logger.error('Error creating prayer request', e);
-      throw DatabaseException('Failed to create prayer request', originalError: e);
+      throw DatabaseException(
+        'Failed to create prayer request',
+        originalError: e,
+      );
     }
   }
 
-  Future<void> prayForRequest(String requestId) async {
+  Future<void> prayForRequest(String requestId, String userId) async {
     try {
-      final user = _authService.currentUser;
-      if (user == null) {
-        throw AuthException('User not authenticated');
-      }
+      final doc = await _databases.getDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.prayerRequestsCollectionId,
+        documentId: requestId,
+      );
+      final count = (doc.data['prayer_count'] as int?) ?? 0;
+      final now = DateTime.now().toIso8601String();
 
-      await _firestore.collection('prayer_requests').doc(requestId).update({
-        'prayer_count': FieldValue.increment(1),
-        'updated_at': DateTime.now().toIso8601String(),
-      });
+      await _databases.createDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.prayerInteractionsCollectionId,
+        documentId: ID.unique(),
+        data: {
+          'request_id': requestId,
+          'user_id': userId,
+          'type': 'pray',
+          'created_at': now,
+        },
+      );
+
+      await _databases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.prayerRequestsCollectionId,
+        documentId: requestId,
+        data: {
+          'prayer_count': count + 1,
+          'updated_at': now,
+        },
+      );
     } catch (e) {
       _logger.error('Error praying for request', e);
       throw DatabaseException('Failed to record prayer', originalError: e);
@@ -91,35 +128,48 @@ class PrayerRequestsService {
     bool? isAnonymous,
   }) async {
     try {
-      final user = _authService.currentUser;
-      if (user == null) {
-        throw AuthException('User not authenticated');
-      }
-
-      final updates = <String, dynamic>{};
+      final updates = <String, dynamic>{
+        'updated_at': DateTime.now().toIso8601String(),
+      };
       if (title != null) updates['title'] = title;
       if (description != null) updates['description'] = description;
       if (isAnonymous != null) updates['is_anonymous'] = isAnonymous;
-      updates['updated_at'] = DateTime.now().toIso8601String();
 
-      await _firestore.collection('prayer_requests').doc(id).update(updates);
+      await _databases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.prayerRequestsCollectionId,
+        documentId: id,
+        data: updates,
+      );
     } catch (e) {
       _logger.error('Error updating prayer request', e);
-      throw DatabaseException('Failed to update prayer request', originalError: e);
+      throw DatabaseException(
+        'Failed to update prayer request',
+        originalError: e,
+      );
     }
   }
 
   Future<void> deletePrayerRequest(String id) async {
     try {
-      final user = _authService.currentUser;
-      if (user == null) {
-        throw AuthException('User not authenticated');
-      }
-
-      await _firestore.collection('prayer_requests').doc(id).delete();
+      await _databases.deleteDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.prayerRequestsCollectionId,
+        documentId: id,
+      );
     } catch (e) {
       _logger.error('Error deleting prayer request', e);
-      throw DatabaseException('Failed to delete prayer request', originalError: e);
+      throw DatabaseException(
+        'Failed to delete prayer request',
+        originalError: e,
+      );
     }
+  }
+
+  Map<String, dynamic> _documentData(dynamic document) {
+    return {
+      ...Map<String, dynamic>.from(document.data as Map),
+      'id': document.$id,
+    };
   }
 }

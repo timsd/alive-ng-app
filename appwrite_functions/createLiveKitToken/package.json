@@ -1,0 +1,10 @@
+{
+  "name": "create-livekit-token",
+  "version": "1.0.0",
+  "description": "Generates real-time WebRTC room tokens for ALIVE meeting spaces",
+  "type": "module",
+  "main": "src/main.js",
+  "dependencies": {
+    "livekit-server-sdk": "^2.13.1"
+  }
+}

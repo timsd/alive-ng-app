@@ -73,7 +73,7 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-                content: Text('Document successfully extracted!'),
+                content: const Text('Document successfully extracted!'),
                 backgroundColor: Theme.of(context).colorScheme.tertiary),
           );
         }
@@ -163,7 +163,7 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Story published successfully!'),
+              content: const Text('Story published successfully!'),
               backgroundColor: Theme.of(context).colorScheme.tertiary),
         );
         Navigator.pop(context); // Return to previous screen
@@ -188,8 +188,6 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Add Kids Story'),
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        foregroundColor: Theme.of(context).colorScheme.onSurface,
       ),
       body: _isSaving
           ? Center(

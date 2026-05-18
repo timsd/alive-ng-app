@@ -68,7 +68,7 @@ class _AdminStudyGuidesScreenState extends State<AdminStudyGuidesScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-                content: Text('Curriculum successfully extracted!'),
+                content: const Text('Curriculum successfully extracted!'),
                 backgroundColor: Theme.of(context).colorScheme.tertiary),
           );
         }
@@ -176,7 +176,7 @@ class _AdminStudyGuidesScreenState extends State<AdminStudyGuidesScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Study Guide published successfully!'),
+              content: const Text('Study Guide published successfully!'),
               backgroundColor: Theme.of(context).colorScheme.tertiary),
         );
         Navigator.pop(context);
@@ -201,8 +201,6 @@ class _AdminStudyGuidesScreenState extends State<AdminStudyGuidesScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Study Guide Builder'),
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        foregroundColor: Theme.of(context).colorScheme.onSurface,
       ),
       body: _isSaving
           ? Center(

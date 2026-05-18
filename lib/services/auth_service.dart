@@ -1,95 +1,59 @@
-import 'package:flutter/foundation.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import '../models/app_models.dart';
-import '../config/google_signin_config.dart';
-import 'firebase_database_service.dart';
-import '../utils/app_exception.dart';
-import '../utils/logger.dart';
+import 'dart:async';
 
-/// Unified authentication service.
+import 'package:appwrite/models.dart' as models;
+
+import '../models/app_models.dart';
+import '../utils/app_exception.dart';
+import '../utils/appwrite_user_extensions.dart';
+import 'appwrite_auth_service.dart';
+import 'appwrite_profile_service.dart';
+
+export '../utils/appwrite_user_extensions.dart';
+
+/// Appwrite-backed authentication service.
 ///
-/// Supports email/password and Google Sign-In.  Profile creation and
-/// retrieval is delegated to [FirebaseDatabaseService].
+/// The class name is retained while the app migrates older call sites from the
+/// Firebase-era `AuthService.instance` API.
 class AuthService {
   static AuthService? _instance;
   static AuthService get instance => _instance ??= AuthService._();
 
-  final FirebaseDatabaseService _firebaseService;
-  final FirebaseAuth _auth;
-  final GoogleSignIn _googleSignIn;
-  static final Logger _logger = Logger('AuthService');
+  final AppwriteAuthService _appwriteAuth;
+  final AppwriteProfileService _profileService;
+  final StreamController<models.User?> _authStateController =
+      StreamController<models.User?>.broadcast();
 
-  static const String _googleSignInCancelled = 'GOOGLE_SIGNIN_CANCELLED';
   AuthService._({
-    FirebaseDatabaseService? firebaseService,
-    FirebaseAuth? auth,
-    GoogleSignIn? googleSignIn,
-  })  : _firebaseService = firebaseService ?? FirebaseDatabaseService.instance,
-        _auth = auth ?? FirebaseAuth.instance,
-        _googleSignIn = googleSignIn ?? GoogleSignInConfig.instance;
+    AppwriteAuthService? appwriteAuth,
+    AppwriteProfileService? profileService,
+  })  : _appwriteAuth = appwriteAuth ?? AppwriteAuthService(),
+        _profileService = profileService ?? AppwriteProfileService();
 
-  @visibleForTesting
-  factory AuthService.test({
-    required FirebaseDatabaseService firebaseService,
-    required FirebaseAuth auth,
-    GoogleSignIn? googleSignIn,
-  }) {
-    return AuthService._(
-      firebaseService: firebaseService,
-      auth: auth,
-      googleSignIn: googleSignIn,
-    );
-  }
-
-  // ── Getters ──────────────────────────────────────────────────────────────
-
-  User? get currentUser => _auth.currentUser;
-  bool get isAuthenticated => _auth.currentUser != null;
+  models.User? get currentUser => _appwriteAuth.currentUser;
+  bool get isAuthenticated => currentUser != null;
   bool get isEmailVerified => currentUser?.emailVerified ?? false;
-  Stream<User?> get authStateChanges => _auth.authStateChanges();
-
-  // ── Email / Password ─────────────────────────────────────────────────────
+  Stream<models.User?> get authStateChanges => _authStateController.stream;
 
   Future<AuthResult> signInWithEmailAndPassword(
-      String email, String password) async {
+    String email,
+    String password,
+  ) async {
     return signInWithEmail(email, password);
   }
 
   Future<AuthResult> signInWithEmail(String email, String password) async {
     try {
-      final credential = await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      await _appwriteAuth.loginWithEmail(email: email, password: password);
+      final user = await _appwriteAuth.getCurrentUser();
+      _authStateController.add(user);
 
-      if (credential.user != null) {
-        UserProfile? userProfile =
-            await _firebaseService.getUserProfile(credential.user!.uid);
-
-        if (userProfile == null) {
-          userProfile = UserProfile(
-            id: credential.user!.uid,
-            email: credential.user!.email!,
-            fullName: credential.user!.displayName ?? '',
-            photoUrl: credential.user!.photoURL,
-            isEmailVerified: credential.user!.emailVerified,
-            createdAt: credential.user!.metadata.creationTime ?? DateTime.now(),
-            updatedAt: DateTime.now(),
-          );
-          userProfile = await _firebaseService.createUserProfile(userProfile);
-        }
-
-        return AuthResult.success(credential.user!, userProfile);
-      } else {
+      if (user == null) {
         return AuthResult.error('Sign in failed');
       }
-    } on FirebaseAuthException catch (e) {
-      _logger.warning('Sign in failed (Firebase): ${e.message} ($e)');
-      return AuthResult.error(_getErrorMessage(e));
+
+      return AuthResult.success(user, await _profileForUser(user));
     } catch (e) {
-      _logger.error('Sign in failed (Unexpected)', e);
-      return AuthResult.error('An unexpected error occurred: $e');
+      return AuthResult.error('Sign in failed: $e');
     }
   }
 
@@ -97,140 +61,58 @@ class AuthService {
     required String email,
     required String password,
     String? fullName,
+    Map<String, dynamic>? profileData,
   }) async {
-    return signUpWithEmail(email: email, password: password, fullName: fullName);
+    return signUpWithEmail(
+      email: email,
+      password: password,
+      fullName: fullName,
+      profileData: profileData,
+    );
   }
 
   Future<AuthResult> signUpWithEmail({
     required String email,
     required String password,
     String? fullName,
+    Map<String, dynamic>? profileData,
   }) async {
     try {
-      final credential = await _auth.createUserWithEmailAndPassword(
+      final user = await _appwriteAuth.signUpWithEmail(
         email: email,
         password: password,
+        name: fullName ?? email.split('@').first,
+        profileData: profileData,
       );
+      await _appwriteAuth.getCurrentUser();
+      _authStateController.add(user);
 
-      if (credential.user != null) {
-        if (fullName != null && fullName.isNotEmpty) {
-          await credential.user!.updateDisplayName(fullName);
-        }
-
-        // Send email verification
-        await credential.user!.sendEmailVerification();
-
-        final userProfile = UserProfile(
-          id: credential.user!.uid,
-          email: email,
-          fullName: fullName ?? '',
-          isEmailVerified: false,
-          isApproved: false,
-          approvalStatus: 'pending',
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        );
-
-        final createdProfile =
-            await _firebaseService.createUserProfile(userProfile);
-
-        return AuthResult.success(credential.user!, createdProfile);
-      } else {
-        return AuthResult.error('Sign up failed');
-      }
-    } on FirebaseAuthException catch (e) {
-      _logger.warning('Sign up failed (Firebase): ${e.message} ($e)');
-      return AuthResult.error(_getErrorMessage(e));
+      return AuthResult.success(user, await _profileForUser(user));
     } catch (e) {
-      _logger.error('Sign up failed (Unexpected)', e);
-      return AuthResult.error('An unexpected error occurred: $e');
+      return AuthResult.error('Sign up failed: $e');
     }
   }
-
-  // ── Google Sign-In ───────────────────────────────────────────────────────
 
   Future<AuthResult> signInWithGoogle() async {
     try {
-      if (kIsWeb) {
-        final GoogleAuthProvider googleProvider = GoogleAuthProvider();
-        googleProvider.addScope('email');
-        googleProvider.addScope('profile');
+      await _appwriteAuth.signInWithGoogle();
+      final user = await _appwriteAuth.getCurrentUser();
+      _authStateController.add(user);
 
-        UserCredential credential;
-        try {
-          credential = await _auth.signInWithPopup(googleProvider);
-        } on FirebaseAuthException catch (e) {
-          if (e.code == 'popup-blocked' ||
-              e.code == 'popup-closed-by-user' ||
-              e.code == 'cancelled-popup-request') {
-            return AuthResult.error(_googleSignInCancelled);
-          }
-          rethrow;
-        }
-
-        if (credential.user != null) {
-          final userProfile = await _getOrCreateGoogleProfile(credential.user!);
-          return AuthResult.success(credential.user!, userProfile);
-        }
-      } else {
-        final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-        if (googleUser == null) {
-          return AuthResult.error(_googleSignInCancelled);
-        }
-
-        final GoogleSignInAuthentication googleAuth =
-            await googleUser.authentication;
-        final oauthCredential = GoogleAuthProvider.credential(
-          accessToken: googleAuth.accessToken,
-          idToken: googleAuth.idToken,
-        );
-        final userCredential =
-            await _auth.signInWithCredential(oauthCredential);
-
-        if (userCredential.user != null) {
-          final userProfile =
-              await _getOrCreateGoogleProfile(userCredential.user!);
-          return AuthResult.success(userCredential.user!, userProfile);
-        }
+      if (user == null) {
+        return AuthResult.error('Google sign-in did not return a user.');
       }
 
-      return AuthResult.error('Google sign in failed');
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'popup-closed-by-user' ||
-          e.code == 'cancelled-popup-request') {
-        return AuthResult.error(_googleSignInCancelled);
-      }
-      return AuthResult.error(_getErrorMessage(e));
+      return AuthResult.success(user, await _profileForUser(user));
     } catch (e) {
-      return AuthResult.error('Google sign in failed: $e');
+      return AuthResult.error('Google sign-in failed: $e');
     }
   }
 
-  Future<UserProfile> _getOrCreateGoogleProfile(User user) async {
-    UserProfile? existing = await _firebaseService.getUserProfile(user.uid);
-    if (existing != null) return existing;
-
-    final profile = UserProfile(
-      id: user.uid,
-      email: user.email!,
-      fullName: user.displayName ?? '',
-      photoUrl: user.photoURL,
-      isEmailVerified: user.emailVerified,
-      provider: 'google',
-      createdAt: user.metadata.creationTime ?? DateTime.now(),
-      updatedAt: DateTime.now(),
-    );
-    return await _firebaseService.createUserProfile(profile);
-  }
-
-  // ── Account Management ───────────────────────────────────────────────────
-
   Future<void> signOut() async {
     try {
-      if (await _googleSignIn.isSignedIn()) {
-        await _googleSignIn.signOut();
-      }
-      await _auth.signOut();
+      await _appwriteAuth.logout();
+      _authStateController.add(null);
     } catch (e) {
       throw AuthException('Sign out failed', originalError: e);
     }
@@ -238,128 +120,92 @@ class AuthService {
 
   Future<bool> resetPassword(String email) async {
     try {
-      await _auth.sendPasswordResetEmail(email: email);
+      await _appwriteAuth.sendPasswordRecovery(email);
       return true;
-    } on FirebaseAuthException catch (e) {
-      throw AuthException(_getErrorMessage(e), originalError: e);
     } catch (e) {
       throw AuthException('Password reset failed', originalError: e);
     }
   }
 
-  Future<bool> updatePassword(String newPassword) async {
+  Future<bool> completePasswordRecovery({
+    required String userId,
+    required String secret,
+    required String password,
+  }) async {
     try {
-      await _auth.currentUser?.updatePassword(newPassword);
+      await _appwriteAuth.completePasswordRecovery(
+        userId: userId,
+        secret: secret,
+        password: password,
+      );
       return true;
-    } on FirebaseAuthException catch (e) {
-      throw AuthException(_getErrorMessage(e), originalError: e);
     } catch (e) {
-      throw AuthException('Password update failed', originalError: e);
+      throw AuthException('Password recovery failed', originalError: e);
     }
+  }
+
+  Future<bool> updatePassword(String newPassword) async {
+    throw AuthException('Password update is pending Appwrite wiring.');
   }
 
   Future<bool> updateEmail(String newEmail) async {
-    try {
-      await _auth.currentUser?.verifyBeforeUpdateEmail(newEmail);
-      return true;
-    } on FirebaseAuthException catch (e) {
-      throw AuthException(_getErrorMessage(e), originalError: e);
-    } catch (e) {
-      throw AuthException('Email update failed', originalError: e);
-    }
+    throw AuthException('Email update is pending Appwrite wiring.');
   }
 
   Future<void> resendEmailVerification() async {
-    if (!isAuthenticated) return;
-    try {
-      await _auth.currentUser?.sendEmailVerification();
-    } on FirebaseAuthException catch (e) {
-      throw AuthException(_getErrorMessage(e), originalError: e);
-    } catch (e) {
-      throw AuthException('Failed to resend verification email',
-          originalError: e);
-    }
+    throw AuthException('Email verification is pending Appwrite wiring.');
   }
 
   Future<void> deleteAccount() async {
-    if (!isAuthenticated) return;
-    try {
-      await _auth.currentUser?.delete();
-    } on FirebaseAuthException catch (e) {
-      throw AuthException(_getErrorMessage(e), originalError: e);
-    } catch (e) {
-      throw AuthException('Account deletion failed', originalError: e);
-    }
+    throw AuthException('Account deletion is pending Appwrite wiring.');
   }
 
-  // ── Profile Methods ──────────────────────────────────────────────────────
-
   Future<UserProfile?> getCurrentUserProfile() async {
-    if (!isAuthenticated) throw AuthException('User not authenticated');
-    try {
-      return await _firebaseService.getUserProfile(currentUser!.uid);
-    } catch (e) {
-      if (e is AppException) rethrow;
-      _logger.error('Error getting user profile', e);
-      throw DatabaseException('Failed to get user profile', originalError: e);
-    }
+    final user = currentUser ?? await _appwriteAuth.getCurrentUser();
+    if (user == null) return null;
+    return _profileForUser(user);
+  }
+
+  Future<UserProfile> _profileForUser(models.User user) async {
+    final document = await _profileService.ensureUserProfile(
+      userId: user.uid,
+      email: user.email,
+      fullName: user.displayName ?? user.email.split('@').first,
+    );
+    return _profileService.userProfileFromDocument(
+      document,
+      fallbackEmail: user.email,
+      fallbackFullName: user.displayName,
+      isEmailVerified: user.emailVerified,
+      isAnonymous: user.isAnonymous,
+      photoUrl: user.photoURL,
+    );
   }
 
   Future<UserProfile?> updateUserProfile(UserProfile userProfile) async {
-    if (!isAuthenticated) throw AuthException('User not authenticated');
-    try {
-      return await _firebaseService.updateUserProfile(userProfile);
-    } catch (e) {
-      if (e is AppException) rethrow;
-      throw DatabaseException('Profile update failed', originalError: e);
-    }
+    await _profileService.updateUserProfile(
+      userId: userProfile.id,
+      profileData: _profileService.userProfileToAppwriteData(userProfile),
+    );
+    return userProfile;
   }
 
-  // ── Error Messages ───────────────────────────────────────────────────────
-
-  String _getErrorMessage(FirebaseAuthException e) {
-    switch (e.code) {
-      case 'user-not-found':
-        return 'No user found with this email address.';
-      case 'wrong-password':
-        return 'Incorrect password. Please try again.';
-      case 'email-already-in-use':
-        return 'An account already exists with this email address.';
-      case 'weak-password':
-        return 'Password is too weak. Please choose a stronger password.';
-      case 'invalid-email':
-        return 'Please enter a valid email address.';
-      case 'user-disabled':
-        return 'This account has been disabled. Please contact support.';
-      case 'too-many-requests':
-        return 'Too many failed attempts. Please try again later.';
-      case 'operation-not-allowed':
-        return 'This sign-in method is not enabled. Please contact support.';
-      case 'account-exists-with-different-credential':
-        return 'An account already exists with the same email but different sign-in credentials.';
-      case 'invalid-credential':
-        return 'The provided credentials are invalid or expired.';
-      case 'credential-already-in-use':
-        return 'This credential is already associated with a different user account.';
-      case 'requires-recent-login':
-        return 'This operation requires recent authentication. Please sign in again.';
-      default:
-        return e.message ?? 'An error occurred during authentication.';
-    }
-  }
 }
 
-/// Result of an authentication operation.
 class AuthResult {
   final bool isSuccess;
   final String? error;
-  final User? user;
+  final models.User? user;
   final UserProfile? userProfile;
 
-  AuthResult._(
-      {required this.isSuccess, this.error, this.user, this.userProfile});
+  AuthResult._({
+    required this.isSuccess,
+    this.error,
+    this.user,
+    this.userProfile,
+  });
 
-  factory AuthResult.success(User user, UserProfile userProfile) {
+  factory AuthResult.success(models.User user, UserProfile userProfile) {
     return AuthResult._(
       isSuccess: true,
       user: user,

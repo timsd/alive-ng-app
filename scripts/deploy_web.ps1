@@ -1,5 +1,5 @@
-# ALIVE NG Web App Deployment Script
-# This script builds and deploys the Flutter web app to Firebase Hosting
+# ALIVE NG Web App Build Script
+# Firebase Hosting has been disabled. Coolify deploys the root Dockerfile.
 
 # Stop on any error
 $ErrorActionPreference = "Stop"
@@ -18,17 +18,6 @@ try {
     Write-Host "Flutter is installed." -ForegroundColor Green
 } catch {
     Write-Host "Flutter is not installed or not in PATH. Please install Flutter first." -ForegroundColor Red
-    exit 1
-}
-
-# Check if Firebase CLI is installed
-Write-Host "Checking Firebase CLI installation..." -ForegroundColor Cyan
-try {
-    firebase --version | Out-Null
-    Write-Host "Firebase CLI is installed." -ForegroundColor Green
-} catch {
-    Write-Host "Firebase CLI is not installed or not in PATH. Please install Firebase CLI first." -ForegroundColor Red
-    Write-Host "Run: npm install -g firebase-tools" -ForegroundColor Yellow
     exit 1
 }
 
@@ -68,18 +57,10 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "Web app built successfully." -ForegroundColor Green
 
-# Deploy to Firebase Hosting
-Write-Host "Deploying to Firebase Hosting..." -ForegroundColor Cyan
-firebase deploy --only hosting
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "Failed to deploy to Firebase Hosting." -ForegroundColor Red
-    exit 1
-}
-
 Write-Host ""
 Write-Host "===================================" -ForegroundColor Green
-Write-Host "   Deployment Completed Successfully   " -ForegroundColor Green
+Write-Host "   Web Build Completed Successfully   " -ForegroundColor Green
 Write-Host "===================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "Your app is now live at: https://app.alivenigeria.org" -ForegroundColor Cyan
+Write-Host "Coolify should deploy from the root Dockerfile on port 80." -ForegroundColor Cyan
 Write-Host ""

@@ -1,0 +1,10 @@
+{
+  "name": "paystack-webhook",
+  "version": "1.0.0",
+  "description": "Processes Paystack webhooks for ALIVE donations",
+  "type": "module",
+  "main": "src/main.js",
+  "dependencies": {
+    "node-appwrite": "^14.1.0"
+  }
+}

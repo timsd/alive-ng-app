@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import '../../services/auth_service.dart';
+import '../../services/appwrite_storage_service.dart';
 import '../../models/chat_models.dart';
 import '../../utils/responsive_utils.dart';
 
@@ -28,7 +28,6 @@ class ChatInputWidget extends StatefulWidget {
 class _ChatInputWidgetState extends State<ChatInputWidget> {
   final AuthService _authService = AuthService.instance;
   final ImagePicker _imagePicker = ImagePicker();
-  final FirebaseStorage _storage = FirebaseStorage.instance;
   bool _isComposing = false;
   bool _isUploading = false;
 
@@ -122,19 +121,13 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
     });
 
     try {
-      // Upload image to Firebase Storage
       final String fileName = 'chat_images/${DateTime.now().millisecondsSinceEpoch}_${image.name}';
-      final Reference ref = _storage.ref().child(fileName);
-      
-      // Read image as bytes on all platforms
       final Uint8List imageData = await image.readAsBytes();
-      final UploadTask uploadTask = ref.putData(
-        imageData,
-        SettableMetadata(contentType: 'image/${image.name.split('.').last}'),
+      final String downloadUrl = await AppwriteStorageService.instance.uploadChatFile(
+        bytes: imageData,
+        fileName: fileName,
+        contentType: 'image/${image.name.split('.').last}',
       );
-      
-      final TaskSnapshot snapshot = await uploadTask;
-      final String downloadUrl = await snapshot.ref.getDownloadURL();
       
       // Send message with image attachment
       if (widget.onSendMessageWithAttachments != null) {
@@ -178,22 +171,16 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
         throw Exception('File size must be less than 10MB');
       }
 
-      // Upload file to Firebase Storage
       final String fileName = 'chat_files/${DateTime.now().millisecondsSinceEpoch}_${file.name}';
-      final Reference ref = _storage.ref().child(fileName);
-      
-      // Use bytes for upload across platforms
       if (file.bytes == null) {
         throw Exception('Failed to read file bytes. Please try again.');
       }
 
-      final UploadTask uploadTask = ref.putData(
-        file.bytes!,
-        SettableMetadata(contentType: _getContentType(file.extension ?? '')),
+      final String downloadUrl = await AppwriteStorageService.instance.uploadChatFile(
+        bytes: file.bytes!,
+        fileName: fileName,
+        contentType: _getContentType(file.extension ?? ''),
       );
-      
-      final TaskSnapshot snapshot = await uploadTask;
-      final String downloadUrl = await snapshot.ref.getDownloadURL();
       
       // Send message with file attachment
       if (widget.onSendMessageWithAttachments != null) {

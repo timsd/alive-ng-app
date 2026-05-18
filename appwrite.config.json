@@ -45,7 +45,46 @@
             "$id": "6a08e9010035dc8c1e51",
             "name": "createLiveKitToken",
             "runtime": "node-20.0",
-            "path": "functions/createlivekittoken",
+            "path": "appwrite_functions/createLiveKitToken",
+            "entrypoint": "src/main.js",
+            "execute": [
+                "users"
+            ],
+            "enabled": true,
+            "logging": true,
+            "events": [],
+            "schedule": "",
+            "timeout": 15,
+            "commands": "npm install",
+            "scopes": [
+                "users.read"
+            ]
+        },
+        {
+            "$id": "paystack_payments",
+            "name": "paystackPayments",
+            "runtime": "node-20.0",
+            "path": "appwrite_functions/paystackPayments",
+            "entrypoint": "src/main.js",
+            "execute": [
+                "users"
+            ],
+            "enabled": true,
+            "logging": true,
+            "events": [],
+            "schedule": "",
+            "timeout": 15,
+            "commands": "npm install",
+            "scopes": [
+                "databases.read",
+                "databases.write"
+            ]
+        },
+        {
+            "$id": "paystack_webhook",
+            "name": "paystackWebhook",
+            "runtime": "node-20.0",
+            "path": "appwrite_functions/paystackWebhook",
             "entrypoint": "src/main.js",
             "execute": [
                 "any"
@@ -57,7 +96,8 @@
             "timeout": 15,
             "commands": "npm install",
             "scopes": [
-                "users.read"
+                "databases.read",
+                "databases.write"
             ]
         }
     ]

@@ -7,7 +7,6 @@ admin.initializeApp();
 const db = admin.firestore();
 const PAYSTACK_SECRET_KEY = defineSecret('PAYSTACK_SECRET_KEY');
 const RESEND_API_KEY = defineSecret('RESEND_API_KEY');
-const STREAM_CHAT_SECRET = defineSecret('STREAM_CHAT_SECRET');
 const ENFORCE_APPCHECK = defineString('ENFORCE_APPCHECK', { default: 'false' });
 const RECEIPT_SENDER_EMAIL = defineString('RECEIPT_SENDER_EMAIL', { default: 'onboarding@resend.dev' });
 const ALIVE_LOGO_URL = defineString('ALIVE_LOGO_URL', { default: 'https://alive.ng/logo.png' });
@@ -367,59 +366,6 @@ export const consumeApprovalToken = functions.https.onCall(async (data, context)
 
   return { ok: approved };
 });
-
-function _base64UrlEncode(value: string): string {
-  return Buffer.from(value)
-    .toString('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/g, '');
-}
-
-function _createHs256Jwt(payload: Record<string, unknown>, secret: string): string {
-  const header = { alg: 'HS256', typ: 'JWT' };
-  const headerPart = _base64UrlEncode(JSON.stringify(header));
-  const payloadPart = _base64UrlEncode(JSON.stringify(payload));
-  const unsigned = `${headerPart}.${payloadPart}`;
-  const signature = crypto
-    .createHmac('sha256', secret)
-    .update(unsigned)
-    .digest('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/g, '');
-  return `${unsigned}.${signature}`;
-}
-
-export const generateStreamChatToken = functions
-  .runWith({ secrets: [STREAM_CHAT_SECRET] })
-  .https.onCall(async (data, context) => {
-    if (!context.auth) {
-      throw new functions.https.HttpsError('unauthenticated', 'Authentication required');
-    }
-
-    const requestedUserId = (data?.userId as string | undefined) || context.auth.uid;
-    const isAdmin = (context.auth.token && (context.auth.token as any).admin) === true;
-    if (requestedUserId !== context.auth.uid && !isAdmin) {
-      throw new functions.https.HttpsError('permission-denied', 'Cannot mint token for another user');
-    }
-
-    const secret = STREAM_CHAT_SECRET.value();
-    if (!secret) {
-      throw new functions.https.HttpsError('failed-precondition', 'Missing STREAM_CHAT_SECRET');
-    }
-
-    // Stream user token payload: user_id + issued-at timestamp.
-    const token = _createHs256Jwt(
-      {
-        user_id: requestedUserId,
-        iat: Math.floor(Date.now() / 1000),
-      },
-      secret,
-    );
-
-    return { token };
-  });
 
 export const claimAdminRole = functions.https.onCall(async (_data, context) => {
   if (!context.auth) {

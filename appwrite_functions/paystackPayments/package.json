@@ -1,0 +1,10 @@
+{
+  "name": "paystack-payments",
+  "version": "1.0.0",
+  "description": "Initializes ALIVE Paystack one-time and recurring donations",
+  "type": "module",
+  "main": "src/main.js",
+  "dependencies": {
+    "node-appwrite": "^14.1.0"
+  }
+}

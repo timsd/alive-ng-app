@@ -15,32 +15,32 @@ class QuickActionsGrid extends ConsumerWidget {
     final translate = ref.watch(translationProvider);
 
     final actions = [
-      QuickAction(
+      const QuickAction(
         icon: Icons.child_care,
         title: 'Kid Mission',
         subtitle: 'Children\'s ministry',
-        color: const Color(0xFFF43F5E), // Rose 500
+        color: Color(0xFFF43F5E), // Rose 500
         route: '/kid-mission',
       ),
-      QuickAction(
+      const QuickAction(
         icon: Icons.trending_up,
         title: 'Discipleship',
         subtitle: 'Track growth',
-        color: const Color(0xFF10B981), // Emerald 500
+        color: Color(0xFF10B981), // Emerald 500
         route: '/discipleship-tracker',
       ),
-      QuickAction(
+      const QuickAction(
         icon: Icons.quiz,
         title: 'Bible Quizzes',
         subtitle: 'Test knowledge',
-        color: const Color(0xFF3B82F6), // Blue 500
+        color: Color(0xFF3B82F6), // Blue 500
         route: '/bible-quizzes',
       ),
-      QuickAction(
+      const QuickAction(
         icon: Icons.restaurant,
         title: 'Recipes',
         subtitle: 'Healthy meals',
-        color: const Color(0xFFF59E0B), // Amber 500
+        color: Color(0xFFF59E0B), // Amber 500
         route: '/healthy-recipes',
       ),
       QuickAction(
@@ -50,39 +50,39 @@ class QuickActionsGrid extends ConsumerWidget {
         color: const Color(0xFF0EA5E9), // Sky 500
         route: '/missions',
       ),
-      QuickAction(
+      const QuickAction(
         icon: Icons.record_voice_over,
         title: 'Testimonies',
         subtitle: 'Share story',
-        color: const Color(0xFF8B5CF6), // Violet 500
+        color: Color(0xFF8B5CF6), // Violet 500
         route: '/testimonies',
       ),
-      QuickAction(
+      const QuickAction(
         icon: Icons.auto_stories,
         title: 'Kids Stories',
         subtitle: 'Bible stories',
-        color: const Color(0xFFF97316), // Orange 500
+        color: Color(0xFFF97316), // Orange 500
         route: '/kids-stories',
       ),
-      QuickAction(
+      const QuickAction(
         icon: Icons.library_books,
         title: 'Library',
         subtitle: 'Resources',
-        color: const Color(0xFF14B8A6), // Teal 500
+        color: Color(0xFF14B8A6), // Teal 500
         route: '/library',
       ),
-      QuickAction(
+      const QuickAction(
         icon: Icons.podcasts,
         title: 'Podcasts',
         subtitle: 'Audio content',
-        color: const Color(0xFFD946EF), // Fuchsia 500
+        color: Color(0xFFD946EF), // Fuchsia 500
         route: '/podcasts',
       ),
-      QuickAction(
+      const QuickAction(
         icon: Icons.school,
         title: 'Lessons',
         subtitle: 'Learn & grow',
-        color: const Color(0xFF6366F1), // Indigo 500
+        color: Color(0xFF6366F1), // Indigo 500
         route: '/interactive-lessons',
       ),
     ];

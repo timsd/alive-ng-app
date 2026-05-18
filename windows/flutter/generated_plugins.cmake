@@ -5,23 +5,22 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   cloud_firestore
   connectivity_plus
-  desktop_drop
+  desktop_webview_window
   file_selector_windows
   firebase_auth
   firebase_core
   firebase_storage
   flutter_secure_storage_windows
   flutter_tts
-  gal
+  flutter_webrtc
   geolocator_windows
+  livekit_client
   local_auth_windows
-  media_kit_video
   permission_handler_windows
-  record_windows
   share_plus
   speech_to_text_windows
-  thumblr_windows
   url_launcher_windows
+  window_to_front
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST

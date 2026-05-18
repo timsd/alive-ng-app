@@ -18,7 +18,7 @@ class GreetingHeader extends ConsumerWidget {
 
     final greeting = _getGreeting(translate);
     final userName = currentUser?.displayName ??
-        currentUser?.email?.split('@').first ??
+        currentUser?.email.split('@').first ??
         'Friend';
     final welcomeLabel = currentUser != null
         ? 'Welcome, $userName'

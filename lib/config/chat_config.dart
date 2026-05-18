@@ -1,37 +1,6 @@
-import 'package:stream_chat_flutter/stream_chat_flutter.dart';
-
-/// GetStream Chat Configuration
-/// Contains API keys and configuration for Stream Chat integration
+/// Appwrite Chat Configuration
+/// Contains client-side chat options and role/channel permissions.
 class ChatConfig {
-  // GetStream API Credentials
-  static String get apiKey {
-    const a = String.fromEnvironment('GETSTREAM_API_KEY', defaultValue: '');
-    if (a.isNotEmpty) return a;
-    const b = String.fromEnvironment('STREAM_CHAT_API_KEY', defaultValue: '');
-    return b;
-  }
-
-  static String get appId {
-    const a = String.fromEnvironment('GETSTREAM_APP_ID', defaultValue: '');
-    if (a.isNotEmpty) return a;
-    const b = String.fromEnvironment('STREAM_CHAT_APP_ID', defaultValue: '');
-    return b;
-  }
-
-  // Note: API Secret is not used in client-side code for security reasons
-  // Server-side implementations should use environment variables for secrets
-
-  // Presend Message Hook URL (if needed for server-side processing)
-  static const String presendMessageHookUrl = '';
-
-  /// Initialize Stream Chat Client
-  static StreamChatClient createClient() {
-    return StreamChatClient(
-      apiKey,
-      logLevel: Level.INFO,
-    );
-  }
-
   /// Chat configuration options
   static const Map<String, dynamic> chatOptions = {
     'typing_events': true,

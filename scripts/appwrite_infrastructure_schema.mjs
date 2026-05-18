@@ -6,6 +6,8 @@ export const appwriteProject = {
   databaseId: process.env.APPWRITE_DATABASE_ID || '6a089307002e54291a32',
 };
 
+const appwrite17MaxFileSize = 30000000;
+
 export const buckets = [
   {
     id: '6a08f51f002d2baf5e78',
@@ -22,37 +24,37 @@ export const buckets = [
   {
     id: 'board_documents',
     name: 'Board Documents',
-    maximumFileSize: 50 * 1024 * 1024,
+    maximumFileSize: appwrite17MaxFileSize,
     allowedFileExtensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'],
   },
   {
     id: 'tract_files',
     name: 'Tracts and Books',
-    maximumFileSize: 75 * 1024 * 1024,
+    maximumFileSize: appwrite17MaxFileSize,
     allowedFileExtensions: ['pdf', 'epub', 'jpg', 'jpeg', 'png', 'webp'],
   },
   {
     id: 'podcast_media',
     name: 'Podcasts and Audio',
-    maximumFileSize: 250 * 1024 * 1024,
+    maximumFileSize: appwrite17MaxFileSize,
     allowedFileExtensions: ['mp3', 'm4a', 'wav', 'aac', 'jpg', 'jpeg', 'png', 'webp'],
   },
   {
     id: 'content_media',
     name: 'Content Media',
-    maximumFileSize: 100 * 1024 * 1024,
+    maximumFileSize: appwrite17MaxFileSize,
     allowedFileExtensions: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'mp3', 'mp4'],
   },
   {
     id: 'meeting_files',
     name: 'Meeting Files',
-    maximumFileSize: 100 * 1024 * 1024,
+    maximumFileSize: appwrite17MaxFileSize,
     allowedFileExtensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'jpg', 'jpeg', 'png'],
   },
   {
     id: 'system_exports',
     name: 'System Exports and Backups',
-    maximumFileSize: 250 * 1024 * 1024,
+    maximumFileSize: appwrite17MaxFileSize,
     allowedFileExtensions: ['json', 'csv', 'zip', 'txt'],
   },
 ];
@@ -135,14 +137,64 @@ export const tables = [
   {
     id: 'donation_records',
     name: 'Donation Records',
-    columns: [s('user_id', 128), s('userId', 128), s('email', 320), s('full_name'), i('amount_kobo', true), f('amount'), s('currency', 16), s('reference', 128, true), s('transaction_id', 128), s('status', 64, true), s('processor', 64), mediumtext('metadata'), dt('created_at'), dt('updated_at'), dt('completed_at')],
+    columns: [
+      s('user_id', 128), s('userId', 128), s('user_name'), s('user_email', 320), s('email', 320), s('full_name'),
+      s('type', 64), i('amount_kobo', true), f('amount'), s('currency', 16), s('reference', 128, true),
+      s('payment_method', 64), s('payment_intent_id', 255), s('transaction_id', 128), s('status', 64, true),
+      s('processor', 64), s('material_id', 128), s('material_title'), text('notes'), mediumtext('metadata'),
+      dt('created_at'), dt('updated_at'), dt('completed_at'),
+    ],
     indexes: [{ key: 'donations_reference_idx', type: 'unique', columns: ['reference'] }, { key: 'donations_status_idx', type: 'key', columns: ['status'] }],
   },
   {
     id: 'projects',
     name: 'Donation Projects',
-    columns: [s('title', 255, true), mediumtext('description'), f('goal'), f('raised'), s('currency', 16), s('image_url', 1024), i('priority'), b('is_active', false, true), dt('created_at'), dt('updated_at')],
+    columns: [
+      s('title', 255, true), s('summary', 512), mediumtext('description'), s('category', 128), s('type', 128),
+      s('status', 64), f('goal'), f('target_amount'), f('raised'), f('amount_raised'), s('currency', 16),
+      s('image_url', 1024), s('cta_label', 128), i('priority'), b('is_active', false, true), dt('created_at'), dt('updated_at'),
+    ],
     indexes: [{ key: 'projects_priority_idx', type: 'key', columns: ['priority'] }],
+  },
+  {
+    id: 'downloadable_materials',
+    name: 'Downloadable Materials',
+    columns: [
+      s('title', 255, true), mediumtext('description'), s('category', 128), s('file_url', 2048, true),
+      s('thumbnail_url', 2048), i('file_size_bytes'), s('file_type', 64), f('minimum_donation'),
+      b('requires_donation', false, true), b('is_active', false, true), i('download_count'),
+      mediumtext('metadata'), dt('created_at'), dt('updated_at'), s('created_by', 128),
+    ],
+    indexes: [{ key: 'materials_active_idx', type: 'key', columns: ['is_active'] }],
+  },
+  {
+    id: 'material_downloads',
+    name: 'Material Downloads',
+    columns: [
+      s('user_id', 128, true), s('material_id', 128, true), s('material_title'), s('donation_id', 128),
+      f('donation_amount'), dt('downloaded_at'), s('download_url', 2048), dt('url_expires_at'),
+    ],
+    indexes: [{ key: 'material_downloads_user_idx', type: 'key', columns: ['user_id'] }],
+  },
+  {
+    id: 'payment_logs',
+    name: 'Payment Logs',
+    columns: [
+      s('provider', 64, true), s('reference', 128), s('event', 128), s('status', 64),
+      s('donation_id', 128), mediumtext('payload'), dt('created_at'),
+    ],
+    indexes: [{ key: 'payment_logs_reference_idx', type: 'key', columns: ['reference'] }],
+  },
+  {
+    id: 'gift_submissions',
+    name: 'Gift Submissions',
+    columns: [
+      s('gift_type', 128, true), s('user_id', 128), s('full_name'), s('email', 320, true), s('phone', 64, true),
+      s('item_type', 128), s('quantity', 128), s('estimated_value', 128), s('delivery_preference', 128),
+      s('location'), s('skills_or_service'), s('availability'), mediumtext('description'),
+      s('status', 64), dt('created_at'), dt('updated_at'),
+    ],
+    indexes: [{ key: 'gift_submissions_status_idx', type: 'key', columns: ['status'] }],
   },
   {
     id: 'prayer_requests',
@@ -151,7 +203,7 @@ export const tables = [
     indexes: [{ key: 'prayer_status_idx', type: 'key', columns: ['status'] }, { key: 'prayer_user_idx', type: 'key', columns: ['user_id'] }],
   },
   { id: 'prayer_interactions', name: 'Prayer Interactions', columns: [s('request_id', 128, true), s('user_id', 128, true), s('type', 64, true), dt('created_at')], indexes: [{ key: 'prayer_interactions_request_idx', type: 'key', columns: ['request_id'] }] },
-  { id: 'prayer_strengthening_feed', name: 'Prayer Strengthening Feed', columns: [s('source_id', 128), s('user_id', 128), s('title'), mediumtext('content'), b('is_approved'), dt('created_at'), dt('updated_at')] },
+  { id: 'prayer_strengthening_feed', name: 'Prayer Strengthening Feed', columns: [s('source_id', 128), s('testimony_id', 128), s('user_id', 128), s('title'), s('author_name'), mediumtext('content'), s('source', 64), b('is_anonymous', false, false), b('is_approved'), b('is_visible', false, false), dt('created_at'), dt('updated_at')] },
   { id: 'testimonies', name: 'Testimonies', columns: [s('user_id', 128), s('userId', 128), s('user_name'), s('user_avatar_url', 1024), mediumtext('content', true), b('is_anonymous', false, false), b('is_approved', false, false), b('is_shared_publicly', false, true), i('likes_count'), dt('created_at'), dt('updated_at')], indexes: [{ key: 'testimonies_approved_idx', type: 'key', columns: ['is_approved'] }] },
   { id: 'chapters', name: 'Chapters', columns: [s('name', 255, true), s('location'), s('location_city'), mediumtext('description'), s('coordinator_id', 128), s('member_ids', 128, false, true), b('is_active', false, true), dt('created_at'), dt('updated_at')] },
   { id: 'chapter_members', name: 'Chapter Members', columns: [s('user_id', 128, true), s('chapter_id', 128, true), s('role', 64), dt('joined_at'), b('is_active', false, true)], indexes: [{ key: 'chapter_members_user_idx', type: 'key', columns: ['user_id'] }, { key: 'chapter_members_chapter_idx', type: 'key', columns: ['chapter_id'] }] },
@@ -161,7 +213,7 @@ export const tables = [
   { id: 'content_pages', name: 'Content Pages', columns: [s('slug', 255, true), s('title', 255, true), mediumtext('content'), s('category', 128), b('is_published', false, false), mediumtext('metadata'), dt('created_at'), dt('updated_at')], indexes: [{ key: 'content_pages_slug_idx', type: 'unique', columns: ['slug'] }] },
   { id: 'dynamic_content', name: 'Dynamic Content', columns: [s('key', 255, true), s('category', 128), mediumtext('value'), mediumtext('metadata'), dt('created_at'), dt('updated_at')] },
   { id: 'featured_content', name: 'Featured Content', columns: [s('title', 255), s('content_id', 128), s('content_type', 128), i('priority'), b('is_active', false, true), dt('created_at'), dt('updated_at')] },
-  { id: 'app_settings', name: 'App Settings', columns: [s('key', 255, true), mediumtext('value'), s('type', 64), s('category', 128), text('description'), b('is_public', false, false), s('updated_by', 128), dt('updated_at')], indexes: [{ key: 'app_settings_key_idx', type: 'unique', columns: ['key'] }] },
+  { id: 'app_settings', name: 'App Settings', columns: [s('key', 255, true), s('setting_key', 255), mediumtext('value'), s('type', 64), s('category', 128), text('description'), b('is_public', false, false), s('updated_by', 128), dt('updated_at')], indexes: [{ key: 'app_settings_key_idx', type: 'unique', columns: ['key'] }] },
   { id: 'board_reports', name: 'Board Reports', columns: [s('title', 255, true), mediumtext('content'), s('type', 128), s('author_id', 128), s('chapter_id', 128), s('team_id', 128), s('status', 64), s('attachments', 2048, false, true), dt('created_at'), dt('updated_at'), dt('submitted_at'), dt('reviewed_at')] },
   { id: 'board_documents', name: 'Board Documents', columns: [s('title', 255, true), mediumtext('description'), s('file_url', 2048), s('file_path', 1024), s('uploaded_by', 128), s('category', 128), s('visibility', 128), dt('created_at'), dt('updated_at')] },
   { id: 'board_decisions', name: 'Board Decisions', columns: [s('title', 255, true), mediumtext('description'), s('status', 64), s('created_by', 128), s('approved_by', 128, false, true), s('attachments', 2048, false, true), dt('created_at'), dt('updated_at')] },
@@ -198,7 +250,16 @@ export const tables = [
   { id: 'conference_meetings', name: 'Conference Meetings', columns: [s('title', 255, true), mediumtext('description'), dt('scheduled_time'), i('duration'), s('host_id', 128), s('host_name'), s('meeting_type', 128), s('participants', 128, false, true), i('max_participants'), b('is_recurring'), s('meeting_link', 2048), s('status', 64), s('room_name'), s('recording_link', 2048), dt('created_at'), dt('updated_at')] },
   { id: 'meeting_files', name: 'Meeting Files', columns: [s('meeting_id', 128), s('name', 255), s('file_url', 2048), s('file_path', 1024), s('uploaded_by', 128), s('visibility', 128), dt('created_at'), dt('updated_at')] },
   { id: 'push_tokens', name: 'Push Tokens', columns: [s('user_id', 128, true), s('token', 512, true), s('provider', 64), s('platform', 64), dt('created_at'), dt('updated_at')], indexes: [{ key: 'push_tokens_user_idx', type: 'key', columns: ['user_id'] }] },
-  { id: 'notification_settings', name: 'Notification Settings', columns: [s('user_id', 128, true), b('prayer'), b('chat'), b('events'), b('donations'), b('study'), b('kids'), b('health'), dt('updated_at')] },
+  {
+    id: 'notification_settings',
+    name: 'Notification Settings',
+    columns: [
+      s('user_id', 128, true), b('daily_verse_reminder', false, true), b('prayer_reminder', false, true),
+      b('health_tracking_reminder', false, true), b('study_reminder', false, true), b('mission_reminder', false, true),
+      s('reminder_time', 16), b('push_notifications_enabled', false, false), b('sound_enabled', false, true),
+      b('prayer'), b('chat'), b('events'), b('donations'), b('study'), b('kids'), b('health'), dt('updated_at'),
+    ],
+  },
   { id: 'admin_audit_logs', name: 'Admin Audit Logs', columns: [s('admin_id', 128), s('action', 255), s('resource', 128), s('resource_id', 128), mediumtext('old_values'), mediumtext('new_values'), s('ip_address', 128), s('user_agent', 512), dt('timestamp')], indexes: [{ key: 'audit_resource_idx', type: 'key', columns: ['resource'] }] },
 ];
 

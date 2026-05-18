@@ -5,7 +5,7 @@ import '../../widgets/custom_app_bar.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/error_widget.dart';
 import '../../config/meeting_links_config.dart';
-import '../conference/enhanced_jitsi_meet_screen.dart';
+import '../conference/livekit_meeting_screen.dart';
 
 class LeadershipArchiveScreen extends StatefulWidget {
   const LeadershipArchiveScreen({super.key});
@@ -164,7 +164,7 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
                                 onPressed: () {
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
-                                      builder: (context) => const EnhancedJitsiMeetScreen(
+                                      builder: (context) => const LiveKitMeetingScreen(
                                         meetingType: MeetingType.leadership,
                                         isModerator: true,
                                       ),

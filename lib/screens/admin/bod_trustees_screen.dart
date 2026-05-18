@@ -527,7 +527,7 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context);
-              // Launch Jitsi meeting with the room name
+              // Launch LiveKit meeting with the room name
               await _joinMeeting(roomName);
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
@@ -572,7 +572,7 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
 
   Future<void> _joinMeeting(String meetingId) async {
     try {
-      // Launch Jitsi meeting URL
+      // Launch LiveKit meeting URL
       final meetingUrl = 'https://meet.jit.si/$meetingId';
       
       if (await canLaunchUrl(Uri.parse(meetingUrl))) {

@@ -2,97 +2,41 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/language_provider.dart';
-import '../../providers/firebase_auth_provider.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/appwrite_auth_provider.dart';
 import '../../models/app_models.dart';
+import '../../services/appwrite_profile_service.dart';
 import '../../utils/responsive_utils.dart';
 import '../../services/user_statistics_service.dart';
 import 'edit_profile_screen.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../constants/app_constants.dart';
-import '../../services/firestore_service.dart';
 import '../../widgets/custom_image.dart';
 
 // Provider for user profile
 final userProfileProvider = FutureProvider<UserProfile?>((ref) async {
-  final user = ref.watch(firebaseUserProvider).value;
+  final user = ref.watch(appwriteUserStreamProvider).value;
   if (user == null) return null;
 
-  // Attempt to load extended profile from Firestore
-  final firestore = FirestoreService.instance;
-  final data = await firestore.getProfile(user.uid);
-
-  if (data == null) {
-    // Seed a basic profile document for future extension
-    await firestore.upsertProfile(user.uid, {
-      'id': user.uid,
-      'email': user.email,
-      'full_name': user.displayName,
-      'photo_url': user.photoURL,
-      'is_email_verified': user.emailVerified,
-      'is_anonymous': user.isAnonymous,
-      'provider': user.providerData.isNotEmpty
-          ? user.providerData.first.providerId
-          : 'email',
-      'created_at':
-          (user.metadata.creationTime ?? DateTime.now()).toIso8601String(),
-      'updated_at': DateTime.now().toIso8601String(),
-    });
-
-    return UserProfile(
-      id: user.uid,
-      email: user.email,
-      fullName: user.displayName,
-      photoUrl: user.photoURL,
-      isEmailVerified: user.emailVerified,
-      isAnonymous: user.isAnonymous,
-      provider: user.providerData.isNotEmpty
-          ? user.providerData.first.providerId
-          : 'email',
-      createdAt: user.metadata.creationTime ?? DateTime.now(),
-      updatedAt: DateTime.now(),
-    );
-  }
-
-  // Merge Firestore fields with Firebase user defaults
-  try {
-    final json = {
-      'id': user.uid,
-      ...data,
-      // Ensure defaults for auth-derived fields
-      'email': data['email'] ?? user.email,
-      'full_name': data['full_name'] ?? user.displayName,
-      'photo_url': data['photo_url'] ?? user.photoURL,
-      'is_email_verified': data['is_email_verified'] ?? user.emailVerified,
-      'is_anonymous': data['is_anonymous'] ?? user.isAnonymous,
-      'provider': data['provider'] ??
-          (user.providerData.isNotEmpty
-              ? user.providerData.first.providerId
-              : 'email'),
-    };
-    return UserProfile.fromJson(json);
-  } catch (_) {
-    // Fallback to minimal profile if schema differs
-    return UserProfile(
-      id: user.uid,
-      email: user.email,
-      fullName: user.displayName,
-      photoUrl: user.photoURL,
-      isEmailVerified: user.emailVerified,
-      isAnonymous: user.isAnonymous,
-      provider: user.providerData.isNotEmpty
-          ? user.providerData.first.providerId
-          : 'email',
-      createdAt: user.metadata.creationTime ?? DateTime.now(),
-      updatedAt: DateTime.now(),
-    );
-  }
+  final profileService = ref.watch(appwriteProfileServiceProvider);
+  final document = await profileService.ensureUserProfile(
+    userId: user.uid,
+    email: user.email,
+    fullName: user.displayName ?? user.email.split('@').first,
+  );
+  return profileService.userProfileFromDocument(
+    document,
+    fallbackEmail: user.email,
+    fallbackFullName: user.displayName,
+    isEmailVerified: user.emailVerified,
+    isAnonymous: user.isAnonymous,
+    photoUrl: user.photoURL,
+  );
 });
 
 // Provider for user statistics
 final userStatisticsProvider =
     FutureProvider<Map<String, dynamic>>((ref) async {
-  final user = ref.watch(firebaseUserProvider).value;
+  final user = ref.watch(appwriteUserStreamProvider).value;
 
   // Return zero stats for guests or unauthenticated users
   if (user == null) {
@@ -663,18 +607,14 @@ class ProfileScreen extends ConsumerWidget {
   Widget _buildManagementSection(
       BuildContext context, String Function(String) translate, WidgetRef ref) {
     final userProfileAsync = ref.watch(userProfileProvider);
-    final firebaseUser = ref.watch(firebaseUserProvider).value;
 
     return userProfileAsync.when(
       data: (profile) {
         final role = profile?.role ?? 'user';
         final canAccessAdmin = ['admin', 'staff'].contains(role);
         final canAccessBOD = ['admin', 'bod', 'trustee'].contains(role);
-        final canClaimAdmin = firebaseUser != null &&
-            (firebaseUser.email == 'alivenigeria2011@gmail.com' ||
-                firebaseUser.email?.endsWith('@gmail.com') == true);
 
-        if (!canAccessAdmin && !canAccessBOD && !canClaimAdmin) {
+        if (!canAccessAdmin && !canAccessBOD) {
           return const SizedBox.shrink();
         }
 
@@ -779,45 +719,6 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                     const Divider(height: 1),
                   ],
-                  if (canClaimAdmin)
-                    ListTile(
-                      leading: Icon(
-                        Icons.verified_user,
-                        color: Theme.of(context).colorScheme.secondary,
-                        size: ResponsiveUtils.getResponsiveValue(
-                            context: context,
-                            mobile: 24,
-                            tablet: 28,
-                            desktop: 32),
-                      ),
-                      title: Text(
-                        'Claim Admin Role (Temp)',
-                        style: Theme.of(context).textTheme.bodyLarge,
-                      ),
-                      onTap: () async {
-                        try {
-                          final firestore = FirestoreService.instance;
-                          await firestore.upsertProfile(profile!.id, {
-                            'role': 'admin',
-                            'is_approved': true,
-                            'approval_status': 'approved',
-                          });
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text('Admin role claimed!')),
-                            );
-                            ref.invalidate(userProfileProvider);
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Error: $e')),
-                            );
-                          }
-                        }
-                      },
-                    ),
                 ],
               ),
             ),
@@ -1164,7 +1065,7 @@ class ProfileScreen extends ConsumerWidget {
           ),
           ElevatedButton(
             onPressed: () async {
-              await ref.read(authServiceProvider).signOut();
+              await ref.read(appwriteAuthControllerProvider).signOut();
               if (context.mounted) {
                 Navigator.of(context).pop();
                 context.go('/auth');
@@ -1188,3 +1089,4 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 }
+

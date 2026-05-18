@@ -7,7 +7,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../models/chat_models.dart';
 import '../../services/auth_service.dart';
 import '../../services/role_access_service.dart';
-import '../../utils/appwrite_user_extensions.dart';
 import '../../utils/logger.dart';
 import '../../utils/responsive_utils.dart';
 import '../../widgets/custom_image.dart';

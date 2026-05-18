@@ -46,7 +46,7 @@ class ApprovalLinkService {
       {required String baseUrl,
       required String userId,
       required String token}) {
-    return '$baseUrl/admin/approve?userId=$userId&token=$token';
+    return '$baseUrl/admin-approve?userId=$userId&token=$token';
   }
 
   String _randomToken({int length = 32}) {

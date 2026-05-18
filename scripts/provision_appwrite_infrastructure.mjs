@@ -7,19 +7,51 @@ import {
   Teams,
   Webhooks,
 } from 'node-appwrite';
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
-import {
+function loadDotEnv(filePath = resolve(process.cwd(), '.env')) {
+  if (!existsSync(filePath)) return;
+
+  for (const rawLine of readFileSync(filePath, 'utf8').split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#') || !line.includes('=')) continue;
+
+    const [key, ...valueParts] = line.split('=');
+    if (!key || process.env[key] !== undefined) continue;
+
+    const value = valueParts.join('=').trim().replace(/^['"]|['"]$/g, '');
+    process.env[key] = value;
+  }
+}
+
+loadDotEnv();
+
+const originalWarn = console.warn.bind(console);
+console.warn = (...args) => {
+  const message = args.join(' ');
+  if (
+    process.env.APPWRITE_VERBOSE_WARNINGS !== 'true' &&
+    message.includes('current SDK is built for Appwrite')
+  ) {
+    return;
+  }
+  originalWarn(...args);
+};
+
+const {
   appwriteProject,
   buckets,
   tables,
   teams,
   topics,
   webhooks,
-} from './appwrite_infrastructure_schema.mjs';
+} = await import('./appwrite_infrastructure_schema.mjs');
 
 const dryRun = process.argv.includes('--dry-run');
 const useLegacyDatabases = process.argv.includes('--legacy-databases');
 const apiKey = process.env.APPWRITE_API_KEY;
+const provisionDelayMs = Number(process.env.APPWRITE_PROVISION_DELAY_MS || 250);
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -33,6 +65,11 @@ function isMissing(error) {
 
 function isConflict(error) {
   return error?.code === 409 || error?.response?.code === 409;
+}
+
+function isCapacityLimit(error) {
+  const message = error?.message || error?.response?.message || '';
+  return message.includes('maximum number or size of attributes');
 }
 
 function cleanParams(value) {
@@ -96,7 +133,7 @@ async function ensureTable(tablesDB, databases, table) {
         name: table.name,
       });
       log(`Created table ${table.id}`);
-      await sleep(900);
+      await sleep(provisionDelayMs);
     }
   }
 
@@ -145,9 +182,14 @@ async function ensureColumn(tablesDB, databases, tableId, column) {
       await createTableColumn(tablesDB, base, column);
     }
     log(`  Created column ${tableId}.${column.key}`);
-    await sleep(650);
+    await sleep(provisionDelayMs);
   } catch (error) {
     if (isConflict(error)) return;
+    if (isCapacityLimit(error)) {
+      console.warn(`  Skipped column ${tableId}.${column.key}: collection attribute capacity reached`);
+      return;
+    }
+    console.error(`Failed column ${tableId}.${column.key} (${column.type})`);
     throw error;
   }
 }
@@ -171,8 +213,12 @@ async function createLegacyAttribute(databases, base, column) {
   if (column.type === 'varchar') {
     return databases.createStringAttribute(cleanParams({ ...legacy, size: column.size || 255, default: column.default }));
   }
-  if (column.type === 'text') return databases.createTextAttribute(cleanParams({ ...legacy, default: column.default }));
-  if (column.type === 'mediumtext') return databases.createMediumtextAttribute(cleanParams({ ...legacy, default: column.default }));
+  if (column.type === 'text') {
+    return databases.createStringAttribute(cleanParams({ ...legacy, size: column.size || 10000, default: column.default }));
+  }
+  if (column.type === 'mediumtext') {
+    return databases.createStringAttribute(cleanParams({ ...legacy, size: column.size || 60000, default: column.default }));
+  }
   if (column.type === 'integer') return databases.createIntegerAttribute(cleanParams({ ...legacy, default: column.default }));
   if (column.type === 'float') return databases.createFloatAttribute(cleanParams({ ...legacy, default: column.default }));
   if (column.type === 'boolean') return databases.createBooleanAttribute(cleanParams({ ...legacy, default: column.default }));
@@ -213,9 +259,10 @@ async function ensureIndex(tablesDB, databases, tableId, index) {
       orders: index.orders,
     }));
     log(`  Created index ${tableId}.${index.key}`);
-    await sleep(650);
+    await sleep(provisionDelayMs);
   } catch (error) {
     if (isConflict(error)) return;
+    console.error(`Failed index ${tableId}.${index.key}`);
     throw error;
   }
 }
@@ -247,7 +294,7 @@ async function ensureBuckets(storage) {
       if (!isMissing(error)) throw error;
       await storage.createBucket(params);
       log(`Created bucket ${bucket.id}`);
-      await sleep(650);
+      await sleep(provisionDelayMs);
     }
   }
 }
@@ -267,7 +314,7 @@ async function ensureTeams(teamsService) {
       if (!isMissing(error)) throw error;
       await teamsService.create({ teamId: team.id, name: team.name });
       log(`Created team ${team.id}`);
-      await sleep(650);
+      await sleep(provisionDelayMs);
     }
   }
 }
@@ -287,7 +334,7 @@ async function ensureTopics(messaging) {
       if (!isMissing(error)) throw error;
       await messaging.createTopic({ topicId: topic.id, name: topic.name });
       log(`Created topic ${topic.id}`);
-      await sleep(650);
+      await sleep(provisionDelayMs);
     }
   }
 }
@@ -323,7 +370,7 @@ async function ensureWebhooks(webhooksService) {
       if (!isMissing(error)) throw error;
       await webhooksService.create(params);
       log(`Created webhook ${webhook.id}`);
-      await sleep(650);
+      await sleep(provisionDelayMs);
     }
   }
 }

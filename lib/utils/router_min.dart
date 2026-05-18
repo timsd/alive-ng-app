@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../providers/firebase_auth_provider.dart';
+import '../services/appwrite_auth_service.dart';
 import '../screens/navigation/main_navigation_screen.dart';
 
 // keep minimal to avoid heavy imports on web
@@ -231,8 +231,8 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       try {
         final p = state.uri.path;
-        final auth = ref.watch(authStateProvider);
-        final isAuthenticated = auth.isAuthenticated;
+        final user = ref.watch(appwriteUserProvider);
+        final isAuthenticated = user != null;
         final isAuthRoute = p == '/auth';
         if (!isAuthenticated &&
             !isAuthRoute &&

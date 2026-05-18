@@ -717,7 +717,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content:
-            Text('Thank you for your feedback! We will review it shortly.'),
+            const Text('Thank you for your feedback! We will review it shortly.'),
         backgroundColor: Theme.of(context).colorScheme.tertiary,
       ),
     );

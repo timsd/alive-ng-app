@@ -1,36 +1,41 @@
-// Removed supabase_flutter import - using Firebase now
+// ignore_for_file: deprecated_member_use
+
+import 'package:appwrite/appwrite.dart' hide Permission;
 import 'package:permission_handler/permission_handler.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../config/appwrite_backend_config.dart';
+import '../main.dart';
 import '../models/notification_settings.dart';
 import '../utils/toast_utils.dart';
 import '../utils/logger.dart';
 import 'firebase_messaging_base.dart';
-import 'firebase_database_service.dart';
 import 'auth_service.dart';
 import 'storage_service.dart';
 
 class NotificationSettingsService {
-  static final _firebase = FirebaseDatabaseService.instance;
+  static final Databases _databases = Databases(appwriteClient);
   static final _logger = Logger('NotificationSettingsService');
+  static const String _databaseId = AppwriteBackendConfig.databaseId;
+  static const String _collectionId =
+      AppwriteBackendConfig.notificationSettingsCollectionId;
 
   static Future<NotificationSettings?> fetchSettings() async {
     try {
       final user = AuthService.instance.currentUser;
       if (user == null) return null;
 
-      // Fetch notification settings from Firestore
-      final doc = await FirebaseFirestore.instance
-          .collection('notification_settings')
-          .doc(user.uid)
-          .get();
-
-      if (doc.exists && doc.data() != null) {
-        final settings = NotificationSettings.fromJson(doc.data()!);
-        // Cache locally
+      try {
+        final doc = await _databases.getDocument(
+          databaseId: _databaseId,
+          collectionId: _collectionId,
+          documentId: user.uid,
+        );
+        final settings = NotificationSettings.fromJson(doc.data);
         await StorageHelper.setNotificationSettings(settings.toJson());
         return settings;
-      } else {
-        // Create default settings
+      } on AppwriteException catch (e) {
+        if (e.code != 404) rethrow;
+
         final defaultSettings = NotificationSettings(
           userId: user.uid,
           dailyVerseReminder: true,
@@ -42,16 +47,16 @@ class NotificationSettingsService {
           pushNotificationsEnabled: false,
         );
 
-        // Persist default settings to Firestore
-        await FirebaseFirestore.instance
-            .collection('notification_settings')
-            .doc(user.uid)
-            .set({
-          ...defaultSettings.toJson(),
-          'updated_at': FieldValue.serverTimestamp(),
-        });
-
-        // Cache locally
+        await _databases.createDocument(
+          databaseId: _databaseId,
+          collectionId: _collectionId,
+          documentId: user.uid,
+          data: {
+            ...defaultSettings.toJson(),
+            ..._legacyTopicFlags(defaultSettings),
+            'updated_at': DateTime.now().toIso8601String(),
+          },
+        );
         await StorageHelper.setNotificationSettings(defaultSettings.toJson());
 
         return defaultSettings;
@@ -71,32 +76,31 @@ class NotificationSettingsService {
         return false;
       }
 
-      // Update notification settings in Firestore
-      await FirebaseFirestore.instance
-          .collection('notification_settings')
-          .doc(user.uid)
-          .set({
-        ...settings.toJson(),
-        'updated_at': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-
-      // Optionally update limited boolean settings via FirebaseDatabaseService for analytics/backward compat
       try {
-        await _firebase.updateNotificationSettings(user.uid, {
-          'daily_verse_reminder': settings.dailyVerseReminder,
-          'prayer_reminder': settings.prayerReminder,
-          'health_tracking_reminder': settings.healthTrackingReminder,
-          'study_reminder': settings.studyReminder,
-          'mission_reminder': settings.missionReminder,
-          'push_notifications_enabled': settings.pushNotificationsEnabled,
-          'sound_enabled': settings.soundEnabled,
-        });
-      } catch (e) {
-        // Do not fail overall on this secondary write
-        _logger.warning('Secondary notification settings write failed: $e');
+        await _databases.updateDocument(
+          databaseId: _databaseId,
+          collectionId: _collectionId,
+          documentId: user.uid,
+          data: {
+            ...settings.toJson(),
+            ..._legacyTopicFlags(settings),
+            'updated_at': DateTime.now().toIso8601String(),
+          },
+        );
+      } on AppwriteException catch (e) {
+        if (e.code != 404) rethrow;
+        await _databases.createDocument(
+          databaseId: _databaseId,
+          collectionId: _collectionId,
+          documentId: user.uid,
+          data: {
+            ...settings.toJson(),
+            ..._legacyTopicFlags(settings),
+            'updated_at': DateTime.now().toIso8601String(),
+          },
+        );
       }
 
-      // Cache locally
       await StorageHelper.setNotificationSettings(settings.toJson());
 
       ToastUtils.showSuccess('Your notification preferences have been saved');
@@ -223,6 +227,20 @@ class NotificationSettingsService {
 
   static Future<PermissionStatus> checkNotificationPermission() async {
     return await Permission.notification.status;
+  }
+
+  static Map<String, dynamic> _legacyTopicFlags(
+    NotificationSettings settings,
+  ) {
+    return {
+      'prayer': settings.prayerReminder,
+      'study': settings.studyReminder,
+      'health': settings.healthTrackingReminder,
+      'events': settings.missionReminder,
+      'chat': settings.pushNotificationsEnabled,
+      'donations': settings.pushNotificationsEnabled,
+      'kids': settings.missionReminder,
+    };
   }
 }
 

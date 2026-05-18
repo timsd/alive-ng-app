@@ -87,10 +87,8 @@ class AboutAppScreen extends ConsumerWidget {
                 const SizedBox(height: 20),
                 LayoutBuilder(
                   builder: (context, constraints) {
-                    const twoColumnBreakpoint = 760.0;
-                    final twoColumns =
-                        constraints.maxWidth >= twoColumnBreakpoint;
-                    final children = const [
+                    final twoColumns = constraints.maxWidth >= 760;
+                    const children = [
                       _InfoBlock(
                         icon: Icons.auto_stories_rounded,
                         title: 'Why this app exists',
@@ -133,10 +131,10 @@ class AboutAppScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Wrap(
+                const Wrap(
                   spacing: 16,
                   runSpacing: 16,
-                  children: const [
+                  children: [
                     _FeatureTile(
                       icon: Icons.menu_book_rounded,
                       title: 'Study and read',
@@ -339,12 +337,12 @@ class _HeroCard extends StatelessWidget {
                   colorScheme.surface,
                 ],
               )
-            : LinearGradient(
+            : const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Color(0xFFFFFFFF),
-                  const Color(0xFFF7FAFC),
+                  Colors.white,
+                  Color(0xFFF7FAFC),
                 ],
               ),
         borderRadius: BorderRadius.circular(28),

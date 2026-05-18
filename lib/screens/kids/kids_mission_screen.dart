@@ -43,7 +43,7 @@ class KidsMissionScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      appBar: CustomAppBar(
+      appBar: const CustomAppBar(
         title: 'Kids Mission',
         showBackButton: true,
       ),

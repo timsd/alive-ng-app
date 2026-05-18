@@ -38,7 +38,7 @@ android {
     ndkVersion = "28.2.13676358"
 
     val keystoreProperties = Properties()
-    val keystorePropertiesFile = rootProject.file("android/key.properties")
+    val keystorePropertiesFile = rootProject.file("key.properties")
     if (keystorePropertiesFile.exists()) {
         keystoreProperties.load(FileInputStream(keystorePropertiesFile))
     } else {
@@ -62,7 +62,7 @@ android {
         create("release") {
             val storeFilePath = keystoreProperties.getProperty("storeFile")
             if (storeFilePath != null) {
-                storeFile = file(storeFilePath)
+                storeFile = rootProject.projectDir.parentFile.resolve(storeFilePath)
             }
             storePassword = keystoreProperties.getProperty("storePassword")
             keyAlias = keystoreProperties.getProperty("keyAlias")

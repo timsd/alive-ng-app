@@ -118,7 +118,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
     final roleService = RoleAccessService.instance;
     final role = roleService.getCurrentUserRole() ?? 'member';
     final signedIn = _authService.currentUser != null;
-    final signedInEmail = _authService.currentUser?.email?.toLowerCase();
+    final signedInEmail = _authService.currentUser?.email.toLowerCase();
     final canClaimAdmin = signedInEmail == 'alivenigeria2011@gmail.com';
     final canSeeAdmin =
         signedIn && (roleService.canAccessAdmin() || role != 'member');
@@ -404,7 +404,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
         RoleAccessService.instance.clearCache();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
+            content: const Text(
                 'Admin role claim successful. Your access is refreshing now.'),
             backgroundColor: Theme.of(context).colorScheme.tertiary,
           ),
@@ -412,7 +412,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
+            content: const Text(
                 'Admin role claim failed. Check Cloud Functions deployment.'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
@@ -422,7 +422,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Could not claim admin role right now.'),
+          content: const Text('Could not claim admin role right now.'),
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );

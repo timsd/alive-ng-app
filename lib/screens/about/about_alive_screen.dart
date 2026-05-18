@@ -147,10 +147,10 @@ class AboutAliveScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Wrap(
+                const Wrap(
                   spacing: 16,
                   runSpacing: 16,
-                  children: const [
+                  children: [
                     _PillarCard(
                       icon: Icons.campaign_rounded,
                       title: 'Evangelism',
@@ -356,7 +356,7 @@ class _AliveHeroCard extends StatelessWidget {
                 end: Alignment.bottomRight,
                 colors: [
                   Color(0xFFFFFFFF),
-                  const Color(0xFFF7FAFC),
+                  Color(0xFFF7FAFC),
                 ],
               ),
         borderRadius: BorderRadius.circular(28),

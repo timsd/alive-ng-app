@@ -2,7 +2,6 @@ import '../models/app_models.dart';
 import '../utils/logger.dart';
 import 'auth_service.dart';
 import '../config/development_config.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Service for managing role-based access control throughout the app
 class RoleAccessService {
@@ -14,13 +13,9 @@ class RoleAccessService {
 
   final Logger _logger = Logger('RoleAccessService');
   final AuthService _authService = AuthService.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   UserProfile? _cachedUserProfile;
   DateTime? _cacheTimestamp;
-  bool? _cachedAdminClaim;
-  DateTime? _claimsTimestamp;
-  String? _claimsUserId;
 
   /// User roles in hierarchical order (lowest to highest privilege)
   static const List<String> _roleHierarchy = [
@@ -40,7 +35,7 @@ class RoleAccessService {
 
     // Get role from cached user profile or fetch from database
     final profile = _getCachedUserProfile();
-    return profile?.role ?? 'member';
+    return _normalizeRole(profile?.role);
   }
 
   /// Get cached user profile or fetch from database
@@ -105,54 +100,29 @@ class RoleAccessService {
 
   /// Check if a role has permission for required role
   bool hasRolePermission(String userRole, String requiredRole) {
-    final userIndex = _roleHierarchy.indexOf(userRole);
-    final requiredIndex = _roleHierarchy.indexOf(requiredRole);
+    final userIndex = _roleHierarchy.indexOf(_normalizeRole(userRole) ?? '');
+    final requiredIndex =
+        _roleHierarchy.indexOf(_normalizeRole(requiredRole) ?? '');
 
     if (userIndex == -1 || requiredIndex == -1) return false;
 
     return userIndex >= requiredIndex;
   }
 
+  String? _normalizeRole(String? role) {
+    if (role == null || role.trim().isEmpty) return null;
+    final normalized = role.trim().toLowerCase();
+    return normalized == 'user' ? 'member' : normalized;
+  }
+
   /// Check if user can access admin features
   bool canAccessAdmin() {
-    // Development mode bypass
     if (DevelopmentConfig.shouldBypassRoleGuards) {
       _logger.warning('DEVELOPMENT MODE: Bypassing admin access check');
       return true;
     }
 
-    // ignore: discarded_futures
-    _refreshClaimsCache();
-    final currentUid = _authService.currentUser?.uid;
-    final claimsForCurrentUser = _claimsUserId == currentUid;
-    final hasClaim = claimsForCurrentUser && _cachedAdminClaim == true;
-    final hasRoleAccess = hasRole('admin');
-    return hasClaim || (hasRoleAccess && !claimsForCurrentUser);
-  }
-
-  Future<void> _refreshClaimsCache() async {
-    try {
-      final now = DateTime.now();
-      if (_claimsTimestamp != null &&
-          now.difference(_claimsTimestamp!).inMinutes < 5) {
-        return;
-      }
-
-      final user = _authService.currentUser;
-      if (user == null) {
-        _cachedAdminClaim = null;
-        _claimsTimestamp = now;
-        _claimsUserId = null;
-        return;
-      }
-
-      final token = await user.getIdTokenResult(true);
-      _cachedAdminClaim = token.claims?['admin'] == true;
-      _claimsTimestamp = now;
-      _claimsUserId = user.uid;
-    } catch (e) {
-      _logger.warning('Could not refresh claims cache: $e');
-    }
+    return hasRole('admin');
   }
 
   /// Check if user can access leadership features
@@ -409,7 +379,6 @@ class RoleAccessService {
     _logger.info(
         'Access attempt: User($userId) Role($currentRole) Resource($resource) Granted($granted)');
 
-    // Store access logs in database for audit trail
     _storeAccessLog(userId, currentRole, resource, granted, profile?.fullName);
   }
 
@@ -419,15 +388,11 @@ class RoleAccessService {
     if (userId == null) return;
 
     try {
-      await _firestore.collection('access_logs').add({
-        'user_id': userId,
-        'user_name': userName ?? 'Unknown',
-        'user_role': role ?? 'unknown',
-        'resource': resource,
-        'access_granted': granted,
-        'timestamp': FieldValue.serverTimestamp(),
-        'ip_address': 'mobile_app',
-      });
+      _logger.info(
+        'Access log pending Appwrite audit collection: '
+        'user=$userId name=${userName ?? 'Unknown'} role=${role ?? 'unknown'} '
+        'resource=$resource granted=$granted',
+      );
     } catch (e) {
       _logger.error('Failed to store access log: $e');
     }
@@ -437,9 +402,6 @@ class RoleAccessService {
   void clearCache() {
     _cachedUserProfile = null;
     _cacheTimestamp = null;
-    _cachedAdminClaim = null;
-    _claimsTimestamp = null;
-    _claimsUserId = null;
   }
 
   /// Validate access and throw exception if denied

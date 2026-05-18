@@ -8,7 +8,7 @@ import '../../services/donation_service.dart';
 import '../../models/donation_models.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../utils/web_launch_params.dart';
-import '../../providers/firebase_auth_provider.dart';
+import '../../providers/appwrite_auth_provider.dart';
 import '../../widgets/custom_app_bar.dart';
 
 class DonationScreen extends ConsumerStatefulWidget {
@@ -154,12 +154,12 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final userAsync = ref.watch(firebaseUserProvider);
+    final userAsync = ref.watch(appwriteUserStreamProvider);
     final isAuthenticated = userAsync.value != null;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: CustomAppBar(
+      appBar: const CustomAppBar(
         title: 'Support ALIVE',
         showBackButton: true,
         showThemeToggle: true,
@@ -825,7 +825,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
     final isEnabled = _selectedAmount > 0;
     final totalAmount =
         _coverProcessingFees ? _selectedAmount * 1.035 : _selectedAmount;
-    final userAsync = ref.watch(firebaseUserProvider);
+    final userAsync = ref.watch(appwriteUserStreamProvider);
     final isAuthenticated = userAsync.value != null;
     final guestInfoValid = _guestEmailController.text.trim().isNotEmpty &&
         _guestNameController.text.trim().isNotEmpty;
@@ -1177,7 +1177,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
     final amount = _selectedAmount;
     final currency = _selectedCurrency;
     final isMonthly = _isMonthlySelected;
-    final userAsync = ref.read(firebaseUserProvider);
+    final userAsync = ref.read(appwriteUserStreamProvider);
     final isAuthenticated = userAsync.value != null;
 
     if (amount <= 0) {
@@ -1692,3 +1692,4 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
     return value.toStringAsFixed(0);
   }
 }
+

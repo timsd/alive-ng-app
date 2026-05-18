@@ -4,8 +4,8 @@ import '../../services/chapter_service.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../config/meeting_links_config.dart';
-import '../conference/enhanced_jitsi_meet_screen.dart';
-import '../../providers/firebase_auth_provider.dart';
+import '../conference/livekit_meeting_screen.dart';
+import '../../providers/appwrite_auth_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../constants/app_constants.dart';
@@ -82,7 +82,7 @@ class _ChapterScreenState extends State<ChapterScreen>
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Unable to load chapter data right now.')),
+          const SnackBar(content: Text('Unable to load chapter data right now.')),
         );
       }
     }
@@ -257,7 +257,7 @@ class _ChapterScreenState extends State<ChapterScreen>
                 onPressed: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (context) => EnhancedJitsiMeetScreen(
+                      builder: (context) => LiveKitMeetingScreen(
                         meetingType: MeetingType.general,
                         isModerator: isModerator,
                       ),
@@ -703,3 +703,4 @@ class _ChapterScreenState extends State<ChapterScreen>
     }
   }
 }
+

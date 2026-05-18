@@ -1,6 +1,6 @@
+import 'package:appwrite/models.dart' as appwrite_models;
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
 import '../../services/auth_service.dart';
 import '../../services/role_access_service.dart';
@@ -48,7 +48,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
   final RoleAccessService _roleService = RoleAccessService.instance;
   bool _isLoading = true;
   bool _hasAccess = false;
-  User? _currentUser;
+  appwrite_models.User? _currentUser;
 
   // Dashboard stats
   int _totalUsers = 0;
@@ -429,11 +429,10 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                 }
               } catch (e) {
                 if (context.mounted) {
-                  final colorScheme = Theme.of(context).colorScheme;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('Chat messages export failed: $e'),
-                      backgroundColor: colorScheme.error,
+                      backgroundColor: Colors.red,
                     ),
                   );
                 }

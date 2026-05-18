@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'config/firebase_config.dart';
+import 'package:appwrite/appwrite.dart' hide Locale;
 import 'config/development_config.dart';
 import 'services/kids_content_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,9 +18,17 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'services/in_app_update_service.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-// DEV ONLY — delete this import + the file below when done testing admin features:
+// DEV ONLY - delete this import + the file below when done testing admin features:
 import 'debug/dev_admin_override.dart';
 import 'providers/language_provider.dart';
+import 'config/appwrite_backend_config.dart';
+
+// Global Appwrite service instances for provider access.
+final appwriteClient = Client();
+late final Account appwriteAccount;
+late final Databases appwriteDatabases;
+late final Storage appwriteStorage;
+late final Realtime appwriteRealtime;
 
 void main() {
   runZonedGuarded(() async {
@@ -31,18 +38,22 @@ void main() {
       debugPrint(details.exceptionAsString());
     };
 
-    var firebaseReady = false;
+    var backendReady = false;
     try {
-      await FirebaseConfig.initialize().timeout(const Duration(seconds: 8),
-          onTimeout: () {
-        debugPrint('Firebase init timeout; continuing app startup');
-      });
-      firebaseReady = true;
-      if (kIsWeb) {
-        await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
-      }
+      appwriteClient
+          .setEndpoint(AppwriteBackendConfig.endpoint)
+          .setProject(AppwriteBackendConfig.projectId)
+          .setSelfSigned(status: !kReleaseMode);
+
+      appwriteAccount = Account(appwriteClient);
+      appwriteDatabases = Databases(appwriteClient);
+      appwriteStorage = Storage(appwriteClient);
+      appwriteRealtime = Realtime(appwriteClient);
+
+      backendReady = true;
+      debugPrint('Self-hosted Appwrite initialized successfully.');
     } catch (e) {
-      debugPrint('Firebase init failed: $e');
+      debugPrint('Backend initialization failed: $e');
     }
 
     runApp(
@@ -62,7 +73,8 @@ void main() {
       } catch (e) {
         debugPrint('Google Sign-In initialization failed, continuing: $e');
       }
-      if (firebaseReady) {
+
+      if (backendReady) {
         try {
           await KidsContentService.initializeKidsContent();
         } catch (e) {
@@ -70,12 +82,11 @@ void main() {
         }
       } else {
         debugPrint(
-            'Skipping Kids Content initialization: Firebase unavailable');
+          'Skipping Kids Content initialization: self-hosted server unreachable',
+        );
       }
     });
 
-    // Trigger Android in-app updates (flexible/immediate) after app starts
-    // Uses best-effort; silently ignores errors and non-Android platforms
     WidgetsBinding.instance.addPostFrameCallback((_) {
       InAppUpdateService.checkForUpdates();
     });
@@ -153,7 +164,7 @@ class MainNavigationScreen extends ConsumerWidget {
       body: Stack(
         children: [
           child,
-          // DEV ONLY overlay — invisible in release builds; delete dev_admin_override.dart + this import to clean up
+          // DEV ONLY overlay - invisible in release builds; delete dev_admin_override.dart + this import to clean up
           if (kDebugMode) const DevAdminOverlayButton(),
         ],
       ),
@@ -266,12 +277,6 @@ class MainNavigationScreen extends ConsumerWidget {
     final translate = ref.watch(languageProvider);
     final roleService = RoleAccessService.instance;
     final canAccessRoleGated = roleService.canAccessRoleGatedFeatures();
-    final userEmail = ref.watch(authStateProvider).maybeWhen(
-          data: (user) => user?.email?.toLowerCase(),
-          orElse: () => null,
-        );
-    final canClaimAdmin = userEmail == 'alivenigeria2011@gmail.com';
-
     // Use responsive utilities instead of hardcoded MediaQuery values
     final bottomSheetHeight = ResponsiveUtils.getResponsiveValue(
       context: context,
@@ -423,12 +428,6 @@ class MainNavigationScreen extends ConsumerWidget {
                   'route': AppConstants.adminRoute,
                   'roleOnly': true
                 },
-                if (canClaimAdmin)
-                  {
-                    'icon': Icons.verified_user,
-                    'label': 'Claim Admin Role (Temp)',
-                    'action': 'claimAdminRole',
-                  },
                 {
                   'icon': Icons.auto_stories,
                   'label': 'Kids Stories',
@@ -529,15 +528,6 @@ class MainNavigationScreen extends ConsumerWidget {
                           item['label'] as String,
                           item['route'] as String?,
                         ),
-                      );
-                    }
-                    if (item['action'] == 'claimAdminRole') {
-                      return _buildMoreItem(
-                        context,
-                        item['icon'] as IconData,
-                        item['label'] as String,
-                        null,
-                        onTap: () => _claimAdminRole(context, ref),
                       );
                     }
                     return _buildMoreItem(
@@ -649,41 +639,6 @@ class MainNavigationScreen extends ConsumerWidget {
         ],
       ),
     );
-  }
-
-  Future<void> _claimAdminRole(BuildContext context, WidgetRef ref) async {
-    final translate = ref.read(languageProvider);
-    try {
-      final ok =
-          await ref.read(firebaseDatabaseServiceProvider).claimAdminRole();
-      if (!context.mounted) return;
-      if (ok) {
-        await FirebaseAuth.instance.currentUser?.getIdToken(true);
-        if (!context.mounted) return;
-        RoleAccessService.instance.clearCache();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(translate('admin_role_claimed')),
-            backgroundColor: Theme.of(context).colorScheme.tertiary,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(translate('claim_failed')),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-      }
-    } catch (_) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(translate('could_not_claim_admin')),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
-    }
   }
 
   Widget _buildNavigationDrawer(BuildContext context, bool isAuthenticated) {

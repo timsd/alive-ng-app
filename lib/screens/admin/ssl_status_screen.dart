@@ -81,7 +81,7 @@ class _SSLStatusScreenState extends ConsumerState<SSLStatusScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: CustomAppBar(
+      appBar: const CustomAppBar(
         title: 'SSL Configuration Status',
         showBackButton: true,
       ),

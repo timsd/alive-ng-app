@@ -124,7 +124,7 @@ class _DevAdminOverlayButtonState extends State<DevAdminOverlayButton> {
           decoration: BoxDecoration(
             color: _isActive ? Colors.orange : Colors.grey[800],
             borderRadius: BorderRadius.circular(20),
-            boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 6)],
+            boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 6)],
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,

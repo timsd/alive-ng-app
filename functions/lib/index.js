@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ingestTractPdfContent = exports.setUserRoleAndClaims = exports.claimAdminRole = exports.generateStreamChatToken = exports.consumeApprovalToken = exports.syncApprovedTestimonyToPrayerFeed = exports.sendReceiptOnCompletion = exports.paystackWebhook = exports.initPaystackSubscription = exports.initPaystackTransaction = exports.sendEmail = void 0;
+exports.ingestTractPdfContent = exports.setUserRoleAndClaims = exports.claimAdminRole = exports.consumeApprovalToken = exports.syncApprovedTestimonyToPrayerFeed = exports.sendReceiptOnCompletion = exports.paystackWebhook = exports.initPaystackSubscription = exports.initPaystackTransaction = exports.sendEmail = void 0;
 const functions = __importStar(require("firebase-functions/v1"));
 const params_1 = require("firebase-functions/params");
 const admin = __importStar(require("firebase-admin"));
@@ -45,7 +45,6 @@ admin.initializeApp();
 const db = admin.firestore();
 const PAYSTACK_SECRET_KEY = (0, params_1.defineSecret)('PAYSTACK_SECRET_KEY');
 const RESEND_API_KEY = (0, params_1.defineSecret)('RESEND_API_KEY');
-const STREAM_CHAT_SECRET = (0, params_1.defineSecret)('STREAM_CHAT_SECRET');
 const ENFORCE_APPCHECK = (0, params_1.defineString)('ENFORCE_APPCHECK', { default: 'false' });
 const RECEIPT_SENDER_EMAIL = (0, params_1.defineString)('RECEIPT_SENDER_EMAIL', { default: 'onboarding@resend.dev' });
 const ALIVE_LOGO_URL = (0, params_1.defineString)('ALIVE_LOGO_URL', { default: 'https://alive.ng/logo.png' });
@@ -366,49 +365,6 @@ exports.consumeApprovalToken = functions.https.onCall(async (data, context) => {
         return true;
     });
     return { ok: approved };
-});
-function _base64UrlEncode(value) {
-    return Buffer.from(value)
-        .toString('base64')
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/g, '');
-}
-function _createHs256Jwt(payload, secret) {
-    const header = { alg: 'HS256', typ: 'JWT' };
-    const headerPart = _base64UrlEncode(JSON.stringify(header));
-    const payloadPart = _base64UrlEncode(JSON.stringify(payload));
-    const unsigned = `${headerPart}.${payloadPart}`;
-    const signature = node_crypto_1.default
-        .createHmac('sha256', secret)
-        .update(unsigned)
-        .digest('base64')
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/g, '');
-    return `${unsigned}.${signature}`;
-}
-exports.generateStreamChatToken = functions
-    .runWith({ secrets: [STREAM_CHAT_SECRET] })
-    .https.onCall(async (data, context) => {
-    if (!context.auth) {
-        throw new functions.https.HttpsError('unauthenticated', 'Authentication required');
-    }
-    const requestedUserId = data?.userId || context.auth.uid;
-    const isAdmin = (context.auth.token && context.auth.token.admin) === true;
-    if (requestedUserId !== context.auth.uid && !isAdmin) {
-        throw new functions.https.HttpsError('permission-denied', 'Cannot mint token for another user');
-    }
-    const secret = STREAM_CHAT_SECRET.value();
-    if (!secret) {
-        throw new functions.https.HttpsError('failed-precondition', 'Missing STREAM_CHAT_SECRET');
-    }
-    // Stream user token payload: user_id + issued-at timestamp.
-    const token = _createHs256Jwt({
-        user_id: requestedUserId,
-        iat: Math.floor(Date.now() / 1000),
-    }, secret);
-    return { token };
 });
 exports.claimAdminRole = functions.https.onCall(async (_data, context) => {
     if (!context.auth) {

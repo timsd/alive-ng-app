@@ -1,6 +1,6 @@
+import 'package:appwrite/models.dart' as appwrite_models;
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 // Removed supabase_flutter import - using Firebase now
 import '../../models/app_models.dart';
 import '../../services/firebase_database_service.dart';
@@ -23,7 +23,7 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
   final Logger _logger = Logger('UserArchiveScreen');
   bool _isLoading = true;
   bool _hasAccess = false;
-  User? _currentUser; // Firebase User handled by AuthService
+  appwrite_models.User? _currentUser;
   List<UserProfile> _archivedUsers = [];
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();

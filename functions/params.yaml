@@ -1,8 +1,4 @@
 params:
-  - name: STREAM_CHAT_API_KEY
-    type: string
-  - name: STREAM_CHAT_SECRET
-    type: string
   - name: PAYSTACK_SECRET_KEY
     type: string
   - name: RESEND_API_KEY

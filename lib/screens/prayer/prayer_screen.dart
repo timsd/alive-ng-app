@@ -11,11 +11,12 @@ import '../../utils/responsive_utils.dart';
 import '../../constants/app_constants.dart';
 import '../../config/meeting_links_config.dart';
 import '../../widgets/add_prayer_request_dialog.dart';
+import '../../services/prayer_requests_service.dart';
+import '../../utils/app_exception.dart';
 
 // Provider for prayer requests
 final prayerRequestsProvider = FutureProvider<List<PrayerRequest>>((ref) async {
-  final firebase = ref.read(firebaseDatabaseServiceProvider);
-  return await firebase.getPrayerRequests();
+  return PrayerRequestsService.instance.fetchPrayerRequests();
 });
 
 // Provider for creating prayer requests
@@ -43,7 +44,7 @@ class CreatePrayerRequestNotifier extends StateNotifier<AsyncValue<void>> {
       final user = ref.read(currentUserProvider);
 
       final prayerRequest = PrayerRequest(
-        id: '', // Firebase will generate ID
+        id: '',
         title: title,
         description: description,
         category: category,
@@ -53,9 +54,7 @@ class CreatePrayerRequestNotifier extends StateNotifier<AsyncValue<void>> {
         updatedAt: DateTime.now(),
       );
 
-      await ref
-          .read(firebaseDatabaseServiceProvider)
-          .createPrayerRequest(prayerRequest);
+      await PrayerRequestsService.instance.createPrayerRequest(prayerRequest);
 
       state = const AsyncValue.data(null);
       ref.invalidate(prayerRequestsProvider);
@@ -546,12 +545,16 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
 
   void _recordPrayer(BuildContext context, PrayerRequest request) async {
     try {
-      final firebase = ProviderScope.containerOf(context)
-          .read(firebaseDatabaseServiceProvider);
+      final currentUser = ref.read(currentUserProvider);
+      if (currentUser == null) {
+        throw AuthException('Please sign in to pray for requests');
+      }
 
-      // Update prayer count in Firebase
-      await firebase.prayForRequest(
-          request.id, firebase.currentUser?.uid ?? '');
+      await PrayerRequestsService.instance.prayForRequest(
+        request.id,
+        currentUser.uid,
+      );
+      ref.invalidate(prayerRequestsProvider);
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

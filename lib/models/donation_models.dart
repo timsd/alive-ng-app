@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:equatable/equatable.dart';
 
 enum DonationType {
@@ -87,7 +89,7 @@ class DonationRecord extends Equatable {
       ),
       paymentIntentId: json['payment_intent_id'] as String?,
       transactionId: json['transaction_id'] as String?,
-      metadata: json['metadata'] as Map<String, dynamic>?,
+      metadata: _metadataFromJson(json['metadata']),
       materialId: json['material_id'] as String?,
       materialTitle: json['material_title'] as String?,
       notes: json['notes'] as String?,
@@ -281,7 +283,7 @@ class DownloadableMaterial extends Equatable {
       requiresDonation: json['requires_donation'] as bool,
       isActive: json['is_active'] as bool,
       downloadCount: json['download_count'] as int,
-      metadata: json['metadata'] as Map<String, dynamic>?,
+      metadata: _metadataFromJson(json['metadata']),
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
       createdBy: json['created_by'] as String?,
@@ -381,6 +383,19 @@ class DownloadableMaterial extends Equatable {
         updatedAt,
         createdBy,
       ];
+}
+
+Map<String, dynamic>? _metadataFromJson(dynamic value) {
+  if (value == null) return null;
+  if (value is Map<String, dynamic>) return value;
+  if (value is Map) return Map<String, dynamic>.from(value);
+  if (value is String && value.trim().isNotEmpty) {
+    final decoded = jsonDecode(value);
+    if (decoded is Map) {
+      return Map<String, dynamic>.from(decoded);
+    }
+  }
+  return null;
 }
 
 class UserDownload extends Equatable {

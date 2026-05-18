@@ -559,7 +559,6 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
   }
 
   Widget _buildAppSettingsTab() {
-    final colorScheme = Theme.of(context).colorScheme;
     final groupedSettings = <String, List<Map<String, dynamic>>>{};
     for (final setting in _appSettings) {
       final category = setting['category'] ?? 'General';
@@ -585,8 +584,8 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                 icon: const Icon(Icons.add),
                 label: const Text('New Setting'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: colorScheme.primary,
-                  foregroundColor: colorScheme.onPrimary,
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
                 ),
               ),
             ],
@@ -594,14 +593,11 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
         ),
         Expanded(
           child: groupedSettings.isEmpty
-              ? Center(
+              ? const Center(
                   child: Text(
                     'No app settings found.\nCreate your first setting!',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
+                    style: TextStyle(fontSize: 16, color: Colors.grey),
                   ),
                 )
               : ListView.builder(
@@ -620,11 +616,10 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
 
   Widget _buildSettingsCategoryCard(
       String category, List<Map<String, dynamic>> settings) {
-    final colorScheme = Theme.of(context).colorScheme;
     return Card(
       margin: const EdgeInsets.only(bottom: 16.0),
       child: ExpansionTile(
-        leading: Icon(Icons.settings, color: colorScheme.primary),
+        leading: const Icon(Icons.settings, color: Colors.green),
         title: Text(
           category,
           style: const TextStyle(fontWeight: FontWeight.bold),
@@ -637,13 +632,12 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
   }
 
   Widget _buildSettingTile(Map<String, dynamic> setting) {
-    final colorScheme = Theme.of(context).colorScheme;
     final isPublic = setting['is_public'] ?? false;
 
     return ListTile(
       leading: Icon(
         isPublic ? Icons.public : Icons.lock,
-        color: isPublic ? colorScheme.tertiary : colorScheme.secondary,
+        color: isPublic ? Colors.green : Colors.orange,
         size: 20,
       ),
       title: Text(setting['key'] ?? ''),
@@ -662,7 +656,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
             value: 'delete',
             child: ListTile(
               leading: Icon(Icons.delete, color: Colors.red),
-              title: Text('Delete', style: TextStyle(color: Colors.red)),
+              title: Text('Delete', style: TextStyle(color: Colors.white)),
               contentPadding: EdgeInsets.zero,
             ),
           ),
@@ -673,7 +667,6 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
   }
 
   Widget _buildFeaturedContentTab() {
-    final colorScheme = Theme.of(context).colorScheme;
     return Column(
       children: [
         Padding(
@@ -693,8 +686,8 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                 icon: const Icon(Icons.add),
                 label: const Text('New Featured'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: colorScheme.primary,
-                  foregroundColor: colorScheme.onPrimary,
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
                 ),
               ),
             ],
@@ -702,14 +695,11 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
         ),
         Expanded(
           child: _featuredContent.isEmpty
-              ? Center(
+              ? const Center(
                   child: Text(
                     'No featured content found.\nCreate your first featured item!',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
+                    style: TextStyle(fontSize: 16, color: Colors.grey),
                   ),
                 )
               : ListView.builder(
@@ -941,12 +931,12 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                 contentPadding: EdgeInsets.zero,
               ),
             ),
-            PopupMenuItem(
+            const PopupMenuItem(
               value: 'delete',
               child: ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
+                leading: Icon(Icons.delete, color: Colors.red),
                 title:
-                    Text('Delete', style: const TextStyle(color: Colors.red)),
+                    Text('Delete', style: TextStyle(color: Colors.red)),
                 contentPadding: EdgeInsets.zero,
               ),
             ),

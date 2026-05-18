@@ -1,8 +1,14 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
-// Removed supabase_flutter import - using Firebase now
+import 'package:appwrite/appwrite.dart';
+import 'package:appwrite/models.dart' as models;
+
+import '../../config/appwrite_backend_config.dart';
+import '../../main.dart';
 import '../../models/app_models.dart';
-import '../../services/firebase_database_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/appwrite_profile_service.dart';
 import '../../widgets/custom_image.dart';
 
 class AdminApprovalScreen extends StatefulWidget {
@@ -14,7 +20,8 @@ class AdminApprovalScreen extends StatefulWidget {
 
 class _AdminApprovalScreenState extends State<AdminApprovalScreen>
     with SingleTickerProviderStateMixin {
-  final FirebaseDatabaseService _firebaseService = FirebaseDatabaseService.instance;
+  late final Databases _databases;
+  final AppwriteProfileService _profileService = AppwriteProfileService();
   final AuthService _authService = AuthService.instance;
   late TabController _tabController;
   
@@ -28,6 +35,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
   @override
   void initState() {
     super.initState();
+    _databases = Databases(appwriteClient);
     _tabController = TabController(length: 3, vsync: this);
     _currentUserId = _authService.currentUser?.uid;
     _loadUsers();
@@ -44,10 +52,8 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
     setState(() => _isLoading = true);
     
     try {
-      final users = await _firebaseService.getCollection('profiles', orderBy: 'created_at', descending: true);
-      final userProfiles = users
-          .map((u) => UserProfile.fromJson(u))
-          .toList();
+      final users = await _listUsers();
+      final userProfiles = users.map(_profileFromDocument).toList();
 
       setState(() {
         _pendingUsers = userProfiles.where((user) => user.approvalStatus == 'pending').toList();
@@ -68,16 +74,53 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
     }
   }
 
+  Future<List<models.Document>> _listUsers() async {
+    try {
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.usersCollectionId,
+        queries: [
+          Query.orderDesc('created_at'),
+          Query.limit(200),
+        ],
+      );
+      return response.documents;
+    } on AppwriteException {
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.usersCollectionId,
+        queries: [
+          Query.limit(200),
+        ],
+      );
+      return response.documents;
+    }
+  }
+
+  UserProfile _profileFromDocument(models.Document document) {
+    return _profileService.userProfileFromDocument(
+      document,
+      fallbackEmail: document.data['email']?.toString() ?? '',
+      fallbackFullName:
+          (document.data['fullName'] ?? document.data['full_name'])?.toString(),
+    );
+  }
+
   Future<void> _approveUser(UserProfile user) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await _firebaseService.updateDocument('profiles', user.id, {
-        'is_approved': true,
-        'approval_status': 'approved',
-        'approved_by': _currentUserId,
-        'approved_at': DateTime.now().toIso8601String(),
-        'updated_at': DateTime.now().toIso8601String(),
-      });
+      await _databases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.usersCollectionId,
+        documentId: user.id,
+        data: {
+          'is_approved': true,
+          'approval_status': 'approved',
+          'approved_by': _currentUserId,
+          'approved_at': DateTime.now().toIso8601String(),
+          'updated_at': DateTime.now().toIso8601String(),
+        },
+      );
 
       await _loadUsers();
       
@@ -104,14 +147,19 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
   Future<void> _rejectUser(UserProfile user, String reason) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await _firebaseService.updateDocument('profiles', user.id, {
-        'is_approved': false,
-        'approval_status': 'rejected',
-        'rejection_reason': reason,
-        'approved_by': _currentUserId,
-        'approved_at': DateTime.now().toIso8601String(),
-        'updated_at': DateTime.now().toIso8601String(),
-      });
+      await _databases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.usersCollectionId,
+        documentId: user.id,
+        data: {
+          'is_approved': false,
+          'approval_status': 'rejected',
+          'rejection_reason': reason,
+          'approved_by': _currentUserId,
+          'approved_at': DateTime.now().toIso8601String(),
+          'updated_at': DateTime.now().toIso8601String(),
+        },
+      );
 
       await _loadUsers();
       

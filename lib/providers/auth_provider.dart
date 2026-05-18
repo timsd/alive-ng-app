@@ -1,38 +1,41 @@
+import 'dart:async';
+
+import 'package:appwrite/models.dart' as models;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
-import '../services/firebase_database_service.dart';
-import '../services/auth_service.dart';
+
+import '../services/appwrite_auth_service.dart';
+export '../utils/appwrite_user_extensions.dart';
 
 // Auth State Provider
-final authStateProvider = StreamProvider<User?>((ref) {
-  try {
-    if (Firebase.apps.isEmpty) {
-      return Stream<User?>.value(null);
+final authStateProvider = StreamProvider<models.User?>((ref) {
+  final controller = StreamController<models.User?>();
+
+  void emitUser(models.User? user) {
+    if (!controller.isClosed) {
+      controller.add(user);
     }
-    return FirebaseAuth.instance.authStateChanges();
-  } catch (_) {
-    return Stream<User?>.value(null);
   }
+
+  emitUser(ref.read(appwriteUserProvider));
+  ref.listen<models.User?>(appwriteUserProvider, (_, next) => emitUser(next));
+
+  ref.onDispose(controller.close);
+  return controller.stream;
 });
 
 // Current User Provider
-final currentUserProvider = Provider<User?>((ref) {
-  final authState = ref.watch(authStateProvider);
-  return authState.when(
-    data: (user) => user,
-    loading: () => null,
-    error: (_, __) => null,
-  );
+final currentUserProvider = Provider<models.User?>((ref) {
+  return ref.watch(appwriteUserProvider);
 });
 
 // Auth Service Provider
-final authServiceProvider = Provider<AuthService>((ref) {
-  return AuthService.instance;
+final authServiceProvider = Provider<AppwriteAuthService>((ref) {
+  return ref.watch(appwriteAuthServiceProvider);
 });
 
-// Firebase Database Service Provider
-final firebaseDatabaseServiceProvider =
-    Provider<FirebaseDatabaseService>((ref) {
-  return FirebaseDatabaseService.instance;
+// Temporary compatibility provider while Firebase database calls are migrated.
+final firebaseDatabaseServiceProvider = Provider<dynamic>((ref) {
+  throw UnimplementedError(
+    'FirebaseDatabaseService has been removed. Use an Appwrite data service.',
+  );
 });

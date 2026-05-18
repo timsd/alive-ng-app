@@ -10,7 +10,8 @@ import '../screens/prayer/prayer_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/health/health_screen.dart';
 import '../screens/missions/missions_screen.dart';
-import '../screens/auth/firebase_auth_screen.dart';
+import '../screens/auth/appwrite_auth_screen.dart';
+import '../screens/auth/reset_password_screen.dart';
 import '../screens/navigation/main_navigation_screen.dart';
 import '../screens/about/about_app_screen.dart';
 import '../screens/about/about_alive_screen.dart';
@@ -53,10 +54,9 @@ import '../screens/resources/resources_screen.dart';
 import '../screens/donation/donation_screen.dart';
 import '../screens/donation/gift_in_kind_form_screen.dart';
 import '../screens/donation/non_monetary_gift_form_screen.dart';
-import '../providers/firebase_auth_provider.dart';
+import '../services/appwrite_auth_service.dart';
 import '../constants/app_constants.dart';
 import '../services/onboarding_service.dart';
-import '../services/firestore_service.dart';
 import '../utils/web_launch_params.dart';
 
 // New screen imports
@@ -91,6 +91,7 @@ bool _isGuestAccessibleRoute(String path) {
     '/donation',
     '/gift-in-kind',
     '/admin-approve',
+    '/reset-password',
   ];
 
   return guestAccessibleRoutes.contains(path);
@@ -122,10 +123,9 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: AppConstants.splashRoute,
     redirect: (context, state) async {
       debugPrint('Router redirect start: ${state.uri.path}');
-      final authState = ref.watch(authStateProvider);
-      bool isAuthenticated = false;
+      final currentUser = ref.watch(appwriteUserProvider);
+      final isAuthenticated = currentUser != null;
       try {
-        isAuthenticated = authState.isAuthenticated;
         debugPrint('Auth state: authenticated=$isAuthenticated');
       } catch (e) {
         debugPrint('Auth state read failed: $e');
@@ -165,20 +165,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         return null;
       }
 
-      // Enforce profile completion after login/signup before using the app.
-      if (isAuthenticated &&
-          state.uri.path != AppConstants.profileRoute &&
-          !isAuthRoute) {
-        final user = ref.read(firebaseUserProvider).value;
-        if (user != null) {
-          final profile = await FirestoreService.instance.getProfile(user.uid);
-          final bool isComplete = _isProfileComplete(profile);
-          if (!isComplete) {
-            debugPrint('Profile incomplete; redirecting to profile');
-            return AppConstants.profileRoute;
-          }
-        }
-      }
+      // Profile-completion checks will be restored against Appwrite profiles.
 
       // If authenticated, allow access to all routes except auth
       if (isAuthenticated && !isAuthRoute) {
@@ -235,8 +222,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppConstants.authRoute,
         builder: (context, state) {
           debugPrint('Route build: /auth');
-          return const FirebaseAuthScreen();
+          return const AppwriteAuthScreen();
         },
+      ),
+
+      GoRoute(
+        path: AppConstants.resetPasswordRoute,
+        builder: (context, state) => ResetPasswordScreen(
+          userId: state.uri.queryParameters['userId'],
+          secret: state.uri.queryParameters['secret'],
+        ),
       ),
 
       // Admin approval-link route (email link handler)
@@ -525,8 +520,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const NotificationSettingsScreen(),
             redirect: (context, state) {
               // Protect notification settings for unauthenticated users
-              final authState = ref.read(authStateProvider);
-              if (!authState.isAuthenticated) {
+              final user = ref.read(appwriteUserProvider);
+              if (user == null) {
                 return AppConstants.authRoute;
               }
               return null;
@@ -661,23 +656,3 @@ final routerProvider = Provider<GoRouter>((ref) {
   );
 });
 
-bool _isProfileComplete(Map<String, dynamic>? profile) {
-  if (profile == null) return false;
-
-  bool hasValue(String key) {
-    final value = profile[key];
-    return value is String && value.trim().isNotEmpty;
-  }
-
-  const requiredFields = [
-    'full_name',
-    'phone_number',
-    'location',
-    'local_church',
-    'occupation',
-    'skills',
-    'local_chapter',
-  ];
-
-  return requiredFields.every(hasValue);
-}

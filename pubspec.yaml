@@ -39,7 +39,10 @@ dependencies:
   sqflite_common_ffi: ^2.3.2
   sqlite3: ^2.4.0
   
-  # Firebase
+  # Appwrite backend
+  appwrite: ^24.0.0
+
+  # Firebase compatibility while remaining modules migrate to Appwrite
   firebase_core: ^4.2.1
   firebase_auth: ^6.1.2
   firebase_storage: ^13.0.4
@@ -71,12 +74,8 @@ dependencies:
   speech_to_text: ^7.3.0
   flutter_tts: ^3.8.5
   
-  # Video Conferencing (used in conference platform)
-  jitsi_meet_flutter_sdk: ^11.6.0
-  
-  # Chat & Messaging (used in chat service)
-  stream_chat_flutter: ^9.19.0
-  stream_chat_flutter_core: ^9.19.0
+  # Video Conferencing
+  livekit_client: ^2.7.0
   
   # Payment Integration
   pay_with_paystack: ^1.0.7
@@ -103,7 +102,7 @@ dependencies:
   permission_handler: ^11.4.0
   
   # Connectivity
-  connectivity_plus: ^6.1.5
+  connectivity_plus: ^7.1.1
   timeago: ^3.6.1
 
   # Email & Web Services

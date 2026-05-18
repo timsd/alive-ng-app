@@ -1,6 +1,4 @@
 class AppConstants {
-  // Firebase
-
   // App Information
   static const String appName = 'ALIVE-NG APP';
   static const String appVersion = '1.0.0';
@@ -16,6 +14,7 @@ class AppConstants {
   static const String healthRoute = '/health';
   static const String missionsRoute = '/missions';
   static const String authRoute = '/auth';
+  static const String resetPasswordRoute = '/reset-password';
   static const String bibleRoute = '/bible';
   static const String notificationSettingsRoute = '/notification-settings';
 

@@ -9,10 +9,9 @@ import '../../widgets/error_widget.dart';
 import 'chat_message_widget.dart';
 import 'chat_input_widget.dart';
 import 'channel_list_widget.dart';
-import '../../providers/firebase_auth_provider.dart';
-import '../../config/meeting_links_config.dart';
-import '../conference/enhanced_jitsi_meet_screen.dart';
+import '../../providers/appwrite_auth_provider.dart';
 import '../../services/role_access_service.dart';
+import '../conference/livekit_meeting_screen.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final String? channelId;
@@ -59,8 +58,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         _error = null;
       });
 
-      // Get current user ID (you'll need to implement this)
-      const userId = 'current-user-id'; // Replace with actual user ID
+      final userId = AuthService.instance.currentUser?.uid;
+      if (userId == null) {
+        setState(() {
+          _channels = [];
+          _isLoading = false;
+        });
+        return;
+      }
       final channels = await _chatService.getUserChannels(userId);
 
       setState(() {
@@ -82,9 +87,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _selectChannelById(String channelId) async {
+    if (_channels.isEmpty) return;
     final channel = _channels.firstWhere(
       (c) => c.id == channelId,
-      orElse: () => _channels.isNotEmpty ? _channels.first : _channels.first,
+      orElse: () => _channels.first,
     );
     _selectChannel(channel);
   }
@@ -171,6 +177,46 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
+  Future<void> _sendMessageWithAttachments(
+    String content,
+    MessageType type,
+    List<String> attachments,
+  ) async {
+    if (_selectedChannel == null || content.trim().isEmpty) return;
+
+    final currentUser = AuthService.instance.currentUser;
+    if (currentUser == null) {
+      _showError(
+          'You must be signed in to send messages. Please sign in to continue.');
+      return;
+    }
+
+    try {
+      final message = await _chatService.sendMessage(
+        channelId: _selectedChannel!.id,
+        content: content.trim(),
+        type: type,
+        attachments: attachments,
+      );
+
+      setState(() {
+        _messages.add(message);
+      });
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+      });
+    } catch (e) {
+      _showError('Failed to send attachment: $e');
+    }
+  }
+
   Future<void> _markMessagesAsRead() async {
     if (_selectedChannel == null) return;
 
@@ -196,6 +242,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     showDialog(
       context: context,
       builder: (context) => _CreateChannelDialog(
+        currentUserId: AuthService.instance.currentUser?.uid,
         onChannelCreated: (channel) {
           setState(() {
             _channels.insert(0, channel);
@@ -336,9 +383,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                                 Navigator.of(context).push(
                                                   MaterialPageRoute(
                                                     builder: (context) =>
-                                                        EnhancedJitsiMeetScreen(
-                                                      meetingType:
-                                                          MeetingType.general,
+                                                        LiveKitMeetingScreen(
+                                                      customRoomName:
+                                                          _selectedChannel!.id,
                                                       isModerator: isModerator,
                                                     ),
                                                   ),
@@ -393,6 +440,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                 ChatInputWidget(
                                   controller: _messageController,
                                   onSendMessage: _sendMessage,
+                                  onSendMessageWithAttachments:
+                                      _sendMessageWithAttachments,
                                   onTagSearch: _chatService.getTaggableEntities,
                                 ),
                               ],
@@ -450,8 +499,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
 class _CreateChannelDialog extends StatefulWidget {
   final Function(ChatChannel) onChannelCreated;
+  final String? currentUserId;
 
-  const _CreateChannelDialog({required this.onChannelCreated});
+  const _CreateChannelDialog({
+    required this.onChannelCreated,
+    required this.currentUserId,
+  });
 
   @override
   State<_CreateChannelDialog> createState() => _CreateChannelDialogState();
@@ -483,7 +536,9 @@ class _CreateChannelDialogState extends State<_CreateChannelDialog> {
         name: _nameController.text.trim(),
         description: _descriptionController.text.trim(),
         type: _selectedType,
-        members: ['current-user-id'], // Replace with actual user ID
+        members: [
+          if (widget.currentUserId != null) widget.currentUserId!,
+        ],
       );
 
       widget.onChannelCreated(channel);
@@ -582,3 +637,4 @@ class _CreateChannelDialogState extends State<_CreateChannelDialog> {
     );
   }
 }
+

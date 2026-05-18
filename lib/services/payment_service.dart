@@ -1,9 +1,13 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:cloud_functions/cloud_functions.dart';
+import 'dart:convert';
+import 'package:appwrite/appwrite.dart';
+import 'package:appwrite/enums.dart' as appwrite_enums;
 import 'package:paystack_flutter_sdk/paystack_flutter_sdk.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../config/appwrite_backend_config.dart';
 import '../config/payment_config.dart';
+import '../main.dart';
 import '../utils/logger.dart';
 
 /// Unified PaymentService for all platforms (mobile and web)
@@ -62,10 +66,9 @@ class PaymentService {
         );
       }
 
-      final functions = FirebaseFunctions.instance;
-      final callable = functions.httpsCallable('initPaystackTransaction');
       final amountKobo = (amount * 100).round();
       final payload = {
+        'action': 'initialize_transaction',
         'amount': amountKobo,
         'currency': (metadata != null && metadata['currency'] is String)
             ? metadata['currency']
@@ -76,8 +79,7 @@ class PaymentService {
         'channels': PaymentConfig.paystackChannels,
         if (metadata != null) 'metadata': metadata,
       };
-      final result = await callable.call(payload);
-      final data = (result.data as Map?) ?? {};
+      final data = await _executePaystackFunction(payload);
       return _handlePaystackInitResponse(data: data, fallbackReference: ref);
     } catch (e) {
       _logger.error('Error processing payment: $e');
@@ -120,9 +122,8 @@ class PaymentService {
         );
       }
 
-      final functions = FirebaseFunctions.instance;
-      final callable = functions.httpsCallable('initPaystackSubscription');
       final payload = {
+        'action': 'initialize_subscription',
         'currency': currency,
         'email': email,
         'reference': ref,
@@ -131,8 +132,7 @@ class PaymentService {
         'channels': PaymentConfig.paystackChannels,
         if (metadata != null) 'metadata': metadata,
       };
-      final result = await callable.call(payload);
-      final data = (result.data as Map?) ?? {};
+      final data = await _executePaystackFunction(payload);
       return _handlePaystackInitResponse(data: data, fallbackReference: ref);
     } catch (e) {
       _logger.error('Error processing monthly donation: $e');
@@ -141,6 +141,24 @@ class PaymentService {
         message: 'Error processing monthly donation: $e',
       );
     }
+  }
+
+  Future<Map<String, dynamic>> _executePaystackFunction(
+    Map<String, dynamic> payload,
+  ) async {
+    final functions = Functions(appwriteClient);
+    final execution = await functions.createExecution(
+      functionId: AppwriteBackendConfig.paystackPaymentsFunctionId,
+      body: jsonEncode(payload),
+      xasync: false,
+      method: appwrite_enums.ExecutionMethod.pOST,
+    );
+
+    final data = jsonDecode(execution.responseBody) as Map<String, dynamic>;
+    if (data['error'] != null) {
+      throw Exception(data['error']);
+    }
+    return data;
   }
 
   Future<PaymentResult> _handlePaystackInitResponse({
