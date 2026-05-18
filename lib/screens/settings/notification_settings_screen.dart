@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/notification_settings.dart';
 import '../../services/notification_settings_service.dart';
-import '../../services/firebase_messaging_service.dart';
-import '../../services/firebase_messaging_base.dart';
 import '../../services/reminder_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/loading_widget.dart';
@@ -192,14 +190,12 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
                               const SizedBox(height: 16),
                               SwitchListTile(
                                 title: const Text('Enable Push Notifications'),
-                                subtitle: const Text('Receive notifications from Firebase'),
+                                subtitle: const Text('Receive ALIVE reminders and Appwrite messaging updates'),
                                 value: _settings!.pushNotificationsEnabled,
                                 onChanged: _isSaving ? null : (value) async {
                                   if (value) {
                                     final granted = await NotificationSettingsService.requestNotificationPermission();
                                     if (!granted) return;
-                                    final token = await FirebaseMessagingService.getCurrentToken();
-                                    if (token == null) return;
                                     await _updateSetting(_settings!.copyWith(pushNotificationsEnabled: true));
                                   } else {
                                     await _updateSetting(_settings!.copyWith(pushNotificationsEnabled: value));
@@ -361,7 +357,7 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
                                 child: ElevatedButton.icon(
                                   onPressed: _isSaving ? null : () async {
                                     try {
-                                      await FirebaseMessagingBase.showLocalNotification(
+                                      await ReminderService().showImmediateNotification(
                                         id: DateTime.now().millisecondsSinceEpoch,
                                         title: 'Test Notification',
                                         body: 'This is a test notification from ALIVE NG',

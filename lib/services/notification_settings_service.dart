@@ -8,7 +8,6 @@ import '../main.dart';
 import '../models/notification_settings.dart';
 import '../utils/toast_utils.dart';
 import '../utils/logger.dart';
-import 'firebase_messaging_base.dart';
 import 'auth_service.dart';
 import 'storage_service.dart';
 
@@ -133,14 +132,10 @@ class NotificationSettingsService {
           await updateSettings(updatedSettings);
         }
 
-        // Register for push notifications with Firebase
-        try {
-          await FirebaseMessagingBase.getAndSaveToken();
-          _logger.info('Successfully registered for push notifications with Firebase');
-        } catch (e) {
-          _logger.error('Failed to register for push notifications with Firebase', e);
-          // Don't fail the entire operation if Firebase registration fails
-        }
+        _logger.info(
+          'Notification permission granted. Appwrite Messaging target setup '
+          'will register remote push identifiers after provider setup.',
+        );
 
         ToastUtils.showSuccess(
             'You\'ll receive reminders for your daily activities');

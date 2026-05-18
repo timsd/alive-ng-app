@@ -147,8 +147,6 @@ class ReminderService {
           sound: true,
         );
 
-    // Firebase FCM permissions are handled during initialization
-
     return androidPermission ?? iosPermission ?? true;
   }
 
@@ -188,6 +186,32 @@ class ReminderService {
       _logger.error('Error scheduling reminder', error);
       return false;
     }
+  }
+
+  Future<void> showImmediateNotification({
+    required int id,
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
+    await initialize();
+
+    const androidDetails = AndroidNotificationDetails(
+      'default_channel',
+      'Default Notifications',
+      channelDescription: 'Default app notifications',
+      importance: Importance.defaultImportance,
+      priority: Priority.defaultPriority,
+    );
+    const iosDetails = DarwinNotificationDetails();
+
+    await _flutterLocalNotificationsPlugin.show(
+      id,
+      title,
+      body,
+      const NotificationDetails(android: androidDetails, iOS: iosDetails),
+      payload: payload,
+    );
   }
 
   Future<void> _scheduleLocalNotification(

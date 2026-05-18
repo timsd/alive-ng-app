@@ -362,7 +362,13 @@ flutter test test/widget_test.dart
 ### Utility Scripts
 ```bash
 dart scripts/duplicate_dart_files.dart
+npm run appwrite:ping
 ```
+
+`npm run appwrite:ping` simulates the Appwrite platform handshake from this
+repo. A 401 response from `/account` is acceptable for the ping because no user
+session is supplied; the useful signal is that Appwrite responds for the project
+and the web origin is allowed.
 
 ## Deployment
 
@@ -392,6 +398,7 @@ dart scripts/duplicate_dart_files.dart
    - Verify `APPWRITE_ENDPOINT`, `APPWRITE_PROJECT_ID`, and `APPWRITE_DATABASE_ID`
    - Confirm Android/Web platforms are present in the Appwrite Console
    - Run `npm run appwrite:dry-run` before provisioning
+   - Run `npm run appwrite:ping` to confirm endpoint/project/web-origin reachability
 
 4. **Legacy Firebase compatibility**
    - Keep Firebase config files while Firebase imports remain

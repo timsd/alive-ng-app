@@ -34,7 +34,8 @@ Estimated overall migration progress: about 70%.
   - `paystack_payments`
   - `paystack_webhook`
 - Teams: admin and ministry role/team configuration from the infrastructure schema.
-- Webhooks/topics: declared in `scripts/appwrite_infrastructure_schema.mjs` for migrated storage, profile approval, donation, and messaging flows.
+- Topics: declared in `scripts/appwrite_infrastructure_schema.mjs` for migrated messaging flows.
+- Optional webhooks: profile approval, chat file upload, and donation record event forwarding are declared but skipped unless external receiver URLs are supplied.
 
 ## Hosting And Deployment
 
@@ -55,8 +56,9 @@ Estimated overall migration progress: about 70%.
 - Chat: Appwrite database + Appwrite Storage attachments through the existing `lib/screens/chat` UI.
 - Meetings: LiveKit client SDK and the Appwrite `createLiveKitToken` function.
 - Notifications:
-  - Local notifications still use `flutter_local_notifications`.
-  - Push token/device delivery still uses Firebase Messaging compatibility while Appwrite Messaging provider setup is completed.
+  - Local notifications and reminders use `flutter_local_notifications`.
+  - Appwrite notification settings and topics are provisioned.
+  - Remote push delivery requires Appwrite Messaging provider setup and target/subscriber registration before Firebase Messaging can be fully removed.
 
 ## Legacy Firebase Compatibility
 
@@ -98,6 +100,9 @@ Keep these out of Git. Configure them in `.env`, Coolify build variables, or App
 - `RECEIPT_SENDER_EMAIL`
 - `WEB_PUSH_CERT_KEY`
 - `WEB_PUSH_PRIVATE_KEY` when Appwrite/web push provider setup is ready
+- `APPWRITE_PROFILE_APPROVAL_WEBHOOK_URL` only if forwarding profile approval updates to an external receiver
+- `APPWRITE_CHAT_FILE_WEBHOOK_URL` only if forwarding chat upload events to an external receiver
+- `APPWRITE_DONATION_WEBHOOK_URL` only if forwarding donation record events to an external receiver
 
 ## Maintenance Notes
 
