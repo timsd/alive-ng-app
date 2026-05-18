@@ -23,10 +23,10 @@ export default async ({ req, res, log, error }) => {
     }
 
     const apiKey = process.env.LIVEKIT_API_KEY;
-    const apiSecret = process.env.LIVEKIT_API_SECRET;
+    const apiSecret = process.env.LIVEKIT_API_SECRET || process.env.LIVEKIT_SECRET;
 
     if (!apiKey || !apiSecret) {
-      error('Missing LIVEKIT_API_KEY or LIVEKIT_API_SECRET environment variables.');
+      error('Missing LIVEKIT_API_KEY and LIVEKIT_API_SECRET/LIVEKIT_SECRET environment variables.');
       return res.json({ error: 'LiveKit server credentials are not configured.' }, 500);
     }
 

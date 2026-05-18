@@ -50,6 +50,9 @@ class AppwriteBackendConfig {
   static const String contentPagesCollectionId = 'content_pages';
   static const String dynamicContentCollectionId = 'dynamic_content';
   static const String featuredContentCollectionId = 'featured_content';
+  static const String studyGuidesCollectionId = 'study_guides';
+  static const String studyProgressCollectionId = 'study_progress';
+  static const String healthTrackingCollectionId = 'health_tracking';
   static const String passwordRecoveryUrl =
       'https://app.alivenigeria.org/#/reset-password';
   static const String oauthSuccessUrl = 'https://app.alivenigeria.org/#/home';

@@ -8,26 +8,15 @@ import '../../models/app_models.dart';
 import '../../utils/text_formatter.dart';
 import '../../utils/layout_fix_utils.dart';
 import '../../utils/responsive_utils.dart';
+import '../../services/appwrite_health_service.dart';
 
 // Provider for health tracking data
 final healthTrackingProvider =
     FutureProvider<List<HealthTracking>>((ref) async {
-  final firebase = ref.read(firebaseDatabaseServiceProvider);
   final user = ref.read(currentUserProvider);
 
   if (user == null) return [];
-
-  // Fetch health activities from Firebase
-  final snapshot = await firebase.firestore
-      .collection('health_activities')
-      .where('user_id', isEqualTo: user.uid)
-      .get();
-
-  return snapshot.docs.map((doc) {
-    final data = doc.data();
-    data['id'] = doc.id;
-    return HealthTracking.fromJson(data);
-  }).toList();
+  return AppwriteHealthService.instance.getUserHealthTracking(user.uid);
 });
 
 // Provider for today's health activities

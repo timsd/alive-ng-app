@@ -8,18 +8,18 @@ import '../../models/app_models.dart';
 import '../../constants/app_constants.dart';
 import '../../utils/text_formatter.dart';
 import '../../utils/responsive_utils.dart';
+import '../../services/appwrite_study_service.dart';
 
 // Provider for study programs
 final studyProgramsProvider = FutureProvider<List<StudyProgram>>((ref) async {
-  final firebase = ref.read(firebaseDatabaseServiceProvider);
-  return await firebase.getStudyPrograms();
+  return AppwriteStudyService.instance.getStudyPrograms();
 });
 
 // Provider for user's study progress
 final studyProgressProvider = FutureProvider<List<StudyProgress>>((ref) async {
-  // Note: This would need to be implemented in FirebaseDatabaseService
-  // For now, returning empty list
-  return <StudyProgress>[];
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return <StudyProgress>[];
+  return AppwriteStudyService.instance.getUserStudyProgress(user.uid);
 });
 
 class StudyScreen extends ConsumerWidget {
