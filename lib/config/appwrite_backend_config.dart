@@ -46,6 +46,8 @@ class AppwriteBackendConfig {
   static const String pushTokensCollectionId = 'push_tokens';
   static const String notificationSettingsCollectionId =
       'notification_settings';
+  static const String eventsCollectionId = 'events';
+  static const String userEventsCollectionId = 'user_events';
   static const String announcementsCollectionId = 'announcements';
   static const String contentPagesCollectionId = 'content_pages';
   static const String dynamicContentCollectionId = 'dynamic_content';

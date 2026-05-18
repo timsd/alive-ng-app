@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../providers/auth_provider.dart';
 import '../../providers/language_provider.dart';
+import '../../services/appwrite_events_service.dart';
 import '../../services/role_access_service.dart';
 import '../../utils/responsive_utils.dart';
 import '../../utils/toast_utils.dart';
@@ -38,27 +38,9 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
         _error = null;
       });
 
-      // Load events
-      final eventsSnapshot = await FirebaseFirestore.instance
-          .collection('events')
-          .orderBy('created_at', descending: true)
-          .get();
-          
-      final eventsResponse = eventsSnapshot.docs.map((doc) => {
-        ...doc.data(),
-        'id': doc.id,
-      }).toList();
-
-      // Load announcements
-      final announcementsSnapshot = await FirebaseFirestore.instance
-          .collection('announcements')
-          .orderBy('created_at', descending: true)
-          .get();
-          
-      final announcementsResponse = announcementsSnapshot.docs.map((doc) => {
-        ...doc.data(),
-        'id': doc.id,
-      }).toList();
+      final service = AppwriteEventsService.instance;
+      final eventsResponse = await service.listEvents();
+      final announcementsResponse = await service.listAnnouncements();
 
       setState(() {
         _events = List<Map<String, dynamic>>.from(eventsResponse);
@@ -252,7 +234,11 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
   }
 
   Widget _buildEventCard(BuildContext context, Map<String, dynamic> event, String Function(String) translate) {
-    final scheduledFor = DateTime.tryParse(event['scheduled_for'] ?? '');
+    final scheduledFor = DateTime.tryParse(
+      event['scheduled_time']?.toString() ??
+          event['scheduled_for']?.toString() ??
+          '',
+    );
     
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -330,7 +316,12 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
 
   Widget _buildAnnouncementCard(BuildContext context, Map<String, dynamic> announcement, String Function(String) translate) {
     final createdAt = DateTime.tryParse(announcement['created_at'] ?? '');
-    final priority = announcement['priority'] ?? 'medium';
+    final audience = announcement['audience']?.toString();
+    final priority = announcement['priority'] ??
+        (audience?.startsWith('all:') == true
+            ? audience!.substring('all:'.length)
+            : 'medium');
+    final message = announcement['content'] ?? announcement['message'];
     
     Color priorityColor = Theme.of(context).colorScheme.primary;
     switch (priority) {
@@ -385,10 +376,10 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            if (announcement['message'] != null) ...[
+            if (message != null) ...[
               const SizedBox(height: 8),
               Text(
-                announcement['message'],
+                message.toString(),
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
                 ),
@@ -543,20 +534,19 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                 }
 
                 try {
-                  final user = FirebaseAuth.instance.currentUser;
+                  final user = await ref.read(authServiceProvider).getCurrentUser();
                   if (user == null) {
                     ToastUtils.showError('User not authenticated');
                     return;
                   }
                   
-                  await FirebaseFirestore.instance.collection('events').add({
-                    'title': titleController.text.trim(),
-                    'description': descriptionController.text.trim(),
-                    'location': locationController.text.trim(),
-                    'scheduled_for': scheduledDate?.toIso8601String(),
-                    'created_at': DateTime.now().toIso8601String(),
-                    'created_by': user.uid,
-                  });
+                  await AppwriteEventsService.instance.createEvent(
+                    title: titleController.text.trim(),
+                    description: descriptionController.text.trim(),
+                    location: locationController.text.trim(),
+                    authorId: user.$id,
+                    scheduledDate: scheduledDate,
+                  );
 
                   if (!rootCtx.mounted) return;
                   Navigator.of(rootCtx).pop();
@@ -640,22 +630,18 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                 }
 
                 try {
-                  final user = FirebaseAuth.instance.currentUser;
+                  final user = await ref.read(authServiceProvider).getCurrentUser();
                   if (user == null) {
                     ToastUtils.showError('User not authenticated');
                     return;
                   }
                   
-                  await FirebaseFirestore.instance.collection('announcements').add({
-                    'title': titleController.text.trim(),
-                    'message': messageController.text.trim(),
-                    'priority': priority,
-                    'type': 'general',
-                    'target_audience': 'all',
-                    'is_active': true,
-                    'created_at': DateTime.now().toIso8601String(),
-                    'created_by': user.uid,
-                  });
+                  await AppwriteEventsService.instance.createAnnouncement(
+                    title: titleController.text.trim(),
+                    content: messageController.text.trim(),
+                    authorId: user.$id,
+                    audience: 'all:$priority',
+                  );
 
                   if (!rootCtx.mounted) return;
                   Navigator.of(rootCtx).pop();
