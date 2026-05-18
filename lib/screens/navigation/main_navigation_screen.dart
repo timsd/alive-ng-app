@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alive_flutter_app/constants/app_constants.dart';
@@ -395,34 +394,32 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
 
   Future<void> _handleClaimAdminRole(BuildContext context) async {
     try {
-      final ok =
-          await ref.read(firebaseDatabaseServiceProvider).claimAdminRole();
+      final user = await ref.read(authServiceProvider).getCurrentUser();
       if (!context.mounted) return;
-      if (ok) {
-        await FirebaseAuth.instance.currentUser?.getIdToken(true);
-        if (!context.mounted) return;
-        RoleAccessService.instance.clearCache();
+      if (user == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text(
-                'Admin role claim successful. Your access is refreshing now.'),
-            backgroundColor: Theme.of(context).colorScheme.tertiary,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text(
-                'Admin role claim failed. Check Cloud Functions deployment.'),
+            content: const Text('Sign in before refreshing admin access.'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
+        return;
       }
+
+      RoleAccessService.instance.clearCache();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Admin access checked. If your account is in the Appwrite admin team, access will refresh now.',
+          ),
+          backgroundColor: Theme.of(context).colorScheme.tertiary,
+        ),
+      );
     } catch (_) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Could not claim admin role right now.'),
+          content: const Text('Could not refresh admin access right now.'),
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );

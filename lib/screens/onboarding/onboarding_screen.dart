@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../constants/app_constants.dart';
-import '../../providers/auth_provider.dart';
 import '../../providers/language_provider.dart';
+import '../../services/appwrite_content_service.dart';
 import '../../services/onboarding_service.dart';
 import '../../utils/responsive_utils.dart';
 
@@ -65,8 +65,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     try {
       final currentLocale = ref.read(localeProvider);
       final languageCode = currentLocale.languageCode;
-      final firebaseService = ref.read(firebaseDatabaseServiceProvider);
-      final contentData = await firebaseService.getContentPageBySlug(
+      final contentData =
+          await AppwriteContentService.instance.getContentPageBySlug(
         'onboarding',
         languageCode: languageCode,
       );
@@ -257,4 +257,3 @@ class _OnboardingCard extends StatelessWidget {
     );
   }
 }
-
