@@ -1,8 +1,18 @@
 class AppwriteBackendConfig {
   static const String endpoint =
-      'http://appwrite-he4p5j9b9dj42v5nzeklu2u3.84.8.219.248.sslip.io/v1';
-  static const String projectId = '6a088e5f0003764bde50';
-  static const String databaseId = '6a089307002e54291a32';
+      String.fromEnvironment(
+    'APPWRITE_ENDPOINT',
+    defaultValue:
+        'http://appwrite-he4p5j9b9dj42v5nzeklu2u3.84.8.219.248.sslip.io/v1',
+  );
+  static const String projectId = String.fromEnvironment(
+    'APPWRITE_PROJECT_ID',
+    defaultValue: '6a088e5f0003764bde50',
+  );
+  static const String databaseId = String.fromEnvironment(
+    'APPWRITE_DATABASE_ID',
+    defaultValue: '6a089307002e54291a32',
+  );
   static const String usersCollectionId = '6a08943100226f5b4963';
   static const String chatChannelsCollectionId = '6a08f1c70032affbc00d';
   static const String chatMessagesCollectionId = '6a08e25e0034f79fcd2f';
