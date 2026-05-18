@@ -30,6 +30,9 @@ class DonationService {
       AppwriteBackendConfig.downloadableMaterialsCollectionId;
   String get _downloadsCollectionId =>
       AppwriteBackendConfig.materialDownloadsCollectionId;
+  String get _projectsCollectionId => AppwriteBackendConfig.projectsCollectionId;
+  String get _settingsCollectionId =>
+      AppwriteBackendConfig.appSettingsCollectionId;
 
   Map<String, dynamic> _documentData(dynamic document) {
     return {
@@ -67,6 +70,70 @@ class DonationService {
       if (decoded is Map) return Map<String, dynamic>.from(decoded);
     }
     return null;
+  }
+
+  Future<String?> getAppSettingValue(String key) async {
+    try {
+      final snapshot = await _db.listDocuments(
+        databaseId: _databaseId,
+        collectionId: _settingsCollectionId,
+        queries: [
+          Query.equal('key', key),
+          Query.limit(1),
+        ],
+      );
+      if (snapshot.documents.isEmpty) {
+        final fallback = await _db.listDocuments(
+          databaseId: _databaseId,
+          collectionId: _settingsCollectionId,
+          queries: [
+            Query.equal('setting_key', key),
+            Query.limit(1),
+          ],
+        );
+        if (fallback.documents.isEmpty) return null;
+        return (fallback.documents.first.data['value'] ??
+                fallback.documents.first.data['setting_value'])
+            ?.toString();
+      }
+
+      return (snapshot.documents.first.data['value'] ??
+              snapshot.documents.first.data['setting_value'])
+          ?.toString();
+    } catch (e) {
+      _logger.error('Failed to fetch app setting $key', e);
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> getProject(String projectId) async {
+    try {
+      final doc = await _db.getDocument(
+        databaseId: _databaseId,
+        collectionId: _projectsCollectionId,
+        documentId: projectId,
+      );
+      return _documentData(doc);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getDonationProjects() async {
+    try {
+      final snapshot = await _db.listDocuments(
+        databaseId: _databaseId,
+        collectionId: _projectsCollectionId,
+        queries: [
+          Query.orderAsc('priority'),
+          Query.limit(100),
+        ],
+      );
+      return snapshot.documents.map(_documentData).toList();
+    } catch (e) {
+      _logger.error('Failed to fetch donation projects', e);
+      return [];
+    }
   }
 
   Future<dynamic> _currentUser() async {

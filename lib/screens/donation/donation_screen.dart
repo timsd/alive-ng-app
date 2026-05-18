@@ -6,7 +6,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../utils/responsive_utils.dart';
 import '../../services/donation_service.dart';
 import '../../models/donation_models.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../utils/web_launch_params.dart';
 import '../../providers/appwrite_auth_provider.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -118,25 +117,17 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
 
   double _exchangeRate = 1650.0; // Default fallback
   Future<void> _fetchExchangeRate() async {
-    // Only use Admin setting from Firestore
     try {
-      final settingDoc = await FirebaseFirestore.instance
-          .collection('app_settings')
-          .where('setting_key', isEqualTo: 'usd_to_ngn_rate')
-          .get();
-      if (settingDoc.docs.isNotEmpty) {
-        final data = settingDoc.docs.first.data();
-        if (data['is_active'] != false && data['setting_value'] != null) {
-          final rate = double.tryParse(data['setting_value'].toString());
-          if (rate != null) {
-            setState(() => _exchangeRate = rate);
-            debugPrint('Using Admin Exchange Rate: $_exchangeRate');
-            return;
-          }
-        }
+      final value =
+          await DonationService().getAppSettingValue('usd_to_ngn_rate');
+      final rate = double.tryParse(value ?? '');
+      if (rate != null && rate > 0) {
+        setState(() => _exchangeRate = rate);
+        debugPrint('Using Appwrite exchange rate: $_exchangeRate');
+        return;
       }
     } catch (e) {
-      debugPrint('Firestore exchange rate fetch failed: $e');
+      debugPrint('Appwrite exchange rate fetch failed: $e');
     }
     debugPrint('Using hardcoded fallback Exchange Rate: $_exchangeRate');
   }
@@ -224,17 +215,14 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                         ),
                       ),
                     if (_selectedProjectId != null)
-                      FutureBuilder<DocumentSnapshot>(
-                        future: FirebaseFirestore.instance
-                            .collection('projects')
-                            .doc(_selectedProjectId)
-                            .get(),
+                      FutureBuilder<Map<String, dynamic>?>(
+                        future: DonationService()
+                            .getProject(_selectedProjectId!),
                         builder: (context, snapshot) {
-                          if (!snapshot.hasData || !snapshot.data!.exists) {
+                          if (!snapshot.hasData || snapshot.data == null) {
                             return const SizedBox.shrink();
                           }
-                          final data =
-                              snapshot.data!.data() as Map<String, dynamic>;
+                          final data = snapshot.data!;
                           final goal = (data['goal'] as num?)?.toDouble() ?? 0;
                           final raised =
                               (data['raised'] as num?)?.toDouble() ?? 0;
@@ -1374,11 +1362,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       if (projectId == null || projectId == 'general_mission') return;
       _selectedProjectId = projectId;
       try {
-        final doc = await FirebaseFirestore.instance
-            .collection('projects')
-            .doc(projectId)
-            .get();
-        final data = doc.data();
+        final data = await DonationService().getProject(projectId);
         if (data != null) {
           _selectedProjectTitle =
               (data['title'] as String?) ?? (data['name'] as String?);
@@ -1412,7 +1396,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
     });
   }
 
-  /// Opens a bottom sheet listing active ministry projects from Firestore.
+  /// Opens a bottom sheet listing ministry projects from Appwrite.
   /// User can tap "Donate to This Project" to pre-select that project and
   /// scroll down to the donation form.
   void _showProjectsPicker() {
@@ -1668,17 +1652,9 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
 
   /// Fetches projects ordered by 'priority' ascending.
   /// Shows all statuses so users can see active, planning, and completed projects.
-  /// Relies strictly on Firestore data managed by the Admin.
   Future<List<Map<String, dynamic>>> _fetchProjects() async {
-    try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('projects')
-          .orderBy('priority')
-          .get();
-      if (snapshot.docs.isNotEmpty) {
-        return snapshot.docs.map((d) => {'id': d.id, ...d.data()}).toList();
-      }
-    } catch (_) {}
+    final projects = await DonationService().getDonationProjects();
+    if (projects.isNotEmpty) return projects;
     return _fallbackProjects;
   }
 

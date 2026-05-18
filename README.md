@@ -4,29 +4,25 @@ A comprehensive Flutter application for the ALIVE-NG Ministry, providing feature
 
 ## Current Migration Status
 
-The app is mid-migration from Firebase/Jitsi/GetStream pieces to Appwrite and
-LiveKit. Do not remove remaining Firebase files only because Appwrite files now
-exist; several modules still import Firebase services and must be replaced one
-workflow at a time.
+The app is mid-migration from Firebase/Jitsi/GetStream pieces to Appwrite,
+LiveKit, and Coolify. Estimated overall migration progress is about 70%.
+Do not remove remaining Firebase files only because Appwrite files now exist;
+some admin, library, kids, chapter, notification, analytics, and sync modules
+still import Firebase services and must be replaced one workflow at a time.
 
-- Authentication and profile creation are now wired through Appwrite services.
-- Chat is already using the existing `lib/screens/chat` UI with an
-  Appwrite-backed `ChatService` facade, Appwrite Storage attachments, mentions,
-  and LiveKit meeting entry points.
-- `appwrite.config.json` currently captures project settings and the
-  `createLiveKitToken` function, but not the full remote schema for TablesDB,
-  buckets, teams, webhooks, or messaging topics.
-- Appwrite CLI is pinned locally to `appwrite-cli@12.0.1`, but this Appwrite
-  `1.7.4` server still rejects CLI endpoint configuration, so remote
-  provisioning should use the SDK script for now.
-- Appwrite infrastructure schema is captured in
-  `scripts/appwrite_infrastructure_schema.mjs`; run `npm run appwrite:dry-run`
-  to review it before applying.
-- Your current server reports Appwrite `1.7.4`, so use
-  `APPWRITE_API_KEY=<master key> npm run appwrite:provision:legacy` for remote
-  provisioning unless the server is upgraded to a TablesDB release.
+- Appwrite now backs auth/profile bootstrap, chat, prayer, testimonies,
+  notification settings records, study, health, onboarding content, events,
+  announcements, donation records, donation projects/settings reads, and the
+  Paystack function flow.
+- LiveKit is the current meeting stack through the `createLiveKitToken`
+  Appwrite function.
+- `scripts/appwrite_infrastructure_schema.mjs` is the source of truth for
+  databases, collections, buckets, teams, webhooks, topics, and function IDs.
+- The current Appwrite server is `1.7.4`; use `npm run appwrite:dry-run` first,
+  then `npm run appwrite:provision:legacy` for provisioning.
 - Coolify web hosting is supported through the root `Dockerfile`, which builds
-  Flutter web and serves it with Nginx.
+  Flutter web and serves it with Nginx. Supply Flutter build-time values through
+  the `FLUTTER_BUILD_ARGS` build argument.
 
 ## Features
 
@@ -132,12 +128,11 @@ lib/
    flutter pub get
    ```
 
-3. **Configure Firebase**
-   - Create a Firebase project at [Firebase Console](https://console.firebase.google.com/)
-   - Add Android and iOS apps to your Firebase project
-   - Download and replace the configuration files:
-     - `android/app/google-services.json` (Android)
-     - `ios/Runner/GoogleService-Info.plist` (iOS)
+3. **Configure Appwrite and local environment**
+   - Copy the required values into `.env` locally; do not commit secrets.
+   - Add Appwrite Android/Web platforms in the Appwrite Console.
+   - Run `npm run appwrite:dry-run` to inspect infrastructure changes.
+   - Run `npm run appwrite:provision:legacy` only after the dry run looks right.
 
 4. **Run the app**
    ```bash
@@ -153,8 +148,8 @@ Before building a Play Store bundle on another machine:
 1. Install Android Studio with Android SDK and Build Tools.
 2. Install a stable Flutter SDK that matches the project constraints.
 3. Ensure Java/JDK is installed and available to Gradle.
-4. Restore Firebase config files:
-   - `android/app/google-services.json`
+4. Restore required runtime config files while migration is still in progress:
+   - `android/app/google-services.json` for Firebase Messaging compatibility
 5. Restore Android signing files:
    - `android/key.properties`
    - `android/app/alive-release.keystore`
@@ -186,14 +181,16 @@ Notes:
 #### iOS
 - Minimum iOS version: 11.0
 - Permissions configured in `ios/Runner/Info.plist`
-- Firebase configuration in `ios/Runner/GoogleService-Info.plist`
+- Firebase iOS configuration is needed only if remaining Firebase-compatible
+  features are enabled for iOS before full migration.
 
 ## Configuration
 
 ### Environment Setup & Security
 **CRITICAL**: This app requires environment variables for API keys and signing configurations. 
 Please read [SETUP_ENV.md](SETUP_ENV.md) for detailed instructions on how to configure:
-- API Keys (Firebase, Paystack, reCAPTCHA, etc.)
+- API keys and endpoints for Appwrite, Paystack, LiveKit, Google OAuth, and any
+  remaining Firebase-compatible notification setup.
 - Android Release Signing
 - Development vs Production setups
 
@@ -202,20 +199,21 @@ Use Flutter `--dart-define` at build time. See [SETUP_ENV.md](SETUP_ENV.md) for 
 
 ```bash
 flutter run -d chrome \
+  --dart-define=APPWRITE_ENDPOINT=... \
+  --dart-define=APPWRITE_PROJECT_ID=... \
+  --dart-define=APPWRITE_DATABASE_ID=... \
+  --dart-define=LIVEKIT_URL=... \
   --dart-define=PAYSTACK_PUBLIC_KEY=... \
-  --dart-define=RECAPTCHA_SITE_KEY=... \
-  --dart-define=FIREBASE_WEB_API_KEY=...
+  --dart-define=PAYSTACK_CALLBACK_URL=...
 ```
 
-### Firebase Services
-- **Authentication**: Email/password, social login
-- **Cloud Messaging**: Push notifications
-- **Analytics**: User behavior tracking
-- **Crashlytics**: Error reporting
-- **Authentication**: User management
-- **Storage**: File uploads and management
-- **Edge Functions**: Server-side logic
-- **Database**: with real-time subscriptions
+### Backend Services
+- **Appwrite Auth**: email/password and OAuth-backed account flows
+- **Appwrite Databases**: primary data store for migrated features
+- **Appwrite Storage**: files and media for migrated upload flows
+- **Appwrite Functions**: LiveKit token creation and Paystack server logic
+- **Firebase compatibility**: push messaging, analytics/crash reporting, and
+  legacy modules until their imports are removed
 
 
 ## Development
@@ -275,16 +273,16 @@ if (res.isSuccess) {
 }
 ```
 
-### FirebaseDatabaseService
-- Central Firestore, Auth, Storage, and Functions access
-- Profiles, prayer requests, Bible data helpers
-- Key methods: getUserProfile, createUserProfile, getPrayerRequests
-- Reference: [firebase_database_service.dart](file:///c:/Users/Zavolah/Documents/ZavTech%20Projects/alive-ng-app/lib/services/firebase_database_service.dart)
+### Appwrite Services
+- `AuthService` and `AppwriteAuthService`: account, profile, OAuth, and admin team sync.
+- `AppwriteChatService`: real-time chat messages, attachments, and mentions.
+- `DonationService` and `PaymentService`: donation records, Paystack initialization, projects, and settings.
+- `AppwritePrayerService`, `AppwriteStudyService`, `AppwriteHealthService`, `AppwriteEventsService`, and `AppwriteContentService`: migrated app feature data.
+- Legacy `FirebaseDatabaseService` remains only for modules not migrated yet.
 
 ```dart
-final firebase = FirebaseDatabaseService.instance;
-final profile = await firebase.getUserProfile(userId);
-final requests = await firebase.getPrayerRequests();
+final content = await AppwriteContentService.instance
+    .getContentPageBySlug('onboarding');
 ```
 
 ### AuthService
@@ -314,25 +312,23 @@ await NotificationService.instance.scheduleDailyVerseNotification(
 ```
 
 ### SyncService
-- Periodic and real-time Firestore synchronization
-- Exposes status and updates via Riverpod streams
-- Key methods: syncAll, enableRealtimeSync, disableRealtimeSync
-- Reference: [sync_service.dart](file:///c:/Users/Zavolah/Documents/ZavTech%20Projects/alive-ng-app/lib/services/sync_service.dart)
+- Legacy periodic and real-time sync layer.
+- Still contains Firebase callers and is a remaining migration target.
+- Do not remove Firebase rules/indexes until this area and related offline services are migrated.
 
 ```dart
 final sync = SyncService.instance;
 final result = await sync.syncAll();
 ```
 
-### GetStreamChatService
-- GetStream chat integration with Firebase profiles
-- Channel creation, messaging, user search
-- Reference: [getstream_chat_service.dart](file:///c:/Users/Zavolah/Documents/ZavTech%20Projects/alive-ng-app/lib/services/getstream_chat_service.dart)
+### Chat And Meetings
+- Chat uses the existing `lib/screens/chat` UI with Appwrite-backed services.
+- Meetings use LiveKit with the Appwrite `createLiveKitToken` function.
+- GetStream and Jitsi files/packages should stay removed or archived unless a remaining legacy file still references them.
 
 ```dart
-final chat = GetStreamChatService();
-await chat.initialize();
-final channels = await chat.getUserChannels();
+final chat = AppwriteChatService();
+await chat.loadMessageHistory(roomId);
 ```
 
 ### OfflineBibleService
@@ -363,6 +359,11 @@ flutter test integration_test/
 flutter test test/widget_test.dart
 ```
 
+### Utility Scripts
+```bash
+dart scripts/duplicate_dart_files.dart
+```
+
 ## Deployment
 
 ### Android
@@ -387,13 +388,14 @@ flutter test test/widget_test.dart
    - Run `flutter clean && flutter pub get`
    - Check pubspec.yaml for version conflicts
 
-3. **Firebase configuration**
-   - Verify configuration files are in correct locations
-   - Check Firebase project settings
+3. **Appwrite configuration**
+   - Verify `APPWRITE_ENDPOINT`, `APPWRITE_PROJECT_ID`, and `APPWRITE_DATABASE_ID`
+   - Confirm Android/Web platforms are present in the Appwrite Console
+   - Run `npm run appwrite:dry-run` before provisioning
 
-4. **Firebase connection**
-   - Verify configuration files and project settings
-   - Check network connectivity
+4. **Legacy Firebase compatibility**
+   - Keep Firebase config files while Firebase imports remain
+   - Do not archive `firestore.rules`, `firestore.indexes.json`, or storage rules until all dependent modules migrate
 
 ### Debug Commands
 ```bash
