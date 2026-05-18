@@ -32,10 +32,3 @@ final currentUserProvider = Provider<models.User?>((ref) {
 final authServiceProvider = Provider<AppwriteAuthService>((ref) {
   return ref.watch(appwriteAuthServiceProvider);
 });
-
-// Temporary compatibility provider while Firebase database calls are migrated.
-final firebaseDatabaseServiceProvider = Provider<dynamic>((ref) {
-  throw UnimplementedError(
-    'FirebaseDatabaseService has been removed. Use an Appwrite data service.',
-  );
-});
