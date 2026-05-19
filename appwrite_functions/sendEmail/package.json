@@ -1,0 +1,8 @@
+{
+  "name": "send-email",
+  "version": "1.0.0",
+  "description": "Sends ALIVE-NG transactional email through Resend",
+  "type": "module",
+  "main": "src/main.js",
+  "dependencies": {}
+}

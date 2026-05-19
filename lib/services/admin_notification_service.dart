@@ -1,9 +1,9 @@
 import 'dart:convert';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/logger.dart';
 import '../models/app_models.dart';
 import 'approval_link_service.dart';
+import 'email_service.dart';
 
 /// Service for sending admin notifications for new user registrations
 class AdminNotificationService {
@@ -143,15 +143,16 @@ class AdminNotificationService {
     required UserProfile userProfile,
   }) async {
     try {
-      // Try to use Firebase Cloud Function for email sending
-      return await _sendViaFirebaseFunction(
-        to: to,
+      final html = '<pre>${htmlEscape.convert(body)}</pre>';
+      await EmailService.instance.sendCustomEmail(
+        toEmail: to,
+        toName: 'ALIVE-NG Admin',
         subject: subject,
-        body: body,
-        userProfile: userProfile,
+        html: html,
       );
+      return true;
     } catch (e) {
-      _logger.error('Failed to send email via Firebase function', e);
+      _logger.error('Failed to send email via Appwrite function', e);
 
       // Fallback: Log the notification for manual processing
       _logger.info('ADMIN NOTIFICATION REQUIRED:');
@@ -161,50 +162,6 @@ class AdminNotificationService {
 
       // Return true since we've logged it for manual processing
       return true;
-    }
-  }
-
-  /// Send email via Firebase Cloud Function
-  Future<bool> _sendViaFirebaseFunction({
-    required String to,
-    required String subject,
-    required String body,
-    required UserProfile userProfile,
-  }) async {
-    try {
-      // Prepare payload for Firebase Cloud Function
-      final payload = {
-        'to': to,
-        'subject': subject,
-        'body': body,
-        'user_data': {
-          'id': userProfile.id,
-          'email': userProfile.email,
-          'full_name': userProfile.fullName,
-          'registration_date': userProfile.createdAt.toIso8601String(),
-        },
-        'notification_type': 'new_user_registration',
-      };
-
-      _logger
-          .info('Email notification payload prepared: ${json.encode(payload)}');
-
-      // Call Firebase Cloud Function for email notification
-      final response = await FirebaseFunctions.instance
-          .httpsCallable('sendAdminNotification')
-          .call(payload);
-      final data = response.data as Map<String, dynamic>;
-
-      if (data['success'] == true) {
-        _logger.info('Admin notification sent successfully');
-        return true;
-      } else {
-        _logger.error('Failed to send admin notification: ${data['error']}');
-        return false;
-      }
-    } catch (e) {
-      _logger.error('Error in Firebase email function', e);
-      return false;
     }
   }
 

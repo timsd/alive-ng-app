@@ -8,9 +8,9 @@ Last updated from codebase review: 2026-05-19
 
 The app is migrating from Firebase, Jitsi, and GetStream to Appwrite, LiveKit, and Coolify. Treat Firebase as a legacy compatibility layer until the remaining modules below are migrated.
 
-Estimated overall migration progress: about 73%.
+Estimated overall migration progress: about 74%.
 
-- Appwrite-backed and validated with `flutter analyze`: auth/profile bootstrap, chat, LiveKit token flow, Paystack payment functions, prayer, testimonies, notification settings records, study screen, health screen, onboarding content, events, announcements, app update settings, approval link tokens, and donation project/settings reads.
+- Appwrite-backed and validated with `flutter analyze`: auth/profile bootstrap, chat, LiveKit token flow, Paystack payment functions, Resend email function wiring, prayer, testimonies, notification settings records, study screen, health screen, onboarding content, events, announcements, app update settings, approval link tokens, and donation project/settings reads.
 - Appwrite infrastructure schema is maintained in `scripts/appwrite_infrastructure_schema.mjs`.
 - Provision safely against the current Appwrite 1.7.4 server with `npm run appwrite:dry-run` and then `npm run appwrite:provision:legacy`.
 - Coolify web hosting is supported by the root `Dockerfile`; pass Flutter values through the `FLUTTER_BUILD_ARGS` build argument.
@@ -33,6 +33,7 @@ Estimated overall migration progress: about 73%.
   - `createLiveKitToken`
   - `paystack_payments`
   - `paystack_webhook`
+  - `send_email`
 - Teams: admin and ministry role/team configuration from the infrastructure schema.
 - Topics: declared in `scripts/appwrite_infrastructure_schema.mjs` for migrated messaging flows.
 - Optional webhooks: profile approval, chat file upload, and donation record event forwarding are declared but skipped unless external receiver URLs are supplied.
@@ -66,6 +67,7 @@ Estimated overall migration progress: about 73%.
   - Recommended provider path for this project:
     - Push notifications: Appwrite Messaging with FCM for Android/Web. Add APNs later if iOS shipping becomes active.
     - Transactional email: keep Resend server-side through the Coolify/server or Appwrite Function path; do not put the Resend API key in Flutter.
+  - FCM setup requires Firebase project server credentials in Appwrite Messaging. The old public `WEB_PUSH_CERT_KEY` alone is not enough for Appwrite to send push.
 
 ## Legacy Firebase Compatibility
 

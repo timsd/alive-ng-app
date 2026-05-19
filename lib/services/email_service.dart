@@ -1,21 +1,26 @@
 import 'dart:convert';
-import 'package:cloud_functions/cloud_functions.dart';
+
+import 'package:appwrite/appwrite.dart';
+import 'package:appwrite/enums.dart' as appwrite_enums;
+
+import '../config/appwrite_backend_config.dart';
+import '../main.dart';
 import '../models/donation_models.dart';
 import '../utils/app_exception.dart';
 import '../utils/logger.dart';
 
-/// Unified email service using Resend via Firebase Cloud Functions.
+/// Unified email service using Resend via Appwrite Functions.
 ///
-/// All emails are sent server-side through the `sendEmail` callable Cloud
-/// Function which uses the Resend API, keeping the API key secure.
+/// All emails are sent server-side through the `send_email` Appwrite Function
+/// which uses the Resend API, keeping the API key out of Flutter clients.
 class EmailService {
   EmailService._();
   static final EmailService instance = EmailService._();
 
   static final Logger _logger = Logger('EmailService');
-  final FirebaseFunctions _functions = FirebaseFunctions.instance;
+  final Functions _functions = Functions(appwriteClient);
 
-  /// Send a custom email via the Cloud Function.
+  /// Send a custom email via the Appwrite Function.
   Future<void> sendCustomEmail({
     required String toEmail,
     required String toName,
@@ -23,18 +28,21 @@ class EmailService {
     required String html,
   }) async {
     try {
-      final callable = _functions.httpsCallable('sendEmail');
-      await callable.call(<String, dynamic>{
-        'to': toEmail,
-        'subject': subject,
-        'html': html,
-      });
-    } on FirebaseFunctionsException catch (e) {
-      _logger.error('Cloud Function sendEmail failed: ${e.code} ${e.message}', e);
-      throw NetworkException(
-        'Email send failed: ${e.message}',
-        originalError: e,
+      final execution = await _functions.createExecution(
+        functionId: AppwriteBackendConfig.sendEmailFunctionId,
+        body: jsonEncode(<String, dynamic>{
+          'to': toEmail,
+          'subject': subject,
+          'html': html,
+        }),
+        xasync: false,
+        method: appwrite_enums.ExecutionMethod.pOST,
       );
+
+      final data = jsonDecode(execution.responseBody) as Map<String, dynamic>;
+      if (data['error'] != null) {
+        throw NetworkException('${data['error']}');
+      }
     } catch (e) {
       _logger.error('Unexpected error sending email', e);
       throw NetworkException('Email send failed', originalError: e);

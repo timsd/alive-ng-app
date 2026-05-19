@@ -29,6 +29,7 @@ class AppwriteBackendConfig {
   static const String createLiveKitTokenFunctionId = '6a08e9010035dc8c1e51';
   static const String paystackPaymentsFunctionId = 'paystack_payments';
   static const String paystackWebhookFunctionId = 'paystack_webhook';
+  static const String sendEmailFunctionId = 'send_email';
   static const String adminTeamId = '6a098ba2001455c27fdb';
   static const String approvalTokensCollectionId = 'approval_tokens';
   static const String donationRecordsCollectionId = 'donation_records';
