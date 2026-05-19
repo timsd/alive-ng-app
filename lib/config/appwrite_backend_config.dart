@@ -13,6 +13,10 @@ class AppwriteBackendConfig {
     'APPWRITE_DATABASE_ID',
     defaultValue: '6a089307002e54291a32',
   );
+  static const String fcmProviderId = String.fromEnvironment(
+    'APPWRITE_FCM_PROVIDER_ID',
+    defaultValue: '',
+  );
   static const String usersCollectionId = '6a08943100226f5b4963';
   static const String chatChannelsCollectionId = '6a08f1c70032affbc00d';
   static const String chatMessagesCollectionId = '6a08e25e0034f79fcd2f';

@@ -1,12 +1,11 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../utils/logger.dart';
 import '../utils/toast_utils.dart';
-import 'firebase_database_service.dart';
 import 'auth_service.dart';
+import 'appwrite_push_service.dart';
 import '../config/firebase_config.dart';
 
 /// Base class for Firebase messaging functionality
@@ -15,7 +14,6 @@ abstract class FirebaseMessagingBase {
   static final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   static final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
-  static final FirebaseDatabaseService _firebase = FirebaseDatabaseService.instance;
   static final Logger _logger = Logger('FirebaseMessagingBase');
   static String? _fcmToken;
 
@@ -132,9 +130,9 @@ abstract class FirebaseMessagingBase {
         return;
       }
 
-      await _firebase.updateFCMToken(user.uid, token);
+      await AppwritePushService.instance.registerToken(token);
 
-      _logger.info('FCM token saved for user: ${user.uid}');
+      _logger.info('FCM token registered with Appwrite for user: ${user.uid}');
     } catch (e) {
       _logger.error('Error saving FCM token to database', e);
     }
@@ -199,12 +197,8 @@ abstract class FirebaseMessagingBase {
   /// Subscribe to topic
   static Future<void> subscribeToTopic(String topic) async {
     try {
-      if (kIsWeb) {
-        _logger.warning('Skipping topic subscription on web in development');
-        return;
-      }
-      await _messaging.subscribeToTopic(topic);
-      _logger.info('Subscribed to topic: $topic');
+      await AppwritePushService.instance.subscribeCurrentTarget(topic);
+      _logger.info('Subscribed Appwrite target to topic: $topic');
     } catch (e) {
       _logger.error('Error subscribing to topic $topic', e);
     }
@@ -213,12 +207,8 @@ abstract class FirebaseMessagingBase {
   /// Unsubscribe from topic
   static Future<void> unsubscribeFromTopic(String topic) async {
     try {
-      if (kIsWeb) {
-        _logger.warning('Skipping topic unsubscribe on web in development');
-        return;
-      }
-      await _messaging.unsubscribeFromTopic(topic);
-      _logger.info('Unsubscribed from topic: $topic');
+      await AppwritePushService.instance.unsubscribeCurrentTarget(topic);
+      _logger.info('Unsubscribed Appwrite target from topic: $topic');
     } catch (e) {
       _logger.error('Error unsubscribing from topic $topic', e);
     }
@@ -251,13 +241,7 @@ abstract class FirebaseMessagingBase {
       }
       await _messaging.deleteToken();
       
-      final user = AuthService.instance.currentUser;
-      if (user != null) {
-        await FirebaseFirestore.instance
-            .collection('push_tokens')
-            .doc(user.uid)
-            .set({'is_active': false, 'updated_at': FieldValue.serverTimestamp()}, SetOptions(merge: true));
-      }
+      await AppwritePushService.instance.deleteCurrentTarget();
       
       _logger.info('FCM token deleted');
     } catch (e) {

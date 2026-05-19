@@ -237,6 +237,7 @@ class StorageKeys {
   // Notification settings
   static const String notificationSettings = 'notification_settings';
   static const String fcmToken = 'fcm_token';
+  static const String appwritePushTargetId = 'appwrite_push_target_id';
 
   // App settings
   static const String autoSync = 'auto_sync';

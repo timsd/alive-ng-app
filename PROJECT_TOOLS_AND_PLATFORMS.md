@@ -8,9 +8,9 @@ Last updated from codebase review: 2026-05-19
 
 The app is migrating from Firebase, Jitsi, and GetStream to Appwrite, LiveKit, and Coolify. Treat Firebase as a legacy compatibility layer until the remaining modules below are migrated.
 
-Estimated overall migration progress: about 74%.
+Estimated overall migration progress: about 75%.
 
-- Appwrite-backed and validated with `flutter analyze`: auth/profile bootstrap, chat, LiveKit token flow, Paystack payment functions, Resend email function wiring, prayer, testimonies, notification settings records, study screen, health screen, onboarding content, events, announcements, app update settings, approval link tokens, and donation project/settings reads.
+- Appwrite-backed and validated with `flutter analyze`: auth/profile bootstrap, chat, LiveKit token flow, Paystack payment functions, Resend email function wiring, Appwrite push target registration, prayer, testimonies, notification settings records, study screen, health screen, onboarding content, events, announcements, app update settings, approval link tokens, and donation project/settings reads.
 - Appwrite infrastructure schema is maintained in `scripts/appwrite_infrastructure_schema.mjs`.
 - Provision safely against the current Appwrite 1.7.4 server with `npm run appwrite:dry-run` and then `npm run appwrite:provision:legacy`.
 - Coolify web hosting is supported by the root `Dockerfile`; pass Flutter values through the `FLUTTER_BUILD_ARGS` build argument.
@@ -68,6 +68,7 @@ Estimated overall migration progress: about 74%.
     - Push notifications: Appwrite Messaging with FCM for Android/Web. Add APNs later if iOS shipping becomes active.
     - Transactional email: keep Resend server-side through the Coolify/server or Appwrite Function path; do not put the Resend API key in Flutter.
   - FCM setup requires Firebase project server credentials in Appwrite Messaging. The old public `WEB_PUSH_CERT_KEY` alone is not enough for Appwrite to send push.
+  - If the Appwrite FCM provider ID is not the default, pass it to Flutter as `APPWRITE_FCM_PROVIDER_ID`.
 
 ## Legacy Firebase Compatibility
 
@@ -98,6 +99,7 @@ Keep these out of Git. Configure them in `.env`, Coolify build variables, or App
 - `APPWRITE_PROJECT_ID`
 - `APPWRITE_DATABASE_ID`
 - `APPWRITE_API_KEY`
+- `APPWRITE_FCM_PROVIDER_ID` only if the Appwrite FCM provider ID is not the default/only push provider
 - `FLUTTER_BUILD_ARGS`
 - `LIVEKIT_URL`
 - `LIVEKIT_API_KEY`
