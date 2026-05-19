@@ -38,6 +38,7 @@ Estimated overall migration progress: about 73%.
 - Optional webhooks: profile approval, chat file upload, and donation record event forwarding are declared but skipped unless external receiver URLs are supplied.
 - App update prompts read Appwrite `app_settings` document `app_version`.
   Store either a plain version in `value`, or JSON such as `{"latest_version":"1.2.3","force_update":false,"update_url":"https://app.alivenigeria.org"}`.
+  The project script `npm run appwrite:app-version` upserts this document automatically from `.env` and `pubspec.yaml`.
 
 ## Hosting And Deployment
 
@@ -62,6 +63,9 @@ Estimated overall migration progress: about 73%.
   - Appwrite notification settings and topics are provisioned.
   - Firebase web messaging service worker has been removed.
   - Remote push delivery requires Appwrite Messaging provider setup and target/subscriber registration before Firebase Messaging can be fully removed.
+  - Recommended provider path for this project:
+    - Push notifications: Appwrite Messaging with FCM for Android/Web. Add APNs later if iOS shipping becomes active.
+    - Transactional email: keep Resend server-side through the Coolify/server or Appwrite Function path; do not put the Resend API key in Flutter.
 
 ## Legacy Firebase Compatibility
 
