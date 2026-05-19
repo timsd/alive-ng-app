@@ -1,15 +1,18 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'health_models.g.dart';
 
 DateTime _parseDateTime(dynamic value) {
-  if (value is Timestamp) {
-    return value.toDate();
-  } else if (value is String) {
+  if (value is String) {
     return DateTime.parse(value);
   } else if (value is DateTime) {
     return value;
+  }
+  final dynamic timestampLike = value;
+  final toDate = timestampLike?.toDate;
+  if (toDate is Function) {
+    final parsed = toDate();
+    if (parsed is DateTime) return parsed;
   }
   return DateTime.now();
 }
