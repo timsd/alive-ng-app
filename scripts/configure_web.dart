@@ -60,6 +60,7 @@ void main() async {
   final files = [
     'web/index.html',
     'web/donation.html',
+    'web/firebase-messaging-sw.js',
   ];
 
   for (final filePath in files) {

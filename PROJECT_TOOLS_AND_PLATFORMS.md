@@ -62,12 +62,12 @@ Estimated overall migration progress: about 75%.
 - Notifications:
   - Local notifications and reminders use `flutter_local_notifications`.
   - Appwrite notification settings and topics are provisioned.
-  - Firebase web messaging service worker has been removed.
+  - Web FCM service worker is present only as the Appwrite Messaging/FCM browser push bridge.
   - Remote push delivery requires Appwrite Messaging provider setup and target/subscriber registration before Firebase Messaging can be fully removed.
   - Recommended provider path for this project:
     - Push notifications: Appwrite Messaging with FCM for Android/Web. Add APNs later if iOS shipping becomes active.
     - Transactional email: keep Resend server-side through the Coolify/server or Appwrite Function path; do not put the Resend API key in Flutter.
-  - FCM setup requires Firebase project server credentials in Appwrite Messaging. The old public `WEB_PUSH_CERT_KEY` alone is not enough for Appwrite to send push.
+  - FCM setup requires Firebase project server credentials in Appwrite Messaging. The public `WEB_PUSH_CERT_KEY` helps the browser request a web push token, but it is not enough for Appwrite to send push by itself.
   - If the Appwrite FCM provider ID is not the default, pass it to Flutter as `APPWRITE_FCM_PROVIDER_ID`.
 
 ## Legacy Firebase Compatibility
