@@ -190,7 +190,7 @@ Notes:
 **CRITICAL**: This app requires environment variables for API keys and signing configurations. 
 Please read [SETUP_ENV.md](SETUP_ENV.md) for detailed instructions on how to configure:
 - API keys and endpoints for Appwrite, Paystack, LiveKit, Google OAuth, and any
-  remaining Firebase-compatible notification setup.
+  remaining Firebase-compatible native notification setup.
 - Android Release Signing
 - Development vs Production setups
 

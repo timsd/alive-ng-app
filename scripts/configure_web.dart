@@ -10,7 +10,6 @@ void main() async {
     'FIREBASE_MESSAGING_SENDER_ID',
     'FIREBASE_APP_ID',
     'FIREBASE_MEASUREMENT_ID',
-    'WEB_PUSH_CERT_KEY',
     'RECAPTCHA_SITE_KEY',
   ];
 
@@ -61,7 +60,6 @@ void main() async {
   final files = [
     'web/index.html',
     'web/donation.html',
-    'web/firebase-messaging-sw.js',
   ];
 
   for (final filePath in files) {

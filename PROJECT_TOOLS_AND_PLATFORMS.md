@@ -58,6 +58,7 @@ Estimated overall migration progress: about 70%.
 - Notifications:
   - Local notifications and reminders use `flutter_local_notifications`.
   - Appwrite notification settings and topics are provisioned.
+  - Firebase web messaging service worker has been removed.
   - Remote push delivery requires Appwrite Messaging provider setup and target/subscriber registration before Firebase Messaging can be fully removed.
 
 ## Legacy Firebase Compatibility
@@ -98,8 +99,7 @@ Keep these out of Git. Configure them in `.env`, Coolify build variables, or App
 - `PAYSTACK_CALLBACK_URL`
 - `RESEND_API_KEY`
 - `RECEIPT_SENDER_EMAIL`
-- `WEB_PUSH_CERT_KEY`
-- `WEB_PUSH_PRIVATE_KEY` when Appwrite/web push provider setup is ready
+- `WEB_PUSH_PRIVATE_KEY` and matching public key only when Appwrite web push provider setup is ready
 - `APPWRITE_PROFILE_APPROVAL_WEBHOOK_URL` only if forwarding profile approval updates to an external receiver
 - `APPWRITE_CHAT_FILE_WEBHOOK_URL` only if forwarding chat upload events to an external receiver
 - `APPWRITE_DONATION_WEBHOOK_URL` only if forwarding donation record events to an external receiver

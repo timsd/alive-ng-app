@@ -31,9 +31,8 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png" />
 
-  <!-- Firebase SDK -->
+  <!-- Legacy Firebase SDK for web-only Auth/Firestore flows still pending migration. -->
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
   <script>
@@ -682,34 +681,6 @@
           measurementId: "G-CC6JE7224Q"
         };
         firebase.initializeApp(firebaseConfig);
-        const messaging = (function() {
-          try {
-            var host = location.hostname;
-            // Only initialize messaging on production-like hosts to avoid DWDS/Proxy hangs in dev
-            if (host && host !== 'localhost' && host !== '127.0.0.1') {
-              const m = firebase.messaging();
-              m.getToken({
-                vapidKey: 'BMFvrKu5q_mKn80IaIsX3hREab1nodMrdKDlMGOL_lVCIuTwxq4mTZiFG1SYUcCy6G-TrjK9X4H08Jll1PQjkYg'
-              }).then(function (currentToken) {
-                if (currentToken) {
-                  console.log('Registration token available.');
-                } else {
-                  console.log('No registration token available.');
-                }
-              }).catch(function (err) {
-                console.log('An error occurred while retrieving token. ', err);
-              });
-              m.onMessage(function (payload) {
-                console.log('Message received. ', payload);
-              });
-              return m;
-            }
-          } catch (e) {
-            console.warn('Messaging initialization skipped or failed:', e);
-          }
-          return null;
-        })();
-
         // Initialize Analytics if supported
         try {
           firebase.analytics();
@@ -729,23 +700,6 @@
             window._isLoggedIn = false;
           }
         });
-        if ('serviceWorker' in navigator && messaging) {
-          try {
-            var host = location.hostname;
-            if (host && host !== 'localhost' && host !== '127.0.0.1') {
-              navigator.serviceWorker.register('/firebase-messaging-sw.js')
-                .then(function (registration) {
-                  console.log('Service Worker registered with scope:', registration.scope);
-                  try { messaging.useServiceWorker(registration); } catch (_) { }
-                })
-                .catch(function (error) {
-                  console.log('Service Worker registration failed:', error);
-                });
-            }
-          } catch (error) {
-            console.log('Service Worker registration skipped:', error);
-          }
-        }
       } else {
         console.warn('Firebase SDK not available, skipping initialization');
       }
