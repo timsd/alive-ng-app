@@ -2,15 +2,15 @@
 
 This file lists the major tools, platforms, SDKs, and external services currently used in this project.
 
-Last updated from codebase review: 2026-05-18
+Last updated from codebase review: 2026-05-19
 
 ## Migration Snapshot
 
 The app is migrating from Firebase, Jitsi, and GetStream to Appwrite, LiveKit, and Coolify. Treat Firebase as a legacy compatibility layer until the remaining modules below are migrated.
 
-Estimated overall migration progress: about 70%.
+Estimated overall migration progress: about 72%.
 
-- Appwrite-backed and validated with `flutter analyze`: auth/profile bootstrap, chat, LiveKit token flow, Paystack payment functions, prayer, testimonies, notification settings records, study screen, health screen, onboarding content, events, announcements, and donation project/settings reads.
+- Appwrite-backed and validated with `flutter analyze`: auth/profile bootstrap, chat, LiveKit token flow, Paystack payment functions, prayer, testimonies, notification settings records, study screen, health screen, onboarding content, events, announcements, app update settings, and donation project/settings reads.
 - Appwrite infrastructure schema is maintained in `scripts/appwrite_infrastructure_schema.mjs`.
 - Provision safely against the current Appwrite 1.7.4 server with `npm run appwrite:dry-run` and then `npm run appwrite:provision:legacy`.
 - Coolify web hosting is supported by the root `Dockerfile`; pass Flutter values through the `FLUTTER_BUILD_ARGS` build argument.
@@ -36,6 +36,8 @@ Estimated overall migration progress: about 70%.
 - Teams: admin and ministry role/team configuration from the infrastructure schema.
 - Topics: declared in `scripts/appwrite_infrastructure_schema.mjs` for migrated messaging flows.
 - Optional webhooks: profile approval, chat file upload, and donation record event forwarding are declared but skipped unless external receiver URLs are supplied.
+- App update prompts read Appwrite `app_settings` document `app_version`.
+  Store either a plain version in `value`, or JSON such as `{"latest_version":"1.2.3","force_update":false,"update_url":"https://app.alivenigeria.org"}`.
 
 ## Hosting And Deployment
 
