@@ -260,6 +260,19 @@ export const tables = [
       b('prayer'), b('chat'), b('events'), b('donations'), b('study'), b('kids'), b('health'), dt('updated_at'),
     ],
   },
+  {
+    id: 'admin_notifications',
+    name: 'Admin Notifications',
+    columns: [
+      s('type', 128, true), s('title', 255), mediumtext('message'), s('user_id', 128),
+      mediumtext('details'), mediumtext('metadata'), b('is_read', false, false),
+      s('priority', 64), dt('created_at'),
+    ],
+    indexes: [
+      { key: 'admin_notifications_user_idx', type: 'key', columns: ['user_id'] },
+      { key: 'admin_notifications_created_idx', type: 'key', columns: ['created_at'], orders: ['DESC'] },
+    ],
+  },
   { id: 'admin_audit_logs', name: 'Admin Audit Logs', columns: [s('admin_id', 128), s('action', 255), s('resource', 128), s('resource_id', 128), mediumtext('old_values'), mediumtext('new_values'), s('ip_address', 128), s('user_agent', 512), dt('timestamp')], indexes: [{ key: 'audit_resource_idx', type: 'key', columns: ['resource'] }] },
 ];
 

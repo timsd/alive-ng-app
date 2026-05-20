@@ -2,15 +2,15 @@
 
 This file lists the major tools, platforms, SDKs, and external services currently used in this project.
 
-Last updated from codebase review: 2026-05-19
+Last updated from codebase review: 2026-05-20
 
 ## Migration Snapshot
 
 The app is migrating from Firebase, Jitsi, and GetStream to Appwrite, LiveKit, and Coolify. Treat Firebase as a legacy compatibility layer until the remaining modules below are migrated.
 
-Estimated overall migration progress: about 75%.
+Estimated overall migration progress: about 78%.
 
-- Appwrite-backed and validated with `flutter analyze`: auth/profile bootstrap, chat, LiveKit token flow, Paystack payment functions, Resend email function wiring, Appwrite push target registration, prayer, testimonies, notification settings records, study screen, health screen, onboarding content, events, announcements, app update settings, approval link tokens, and donation project/settings reads.
+- Appwrite-backed and validated with `flutter analyze`: auth/profile bootstrap, chat, LiveKit token flow, Paystack payment functions, Resend email function wiring/deployment variables, Appwrite push target registration, prayer, testimonies, notification settings records, admin notification records, study screen, health screen, onboarding content, events, announcements, app update settings, approval link tokens, and donation project/settings reads.
 - Appwrite infrastructure schema is maintained in `scripts/appwrite_infrastructure_schema.mjs`.
 - Provision safely against the current Appwrite 1.7.4 server with `npm run appwrite:dry-run` and then `npm run appwrite:provision:legacy`.
 - Coolify web hosting is supported by the root `Dockerfile`; pass Flutter values through the `FLUTTER_BUILD_ARGS` build argument.
@@ -40,6 +40,9 @@ Estimated overall migration progress: about 75%.
 - App update prompts read Appwrite `app_settings` document `app_version`.
   Store either a plain version in `value`, or JSON such as `{"latest_version":"1.2.3","force_update":false,"update_url":"https://app.alivenigeria.org"}`.
   The project script `npm run appwrite:app-version` upserts this document automatically from `.env` and `pubspec.yaml`.
+- Appwrite function variables can be synced from `.env` with `npm run appwrite:function-vars`.
+  The `send_email` function can be created, filled with `RESEND_API_KEY`, and deployed with `npm run appwrite:deploy-send-email`.
+  Use `npm run appwrite:provision:admin-notifications` when only the admin notification table needs to be applied.
 
 ## Hosting And Deployment
 
@@ -86,7 +89,7 @@ Firebase packages remain in `pubspec.yaml` for modules not migrated yet. Do not 
 ## Remaining Migration Areas
 
 - Admin console screens and services: user archive, role management, content management, board reports/documents/decisions, kids admin, tract/podcast admin, and dashboard stats.
-- Library, books, tracts, podcasts, kids stories/missions, missions, chapters, leadership, discipleship, daily verse, analytics, sync/offline sync, app update, email/approval links, and notification delivery internals.
+- Library, books, tracts, podcasts, kids stories/missions, missions, chapters, leadership, discipleship, daily verse, analytics, sync/offline sync, and notification delivery internals.
 - Firebase Storage wrappers should be replaced by Appwrite Storage wrappers bucket by bucket.
 - Firebase Cloud Functions callers should move to Appwrite functions or direct Appwrite service calls.
 - Firebase rules/indexes can be archived after the last Firestore caller is removed.

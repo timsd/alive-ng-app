@@ -50,6 +50,8 @@ const {
 
 const dryRun = process.argv.includes('--dry-run');
 const useLegacyDatabases = process.argv.includes('--legacy-databases');
+const onlyTableArg = process.argv.find((arg) => arg.startsWith('--only-table='));
+const onlyTableId = onlyTableArg?.split('=').slice(1).join('=');
 const apiKey = process.env.APPWRITE_API_KEY;
 const provisionDelayMs = Number(process.env.APPWRITE_PROVISION_DELAY_MS || 250);
 
@@ -394,6 +396,7 @@ async function main() {
   await ensureTopics(messaging);
 
   for (const table of tables) {
+    if (onlyTableId && table.id !== onlyTableId) continue;
     await ensureTable(tablesDB, databases, table);
   }
 

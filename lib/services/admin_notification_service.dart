@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/logger.dart';
 import '../models/app_models.dart';
+import 'appwrite_admin_notification_store.dart';
 import 'approval_link_service.dart';
 import 'email_service.dart';
 
@@ -15,7 +15,8 @@ class AdminNotificationService {
   static AdminNotificationService get instance => _instance;
 
   final Logger _logger = Logger('AdminNotificationService');
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final AppwriteAdminNotificationStore _notificationStore =
+      AppwriteAdminNotificationStore.instance;
 
   // Removed unused _adminEmail constant to satisfy analyzer
 
@@ -231,43 +232,22 @@ class AdminNotificationService {
     return buffer.toString();
   }
 
-  /// Store notification record in Firestore for tracking and management
+  /// Store notification record in Appwrite for tracking and management
   Future<void> _storeNotificationRecord({
     required String type,
     required String userId,
     required Map<String, dynamic> details,
   }) async {
-    try {
-      await _firestore.collection('admin_notifications').add({
-        'type': type,
-        'user_id': userId,
-        'details': details,
-        'created_at': FieldValue.serverTimestamp(),
-      });
-      _logger.info('Notification record stored in Firestore');
-    } catch (e) {
-      _logger.error('Failed to store notification record in Firestore', e);
-    }
+    await _notificationStore.createNotificationRecord(
+      type: type,
+      userId: userId,
+      details: details,
+    );
   }
 
-  /// Get all admin notifications from Firestore
+  /// Get all admin notifications from Appwrite
   Future<List<Map<String, dynamic>>> getAdminNotifications(
       {int limit = 50}) async {
-    try {
-      final snapshot = await _firestore
-          .collection('admin_notifications')
-          .orderBy('created_at', descending: true)
-          .limit(limit)
-          .get();
-
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return data;
-      }).toList();
-    } catch (e) {
-      _logger.error('Error getting admin notifications', e);
-      return [];
-    }
+    return _notificationStore.listNotificationRecords(limit: limit);
   }
 }

@@ -52,6 +52,7 @@ class AppwriteBackendConfig {
   static const String pushTokensCollectionId = 'push_tokens';
   static const String notificationSettingsCollectionId =
       'notification_settings';
+  static const String adminNotificationsCollectionId = 'admin_notifications';
   static const String eventsCollectionId = 'events';
   static const String userEventsCollectionId = 'user_events';
   static const String announcementsCollectionId = 'announcements';

@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/admin_models.dart';
 import 'admin_database_helper.dart';
+import 'appwrite_admin_notification_store.dart';
 import 'email_service.dart';
 import '../utils/logger.dart';
 
@@ -13,8 +13,9 @@ class EmailNotificationService {
 
   static final Logger _logger = Logger('EmailNotificationService');
 
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final AdminDatabaseHelper _dbHelper = AdminDatabaseHelper();
+  final AppwriteAdminNotificationStore _notificationStore =
+      AppwriteAdminNotificationStore.instance;
 
   // Using Brevo via EmailService; remove legacy EmailJS config
   // Admin notification emails
@@ -81,22 +82,21 @@ class EmailNotificationService {
         }
       }
 
-      // Save notification to Firebase
-      await _firestore.collection('admin_notifications').add({
-        'type': 'user_signup',
-        'title': 'New User Signup',
-        'message':
+      // Save notification to Appwrite
+      await _notificationStore.createNotificationRecord(
+        type: 'user_signup',
+        title: 'New User Signup',
+        message:
             'New user $fullName ($userEmail) has signed up and is awaiting approval.',
-        'createdAt': FieldValue.serverTimestamp(),
-        'isRead': false,
-        'priority': 'normal',
-        'metadata': {
+        isRead: false,
+        priority: 'normal',
+        metadata: {
           'userEmail': userEmail,
           'fullName': fullName,
           'phoneNumber': phoneNumber,
           'additionalInfo': additionalInfo,
         },
-      });
+      );
 
       return emailSent;
     } catch (e) {
