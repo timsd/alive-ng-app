@@ -81,6 +81,21 @@ class DailyVerseRepository {
     }
   }
 
+  Future<int> countDailyVerses() async {
+    try {
+      // ignore: deprecated_member_use
+      final result = await _db.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.dailyVersesCollectionId,
+        queries: [Query.limit(1)],
+      );
+      return result.total;
+    } catch (e) {
+      _logger.error('Error counting daily verses: $e');
+      return 0;
+    }
+  }
+
   Future<void> _upsertDailyVerse(String id, Map<String, dynamic> data) async {
     try {
       // ignore: deprecated_member_use

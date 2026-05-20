@@ -1,6 +1,9 @@
 import 'dart:math';
+import 'package:appwrite/appwrite.dart' hide Locale;
 import 'package:flutter/foundation.dart';
 import '../constants/bible_verses.dart' as verse_data;
+import '../config/appwrite_backend_config.dart';
+import '../main.dart';
 import '../models/app_models.dart' show DailyVerse;
 import 'offline_bible_service.dart';
 import 'package:flutter/services.dart';
@@ -8,7 +11,6 @@ import 'dart:convert';
 import 'bible_source.dart';
 import '../utils/logger.dart';
 import 'daily_verse_repository.dart';
-import 'firebase_database_service.dart';
 
 class DailyVerseGenerationService {
   static DailyVerseGenerationService? _instance;
@@ -17,24 +19,20 @@ class DailyVerseGenerationService {
 
   DailyVerseGenerationService._({
     DailyVerseRepository? repo,
-    FirebaseDatabaseService? firebaseService,
-  })  : _repo = repo ?? DailyVerseRepository.instance,
-        _firebaseService = firebaseService ?? FirebaseDatabaseService.instance;
+  }) : _repo = repo ?? DailyVerseRepository.instance;
 
   @visibleForTesting
   factory DailyVerseGenerationService.test({
     required DailyVerseRepository repo,
-    required FirebaseDatabaseService firebaseService,
   }) {
     return DailyVerseGenerationService._(
       repo: repo,
-      firebaseService: firebaseService,
     );
   }
 
   final Logger _logger = Logger('DailyVerseGenerationService');
   final DailyVerseRepository _repo;
-  final FirebaseDatabaseService _firebaseService;
+  final Databases _databases = Databases(appwriteClient);
 
   /// Initialize the verse generation system
   Future<void> initializeVerseGeneration() async {
@@ -63,7 +61,7 @@ class DailyVerseGenerationService {
     try {
       final dateString = _formatDateForDatabase(date);
 
-      // Check if verse already exists for this date (Firestore)
+      // Check if verse already exists for this date.
       final existingVerse = await _repo.getDailyVerse(date);
       if (existingVerse != null) {
         _logger.info('Daily verse already exists for $dateString');
@@ -127,7 +125,6 @@ class DailyVerseGenerationService {
         createdAt: DateTime.now(),
       );
 
-      // Insert into Firestore via repository
       final createdVerse = await _repo.createDailyVerse(dailyVerse);
       await _markVerseAsUsed(bibleVerse.reference, createdVerse.translation);
       _logger.info(
@@ -155,19 +152,17 @@ class DailyVerseGenerationService {
   /// Get verse generation statistics
   Future<Map<String, dynamic>> getGenerationStatistics() async {
     try {
-      final all = await _firebaseService.getCollection('daily_verse_tracking');
-      final usedVerses = all.where((e) => e['is_used'] == true).length;
-      final totalVerses = all.length;
-      final range = await _firebaseService.getCollection('daily_verses');
-      final generatedVerses = range.length;
+      final totalVerses = BibleSource.instance.dailyCorpus.length;
+      final generatedVerses = await _repo.countDailyVerses();
 
       return {
         'total_verses': totalVerses,
-        'used_verses': usedVerses,
-        'unused_verses': totalVerses - usedVerses,
+        'used_verses': generatedVerses,
+        'unused_verses': max(totalVerses - generatedVerses, 0),
         'generated_daily_verses': generatedVerses,
-        'completion_percentage':
-            totalVerses > 0 ? (usedVerses / totalVerses * 100).round() : 0,
+        'completion_percentage': totalVerses > 0
+            ? (generatedVerses / totalVerses * 100).clamp(0, 100).round()
+            : 0,
       };
     } catch (e) {
       _logger.error('Error getting generation statistics: $e');
@@ -201,12 +196,18 @@ class DailyVerseGenerationService {
   /// Check if auto-generation is enabled
   Future<bool> isAutoGenerationEnabled() async {
     try {
-      final doc = await _firebaseService.getDocument(
-          'app_settings', 'daily_verse_auto_generation');
-      final value = doc != null ? doc['value'] : null;
+      // ignore: deprecated_member_use
+      final doc = await _databases.getDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.appSettingsCollectionId,
+        documentId: 'daily_verse_auto_generation',
+      );
+      final value = doc.data['value'];
       if (value is bool) return value;
+      if (value is String) return value.toLowerCase() == 'true';
       return true;
     } catch (e) {
+      if (e is AppwriteException && e.code == 404) return true;
       _logger.error('Error checking auto-generation setting: $e');
       return true;
     }
@@ -215,13 +216,54 @@ class DailyVerseGenerationService {
   /// Update auto-generation setting
   Future<void> setAutoGenerationEnabled(bool enabled) async {
     try {
-      await _firebaseService.updateAppSetting(
-          'daily_verse_auto_generation', enabled);
+      await _upsertAppSetting(
+        key: 'daily_verse_auto_generation',
+        value: enabled.toString(),
+        type: 'boolean',
+        description: 'Controls deterministic daily verse auto-generation.',
+      );
 
       _logger.info('✅ Auto-generation ${enabled ? 'enabled' : 'disabled'}');
     } catch (e) {
       _logger.error('❌ Failed to update auto-generation setting: $e');
       rethrow;
+    }
+  }
+
+  Future<void> _upsertAppSetting({
+    required String key,
+    required String value,
+    required String type,
+    required String description,
+  }) async {
+    final data = {
+      'key': key,
+      'setting_key': key,
+      'value': value,
+      'type': type,
+      'category': 'content',
+      'description': description,
+      'is_public': false,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    };
+
+    try {
+      // ignore: deprecated_member_use
+      await _databases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.appSettingsCollectionId,
+        documentId: key,
+        data: data,
+      );
+    } catch (e) {
+      if (e is! AppwriteException || e.code != 404) rethrow;
+      // ignore: deprecated_member_use
+      await _databases.createDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.appSettingsCollectionId,
+        documentId: key,
+        data: data,
+      );
     }
   }
 }
