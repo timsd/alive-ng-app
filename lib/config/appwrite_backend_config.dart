@@ -61,6 +61,7 @@ class AppwriteBackendConfig {
   static const String featuredContentCollectionId = 'featured_content';
   static const String studyGuidesCollectionId = 'study_guides';
   static const String studyProgressCollectionId = 'study_progress';
+  static const String dailyVersesCollectionId = 'daily_verses';
   static const String healthTrackingCollectionId = 'health_tracking';
   static const String passwordRecoveryUrl =
       'https://app.alivenigeria.org/#/reset-password';
