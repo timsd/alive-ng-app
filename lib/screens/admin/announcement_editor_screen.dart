@@ -1,6 +1,9 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:appwrite/appwrite.dart';
+import '../../config/appwrite_backend_config.dart';
+import '../../main.dart';
 import '../../widgets/role_guard.dart';
 import '../../widgets/loading_widget.dart';
 import '../../utils/toast_utils.dart';
@@ -601,40 +604,42 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final announcementData = {
+      String? currentUserId;
+      try {
+        currentUserId = (await Account(appwriteClient).get()).$id;
+      } catch (_) {}
+
+      final announcementData = <String, dynamic>{
         'title': _titleController.text.trim(),
-        'message': _messageController.text.trim(),
-        'type': _type,
-        'priority': _priority,
-        'target_audience': _targetAudience,
-        'is_active': _isActive,
-        'scheduled_for': _scheduledFor?.toIso8601String(),
-        'expires_at': _expiresAt?.toIso8601String(),
-        'action_text': _actionTextController.text.trim().isNotEmpty
-            ? _actionTextController.text.trim()
-            : null,
-        'action_url': _actionUrlController.text.trim().isNotEmpty
-            ? _actionUrlController.text.trim()
-            : null,
+        'content': _messageController.text.trim(),
+        'audience': _targetAudience,
+        'published_at': _scheduledFor?.toIso8601String(),
         'updated_at': DateTime.now().toIso8601String(),
       };
 
       if (widget.announcement == null) {
         // Create new announcement
         announcementData['created_at'] = DateTime.now().toIso8601String();
-        announcementData['created_by'] = FirebaseAuth.instance.currentUser?.uid;
+        announcementData['author_id'] = currentUserId;
+        announcementData['created_timestamp'] =
+            DateTime.now().millisecondsSinceEpoch;
 
-        await FirebaseFirestore.instance
-            .collection('announcements')
-            .add(announcementData);
+        await Databases(appwriteClient).createDocument(
+          databaseId: AppwriteBackendConfig.databaseId,
+          collectionId: AppwriteBackendConfig.announcementsCollectionId,
+          documentId: ID.unique(),
+          data: announcementData,
+        );
 
         ToastUtils.showSuccess('Announcement created successfully');
       } else {
         // Update existing announcement
-        await FirebaseFirestore.instance
-            .collection('announcements')
-            .doc(widget.announcement!['id'])
-            .update(announcementData);
+        await Databases(appwriteClient).updateDocument(
+          databaseId: AppwriteBackendConfig.databaseId,
+          collectionId: AppwriteBackendConfig.announcementsCollectionId,
+          documentId: widget.announcement!['id'],
+          data: announcementData,
+        );
 
         ToastUtils.showSuccess('Announcement updated successfully');
       }

@@ -1,6 +1,11 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:appwrite/appwrite.dart';
+import 'package:appwrite/models.dart' as appwrite_models;
+import '../../config/appwrite_backend_config.dart';
+import '../../main.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../utils/responsive_utils.dart';
 import '../../utils/layout_fix_utils.dart';
@@ -114,25 +119,16 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
     super.dispose();
   }
 
-  // Reactive Firestore Stream
+  // Appwrite-backed stream wrapper for StreamBuilder compatibility.
   Stream<List<BibleStory>> _getStoriesStream() {
-    return FirebaseFirestore.instance
-        .collection('kids_stories')
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs
+    return Stream.fromFuture(Databases(appwriteClient).listDocuments(
+      databaseId: AppwriteBackendConfig.databaseId,
+      collectionId: AppwriteBackendConfig.kidsStoriesCollectionId,
+      queries: [Query.equal('is_active', true), Query.limit(100)],
+    ).then((snapshot) {
+      return snapshot.documents
           .map((doc) {
-            final data = doc.data();
-            data['id'] = doc.id;
-
-            // Defaults for legacy parsing logic
-            data['duration'] = data['duration'] ?? 10;
-            data['completed'] = data['completed'] ?? false;
-            data['favorite'] = data['favorite'] ?? false;
-            data['tags'] = data['tags'] ?? [];
-            data['moralLesson'] = data['moralLesson'] ?? '';
-            data['bibleReference'] = data['bibleReference'] ?? '';
-            data['subtitle'] = data['subtitle'] ?? '';
+            final data = _mapStoryDocument(doc);
 
             try {
               return BibleStory.fromJson(data);
@@ -142,7 +138,58 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
           })
           .whereType<BibleStory>()
           .toList();
-    });
+    }));
+  }
+
+  Map<String, dynamic> _mapStoryDocument(appwrite_models.Document doc) {
+    final data = Map<String, dynamic>.from(doc.data);
+    final categories = _stringList(data['categories']);
+    final category = (data['category'] as String?) ??
+        (categories.isNotEmpty ? categories.first : 'oldTestament');
+
+    return {
+      'id': doc.$id,
+      'title': data['title'] ?? 'Untitled Story',
+      'subtitle': data['subtitle'] ?? '',
+      'ageGroup': _storyAgeGroup(data['age_group']),
+      'duration': data['duration'] ?? 10,
+      'description': data['description'] ?? '',
+      'content': data['content'],
+      'moralLesson': data['moral_lesson'] ?? data['moralLesson'] ?? '',
+      'bibleReference':
+          data['bible_reference'] ?? data['bibleReference'] ?? '',
+      'audioUrl': data['audio_url'] ?? data['audioUrl'],
+      'illustrationUrl':
+          data['illustration_url'] ?? data['image_url'] ?? data['illustrationUrl'],
+      'mediaUrl': data['media_url'] ?? data['mediaUrl'],
+      'completed': data['completed'] ?? false,
+      'favorite': data['favorite'] ?? false,
+      'category': _storyCategory(category),
+      'tags': _stringList(data['tags']),
+    };
+  }
+
+  List<String> _stringList(dynamic value) {
+    if (value is List) return value.map((item) => item.toString()).toList();
+    if (value is String && value.isNotEmpty) return [value];
+    return const [];
+  }
+
+  String _storyAgeGroup(dynamic value) {
+    final normalized = value?.toString().toLowerCase().replaceAll('_', '-') ?? '';
+    if (normalized.contains('11')) return 'age-11-14';
+    if (normalized.contains('7')) return 'age-7-10';
+    return 'age-3-6';
+  }
+
+  String _storyCategory(dynamic value) {
+    final normalized = value?.toString().toLowerCase().replaceAll('_', '-') ?? '';
+    if (normalized.contains('new')) return 'newTestament';
+    if (normalized.contains('parable')) return 'parables';
+    if (normalized.contains('miracle')) return 'miracles';
+    if (normalized.contains('doctrine')) return 'sdaDoctrines';
+    if (normalized.contains('value')) return 'sdaValues';
+    return 'oldTestament';
   }
 
   @override

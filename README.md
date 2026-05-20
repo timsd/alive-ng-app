@@ -5,16 +5,16 @@ A comprehensive Flutter application for the ALIVE-NG Ministry, providing feature
 ## Current Migration Status
 
 The app is mid-migration from Firebase/Jitsi/GetStream pieces to Appwrite,
-LiveKit, and Coolify. Estimated overall migration progress is about 81%.
+LiveKit, and Coolify. Estimated overall migration progress is about 82%.
 Do not remove remaining Firebase files only because Appwrite files now exist;
-some admin, library, kids, chapter, notification, analytics, and sync modules
+some admin, library, chapter, notification, analytics, and sync modules
 still import Firebase services and must be replaced one workflow at a time.
 
 - Appwrite now backs auth/profile bootstrap, chat, prayer, testimonies,
   notification settings/reminder records, admin notification records, study, health,
   onboarding content, events, announcements, app update settings, approval link
   tokens, daily verse records/generation settings, donation records, donation
-  projects/settings reads, and the Paystack function flow.
+  projects/settings reads, kids stories/missions, and the Paystack function flow.
 - LiveKit is the current meeting stack through the `createLiveKitToken`
   Appwrite function.
 - `scripts/appwrite_infrastructure_schema.mjs` is the source of truth for

@@ -2,15 +2,15 @@
 
 This file lists the major tools, platforms, SDKs, and external services currently used in this project.
 
-Last updated from codebase review: 2026-05-20
+Last updated from codebase review: 2026-05-21
 
 ## Migration Snapshot
 
 The app is migrating from Firebase, Jitsi, and GetStream to Appwrite, LiveKit, and Coolify. Treat Firebase as a legacy compatibility layer until the remaining modules below are migrated.
 
-Estimated overall migration progress: about 81%.
+Estimated overall migration progress: about 82%.
 
-- Appwrite-backed and validated with `flutter analyze`: auth/profile bootstrap, chat, LiveKit token flow, Paystack payment functions, Resend email function wiring/deployment variables, Appwrite push target registration, prayer, testimonies, notification settings/reminder records, admin notification records, study screen, health screen, daily verse records/generation settings, onboarding content, events, announcements, app update settings, approval link tokens, and donation project/settings reads.
+- Appwrite-backed and validated with `flutter analyze`: auth/profile bootstrap, chat, LiveKit token flow, Paystack payment functions, Resend email function wiring/deployment variables, Appwrite push target registration, prayer, testimonies, notification settings/reminder records, admin notification records, study screen, health screen, daily verse records/generation settings, onboarding content, events, announcements, app update settings, approval link tokens, donation project/settings reads, and kids stories/missions.
 - Appwrite infrastructure schema is maintained in `scripts/appwrite_infrastructure_schema.mjs`.
 - Provision safely against the current Appwrite 1.7.4 server with `npm run appwrite:dry-run` and then `npm run appwrite:provision:legacy`.
 - Coolify web hosting is supported by the root `Dockerfile`; pass Flutter values through the `FLUTTER_BUILD_ARGS` build argument and pass Firebase web push bridge values as Docker build args so the service worker is configured during image build.
@@ -93,7 +93,7 @@ Firebase packages remain in `pubspec.yaml` for modules not migrated yet. Do not 
 ## Remaining Migration Areas
 
 - Admin console screens and services: user archive, role management, content management, board reports/documents/decisions, kids admin, tract/podcast admin, and dashboard stats.
-- Library, books, tracts, podcasts, kids stories/missions, missions, chapters, leadership, discipleship, analytics, sync/offline sync, and notification delivery internals.
+- Library, books, tracts, podcasts, kids admin/editing, missions, chapters, leadership, discipleship, analytics, sync/offline sync, and notification delivery internals.
 - Firebase Storage wrappers should be replaced by Appwrite Storage wrappers bucket by bucket.
 - Firebase Cloud Functions callers should move to Appwrite functions or direct Appwrite service calls.
 - Firebase rules/indexes can be archived after the last Firestore caller is removed.

@@ -1,8 +1,16 @@
+// ignore_for_file: deprecated_member_use
+
+import 'dart:convert';
 import 'dart:typed_data';
+import 'package:appwrite/appwrite.dart' as aw;
+import 'package:appwrite/models.dart' as aw_models;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:crypto/crypto.dart';
+import '../config/appwrite_backend_config.dart';
+import '../main.dart';
 import '../models/app_models.dart';
 import '../models/bible_models.dart';
 import '../utils/logger.dart';
@@ -19,6 +27,8 @@ class FirebaseDatabaseService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
   final FirebaseFunctions _functions = FirebaseFunctions.instance;
+  late final aw.Databases _appwriteDatabases = aw.Databases(appwriteClient);
+  late final aw.Storage _appwriteStorage = aw.Storage(appwriteClient);
   final Logger _logger = Logger('FirebaseDatabaseService');
 
   FirebaseFirestore get firestore => _firestore;
@@ -27,6 +37,91 @@ class FirebaseDatabaseService {
 
   User? get currentUser => _auth.currentUser;
   bool get isAuthenticated => currentUser != null;
+
+  static const Map<String, String> _appwriteCollectionIds = {
+    'users': AppwriteBackendConfig.usersCollectionId,
+    'chat_channels': AppwriteBackendConfig.chatChannelsCollectionId,
+    'chat_messages': AppwriteBackendConfig.chatMessagesCollectionId,
+    'message_tags': AppwriteBackendConfig.messageTagsCollectionId,
+  };
+
+  static const Map<String, String> _appwriteBucketIds = {
+    'audio-files': AppwriteBackendConfig.podcastMediaBucketId,
+    'video-files': AppwriteBackendConfig.contentMediaBucketId,
+    'pdf-files': AppwriteBackendConfig.tractFilesBucketId,
+    'profile-pictures': AppwriteBackendConfig.profileFilesBucketId,
+    'tract-avatars': AppwriteBackendConfig.tractFilesBucketId,
+    'podcast-covers': AppwriteBackendConfig.podcastMediaBucketId,
+    'meeting-files': AppwriteBackendConfig.meetingFilesBucketId,
+    'system-backups': AppwriteBackendConfig.systemExportsBucketId,
+    'app-logs': AppwriteBackendConfig.systemExportsBucketId,
+    'Tracts': AppwriteBackendConfig.tractFilesBucketId,
+    'board_documents': AppwriteBackendConfig.boardDocumentsBucketId,
+    'meeting_files': AppwriteBackendConfig.meetingFilesBucketId,
+    'profile_files': AppwriteBackendConfig.profileFilesBucketId,
+    'content_media': AppwriteBackendConfig.contentMediaBucketId,
+    'podcast_media': AppwriteBackendConfig.podcastMediaBucketId,
+    'system_exports': AppwriteBackendConfig.systemExportsBucketId,
+  };
+
+  String _collectionId(String collection) =>
+      _appwriteCollectionIds[collection] ?? collection;
+
+  Map<String, dynamic> _documentData(aw_models.Document document) {
+    return {
+      ...Map<String, dynamic>.from(document.data),
+      'id': document.$id,
+    };
+  }
+
+  Map<String, dynamic> _sanitizeAppwriteData(Map<String, dynamic> data) {
+    final sanitized = <String, dynamic>{};
+    data.forEach((key, value) {
+      if (key == 'id' || key.startsWith(r'$')) return;
+      sanitized[key] = _sanitizeAppwriteValue(value);
+    });
+    return sanitized;
+  }
+
+  dynamic _sanitizeAppwriteValue(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value.toUtc().toIso8601String();
+    if (value is Timestamp) return value.toDate().toUtc().toIso8601String();
+    if (value is FieldValue) return DateTime.now().toUtc().toIso8601String();
+    if (value is Map) return jsonEncode(value);
+    if (value is List) {
+      if (value.any((item) => item is Map || item is List)) {
+        return jsonEncode(value);
+      }
+      return value
+          .map((item) => item is DateTime
+              ? item.toUtc().toIso8601String()
+              : item?.toString())
+          .toList();
+    }
+    return value;
+  }
+
+  String _appwriteFileUrl(String bucketId, String fileId) {
+    return '${AppwriteBackendConfig.endpoint}/storage/buckets/'
+        '$bucketId/files/$fileId/view'
+        '?project=${AppwriteBackendConfig.projectId}';
+  }
+
+  ({String bucketId, String objectName}) _storageTarget(String path) {
+    final normalized = path.replaceAll('\\', '/');
+    final parts = normalized.split('/');
+    final bucketKey = parts.first;
+    final bucketId = _appwriteBucketIds[bucketKey] ?? bucketKey;
+    final objectName =
+        parts.length > 1 ? parts.sublist(1).join('/') : parts.first;
+    return (bucketId: bucketId, objectName: objectName);
+  }
+
+  String _stableFileId(String objectName) {
+    final digest = sha1.convert(utf8.encode(objectName)).toString();
+    return 'f_${digest.substring(0, 34)}';
+  }
 
   // Bible Service Methods
   Future<void> addBibleVerse(String book, int chapter, int verse, String text,
@@ -1337,15 +1432,17 @@ class FirebaseDatabaseService {
   Future<Map<String, dynamic>?> getDocument(
       String collection, String documentId) async {
     try {
-      final doc = await _firestore.collection(collection).doc(documentId).get();
-      if (doc.exists) {
-        final data = doc.data()!;
-        data['id'] = doc.id;
-        return data;
-      }
-      throw NotFoundException('Document not found in $collection');
+      final doc = await _appwriteDatabases.getDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _collectionId(collection),
+        documentId: documentId,
+      );
+      return _documentData(doc);
     } catch (e) {
       if (e is AppException) rethrow;
+      if (e is aw.AppwriteException && e.code == 404) {
+        throw NotFoundException('Document not found in $collection');
+      }
       _logger.error('Error getting document from $collection: $e');
       throw DatabaseException('Failed to get document', originalError: e);
     }
@@ -1360,23 +1457,19 @@ class FirebaseDatabaseService {
     int? limit,
   }) async {
     try {
-      Query<Map<String, dynamic>> query =
-          _firestore.collection(collection).where(field, isEqualTo: value);
+      final queries = <String>[
+        aw.Query.equal(field, value),
+        if (orderBy != null)
+          descending ? aw.Query.orderDesc(orderBy) : aw.Query.orderAsc(orderBy),
+        aw.Query.limit(limit ?? 100),
+      ];
 
-      if (orderBy != null) {
-        query = query.orderBy(orderBy, descending: descending);
-      }
-
-      if (limit != null) {
-        query = query.limit(limit);
-      }
-
-      final snapshot = await query.get();
-      return snapshot.docs.map((doc) {
-        final Map<String, dynamic> data = doc.data();
-        data['id'] = doc.id;
-        return data;
-      }).toList();
+      final response = await _appwriteDatabases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _collectionId(collection),
+        queries: queries,
+      );
+      return response.documents.map<Map<String, dynamic>>(_documentData).toList();
     } catch (e) {
       _logger.error(
           'Error getting collection $collection where $field == $value: $e');
@@ -1391,28 +1484,21 @@ class FirebaseDatabaseService {
       bool descending = false,
       int? limit}) async {
     try {
-      Query<Map<String, dynamic>> query = _firestore.collection(collection);
+      final queries = <String>[
+        if (where != null)
+          for (final entry in where.entries)
+            aw.Query.equal(entry.key, entry.value),
+        if (orderBy != null)
+          descending ? aw.Query.orderDesc(orderBy) : aw.Query.orderAsc(orderBy),
+        aw.Query.limit(limit ?? 100),
+      ];
 
-      if (where != null) {
-        where.forEach((key, value) {
-          query = query.where(key, isEqualTo: value);
-        });
-      }
-
-      if (orderBy != null) {
-        query = query.orderBy(orderBy, descending: descending);
-      }
-
-      if (limit != null) {
-        query = query.limit(limit);
-      }
-
-      final snapshot = await query.get();
-      return snapshot.docs.map((doc) {
-        final Map<String, dynamic> data = doc.data();
-        data['id'] = doc.id;
-        return data;
-      }).toList();
+      final response = await _appwriteDatabases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _collectionId(collection),
+        queries: queries,
+      );
+      return response.documents.map<Map<String, dynamic>>(_documentData).toList();
     } catch (e) {
       _logger.error('Error getting collection $collection: $e');
       throw DatabaseException('Failed to get collection', originalError: e);
@@ -1422,10 +1508,18 @@ class FirebaseDatabaseService {
   Future<String> createDocument(
       String collection, Map<String, dynamic> data) async {
     try {
-      data['created_at'] = FieldValue.serverTimestamp();
-      final docRef = await _firestore.collection(collection).add(data);
-      _logger.info('Document created in $collection with ID: ${docRef.id}');
-      return docRef.id;
+      final payload = _sanitizeAppwriteData({
+        ...data,
+        'created_at': data['created_at'] ?? DateTime.now().toUtc(),
+      });
+      final doc = await _appwriteDatabases.createDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _collectionId(collection),
+        documentId: aw.ID.unique(),
+        data: payload,
+      );
+      _logger.info('Document created in $collection with ID: ${doc.$id}');
+      return doc.$id;
     } catch (e) {
       _logger.error('Error creating document in $collection: $e');
       throw DatabaseException('Failed to create document', originalError: e);
@@ -1435,8 +1529,16 @@ class FirebaseDatabaseService {
   Future<void> updateDocument(
       String collection, String documentId, Map<String, dynamic> data) async {
     try {
-      data['updated_at'] = FieldValue.serverTimestamp();
-      await _firestore.collection(collection).doc(documentId).update(data);
+      final payload = _sanitizeAppwriteData({
+        ...data,
+        'updated_at': data['updated_at'] ?? DateTime.now().toUtc(),
+      });
+      await _appwriteDatabases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _collectionId(collection),
+        documentId: documentId,
+        data: payload,
+      );
       _logger.info('Document updated in $collection with ID: $documentId');
     } catch (e) {
       _logger.error('Error updating document in $collection: $e');
@@ -1450,10 +1552,30 @@ class FirebaseDatabaseService {
   Future<void> createOrUpdateDocument(
       String collection, String documentId, Map<String, dynamic> data) async {
     try {
-      // Stamp timestamps
-      data['updated_at'] = FieldValue.serverTimestamp();
-      data['id'] = documentId;
-      await _firestore.collection(collection).doc(documentId).set(data);
+      final payload = _sanitizeAppwriteData({
+        ...data,
+        'updated_at': data['updated_at'] ?? DateTime.now().toUtc(),
+      });
+      try {
+        await _appwriteDatabases.updateDocument(
+          databaseId: AppwriteBackendConfig.databaseId,
+          collectionId: _collectionId(collection),
+          documentId: documentId,
+          data: payload,
+        );
+      } on aw.AppwriteException catch (e) {
+        if (e.code != 404) rethrow;
+        await _appwriteDatabases.createDocument(
+          databaseId: AppwriteBackendConfig.databaseId,
+          collectionId: _collectionId(collection),
+          documentId: documentId,
+          data: {
+            ...payload,
+            'created_at': payload['created_at'] ??
+                DateTime.now().toUtc().toIso8601String(),
+          },
+        );
+      }
       _logger.info('Document upserted in $collection with ID: $documentId');
     } catch (e) {
       _logger.error('Error upserting document in $collection: $e');
@@ -1463,7 +1585,11 @@ class FirebaseDatabaseService {
 
   Future<void> deleteDocument(String collection, String documentId) async {
     try {
-      await _firestore.collection(collection).doc(documentId).delete();
+      await _appwriteDatabases.deleteDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _collectionId(collection),
+        documentId: documentId,
+      );
       _logger.info('Document deleted from $collection with ID: $documentId');
     } catch (e) {
       _logger.error('Error deleting document from $collection: $e');
@@ -1475,10 +1601,26 @@ class FirebaseDatabaseService {
   Future<String> uploadFile(String path, Uint8List data,
       {String? contentType}) async {
     try {
-      final ref = _storage.ref().child(path);
-      final metadata = SettableMetadata(contentType: contentType);
-      final uploadTask = await ref.putData(data, metadata);
-      final downloadUrl = await uploadTask.ref.getDownloadURL();
+      final target = _storageTarget(path);
+      final fileId = _stableFileId(target.objectName);
+      try {
+        await _appwriteStorage.deleteFile(
+          bucketId: target.bucketId,
+          fileId: fileId,
+        );
+      } on aw.AppwriteException catch (e) {
+        if (e.code != 404) rethrow;
+      }
+      final file = await _appwriteStorage.createFile(
+        bucketId: target.bucketId,
+        fileId: fileId,
+        file: aw.InputFile.fromBytes(
+          bytes: data,
+          filename: target.objectName.split('/').last,
+          contentType: contentType,
+        ),
+      );
+      final downloadUrl = _appwriteFileUrl(target.bucketId, file.$id);
       _logger.info('File uploaded to $path');
       return downloadUrl;
     } catch (e) {
@@ -1489,8 +1631,11 @@ class FirebaseDatabaseService {
 
   Future<Uint8List?> downloadFile(String path) async {
     try {
-      final ref = _storage.ref().child(path);
-      final data = await ref.getData();
+      final target = _storageTarget(path);
+      final data = await _appwriteStorage.getFileDownload(
+        bucketId: target.bucketId,
+        fileId: _stableFileId(target.objectName),
+      );
       _logger.info('File downloaded from $path');
       return data;
     } catch (e) {
@@ -1501,8 +1646,11 @@ class FirebaseDatabaseService {
 
   Future<void> deleteFile(String path) async {
     try {
-      final ref = _storage.ref().child(path);
-      await ref.delete();
+      final target = _storageTarget(path);
+      await _appwriteStorage.deleteFile(
+        bucketId: target.bucketId,
+        fileId: _stableFileId(target.objectName),
+      );
       _logger.info('File deleted from $path');
     } catch (e) {
       _logger.error('Error deleting file from $path: $e');
@@ -1524,8 +1672,9 @@ class FirebaseDatabaseService {
 
   Future<String> getDownloadUrl(String path) async {
     try {
-      final ref = _storage.ref().child(path);
-      final url = await ref.getDownloadURL();
+      final target = _storageTarget(path);
+      final url =
+          _appwriteFileUrl(target.bucketId, _stableFileId(target.objectName));
       _logger.info('Got download URL for $path');
       return url;
     } catch (e) {
@@ -1536,8 +1685,20 @@ class FirebaseDatabaseService {
 
   Future<void> deleteFileByUrl(String downloadUrl) async {
     try {
-      final ref = _storage.refFromURL(downloadUrl);
-      await ref.delete();
+      final uri = Uri.parse(downloadUrl);
+      final segments = uri.pathSegments;
+      final bucketIndex = segments.indexOf('buckets');
+      final fileIndex = segments.indexOf('files');
+      if (bucketIndex == -1 ||
+          fileIndex == -1 ||
+          bucketIndex + 1 >= segments.length ||
+          fileIndex + 1 >= segments.length) {
+        throw const FormatException('Unsupported Appwrite storage URL');
+      }
+      await _appwriteStorage.deleteFile(
+        bucketId: segments[bucketIndex + 1],
+        fileId: segments[fileIndex + 1],
+      );
       _logger.info('File deleted by URL: $downloadUrl');
     } catch (e) {
       _logger.error('Error deleting file by URL $downloadUrl: $e');

@@ -1,19 +1,24 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'firebase_storage_service.dart';
+// ignore_for_file: deprecated_member_use
+
+import 'dart:convert';
+
+import 'package:appwrite/appwrite.dart';
+
+import '../config/appwrite_backend_config.dart';
+import '../main.dart';
 import '../models/donation_models.dart';
 
-/// Admin utility to sync Firebase Storage tracts into Firestore
+/// Admin utility to sync Appwrite Storage tracts into the
 /// `downloadable_materials` collection with required donation settings.
 class MaterialSyncService {
   MaterialSyncService._();
   static final MaterialSyncService instance = MaterialSyncService._();
 
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
-  final FirebaseStorageService _storage = FirebaseStorageService();
+  late final Databases _db = Databases(appwriteClient);
+  late final Storage _storage = Storage(appwriteClient);
 
-  /// Sync all PDF files under `Tracts/` in Firebase Storage into
-  /// Firestore `downloadable_materials` collection.
+  /// Sync all PDF files in the Appwrite tracts bucket into
+  /// Appwrite `downloadable_materials`.
   ///
   /// - `requiresDonation`: whether downloads require a donation
   /// - `minimumDonation`: minimum donation amount required (uses DonationConstants)
@@ -26,49 +31,72 @@ class MaterialSyncService {
   }) async {
     int upserted = 0;
 
-    final List<Reference> files = await _storage.getTractFiles();
-    for (final ref in files) {
-      final name = ref.name; // e.g. my_tract.pdf
+    final fileList = await _storage.listFiles(
+      bucketId: AppwriteBackendConfig.tractFilesBucketId,
+      queries: [Query.limit(100)],
+    );
+    for (final file in fileList.files) {
+      final name = file.name;
       if (!name.toLowerCase().endsWith('.pdf')) continue;
 
       final id = name.replaceAll('.pdf', '');
-      final storagePath = '${FirebaseStorageService.tractsPath}/$name';
-
-      // Get metadata for file size/type
-      int fileSizeBytes = 0;
-      String fileType = 'application/pdf';
-      try {
-        final meta = await _storage.getTractFileMetadata(name);
-        if (meta?.size != null) fileSizeBytes = meta!.size!;
-        if (meta?.contentType != null) fileType = meta!.contentType!;
-      } catch (_) {}
+      final fileUrl = '${AppwriteBackendConfig.endpoint}/storage/buckets/'
+          '${AppwriteBackendConfig.tractFilesBucketId}/files/${file.$id}/view'
+          '?project=${AppwriteBackendConfig.projectId}';
 
       final nowIso = DateTime.now().toIso8601String();
-
-      final docRef = _db.collection('downloadable_materials').doc(id);
-      final docSnap = await docRef.get();
+      var existingDownloadCount = 0;
+      var createdAt = nowIso;
+      try {
+        final existing = await _db.getDocument(
+          databaseId: AppwriteBackendConfig.databaseId,
+          collectionId: AppwriteBackendConfig.downloadableMaterialsCollectionId,
+          documentId: id,
+        );
+        existingDownloadCount = existing.data['download_count'] ?? 0;
+        createdAt = existing.data['created_at'] ?? nowIso;
+      } on AppwriteException catch (e) {
+        if (e.code != 404) rethrow;
+      }
 
       final data = {
         'title': id.replaceAll('_', ' ').trim(),
         'description': 'Tract PDF',
         'category': 'Tracts',
-        'file_url': storagePath,
+        'file_url': fileUrl,
         'thumbnail_url': null,
-        'file_size_bytes': fileSizeBytes,
-        'file_type': fileType,
+        'file_size_bytes': file.sizeOriginal,
+        'file_type': file.mimeType,
         'minimum_donation': minimumDonation,
         'requires_donation': requiresDonation,
         'is_active': activate,
-        'download_count': docSnap.exists ? (docSnap.data()!['download_count'] ?? 0) : 0,
-        'metadata': {
-          'source': 'firebase_storage',
-          'bucket_path': storagePath,
-        },
-        'created_at': docSnap.exists ? (docSnap.data()!['created_at'] ?? nowIso) : nowIso,
+        'download_count': existingDownloadCount,
+        'metadata': jsonEncode({
+          'source': 'appwrite_storage',
+          'bucket_id': AppwriteBackendConfig.tractFilesBucketId,
+          'file_id': file.$id,
+          'file_name': name,
+        }),
+        'created_at': createdAt,
         'updated_at': nowIso,
       };
 
-      await docRef.set(data, SetOptions(merge: true));
+      try {
+        await _db.updateDocument(
+          databaseId: AppwriteBackendConfig.databaseId,
+          collectionId: AppwriteBackendConfig.downloadableMaterialsCollectionId,
+          documentId: id,
+          data: data,
+        );
+      } on AppwriteException catch (e) {
+        if (e.code != 404) rethrow;
+        await _db.createDocument(
+          databaseId: AppwriteBackendConfig.databaseId,
+          collectionId: AppwriteBackendConfig.downloadableMaterialsCollectionId,
+          documentId: id,
+          data: data,
+        );
+      }
       upserted++;
     }
 

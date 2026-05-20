@@ -1,6 +1,11 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:appwrite/appwrite.dart';
+import 'package:appwrite/models.dart' as appwrite_models;
+import '../../config/appwrite_backend_config.dart';
+import '../../main.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../utils/responsive_utils.dart';
 import '../../models/kids_missions.dart';
@@ -10,24 +15,14 @@ class KidsMissionScreen extends ConsumerWidget {
   const KidsMissionScreen({super.key});
 
   Stream<List<Mission>> _getMissionsStream() {
-    return FirebaseFirestore.instance
-        .collection('kids_missions')
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs
+    return Stream.fromFuture(Databases(appwriteClient).listDocuments(
+      databaseId: AppwriteBackendConfig.databaseId,
+      collectionId: AppwriteBackendConfig.kidsMissionsCollectionId,
+      queries: [Query.equal('is_active', true), Query.limit(100)],
+    ).then((snapshot) {
+      return snapshot.documents
           .map((doc) {
-            final data = doc.data();
-            data['id'] = doc.id;
-
-            // Defaults to support legacy compatibility
-            data['completed'] = data['completed'] ?? false;
-            data['points'] = data['points'] ?? 10;
-            data['category'] = data['category'] ?? 'learning';
-            data['difficulty'] = data['difficulty'] ?? 'easy';
-            data['duration'] = data['duration'] ?? 15;
-            data['verificationMethod'] =
-                data['verificationMethod'] ?? 'honor_system';
-            data['content'] = data['content'] ?? data['instructions'] ?? '';
+            final data = _mapMissionDocument(doc);
 
             try {
               return Mission.fromJson(data);
@@ -37,7 +32,59 @@ class KidsMissionScreen extends ConsumerWidget {
           })
           .whereType<Mission>()
           .toList();
-    });
+    }));
+  }
+
+  Map<String, dynamic> _mapMissionDocument(appwrite_models.Document doc) {
+    final data = Map<String, dynamic>.from(doc.data);
+
+    return {
+      'id': doc.$id,
+      'title': data['title'] ?? 'Mission',
+      'description': data['description'] ?? '',
+      'location': data['location'] ?? 'Home',
+      'difficulty': _missionDifficulty(data['difficulty']),
+      'duration': data['duration']?.toString() ?? '15 minutes',
+      'points': data['points'] ?? 10,
+      'category': _missionCategory(data['category']),
+      'completed': data['completed'] ?? false,
+      'instructions': _stringList(data['instructions']),
+      'verificationMethod': _verificationMethod(data['verification_method']),
+      'prerequisiteMissionIds': _stringList(data['prerequisite_mission_ids']),
+      'isLocked': data['is_locked'] ?? false,
+      'unlockedBy': data['unlocked_by'],
+      'mediaUrl': data['media_url'],
+    };
+  }
+
+  List<String> _stringList(dynamic value) {
+    if (value is List) return value.map((item) => item.toString()).toList();
+    if (value is String && value.isNotEmpty) return [value];
+    return const [];
+  }
+
+  String _missionDifficulty(dynamic value) {
+    final normalized = value?.toString().toLowerCase() ?? '';
+    if (normalized.contains('hard')) return 'hard';
+    if (normalized.contains('medium')) return 'medium';
+    return 'easy';
+  }
+
+  String _missionCategory(dynamic value) {
+    final normalized = value?.toString().toLowerCase() ?? '';
+    if (normalized.contains('evangel')) return 'evangelism';
+    if (normalized.contains('service')) return 'service';
+    if (normalized.contains('sharing')) return 'sharing';
+    if (normalized.contains('prayer')) return 'prayer';
+    return 'learning';
+  }
+
+  String _verificationMethod(dynamic value) {
+    final normalized = value?.toString().toLowerCase() ?? '';
+    if (normalized.contains('photo')) return 'photo';
+    if (normalized.contains('story')) return 'story';
+    if (normalized.contains('quiz')) return 'quiz';
+    return 'witness';
   }
 
   @override
