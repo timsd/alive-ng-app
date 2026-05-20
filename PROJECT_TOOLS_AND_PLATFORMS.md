@@ -57,6 +57,10 @@ Estimated overall migration progress: about 81%.
 - Public Paystack key is client-side build configuration.
 - Secret Paystack key belongs only in Appwrite function variables.
 - Donation records and project metadata are now read/written through Appwrite services in migrated flows.
+- Paystack card entry must stay inside Paystack Checkout or Paystack SDK surfaces.
+  The app and Appwrite functions must never accept raw card number, PAN, CVV/CVC, or expiry fields.
+- Paystack webhook handling lives in the `paystack_webhook` Appwrite function and verifies `x-paystack-signature` with HMAC-SHA512 before mutating donation records.
+  Configure Paystack to call the generated Appwrite Function domain for `paystack_webhook`; do not use the SDK execution endpoint unless the sender can supply Appwrite project headers.
 
 ## Communication
 

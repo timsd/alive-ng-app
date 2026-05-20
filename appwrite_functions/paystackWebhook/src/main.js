@@ -21,7 +21,7 @@ export default async ({ req, res, log, error }) => {
     const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {});
     const signature = req.headers['x-paystack-signature'];
     const computed = crypto.createHmac('sha512', secret).update(rawBody).digest('hex');
-    if (signature !== computed) {
+    if (!isValidSignature(signature, computed)) {
       return res.text('Invalid signature', 401);
     }
 
@@ -73,6 +73,16 @@ export default async ({ req, res, log, error }) => {
     return res.text('Internal Server Error', 500);
   }
 };
+
+function isValidSignature(received, expected) {
+  if (typeof received !== 'string' || !received) return false;
+
+  const receivedBuffer = Buffer.from(received, 'hex');
+  const expectedBuffer = Buffer.from(expected, 'hex');
+  if (receivedBuffer.length !== expectedBuffer.length) return false;
+
+  return crypto.timingSafeEqual(receivedBuffer, expectedBuffer);
+}
 
 function appwriteDatabases() {
   const apiKey = process.env.APPWRITE_FUNCTION_API_KEY || process.env.APPWRITE_API_KEY;

@@ -40,7 +40,7 @@ app.post('/webhook/paystack', async (req, res) => {
       .createHmac('sha512', secret)
       .update(body)
       .digest('hex');
-    if (expected !== signature) {
+    if (!isValidSignature(signature, expected)) {
       return res.status(400).json({ error: 'Invalid signature' });
     }
     const event = JSON.parse(body.toString('utf8'));
@@ -148,7 +148,7 @@ app.post('/webhook/stream', async (req, res) => {
       .createHmac('sha256', secret)
       .update(body)
       .digest('hex');
-    if (expected !== signature) {
+    if (!isValidSignature(signature, expected)) {
       return res.status(400).json({ error: 'Invalid signature' });
     }
     const event = JSON.parse(body.toString('utf8'));
@@ -229,3 +229,13 @@ app.listen(port, () => {
   // eslint-disable-next-line no-console
   console.log(`Server listening on :${port}`);
 });
+
+function isValidSignature(received, expected) {
+  if (typeof received !== 'string' || !received) return false;
+
+  const receivedBuffer = Buffer.from(received, 'hex');
+  const expectedBuffer = Buffer.from(expected, 'hex');
+  if (receivedBuffer.length !== expectedBuffer.length) return false;
+
+  return crypto.timingSafeEqual(receivedBuffer, expectedBuffer);
+}

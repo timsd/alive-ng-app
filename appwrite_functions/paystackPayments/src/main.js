@@ -21,6 +21,10 @@ export default async ({ req, res, log, error }) => {
     }
 
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+    if (containsRawCardData(body)) {
+      return res.json({ error: 'Raw card data must be submitted only to Paystack checkout.' }, 400);
+    }
+
     const action = body.action || 'initialize_transaction';
     const reference = validateReference(body.reference);
     const email = validateEmail(body.email);
@@ -105,6 +109,37 @@ function validateReference(value) {
     throw new Error('Invalid reference.');
   }
   return value;
+}
+
+function containsRawCardData(value) {
+  const blockedKeys = new Set([
+    'card',
+    'card_number',
+    'cardnumber',
+    'number',
+    'pan',
+    'cvv',
+    'cvc',
+    'security_code',
+    'expiry',
+    'expiry_month',
+    'expiry_year',
+    'exp_month',
+    'exp_year',
+  ]);
+
+  const visit = (item) => {
+    if (!item || typeof item !== 'object') return false;
+    if (Array.isArray(item)) return item.some(visit);
+
+    return Object.entries(item).some(([key, child]) => {
+      const normalized = key.toLowerCase().replace(/[\s-]/g, '_');
+      if (blockedKeys.has(normalized)) return true;
+      return visit(child);
+    });
+  };
+
+  return visit(value);
 }
 
 async function writePaymentLog({ event, reference, status, payload, log }) {
