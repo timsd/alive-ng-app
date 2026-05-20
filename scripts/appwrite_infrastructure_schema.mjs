@@ -257,7 +257,10 @@ export const tables = [
       s('user_id', 128, true), b('daily_verse_reminder', false, true), b('prayer_reminder', false, true),
       b('health_tracking_reminder', false, true), b('study_reminder', false, true), b('mission_reminder', false, true),
       s('reminder_time', 16), b('push_notifications_enabled', false, false), b('sound_enabled', false, true),
-      b('prayer'), b('chat'), b('events'), b('donations'), b('study'), b('kids'), b('health'), dt('updated_at'),
+      b('prayer'), b('chat'), b('events'), b('donations'), b('study'), b('kids'), b('health'),
+      b('prayer_requests'), b('missions'), b('daily_verse'), b('health_reminders'), b('study_reminders'),
+      b('bible_memorization_reminder'), dt('daily_verse_time'), mediumtext('health_reminder_settings'),
+      mediumtext('study_reminder_settings'), dt('created_at'), dt('updated_at'),
     ],
   },
   {

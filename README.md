@@ -5,15 +5,16 @@ A comprehensive Flutter application for the ALIVE-NG Ministry, providing feature
 ## Current Migration Status
 
 The app is mid-migration from Firebase/Jitsi/GetStream pieces to Appwrite,
-LiveKit, and Coolify. Estimated overall migration progress is about 70%.
+LiveKit, and Coolify. Estimated overall migration progress is about 79%.
 Do not remove remaining Firebase files only because Appwrite files now exist;
 some admin, library, kids, chapter, notification, analytics, and sync modules
 still import Firebase services and must be replaced one workflow at a time.
 
 - Appwrite now backs auth/profile bootstrap, chat, prayer, testimonies,
-  notification settings records, study, health, onboarding content, events,
-  announcements, donation records, donation projects/settings reads, and the
-  Paystack function flow.
+  notification settings/reminder records, admin notification records, study, health,
+  onboarding content, events, announcements, app update settings, approval link
+  tokens, donation records, donation projects/settings reads, and the Paystack
+  function flow.
 - LiveKit is the current meeting stack through the `createLiveKitToken`
   Appwrite function.
 - `scripts/appwrite_infrastructure_schema.mjs` is the source of truth for
@@ -22,7 +23,9 @@ still import Firebase services and must be replaced one workflow at a time.
   then `npm run appwrite:provision:legacy` for provisioning.
 - Coolify web hosting is supported through the root `Dockerfile`, which builds
   Flutter web and serves it with Nginx. Supply Flutter build-time values through
-  the `FLUTTER_BUILD_ARGS` build argument.
+  the `FLUTTER_BUILD_ARGS` build argument, and supply Firebase web push bridge
+  values as Docker build args so `scripts/configure_web.dart` can fill the web
+  service worker during the image build.
 
 ## Features
 
@@ -205,6 +208,26 @@ flutter run -d chrome \
   --dart-define=LIVEKIT_URL=... \
   --dart-define=PAYSTACK_PUBLIC_KEY=... \
   --dart-define=PAYSTACK_CALLBACK_URL=...
+```
+
+For Coolify, configure these as Docker build arguments:
+
+- `FLUTTER_BUILD_ARGS`
+- `FIREBASE_API_KEY` or `FIREBASE_WEB_API_KEY`
+- `FIREBASE_AUTH_DOMAIN` or `FIREBASE_WEB_AUTH_DOMAIN`
+- `FIREBASE_PROJECT_ID` or `FIREBASE_WEB_PROJECT_ID`
+- `FIREBASE_STORAGE_BUCKET` or `FIREBASE_WEB_STORAGE_BUCKET`
+- `FIREBASE_MESSAGING_SENDER_ID` or `FIREBASE_WEB_MESSAGING_SENDER_ID`
+- `FIREBASE_APP_ID` or `FIREBASE_WEB_APP_ID`
+- `FIREBASE_MEASUREMENT_ID` or `FIREBASE_WEB_MEASUREMENT_ID`
+- `RECAPTCHA_SITE_KEY` if web recaptcha is enabled
+
+Do not pass private server secrets such as `APPWRITE_API_KEY`,
+`PAYSTACK_SECRET_KEY`, `LIVEKIT_API_SECRET`, or `RESEND_API_KEY` to the Flutter
+web image. Sync Appwrite function variables from local `.env` with:
+
+```bash
+npm run appwrite:function-vars
 ```
 
 ### Backend Services

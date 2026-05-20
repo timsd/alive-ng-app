@@ -1,12 +1,16 @@
+import 'dart:convert';
+
+import 'package:appwrite/appwrite.dart' hide Locale;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:go_router/go_router.dart';
+import '../config/appwrite_backend_config.dart';
+import '../main.dart';
 import '../utils/logger.dart';
 import '../utils/app_exception.dart';
 import 'auth_service.dart';
@@ -21,6 +25,7 @@ class NotificationService extends FirebaseMessagingBase {
 
   final AuthService _authService = AuthService.instance;
   final Logger _logger = Logger('NotificationService');
+  final Databases _databases = Databases(appwriteClient);
 
   // Global navigator key for navigation from background contexts
   static final GlobalKey<NavigatorState> _navigatorKey =
@@ -391,14 +396,12 @@ class NotificationService extends FirebaseMessagingBase {
     if (_authService.isAuthenticated) {
       try {
         final userId = _authService.currentUser!.uid;
-        await FirebaseFirestore.instance
-            .collection('notification_settings')
-            .doc(userId)
-            .set({
+        final data = {
           ...settings,
           'user_id': userId,
           'updated_at': DateTime.now().toIso8601String(),
-        }, SetOptions(merge: true));
+        };
+        await _upsertSettingsDocument(userId, data);
       } catch (e) {
         _logger.error('Failed to update notification settings', e);
         throw DatabaseException('Failed to update notification settings',
@@ -410,30 +413,71 @@ class NotificationService extends FirebaseMessagingBase {
   // Fetch notification settings for a user
   Future<NotificationSettings> fetchSettings(String userId) async {
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('notification_settings')
-          .doc(userId)
-          .get();
+      // ignore: deprecated_member_use
+      final doc = await _databases.getDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.notificationSettingsCollectionId,
+        documentId: userId,
+      );
 
-      if (doc.exists) {
-        return NotificationSettings.fromJson(doc.data()!);
-      } else {
+      return NotificationSettings.fromJson({...doc.data, 'id': doc.$id});
+    } catch (e) {
+      if (_isMissingDocument(e)) {
         return await createDefaultSettings(userId);
       }
-    } catch (e) {
       _logger.error('Failed to fetch settings, using defaults', e);
       return NotificationSettings.defaultSettings(userId);
     }
+  }
+
+  bool _isMissingDocument(Object error) {
+    return error is AppwriteException && error.code == 404;
+  }
+
+  Future<void> _upsertSettingsDocument(
+    String userId,
+    Map<String, dynamic> data,
+  ) async {
+    final payload = _settingsPayload(data);
+    try {
+      // ignore: deprecated_member_use
+      await _databases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.notificationSettingsCollectionId,
+        documentId: userId,
+        data: payload,
+      );
+    } catch (e) {
+      if (!_isMissingDocument(e)) rethrow;
+      // ignore: deprecated_member_use
+      await _databases.createDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.notificationSettingsCollectionId,
+        documentId: userId,
+        data: payload,
+      );
+    }
+  }
+
+  Map<String, dynamic> _settingsPayload(Map<String, dynamic> data) {
+    final payload = Map<String, dynamic>.from(data)..remove('id');
+    final healthReminders = payload['health_reminder_settings'];
+    if (healthReminders is List) {
+      payload['health_reminder_settings'] = jsonEncode(healthReminders);
+    }
+    final studyReminders = payload['study_reminder_settings'];
+    if (studyReminders is List) {
+      payload['study_reminder_settings'] = jsonEncode(studyReminders);
+    }
+    payload.removeWhere((_, value) => value == null);
+    return payload;
   }
 
   // Create default notification settings
   Future<NotificationSettings> createDefaultSettings(String userId) async {
     try {
       final defaultSettings = NotificationSettings.defaultSettings(userId);
-      await FirebaseFirestore.instance
-          .collection('notification_settings')
-          .doc(userId)
-          .set(defaultSettings.toJson());
+      await _upsertSettingsDocument(userId, defaultSettings.toJson());
       return defaultSettings;
     } catch (e) {
       _logger.error('Failed to create default settings', e);
@@ -446,10 +490,7 @@ class NotificationService extends FirebaseMessagingBase {
       NotificationSettings settings) async {
     try {
       final updatedSettings = settings.copyWith(updatedAt: DateTime.now());
-      await FirebaseFirestore.instance
-          .collection('notification_settings')
-          .doc(settings.userId)
-          .update(updatedSettings.toJson());
+      await _upsertSettingsDocument(settings.userId, updatedSettings.toJson());
       return updatedSettings;
     } catch (e) {
       _logger.error('Failed to update notification settings', e);
@@ -675,11 +716,11 @@ class NotificationSettings {
       dailyVerseTime: json['daily_verse_time'] != null
           ? DateTime.parse(json['daily_verse_time'])
           : null,
-      healthReminderSettings: (json['health_reminder_settings'] as List?)
+      healthReminderSettings: (_decodeJsonList(json['health_reminder_settings']))
               ?.map((e) => HealthReminderSetting.fromJson(e))
               .toList() ??
           [],
-      studyReminderSettings: (json['study_reminder_settings'] as List?)
+      studyReminderSettings: (_decodeJsonList(json['study_reminder_settings']))
               ?.map((e) => StudyReminderSetting.fromJson(e))
               .toList() ??
           [],
@@ -772,6 +813,23 @@ class NotificationSettings {
       pushNotificationsEnabled: true,
     );
   }
+}
+
+List<Map<String, dynamic>>? _decodeJsonList(dynamic value) {
+  if (value is List) {
+    return value
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+  }
+  if (value is! String || value.isEmpty) return null;
+
+  final decoded = jsonDecode(value);
+  if (decoded is! List) return null;
+  return decoded
+      .whereType<Map>()
+      .map((item) => Map<String, dynamic>.from(item))
+      .toList();
 }
 
 class HealthReminderSetting {

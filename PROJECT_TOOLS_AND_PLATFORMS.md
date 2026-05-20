@@ -8,12 +8,12 @@ Last updated from codebase review: 2026-05-20
 
 The app is migrating from Firebase, Jitsi, and GetStream to Appwrite, LiveKit, and Coolify. Treat Firebase as a legacy compatibility layer until the remaining modules below are migrated.
 
-Estimated overall migration progress: about 78%.
+Estimated overall migration progress: about 79%.
 
-- Appwrite-backed and validated with `flutter analyze`: auth/profile bootstrap, chat, LiveKit token flow, Paystack payment functions, Resend email function wiring/deployment variables, Appwrite push target registration, prayer, testimonies, notification settings records, admin notification records, study screen, health screen, onboarding content, events, announcements, app update settings, approval link tokens, and donation project/settings reads.
+- Appwrite-backed and validated with `flutter analyze`: auth/profile bootstrap, chat, LiveKit token flow, Paystack payment functions, Resend email function wiring/deployment variables, Appwrite push target registration, prayer, testimonies, notification settings/reminder records, admin notification records, study screen, health screen, onboarding content, events, announcements, app update settings, approval link tokens, and donation project/settings reads.
 - Appwrite infrastructure schema is maintained in `scripts/appwrite_infrastructure_schema.mjs`.
 - Provision safely against the current Appwrite 1.7.4 server with `npm run appwrite:dry-run` and then `npm run appwrite:provision:legacy`.
-- Coolify web hosting is supported by the root `Dockerfile`; pass Flutter values through the `FLUTTER_BUILD_ARGS` build argument.
+- Coolify web hosting is supported by the root `Dockerfile`; pass Flutter values through the `FLUTTER_BUILD_ARGS` build argument and pass Firebase web push bridge values as Docker build args so the service worker is configured during image build.
 - Firebase rules, indexes, and config files remain in place because several modules still import Firebase directly.
 
 ## Core App Stack
@@ -40,8 +40,8 @@ Estimated overall migration progress: about 78%.
 - App update prompts read Appwrite `app_settings` document `app_version`.
   Store either a plain version in `value`, or JSON such as `{"latest_version":"1.2.3","force_update":false,"update_url":"https://app.alivenigeria.org"}`.
   The project script `npm run appwrite:app-version` upserts this document automatically from `.env` and `pubspec.yaml`.
-- Appwrite function variables can be synced from `.env` with `npm run appwrite:function-vars`.
-  The `send_email` function can be created, filled with `RESEND_API_KEY`, and deployed with `npm run appwrite:deploy-send-email`.
+- Appwrite function variables for LiveKit, Paystack, Paystack webhook, and Resend email can be synced from `.env` with `npm run appwrite:function-vars`.
+  The local Appwrite function code can be created/updated and deployed with `npm run appwrite:deploy-functions`.
   Use `npm run appwrite:provision:admin-notifications` when only the admin notification table needs to be applied.
 
 ## Hosting And Deployment

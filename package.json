@@ -5,8 +5,10 @@
     "appwrite:provision": "node scripts/provision_appwrite_infrastructure.mjs",
     "appwrite:provision:legacy": "node scripts/provision_appwrite_infrastructure.mjs --legacy-databases",
     "appwrite:provision:admin-notifications": "node scripts/provision_appwrite_infrastructure.mjs --legacy-databases --only-table=admin_notifications",
+    "appwrite:provision:notification-settings": "node scripts/provision_appwrite_infrastructure.mjs --legacy-databases --only-table=notification_settings",
     "appwrite:app-version": "node scripts/upsert_appwrite_app_version.mjs",
     "appwrite:function-vars": "node scripts/upsert_appwrite_function_variables.mjs",
+    "appwrite:deploy-functions": "node scripts/upsert_appwrite_function_variables.mjs --deploy",
     "appwrite:deploy-send-email": "node scripts/upsert_appwrite_function_variables.mjs --deploy"
   },
   "dependencies": {

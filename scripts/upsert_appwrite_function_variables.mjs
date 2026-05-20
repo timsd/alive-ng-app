@@ -30,7 +30,38 @@ function optionalEnv(name) {
   return value && value.trim() ? value.trim() : null;
 }
 
+function variableIdFor(key) {
+  const normalized = key.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+  if (normalized.length <= 36) return normalized;
+
+  const head = normalized.slice(0, 27);
+  let hash = 0;
+  for (const char of normalized) {
+    hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  }
+  return `${head}_${hash.toString(36)}`.slice(0, 36);
+}
+
 async function upsertVariable(functions, functionId, variable) {
+  const existingVariables = await functions.listVariables({
+    functionId,
+    total: false,
+  });
+  const existingByKey = existingVariables.variables?.find(
+    (item) => item.key === variable.key,
+  );
+  if (existingByKey) {
+    await functions.updateVariable({
+      functionId,
+      variableId: existingByKey.$id,
+      key: variable.key,
+      value: variable.value,
+      secret: variable.secret,
+    });
+    console.log(`Updated ${functionId} variable ${variable.key}.`);
+    return;
+  }
+
   try {
     await functions.updateVariable({
       functionId,
@@ -75,41 +106,109 @@ const endpoint = requireEnv(
   'http://appwrite-he4p5j9b9dj42v5nzeklu2u3.84.8.219.248.sslip.io/v1',
 );
 const projectId = requireEnv('APPWRITE_PROJECT_ID', '6a088e5f0003764bde50');
+const databaseId = requireEnv('APPWRITE_DATABASE_ID', '6a089307002e54291a32');
 const apiKey = requireEnv('APPWRITE_API_KEY');
-const sendEmailFunctionId =
-  process.env.APPWRITE_SEND_EMAIL_FUNCTION_ID || 'send_email';
 const shouldDeploy = process.argv.includes('--deploy');
 
-const resendApiKey = requireEnv('RESEND_API_KEY');
-const receiptSenderEmail = optionalEnv('RECEIPT_SENDER_EMAIL');
-const senderEmail = optionalEnv('SENDER_EMAIL');
+function envVariable(key, options = {}) {
+  const value = options.required ? requireEnv(key) : optionalEnv(key);
+  if (!value) return null;
 
-const variables = [
+  return {
+    id: variableIdFor(key),
+    key,
+    value,
+    secret: options.secret ?? true,
+  };
+}
+
+function literalVariable(key, value, options = {}) {
+  if (!value) return null;
+
+  return {
+    id: variableIdFor(key),
+    key,
+    value,
+    secret: options.secret ?? false,
+  };
+}
+
+const functionConfigs = [
   {
-    id: 'resend_api_key',
-    key: 'RESEND_API_KEY',
-    value: resendApiKey,
-    secret: true,
+    id: '6a08e9010035dc8c1e51',
+    name: 'createLiveKitToken',
+    path: 'appwrite_functions/createLiveKitToken',
+    variables: [
+      envVariable('LIVEKIT_API_KEY', { required: true, secret: true }),
+      envVariable('LIVEKIT_API_SECRET', { required: true, secret: true }),
+      envVariable('LIVEKIT_SECRET', { secret: true }),
+    ],
+    create: {
+      runtime: 'node-20.0',
+      execute: ['users'],
+      scopes: ['users.read'],
+    },
+  },
+  {
+    id: 'paystack_payments',
+    name: 'paystackPayments',
+    path: 'appwrite_functions/paystackPayments',
+    variables: [
+      envVariable('PAYSTACK_SECRET_KEY', { required: true, secret: true }),
+      literalVariable('APPWRITE_ENDPOINT', endpoint),
+      literalVariable('APPWRITE_PROJECT_ID', projectId),
+      literalVariable('APPWRITE_DATABASE_ID', databaseId),
+      envVariable('APPWRITE_API_KEY', { required: true, secret: true }),
+      envVariable('APPWRITE_FUNCTION_API_KEY', { secret: true }),
+      envVariable('APPWRITE_FUNCTION_API_ENDPOINT', { secret: false }),
+      envVariable('APPWRITE_FUNCTION_PROJECT_ID', { secret: false }),
+      literalVariable('APPWRITE_PAYMENT_LOGS_COLLECTION_ID', 'payment_logs'),
+    ],
+    create: {
+      runtime: 'node-20.0',
+      execute: ['users'],
+      scopes: ['databases.read', 'databases.write'],
+    },
+  },
+  {
+    id: 'paystack_webhook',
+    name: 'paystackWebhook',
+    path: 'appwrite_functions/paystackWebhook',
+    variables: [
+      envVariable('PAYSTACK_SECRET_KEY', { required: true, secret: true }),
+      literalVariable('APPWRITE_ENDPOINT', endpoint),
+      literalVariable('APPWRITE_PROJECT_ID', projectId),
+      literalVariable('APPWRITE_DATABASE_ID', databaseId),
+      envVariable('APPWRITE_API_KEY', { required: true, secret: true }),
+      envVariable('APPWRITE_FUNCTION_API_KEY', { secret: true }),
+      envVariable('APPWRITE_FUNCTION_API_ENDPOINT', { secret: false }),
+      envVariable('APPWRITE_FUNCTION_PROJECT_ID', { secret: false }),
+      literalVariable('APPWRITE_DONATION_RECORDS_COLLECTION_ID', 'donation_records'),
+      literalVariable('APPWRITE_PROJECTS_COLLECTION_ID', 'projects'),
+      literalVariable('APPWRITE_PAYMENT_LOGS_COLLECTION_ID', 'payment_logs'),
+    ],
+    create: {
+      runtime: 'node-20.0',
+      execute: ['any'],
+      scopes: ['databases.read', 'databases.write'],
+    },
+  },
+  {
+    id: process.env.APPWRITE_SEND_EMAIL_FUNCTION_ID || 'send_email',
+    name: 'sendEmail',
+    path: 'appwrite_functions/sendEmail',
+    variables: [
+      envVariable('RESEND_API_KEY', { required: true, secret: true }),
+      envVariable('RECEIPT_SENDER_EMAIL', { secret: false }),
+      envVariable('SENDER_EMAIL', { secret: false }),
+    ],
+    create: {
+      runtime: 'node-20.0',
+      execute: ['users'],
+      scopes: [],
+    },
   },
 ];
-
-if (receiptSenderEmail) {
-  variables.push({
-    id: 'receipt_sender_email',
-    key: 'RECEIPT_SENDER_EMAIL',
-    value: receiptSenderEmail,
-    secret: false,
-  });
-}
-
-if (senderEmail) {
-  variables.push({
-    id: 'sender_email',
-    key: 'SENDER_EMAIL',
-    value: senderEmail,
-    secret: false,
-  });
-}
 
 const client = new Client()
   .setEndpoint(endpoint)
@@ -118,9 +217,9 @@ const client = new Client()
 
 const functions = new Functions(client);
 
-async function ensureSendEmailFunction() {
+async function ensureFunction(config) {
   try {
-    return await functions.get({ functionId: sendEmailFunctionId });
+    return await functions.get({ functionId: config.id });
   } catch (error) {
     if (error?.code !== 404 && error?.response?.code !== 404) {
       throw error;
@@ -128,10 +227,10 @@ async function ensureSendEmailFunction() {
   }
 
   await functions.create({
-    functionId: sendEmailFunctionId,
-    name: 'sendEmail',
-    runtime: 'node-20.0',
-    execute: ['users'],
+    functionId: config.id,
+    name: config.name,
+    runtime: config.create.runtime,
+    execute: config.create.execute,
     events: [],
     schedule: '',
     timeout: 15,
@@ -139,59 +238,62 @@ async function ensureSendEmailFunction() {
     logging: true,
     entrypoint: 'src/main.js',
     commands: 'npm install',
-    scopes: [],
+    scopes: config.create.scopes,
   });
 
-  console.log(`Created Appwrite function ${sendEmailFunctionId}.`);
+  console.log(`Created Appwrite function ${config.id}.`);
 }
 
-function createFunctionArchive() {
-  const archivePath = resolve('.tmp-send-email-function.tar.gz');
+function createFunctionArchive(config) {
+  const archivePath = resolve(`.tmp-${config.id}-function.tar.gz`);
   rmSync(archivePath, { force: true });
 
   const result = spawnSync(
     'tar',
-    ['-czf', archivePath, '-C', 'appwrite_functions/sendEmail', '.'],
+    ['-czf', archivePath, '-C', config.path, '.'],
     { cwd: process.cwd(), encoding: 'utf8' },
   );
 
   if (result.status !== 0) {
     throw new Error(
-      `Could not create send_email archive: ${result.stderr || result.stdout}`,
+      `Could not create ${config.id} archive: ${result.stderr || result.stdout}`,
     );
   }
 
   return archivePath;
 }
 
-async function deploySendEmailFunction() {
-  const archivePath = createFunctionArchive();
+async function deployFunction(config) {
+  const archivePath = createFunctionArchive(config);
 
   try {
     const deployment = await functions.createDeployment({
-      functionId: sendEmailFunctionId,
-      code: InputFile.fromPath(archivePath, 'sendEmail.tar.gz'),
+      functionId: config.id,
+      code: InputFile.fromPath(archivePath, `${config.id}.tar.gz`),
       activate: true,
       entrypoint: 'src/main.js',
       commands: 'npm install',
     });
 
-    console.log(`Uploaded send_email deployment ${deployment.$id}.`);
+    console.log(`Uploaded ${config.id} deployment ${deployment.$id}.`);
   } finally {
     rmSync(archivePath, { force: true });
   }
 }
 
-await ensureSendEmailFunction();
+for (const config of functionConfigs) {
+  await ensureFunction(config);
 
-for (const variable of variables) {
-  await upsertVariable(functions, sendEmailFunctionId, variable);
+  const variables = config.variables.filter(Boolean);
+  for (const variable of variables) {
+    await upsertVariable(functions, config.id, variable);
+  }
+
+  if (shouldDeploy) {
+    await deployFunction(config);
+  }
+
+  console.log(
+    `${config.id} variables synced (${variables.map((variable) => variable.key).join(', ')}).`,
+  );
 }
-
-if (shouldDeploy) {
-  await deploySendEmailFunction();
-}
-
-console.log(
-  `send_email variables synced (${variables.map((variable) => variable.key).join(', ')}).`,
-);
