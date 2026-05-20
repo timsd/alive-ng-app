@@ -1,8 +1,21 @@
-import 'package:firebase_storage/firebase_storage.dart';
+// ignore_for_file: deprecated_member_use
+
+import 'dart:convert';
+
+import 'package:appwrite/appwrite.dart';
+import 'package:appwrite/models.dart' as appwrite_models;
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
+
+import '../config/appwrite_backend_config.dart';
+import '../main.dart';
 import '../utils/app_exception.dart';
 import '../utils/logger.dart';
 
+/// Backwards-compatible storage facade.
+///
+/// Existing screens still import `FirebaseStorageService`, but this now writes
+/// to Appwrite Storage so those workflows can migrate without a broad UI rename.
 class FirebaseStorageService {
   static final FirebaseStorageService _instance =
       FirebaseStorageService._internal();
@@ -11,134 +24,76 @@ class FirebaseStorageService {
 
   static final Logger _logger = Logger('FirebaseStorageService');
 
-  final FirebaseStorage _storage = FirebaseStorage.instance;
+  final Storage _storage = Storage(appwriteClient);
 
-  // Tract storage paths
   static const String tractsPath = 'Tracts';
   static const String whatTheBibleSaysPath = 'Tracts/What_The_Bible_Says';
-  // Board Documents storage path
   static const String boardDocumentsPath = 'board_documents';
 
-  /// Upload board document from bytes
   Future<String?> uploadBoardDocument(
       Uint8List bytes, String fileName, String contentType) async {
-    try {
-      final ref = _storage.ref('$boardDocumentsPath/$fileName');
-      final uploadTask = ref.putData(
-          bytes,
-          SettableMetadata(
-            contentType: contentType,
-          ));
-      final snapshot = await uploadTask;
-      return await snapshot.ref.getDownloadURL();
-    } catch (e) {
-      _logger.error('Error uploading board document', e);
-      throw StorageException('Failed to upload board document',
-          originalError: e);
-    }
+    return _uploadBytes(
+      bucketId: AppwriteBackendConfig.boardDocumentsBucketId,
+      objectName: fileName,
+      bytes: bytes,
+      contentType: contentType,
+      logLabel: 'board document',
+    );
   }
 
-  /// Get board document download URL
   Future<String?> getBoardDocumentDownloadURL(String fileName) async {
-    try {
-      final ref = _storage.ref('$boardDocumentsPath/$fileName');
-      return await ref.getDownloadURL();
-    } catch (e) {
-      _logger.error('Error getting board document download URL', e);
-      throw StorageException('Failed to get board document download URL',
-          originalError: e);
-    }
+    return _downloadUrl(
+      AppwriteBackendConfig.boardDocumentsBucketId,
+      _stableFileId(fileName),
+    );
   }
 
-  /// Get list of all tract files from Firebase Storage
-  Future<List<Reference>> getTractFiles() async {
-    try {
-      final ListResult result = await _storage.ref(tractsPath).listAll();
-      return result.items;
-    } catch (e) {
-      _logger.error('Error getting tract files', e);
-      throw StorageException('Failed to get tract files', originalError: e);
-    }
+  Future<List<AppwriteStorageReference>> getTractFiles() async {
+    return _listBucket(
+      AppwriteBackendConfig.tractFilesBucketId,
+      legacyPrefix: tractsPath,
+    );
   }
 
-  /// Get list of "What the Bible Says" tract files
-  Future<List<Reference>> getWhatTheBibleSaysFiles() async {
-    try {
-      final ListResult result =
-          await _storage.ref(whatTheBibleSaysPath).listAll();
-      return result.items;
-    } catch (e) {
-      _logger.error('Error getting What the Bible Says files', e);
-      throw StorageException('Failed to get What the Bible Says files',
-          originalError: e);
-    }
+  Future<List<AppwriteStorageReference>> getWhatTheBibleSaysFiles() async {
+    final refs = await getTractFiles();
+    return refs
+        .where((ref) => ref.fullPath.contains('What_The_Bible_Says'))
+        .toList();
   }
 
-  /// Download tract PDF file (returns a public download URL instead of a local path for web compatibility)
   Future<String?> downloadTractPDF(String fileName) async {
-    try {
-      final ref = _storage.ref('$tractsPath/$fileName');
-      final url = await ref.getDownloadURL();
-      return url;
-    } catch (e) {
-      _logger.error('Error getting tract PDF URL', e);
-      throw StorageException('Failed to get tract PDF URL', originalError: e);
-    }
+    return getTractDownloadURL(fileName);
   }
 
-  /// Get download URL for a tract file
   Future<String?> getTractDownloadURL(String fileName) async {
-    try {
-      final ref = _storage.ref('$tractsPath/$fileName');
-      return await ref.getDownloadURL();
-    } catch (e) {
-      _logger.error('Error getting tract download URL', e);
-      throw StorageException('Failed to get tract download URL',
-          originalError: e);
-    }
+    return _downloadUrl(
+      AppwriteBackendConfig.tractFilesBucketId,
+      _stableFileId(_normalizeTractName(fileName)),
+    );
   }
 
-  /// Upload tract PDF file (bytes-based, web-safe)
   Future<String?> uploadTractPDF(Uint8List bytes, String fileName) async {
-    try {
-      final ref = _storage.ref('$tractsPath/$fileName');
-      final uploadTask = ref.putData(
-          bytes,
-          SettableMetadata(
-            contentType: 'application/pdf',
-          ));
-      final snapshot = await uploadTask;
-      return await snapshot.ref.getDownloadURL();
-    } catch (e) {
-      _logger.error('Error uploading tract PDF', e);
-      throw StorageException('Failed to upload tract PDF', originalError: e);
-    }
+    return uploadTractPDFFromBytes(bytes, fileName);
   }
 
-  /// Upload tract PDF file from bytes
   Future<String?> uploadTractPDFFromBytes(
       Uint8List bytes, String fileName) async {
-    try {
-      final ref = _storage.ref('$tractsPath/$fileName');
-      final uploadTask = ref.putData(
-          bytes,
-          SettableMetadata(
-            contentType: 'application/pdf',
-          ));
-      final snapshot = await uploadTask;
-      return await snapshot.ref.getDownloadURL();
-    } catch (e) {
-      _logger.error('Error uploading tract PDF from bytes', e);
-      throw StorageException('Failed to upload tract PDF from bytes',
-          originalError: e);
-    }
+    return _uploadBytes(
+      bucketId: AppwriteBackendConfig.tractFilesBucketId,
+      objectName: _normalizeTractName(fileName),
+      bytes: bytes,
+      contentType: 'application/pdf',
+      logLabel: 'tract PDF',
+    );
   }
 
-  /// Delete tract PDF file (remote only)
   Future<bool> deleteTractPDF(String fileName) async {
     try {
-      final ref = _storage.ref('$tractsPath/$fileName');
-      await ref.delete();
+      await _storage.deleteFile(
+        bucketId: AppwriteBackendConfig.tractFilesBucketId,
+        fileId: _stableFileId(_normalizeTractName(fileName)),
+      );
       return true;
     } catch (e) {
       _logger.error('Error deleting tract PDF', e);
@@ -146,33 +101,22 @@ class FirebaseStorageService {
     }
   }
 
-  /// Get local tract file path (not applicable on web)
-  Future<String?> getLocalTractPath(String fileName) async {
-    return null;
-  }
+  Future<String?> getLocalTractPath(String fileName) async => null;
 
-  /// Check if tract file exists locally (not applicable on web)
-  Future<bool> isTractDownloaded(String fileName) async {
-    return false;
-  }
+  Future<bool> isTractDownloaded(String fileName) async => false;
 
-  /// Get file size from Firebase Storage
   Future<int?> getTractFileSize(String fileName) async {
-    try {
-      final ref = _storage.ref('$tractsPath/$fileName');
-      final metadata = await ref.getMetadata();
-      return metadata.size;
-    } catch (e) {
-      _logger.error('Error getting tract file size', e);
-      throw StorageException('Failed to get tract file size', originalError: e);
-    }
+    final metadata = await getTractFileMetadata(fileName);
+    return metadata?.size;
   }
 
-  /// Get file metadata from Firebase Storage
-  Future<FullMetadata?> getTractFileMetadata(String fileName) async {
+  Future<AppwriteStorageMetadata?> getTractFileMetadata(String fileName) async {
     try {
-      final ref = _storage.ref('$tractsPath/$fileName');
-      return await ref.getMetadata();
+      final file = await _storage.getFile(
+        bucketId: AppwriteBackendConfig.tractFilesBucketId,
+        fileId: _stableFileId(_normalizeTractName(fileName)),
+      );
+      return AppwriteStorageMetadata.fromFile(file);
     } catch (e) {
       _logger.error('Error getting tract file metadata', e);
       throw StorageException('Failed to get tract file metadata',
@@ -180,20 +124,12 @@ class FirebaseStorageService {
     }
   }
 
-  /// Clear local tract cache (no-op on web)
-  Future<void> clearTractCache() async {
-    // No local cache on web
-  }
+  Future<void> clearTractCache() async {}
 
-  /// Get total size of local tract cache (no-op on web)
-  Future<int> getTractCacheSize() async {
-    return 0;
-  }
+  Future<int> getTractCacheSize() async => 0;
 
-  /// Sync tract files with Firebase Storage (web-safe: returns empty list)
   Future<List<String>> syncTractFiles() async {
     try {
-      // On web, we don't download files to local storage.
       return [];
     } catch (e) {
       _logger.error('Error syncing tract files', e);
@@ -201,24 +137,10 @@ class FirebaseStorageService {
     }
   }
 
-  /// Get "What the Bible Says" lesson files (Lessons 1-11)
   Future<Map<int, String>> getWhatTheBibleSaysLessons() async {
     try {
       final files = await getWhatTheBibleSaysFiles();
-      final lessons = <int, String>{};
-      for (final ref in files) {
-        final fileName = ref.name;
-        final match = RegExp(r'lesson[_\s]*(\d+)', caseSensitive: false)
-            .firstMatch(fileName);
-        if (match != null) {
-          final lessonNumber = int.tryParse(match.group(1)!);
-          if (lessonNumber != null && lessonNumber >= 1 && lessonNumber <= 11) {
-            final downloadUrl = await ref.getDownloadURL();
-            lessons[lessonNumber] = downloadUrl;
-          }
-        }
-      }
-      return lessons;
+      return _lessonUrls(files);
     } catch (e) {
       if (e is AppException) rethrow;
       _logger.error('Error getting What the Bible Says lessons', e);
@@ -227,24 +149,10 @@ class FirebaseStorageService {
     }
   }
 
-  /// Download all "What the Bible Says" lessons (web-safe: returns map of lesson -> download URL)
   Future<Map<int, String>> downloadAllWhatTheBibleSaysLessons() async {
     try {
       final files = await getWhatTheBibleSaysFiles();
-      final urls = <int, String>{};
-      for (final ref in files) {
-        final fileName = ref.name;
-        final match = RegExp(r'lesson[_\s]*(\d+)', caseSensitive: false)
-            .firstMatch(fileName);
-        if (match != null) {
-          final lessonNumber = int.tryParse(match.group(1)!);
-          if (lessonNumber != null && lessonNumber >= 1 && lessonNumber <= 11) {
-            final url = await ref.getDownloadURL();
-            urls[lessonNumber] = url;
-          }
-        }
-      }
-      return urls;
+      return _lessonUrls(files);
     } catch (e) {
       if (e is AppException) rethrow;
       _logger.error('Error downloading What the Bible Says lessons', e);
@@ -252,4 +160,167 @@ class FirebaseStorageService {
           originalError: e);
     }
   }
+
+  Future<Map<int, String>> _lessonUrls(
+      List<AppwriteStorageReference> files) async {
+    final lessons = <int, String>{};
+    for (final ref in files) {
+      final match = RegExp(r'lesson[_\s]*(\d+)', caseSensitive: false)
+          .firstMatch(ref.name);
+      if (match == null) continue;
+      final lessonNumber = int.tryParse(match.group(1)!);
+      if (lessonNumber != null && lessonNumber >= 1 && lessonNumber <= 11) {
+        lessons[lessonNumber] = await ref.getDownloadURL();
+      }
+    }
+    return lessons;
+  }
+
+  Future<String?> _uploadBytes({
+    required String bucketId,
+    required String objectName,
+    required Uint8List bytes,
+    required String contentType,
+    required String logLabel,
+  }) async {
+    try {
+      final fileId = _stableFileId(objectName);
+      try {
+        await _storage.deleteFile(bucketId: bucketId, fileId: fileId);
+      } on AppwriteException catch (e) {
+        if (e.code != 404) rethrow;
+      }
+
+      final file = await _storage.createFile(
+        bucketId: bucketId,
+        fileId: fileId,
+        file: InputFile.fromBytes(
+          bytes: bytes,
+          filename: objectName.split('/').last,
+          contentType: contentType,
+        ),
+      );
+      return _downloadUrl(bucketId, file.$id);
+    } catch (e) {
+      _logger.error('Error uploading $logLabel', e);
+      throw StorageException('Failed to upload $logLabel', originalError: e);
+    }
+  }
+
+  Future<List<AppwriteStorageReference>> _listBucket(
+    String bucketId, {
+    String? legacyPrefix,
+  }) async {
+    try {
+      final result = await _storage.listFiles(
+        bucketId: bucketId,
+        queries: [Query.limit(100)],
+      );
+      return result.files.map((file) {
+        final path = _legacyPath(file.name, legacyPrefix);
+        return AppwriteStorageReference(
+          storage: _storage,
+          bucketId: bucketId,
+          fileId: file.$id,
+          name: file.name,
+          fullPath: path,
+          metadata: AppwriteStorageMetadata.fromFile(file),
+        );
+      }).toList();
+    } catch (e) {
+      _logger.error('Error listing Appwrite files', e);
+      throw StorageException('Failed to list files', originalError: e);
+    }
+  }
+
+  String _normalizeTractName(String fileName) {
+    final normalized = fileName.replaceAll('\\', '/');
+    if (normalized.startsWith('$tractsPath/')) {
+      return normalized.substring(tractsPath.length + 1);
+    }
+    return normalized;
+  }
+
+  String _legacyPath(String fileName, String? legacyPrefix) {
+    if (legacyPrefix == null || fileName.startsWith('$legacyPrefix/')) {
+      return fileName;
+    }
+    return '$legacyPrefix/$fileName';
+  }
+
+  String _stableFileId(String objectName) {
+    final digest = sha1.convert(utf8.encode(objectName)).toString();
+    return 'f_${digest.substring(0, 34)}';
+  }
+
+  static String appwriteFileUrl(String bucketId, String fileId) {
+    return '${AppwriteBackendConfig.endpoint}/storage/buckets/'
+        '$bucketId/files/$fileId/view'
+        '?project=${AppwriteBackendConfig.projectId}';
+  }
+
+  static String? parseFileIdFromUrl(String downloadUrl) {
+    final uri = Uri.tryParse(downloadUrl);
+    if (uri == null) return null;
+    final segments = uri.pathSegments;
+    final fileIndex = segments.indexOf('files');
+    if (fileIndex == -1 || fileIndex + 1 >= segments.length) return null;
+    return segments[fileIndex + 1];
+  }
+
+  String _downloadUrl(String bucketId, String fileId) {
+    return appwriteFileUrl(bucketId, fileId);
+  }
+}
+
+class AppwriteStorageReference {
+  const AppwriteStorageReference({
+    required Storage storage,
+    required this.bucketId,
+    required this.fileId,
+    required this.name,
+    required this.fullPath,
+    required AppwriteStorageMetadata metadata,
+  })  : _storage = storage,
+        _metadata = metadata;
+
+  final Storage _storage;
+  final String bucketId;
+  final String fileId;
+  final String name;
+  final String fullPath;
+  final AppwriteStorageMetadata _metadata;
+
+  Future<String> getDownloadURL() async {
+    return FirebaseStorageService.appwriteFileUrl(bucketId, fileId);
+  }
+
+  Future<AppwriteStorageMetadata> getMetadata() async {
+    try {
+      final file = await _storage.getFile(bucketId: bucketId, fileId: fileId);
+      return AppwriteStorageMetadata.fromFile(file);
+    } catch (_) {
+      return _metadata;
+    }
+  }
+}
+
+class AppwriteStorageMetadata {
+  const AppwriteStorageMetadata({
+    this.size,
+    this.contentType,
+    this.updated,
+  });
+
+  factory AppwriteStorageMetadata.fromFile(appwrite_models.File file) {
+    return AppwriteStorageMetadata(
+      size: file.sizeOriginal,
+      contentType: file.mimeType,
+      updated: DateTime.tryParse(file.$updatedAt),
+    );
+  }
+
+  final int? size;
+  final String? contentType;
+  final DateTime? updated;
 }
