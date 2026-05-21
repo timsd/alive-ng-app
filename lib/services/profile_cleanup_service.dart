@@ -1,21 +1,20 @@
+// ignore_for_file: deprecated_member_use
+
 import 'dart:io';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+
+import 'package:appwrite/appwrite.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/foundation.dart';
+import '../config/appwrite_backend_config.dart';
+import '../main.dart';
 import '../utils/app_exception.dart';
 import '../utils/logger.dart';
 
 /// Service for managing profile picture cleanup and storage optimization
 class ProfileCleanupService {
-  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  static final FirebaseStorage _storage = FirebaseStorage.instance;
+  static final Databases _databases = Databases(appwriteClient);
+  static final Storage _storage = Storage(appwriteClient);
   static final Logger _logger = Logger('ProfileCleanupService');
-
-  // Collections and paths
-  static const String _usersCollection = 'users';
-  static const String _profilePicturesPath = 'profile_pictures';
-  static const String _cleanupLogsCollection = 'cleanup_logs';
 
   // Cleanup settings
   static const int _retentionDays = 2;
@@ -49,7 +48,7 @@ class ProfileCleanupService {
     }
   }
 
-  /// Clean up old profile pictures from Firebase Storage
+  /// Clean up old profile pictures from Appwrite Storage
   Future<void> cleanupOldProfilePictures() async {
     try {
       final cutoffDate =
@@ -58,35 +57,43 @@ class ProfileCleanupService {
       int errorCount = 0;
 
       // Get all users to check their profile pictures
-      final usersSnapshot = await _firestore.collection(_usersCollection).get();
-      final activeProfilePictures = <String>{};
+      final users = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.usersCollectionId,
+        queries: [Query.limit(100)],
+      );
+      final activeProfileFileIds = <String>{};
 
       // Collect currently active profile picture URLs
-      for (final userDoc in usersSnapshot.docs) {
-        final userData = userDoc.data();
-        final profilePictureUrl = userData['profilePictureUrl'] as String?;
-        if (profilePictureUrl != null && profilePictureUrl.isNotEmpty) {
-          activeProfilePictures.add(_extractFilePathFromUrl(profilePictureUrl));
+      for (final userDoc in users.documents) {
+        for (final field in ['avatar_url', 'photo_url', 'profilePictureUrl']) {
+          final profilePictureUrl = userDoc.data[field] as String?;
+          final fileId = _extractFileIdFromUrl(profilePictureUrl);
+          if (fileId != null) {
+            activeProfileFileIds.add(fileId);
+          }
         }
       }
 
-      // List all files in the profile pictures directory
-      final storageRef = _storage.ref().child(_profilePicturesPath);
-      final listResult = await storageRef.listAll();
+      final listResult = await _storage.listFiles(
+        bucketId: AppwriteBackendConfig.profileFilesBucketId,
+        queries: [Query.limit(100)],
+      );
 
-      for (final item in listResult.items) {
+      for (final item in listResult.files) {
         try {
-          final metadata = await item.getMetadata();
-          final createdTime = metadata.timeCreated;
+          final createdTime = DateTime.tryParse(item.$createdAt);
 
           if (createdTime != null && createdTime.isBefore(cutoffDate)) {
             // Check if this file is still being used by any user
-            final filePath = item.fullPath;
-            if (!activeProfilePictures.contains(filePath)) {
-              await item.delete();
+            if (!activeProfileFileIds.contains(item.$id)) {
+              await _storage.deleteFile(
+                bucketId: AppwriteBackendConfig.profileFilesBucketId,
+                fileId: item.$id,
+              );
               deletedCount++;
               await _logCleanupActivity(
-                'Deleted old profile picture: $filePath',
+                'Deleted old profile picture: ${item.name}',
                 'info',
               );
             }
@@ -94,7 +101,7 @@ class ProfileCleanupService {
         } catch (e) {
           errorCount++;
           await _logCleanupActivity(
-            'Error processing file ${item.fullPath}: $e',
+            'Error processing file ${item.name}: $e',
             'error',
           );
         }
@@ -127,30 +134,35 @@ class ProfileCleanupService {
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final extension = _getFileExtension(imageFile.path);
       final fileName = '${userId}_$timestamp$extension';
-      final filePath = '$_profilePicturesPath/$fileName';
+      final filePath = 'profile-pictures/$fileName';
+      final bytes = await imageFile.readAsBytes();
 
       // Upload new profile picture
-      final storageRef = _storage.ref().child(filePath);
-      final uploadTask = storageRef.putFile(
-        imageFile,
-        SettableMetadata(
+      final file = await _storage.createFile(
+        bucketId: AppwriteBackendConfig.profileFilesBucketId,
+        fileId: ID.unique(),
+        file: InputFile.fromBytes(
+          bytes: bytes,
+          filename: fileName,
           contentType: _getContentType(extension),
-          customMetadata: {
-            'userId': userId,
-            'uploadedAt': DateTime.now().toIso8601String(),
-            'originalName': imageFile.path.split('/').last,
-          },
         ),
       );
-
-      final snapshot = await uploadTask;
-      final downloadUrl = await snapshot.ref.getDownloadURL();
+      final downloadUrl = _appwriteFileUrl(
+        AppwriteBackendConfig.profileFilesBucketId,
+        file.$id,
+      );
 
       // Update user document with new profile picture URL
-      await _firestore.collection(_usersCollection).doc(userId).update({
-        'profilePictureUrl': downloadUrl,
-        'profilePictureUpdatedAt': FieldValue.serverTimestamp(),
-      });
+      await _databases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.usersCollectionId,
+        documentId: userId,
+        data: {
+          'avatar_url': downloadUrl,
+          'photo_url': downloadUrl,
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        },
+      );
 
       // Delete old profile picture if it exists
       if (oldProfilePictureUrl != null && oldProfilePictureUrl.isNotEmpty) {
@@ -178,12 +190,14 @@ class ProfileCleanupService {
   /// Delete old profile picture from storage
   Future<void> _deleteOldProfilePicture(String profilePictureUrl) async {
     try {
-      final filePath = _extractFilePathFromUrl(profilePictureUrl);
-      if (filePath.isNotEmpty) {
-        final storageRef = _storage.ref().child(filePath);
-        await storageRef.delete();
+      final fileId = _extractFileIdFromUrl(profilePictureUrl);
+      if (fileId != null) {
+        await _storage.deleteFile(
+          bucketId: AppwriteBackendConfig.profileFilesBucketId,
+          fileId: fileId,
+        );
         await _logCleanupActivity(
-          'Deleted old profile picture: $filePath',
+          'Deleted old profile picture: $fileId',
           'info',
         );
       }
@@ -198,23 +212,15 @@ class ProfileCleanupService {
     }
   }
 
-  /// Extract file path from Firebase Storage URL
-  String _extractFilePathFromUrl(String url) {
-    try {
-      final uri = Uri.parse(url);
-      final pathSegments = uri.pathSegments;
-      // Firebase Storage URLs usually have the path after /o/
-      // format: https://firebasestorage.googleapis.com/v0/b/[bucket]/o/[path]?alt=media...
-      final oIndex = pathSegments.indexOf('o');
-      if (oIndex != -1 && oIndex + 1 < pathSegments.length) {
-        // The path is URL encoded, so we need to decode it
-        return Uri.decodeComponent(pathSegments[oIndex + 1]);
-      }
-      return '';
-    } catch (e) {
-      _logger.error('Error extracting file path from URL: $e');
-      return '';
-    }
+  /// Extract Appwrite file ID from an Appwrite Storage URL.
+  String? _extractFileIdFromUrl(String? url) {
+    if (url == null || url.isEmpty) return null;
+    final uri = Uri.tryParse(url);
+    if (uri == null) return null;
+    final pathSegments = uri.pathSegments;
+    final fileIndex = pathSegments.indexOf('files');
+    if (fileIndex == -1 || fileIndex + 1 >= pathSegments.length) return null;
+    return pathSegments[fileIndex + 1];
   }
 
   /// Validate image file before upload
@@ -290,50 +296,64 @@ class ProfileCleanupService {
   /// Log cleanup activity
   static Future<void> _logCleanupActivity(String message, String type) async {
     try {
-      await _firestore.collection(_cleanupLogsCollection).add({
-        'message': message,
-        'type': type,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
+      await _databases.createDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.adminNotificationsCollectionId,
+        documentId: ID.unique(),
+        data: {
+          'type': 'profile_cleanup_$type',
+          'title': 'Profile cleanup',
+          'message': message,
+          'priority': type == 'error' ? 'high' : 'normal',
+          'is_read': false,
+          'created_at': DateTime.now().toUtc().toIso8601String(),
+        },
+      );
       if (type == 'error') {
         _logger.error(message);
       } else {
         _logger.info(message);
       }
     } catch (e) {
-      // Just log to console if we can't write to Firestore
+      // Just log to console if we can't write to Appwrite
       _logger.error('Failed to log cleanup activity: $e');
     }
+  }
+
+  static String _appwriteFileUrl(String bucketId, String fileId) {
+    return '${AppwriteBackendConfig.endpoint}/storage/buckets/'
+        '$bucketId/files/$fileId/view'
+        '?project=${AppwriteBackendConfig.projectId}';
   }
 
   /// Get cleanup statistics
   Future<Map<String, dynamic>> getCleanupStats() async {
     try {
       // Get total number of profile pictures
-      final storageRef = _storage.ref().child(_profilePicturesPath);
-      final listResult = await storageRef.listAll();
-      final totalFiles = listResult.items.length;
+      final listResult = await _storage.listFiles(
+        bucketId: AppwriteBackendConfig.profileFilesBucketId,
+        queries: [Query.limit(100)],
+      );
+      final totalFiles = listResult.files.length;
 
       // Get recent cleanup logs
-      final logsSnapshot = await _firestore
-          .collection(_cleanupLogsCollection)
-          .where('service', isEqualTo: 'ProfileCleanupService')
-          .orderBy('timestamp', descending: true)
-          .limit(10)
-          .get();
+      final logs = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.adminNotificationsCollectionId,
+        queries: [
+          Query.startsWith('type', 'profile_cleanup_'),
+          Query.orderDesc('created_at'),
+          Query.limit(10),
+        ],
+      );
 
-      final recentLogs = logsSnapshot.docs.map((doc) => doc.data()).toList();
+      final recentLogs = logs.documents.map((doc) => doc.data).toList();
 
       // Calculate storage usage (approximate)
-      int totalSize = 0;
-      for (final item in listResult.items) {
-        try {
-          final metadata = await item.getMetadata();
-          totalSize += metadata.size ?? 0;
-        } catch (e) {
-          // Skip files that can't be accessed
-        }
-      }
+      final totalSize = listResult.files.fold<int>(
+        0,
+        (sum, file) => sum + file.sizeOriginal,
+      );
 
       return {
         'totalFiles': totalFiles,
@@ -357,36 +377,45 @@ class ProfileCleanupService {
       int deletedCount = 0;
 
       // Get all users to check their profile pictures
-      final usersSnapshot = await _firestore.collection(_usersCollection).get();
-      final activeProfilePictures = <String>{};
+      final users = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.usersCollectionId,
+        queries: [Query.limit(100)],
+      );
+      final activeProfileFileIds = <String>{};
 
       // Collect currently active profile picture URLs
-      for (final userDoc in usersSnapshot.docs) {
-        final userData = userDoc.data();
-        final profilePictureUrl = userData['profilePictureUrl'] as String?;
-        if (profilePictureUrl != null && profilePictureUrl.isNotEmpty) {
-          activeProfilePictures.add(_extractFilePathFromUrl(profilePictureUrl));
+      for (final userDoc in users.documents) {
+        for (final field in ['avatar_url', 'photo_url', 'profilePictureUrl']) {
+          final profilePictureUrl = userDoc.data[field] as String?;
+          final fileId = _extractFileIdFromUrl(profilePictureUrl);
+          if (fileId != null) {
+            activeProfileFileIds.add(fileId);
+          }
         }
       }
 
-      // List all files in the profile pictures directory
-      final storageRef = _storage.ref().child(_profilePicturesPath);
-      final listResult = await storageRef.listAll();
+      final listResult = await _storage.listFiles(
+        bucketId: AppwriteBackendConfig.profileFilesBucketId,
+        queries: [Query.limit(100)],
+      );
 
-      for (final item in listResult.items) {
+      for (final item in listResult.files) {
         try {
-          final filePath = item.fullPath;
-          if (!activeProfilePictures.contains(filePath)) {
-            await item.delete();
+          if (!activeProfileFileIds.contains(item.$id)) {
+            await _storage.deleteFile(
+              bucketId: AppwriteBackendConfig.profileFilesBucketId,
+              fileId: item.$id,
+            );
             deletedCount++;
             await _logCleanupActivity(
-              'Force deleted unused profile picture: $filePath',
+              'Force deleted unused profile picture: ${item.name}',
               'info',
             );
           }
         } catch (e) {
           await _logCleanupActivity(
-            'Error force deleting file ${item.fullPath}: $e',
+            'Error force deleting file ${item.name}: $e',
             'error',
           );
         }
