@@ -1,9 +1,11 @@
+// ignore_for_file: deprecated_member_use
+
+import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/models.dart' as appwrite_models;
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-// Removed supabase_flutter import - using Firebase now
+import '../../config/appwrite_backend_config.dart';
+import '../../main.dart';
 import '../../models/app_models.dart';
-import '../../services/firebase_database_service.dart';
 import '../../services/auth_service.dart';
 import '../../utils/logger.dart';
 import '../../utils/responsive_utils.dart';
@@ -18,8 +20,7 @@ class UserArchiveScreen extends StatefulWidget {
 }
 
 class _UserArchiveScreenState extends State<UserArchiveScreen> {
-  final FirebaseDatabaseService _firebaseService =
-      FirebaseDatabaseService.instance;
+  late final Databases _databases = Databases(appwriteClient);
   final Logger _logger = Logger('UserArchiveScreen');
   bool _isLoading = true;
   bool _hasAccess = false;
@@ -36,7 +37,6 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
 
   Future<void> _checkAccess() async {
     try {
-      // Check Firebase Auth user
       final user = AuthService.instance.currentUser;
       _currentUser = user;
       if (user != null) {
@@ -58,19 +58,23 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
 
   Future<void> _loadArchivedUsers() async {
     try {
-      // Fetch archived users from Firebase
-      final snapshot = await _firebaseService.firestore
-          .collection('profiles')
-          .where('is_archived', isEqualTo: true)
-          .orderBy('updated_at', descending: true)
-          .get();
-
-      final response = snapshot.docs.map((doc) => doc.data()).toList();
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.usersCollectionId,
+        queries: [
+          Query.equal('is_archived', true),
+          Query.orderDesc('updated_at'),
+          Query.limit(100),
+        ],
+      );
 
       final List<UserProfile> archivedUsers = [];
-      for (final userData in response) {
+      for (final doc in response.documents) {
         try {
-          archivedUsers.add(UserProfile.fromJson(userData));
+          archivedUsers.add(UserProfile.fromJson({
+            ...doc.data,
+            'id': doc.$id,
+          }));
         } catch (e) {
           _logger.error('Error parsing user data', e);
         }
@@ -543,10 +547,15 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
       final messenger = ScaffoldMessenger.of(context);
       final theme = Theme.of(context);
 
-      await FirebaseFirestore.instance.collection('users').doc(user.id).update({
-        'is_archived': false,
-        'updated_at': DateTime.now().toIso8601String(),
-      });
+      await _databases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.usersCollectionId,
+        documentId: user.id,
+        data: {
+          'is_archived': false,
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        },
+      );
 
       messenger.showSnackBar(
         SnackBar(
@@ -596,39 +605,29 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
 
     if (confirmed == true) {
       try {
-        // Permanently delete user profile from database
-        await FirebaseFirestore.instance
-            .collection('user_profiles')
-            .doc(user.id)
-            .delete();
-
-        // Also delete related data (prayer requests, health tracking, etc.)
         await Future.wait([
-          FirebaseFirestore.instance
-              .collection('prayer_requests')
-              .where('user_id', isEqualTo: user.id)
-              .get()
-              .then((snapshot) => Future.wait(
-                  snapshot.docs.map((doc) => doc.reference.delete()))),
-          FirebaseFirestore.instance
-              .collection('health_tracking')
-              .where('user_id', isEqualTo: user.id)
-              .get()
-              .then((snapshot) => Future.wait(
-                  snapshot.docs.map((doc) => doc.reference.delete()))),
-          FirebaseFirestore.instance
-              .collection('mission_participants')
-              .where('user_id', isEqualTo: user.id)
-              .get()
-              .then((snapshot) => Future.wait(
-                  snapshot.docs.map((doc) => doc.reference.delete()))),
-          FirebaseFirestore.instance
-              .collection('study_guide_progress')
-              .where('user_id', isEqualTo: user.id)
-              .get()
-              .then((snapshot) => Future.wait(
-                  snapshot.docs.map((doc) => doc.reference.delete()))),
+          _deleteUserRows(
+            AppwriteBackendConfig.prayerRequestsCollectionId,
+            user.id,
+          ),
+          _deleteUserRows(
+            AppwriteBackendConfig.healthTrackingCollectionId,
+            user.id,
+          ),
+          _deleteUserRows(
+            AppwriteBackendConfig.userMissionsCollectionId,
+            user.id,
+          ),
+          _deleteUserRows(
+            AppwriteBackendConfig.studyProgressCollectionId,
+            user.id,
+          ),
         ]);
+        await _databases.deleteDocument(
+          databaseId: AppwriteBackendConfig.databaseId,
+          collectionId: AppwriteBackendConfig.usersCollectionId,
+          documentId: user.id,
+        );
 
         // Store context in local variable before async gap
         if (!mounted) return;
@@ -650,6 +649,27 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
         );
       }
     }
+  }
+
+  Future<void> _deleteUserRows(String collectionId, String userId) async {
+    final response = await _databases.listDocuments(
+      databaseId: AppwriteBackendConfig.databaseId,
+      collectionId: collectionId,
+      queries: [
+        Query.equal('user_id', userId),
+        Query.limit(100),
+      ],
+    );
+
+    await Future.wait(
+      response.documents.map(
+        (doc) => _databases.deleteDocument(
+          databaseId: AppwriteBackendConfig.databaseId,
+          collectionId: collectionId,
+          documentId: doc.$id,
+        ),
+      ),
+    );
   }
 
   @override
