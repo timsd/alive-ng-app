@@ -1,9 +1,14 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:appwrite/appwrite.dart';
+import 'package:appwrite/models.dart' as appwrite_models;
 
+import '../../config/appwrite_backend_config.dart';
+import '../../main.dart';
 import '../../providers/language_provider.dart';
 import '../../models/app_models.dart';
-import '../../services/firebase_database_service.dart';
 import '../../widgets/bible_reference_widget.dart';
 import '../../widgets/star_animation_widget.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -12,15 +17,72 @@ import '../../services/role_access_service.dart';
 
 // Provider for missions data
 final missionsProvider = FutureProvider<List<Mission>>((ref) async {
-  final firebase = FirebaseDatabaseService.instance;
-  // Fetch missions from Firebase
-  final snapshot = await firebase.firestore.collection('missions').get();
-  return snapshot.docs.map((doc) {
-    final data = doc.data();
-    data['id'] = doc.id;
-    return Mission.fromJson(data);
-  }).toList();
+  final databases = Databases(appwriteClient);
+  final snapshot = await databases.listDocuments(
+    databaseId: AppwriteBackendConfig.databaseId,
+    collectionId: AppwriteBackendConfig.missionsCollectionId,
+    queries: [
+      Query.equal('is_active', true),
+      Query.orderDesc('start_date'),
+      Query.limit(100),
+    ],
+  );
+
+  return snapshot.documents
+      .map(_mapMissionDocument)
+      .map(Mission.fromJson)
+      .toList();
 });
+
+Map<String, dynamic> _mapMissionDocument(appwrite_models.Document doc) {
+  final data = Map<String, dynamic>.from(doc.data);
+  final now = DateTime.now().toIso8601String();
+
+  return {
+    'id': doc.$id,
+    'title': data['title'] ?? 'Mission',
+    'description': data['description'] ?? '',
+    'location': data['location'] ?? '',
+    'category': data['category'] ?? 'community',
+    'difficulty': data['difficulty'],
+    'duration': _toInt(data['duration']),
+    'points': _toInt(data['points']),
+    'status': data['status'],
+    'instructions': _stringList(data['instructions']),
+    'verification_method': data['verification_method'],
+    'start_date': _dateString(data['start_date']) ?? now,
+    'end_date': _dateString(data['end_date']),
+    'participants_count': _toInt(data['participants_count']) ?? 0,
+    'max_participants': _toInt(data['max_participants']) ?? 0,
+    'current_participants': _stringList(data['current_participants']),
+    'image_url': data['image_url'],
+    'requirements': _stringList(data['requirements']),
+    'contact_info': data['contact_info'] ?? '',
+    'is_active': data['is_active'] ?? true,
+    'created_at': _dateString(data['created_at']),
+    'updated_at': _dateString(data['updated_at']),
+  };
+}
+
+List<String> _stringList(dynamic value) {
+  if (value is List) return value.map((item) => item.toString()).toList();
+  if (value is String && value.trim().isNotEmpty) return [value.trim()];
+  return const [];
+}
+
+int? _toInt(dynamic value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  if (value is String) return int.tryParse(value);
+  return null;
+}
+
+String? _dateString(dynamic value) {
+  if (value == null) return null;
+  if (value is DateTime) return value.toIso8601String();
+  final raw = value.toString();
+  return DateTime.tryParse(raw)?.toIso8601String() ?? raw;
+}
 
 // Provider for mission categories
 final missionCategoriesProvider = StateProvider<List<MissionCategory>>((ref) {
@@ -438,12 +500,15 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
     );
   }
 
-  void _showCreateMissionForm(BuildContext context, Function translate) {
+  Future<void> _showCreateMissionForm(
+    BuildContext context,
+    Function translate,
+  ) async {
     final titleController = TextEditingController();
     final descriptionController = TextEditingController();
     final locationController = TextEditingController();
 
-    showDialog(
+    await showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(translate('create_new_mission')),
@@ -484,23 +549,65 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
             child: Text(translate('cancel')),
           ),
           ElevatedButton(
-            onPressed: () {
-              if (titleController.text.isNotEmpty &&
-                  descriptionController.text.isNotEmpty &&
-                  locationController.text.isNotEmpty) {
-                Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                        'Mission "${titleController.text}" created successfully!'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              } else {
+            onPressed: () async {
+              final title = titleController.text.trim();
+              final description = descriptionController.text.trim();
+              final location = locationController.text.trim();
+
+              if (title.isEmpty || description.isEmpty || location.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Please fill in all fields'),
                     backgroundColor: Colors.red,
+                  ),
+                );
+                return;
+              }
+
+              try {
+                final now = DateTime.now();
+                await Databases(appwriteClient).createDocument(
+                  databaseId: AppwriteBackendConfig.databaseId,
+                  collectionId: AppwriteBackendConfig.missionsCollectionId,
+                  documentId: ID.unique(),
+                  data: {
+                    'title': title,
+                    'description': description,
+                    'location': location,
+                    'category': 'community',
+                    'difficulty': 'easy',
+                    'duration': 60,
+                    'points': 10,
+                    'status': 'active',
+                    'instructions': <String>[],
+                    'verification_method': 'manual',
+                    'start_date': now.toIso8601String(),
+                    'participants_count': 0,
+                    'max_participants': 0,
+                    'current_participants': <String>[],
+                    'requirements': <String>[],
+                    'contact_info': '',
+                    'is_active': true,
+                    'created_at': now.toIso8601String(),
+                    'updated_at': now.toIso8601String(),
+                  },
+                );
+
+                if (!context.mounted) return;
+                Navigator.of(context).pop();
+                ref.invalidate(missionsProvider);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Mission "$title" created successfully!'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } on AppwriteException catch (error) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(error.message ?? 'Unable to create mission'),
+                    backgroundColor: Theme.of(context).colorScheme.error,
                   ),
                 );
               }
@@ -510,6 +617,10 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
         ],
       ),
     );
+
+    titleController.dispose();
+    descriptionController.dispose();
+    locationController.dispose();
   }
 
   void _completeMission(BuildContext context, Mission mission) {
