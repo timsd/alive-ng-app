@@ -540,7 +540,7 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
   }
 
   Widget _buildRecentlyReadTab(List<BibleStory> stories) {
-    // Mocked out temporarily until Progress Tracking is fully implemented natively inside Firebase.
+    // Mocked out temporarily until progress tracking is fully implemented in Appwrite.
     // Showing top 5 as "recently read" for UI continuity
     final recent = stories.take(5).toList();
     if (recent.isEmpty) {
