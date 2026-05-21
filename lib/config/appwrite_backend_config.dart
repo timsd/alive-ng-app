@@ -70,6 +70,10 @@ class AppwriteBackendConfig {
   static const String podcastEpisodesCollectionId = 'podcast_episodes';
   static const String podcastCategoriesCollectionId = 'podcast_categories';
   static const String healthTrackingCollectionId = 'health_tracking';
+  static const String userSubmittedRecipesCollectionId =
+      'user_submitted_recipes';
+  static const String userSubmittedHealthTipsCollectionId =
+      'user_submitted_health_tips';
   static const String passwordRecoveryUrl =
       'https://app.alivenigeria.org/#/reset-password';
   static const String oauthSuccessUrl = 'https://app.alivenigeria.org/#/home';

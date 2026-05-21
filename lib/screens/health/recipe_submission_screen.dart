@@ -1,9 +1,13 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:form_builder_validators/form_builder_validators.dart';
+import 'package:appwrite/appwrite.dart';
 
-import '../../services/firebase_database_service.dart';
+import '../../config/appwrite_backend_config.dart';
+import '../../main.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/i18n_service.dart';
 import '../../utils/responsive_utils.dart';
@@ -21,7 +25,7 @@ class RecipeSubmissionScreen extends ConsumerStatefulWidget {
 class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormBuilderState>();
-  final _databaseService = FirebaseDatabaseService.instance;
+  late final Databases _databases = Databases(appwriteClient);
   late TabController _tabController;
   bool _isSubmitting = false;
 
@@ -567,8 +571,12 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
         'created_at': DateTime.now().toIso8601String(),
       };
 
-      // Submit to Firebase
-      await _databaseService.createDocument('user_submitted_recipes', recipeData);
+      await _databases.createDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.userSubmittedRecipesCollectionId,
+        documentId: ID.unique(),
+        data: recipeData,
+      );
 
       if (!mounted) return;
       
@@ -640,8 +648,13 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
         'created_at': DateTime.now().toIso8601String(),
       };
 
-      // Submit to Firebase
-      await _databaseService.createDocument('user_submitted_health_tips', recipeData);
+      await _databases.createDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId:
+            AppwriteBackendConfig.userSubmittedHealthTipsCollectionId,
+        documentId: ID.unique(),
+        data: recipeData,
+      );
 
       if (!mounted) return;
       
