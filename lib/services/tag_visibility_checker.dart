@@ -1,40 +1,44 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+// ignore_for_file: deprecated_member_use
+
+import 'package:appwrite/appwrite.dart';
+
+import '../config/appwrite_backend_config.dart';
+import '../main.dart';
 import '../models/chat_models.dart';
 import '../utils/logger.dart';
-import 'firebase_database_service.dart';
 
-/// Handles tag visibility and access control for messages
+/// Handles tag visibility and access control for messages.
 class TagVisibilityChecker {
   static final Logger _logger = Logger('TagVisibilityChecker');
-  static final FirebaseDatabaseService _firebase = FirebaseDatabaseService.instance;
+  static final Databases _databases = Databases(appwriteClient);
 
-  /// Check if user can see a message based on its tags
+  /// Check if user can see a message based on its tags.
   static Future<bool> canUserSeeMessage(
-    String userId, 
-    List<MessageTag> tags
+    String userId,
+    List<MessageTag> tags,
   ) async {
     try {
-      // If no tags, message is public
+      // If no tags, message is public.
       if (tags.isEmpty) return true;
-      
-      // Check each tag - user can see message if they can see at least one tag
-      for (MessageTag tag in tags) {
+
+      // User can see a message if at least one tag is visible to them.
+      for (final tag in tags) {
         if (await canUserSeeTag(userId, tag)) {
           return true;
         }
       }
-      
+
       return false;
     } catch (e) {
       _logger.error('Error checking message visibility: $e');
-      return false; // Fail closed for security
+      return false;
     }
   }
-  
-  /// Check if user can see a specific tag
+
+  /// Check if user can see a specific tag.
   static Future<bool> canUserSeeTag(
-    String userId, 
-    MessageTag tag
+    String userId,
+    MessageTag tag,
   ) async {
     try {
       switch (tag.type) {
@@ -49,31 +53,19 @@ class TagVisibilityChecker {
       }
     } catch (e) {
       _logger.error('Error checking tag visibility: $e');
-      return false; // Fail closed for security
+      return false;
     }
   }
 
-  /// Check if user has access to a role tag
+  /// Check if user has access to a role tag.
   static Future<bool> hasRoleAccess(String userId, String roleTag) async {
     try {
-      // Get user's roles
       final userRoles = await getUserRoles(userId);
       if (userRoles.isEmpty) return false;
 
-      // Check hierarchical access
-      if (await hasHierarchicalAccess(userRoles, roleTag)) {
-        return true;
-      }
-
-      // Check peer access
-      if (await hasPeerAccess(userRoles, roleTag)) {
-        return true;
-      }
-
-      // Check team access
-      if (await hasTeamAccess(userRoles, roleTag)) {
-        return true;
-      }
+      if (await hasHierarchicalAccess(userRoles, roleTag)) return true;
+      if (await hasPeerAccess(userRoles, roleTag)) return true;
+      if (await hasTeamAccess(userRoles, roleTag)) return true;
 
       return false;
     } catch (e) {
@@ -82,39 +74,37 @@ class TagVisibilityChecker {
     }
   }
 
-  /// Check if user is tagged individually
+  /// Check if user is tagged individually.
   static Future<bool> isUserTagged(String userId, String username) async {
     try {
-      // Get user's profile to check username match from Firebase
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .get();
-
-      final userProfile = userDoc.data() ?? {};
-      final profileUsername = (userProfile['username'] as String?)?.toLowerCase();
+      final userProfile = await _getUserProfile(userId);
+      final profileUsername =
+          (userProfile['username'] as String?)?.toLowerCase();
       final profileEmail = (userProfile['email'] as String?)?.toLowerCase();
       final fullName = (userProfile['full_name'] as String?)?.toLowerCase();
-      final normalizedDot = fullName?.replaceAll(' ', '.');
-      final normalizedUnderscore = fullName?.replaceAll(' ', '_');
+      final alternateFullName =
+          (userProfile['fullName'] as String?)?.toLowerCase();
+      final name = fullName ?? alternateFullName;
+      final normalizedDot = name?.replaceAll(' ', '.');
+      final normalizedUnderscore = name?.replaceAll(' ', '_');
       final target = username.toLowerCase();
 
       return target == profileUsername ||
-             target == profileEmail ||
-             (normalizedDot != null && target == normalizedDot) ||
-             (normalizedUnderscore != null && target == normalizedUnderscore);
+          target == profileEmail ||
+          (normalizedDot != null && target == normalizedDot) ||
+          (normalizedUnderscore != null && target == normalizedUnderscore);
     } catch (e) {
       _logger.error('Error checking user tag: $e');
       return false;
     }
   }
 
-  /// Check if user has access to special tags
+  /// Check if user has access to special tags.
   static Future<bool> hasSpecialAccess(String userId, String specialTag) async {
     try {
       switch (specialTag) {
         case 'all':
-          return true; // All authenticated users
+          return true;
         case 'online':
           return await isUserOnline(userId);
         case 'active':
@@ -134,38 +124,40 @@ class TagVisibilityChecker {
     }
   }
 
-  /// Check if user has access to group tags
+  /// Check if user has access to group tags.
   static Future<bool> hasGroupAccess(String userId, String groupTag) async {
     try {
-      // Check if user is member of the group from Firebase
-      final groups = await getFirebaseGroups(userId);
-      return groups.contains(groupTag);
+      final groups = await getAppwriteGroups(userId);
+      return groups.contains(groupTag.toLowerCase());
     } catch (e) {
       _logger.error('Error checking group access: $e');
       return false;
     }
   }
 
-  /// Get user's roles from database (Firebase)
+  /// Get user's roles from the Appwrite users table.
   static Future<List<String>> getUserRoles(String userId) async {
     try {
-      final rolesSnapshot = await FirebaseFirestore.instance
-          .collection('user_roles')
-          .where('user_id', isEqualTo: userId)
-          .get();
-
-      return rolesSnapshot.docs
-          .map((doc) => doc.data()['role_name'] as String)
-          .toList();
+      final userProfile = await _getUserProfile(userId);
+      final roles = <String>{};
+      for (final key in ['role', 'commitment_type', 'commitmentType']) {
+        final value = userProfile[key];
+        if (value is String && value.trim().isNotEmpty) {
+          roles.add(value.trim().toLowerCase());
+        }
+      }
+      return roles.toList();
     } catch (e) {
       _logger.error('Error getting user roles: $e');
       return [];
     }
   }
 
-  /// Check hierarchical access (higher roles can see lower role tags)
-  static Future<bool> hasHierarchicalAccess(List<String> userRoles, String targetRole) async {
-    // Role hierarchy (higher to lower)
+  /// Check hierarchical access (higher roles can see lower role tags).
+  static Future<bool> hasHierarchicalAccess(
+    List<String> userRoles,
+    String targetRole,
+  ) async {
     final hierarchy = {
       'bod': 10,
       'trustees': 9,
@@ -192,8 +184,8 @@ class TagVisibilityChecker {
       'member': 1,
     };
 
-    final targetLevel = hierarchy[targetRole] ?? 0;
-    
+    final targetLevel = hierarchy[targetRole.toLowerCase()] ?? 0;
+
     for (final role in userRoles) {
       final userLevel = hierarchy[role] ?? 0;
       if (userLevel >= targetLevel) {
@@ -204,26 +196,102 @@ class TagVisibilityChecker {
     return false;
   }
 
-  /// Check peer access (same level roles can see each other's tags)
-  static Future<bool> hasPeerAccess(List<String> userRoles, String targetRole) async {
+  /// Check peer access (same level roles can see each other's tags).
+  static Future<bool> hasPeerAccess(
+    List<String> userRoles,
+    String targetRole,
+  ) async {
+    final normalizedTargetRole = targetRole.toLowerCase();
     final rolePeers = {
-      'director': ['field_director', 'campus_director', 'program_director', 'evangelism_director', 'amtc_director'],
-      'field_director': ['director', 'campus_director', 'program_director', 'evangelism_director', 'amtc_director'],
-      'campus_director': ['director', 'field_director', 'program_director', 'evangelism_director', 'amtc_director'],
-      'program_director': ['director', 'field_director', 'campus_director', 'evangelism_director', 'amtc_director'],
-      'evangelism_director': ['director', 'field_director', 'campus_director', 'program_director', 'amtc_director'],
-      'amtc_director': ['director', 'field_director', 'campus_director', 'program_director', 'evangelism_director'],
-      'chap_coor': ['field_coor', 'campus_coor', 'program_coor', 'evangelism_coor', 'amtc_coor'],
-      'field_coor': ['chap_coor', 'campus_coor', 'program_coor', 'evangelism_coor', 'amtc_coor'],
-      'campus_coor': ['chap_coor', 'field_coor', 'program_coor', 'evangelism_coor', 'amtc_coor'],
-      'program_coor': ['chap_coor', 'field_coor', 'campus_coor', 'evangelism_coor', 'amtc_coor'],
-      'evangelism_coor': ['chap_coor', 'field_coor', 'campus_coor', 'program_coor', 'amtc_coor'],
-      'amtc_coor': ['chap_coor', 'field_coor', 'campus_coor', 'program_coor', 'evangelism_coor'],
+      'director': [
+        'field_director',
+        'campus_director',
+        'program_director',
+        'evangelism_director',
+        'amtc_director',
+      ],
+      'field_director': [
+        'director',
+        'campus_director',
+        'program_director',
+        'evangelism_director',
+        'amtc_director',
+      ],
+      'campus_director': [
+        'director',
+        'field_director',
+        'program_director',
+        'evangelism_director',
+        'amtc_director',
+      ],
+      'program_director': [
+        'director',
+        'field_director',
+        'campus_director',
+        'evangelism_director',
+        'amtc_director',
+      ],
+      'evangelism_director': [
+        'director',
+        'field_director',
+        'campus_director',
+        'program_director',
+        'amtc_director',
+      ],
+      'amtc_director': [
+        'director',
+        'field_director',
+        'campus_director',
+        'program_director',
+        'evangelism_director',
+      ],
+      'chap_coor': [
+        'field_coor',
+        'campus_coor',
+        'program_coor',
+        'evangelism_coor',
+        'amtc_coor',
+      ],
+      'field_coor': [
+        'chap_coor',
+        'campus_coor',
+        'program_coor',
+        'evangelism_coor',
+        'amtc_coor',
+      ],
+      'campus_coor': [
+        'chap_coor',
+        'field_coor',
+        'program_coor',
+        'evangelism_coor',
+        'amtc_coor',
+      ],
+      'program_coor': [
+        'chap_coor',
+        'field_coor',
+        'campus_coor',
+        'evangelism_coor',
+        'amtc_coor',
+      ],
+      'evangelism_coor': [
+        'chap_coor',
+        'field_coor',
+        'campus_coor',
+        'program_coor',
+        'amtc_coor',
+      ],
+      'amtc_coor': [
+        'chap_coor',
+        'field_coor',
+        'campus_coor',
+        'program_coor',
+        'evangelism_coor',
+      ],
     };
 
     for (final role in userRoles) {
       final peers = rolePeers[role] ?? [];
-      if (peers.contains(targetRole)) {
+      if (peers.contains(normalizedTargetRole)) {
         return true;
       }
     }
@@ -231,17 +299,29 @@ class TagVisibilityChecker {
     return false;
   }
 
-  /// Check team access (team roles can see each other's tags)
-  static Future<bool> hasTeamAccess(List<String> userRoles, String targetRole) async {
+  /// Check team access (team roles can see each other's tags).
+  static Future<bool> hasTeamAccess(
+    List<String> userRoles,
+    String targetRole,
+  ) async {
+    final normalizedTargetRole = targetRole.toLowerCase();
     final teams = {
       'executive': ['bod', 'trustees'],
       'admin': ['secretary', 'treasurer', 'media', 'tech', 'health'],
-      'leadership': ['director', 'chap_coor', 'field_coor', 'campus_coor', 'program_coor', 'evangelism_coor', 'amtc_coor'],
+      'leadership': [
+        'director',
+        'chap_coor',
+        'field_coor',
+        'campus_coor',
+        'program_coor',
+        'evangelism_coor',
+        'amtc_coor',
+      ],
     };
 
     for (final role in userRoles) {
       final team = teams[role] ?? [];
-      if (team.contains(targetRole)) {
+      if (team.contains(normalizedTargetRole)) {
         return true;
       }
     }
@@ -249,96 +329,135 @@ class TagVisibilityChecker {
     return false;
   }
 
-  /// Check if user is currently online (recent activity)
+  /// Check if user is currently online (recent activity).
   static Future<bool> isUserOnline(String userId) async {
     try {
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
-      final lastOnline = userDoc.data()?['last_online'] as Timestamp?;
-      if (lastOnline == null) return false;
+      final userProfile = await _getUserProfile(userId);
+      if (userProfile['is_online'] == true) return true;
 
-      final now = Timestamp.now();
-      final difference = now.seconds - lastOnline.seconds;
-      // Consider online if active within last 5 minutes
-      return difference <= 300;
+      final lastSeen = _parseDateTime(userProfile['last_seen']) ??
+          _parseDateTime(userProfile['last_online']);
+      if (lastSeen == null) return false;
+
+      return DateTime.now().toUtc().difference(lastSeen.toUtc()).inSeconds <=
+          300;
     } catch (e) {
       _logger.error('Error checking user online status: $e');
       return false;
     }
   }
 
-  /// Check if user was recently active (posts/interactions)
+  /// Check if user was recently active (posts/interactions).
   static Future<bool> isUserRecentlyActive(String userId) async {
     try {
-      final activityDoc = await FirebaseFirestore.instance.collection('user_activity').doc(userId).get();
-      final lastActivity = activityDoc.data()?['last_activity'] as Timestamp?;
+      final userProfile = await _getUserProfile(userId);
+      final lastActivity = _parseDateTime(userProfile['last_activity']) ??
+          _parseDateTime(userProfile['last_seen']) ??
+          _parseDateTime(userProfile['updated_at']);
       if (lastActivity == null) return false;
 
-      final now = Timestamp.now();
-      final difference = now.seconds - lastActivity.seconds;
-      // Consider active if within last 24 hours
-      return difference <= 86400;
+      return DateTime.now().toUtc().difference(lastActivity.toUtc()).inSeconds <=
+          86400;
     } catch (e) {
       _logger.error('Error checking user recent activity: $e');
       return false;
     }
   }
 
-  /// Check if user is new (has joined recently)
+  /// Check if user is new (has joined recently).
   static Future<bool> isNewUser(String userId) async {
     try {
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
-      final createdAt = userDoc.data()?['created_at'] as Timestamp?;
+      final userProfile = await _getUserProfile(userId);
+      final createdAt = _parseDateTime(userProfile['created_at']);
       if (createdAt == null) return false;
 
-      final now = Timestamp.now();
-      final difference = now.seconds - createdAt.seconds;
-      // Consider new if joined within last 7 days
-      return difference <= 604800;
+      return DateTime.now().toUtc().difference(createdAt.toUtc()).inSeconds <=
+          604800;
     } catch (e) {
       _logger.error('Error checking new user status: $e');
       return false;
     }
   }
 
-  /// Check if user is participant of specific event type
+  /// Check if user is participant of a specific event type.
   static Future<bool> isEventParticipant(String userId, String eventType) async {
     try {
-      final eventRegistration = await FirebaseFirestore.instance
-          .collection('event_registrations')
-          .doc('$userId-$eventType')
-          .get();
+      final registrations = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.userEventsCollectionId,
+        queries: [
+          Query.equal('user_id', userId),
+          Query.limit(100),
+        ],
+      );
+      final normalizedEventType = eventType.toLowerCase();
 
-      return eventRegistration.exists;
+      return registrations.documents.any((registration) {
+        final data = registration.data;
+        final status = (data['status'] as String?)?.toLowerCase();
+        if (status == 'cancelled' || status == 'declined') return false;
+
+        final eventId = (data['event_id'] as String?)?.toLowerCase();
+        final type = (data['type'] as String?)?.toLowerCase();
+        return eventId == normalizedEventType || type == normalizedEventType;
+      });
     } catch (e) {
       _logger.error('Error checking event participant status: $e');
       return false;
     }
   }
 
-  /// Get user's group memberships from Firebase if backend is unavailable
-  static Future<List<String>> getFirebaseGroups(String userId) async {
+  /// Get user's group memberships from the Appwrite user profile.
+  static Future<List<String>> getAppwriteGroups(String userId) async {
     try {
-      final groupsSnapshot = await FirebaseFirestore.instance
-          .collection('user_groups')
-          .where('user_id', isEqualTo: userId)
-          .get();
+      final userProfile = await _getUserProfile(userId);
+      final groups = <String>{};
 
-      return groupsSnapshot.docs.map((doc) => doc.data()['group_name'] as String).toList();
+      for (final key in [
+        'role',
+        'chapter_id',
+        'local_chapter',
+        'conference',
+        'commitment_type',
+      ]) {
+        final value = userProfile[key];
+        if (value is String && value.trim().isNotEmpty) {
+          groups.add(value.trim().toLowerCase());
+        }
+      }
+
+      return groups.toList();
     } catch (e) {
-      _logger.error('Error getting Firebase groups: $e');
+      _logger.error('Error getting Appwrite groups: $e');
       return [];
     }
   }
 
-  /// Sync tag visibility info to Firebase cache for faster access
-  static Future<void> cacheTagVisibilityInfo(String userId, List<String> visibleTags) async {
-    try {
-      await _firebase.cacheVisibleTags(userId, visibleTags);
-    } catch (e) {
-      _logger.error('Error caching tag visibility: $e');
+  /// Compatibility no-op for old Firebase cache callers.
+  static Future<void> cacheTagVisibilityInfo(
+    String userId,
+    List<String> visibleTags,
+  ) async {
+    _logger.info(
+      'Tag visibility cache skipped for $userId; Appwrite checks are live.',
+    );
+  }
+
+  static Future<Map<String, dynamic>> _getUserProfile(String userId) async {
+    final user = await _databases.getDocument(
+      databaseId: AppwriteBackendConfig.databaseId,
+      collectionId: AppwriteBackendConfig.usersCollectionId,
+      documentId: userId,
+    );
+    return user.data;
+  }
+
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value);
+    if (value is int) {
+      return DateTime.fromMillisecondsSinceEpoch(value, isUtc: true);
     }
+    return null;
   }
 }
-
-
-

@@ -8,9 +8,9 @@ Last updated from codebase review: 2026-05-21
 
 The app is migrating from Firebase, Jitsi, and GetStream to Appwrite, LiveKit, and Coolify. Treat Firebase as a legacy compatibility layer until the remaining modules below are migrated.
 
-Estimated overall migration progress: about 90%.
+Estimated overall migration progress: about 91%.
 
-- Appwrite-backed and validated with `flutter analyze`: auth/profile bootstrap, chat, LiveKit token flow, Paystack payment functions, Resend email function wiring/deployment variables, Appwrite push target registration, prayer, testimonies, notification settings/reminder records, admin notification records, admin user archive, profile file cleanup, study screen, health screen, health recipe/remedy submissions, daily verse records/generation settings, onboarding content, events, announcement editing, public missions, podcast listing/episode provider and audio actions, app update settings, approval link tokens, donation project/settings reads, kids stories/missions public screens, and the tract/board storage compatibility bridge.
+- Appwrite-backed and validated with `flutter analyze`: auth/profile bootstrap, chat, LiveKit token flow, Paystack payment functions, Resend email function wiring/deployment variables, Appwrite push target registration, prayer, testimonies, notification settings/reminder records, admin notification records, admin user archive, profile file cleanup, tag visibility checks, study screen, health screen, health recipe/remedy submissions, daily verse records/generation settings, onboarding content, events, announcement editing, public missions, podcast listing/episode provider and audio actions, app update settings, approval link tokens, donation project/settings reads, kids stories/missions public screens, and the tract/board storage compatibility bridge.
 - Appwrite infrastructure schema is maintained in `scripts/appwrite_infrastructure_schema.mjs`.
 - Provision safely against the current Appwrite 1.7.4 server with `npm run appwrite:dry-run` and then `npm run appwrite:provision:legacy`.
 - Coolify web hosting is supported by the root `Dockerfile`; pass Flutter values through the `FLUTTER_BUILD_ARGS` build argument and pass Firebase web push bridge values as Docker build args so the service worker is configured during image build.
