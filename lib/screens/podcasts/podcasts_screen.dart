@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../utils/responsive_utils.dart';
 import '../../utils/layout_fix_utils.dart';
 import '../../providers/podcast_provider.dart';
-import '../../services/firebase_database_service.dart';
 import 'package:just_audio/just_audio.dart';
 import '../../widgets/podcast_search_bar.dart';
 import '../../widgets/podcast_card.dart';
@@ -521,23 +521,20 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
 
                 // Episodes List
                 Expanded(
-                  child: ListView.builder(
+                  child: Consumer(
+                    builder: (context, ref, child) {
+                      final episodesAsync =
+                          ref.watch(podcastEpisodesProvider(podcast.id));
+                      return episodesAsync.when(
+                        data: (episodes) => ListView.builder(
                     controller: scrollController,
                     padding: EdgeInsets.symmetric(
                         horizontal:
                             ResponsiveUtils.getResponsiveSpacing(context, 16)),
-                    itemCount: podcast.episodes,
+                    itemCount: episodes.length,
                     itemBuilder: (context, episodeIndex) {
-                      // Sample episode data for the podcast
-                      final sampleEpisode = {
-                        'id': '${podcast.id}_episode_$episodeIndex',
-                        'title':
-                            'Episode ${episodeIndex + 1}: Sample Episode Title',
-                        'podcastTitle': podcast.title,
-                        'duration': '${20 + (episodeIndex % 10) * 3} min',
-                        'downloadDate': '',
-                        'category': podcast.category.name,
-                      };
+                      final episodeModel = episodes[episodeIndex];
+                      final episode = _episodeToMap(episodeModel);
                       return ListTile(
                         leading: Container(
                           width: 40,
@@ -553,18 +550,26 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
                             color: Theme.of(context).colorScheme.primary,
                           ),
                         ),
-                        title: Text(sampleEpisode['title']!),
+                        title: Text(episodeModel.title),
                         subtitle: Text(
-                            '${sampleEpisode['duration']} • ${DateTime.now().subtract(Duration(days: episodeIndex)).toString().split(' ')[0]}'),
+                            '${episodeModel.duration} • ${episodeModel.publishDate.toIso8601String().split('T').first}'),
                         trailing: IconButton(
                           icon: const Icon(Icons.more_vert),
                           onPressed: () {
-                            _showEpisodeOptions(context, sampleEpisode);
+                            _showEpisodeOptions(context, episode);
                           },
                         ),
                         onTap: () {
-                          _playEpisode(context, sampleEpisode);
+                          _playEpisode(context, episode);
                         },
+                      );
+                    },
+                  ),
+                        loading: () =>
+                            const Center(child: CircularProgressIndicator()),
+                        error: (error, stack) => Center(
+                          child: Text('Unable to load episodes: $error'),
+                        ),
                       );
                     },
                   ),
@@ -621,27 +626,14 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
   Future<void> _playEpisode(
       BuildContext context, Map<String, dynamic> episode) async {
     try {
-      // Get the episode audio URL from Firebase
-      final episodeId = episode['id'];
-      // Derive podcastId from episodeId if needed elsewhere
-
-      // Fetch the actual episode data from Firebase
-      final firebaseService = FirebaseDatabaseService.instance;
-      final episodeData =
-          await firebaseService.getDocument('podcast_episodes', episodeId);
-      if (!context.mounted) return;
-
-      if (episodeData == null ||
-          episodeData['audioUrl'] == null ||
-          episodeData['audioUrl'].isEmpty) {
+      final audioUrl = _episodeAudioUrl(episode);
+      if (audioUrl.isEmpty) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('No audio available for this episode')),
         );
         return;
       }
-
-      final audioUrl = episodeData['audioUrl'];
 
       // Show loading indicator
       if (!context.mounted) return;
@@ -705,16 +697,8 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
               );
 
               try {
-                // Get the episode audio URL from Firebase
-                final episodeId = episode['id'];
-                final firebaseService = FirebaseDatabaseService.instance;
-                final episodeData = await firebaseService.getDocument(
-                    'podcast_episodes', episodeId);
-                if (!context.mounted) return;
-
-                if (episodeData == null ||
-                    episodeData['audioUrl'] == null ||
-                    episodeData['audioUrl'].isEmpty) {
+                final audioUrl = _episodeAudioUrl(episode);
+                if (audioUrl.isEmpty) {
                   if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -723,21 +707,13 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
                   return;
                 }
 
-                final audioUrl = episodeData['audioUrl'];
-
-                // Download the file
-                final audioData = await firebaseService.downloadFile(
-                  Uri.parse(audioUrl).pathSegments.last,
+                final launched = await launchUrl(
+                  Uri.parse(audioUrl),
+                  mode: LaunchMode.externalApplication,
                 );
-                if (!context.mounted) return;
-
-                if (audioData == null) {
-                  throw Exception('Failed to download audio file');
+                if (!launched) {
+                  throw Exception('Unable to open episode audio');
                 }
-
-                // Update episode in Firebase to mark as downloaded
-                // In a real app, you would save the file to local storage here
-                // and update the localPath field
 
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -763,5 +739,21 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
         ],
       ),
     );
+  }
+
+  Map<String, dynamic> _episodeToMap(PodcastEpisode episode) {
+    return {
+      'id': episode.id,
+      'title': episode.title,
+      'podcastTitle': episode.podcastTitle,
+      'duration': episode.duration,
+      'audioUrl': episode.audioUrl,
+      'downloadDate': '',
+      'category': '',
+    };
+  }
+
+  String _episodeAudioUrl(Map<String, dynamic> episode) {
+    return (episode['audioUrl'] ?? episode['audio_url'] ?? '').toString();
   }
 }
