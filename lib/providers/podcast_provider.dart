@@ -1,41 +1,50 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:appwrite/appwrite.dart';
+import '../config/appwrite_backend_config.dart';
+import '../main.dart';
 import '../models/podcast_models.dart';
-import '../services/firebase_database_service.dart';
 
 class PodcastNotifier extends StateNotifier<List<Podcast>> {
-  final FirebaseDatabaseService _firebaseService;
-  
-  PodcastNotifier(this._firebaseService) : super([]) {
+  final Databases _databases;
+
+  PodcastNotifier(this._databases) : super([]) {
     loadPodcasts();
   }
 
   Future<void> loadPodcasts() async {
     try {
-      final podcastsData = await _firebaseService.getCollection('podcasts');
-      final podcasts = podcastsData.map((data) => Podcast.fromJson(data)).toList();
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.podcastsCollectionId,
+        queries: [Query.orderDesc('created_at'), Query.limit(100)],
+      );
+      final podcasts = response.documents
+          .map((doc) => Podcast.fromJson({...doc.data, 'id': doc.$id}))
+          .toList();
       state = podcasts;
     } catch (e) {
-      // If there's an error or no podcasts in Firebase yet, use sample data
+      // If there is an error or no podcasts in Appwrite yet, keep the screen empty.
       state = [];
     }
   }
 
   Future<List<PodcastEpisode>> getEpisodesForPodcast(String podcastId) async {
     try {
-      final episodesData = await _firebaseService.getCollectionWhere(
-        'podcast_episodes',
-        'podcastId',
-        podcastId,
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.podcastEpisodesCollectionId,
+        queries: [
+          Query.equal('podcast_id', podcastId),
+          Query.orderDesc('publish_date'),
+          Query.limit(100),
+        ],
       );
-      
-      if (episodesData.isEmpty) {
-        return [];
-      }
-      
-      return episodesData
-          .map((data) => PodcastEpisode.fromJson(data))
-          .toList()
-          .cast<PodcastEpisode>();
+      final episodesData =
+          response.documents.map((doc) => {...doc.data, 'id': doc.$id});
+
+      return episodesData.map(PodcastEpisode.fromJson).toList();
     } catch (e) {
       return [];
     }
@@ -51,11 +60,13 @@ class PodcastNotifier extends StateNotifier<List<Podcast>> {
   }
 }
 
-final podcastProvider = StateNotifierProvider<PodcastNotifier, List<Podcast>>((ref) {
-  return PodcastNotifier(FirebaseDatabaseService.instance);
+final podcastProvider =
+    StateNotifierProvider<PodcastNotifier, List<Podcast>>((ref) {
+  return PodcastNotifier(Databases(appwriteClient));
 });
 
-final podcastEpisodesProvider = FutureProvider.family<List<PodcastEpisode>, String>(
+final podcastEpisodesProvider =
+    FutureProvider.family<List<PodcastEpisode>, String>(
   (ref, podcastId) async {
     final podcastNotifier = ref.read(podcastProvider.notifier);
     return await podcastNotifier.getEpisodesForPodcast(podcastId);
