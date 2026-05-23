@@ -8,9 +8,9 @@ Last updated from codebase review: 2026-05-21
 
 The app is migrating from Firebase, Jitsi, and GetStream to Appwrite, LiveKit, and Coolify. Treat Firebase as a legacy compatibility layer until the remaining modules below are migrated.
 
-Estimated overall migration progress: about 94%.
+Estimated overall migration progress: about 95%.
 
-- Appwrite-backed and validated with `flutter analyze`: auth/profile bootstrap, chat, LiveKit token flow, Paystack payment functions, Resend email function wiring/deployment variables, Appwrite push target registration, prayer, testimonies, notification settings/reminder records, admin notification records, admin user archive, profile file cleanup, tag visibility checks, analytics event persistence, user Bible/prayer/study statistics, study screen/progress, health screen, health tracking helper, health recipe/remedy submissions, daily verse records/generation settings, onboarding content, events, announcement editing, public missions, podcast listing/episode provider and audio actions, app update settings, approval link tokens, donation project/settings reads, kids stories/missions public screens, and the tract/board storage compatibility bridge.
+- Appwrite-backed and validated with `flutter analyze`: auth/profile bootstrap, chat, LiveKit token flow, Paystack payment functions, Resend email function wiring/deployment variables, Appwrite push target registration, prayer, testimonies, notification settings/reminder records, admin notification records, admin user archive, profile file cleanup, tag visibility checks, analytics event persistence, user Bible/prayer/study statistics, study screen/progress, health screen, health tracking helper, health recipe/remedy submissions, daily verse records/generation settings, onboarding content, events, announcement editing, public missions, podcast listing/episode provider and audio actions, tract remote sync/progress, app update settings, approval link tokens, donation project/settings reads, kids stories/missions public screens, and the tract/board storage compatibility bridge.
 - Appwrite infrastructure schema is maintained in `scripts/appwrite_infrastructure_schema.mjs`.
 - Provision safely against the current Appwrite 1.7.4 server with `npm run appwrite:dry-run` and then `npm run appwrite:provision:legacy`.
 - The current schema includes analytics/statistics tables: `analytics_events`, `user_activities`, `reading_sessions`, and `chapter_readings`.
@@ -94,7 +94,7 @@ Firebase packages remain in `pubspec.yaml` for modules not migrated yet. Do not 
 ## Remaining Migration Areas
 
 - Admin console screens and services: role management, content management, board reports/documents/decisions, kids admin/editing, tract/podcast admin, dashboard stats, and deeper admin service internals.
-- Library, books, tracts, podcast offline download persistence, chapters, leadership, discipleship, analytics, sync/offline sync, mission participation/progress internals, and notification delivery internals.
+- Library, books reader UI, podcast offline download persistence, chapters, leadership, discipleship, sync/offline sync, mission participation/progress internals, and notification delivery internals.
 - Remaining Firebase Storage wrappers should be replaced by Appwrite Storage wrappers bucket by bucket.
 - Firebase Cloud Functions callers should move to Appwrite functions or direct Appwrite service calls.
 - Firebase rules/indexes can be archived after the last Firestore caller is removed.

@@ -1,5 +1,12 @@
+// ignore_for_file: deprecated_member_use
+
+import 'dart:convert';
+
+import 'package:appwrite/appwrite.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../config/appwrite_backend_config.dart';
+import '../main.dart';
 import 'auth_service.dart';
 import '../models/tract_models.dart';
 import 'tract_database_helper.dart';
@@ -16,15 +23,13 @@ class TractService {
 
   final AuthService _authService = AuthService.instance;
   final TractDatabaseHelper _dbHelper = TractDatabaseHelper();
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final Databases _databases = Databases(appwriteClient);
   final FirebaseStorageService _storageService = FirebaseStorageService();
 
   static const String _cacheKey = 'tract_cache';
   static const String _lastUpdateKey = 'tract_last_update';
 
-  // Firebase Storage path for tracts
-  static const String _firebaseStoragePath =
-      'gs://alive-ng-flutter-app.firebasestorage.app/Tracts';
+  static const String _remoteTractPath = FirebaseStorageService.tractsPath;
 
   // What the Bible Says series lessons (1-11)
   static const List<String> _bibleSaysLessons = [
@@ -50,14 +55,14 @@ class TractService {
         return localTracts;
       }
 
-      // If not in local database, fetch from Firebase
-      final firebaseTracts = await _fetchTractsFromFirebase();
-      if (firebaseTracts.isNotEmpty) {
+      // If not in local database, fetch from Appwrite.
+      final remoteTracts = await _fetchTractsFromAppwrite();
+      if (remoteTracts.isNotEmpty) {
         // Cache in local database
-        for (final tract in firebaseTracts) {
+        for (final tract in remoteTracts) {
           await _dbHelper.insertTract(tract);
         }
-        return firebaseTracts;
+        return remoteTracts;
       }
 
       // Return default tracts if nothing found
@@ -78,11 +83,11 @@ class TractService {
         return localTract;
       }
 
-      // Fetch from Firebase if not found locally
-      final firebaseTract = await _fetchTractFromFirebase(tractId);
-      if (firebaseTract != null) {
-        await _dbHelper.insertTract(firebaseTract);
-        return firebaseTract;
+      // Fetch from Appwrite if not found locally.
+      final remoteTract = await _fetchTractFromAppwrite(tractId);
+      if (remoteTract != null) {
+        await _dbHelper.insertTract(remoteTract);
+        return remoteTract;
       }
 
       throw NotFoundException('Tract not found');
@@ -102,11 +107,11 @@ class TractService {
         return localContent;
       }
 
-      // Fetch from Firebase if not found locally
-      final firebaseContent = await _fetchTractContentFromFirebase(tractId);
-      if (firebaseContent != null) {
-        await _dbHelper.insertTractContent(firebaseContent);
-        return firebaseContent;
+      // Fetch from Appwrite if not found locally.
+      final remoteContent = await _fetchTractContentFromAppwrite(tractId);
+      if (remoteContent != null) {
+        await _dbHelper.insertTractContent(remoteContent);
+        return remoteContent;
       }
 
       throw NotFoundException('Tract content not found');
@@ -134,8 +139,8 @@ class TractService {
       // Save to local database
       await _dbHelper.insertUserAnswer(userAnswer);
 
-      // Sync to Firebase
-      await _syncUserAnswerToFirebase(userAnswer);
+      // Sync to Appwrite.
+      await _syncUserAnswerToAppwrite(userAnswer);
 
       return true;
     } catch (e) {
@@ -168,19 +173,28 @@ class TractService {
   /// Get detailed progress for a specific tract using [TractProgress] model.
   Future<TractProgress?> getTractProgress(String userId, String tractId) async {
     try {
-      final doc = await _firestore
-          .collection('user_tract_progress')
-          .doc('${userId}_$tractId')
-          .get();
-
-      if (doc.exists) {
-        final data = doc.data()!;
-        data['userId'] = userId;
-        data['tractId'] = tractId;
-        return TractProgress.fromJson(data);
+      final doc = await _databases.getDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: 'tract_progress',
+        documentId: '${userId}_$tractId',
+      );
+      return TractProgress.fromJson({
+        'id': doc.$id,
+        'userId': doc.data['user_id'] ?? userId,
+        'tractId': doc.data['tract_id'] ?? tractId,
+        'currentPage': doc.data['current_page'] ?? 0,
+        'isCompleted': doc.data['is_completed'] ?? false,
+        'lastUpdated':
+            doc.data['last_updated'] ?? DateTime.now().toIso8601String(),
+      });
+    } on AppwriteException catch (e) {
+      if (e.code != 404) {
+        _logger.error('Error getting tract progress', e);
+        throw DatabaseException('Failed to get tract progress',
+            originalError: e);
       }
 
-      // Build from local answers if no Firestore progress doc exists
+      // Build from local answers if no Appwrite progress doc exists.
       final answer = await _dbHelper.getUserAnswer(userId, tractId);
       if (answer != null) {
         return TractProgress(
@@ -203,10 +217,30 @@ class TractService {
   /// Save in-progress tract progress using [TractProgress] model.
   Future<void> saveTractProgress(TractProgress progress) async {
     try {
-      await _firestore
-          .collection('user_tract_progress')
-          .doc('${progress.userId}_${progress.tractId}')
-          .set(progress.toJson());
+      final payload = {
+        'user_id': progress.userId,
+        'tract_id': progress.tractId,
+        'current_page': progress.currentPage,
+        'is_completed': progress.isCompleted,
+        'last_updated': progress.lastUpdated.toUtc().toIso8601String(),
+      };
+      final docId = '${progress.userId}_${progress.tractId}';
+      try {
+        await _databases.updateDocument(
+          databaseId: AppwriteBackendConfig.databaseId,
+          collectionId: 'tract_progress',
+          documentId: docId,
+          data: payload,
+        );
+      } on AppwriteException catch (e) {
+        if (e.code != 404) rethrow;
+        await _databases.createDocument(
+          databaseId: AppwriteBackendConfig.databaseId,
+          collectionId: 'tract_progress',
+          documentId: docId,
+          data: payload,
+        );
+      }
     } catch (e) {
       _logger.error('Error saving tract progress', e);
       throw DatabaseException('Failed to save tract progress',
@@ -217,19 +251,23 @@ class TractService {
   /// Get aggregated statistics for a tract using [TractStatistics] model.
   Future<TractStatistics> getTractStatistics(String tractId) async {
     try {
-      final answersSnapshot = await _firestore
-          .collection('user_tract_answers')
-          .where('tractId', isEqualTo: tractId)
-          .get();
+      final answersSnapshot = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: 'user_tract_answers',
+        queries: [
+          Query.equal('tract_id', tractId),
+          Query.limit(200),
+        ],
+      );
 
       int totalCompletions = 0;
       final questionStats = <String, int>{};
 
-      for (final doc in answersSnapshot.docs) {
-        final data = doc.data();
-        if (data['isCompleted'] == true) {
+      for (final doc in answersSnapshot.documents) {
+        final data = doc.data;
+        if (data['is_completed'] == true) {
           totalCompletions++;
-          final answers = data['answers'] as Map<String, dynamic>? ?? {};
+          final answers = _decodeMap(data['answers']) ?? {};
           for (final qId in answers.keys) {
             questionStats[qId] = (questionStats[qId] ?? 0) + 1;
           }
@@ -237,10 +275,16 @@ class TractService {
       }
 
       // Get download count from tract metadata
-      final tractDoc =
-          await _firestore.collection('tracts').doc(tractId).get();
-      final totalDownloads =
-          (tractDoc.data()?['downloadCount'] as int?) ?? 0;
+      var totalDownloads = 0;
+      try {
+        final tractDoc = await _databases.getDocument(
+          databaseId: AppwriteBackendConfig.databaseId,
+          collectionId: 'tracts',
+          documentId: tractId,
+        );
+        totalDownloads =
+            _intValue(tractDoc.data['downloadCount'] ?? tractDoc.data['downloads']);
+      } catch (_) {}
 
       return TractStatistics(
         totalTracts: totalCompletions,
@@ -267,7 +311,7 @@ class TractService {
         if (lessonMatch != null) {
           final lessonNumber = int.parse(lessonMatch.group(1)!);
           final fileName = 'lesson_$lessonNumber.pdf';
-          // On web, return the download URL from Firebase Storage
+          // On web, return the Appwrite Storage download URL.
           final url = await _storageService.downloadTractPDF(fileName);
           if (url != null) {
             // Store the URL in the localPdfPath field for compatibility
@@ -313,26 +357,26 @@ class TractService {
     }
   }
 
-  // Sync all tract data with Firebase
+  // Sync all tract data with Appwrite.
   Future<void> syncWithFirebase() async {
     try {
-      // Load What the Bible Says tracts from Firebase Storage
+      // Load What the Bible Says tracts from Appwrite Storage.
       await _loadWhatTheBibleSaysTracts();
 
-      // Fetch latest tracts from Firebase
-      final firebaseTracts = await _fetchTractsFromFirebase();
+      // Fetch latest tracts from Appwrite.
+      final remoteTracts = await _fetchTractsFromAppwrite();
 
       // Update local database
-      for (final tract in firebaseTracts) {
+      for (final tract in remoteTracts) {
         await _dbHelper.insertTract(tract);
       }
 
-      // Sync user answers to Firebase
+      // Sync user answers to Appwrite.
       final currentUser = _authService.currentUser;
       if (currentUser != null) {
         final userAnswers = await _dbHelper.getUserProgress(currentUser.uid);
         for (final answer in userAnswers) {
-          await _syncUserAnswerToFirebase(answer);
+          await _syncUserAnswerToAppwrite(answer);
         }
       }
 
@@ -341,114 +385,144 @@ class TractService {
       await prefs.setString(_lastUpdateKey, DateTime.now().toIso8601String());
     } catch (e) {
       if (e is AppException) rethrow;
-      _logger.error('Error syncing with Firebase', e);
-      throw DatabaseException('Failed to sync with Firebase', originalError: e);
+      _logger.error('Error syncing with Appwrite', e);
+      throw DatabaseException('Failed to sync with Appwrite', originalError: e);
     }
   }
 
   // Private helper methods
 
-  Future<List<Tract>> _fetchTractsFromFirebase() async {
+  Future<List<Tract>> _fetchTractsFromAppwrite() async {
     try {
-      final querySnapshot = await _firestore.collection('tracts').get();
-      return querySnapshot.docs.map((doc) {
-        final data = doc.data();
-        return Tract(
-          id: doc.id,
-          title: data['title'] ?? '',
-          description: data['description'] ?? '',
-          category: data['category'] ?? '',
-          pdfUrl: data['pdfUrl'] ?? '',
-          localPdfPath: data['localPdfPath'],
-          imageUrl: data['imageUrl'],
-          createdAt:
-              (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-          updatedAt:
-              (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-          isDownloaded: data['isDownloaded'] ?? false,
-          order: data['order'] ?? 0,
-          language: data['language'] ?? 'en',
-        );
+      final querySnapshot = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: 'tracts',
+        queries: [
+          Query.orderAsc('order'),
+          Query.limit(200),
+        ],
+      );
+      return querySnapshot.documents.map((doc) {
+        return Tract.fromFirestore(doc.data, doc.$id);
       }).toList();
     } catch (e) {
-      _logger.error('Error fetching tracts from Firebase', e);
+      _logger.error('Error fetching tracts from Appwrite', e);
       return [];
     }
   }
 
-  Future<Tract?> _fetchTractFromFirebase(String tractId) async {
+  Future<Tract?> _fetchTractFromAppwrite(String tractId) async {
     try {
-      final doc = await _firestore.collection('tracts').doc(tractId).get();
-      if (doc.exists) {
-        final data = doc.data()!;
-        return Tract(
-          id: doc.id,
-          title: data['title'] ?? '',
-          description: data['description'] ?? '',
-          category: data['category'] ?? '',
-          pdfUrl: data['pdfUrl'] ?? '',
-          localPdfPath: data['localPdfPath'],
-          imageUrl: data['imageUrl'],
-          createdAt:
-              (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-          updatedAt:
-              (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-          isDownloaded: data['isDownloaded'] ?? false,
-          order: data['order'] ?? 0,
-          language: data['language'] ?? 'en',
-        );
-      }
+      final doc = await _databases.getDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: 'tracts',
+        documentId: tractId,
+      );
+      return Tract.fromFirestore(doc.data, doc.$id);
+    } on AppwriteException catch (e) {
+      if (e.code == 404) return null;
+      _logger.error('Error fetching tract from Appwrite', e);
       return null;
     } catch (e) {
-      _logger.error('Error fetching tract from Firebase', e);
+      _logger.error('Error fetching tract from Appwrite', e);
       return null;
     }
   }
 
-  Future<TractContent?> _fetchTractContentFromFirebase(String tractId) async {
+  Future<TractContent?> _fetchTractContentFromAppwrite(String tractId) async {
     try {
-      final doc =
-          await _firestore.collection('tract_contents').doc(tractId).get();
-      if (doc.exists) {
-        final data = doc.data()!;
-        return TractContent(
-          id: doc.id,
-          tractId: tractId,
-          content: data['content'] ?? '',
-          questions: (data['questions'] as List<dynamic>?)
-                  ?.map((q) => TractQuestion(
-                        id: q['id'] ?? '',
-                        question: q['question'] ?? '',
-                        type: q['type'] ?? 'text',
-                        options: q['options']?.cast<String>(),
-                        correctAnswer: q['correctAnswer'],
-                        order: q['order'] ?? 0,
-                      ))
-                  .toList() ??
-              [],
-          metadata: data['metadata'],
-        );
-      }
+      final doc = await _databases.getDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: 'tract_contents',
+        documentId: tractId,
+      );
+      final data = doc.data;
+      return TractContent(
+        id: doc.$id,
+        tractId: tractId,
+        content: data['content']?.toString() ?? '',
+        questions: _decodeQuestions(data['questions']),
+        metadata: _decodeMap(data['metadata']),
+      );
+    } on AppwriteException catch (e) {
+      if (e.code == 404) return null;
+      _logger.error('Error fetching tract content from Appwrite', e);
       return null;
     } catch (e) {
-      _logger.error('Error fetching tract content from Firebase', e);
+      _logger.error('Error fetching tract content from Appwrite', e);
       return null;
     }
   }
 
-  Future<void> _syncUserAnswerToFirebase(UserTractAnswer answer) async {
+  Future<void> _syncUserAnswerToAppwrite(UserTractAnswer answer) async {
     try {
-      await _firestore.collection('user_tract_answers').doc(answer.id).set({
-        'userId': answer.userId,
-        'tractId': answer.tractId,
-        'answers': answer.answers,
-        'completedAt': Timestamp.fromDate(answer.completedAt),
-        'isCompleted': answer.isCompleted,
+      final payload = {
+        'user_id': answer.userId,
+        'tract_id': answer.tractId,
+        'answers': jsonEncode(answer.answers),
+        'completed_at': answer.completedAt.toUtc().toIso8601String(),
+        'is_completed': answer.isCompleted,
         'score': answer.score,
-      });
+      };
+      try {
+        await _databases.updateDocument(
+          databaseId: AppwriteBackendConfig.databaseId,
+          collectionId: 'user_tract_answers',
+          documentId: answer.id,
+          data: payload,
+        );
+      } on AppwriteException catch (e) {
+        if (e.code != 404) rethrow;
+        await _databases.createDocument(
+          databaseId: AppwriteBackendConfig.databaseId,
+          collectionId: 'user_tract_answers',
+          documentId: answer.id,
+          data: payload,
+        );
+      }
     } catch (e) {
-      _logger.error('Error syncing user answer to Firebase', e);
+      _logger.error('Error syncing user answer to Appwrite', e);
     }
+  }
+
+  List<TractQuestion> _decodeQuestions(dynamic value) {
+    if (value == null) return [];
+    final rawQuestions = value is String ? jsonDecode(value) : value;
+    if (rawQuestions is! List) return [];
+    return rawQuestions.map((raw) {
+      final question = raw is Map<String, dynamic>
+          ? raw
+          : Map<String, dynamic>.from(raw as Map);
+      return TractQuestion(
+        id: question['id']?.toString() ?? '',
+        question: question['question']?.toString() ?? '',
+        type: question['type']?.toString() ?? 'text',
+        options: question['options'] is List
+            ? List<String>.from(question['options'] as List)
+            : null,
+        correctAnswer: question['correctAnswer']?.toString() ??
+            question['correct_answer']?.toString(),
+        order: _intValue(question['order']),
+      );
+    }).toList();
+  }
+
+  Map<String, dynamic>? _decodeMap(dynamic value) {
+    if (value == null) return null;
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) return Map<String, dynamic>.from(value);
+    if (value is String && value.trim().isNotEmpty) {
+      final decoded = jsonDecode(value);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    }
+    return null;
+  }
+
+  int _intValue(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? 0;
   }
 
   int _calculateScore(Map<String, String> answers) {
@@ -466,7 +540,7 @@ class TractService {
         description:
             'Bible study lesson ${index + 1} from the "What the Bible Says" series',
         category: 'Bible Study',
-        pdfUrl: '$_firebaseStoragePath/bible_says_lesson_${index + 1}.pdf',
+        pdfUrl: '$_remoteTractPath/bible_says_lesson_${index + 1}.pdf',
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
         isDownloaded: false,
@@ -476,7 +550,7 @@ class TractService {
     }).toList();
   }
 
-  // Load "What the Bible Says" tracts from Firebase Storage
+  // Load "What the Bible Says" tracts from Appwrite Storage.
   Future<void> _loadWhatTheBibleSaysTracts() async {
     try {
       final lessons = await _storageService.getWhatTheBibleSaysLessons();
