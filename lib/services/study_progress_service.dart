@@ -1,15 +1,19 @@
-// Removed supabase_flutter import - using Firebase now
+// ignore_for_file: deprecated_member_use
+
+import 'package:appwrite/appwrite.dart';
+
+import '../config/appwrite_backend_config.dart';
+import '../main.dart';
 import '../models/app_models.dart';
-import '../utils/toast_utils.dart';
-import '../utils/logger.dart';
 import '../utils/app_exception.dart';
+import '../utils/logger.dart';
+import '../utils/toast_utils.dart';
 import 'auth_service.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class StudyProgressService {
   static final _authService = AuthService.instance;
   static final _logger = Logger('StudyProgressService');
-  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  static final Databases _databases = Databases(appwriteClient);
 
   static Future<List<StudyProgress>> fetchStudyProgress() async {
     try {
@@ -18,17 +22,21 @@ class StudyProgressService {
         throw AuthException('User not authenticated');
       }
 
-      // Firebase Firestore query for study_progress collection
-      final snapshot = await _firestore
-          .collection('study_progress')
-          .where('user_id', isEqualTo: user.uid)
-          .orderBy('created_at', descending: true)
-          .get();
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.studyProgressCollectionId,
+        queries: [
+          Query.equal('user_id', user.uid),
+          Query.orderDesc('created_at'),
+          Query.limit(200),
+        ],
+      );
 
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return StudyProgress.fromJson(data);
+      return response.documents.map((doc) {
+        return StudyProgress.fromJson({
+          ...doc.data,
+          'id': doc.$id,
+        });
       }).toList();
     } catch (error) {
       _logger.error('Error fetching study progress', error);
@@ -52,26 +60,20 @@ class StudyProgressService {
       }
 
       final docId = '${user.uid}_$programId';
-      final docRef = _firestore.collection('study_progress').doc(docId);
-      final existing = await docRef.get();
+      final existing = await _getProgressDocument(docId);
 
-      // Existing values
-      int existingCurrentLesson = 0;
-      int existingCompletedLessons = 0;
+      var existingCurrentLesson = 0;
+      var existingCompletedLessons = 0;
       DateTime? createdAt;
-      if (existing.exists) {
-        final data = existing.data() as Map<String, dynamic>;
-        existingCurrentLesson = (data['current_lesson'] ?? 0) as int;
-        existingCompletedLessons = (data['completed_lessons'] ?? 0) as int;
-        final createdAtStr = data['created_at'] as String?;
+      if (existing != null) {
+        existingCurrentLesson = _intValue(existing['current_lesson']);
+        existingCompletedLessons = _intValue(existing['completed_lessons']);
+        final createdAtStr = existing['created_at'] as String?;
         if (createdAtStr != null) {
-          try {
-            createdAt = DateTime.parse(createdAtStr);
-          } catch (_) {}
+          createdAt = DateTime.tryParse(createdAtStr);
         }
       }
 
-      // Parse lesson number from lessonId
       final lessonNumber = int.tryParse(lessonId) ?? existingCurrentLesson;
       final newCurrentLesson = lessonNumber > existingCurrentLesson
           ? lessonNumber
@@ -79,37 +81,38 @@ class StudyProgressService {
       final newCompletedLessons =
           existingCompletedLessons + (completed ? 1 : 0);
 
-      // Fetch total lessons for the program to compute percentage
-      int totalLessons = 0;
-      try {
-        final programDoc =
-            await _firestore.collection('study_programs').doc(programId).get();
-        if (programDoc.exists) {
-          final pData = programDoc.data() as Map<String, dynamic>;
-          totalLessons = (pData['total_lessons'] ?? 0) as int;
-        }
-      } catch (e) {
-        _logger.warning(
-            'Unable to fetch total lessons for program $programId: $e');
-      }
-
+      final totalLessons = await _getTotalLessons(programId);
       final progressPercentage =
           totalLessons > 0 ? (newCompletedLessons / totalLessons) * 100 : 0.0;
 
-      final nowIso = DateTime.now().toIso8601String();
+      final nowIso = DateTime.now().toUtc().toIso8601String();
       final payload = {
-        'id': docId,
         'user_id': user.uid,
         'program_id': programId,
+        'study_guide_id': programId,
         'current_lesson': newCurrentLesson,
         'completed_lessons': newCompletedLessons,
         'progress_percentage': progressPercentage,
         'last_accessed_at': nowIso,
-        'created_at': (createdAt ?? DateTime.now()).toIso8601String(),
+        'created_at': (createdAt ?? DateTime.now().toUtc()).toIso8601String(),
         'updated_at': nowIso,
       };
 
-      await docRef.set(payload, SetOptions(merge: true));
+      if (existing == null) {
+        await _databases.createDocument(
+          databaseId: AppwriteBackendConfig.databaseId,
+          collectionId: AppwriteBackendConfig.studyProgressCollectionId,
+          documentId: docId,
+          data: payload,
+        );
+      } else {
+        await _databases.updateDocument(
+          databaseId: AppwriteBackendConfig.databaseId,
+          collectionId: AppwriteBackendConfig.studyProgressCollectionId,
+          documentId: docId,
+          data: payload,
+        );
+      }
 
       if (completed) {
         final scoreText = score != null ? ' with a score of $score!' : '!';
@@ -157,7 +160,6 @@ class StudyProgressService {
     String lessonId,
   ) {
     try {
-      // Convert lessonId to int and compare with currentLesson
       final lessonNumber = int.tryParse(lessonId) ?? 0;
       return allProgress.firstWhere(
         (p) => p.programId == programId && p.currentLesson == lessonNumber,
@@ -175,19 +177,23 @@ class StudyProgressService {
         return false;
       }
 
-      // Firebase Firestore delete query for study_progress collection
-      // Delete documents where user_id equals user.uid and program_id equals programId
-      final query = await _firestore
-          .collection('study_progress')
-          .where('user_id', isEqualTo: user.uid)
-          .where('program_id', isEqualTo: programId)
-          .get();
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.studyProgressCollectionId,
+        queries: [
+          Query.equal('user_id', user.uid),
+          Query.equal('program_id', programId),
+          Query.limit(100),
+        ],
+      );
 
-      final batch = _firestore.batch();
-      for (final doc in query.docs) {
-        batch.delete(doc.reference);
+      for (final doc in response.documents) {
+        await _databases.deleteDocument(
+          databaseId: AppwriteBackendConfig.databaseId,
+          collectionId: AppwriteBackendConfig.studyProgressCollectionId,
+          documentId: doc.$id,
+        );
       }
-      await batch.commit();
 
       ToastUtils.showSuccess('Progress reset successfully');
       return true;
@@ -213,5 +219,42 @@ class StudyProgressService {
       'totalScore': totalScore,
       'averageScore': averageScore,
     };
+  }
+
+  static Future<Map<String, dynamic>?> _getProgressDocument(
+    String documentId,
+  ) async {
+    try {
+      final doc = await _databases.getDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.studyProgressCollectionId,
+        documentId: documentId,
+      );
+      return doc.data;
+    } on AppwriteException catch (error) {
+      if (error.code == 404) return null;
+      rethrow;
+    }
+  }
+
+  static Future<int> _getTotalLessons(String programId) async {
+    try {
+      final doc = await _databases.getDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.studyGuidesCollectionId,
+        documentId: programId,
+      );
+      return _intValue(doc.data['lesson_count'] ?? doc.data['total_lessons']);
+    } catch (error) {
+      _logger.warning(
+          'Unable to fetch total lessons for program $programId: $error');
+      return 0;
+    }
+  }
+
+  static int _intValue(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? 0;
   }
 }
