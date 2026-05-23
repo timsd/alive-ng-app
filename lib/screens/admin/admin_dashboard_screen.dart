@@ -1,7 +1,11 @@
+// ignore_for_file: deprecated_member_use
+
+import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/models.dart' as appwrite_models;
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
+import '../../config/appwrite_backend_config.dart';
+import '../../main.dart';
 import '../../services/auth_service.dart';
 import '../../services/role_access_service.dart';
 import '../../widgets/role_guard.dart';
@@ -46,6 +50,7 @@ class _AdminDashboardContent extends StatefulWidget {
 
 class _AdminDashboardContentState extends State<_AdminDashboardContent> {
   final RoleAccessService _roleService = RoleAccessService.instance;
+  final Databases _databases = Databases(appwriteClient);
   bool _isLoading = true;
   bool _hasAccess = false;
   appwrite_models.User? _currentUser;
@@ -91,38 +96,39 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
 
   Future<void> _loadDashboardStats() async {
     try {
-      // Fetch real-time stats from Firestore
-      final usersSnapshot = await FirebaseFirestore.instance
-          .collection('profiles')
-          .where('is_archived', isEqualTo: false)
-          .get();
+      final results = await Future.wait([
+        _countDocuments(
+          AppwriteBackendConfig.usersCollectionId,
+          queries: [Query.equal('is_archived', false)],
+        ),
+        _countDocuments(
+          AppwriteBackendConfig.usersCollectionId,
+          queries: [Query.equal('is_archived', true)],
+        ),
+        _countDocuments(AppwriteBackendConfig.boardDocumentsBucketId),
+        _listDocuments(
+          AppwriteBackendConfig.podcastsCollectionId,
+          queries: [Query.limit(500)],
+        ),
+      ]);
 
-      final archivedUsersSnapshot = await FirebaseFirestore.instance
-          .collection('profiles')
-          .where('is_archived', isEqualTo: true)
-          .get();
-
-      final activeReportsSnapshot = await FirebaseFirestore.instance
-          .collection('board_documents')
-          .where('is_archived', isEqualTo: false)
-          .get();
-
-      final podcastsSnapshot =
-          await FirebaseFirestore.instance.collection('podcasts').get();
+      final activeUsers = results[0] as int;
+      final archivedUsers = results[1] as int;
+      final activeReports = results[2] as int;
+      final podcasts = results[3] as List<Map<String, dynamic>>;
 
       final Map<String, int> categoryCounts = {};
-      for (final doc in podcastsSnapshot.docs) {
-        final data = doc.data();
+      for (final data in podcasts) {
         final category = (data['category'] as String?) ?? 'uncategorized';
         categoryCounts[category] = (categoryCounts[category] ?? 0) + 1;
       }
 
       setState(() {
-        _totalUsers = usersSnapshot.docs.length;
-        _archivedUsers = archivedUsersSnapshot.docs.length;
-        _activeReports = activeReportsSnapshot.docs.length;
+        _totalUsers = activeUsers;
+        _archivedUsers = archivedUsers;
+        _activeReports = activeReports;
         _totalChapters = ChapterConstants.availableChapters.length;
-        _totalPodcasts = podcastsSnapshot.docs.length;
+        _totalPodcasts = podcasts.length;
         _podcastCategoryCounts = categoryCounts;
       });
     } catch (e) {
@@ -136,6 +142,32 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
         _podcastCategoryCounts = {};
       });
     }
+  }
+
+  Future<int> _countDocuments(
+    String collectionId, {
+    List<String> queries = const [],
+  }) async {
+    final response = await _databases.listDocuments(
+      databaseId: AppwriteBackendConfig.databaseId,
+      collectionId: collectionId,
+      queries: [...queries, Query.limit(1)],
+    );
+    return response.total;
+  }
+
+  Future<List<Map<String, dynamic>>> _listDocuments(
+    String collectionId, {
+    List<String> queries = const [],
+  }) async {
+    final response = await _databases.listDocuments(
+      databaseId: AppwriteBackendConfig.databaseId,
+      collectionId: collectionId,
+      queries: queries,
+    );
+    return response.documents
+        .map((doc) => {...Map<String, dynamic>.from(doc.data), 'id': doc.$id})
+        .toList();
   }
 
   String _displayPodcastCategory(String key) {
@@ -772,7 +804,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
               [
                 _buildActionTile(
                   'File Storage',
-                  'Manage Firebase Cloud Storage buckets and files',
+                  'Manage Appwrite Storage buckets and files',
                   Icons.folder_outlined,
                   () => _navigateToStorageAdmin(),
                 ),
