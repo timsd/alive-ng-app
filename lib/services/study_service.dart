@@ -1,4 +1,9 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+// ignore_for_file: deprecated_member_use
+
+import 'package:appwrite/appwrite.dart';
+
+import '../config/appwrite_backend_config.dart';
+import '../main.dart';
 import '../utils/app_exception.dart';
 import '../utils/logger.dart';
 
@@ -23,15 +28,21 @@ class StudyProgress {
 
   factory StudyProgress.fromJson(Map<String, dynamic> json) {
     return StudyProgress(
-      id: json['id'] as String,
-      programId: json['program_id'] as String,
-      lessonId: json['lesson_id'] as String,
-      completed: json['completed'] as bool,
-      score: json['score'] as int,
+      id: json['id']?.toString() ?? '',
+      programId: json['program_id']?.toString() ??
+          json['study_guide_id']?.toString() ??
+          '',
+      lessonId: json['lesson_id']?.toString() ??
+          json['current_lesson']?.toString() ??
+          '',
+      completed: json['completed'] == true,
+      score: (json['score'] as num?)?.toInt() ?? 0,
       completedAt: json['completed_at'] != null
           ? DateTime.parse(json['completed_at'] as String)
           : null,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'] as String)
+          : DateTime.now(),
     );
   }
 
@@ -69,20 +80,24 @@ class StudyProgress {
 }
 
 class StudyService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final Databases _databases = Databases(appwriteClient);
   final _logger = Logger('StudyService');
 
   // Fetch study progress for a user
   Future<List<StudyProgress>> fetchStudyProgress(String userId) async {
     try {
-      final snapshot = await _firestore
-          .collection('study_progress')
-          .where('user_id', isEqualTo: userId)
-          .orderBy('created_at', descending: false)
-          .get();
+      final snapshot = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: 'study_progress',
+        queries: [
+          Query.equal('user_id', userId),
+          Query.orderAsc('created_at'),
+          Query.limit(200),
+        ],
+      );
 
-      return snapshot.docs
-          .map((doc) => StudyProgress.fromJson(doc.data()))
+      return snapshot.documents
+          .map((doc) => StudyProgress.fromJson({...doc.data, 'id': doc.$id}))
           .toList();
     } catch (e) {
       _logger.error('Error fetching study progress', e);
@@ -101,31 +116,44 @@ class StudyService {
   }) async {
     try {
       final docId = '${userId}_${programId}_$lessonId';
-      final docRef = _firestore.collection('study_progress').doc(docId);
+      final now = DateTime.now().toUtc().toIso8601String();
 
       final progressData = {
         'id': docId,
         'user_id': userId,
         'program_id': programId,
+        'study_guide_id': programId,
         'lesson_id': lessonId,
         'completed': completed,
         'score': score ?? 0,
-        'completed_at': completed ? DateTime.now().toIso8601String() : null,
-        'updated_at': DateTime.now().toIso8601String(),
+        'completed_at': completed ? now : null,
+        'updated_at': now,
+        'last_accessed_at': now,
       };
 
-      // Ensure created_at exists if this is a new document
-      final existing = await docRef.get();
-      if (!existing.exists) {
-        progressData['created_at'] = DateTime.now().toIso8601String();
-      } else {
-        // keep original created_at if present
-        final data = existing.data() as Map<String, dynamic>;
-        progressData['created_at'] =
-            data['created_at'] ?? DateTime.now().toIso8601String();
+      try {
+        final existing = await _databases.getDocument(
+          databaseId: AppwriteBackendConfig.databaseId,
+          collectionId: 'study_progress',
+          documentId: docId,
+        );
+        progressData['created_at'] = existing.data['created_at'] ?? now;
+        await _databases.updateDocument(
+          databaseId: AppwriteBackendConfig.databaseId,
+          collectionId: 'study_progress',
+          documentId: docId,
+          data: progressData,
+        );
+      } on AppwriteException catch (e) {
+        if (e.code != 404) rethrow;
+        progressData['created_at'] = now;
+        await _databases.createDocument(
+          databaseId: AppwriteBackendConfig.databaseId,
+          collectionId: 'study_progress',
+          documentId: docId,
+          data: progressData,
+        );
       }
-
-      await docRef.set(progressData, SetOptions(merge: true));
 
       return StudyProgress.fromJson(progressData);
     } catch (e) {
@@ -139,15 +167,19 @@ class StudyService {
   Future<List<StudyProgress>> getProgramProgress(
       String userId, String programId) async {
     try {
-      final snapshot = await _firestore
-          .collection('study_progress')
-          .where('user_id', isEqualTo: userId)
-          .where('program_id', isEqualTo: programId)
-          .orderBy('created_at', descending: false)
-          .get();
+      final snapshot = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: 'study_progress',
+        queries: [
+          Query.equal('user_id', userId),
+          Query.equal('program_id', programId),
+          Query.orderAsc('created_at'),
+          Query.limit(200),
+        ],
+      );
 
-      return snapshot.docs
-          .map((doc) => StudyProgress.fromJson(doc.data()))
+      return snapshot.documents
+          .map((doc) => StudyProgress.fromJson({...doc.data, 'id': doc.$id}))
           .toList();
     } catch (e) {
       _logger.error('Error fetching program progress', e);
@@ -195,7 +227,15 @@ class StudyService {
       String userId, String programId, String lessonId) async {
     try {
       final docId = '${userId}_${programId}_$lessonId';
-      await _firestore.collection('study_progress').doc(docId).delete();
+      try {
+        await _databases.deleteDocument(
+          databaseId: AppwriteBackendConfig.databaseId,
+          collectionId: 'study_progress',
+          documentId: docId,
+        );
+      } on AppwriteException catch (e) {
+        if (e.code != 404) rethrow;
+      }
     } catch (e) {
       _logger.error('Error resetting lesson progress', e);
       throw DatabaseException('Failed to reset lesson progress',
