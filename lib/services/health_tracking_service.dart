@@ -1,14 +1,17 @@
-// Removed supabase_flutter import - using Firebase now
-import '../utils/toast_utils.dart';
-import '../utils/logger.dart';
+// ignore_for_file: deprecated_member_use
+
+import 'package:appwrite/appwrite.dart';
+
+import '../config/appwrite_backend_config.dart';
+import '../main.dart';
 import '../models/health_models.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'firebase_database_service.dart';
-import 'auth_service.dart';
 import '../utils/app_exception.dart';
+import '../utils/logger.dart';
+import '../utils/toast_utils.dart';
+import 'auth_service.dart';
 
 class HealthTrackingService {
-  static final _firebaseService = FirebaseDatabaseService.instance;
+  static final Databases _databases = Databases(appwriteClient);
   static final _authService = AuthService.instance;
   static final _logger = Logger('HealthTrackingService');
 
@@ -19,14 +22,22 @@ class HealthTrackingService {
         throw AuthException('User not authenticated');
       }
 
-      final snapshot = await _firebaseService.firestore
-          .collection('health_tracking')
-          .where('user_id', isEqualTo: user.uid)
-          .orderBy('date', descending: true)
-          .limit(30)
-          .get();
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.healthTrackingCollectionId,
+        queries: [
+          Query.equal('user_id', user.uid),
+          Query.orderDesc('date'),
+          Query.limit(30),
+        ],
+      );
 
-      return snapshot.docs.map((doc) => doc.data()).toList();
+      return response.documents.map((doc) {
+        return {
+          ...doc.data,
+          'id': doc.$id,
+        };
+      }).toList();
     } catch (error) {
       _logger.error('Error fetching health data', error);
       ToastUtils.showError('Failed to load health data');
@@ -40,17 +51,23 @@ class HealthTrackingService {
       final user = _authService.currentUser;
       if (user == null) return null;
 
-      final today = DateTime.now().toIso8601String().split('T')[0];
+      final today = _todayKey();
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.healthTrackingCollectionId,
+        queries: [
+          Query.equal('user_id', user.uid),
+          Query.equal('date', today),
+          Query.limit(1),
+        ],
+      );
 
-      final snapshot = await _firebaseService.firestore
-          .collection('health_tracking')
-          .where('user_id', isEqualTo: user.uid)
-          .where('date', isEqualTo: today)
-          .limit(1)
-          .get();
-
-      if (snapshot.docs.isEmpty) return null;
-      return snapshot.docs.first.data();
+      if (response.documents.isEmpty) return null;
+      final doc = response.documents.first;
+      return {
+        ...doc.data,
+        'id': doc.$id,
+      };
     } catch (error) {
       _logger.error('Error fetching today\'s health data', error);
       return null;
@@ -65,19 +82,35 @@ class HealthTrackingService {
         return false;
       }
 
-      final today = DateTime.now().toIso8601String().split('T')[0];
-      // Create a deterministic ID based on uid and date to ensure one doc per day
-      final docId = '${user.uid}_$today';
-
-      await _firebaseService.firestore
-          .collection('health_tracking')
-          .doc(docId)
-          .set({
+      final today = _todayKey();
+      final docId = _healthDocumentId(user.uid, today);
+      final now = DateTime.now().toUtc().toIso8601String();
+      final payload = {
         'user_id': user.uid,
         'date': today,
         ...data,
-        'updated_at': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+        'updated_at': now,
+      };
+
+      try {
+        await _databases.updateDocument(
+          databaseId: AppwriteBackendConfig.databaseId,
+          collectionId: AppwriteBackendConfig.healthTrackingCollectionId,
+          documentId: docId,
+          data: payload,
+        );
+      } on AppwriteException catch (error) {
+        if (error.code != 404) rethrow;
+        await _databases.createDocument(
+          databaseId: AppwriteBackendConfig.databaseId,
+          collectionId: AppwriteBackendConfig.healthTrackingCollectionId,
+          documentId: docId,
+          data: {
+            ...payload,
+            'created_at': now,
+          },
+        );
+      }
 
       ToastUtils.showSuccess('Health data updated');
       return true;
@@ -91,7 +124,7 @@ class HealthTrackingService {
   static Future<bool> logWaterIntake(int glasses) async {
     try {
       final todayData = await getTodayData();
-      final currentIntake = todayData?['water_intake'] ?? 0;
+      final currentIntake = _intValue(todayData?['water_intake']);
       return await updateHealthData({
         'water_intake': currentIntake + glasses,
       });
@@ -104,7 +137,7 @@ class HealthTrackingService {
   static Future<bool> logExercise(int minutes) async {
     try {
       final todayData = await getTodayData();
-      final currentMinutes = todayData?['exercise_minutes'] ?? 0;
+      final currentMinutes = _intValue(todayData?['exercise_minutes']);
       return await updateHealthData({
         'exercise_minutes': currentMinutes + minutes,
       });
@@ -117,7 +150,7 @@ class HealthTrackingService {
   static Future<bool> logSunlight(int minutes) async {
     try {
       final todayData = await getTodayData();
-      final currentMinutes = todayData?['sunlight_minutes'] ?? 0;
+      final currentMinutes = _intValue(todayData?['sunlight_minutes']);
       return await updateHealthData({
         'sunlight_minutes': currentMinutes + minutes,
       });
@@ -160,15 +193,15 @@ class HealthTrackingService {
     }
   }
 
-  // Calculate today's wellness score based on health data
+  // Calculate today's wellness score based on health data.
   static int getTodayWellnessScore(HealthData? todayData) {
     if (todayData == null) return 0;
 
     final scores = [
-      (todayData.waterIntake / 8).clamp(0, 1) * 100, // 8 glasses target
-      (todayData.exerciseMinutes / 30).clamp(0, 1) * 100, // 30 min target
-      (todayData.sunlightMinutes / 20).clamp(0, 1) * 100, // 20 min target
-      (todayData.sleepHours / 8).clamp(0, 1) * 100, // 8 hours target
+      (todayData.waterIntake / 8).clamp(0, 1) * 100,
+      (todayData.exerciseMinutes / 30).clamp(0, 1) * 100,
+      (todayData.sunlightMinutes / 20).clamp(0, 1) * 100,
+      (todayData.sleepHours / 8).clamp(0, 1) * 100,
       todayData.nutritionScore.toDouble(),
       todayData.temperanceScore.toDouble(),
       todayData.airQualityScore.toDouble(),
@@ -177,5 +210,21 @@ class HealthTrackingService {
     ];
 
     return (scores.reduce((acc, score) => acc + score) / scores.length).round();
+  }
+
+  static String _todayKey() {
+    final now = DateTime.now();
+    return '${now.year}-${now.month.toString().padLeft(2, '0')}-'
+        '${now.day.toString().padLeft(2, '0')}';
+  }
+
+  static String _healthDocumentId(String userId, String date) {
+    return '${userId}_${date.replaceAll('-', '_')}';
+  }
+
+  static int _intValue(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? 0;
   }
 }
