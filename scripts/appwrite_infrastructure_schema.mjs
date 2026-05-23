@@ -106,7 +106,10 @@ export const tables = [
       s('work_contact'), s('home_contact'), text('general_info'), s('local_chapter'), s('conference'), b('is_chapter_verified', false, false),
       b('is_church_verified', false, false), b('is_conference_verified', false, false), s('commitment_type', 64), f('financial_commitment'),
       text('availability_commitment'), mediumtext('commitment_details'), i('total_reading_time'), i('chapters_read'), i('verses_read'),
-      i('prayers_offered'), i('study_sessions_completed'), dt('stats_start_date'), b('is_online'), dt('last_seen'), dt('created_at'), dt('updated_at'),
+      i('prayers_offered'), i('study_sessions_completed'), i('session_count'), i('total_study_time'), i('total_app_time'),
+      s('last_chapter_read'), s('last_verse_read'), s('last_prayer_type'), s('last_study_session_type'), dt('last_reading_date'),
+      dt('last_prayer_date'), dt('last_study_date'), dt('last_session_start'), dt('last_activity'), dt('stats_start_date'),
+      b('is_online'), dt('last_seen'), dt('created_at'), dt('updated_at'),
     ],
     indexes: [{ key: 'users_email_idx', type: 'key', columns: ['email'] }, { key: 'users_role_idx', type: 'key', columns: ['role'] }, { key: 'users_approval_idx', type: 'key', columns: ['approval_status'] }],
   },
@@ -276,6 +279,53 @@ export const tables = [
     indexes: [
       { key: 'admin_notifications_user_idx', type: 'key', columns: ['user_id'] },
       { key: 'admin_notifications_created_idx', type: 'key', columns: ['created_at'], orders: ['DESC'] },
+    ],
+  },
+  {
+    id: 'analytics_events',
+    name: 'Analytics Events',
+    columns: [
+      s('user_id', 128), s('event_name', 128, true), mediumtext('parameters'),
+      s('session_id', 128), dt('created_at'),
+    ],
+    indexes: [
+      { key: 'analytics_events_user_idx', type: 'key', columns: ['user_id'] },
+      { key: 'analytics_events_name_idx', type: 'key', columns: ['event_name'] },
+      { key: 'analytics_events_created_idx', type: 'key', columns: ['created_at'], orders: ['DESC'] },
+    ],
+  },
+  {
+    id: 'user_activities',
+    name: 'User Activities',
+    columns: [
+      s('user_id', 128, true), s('activity_type', 128, true), dt('activity_date'), dt('created_at'),
+    ],
+    indexes: [
+      { key: 'user_activities_user_idx', type: 'key', columns: ['user_id'] },
+      { key: 'user_activities_type_idx', type: 'key', columns: ['activity_type'] },
+      { key: 'user_activities_date_idx', type: 'key', columns: ['activity_date'], orders: ['DESC'] },
+    ],
+  },
+  {
+    id: 'reading_sessions',
+    name: 'Reading Sessions',
+    columns: [
+      s('user_id', 128, true), i('duration_minutes'), dt('session_date'), dt('created_at'),
+    ],
+    indexes: [
+      { key: 'reading_sessions_user_idx', type: 'key', columns: ['user_id'] },
+      { key: 'reading_sessions_date_idx', type: 'key', columns: ['session_date'], orders: ['DESC'] },
+    ],
+  },
+  {
+    id: 'chapter_readings',
+    name: 'Chapter Readings',
+    columns: [
+      s('user_id', 128, true), s('book', 128, true), i('chapter', true), dt('read_date'), dt('created_at'),
+    ],
+    indexes: [
+      { key: 'chapter_readings_user_idx', type: 'key', columns: ['user_id'] },
+      { key: 'chapter_readings_date_idx', type: 'key', columns: ['read_date'], orders: ['DESC'] },
     ],
   },
   { id: 'admin_audit_logs', name: 'Admin Audit Logs', columns: [s('admin_id', 128), s('action', 255), s('resource', 128), s('resource_id', 128), mediumtext('old_values'), mediumtext('new_values'), s('ip_address', 128), s('user_agent', 512), dt('timestamp')], indexes: [{ key: 'audit_resource_idx', type: 'key', columns: ['resource'] }] },

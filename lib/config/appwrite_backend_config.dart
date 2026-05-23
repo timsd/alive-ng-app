@@ -53,6 +53,10 @@ class AppwriteBackendConfig {
   static const String notificationSettingsCollectionId =
       'notification_settings';
   static const String adminNotificationsCollectionId = 'admin_notifications';
+  static const String analyticsEventsCollectionId = 'analytics_events';
+  static const String userActivitiesCollectionId = 'user_activities';
+  static const String readingSessionsCollectionId = 'reading_sessions';
+  static const String chapterReadingsCollectionId = 'chapter_readings';
   static const String eventsCollectionId = 'events';
   static const String userEventsCollectionId = 'user_events';
   static const String announcementsCollectionId = 'announcements';

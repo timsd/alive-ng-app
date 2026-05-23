@@ -1,12 +1,13 @@
+// ignore_for_file: deprecated_member_use
+
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
+
+import 'package:appwrite/appwrite.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:firebase_analytics/firebase_analytics.dart';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
-import 'package:device_info_plus/device_info_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'firebase_database_service.dart';
+import '../config/appwrite_backend_config.dart';
+import '../main.dart';
 import 'storage_service.dart';
 import 'auth_service.dart';
 import '../utils/logger.dart';
@@ -19,14 +20,9 @@ class AnalyticsService {
 
   static final Logger _logger = Logger('AnalyticsService');
 
-  final FirebaseDatabaseService _firebase = FirebaseDatabaseService.instance;
+  final Databases _databases = Databases(appwriteClient);
   final StorageService _storage = StorageService.instance;
   final AuthService _auth = AuthService.instance;
-
-  // Supabase removed
-
-  FirebaseAnalytics? _analytics;
-  FirebaseCrashlytics? _crashlytics;
 
   bool _isInitialized = false;
   String? _sessionId;
@@ -38,19 +34,6 @@ class AnalyticsService {
     if (_isInitialized) return;
 
     try {
-      // Initialize Firebase Analytics
-      _analytics = FirebaseAnalytics.instance;
-      _crashlytics = FirebaseCrashlytics.instance;
-
-      // Set up crash reporting
-      if (!kDebugMode) {
-        FlutterError.onError = _crashlytics!.recordFlutterFatalError;
-        PlatformDispatcher.instance.onError = (error, stack) {
-          _crashlytics!.recordError(error, stack, fatal: true);
-          return true;
-        };
-      }
-
       // Start session
       await _startSession();
 
@@ -131,53 +114,14 @@ class AnalyticsService {
   Future<void> _setUserProperties() async {
     try {
       final user = _auth.currentUser;
-      if (user != null) {
-        await _analytics?.setUserId(id: user.uid);
-        await _crashlytics?.setUserIdentifier(user.uid);
-
-        // Set user properties
-        await _analytics?.setUserProperty(
-            name: 'user_type', value: 'authenticated');
-
-        // Get user profile for additional properties
-        final profile = await _storage.getJson(StorageKeys.userProfile);
-        if (profile != null) {
-          await _analytics?.setUserProperty(
-            name: 'user_role',
-            value: profile['role'] ?? 'member',
-          );
-          await _analytics?.setUserProperty(
-            name: 'church_id',
-            value: profile['church_id']?.toString(),
-          );
-        }
-      } else {
-        await _analytics?.setUserProperty(
-            name: 'user_type', value: 'anonymous');
-      }
-
-      // Set app properties
       final packageInfo = await PackageInfo.fromPlatform();
-      await _analytics?.setUserProperty(
-          name: 'app_version', value: packageInfo.version);
-      await _analytics?.setUserProperty(
-          name: 'app_build', value: packageInfo.buildNumber);
-
-      // Set device properties
-      final deviceInfo = DeviceInfoPlugin();
-      if (defaultTargetPlatform == TargetPlatform.android) {
-        final androidInfo = await deviceInfo.androidInfo;
-        await _analytics?.setUserProperty(
-            name: 'device_model', value: androidInfo.model);
-        await _analytics?.setUserProperty(
-            name: 'os_version', value: androidInfo.version.release);
-      } else if (defaultTargetPlatform == TargetPlatform.iOS) {
-        final iosInfo = await deviceInfo.iosInfo;
-        await _analytics?.setUserProperty(
-            name: 'device_model', value: iosInfo.model);
-        await _analytics?.setUserProperty(
-            name: 'os_version', value: iosInfo.systemVersion);
-      }
+      await _storage.setJson('analytics_context', {
+        'user_id': user?.uid ?? 'anonymous',
+        'user_type': user == null ? 'anonymous' : 'authenticated',
+        'app_version': packageInfo.version,
+        'app_build': packageInfo.buildNumber,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
     } catch (e) {
       _logger.error('Error setting user properties', e);
     }
@@ -198,39 +142,28 @@ class AnalyticsService {
         ...?parameters,
       };
 
-      // Track with Firebase Analytics
-      if (_analytics != null) {
-        // Convert parameters to Firebase Analytics format
-        final firebaseParams = <String, Object>{};
-        eventParams.forEach((key, value) {
-          if (value != null) {
-            firebaseParams[key] = value.toString();
-          }
-        });
-
-        await _analytics!.logEvent(
-          name: eventName.replaceAll(' ', '_').toLowerCase(),
-          parameters: firebaseParams,
-        );
-      }
-
       // Store locally if requested
       if (storeLocally) {
         await _storeEventLocally(eventName, eventParams);
       }
 
-      // Optionally persist to Firestore for audit/debugging
+      // Optionally persist to Appwrite for audit/debugging.
       if (_auth.isAuthenticated) {
         try {
-          await _firebase.firestore.collection('analytics_events').add({
-            'user_id': _auth.currentUser!.uid,
-            'event_name': eventName,
-            'parameters': eventParams,
-            'session_id': _sessionId,
-            'created_at': DateTime.now().toIso8601String(),
-          });
+          await _databases.createDocument(
+            databaseId: AppwriteBackendConfig.databaseId,
+            collectionId: AppwriteBackendConfig.analyticsEventsCollectionId,
+            documentId: ID.unique(),
+            data: {
+              'user_id': _auth.currentUser!.uid,
+              'event_name': eventName,
+              'parameters': jsonEncode(eventParams),
+              'session_id': _sessionId,
+              'created_at': DateTime.now().toUtc().toIso8601String(),
+            },
+          );
         } catch (e) {
-          _logger.error('Failed to persist analytics event to Firestore', e);
+          _logger.error('Failed to persist analytics event to Appwrite', e);
         }
       }
     } catch (e) {
@@ -269,11 +202,6 @@ class AnalyticsService {
       'screen_class': screenClass ?? screenName,
     });
 
-    // Also track with Firebase Analytics
-    await _analytics?.logScreenView(
-      screenName: screenName,
-      screenClass: screenClass,
-    );
   }
 
   // Track user action
@@ -353,18 +281,10 @@ class AnalyticsService {
       ...?metadata,
     });
 
-    // Also report to Crashlytics
-    if (_crashlytics != null) {
-      await _crashlytics!.recordError(
-        error,
-        null,
-        fatal: fatal,
-        information: [
-          if (context != null) 'Context: $context',
-          if (metadata != null) 'Metadata: ${jsonEncode(metadata)}',
-        ],
-      );
-    }
+    _logger.error(
+      'Tracked ${fatal ? 'fatal' : 'non-fatal'} error'
+      '${context == null ? '' : ' in $context'}: $error',
+    );
   }
 
   // Track performance
@@ -397,7 +317,10 @@ class AnalyticsService {
 
   // Set custom user property
   Future<void> setUserProperty(String name, String? value) async {
-    await _analytics?.setUserProperty(name: name, value: value);
+    final context = await _storage.getJson('analytics_context') ?? {};
+    context[name] = value;
+    context['updated_at'] = DateTime.now().toIso8601String();
+    await _storage.setJson('analytics_context', context);
   }
 
   // Get analytics data
@@ -425,16 +348,11 @@ class AnalyticsService {
   // Reset analytics (for user logout)
   Future<void> reset() async {
     await _endSession();
-    await _analytics?.resetAnalyticsData();
     await clearAnalyticsData();
-
-    // Clear user identification
-    await _crashlytics?.setUserIdentifier('');
   }
 
   // Enable/disable analytics
   Future<void> setAnalyticsEnabled(bool enabled) async {
-    await _analytics?.setAnalyticsCollectionEnabled(enabled);
     await _storage.setBool('analytics_enabled', enabled);
   }
 
