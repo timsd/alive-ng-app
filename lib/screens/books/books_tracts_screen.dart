@@ -643,6 +643,12 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
     );
   }
 
+  Future<String?> _resolveTractPdfUrl(Tract tract) async {
+    final existingUrl = tract.downloadUrl?.trim();
+    if (existingUrl != null && existingUrl.isNotEmpty) return existingUrl;
+    return FirebaseStorageService().getTractDownloadURL('${tract.id}.pdf');
+  }
+
   void _viewOriginalPDF(Tract tract) async {
     try {
       final donationService = DonationService();
@@ -680,8 +686,7 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
       }
 
       // Fallback to direct Storage URL if material is not registered
-      final String? pdfUrl =
-          await FirebaseStorageService().getTractDownloadURL('${tract.id}.pdf');
+      final String? pdfUrl = await _resolveTractPdfUrl(tract);
       if (pdfUrl != null && await canLaunchUrl(Uri.parse(pdfUrl))) {
         await launchUrl(Uri.parse(pdfUrl),
             mode: LaunchMode.externalApplication);
@@ -757,8 +762,7 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
       }
 
       // Fallback: direct Storage URL
-      final String? pdfUrl =
-          await FirebaseStorageService().getTractDownloadURL('${tract.id}.pdf');
+      final String? pdfUrl = await _resolveTractPdfUrl(tract);
       if (pdfUrl != null && await canLaunchUrl(Uri.parse(pdfUrl))) {
         await launchUrl(Uri.parse(pdfUrl),
             mode: LaunchMode.externalApplication);

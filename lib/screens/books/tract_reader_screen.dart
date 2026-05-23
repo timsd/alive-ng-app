@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/firebase_storage_service.dart';
 import '../../constants/app_constants.dart';
 import '../../models/tract_models.dart';
 import '../../utils/responsive_utils.dart';
 import '../../services/donation_service.dart';
+import '../../services/auth_service.dart';
+import '../../services/tract_service.dart';
 import '../../models/donation_models.dart';
 import '../materials/donation_dialog.dart';
 import '../../widgets/custom_image.dart';
@@ -27,7 +27,8 @@ class TractReaderScreen extends StatefulWidget {
 
 class _TractReaderScreenState extends State<TractReaderScreen> {
   final PageController _pageController = PageController();
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final TractService _tractService = TractService();
+  final AuthService _authService = AuthService.instance;
   int _currentPage = 0;
   final Map<String, TextEditingController> _answerControllers = {};
   bool _showAnswers = false;
@@ -52,25 +53,8 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
 
   Future<void> _loadDynamicTractContent() async {
     try {
-      DocumentSnapshot<Map<String, dynamic>>? tractContentDoc;
-      final byId = await _firestore
-          .collection('tract_contents')
-          .doc(widget.tract.id)
-          .get();
-      if (byId.exists) {
-        tractContentDoc = byId;
-      } else {
-        final byTractId = await _firestore
-            .collection('tract_contents')
-            .where('tract_id', isEqualTo: widget.tract.id)
-            .limit(1)
-            .get();
-        if (byTractId.docs.isNotEmpty) {
-          tractContentDoc = byTractId.docs.first;
-        }
-      }
-
-      if (tractContentDoc == null || !tractContentDoc.exists) {
+      final tractContent = await _tractService.getTractContent(widget.tract.id);
+      if (tractContent == null) {
         if (mounted) {
           setState(() {
             _loadingDynamicContent = false;
@@ -79,16 +63,8 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
         return;
       }
 
-      final data = tractContentDoc.data() ?? {};
-      final extractedText = (data['content'] ??
-              data['extracted_text'] ??
-              data['text'] ??
-              data['body'] ??
-              '')
-          .toString()
-          .trim();
-      final rawPages = data['pages'];
-      final rawQuestions = data['questions'];
+      final extractedText = tractContent.content.trim();
+      final rawPages = tractContent.metadata?['pages'];
 
       List<String> pages = [];
       if (rawPages is List) {
@@ -101,14 +77,9 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
         pages = _chunkText(extractedText, 2200);
       }
 
-      final questions = <Map<String, dynamic>>[];
-      if (rawQuestions is List) {
-        for (final q in rawQuestions) {
-          if (q is Map) {
-            questions.add(Map<String, dynamic>.from(q));
-          }
-        }
-      }
+      final questions = tractContent.questions
+          .map((question) => question.toJson())
+          .toList(growable: false);
 
       for (int i = 1; i <= questions.length; i++) {
         _answerControllers.putIfAbsent(
@@ -127,6 +98,12 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
         _loadingDynamicContent = false;
       });
     }
+  }
+
+  Future<String?> _resolveDirectPdfUrl() async {
+    final existingUrl = widget.tract.downloadUrl?.trim();
+    if (existingUrl != null && existingUrl.isNotEmpty) return existingUrl;
+    return FirebaseStorageService().getTractDownloadURL('${widget.tract.id}.pdf');
   }
 
   List<String> _chunkText(String text, int chunkSize) {
@@ -797,8 +774,7 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
       }
 
       // Fallback to direct Storage URL if material is not registered
-      final String? pdfUrl = await FirebaseStorageService()
-          .getTractDownloadURL('${widget.tract.id}.pdf');
+      final String? pdfUrl = await _resolveDirectPdfUrl();
       if (pdfUrl != null && await canLaunchUrl(Uri.parse(pdfUrl))) {
         await launchUrl(Uri.parse(pdfUrl),
             mode: LaunchMode.externalApplication);
@@ -870,8 +846,7 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
       }
 
       // Fallback: direct Storage URL and optional donation prompt
-      final String? pdfUrl = await FirebaseStorageService()
-          .getTractDownloadURL('${widget.tract.id}.pdf');
+      final String? pdfUrl = await _resolveDirectPdfUrl();
       if (pdfUrl != null && await canLaunchUrl(Uri.parse(pdfUrl))) {
         await launchUrl(Uri.parse(pdfUrl),
             mode: LaunchMode.externalApplication);
@@ -1454,19 +1429,21 @@ Download it from ALIVE-NG App www.app.alivenigeria.org
         }
       });
 
-      // Save progress to Firebase
-      final user = FirebaseAuth.instance.currentUser;
+      final user = _authService.currentUser;
       if (user != null) {
-        await FirebaseFirestore.instance
-            .collection('tract_progress')
-            .doc('${user.uid}_${widget.tract.id}')
-            .set({
-          'user_id': user.uid,
-          'tract_id': widget.tract.id,
-          'current_page': _currentPage,
-          'answers': answers,
-          'last_updated': DateTime.now().toIso8601String(),
-        }, SetOptions(merge: true));
+        await _tractService.saveTractProgress(
+          TractProgress(
+            id: '${user.uid}_${widget.tract.id}',
+            userId: user.uid,
+            tractId: widget.tract.id,
+            currentPage: _currentPage,
+            isCompleted: _currentPage >= _getTotalPages() - 1,
+            lastUpdated: DateTime.now(),
+          ),
+        );
+        if (answers.isNotEmpty) {
+          await _tractService.saveUserAnswers(user.uid, widget.tract.id, answers);
+        }
 
         if (!rootCtx.mounted) return;
         ScaffoldMessenger.of(rootCtx).showSnackBar(

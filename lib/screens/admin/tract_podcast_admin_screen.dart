@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/tract_models.dart';
@@ -7,6 +8,7 @@ import '../../models/podcast_models.dart';
 import '../../utils/responsive_utils.dart';
 import '../../widgets/role_guard.dart';
 import '../../services/firebase_database_service.dart';
+import '../../services/pdf_extractor_service.dart';
 import '../../widgets/custom_image.dart';
 
 class TractPodcastAdminScreen extends StatefulWidget {
@@ -482,6 +484,17 @@ class _TractManagementTab extends StatefulWidget {
 }
 
 class _TractManagementTabState extends State<_TractManagementTab> {
+  Future<List<Tract>> _loadTracts() async {
+    final docs = await FirebaseDatabaseService.instance.getCollection(
+      'tracts',
+      orderBy: 'order',
+    );
+    return docs.map((doc) {
+      final id = doc['id'] as String? ?? '';
+      return Tract.fromFirestore(doc, id);
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -506,8 +519,8 @@ class _TractManagementTabState extends State<_TractManagementTab> {
 
         // Tracts list
         Expanded(
-          child: StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance.collection('tracts').snapshots(),
+          child: FutureBuilder<List<Tract>>(
+            future: _loadTracts(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
@@ -515,12 +528,7 @@ class _TractManagementTabState extends State<_TractManagementTab> {
               if (snapshot.hasError) {
                 return const Center(child: Text('Error loading tracts'));
               }
-              final tracts = snapshot.data?.docs.map((doc) {
-                    final data = doc.data() as Map<String, dynamic>;
-                    data['id'] = doc.id;
-                    return Tract.fromJson(data);
-                  }).toList() ??
-                  [];
+              final tracts = snapshot.data ?? [];
 
               if (tracts.isEmpty) {
                 return const Center(child: Text('No tracts available.'));
@@ -616,6 +624,7 @@ class _TractManagementTabState extends State<_TractManagementTab> {
     ).then((result) {
       if (result is Tract) {
         if (!mounted) return;
+        setState(() {});
         messenger.showSnackBar(
           SnackBar(
             content: Text('Tract "${result.title}" added successfully!'),
@@ -634,6 +643,7 @@ class _TractManagementTabState extends State<_TractManagementTab> {
     ).then((result) {
       if (result is Tract) {
         if (!mounted) return;
+        setState(() {});
         messenger.showSnackBar(
           SnackBar(
             content: Text('Tract "${result.title}" updated successfully!'),
@@ -696,14 +706,10 @@ class _TractManagementTabState extends State<_TractManagementTab> {
                   }
                 }
 
-                // Delete Firestore document
-                await FirebaseFirestore.instance
-                    .collection('tracts')
-                    .doc(tract.id)
-                    .delete();
+                await firebaseService.deleteDocument('tracts', tract.id);
 
                 if (!mounted) return;
-                // UI automatically updates via StreamBuilder
+                setState(() {});
 
                 if (mounted) {
                   navigator.pop();
@@ -1283,6 +1289,8 @@ class _TractFormDialogState extends State<_TractFormDialog> {
         // For editing: collect old files to delete after successful upload
         final List<String> oldFilesToDelete = [];
 
+        String? pdfUrl;
+
         // Upload PDF file
         if (_selectedPdfBytes != null && _selectedPdfName != null) {
           // If editing and replacing PDF, mark old one for deletion
@@ -1292,8 +1300,8 @@ class _TractFormDialogState extends State<_TractFormDialog> {
 
           final timestamp = DateTime.now().millisecondsSinceEpoch;
           final fileName = '${timestamp}_${_selectedPdfName!}';
-          await firebaseService.uploadFile(
-            'pdfs/$fileName',
+          pdfUrl = await firebaseService.uploadFile(
+            'pdf-files/$fileName',
             _selectedPdfBytes!,
             contentType: 'application/pdf',
           );
@@ -1311,7 +1319,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
           final timestamp = DateTime.now().millisecondsSinceEpoch;
           final fileName = '${timestamp}_${_selectedCoverImageName!}';
           coverImageUrl = await firebaseService.uploadFile(
-            'images/$fileName',
+            'tract-avatars/$fileName',
             _selectedCoverImageBytes!,
             contentType: 'image/jpeg',
           );
@@ -1327,7 +1335,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
           final timestamp = DateTime.now().millisecondsSinceEpoch;
           final fileName = '${timestamp}_$name';
           final url = await firebaseService.uploadFile(
-            'images/$fileName',
+            'tract-avatars/$fileName',
             bytes,
             contentType: 'image/jpeg',
           );
@@ -1349,6 +1357,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
               .map((tag) => tag.trim())
               .where((tag) => tag.isNotEmpty)
               .toList(),
+          pdfUrl: pdfUrl ?? widget.tract?.downloadUrl,
           coverImage: coverImageUrl ?? widget.tract?.coverImage,
           coverImages: _mergeCoverImages(
             existing: widget.tract?.coverImages ?? const [],
@@ -1358,24 +1367,55 @@ class _TractFormDialogState extends State<_TractFormDialog> {
 
         // Save tract to Firebase database (upsert into 'tracts' collection)
         final payload = {
-          ...tract.toJson(),
-          // Override category with dynamic selection string for Firestore consumers
+          'title': tract.title,
+          'description': tract.description,
           'category': _selectedCategoryName ?? tract.category,
-          // Compatibility fields for TractService consumption
-          'pdfUrl': tract.downloadUrl,
-          'imageUrl': tract.coverImage,
-          'order': 0,
+          'pdf_url': tract.downloadUrl,
+          'image_url': tract.coverImage,
+          'cover_image': tract.coverImage,
+          'cover_images': tract.coverImages,
+          'author': tract.author,
+          'pages': tract.pages,
+          'order': widget.tract?.order ?? 0,
           'language': 'en',
-          'isDownloaded': false,
-          // Timestamps
-          'createdAt': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
+          'featured': tract.featured,
+          'tags': tract.tags,
+          'created_at':
+              widget.tract?.createdAt?.toUtc().toIso8601String() ??
+                  DateTime.now().toUtc().toIso8601String(),
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
         };
 
-        await firebaseService.firestore
-            .collection('tracts')
-            .doc(tract.id)
-            .set(payload, SetOptions(merge: true));
+        await firebaseService.createOrUpdateDocument(
+          'tracts',
+          tract.id,
+          payload,
+        );
+
+        if (_selectedPdfBytes != null && _selectedPdfName != null) {
+          try {
+            final extractedText = await PdfExtractorService()
+                .extractTextFromBytes(_selectedPdfBytes!, _selectedPdfName!);
+            if (extractedText.trim().isNotEmpty) {
+              await firebaseService.createOrUpdateDocument(
+                'tract_contents',
+                tract.id,
+                {
+                  'tract_id': tract.id,
+                  'content': extractedText.trim(),
+                  'questions': jsonEncode(const []),
+                  'metadata': jsonEncode({
+                    'source_file': _selectedPdfName,
+                    'source_pdf_url': tract.downloadUrl,
+                    'extracted_at': DateTime.now().toUtc().toIso8601String(),
+                  }),
+                },
+              );
+            }
+          } catch (e) {
+            debugPrint('Warning: Could not extract tract PDF text: $e');
+          }
+        }
 
         // Clean up old files after successful save
         for (final fileUrl in oldFilesToDelete) {

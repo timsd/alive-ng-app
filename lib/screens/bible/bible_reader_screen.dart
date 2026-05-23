@@ -73,10 +73,26 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
   Future<void> _loadHighlights() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final keys = prefs.getKeys().where((k) => k.startsWith('highlight_'));
       final newHighlightColors = <String, Color>{};
       final newHighlightedVerses = <String>{};
 
+      final savedBlob = prefs.getString('verse_highlights');
+      if (savedBlob != null && savedBlob.isNotEmpty) {
+        final decoded = json.decode(savedBlob);
+        if (decoded is Map) {
+          decoded.forEach((key, value) {
+            final colorValue =
+                value is int ? value : int.tryParse(value?.toString() ?? '');
+            if (colorValue != null) {
+              final verseKey = key.toString();
+              newHighlightColors[verseKey] = Color(colorValue);
+              newHighlightedVerses.add(verseKey);
+            }
+          });
+        }
+      }
+
+      final keys = prefs.getKeys().where((k) => k.startsWith('highlight_'));
       for (final key in keys) {
         final verseKey = key.replaceFirst('highlight_', '');
         final colorValue = prefs.getInt(key);
@@ -230,50 +246,6 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error loading chapter: $e'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-      }
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _loadFullBook() async {
-    setState(() => _isLoading = true);
-    try {
-      final languageCode = _languageCodes[_selectedLanguage] ?? 'en';
-      final currentBook = _books[_currentBookIndex];
-
-      final List<Map<String, dynamic>> allVerses = [];
-      final chapters = await _offlineBible.getBibleBookFull(
-        book: _selectedBook,
-        totalChapters: currentBook.chapters,
-        version: _selectedVersion,
-        language: languageCode,
-      );
-
-      for (var chapter in chapters) {
-        for (var v in chapter.verses) {
-          allVerses.add({
-            'verse': v.number,
-            'text': v.text,
-            'chapter': chapter.chapter,
-          });
-        }
-      }
-
-      setState(() {
-        _chapterVerses = allVerses;
-        _selectedChapter = 1; // Default to start
-      });
-
-      _statisticsService.recordChapterRead(_selectedBook, 1);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading book: $e'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -608,8 +580,10 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                                 final index = entry.key;
                                 final verse = entry.value;
                                 final isSelected = _selectedVerseIndex == index;
+                                final verseChapter =
+                                    verse['chapter'] ?? _selectedChapter;
                                 final verseKey =
-                                    '$_selectedBook:$_selectedChapter:${verse['verse']}';
+                                    '$_selectedBook:$verseChapter:${verse['verse']}';
                                 final highlightColor =
                                     _verseHighlightColors[verseKey];
 
@@ -1045,7 +1019,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                         _selectedChapter = 1; // Reset to chapter 1
                       });
                       Navigator.pop(context);
-                      _loadFullBook();
+                      _loadChapter();
                     },
                   );
                 },
@@ -1625,13 +1599,22 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
       final data = _verseHighlightColors
           .map((key, color) => MapEntry(key, color.toARGB32()));
       await prefs.setString('verse_highlights', json.encode(data));
+      final oldKeys =
+          prefs.getKeys().where((k) => k.startsWith('highlight_')).toList();
+      for (final key in oldKeys) {
+        await prefs.remove(key);
+      }
+      for (final entry in _verseHighlightColors.entries) {
+        await prefs.setInt('highlight_${entry.key}', entry.value.toARGB32());
+      }
     } catch (_) {}
   }
 
   /// Show a bottom sheet with verse actions: highlight colors, copy, bookmark, read aloud, notes
   void _showVerseActionSheet(Map<String, dynamic> verse, String verseKey) {
     final colorScheme = Theme.of(context).colorScheme;
-    final reference = '$_selectedBook $_selectedChapter:${verse['verse']}';
+    final verseChapter = verse['chapter'] ?? _selectedChapter;
+    final reference = '$_selectedBook $verseChapter:${verse['verse']}';
     final verseText = verse['text'] ?? '';
 
     final highlightColors = [

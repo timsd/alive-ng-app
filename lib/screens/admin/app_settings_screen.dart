@@ -1,5 +1,9 @@
+// ignore_for_file: deprecated_member_use
+
+import 'package:appwrite/appwrite.dart';
 import 'package:flutter/material.dart';
-import '../../services/firebase_database_service.dart';
+import '../../config/appwrite_backend_config.dart';
+import '../../main.dart';
 import '../../widgets/role_guard.dart';
 import '../../widgets/loading_widget.dart';
 import '../../utils/toast_utils.dart';
@@ -14,8 +18,8 @@ class AppSettingsScreen extends StatefulWidget {
 }
 
 class _AppSettingsScreenState extends State<AppSettingsScreen> {
-  final FirebaseDatabaseService _firebaseService = FirebaseDatabaseService.instance;
-  
+  final Databases _databases = Databases(appwriteClient);
+
   bool _isLoading = true;
   final Map<String, List<Map<String, dynamic>>> _settingsByCategory = {};
   final Map<String, TextEditingController> _controllers = {};
@@ -29,7 +33,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   Map<String, dynamic>? _findSettingByKey(String key) {
     for (final categorySettings in _settingsByCategory.values) {
       for (final setting in categorySettings) {
-        if (setting['setting_key'] == key) {
+        if (_settingKey(setting) == key) {
           return setting;
         }
       }
@@ -49,23 +53,23 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final settings = await _firebaseService.getCollection('app_settings', orderBy: 'category');
-      
+      final settings = await _listSettings();
+
       // Group settings by category
       _settingsByCategory.clear();
       _controllers.clear();
-      
+
       for (final setting in settings) {
-        final category = setting['category'] as String;
+        final category = setting['category']?.toString() ?? 'app';
         if (!_settingsByCategory.containsKey(category)) {
           _settingsByCategory[category] = [];
         }
         _settingsByCategory[category]!.add(setting);
-        
+
         // Create controller for each setting
-        final key = setting['setting_key'] as String;
+        final key = _settingKey(setting);
         _controllers[key] = TextEditingController(
-          text: setting['setting_value']?.toString() ?? '',
+          text: _settingValue(setting),
         );
       }
     } catch (e) {
@@ -74,6 +78,76 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       setState(() => _isLoading = false);
     }
   }
+
+  Future<List<Map<String, dynamic>>> _listSettings() async {
+    final response = await _databases.listDocuments(
+      databaseId: AppwriteBackendConfig.databaseId,
+      collectionId: AppwriteBackendConfig.appSettingsCollectionId,
+      queries: [
+        Query.orderAsc('category'),
+        Query.limit(200),
+      ],
+    );
+    return response.documents
+        .map((doc) => {...Map<String, dynamic>.from(doc.data), 'id': doc.$id})
+        .toList();
+  }
+
+  Future<void> _createSetting(Map<String, dynamic> data) async {
+    final key = data['setting_key']?.toString() ?? data['key']?.toString();
+    await _databases.createDocument(
+      databaseId: AppwriteBackendConfig.databaseId,
+      collectionId: AppwriteBackendConfig.appSettingsCollectionId,
+      documentId: key == null || key.isEmpty ? ID.unique() : key,
+      data: _normalizeSettingPayload(data),
+    );
+  }
+
+  Future<void> _updateSetting(
+      String documentId, Map<String, dynamic> data) async {
+    await _databases.updateDocument(
+      databaseId: AppwriteBackendConfig.databaseId,
+      collectionId: AppwriteBackendConfig.appSettingsCollectionId,
+      documentId: documentId,
+      data: _normalizeSettingPayload(data),
+    );
+  }
+
+  Future<void> _deleteSettingDocument(String documentId) async {
+    await _databases.deleteDocument(
+      databaseId: AppwriteBackendConfig.databaseId,
+      collectionId: AppwriteBackendConfig.appSettingsCollectionId,
+      documentId: documentId,
+    );
+  }
+
+  Map<String, dynamic> _normalizeSettingPayload(Map<String, dynamic> data) {
+    final key = data['setting_key']?.toString() ?? data['key']?.toString();
+    final type = data['data_type']?.toString() ?? data['type']?.toString();
+    final value =
+        data['setting_value']?.toString() ?? data['value']?.toString() ?? '';
+    return {
+      ...data,
+      if (key != null) 'key': key,
+      if (key != null) 'setting_key': key,
+      if (type != null) 'type': type,
+      if (type != null) 'data_type': type,
+      'value': value,
+      'setting_value': value,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    };
+  }
+
+  String _settingKey(Map<String, dynamic> setting) =>
+      setting['setting_key']?.toString() ?? setting['key']?.toString() ?? '';
+
+  String _settingValue(Map<String, dynamic> setting) =>
+      setting['setting_value']?.toString() ??
+      setting['value']?.toString() ??
+      '';
+
+  String _settingDataType(Map<String, dynamic> setting) =>
+      setting['data_type']?.toString() ?? setting['type']?.toString() ?? 'string';
 
   @override
   Widget build(BuildContext context) {
@@ -207,8 +281,8 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   }
 
   Widget _buildSettingItem(Map<String, dynamic> setting) {
-    final key = setting['setting_key'] as String;
-    final dataType = setting['data_type'] as String;
+    final key = _settingKey(setting);
+    final dataType = _settingDataType(setting);
     final isActive = setting['is_active'] as bool? ?? true;
     
     return Container(
@@ -381,7 +455,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
 
   Future<void> _toggleSettingStatus(Map<String, dynamic> setting, bool isActive) async {
     try {
-      await _firebaseService.updateDocument('app_settings', setting['id'], {
+      await _updateSetting(setting['id'], {
         'is_active': isActive,
       });
 
@@ -407,7 +481,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
         final setting = _findSettingByKey(key);
         if (setting != null) {
           updates.add(
-            _firebaseService.updateDocument('app_settings', setting['id'], {
+            _updateSetting(setting['id'], {
               'setting_value': controller.text,
             })
           );
@@ -429,7 +503,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
 
     if (result != null) {
       try {
-        await _firebaseService.createDocument('app_settings', result);
+        await _createSetting({
+          ...result,
+          'created_at': DateTime.now().toUtc().toIso8601String(),
+        });
 
         ToastUtils.showSuccess('Setting added successfully');
         _loadSettings();
@@ -447,7 +524,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
 
     if (result != null) {
       try {
-        await _firebaseService.updateDocument('app_settings', setting['id'], result);
+        await _updateSetting(setting['id'], result);
 
         ToastUtils.showSuccess('Setting updated successfully');
         _loadSettings();
@@ -462,7 +539,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Setting'),
-        content: Text('Are you sure you want to delete "${setting['display_name'] ?? setting['setting_key']}"?'),
+        content: Text('Are you sure you want to delete "${setting['display_name'] ?? _settingKey(setting)}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -479,7 +556,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
 
     if (confirmed == true) {
       try {
-        await _firebaseService.deleteDocument('app_settings', setting['id']);
+        await _deleteSettingDocument(setting['id']);
 
         ToastUtils.showSuccess('Setting deleted successfully');
         _loadSettings();

@@ -110,6 +110,7 @@ class AliveApp extends ConsumerWidget {
       title: 'ALIVE-NG APP',
       debugShowCheckedModeBanner: false,
 
+      theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeMode,
 
