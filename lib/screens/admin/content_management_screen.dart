@@ -1,7 +1,10 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:appwrite/appwrite.dart';
 import 'package:intl/intl.dart';
-import '../../services/firebase_database_service.dart';
+import '../../config/appwrite_backend_config.dart';
+import '../../main.dart';
 import '../../widgets/role_guard.dart';
 import '../../widgets/loading_widget.dart';
 import '../../utils/toast_utils.dart';
@@ -32,8 +35,7 @@ class ContentManagementScreen extends StatefulWidget {
 class _ContentManagementScreenState extends State<ContentManagementScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final FirebaseDatabaseService _firebaseService =
-      FirebaseDatabaseService.instance;
+  final Databases _databases = Databases(appwriteClient);
 
   bool _isLoading = false;
   List<Map<String, dynamic>> _contentPages = [];
@@ -120,17 +122,15 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
 
   Future<void> _loadContentPages() async {
     try {
-      final snapshot = await _firebaseService.firestore
-          .collection('content_pages')
-          .orderBy('created_at', descending: true)
-          .get();
-
       setState(() {
-        _contentPages = snapshot.docs.map((doc) {
-          final data = doc.data();
-          return {...data, 'id': doc.id};
-        }).toList();
+        _contentPages = [];
       });
+      final pages = await _listAdminDocuments(
+        AppwriteBackendConfig.contentPagesCollectionId,
+        queries: [Query.orderDesc('created_at'), Query.limit(100)],
+      );
+      if (!mounted) return;
+      setState(() => _contentPages = pages);
     } catch (e) {
       debugPrint('Error loading content pages: $e');
     }
@@ -138,17 +138,12 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
 
   Future<void> _loadAnnouncements() async {
     try {
-      final snapshot = await _firebaseService.firestore
-          .collection('announcements')
-          .orderBy('created_at', descending: true)
-          .get();
-
-      setState(() {
-        _announcements = snapshot.docs.map((doc) {
-          final data = doc.data();
-          return {...data, 'id': doc.id};
-        }).toList();
-      });
+      final announcements = await _listAdminDocuments(
+        AppwriteBackendConfig.announcementsCollectionId,
+        queries: [Query.orderDesc('created_at'), Query.limit(100)],
+      );
+      if (!mounted) return;
+      setState(() => _announcements = announcements);
     } catch (e) {
       debugPrint('Error loading announcements: $e');
     }
@@ -156,17 +151,12 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
 
   Future<void> _loadAppSettings() async {
     try {
-      final snapshot = await _firebaseService.firestore
-          .collection('app_settings')
-          .orderBy('category')
-          .get();
-
-      setState(() {
-        _appSettings = snapshot.docs.map((doc) {
-          final data = doc.data();
-          return {...data, 'id': doc.id};
-        }).toList();
-      });
+      final settings = await _listAdminDocuments(
+        AppwriteBackendConfig.appSettingsCollectionId,
+        queries: [Query.orderAsc('category'), Query.limit(100)],
+      );
+      if (!mounted) return;
+      setState(() => _appSettings = settings);
     } catch (e) {
       debugPrint('Error loading app settings: $e');
     }
@@ -174,17 +164,12 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
 
   Future<void> _loadFeaturedContent() async {
     try {
-      final snapshot = await _firebaseService.firestore
-          .collection('featured_content')
-          .orderBy('created_at', descending: true)
-          .get();
-
-      setState(() {
-        _featuredContent = snapshot.docs.map((doc) {
-          final data = doc.data();
-          return {...data, 'id': doc.id};
-        }).toList();
-      });
+      final featured = await _listAdminDocuments(
+        AppwriteBackendConfig.featuredContentCollectionId,
+        queries: [Query.orderDesc('created_at'), Query.limit(100)],
+      );
+      if (!mounted) return;
+      setState(() => _featuredContent = featured);
     } catch (e) {
       debugPrint('Error loading featured content: $e');
     }
@@ -210,7 +195,10 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
 
   Future<void> _loadProjects() async {
     try {
-      final projects = await _firebaseService.getProjects();
+      final projects = await _listAdminDocuments(
+        AppwriteBackendConfig.projectsCollectionId,
+        queries: [Query.orderAsc('priority'), Query.limit(100)],
+      );
       if (projects.isEmpty) {
         // Automatically seed sample data if the collection is empty
         await _seedSampleProjects(showDialog: false);
@@ -222,6 +210,75 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     } catch (e) {
       debugPrint('Error loading projects: $e');
     }
+  }
+
+  Future<List<Map<String, dynamic>>> _listAdminDocuments(
+    String collectionId, {
+    List<String> queries = const [],
+  }) async {
+    final response = await _databases.listDocuments(
+      databaseId: AppwriteBackendConfig.databaseId,
+      collectionId: collectionId,
+      queries: queries,
+    );
+    return response.documents
+        .map((doc) => {...Map<String, dynamic>.from(doc.data), 'id': doc.$id})
+        .toList();
+  }
+
+  Future<void> _createAdminDocument(
+    String collectionId,
+    Map<String, dynamic> data, {
+    String? documentId,
+  }) async {
+    await _databases.createDocument(
+      databaseId: AppwriteBackendConfig.databaseId,
+      collectionId: collectionId,
+      documentId: documentId ?? ID.unique(),
+      data: data,
+    );
+  }
+
+  Future<void> _upsertAdminDocument(
+    String collectionId,
+    String documentId,
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      await _databases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: collectionId,
+        documentId: documentId,
+        data: data,
+      );
+    } on AppwriteException catch (e) {
+      if (e.code != 404) rethrow;
+      await _createAdminDocument(collectionId, data, documentId: documentId);
+    }
+  }
+
+  Future<void> _updateAdminDocument(
+    String collectionId,
+    String documentId,
+    Map<String, dynamic> data,
+  ) async {
+    await _databases.updateDocument(
+      databaseId: AppwriteBackendConfig.databaseId,
+      collectionId: collectionId,
+      documentId: documentId,
+      data: data,
+    );
+  }
+
+  Future<void> _deleteAdminDocument(
+    String collectionId,
+    String documentId,
+  ) async {
+    await _databases.deleteDocument(
+      databaseId: AppwriteBackendConfig.databaseId,
+      collectionId: collectionId,
+      documentId: documentId,
+    );
   }
 
   @override
@@ -1276,6 +1333,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                   'title': titleController.text.trim(),
                   'slug': slugController.text.trim(),
                   'language': languageController.text.trim(),
+                  'language_code': languageController.text.trim(),
                   'content': contentController.text.trim(),
                   'is_published': isPublished,
                   'updated_at': DateTime.now().toIso8601String(),
@@ -1283,18 +1341,20 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
 
                 try {
                   if (isEditing) {
-                    await _firebaseService.firestore
-                        .collection('content_pages')
-                        .doc(page['id'])
-                        .update(payload);
+                    await _updateAdminDocument(
+                      AppwriteBackendConfig.contentPagesCollectionId,
+                      page['id'],
+                      payload,
+                    );
                     ToastUtils.showSuccess('Onboarding content updated');
                   } else {
-                    await _firebaseService.firestore
-                        .collection('content_pages')
-                        .add({
+                    await _createAdminDocument(
+                      AppwriteBackendConfig.contentPagesCollectionId,
+                      {
                       ...payload,
                       'created_at': DateTime.now().toIso8601String(),
-                    });
+                      },
+                    );
                     ToastUtils.showSuccess('Onboarding content created');
                   }
                   if (!mounted) return;
@@ -1348,13 +1408,15 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
   Future<void> _toggleContentPagePublish(
       Map<String, dynamic> page, bool publish) async {
     try {
-      await _firebaseService.firestore
-          .collection('content_pages')
-          .doc(page['id'])
-          .update({
+      await _updateAdminDocument(
+        AppwriteBackendConfig.contentPagesCollectionId,
+        page['id'],
+        {
         'is_published': publish,
         'publish_date': publish ? DateTime.now().toIso8601String() : null,
-      });
+          'updated_at': DateTime.now().toIso8601String(),
+        },
+      );
 
       ToastUtils.showSuccess(
           'Page ${publish ? 'published' : 'unpublished'} successfully');
@@ -1367,10 +1429,14 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
   Future<void> _toggleAnnouncementActive(
       Map<String, dynamic> announcement, bool active) async {
     try {
-      await _firebaseService.firestore
-          .collection('announcements')
-          .doc(announcement['id'])
-          .update({'is_active': active});
+      await _updateAdminDocument(
+        AppwriteBackendConfig.announcementsCollectionId,
+        announcement['id'],
+        {
+          'is_active': active,
+          'updated_at': DateTime.now().toIso8601String(),
+        },
+      );
 
       ToastUtils.showSuccess(
           'Announcement ${active ? 'activated' : 'deactivated'} successfully');
@@ -1383,10 +1449,14 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
   Future<void> _toggleFeaturedContentActive(
       Map<String, dynamic> content, bool active) async {
     try {
-      await _firebaseService.firestore
-          .collection('featured_content')
-          .doc(content['id'])
-          .update({'is_active': active});
+      await _updateAdminDocument(
+        AppwriteBackendConfig.featuredContentCollectionId,
+        content['id'],
+        {
+          'is_active': active,
+          'updated_at': DateTime.now().toIso8601String(),
+        },
+      );
 
       ToastUtils.showSuccess(
           'Featured content ${active ? 'activated' : 'deactivated'} successfully');
@@ -1418,10 +1488,10 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
 
     if (confirmed == true) {
       try {
-        await FirebaseFirestore.instance
-            .collection('content_pages')
-            .doc(page['id'])
-            .delete();
+        await _deleteAdminDocument(
+          AppwriteBackendConfig.contentPagesCollectionId,
+          page['id'],
+        );
 
         ToastUtils.showSuccess('Content page deleted successfully');
         _loadContentPages();
@@ -1454,10 +1524,10 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
 
     if (confirmed == true) {
       try {
-        await FirebaseFirestore.instance
-            .collection('announcements')
-            .doc(announcement['id'])
-            .delete();
+        await _deleteAdminDocument(
+          AppwriteBackendConfig.announcementsCollectionId,
+          announcement['id'],
+        );
 
         ToastUtils.showSuccess('Announcement deleted successfully');
         _loadAnnouncements();
@@ -1489,10 +1559,10 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
 
     if (confirmed == true) {
       try {
-        await FirebaseFirestore.instance
-            .collection('app_settings')
-            .doc(setting['id'])
-            .delete();
+        await _deleteAdminDocument(
+          AppwriteBackendConfig.appSettingsCollectionId,
+          setting['id'],
+        );
 
         ToastUtils.showSuccess('App setting deleted successfully');
         _loadAppSettings();
@@ -1524,10 +1594,10 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
 
     if (confirmed == true) {
       try {
-        await FirebaseFirestore.instance
-            .collection('featured_content')
-            .doc(content['id'])
-            .delete();
+        await _deleteAdminDocument(
+          AppwriteBackendConfig.featuredContentCollectionId,
+          content['id'],
+        );
 
         ToastUtils.showSuccess('Featured content deleted successfully');
         _loadFeaturedContent();
@@ -1843,10 +1913,26 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
 
       try {
         if (isEditing) {
-          await _firebaseService.updateProject(project['id'], projectData);
+          await _updateAdminDocument(
+            AppwriteBackendConfig.projectsCollectionId,
+            project['id'],
+            {
+              ...projectData,
+              'updated_at': DateTime.now().toIso8601String(),
+            },
+          );
           ToastUtils.showSuccess('Project updated successfully');
         } else {
-          await _firebaseService.addProject(projectData);
+          await _createAdminDocument(
+            AppwriteBackendConfig.projectsCollectionId,
+            {
+              ...projectData,
+              'currency': 'NGN',
+              'is_active': status == 'active',
+              'created_at': DateTime.now().toIso8601String(),
+              'updated_at': DateTime.now().toIso8601String(),
+            },
+          );
           ToastUtils.showSuccess('Project created successfully');
         }
         _loadProjects();
@@ -1878,7 +1964,10 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
 
     if (confirmed == true) {
       try {
-        await _firebaseService.deleteProject(project['id']);
+        await _deleteAdminDocument(
+          AppwriteBackendConfig.projectsCollectionId,
+          project['id'],
+        );
         ToastUtils.showSuccess('Project deleted successfully');
         _loadProjects();
       } catch (e) {
@@ -1887,7 +1976,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     }
   }
 
-  // Seed template content into Firestore so admin-managed records become
+  // Seed template content into Appwrite so admin-managed records become
   // the source of truth instead of leaving chapter structures hardcoded in UI.
   Future<void> _seedSampleChapters() async {
     setState(() => _isLoading = true);
@@ -1896,7 +1985,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
         final description = ChapterConstants.chapterDescriptions[name] ??
             'ALIVE Nigeria $name Chapter';
         final chapter = Chapter(
-          id: '', // Will be generated by Firestore
+          id: '', // Will be generated by the chapter service.
           name: name,
           description: description,
           type: WorkersType.main,
@@ -1920,7 +2009,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     }
   }
 
-  // Seed template content into Firestore so the live admin experience owns
+  // Seed template content into Appwrite so the live admin experience owns
   // project content, while the app can still fall back safely when offline.
   Future<void> _seedSampleProjects({bool showDialog = false}) async {
     setState(() => _isLoading = true);
@@ -1974,7 +2063,17 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
       ];
 
       for (var project in samples) {
-        await _firebaseService.addProject(project);
+        final documentId = project['id']?.toString();
+        await _upsertAdminDocument(
+          AppwriteBackendConfig.projectsCollectionId,
+          documentId ?? ID.unique(),
+          {
+            ...project,
+            'is_active': project['status'] == 'active',
+            'created_at': DateTime.now().toIso8601String(),
+            'updated_at': DateTime.now().toIso8601String(),
+          },
+        );
       }
 
       _loadProjects();
