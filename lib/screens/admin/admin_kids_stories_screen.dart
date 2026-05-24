@@ -1,7 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/pdf_extractor_service.dart';
 import '../../services/firebase_database_service.dart';
 import '../../models/kids_models.dart';
@@ -125,13 +124,13 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
       // 1. Upload Media
       if (_coverImageBytes != null && _coverImageName != null) {
         final path =
-            'kids_stories/images/${DateTime.now().millisecondsSinceEpoch}_$_coverImageName';
+            'content_media/kids_stories/images/${DateTime.now().millisecondsSinceEpoch}_$_coverImageName';
         uploadedImageUrl = await _dbService.uploadFile(path, _coverImageBytes!);
       }
 
       if (_audioBytes != null && _audioName != null) {
         final path =
-            'kids_stories/audio/${DateTime.now().millisecondsSinceEpoch}_$_audioName';
+            'content_media/kids_stories/audio/${DateTime.now().millisecondsSinceEpoch}_$_audioName';
         uploadedAudioUrl = await _dbService.uploadFile(path, _audioBytes!);
       }
 
@@ -144,21 +143,24 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
         'subtitle': _subtitleController.text.trim(),
         'description': _descriptionController.text.trim(),
         'content': _contentController.text.trim(),
-        'moralLesson': _moralLessonController.text.trim(),
-        'bibleReference': _bibleReferenceController.text.trim(),
+        'moral_lesson': _moralLessonController.text.trim(),
+        'bible_reference': _bibleReferenceController.text.trim(),
         'duration': durationInt,
-        'ageGroup': _selectedAgeGroup.name.replaceAll('_', '-'),
+        'age_group': _selectedAgeGroup.name.replaceAll('_', '-'),
         'category': _selectedCategory.name.replaceAll('_', '-'),
         'completed': false,
         'favorite': false,
         'tags': [], // Or extract tags from UI
-        'illustrationUrl': uploadedImageUrl,
-        'audioUrl': uploadedAudioUrl,
-        'created_at': FieldValue.serverTimestamp(),
+        'image_url': uploadedImageUrl,
+        'illustration_url': uploadedImageUrl,
+        'audio_url': uploadedAudioUrl,
+        'is_active': true,
+        'created_at': DateTime.now().toUtc().toIso8601String(),
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
       };
 
-      // 3. Save to Firebase
-      await _dbService.firestore.collection('kids_stories').add(payload);
+      // 3. Save to Appwrite
+      await _dbService.createDocument('kids_stories', payload);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

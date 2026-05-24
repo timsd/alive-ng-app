@@ -1,7 +1,7 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/pdf_extractor_service.dart';
 import '../../services/firebase_database_service.dart';
 import '../../models/kids_missions.dart';
@@ -113,7 +113,7 @@ class _AdminKidsMissionsScreenState extends State<AdminKidsMissionsScreen> {
       // 1. Upload Media
       if (_mediaBytes != null && _mediaName != null) {
         final path =
-            'kids_missions/media/${DateTime.now().millisecondsSinceEpoch}_$_mediaName';
+            'content_media/kids_missions/${DateTime.now().millisecondsSinceEpoch}_$_mediaName';
         uploadedMediaUrl = await _dbService.uploadFile(path, _mediaBytes!);
       }
 
@@ -136,16 +136,18 @@ class _AdminKidsMissionsScreenState extends State<AdminKidsMissionsScreen> {
         'points': pointsInt,
         'category': _selectedCategory.name,
         'completed': false,
-        'instructions': instructionsList,
-        'verificationMethod': _selectedVerification.name,
-        'prerequisiteMissionIds': [],
-        'isLocked': false,
-        'mediaUrl': uploadedMediaUrl,
-        'created_at': FieldValue.serverTimestamp(),
+        'instructions': jsonEncode(instructionsList),
+        'verification_method': _selectedVerification.name,
+        'prerequisite_mission_ids': const <String>[],
+        'is_locked': false,
+        'media_url': uploadedMediaUrl,
+        'is_active': true,
+        'created_at': DateTime.now().toUtc().toIso8601String(),
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
       };
 
-      // 3. Save to Firebase
-      await _dbService.firestore.collection('kids_missions').add(payload);
+      // 3. Save to Appwrite
+      await _dbService.createDocument('kids_missions', payload);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
