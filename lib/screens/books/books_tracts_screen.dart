@@ -5,7 +5,7 @@ import '../../widgets/custom_app_bar.dart';
 import '../../utils/responsive_utils.dart';
 import '../../models/tract_models.dart';
 import '../../services/tract_service.dart';
-import '../../services/firebase_storage_service.dart';
+import '../../services/appwrite_storage_compat_service.dart';
 import '../../services/donation_service.dart';
 import '../../models/donation_models.dart';
 import '../../screens/materials/donation_dialog.dart';
@@ -646,7 +646,7 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
   Future<String?> _resolveTractPdfUrl(Tract tract) async {
     final existingUrl = tract.downloadUrl?.trim();
     if (existingUrl != null && existingUrl.isNotEmpty) return existingUrl;
-    return FirebaseStorageService().getTractDownloadURL('${tract.id}.pdf');
+    return AppwriteStorageCompatService().getTractDownloadURL('${tract.id}.pdf');
   }
 
   void _viewOriginalPDF(Tract tract) async {

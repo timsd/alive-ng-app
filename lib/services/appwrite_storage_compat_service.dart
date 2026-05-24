@@ -12,17 +12,17 @@ import '../main.dart';
 import '../utils/app_exception.dart';
 import '../utils/logger.dart';
 
-/// Backwards-compatible storage facade.
+/// Backwards-compatible storage facade for older tract/board screens.
 ///
-/// Existing screens still import `FirebaseStorageService`, but this now writes
-/// to Appwrite Storage so those workflows can migrate without a broad UI rename.
-class FirebaseStorageService {
-  static final FirebaseStorageService _instance =
-      FirebaseStorageService._internal();
-  factory FirebaseStorageService() => _instance;
-  FirebaseStorageService._internal();
+/// This writes to Appwrite Storage while preserving the legacy method surface
+/// used by screens that have not been fully reorganized yet.
+class AppwriteStorageCompatService {
+  static final AppwriteStorageCompatService _instance =
+      AppwriteStorageCompatService._internal();
+  factory AppwriteStorageCompatService() => _instance;
+  AppwriteStorageCompatService._internal();
 
-  static final Logger _logger = Logger('FirebaseStorageService');
+  static final Logger _logger = Logger('AppwriteStorageCompatService');
 
   final Storage _storage = Storage(appwriteClient);
 
@@ -292,7 +292,7 @@ class AppwriteStorageReference {
   final AppwriteStorageMetadata _metadata;
 
   Future<String> getDownloadURL() async {
-    return FirebaseStorageService.appwriteFileUrl(bucketId, fileId);
+    return AppwriteStorageCompatService.appwriteFileUrl(bucketId, fileId);
   }
 
   Future<AppwriteStorageMetadata> getMetadata() async {

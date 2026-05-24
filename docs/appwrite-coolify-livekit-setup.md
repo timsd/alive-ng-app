@@ -1,6 +1,6 @@
 # Appwrite, Coolify, and LiveKit Setup
 
-This project is mid-migration from Firebase to Appwrite. Keep Firebase enabled until each active Firebase-backed service is replaced and verified.
+This project is about 99% through the Firebase-to-Appwrite migration. Keep Firebase enabled only for active compatibility paths until each remaining service is replaced and verified.
 
 ## Appwrite Dashboard
 
@@ -13,6 +13,7 @@ This project is mid-migration from Firebase to Appwrite. Keep Firebase enabled u
   - Failure: `https://app.alivenigeria.org/#/auth`
 - Configure password recovery redirect: `https://app.alivenigeria.org/#/reset-password`.
 - Provision infrastructure with `npm run appwrite:provision:legacy` while the server is Appwrite `1.7.4`.
+- `npm run appwrite:dry-run` is the safe local validation command and should pass before any apply.
 - Required local/provisioning env: `APPWRITE_API_KEY`.
 - Optional provisioning env: `APPWRITE_ENDPOINT`, `APPWRITE_PROJECT_ID`, `APPWRITE_DATABASE_ID`, `APPWRITE_PROVISION_DELAY_MS`, `APPWRITE_VERBOSE_WARNINGS`.
 - Optional webhook env before provisioning: `APPWRITE_PROFILE_APPROVAL_WEBHOOK_URL`, `APPWRITE_CHAT_FILE_WEBHOOK_URL`, `APPWRITE_DONATION_WEBHOOK_URL`, `APPWRITE_WEBHOOK_SECRET`.
@@ -44,7 +45,7 @@ Provisioned resources include storage buckets for chat files, profile files, boa
 --dart-define=LIVEKIT_URL=wss://livekit.example.com --dart-define=PAYSTACK_PUBLIC_KEY=pk_live_xxx --dart-define=GOOGLE_WEB_CLIENT_ID=xxx
 ```
 
-- Add build-time values for Paystack, Google sign-in, reCAPTCHA, web push, LiveKit, and any Firebase compatibility values still used by active legacy modules.
+- Add build-time values for Paystack, Google sign-in, reCAPTCHA, web push, LiveKit, Appwrite endpoint/project IDs, and any Firebase compatibility values still used by active legacy modules.
 
 ## LiveKit
 
@@ -57,7 +58,8 @@ Provisioned resources include storage buckets for chat files, profile files, boa
 
 ## Current Migration Notes
 
-- `flutter analyze` is clean with Appwrite auth/chat/testimony/notification settings/donation payment paths.
-- Appwrite provisioning completed in legacy mode on Appwrite `1.7.4`. Optional columns skipped because existing collections hit attribute capacity: `users.bio`, `users.rejection_reason`, `users.general_info`, `users.availability_commitment`, and `chat_channels.last_message`.
+- `flutter analyze` is clean with the current Appwrite-backed migration slices.
+- Appwrite dry-run is clean, but real provisioning is currently blocked while the Appwrite endpoint and `app.alivenigeria.org` are unreachable from this workspace.
 - Firebase Hosting was disabled for project `alive-ng-flutter-app` on 2026-05-18; Coolify is now the intended web deployment path.
-- Do not remove active Firebase platform config, Firebase functions, storage rules, or central Firebase services until their Appwrite replacements are wired and verified.
+- Do not remove active Firebase platform config, Firebase functions, storage rules, messaging compatibility, or central mixed Firebase services until their Appwrite replacements are wired and verified.
+- `AppwriteStorageCompatService` is the current Appwrite-backed compatibility layer for board and tract storage methods.

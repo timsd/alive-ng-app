@@ -2,7 +2,7 @@
 
 This file lists the major tools, platforms, SDKs, and external services currently used in this project.
 
-Last updated from codebase review: 2026-05-21
+Last updated from codebase review: 2026-05-24
 
 ## Migration Snapshot
 
@@ -84,6 +84,7 @@ Estimated overall migration progress: about 99%.
 Firebase packages remain in `pubspec.yaml` for modules not migrated yet. Do not delete these until the direct imports are gone and `flutter analyze` stays clean.
 
 - Firebase Core, Auth, Firestore, Storage, Functions, Messaging, Analytics, and Crashlytics are still present.
+- `FirebaseDatabaseService` is still a mixed compatibility bridge and should keep its name until its Firebase Auth/Firestore/Storage/Functions internals are fully removed.
 - Root Firebase files still needed during migration:
   - `.firebaserc`
   - `firebase.json`
@@ -96,7 +97,7 @@ Firebase packages remain in `pubspec.yaml` for modules not migrated yet. Do not 
 
 - Admin console screens and services: role management, board reports/documents/decisions, dashboard stats, and deeper admin service internals.
 - Library, books reader UI, podcast offline download persistence, chapters, leadership, discipleship, sync/offline sync, mission participation/progress internals, and notification delivery internals.
-- Remaining Firebase Storage wrappers should be replaced by Appwrite Storage wrappers bucket by bucket.
+- The board/tract storage compatibility facade is now `AppwriteStorageCompatService`; remove it only after those screens move to narrower feature-specific services.
 - Firebase Cloud Functions callers should move to Appwrite functions or direct Appwrite service calls.
 - Firebase rules/indexes can be archived after the last Firestore caller is removed.
 

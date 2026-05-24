@@ -9,6 +9,8 @@ LiveKit, and Coolify. Estimated overall migration progress is about 99%.
 Do not remove remaining Firebase files only because Appwrite files now exist;
 some admin, library, chapter, notification, analytics, and sync modules
 still import Firebase services and must be replaced one workflow at a time.
+`FirebaseDatabaseService` remains a mixed compatibility bridge; do not rename or
+move it until the remaining Firebase internals are gone.
 
 - Appwrite now backs auth/profile bootstrap, chat, prayer, testimonies,
   notification settings/reminder records, admin notification records, admin user archive, profile file cleanup, tag visibility checks,
@@ -17,6 +19,9 @@ still import Firebase services and must be replaced one workflow at a time.
   tokens, daily verse records/generation settings, donation records, donation
   projects/settings reads, kids stories/missions public screens, Appwrite-backed tract,
   board storage compatibility, meeting file sharing storage/metadata, and the Paystack function flow.
+- The former Firebase-named storage facade has been renamed to
+  `AppwriteStorageCompatService`; true Firebase-named files remain only where
+  active compatibility is still needed.
 - LiveKit is the current meeting stack through the `createLiveKitToken`
   Appwrite function.
 - `scripts/appwrite_infrastructure_schema.mjs` is the source of truth for

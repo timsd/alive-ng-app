@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../services/firebase_storage_service.dart';
+import '../../services/appwrite_storage_compat_service.dart';
 import '../../constants/app_constants.dart';
 import '../../models/tract_models.dart';
 import '../../utils/responsive_utils.dart';
@@ -103,7 +103,8 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
   Future<String?> _resolveDirectPdfUrl() async {
     final existingUrl = widget.tract.downloadUrl?.trim();
     if (existingUrl != null && existingUrl.isNotEmpty) return existingUrl;
-    return FirebaseStorageService().getTractDownloadURL('${widget.tract.id}.pdf');
+    return AppwriteStorageCompatService()
+        .getTractDownloadURL('${widget.tract.id}.pdf');
   }
 
   List<String> _chunkText(String text, int chunkSize) {

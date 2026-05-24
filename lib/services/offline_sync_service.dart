@@ -9,7 +9,7 @@ import 'bible_database_helper.dart';
 import 'tract_database_helper.dart';
 import 'offline_bible_service.dart';
 import 'tract_service.dart';
-import 'firebase_storage_service.dart';
+import 'appwrite_storage_compat_service.dart';
 import 'firebase_database_service.dart';
 import '../utils/logger.dart';
 
@@ -24,7 +24,8 @@ class OfflineSyncService {
   // Removed unused AdminDatabaseHelper
   final OfflineBibleService _bibleService = OfflineBibleService();
   final TractService _tractService = TractService();
-  final FirebaseStorageService _storageService = FirebaseStorageService();
+  final AppwriteStorageCompatService _storageService =
+      AppwriteStorageCompatService();
   final FirebaseDatabaseService _databaseService = FirebaseDatabaseService.instance;
   final Logger _logger = Logger('OfflineSyncService');
   

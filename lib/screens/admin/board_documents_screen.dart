@@ -4,7 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/board_models.dart';
 import '../../services/firebase_database_service.dart';
-import '../../services/firebase_storage_service.dart';
+import '../../services/appwrite_storage_compat_service.dart';
 import '../../services/auth_service.dart';
 import '../../utils/responsive_utils.dart';
 import '../../utils/text_formatter.dart';
@@ -691,7 +691,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
 
       // If it's a storage path (not a full URL), get the download URL
       if (!downloadUrl.startsWith('http')) {
-        final url = await FirebaseStorageService()
+        final url = await AppwriteStorageCompatService()
             .getBoardDocumentDownloadURL(document.fileName);
         if (url != null) {
           downloadUrl = url;
@@ -918,7 +918,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
 
       String? fileUrl;
       if (file.bytes != null) {
-        fileUrl = await FirebaseStorageService().uploadBoardDocument(
+        fileUrl = await AppwriteStorageCompatService().uploadBoardDocument(
             file.bytes!,
             file.name,
             'application/${file.extension ?? 'octet-stream'}');

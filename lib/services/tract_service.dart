@@ -10,7 +10,7 @@ import '../main.dart';
 import 'auth_service.dart';
 import '../models/tract_models.dart';
 import 'tract_database_helper.dart';
-import 'firebase_storage_service.dart';
+import 'appwrite_storage_compat_service.dart';
 import '../utils/app_exception.dart';
 import '../utils/logger.dart';
 
@@ -24,12 +24,13 @@ class TractService {
   final AuthService _authService = AuthService.instance;
   final TractDatabaseHelper _dbHelper = TractDatabaseHelper();
   final Databases _databases = Databases(appwriteClient);
-  final FirebaseStorageService _storageService = FirebaseStorageService();
+  final AppwriteStorageCompatService _storageService =
+      AppwriteStorageCompatService();
 
   static const String _cacheKey = 'tract_cache';
   static const String _lastUpdateKey = 'tract_last_update';
 
-  static const String _remoteTractPath = FirebaseStorageService.tractsPath;
+  static const String _remoteTractPath = AppwriteStorageCompatService.tractsPath;
 
   // What the Bible Says series lessons (1-11)
   static const List<String> _bibleSaysLessons = [

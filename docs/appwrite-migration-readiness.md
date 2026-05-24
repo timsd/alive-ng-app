@@ -1,6 +1,6 @@
 # Appwrite Migration Readiness
 
-Last reviewed: 2026-05-18
+Last reviewed: 2026-05-24
 
 ## Chat UI
 
@@ -22,13 +22,15 @@ organization.
 
 ## Appwrite Resource Status
 
-- Settings: configured in `appwrite.config.json`; dashboard values still need final review before production cutover.
-- Functions: `createLiveKitToken`, `paystackPayments`, and `paystackWebhook` are configured in `appwrite.config.json`.
-- Databases / collections: full legacy Databases schema is maintained in `scripts/appwrite_infrastructure_schema.mjs` and provisioned with `npm run appwrite:provision:legacy`.
-- Buckets: chat files, profile files, board documents, tracts/books, podcast media, content media, meeting files, and system exports provision successfully.
-- Teams: administrators, BOD, trustees, directors, chapter leaders, content editors, and moderators provision successfully.
-- Webhooks: script supports profile approval, chat file, and donation record webhooks, but skips them until the corresponding `APPWRITE_*_WEBHOOK_URL` values are present.
-- Topics / Messaging: all user, admin, BOD, directors, chapter leaders, approvals, prayer, chat, donations, events, study, kids, health, and content topics provision successfully.
+- Settings: app settings are represented in the infrastructure schema and app code; dashboard values still need final production review after the server is reachable.
+- Functions: `createLiveKitToken`, `paystack_payments`, `paystack_webhook`, and `send_email` are represented by local Appwrite function folders and deployment scripts.
+- Databases / collections: the schema source of truth is `scripts/appwrite_infrastructure_schema.mjs`; `npm run appwrite:dry-run` is clean.
+- Buckets: chat files, profile files, board documents, tracts/books, podcast media, content media, meeting files, and system exports are declared.
+- Teams: administrators, BOD, trustees, directors, chapter leaders, content editors, and moderators are declared.
+- Webhooks: profile approval, chat file, and donation record webhooks are optional and skipped until the corresponding `APPWRITE_*_WEBHOOK_URL` values are present.
+- Topics / Messaging: all user, admin, BOD, directors, chapter leaders, approvals, prayer, chat, donations, events, study, kids, health, and content topics are declared.
+
+Current blocker: the Appwrite endpoint and `app.alivenigeria.org` are not reachable from this workspace, so real provisioning cannot be rerun yet. Continue code migration locally and rerun `npm run appwrite:provision:legacy` after server/proxy/firewall/DNS/Coolify is restored.
 
 ## Deployment Gate
 
@@ -50,15 +52,17 @@ Use this safer sequence for remaining migration:
 Firebase files still exist and should not be moved blindly. Firebase Hosting is
 disabled and the old `public/` hosting files have been moved to
 `oldfirebasedelete/firebase_hosting_public`, but several app areas still import
-Firebase services, including prayer, study guides, library, podcasts, tracts,
-storage admin, notifications, statistics, and legacy functions. Only files
-already replaced should go into `oldfirebasedelete`.
+Firebase services, including sync/offline sync, admin internals, leadership,
+discipleship, notifications, native analytics/crash compatibility, web push,
+and legacy server/functions code. Only files already replaced should go into
+`oldfirebasedelete`.
 
 ## Current Appwrite Client Migration
 
-- Appwrite auth/profile, chat, LiveKit token creation, testimonies, notification settings storage, donation records/material downloads, gift submissions, and Paystack initialization/webhook code are now wired.
+- Appwrite auth/profile, chat, LiveKit token creation, testimonies, notification settings storage, donation records/material downloads, gift submissions, Paystack initialization/webhook code, kids content CRUD/seeding, tract/podcast admin flows, and meeting file storage/metadata are now wired.
 - Push notification delivery still uses Firebase Messaging compatibility while Appwrite Messaging targeting is being completed.
 - `DonationService` no longer imports Firebase; downloadable material URLs should now be Appwrite/external URLs, not Firebase Storage URLs.
+- The old `FirebaseStorageService` facade has been renamed to `AppwriteStorageCompatService`; it remains a temporary compatibility layer for board and tract storage methods.
 
 ## Play Store GitHub Actions
 
