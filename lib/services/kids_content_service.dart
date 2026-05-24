@@ -1,7 +1,6 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:appwrite/appwrite.dart' as aw;
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';
 import '../utils/app_exception.dart';
@@ -9,7 +8,6 @@ import '../utils/logger.dart';
 
 /// Service for managing kids' content including memory verses, prayers, and activities
 class KidsContentService {
-  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   static final aw.Databases _databases = aw.Databases(appwriteClient);
   static final Logger _logger = Logger('KidsContentService');
 
@@ -51,6 +49,8 @@ class KidsContentService {
       if (data['moral_lesson'] != null) 'moralLesson': data['moral_lesson'],
       if (data['bible_reference'] != null)
         'bibleReference': data['bible_reference'],
+      if (data['sda_doctrine'] != null) 'sdaDoctrine': data['sda_doctrine'],
+      if (data['sda_values'] != null) 'sdaValues': data['sda_values'],
       if (data['image_url'] != null) 'imageUrl': data['image_url'],
       if (data['audio_url'] != null) 'audioUrl': data['audio_url'],
       if (data['created_at'] != null) 'createdAt': data['created_at'],
@@ -67,6 +67,8 @@ class KidsContentService {
         'resourceType' => 'resource_type',
         'moralLesson' => 'moral_lesson',
         'bibleReference' => 'bible_reference',
+        'sdaDoctrine' => 'sda_doctrine',
+        'sdaValues' => 'sda_values',
         'imageUrl' => 'image_url',
         'audioUrl' => 'audio_url',
         'illustrationUrl' => 'illustration_url',
@@ -76,12 +78,7 @@ class KidsContentService {
         'updatedAt' => 'updated_at',
         _ => entry.key,
       };
-      final value = entry.value;
-      if (value is FieldValue) {
-        mapped[key] = _now();
-      } else {
-        mapped[key] = value;
-      }
+      mapped[key] = entry.value;
     }
     return mapped;
   }
@@ -134,7 +131,7 @@ class KidsContentService {
       String collection, Map<String, dynamic> data) async {
     final id = data['id'] as String? ?? aw.ID.unique();
     final payload = _writeData({
-      ...data,
+      ..._coerceWriteData(collection, data),
       'created_at': data['created_at'] ?? data['createdAt'] ?? _now(),
       'updated_at': _now(),
       'is_active': data['is_active'] ?? data['isActive'] ?? true,
@@ -165,6 +162,55 @@ class KidsContentService {
       collectionId: _collectionId(collection),
       documentId: id,
     );
+  }
+
+  static Future<void> _upsertAppwriteDocument(
+      String collection, Map<String, dynamic> data) async {
+    final id = data['id'] as String? ?? aw.ID.unique();
+    final payload = _writeData({
+      ..._coerceWriteData(collection, data),
+      'created_at': data['created_at'] ?? data['createdAt'] ?? _now(),
+      'updated_at': _now(),
+      'is_active': data['is_active'] ?? data['isActive'] ?? true,
+    });
+
+    try {
+      await _databases.createDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _collectionId(collection),
+        documentId: id,
+        data: payload,
+      );
+    } on aw.AppwriteException catch (e) {
+      if (e.code != 409) rethrow;
+      await _databases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _collectionId(collection),
+        documentId: id,
+        data: payload,
+      );
+    }
+  }
+
+  static Map<String, dynamic> _coerceWriteData(
+    String collection,
+    Map<String, dynamic> data,
+  ) {
+    final mapped = Map<String, dynamic>.from(data);
+    if (collection == _kidsStoriesCollection && mapped['duration'] is String) {
+      mapped['duration'] =
+          int.tryParse(mapped['duration'].toString().split(' ').first) ?? 0;
+    }
+    return mapped;
+  }
+
+  static Future<void> _seedAppwriteDefaults(
+    String collection,
+    List<Map<String, dynamic>> items,
+  ) async {
+    for (final item in items) {
+      await _upsertAppwriteDocument(collection, item);
+    }
   }
 
   static final List<Map<String, dynamic>> _offlineMemoryVerses = [
@@ -375,7 +421,7 @@ class KidsContentService {
         'ageGroup': 'all',
         'difficulty': 'easy',
         'theme': 'Gods Love',
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': KidsContentService._now(),
       },
       {
         'id': 'mv_002',
@@ -385,7 +431,7 @@ class KidsContentService {
         'ageGroup': 'young',
         'difficulty': 'easy',
         'theme': 'Family',
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': KidsContentService._now(),
       },
       {
         'id': 'mv_003',
@@ -395,7 +441,7 @@ class KidsContentService {
         'ageGroup': 'all',
         'difficulty': 'easy',
         'theme': 'Sabbath',
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': KidsContentService._now(),
       },
       {
         'id': 'mv_004',
@@ -406,7 +452,7 @@ class KidsContentService {
         'ageGroup': 'older',
         'difficulty': 'medium',
         'theme': 'Prayer',
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': KidsContentService._now(),
       },
       {
         'id': 'mv_005',
@@ -417,7 +463,7 @@ class KidsContentService {
         'ageGroup': 'all',
         'difficulty': 'medium',
         'theme': 'Character',
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': KidsContentService._now(),
       },
       {
         'id': 'mv_006',
@@ -427,7 +473,7 @@ class KidsContentService {
         'ageGroup': 'young',
         'difficulty': 'easy',
         'theme': 'Creation',
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': KidsContentService._now(),
       },
       {
         'id': 'mv_007',
@@ -438,7 +484,7 @@ class KidsContentService {
         'ageGroup': 'older',
         'difficulty': 'medium',
         'theme': 'Second Coming',
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': KidsContentService._now(),
       },
       {
         'id': 'mv_008',
@@ -449,7 +495,7 @@ class KidsContentService {
         'ageGroup': 'older',
         'difficulty': 'hard',
         'theme': 'Health',
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': KidsContentService._now(),
       },
       {
         'id': 'mv_009',
@@ -460,7 +506,7 @@ class KidsContentService {
         'ageGroup': 'all',
         'difficulty': 'medium',
         'theme': 'Trust',
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': KidsContentService._now(),
       },
       {
         'id': 'mv_010',
@@ -471,18 +517,11 @@ class KidsContentService {
         'ageGroup': 'older',
         'difficulty': 'medium',
         'theme': 'Stewardship',
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': KidsContentService._now(),
       },
     ];
 
-    final batch = _firestore.batch();
-    for (final verse in memoryVerses) {
-      final docRef = _firestore
-          .collection(_memoryVersesCollection)
-          .doc(verse['id'] as String);
-      batch.set(docRef, verse, SetOptions(merge: true));
-    }
-    await batch.commit();
+    await _seedAppwriteDefaults(_memoryVersesCollection, memoryVerses);
   }
 
   /// Initialize prayer activities
@@ -497,7 +536,7 @@ class KidsContentService {
         'ageGroup': 'young',
         'duration': '1 minute',
         'category': 'Daily Prayers',
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': KidsContentService._now(),
       },
       {
         'id': 'pa_002',
@@ -508,7 +547,7 @@ class KidsContentService {
         'ageGroup': 'all',
         'duration': '30 seconds',
         'category': 'Meal Prayers',
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': KidsContentService._now(),
       },
       {
         'id': 'pa_003',
@@ -519,7 +558,7 @@ class KidsContentService {
         'ageGroup': 'young',
         'duration': '1 minute',
         'category': 'Daily Prayers',
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': KidsContentService._now(),
       },
       {
         'id': 'pa_004',
@@ -530,7 +569,7 @@ class KidsContentService {
         'ageGroup': 'all',
         'duration': '1 minute',
         'category': 'Sabbath Prayers',
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': KidsContentService._now(),
       },
       {
         'id': 'pa_005',
@@ -541,7 +580,7 @@ class KidsContentService {
         'ageGroup': 'all',
         'duration': '1 minute',
         'category': 'Gratitude Prayers',
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': KidsContentService._now(),
       },
       {
         'id': 'pa_006',
@@ -552,7 +591,7 @@ class KidsContentService {
         'ageGroup': 'older',
         'duration': '1 minute',
         'category': 'Guidance Prayers',
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': KidsContentService._now(),
       },
       {
         'id': 'pa_007',
@@ -563,7 +602,7 @@ class KidsContentService {
         'ageGroup': 'all',
         'duration': '1 minute',
         'category': 'Family Prayers',
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': KidsContentService._now(),
       },
       {
         'id': 'pa_008',
@@ -574,18 +613,11 @@ class KidsContentService {
         'ageGroup': 'all',
         'duration': '1 minute',
         'category': 'Forgiveness Prayers',
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': KidsContentService._now(),
       },
     ];
 
-    final batch = _firestore.batch();
-    for (final activity in prayerActivities) {
-      final docRef = _firestore
-          .collection(_prayerActivitiesCollection)
-          .doc(activity['id'] as String);
-      batch.set(docRef, activity, SetOptions(merge: true));
-    }
-    await batch.commit();
+    await _seedAppwriteDefaults(_prayerActivitiesCollection, prayerActivities);
   }
 
   /// Initialize service projects
@@ -603,7 +635,7 @@ class KidsContentService {
         'difficulty': 'easy',
         'impact': 'Brings joy and assistance to elderly community members',
         'sdaValues': ['Love', 'Service', 'Community'],
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': KidsContentService._now(),
       },
       {
         'id': 'sp_002',
@@ -617,7 +649,7 @@ class KidsContentService {
         'difficulty': 'medium',
         'impact': 'Provides meals for families in need',
         'sdaValues': ['Compassion', 'Stewardship', 'Service'],
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': KidsContentService._now(),
       },
       {
         'id': 'sp_003',
@@ -631,7 +663,7 @@ class KidsContentService {
         'difficulty': 'easy',
         'impact': 'Beautifies community and protects environment',
         'sdaValues': ['Stewardship', 'Creation Care', 'Community'],
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': KidsContentService._now(),
       },
       {
         'id': 'sp_004',
@@ -645,7 +677,7 @@ class KidsContentService {
         'difficulty': 'easy',
         'impact': 'Provides basic needs and shows love to those without homes',
         'sdaValues': ['Compassion', 'Love', 'Service'],
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': KidsContentService._now(),
       },
       {
         'id': 'sp_005',
@@ -659,7 +691,7 @@ class KidsContentService {
         'difficulty': 'easy',
         'impact': 'Promotes literacy and shares positive values',
         'sdaValues': ['Education', 'Service', 'Mentorship'],
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': KidsContentService._now(),
       },
       {
         'id': 'sp_006',
@@ -673,7 +705,7 @@ class KidsContentService {
         'difficulty': 'easy',
         'impact': 'Brings hope and encouragement to sick patients',
         'sdaValues': ['Healing', 'Hope', 'Compassion'],
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': KidsContentService._now(),
       },
       {
         'id': 'sp_007',
@@ -687,7 +719,7 @@ class KidsContentService {
         'difficulty': 'easy',
         'impact': 'Provides care and love for abandoned animals',
         'sdaValues': ['Creation Care', 'Compassion', 'Stewardship'],
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': KidsContentService._now(),
       },
       {
         'id': 'sp_008',
@@ -701,18 +733,11 @@ class KidsContentService {
         'difficulty': 'medium',
         'impact': 'Ensures all children have tools needed for learning',
         'sdaValues': ['Education', 'Equality', 'Service'],
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': KidsContentService._now(),
       },
     ];
 
-    final batch = _firestore.batch();
-    for (final project in serviceProjects) {
-      final docRef = _firestore
-          .collection(_serviceProjectsCollection)
-          .doc(project['id'] as String);
-      batch.set(docRef, project, SetOptions(merge: true));
-    }
-    await batch.commit();
+    await _seedAppwriteDefaults(_serviceProjectsCollection, serviceProjects);
   }
 
   /// Initialize kids stories with SDA doctrinal content
@@ -730,7 +755,7 @@ class KidsContentService {
         'bibleReference': 'Genesis 2:2-3',
         'sdaDoctrine': 'Sabbath Observance',
         'duration': '3 minutes',
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': KidsContentService._now(),
       },
       {
         'id': 'ks_002',
@@ -744,7 +769,7 @@ class KidsContentService {
         'bibleReference': 'John 14:1-3',
         'sdaDoctrine': 'Second Coming of Christ',
         'duration': '4 minutes',
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': KidsContentService._now(),
       },
       {
         'id': 'ks_003',
@@ -757,7 +782,7 @@ class KidsContentService {
         'bibleReference': '1 Corinthians 6:19-20',
         'sdaDoctrine': 'Christian Lifestyle and Health',
         'duration': '3 minutes',
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': KidsContentService._now(),
       },
       {
         'id': 'ks_004',
@@ -771,7 +796,7 @@ class KidsContentService {
         'bibleReference': 'Mark 12:41-44',
         'sdaDoctrine': 'Stewardship and Tithing',
         'duration': '4 minutes',
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': KidsContentService._now(),
       },
       {
         'id': 'ks_005',
@@ -785,7 +810,7 @@ class KidsContentService {
         'bibleReference': 'Daniel 6:10-23',
         'sdaDoctrine': 'Prayer and Faith',
         'duration': '5 minutes',
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': KidsContentService._now(),
       },
       {
         'id': 'ks_006',
@@ -799,7 +824,7 @@ class KidsContentService {
         'bibleReference': 'Genesis 1:1-31',
         'sdaDoctrine': 'Creation and Stewardship',
         'duration': '4 minutes',
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': KidsContentService._now(),
       },
       {
         'id': 'ks_007',
@@ -813,7 +838,7 @@ class KidsContentService {
         'bibleReference': 'Hebrews 8:1-2',
         'sdaDoctrine': 'Heavenly Sanctuary',
         'duration': '5 minutes',
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': KidsContentService._now(),
       },
       {
         'id': 'ks_008',
@@ -827,18 +852,11 @@ class KidsContentService {
         'bibleReference': 'Revelation 19:10',
         'sdaDoctrine': 'Gift of Prophecy',
         'duration': '4 minutes',
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': KidsContentService._now(),
       },
     ];
 
-    final batch = _firestore.batch();
-    for (final story in kidsStories) {
-      final docRef = _firestore
-          .collection(_kidsStoriesCollection)
-          .doc(story['id'] as String);
-      batch.set(docRef, story, SetOptions(merge: true));
-    }
-    await batch.commit();
+    await _seedAppwriteDefaults(_kidsStoriesCollection, kidsStories);
   }
 
   /// Get memory verses by category
@@ -1196,7 +1214,7 @@ Future<void> _initializeLearningResources() async {
       'ageGroup': 'young',
       'resourceType': 'activity_pack',
       'downloadable': true,
-      'createdAt': FieldValue.serverTimestamp(),
+      'createdAt': KidsContentService._now(),
     },
     {
       'id': 'lr_002',
@@ -1207,7 +1225,7 @@ Future<void> _initializeLearningResources() async {
       'ageGroup': 'all',
       'resourceType': 'lesson_plan',
       'downloadable': true,
-      'createdAt': FieldValue.serverTimestamp(),
+      'createdAt': KidsContentService._now(),
     },
     {
       'id': 'lr_003',
@@ -1218,7 +1236,7 @@ Future<void> _initializeLearningResources() async {
       'ageGroup': 'older',
       'resourceType': 'poster_guide',
       'downloadable': true,
-      'createdAt': FieldValue.serverTimestamp(),
+      'createdAt': KidsContentService._now(),
     },
     {
       'id': 'lr_004',
@@ -1229,7 +1247,7 @@ Future<void> _initializeLearningResources() async {
       'ageGroup': 'all',
       'resourceType': 'chart',
       'downloadable': true,
-      'createdAt': FieldValue.serverTimestamp(),
+      'createdAt': KidsContentService._now(),
     },
     {
       'id': 'lr_005',
@@ -1240,18 +1258,14 @@ Future<void> _initializeLearningResources() async {
       'ageGroup': 'older',
       'resourceType': 'coloring_pack',
       'downloadable': true,
-      'createdAt': FieldValue.serverTimestamp(),
+      'createdAt': KidsContentService._now(),
     },
   ];
 
-  final batch = FirebaseFirestore.instance.batch();
-  for (final res in resources) {
-    final docRef = FirebaseFirestore.instance
-        .collection('learning_resources')
-        .doc(res['id'] as String);
-    batch.set(docRef, res, SetOptions(merge: true));
-  }
-  await batch.commit();
+  await KidsContentService._seedAppwriteDefaults(
+    'learning_resources',
+    resources,
+  );
 }
 
 Future<List<Map<String, dynamic>>> getLearningResources({
