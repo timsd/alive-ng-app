@@ -14,7 +14,7 @@ move it until the remaining Firebase internals are gone.
 
 - Appwrite now backs auth/profile bootstrap, chat, prayer, testimonies,
   notification settings/reminder records, admin notification records, admin user archive, profile file cleanup, tag visibility checks,
-  analytics event persistence, user Bible/prayer/study statistics, study progress, lesson-level study progress, study, health, health tracking helper,
+  analytics event persistence, user Bible/prayer/study statistics, study progress, lesson-level study progress, study, enhanced health, health tracking helper,
   health recipe/remedy submissions, onboarding content, admin dashboard stats, admin app settings, admin content management, admin tract/podcast management, kids content CRUD, admin kids story/mission publishing, events, announcements and announcement editing, public missions, podcast listing/episode provider and audio actions, tract remote sync/progress, tract PDF text extraction, tract reader progress, app update settings, approval link
   tokens, daily verse records/generation settings, donation records, donation
   projects/settings reads, kids stories/missions public screens, Appwrite-backed tract,
