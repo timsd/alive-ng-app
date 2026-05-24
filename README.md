@@ -5,7 +5,7 @@ A comprehensive Flutter application for the ALIVE-NG Ministry, providing feature
 ## Current Migration Status
 
 The app is mid-migration from Firebase/Jitsi/GetStream pieces to Appwrite,
-LiveKit, and Coolify. Estimated overall migration progress is about 98%.
+LiveKit, and Coolify. Estimated overall migration progress is about 98.9%.
 Do not remove remaining Firebase files only because Appwrite files now exist;
 some admin, library, chapter, notification, analytics, and sync modules
 still import Firebase services and must be replaced one workflow at a time.
@@ -13,7 +13,7 @@ still import Firebase services and must be replaced one workflow at a time.
 - Appwrite now backs auth/profile bootstrap, chat, prayer, testimonies,
   notification settings/reminder records, admin notification records, admin user archive, profile file cleanup, tag visibility checks,
   analytics event persistence, user Bible/prayer/study statistics, study progress, lesson-level study progress, study, health, health tracking helper,
-  health recipe/remedy submissions, onboarding content, admin dashboard stats, admin app settings, admin content management, admin tract/podcast management, admin kids story/mission publishing, events, announcements and announcement editing, public missions, podcast listing/episode provider and audio actions, tract remote sync/progress, tract PDF text extraction, tract reader progress, app update settings, approval link
+  health recipe/remedy submissions, onboarding content, admin dashboard stats, admin app settings, admin content management, admin tract/podcast management, kids content CRUD, admin kids story/mission publishing, events, announcements and announcement editing, public missions, podcast listing/episode provider and audio actions, tract remote sync/progress, tract PDF text extraction, tract reader progress, app update settings, approval link
   tokens, daily verse records/generation settings, donation records, donation
   projects/settings reads, kids stories/missions public screens, Appwrite-backed tract and
   board storage compatibility, and the Paystack function flow.
@@ -23,6 +23,8 @@ still import Firebase services and must be replaced one workflow at a time.
   databases, collections, buckets, teams, webhooks, topics, and function IDs.
 - The current Appwrite server is `1.7.4`; use `npm run appwrite:dry-run` first,
   then `npm run appwrite:provision:legacy` for provisioning.
+  If provisioning returns `fetch failed`, the schema is still safe; rerun when
+  the Appwrite endpoint is reachable again.
 - Coolify web hosting is supported through the root `Dockerfile`, which builds
   Flutter web and serves it with Nginx. Supply Flutter build-time values through
   the `FLUTTER_BUILD_ARGS` build argument, and supply Firebase web push bridge

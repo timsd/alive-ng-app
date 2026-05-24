@@ -1,10 +1,16 @@
+// ignore_for_file: deprecated_member_use
+
+import 'package:appwrite/appwrite.dart' as aw;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../config/appwrite_backend_config.dart';
+import '../main.dart';
 import '../utils/app_exception.dart';
 import '../utils/logger.dart';
 
 /// Service for managing kids' content including memory verses, prayers, and activities
 class KidsContentService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  static final aw.Databases _databases = aw.Databases(appwriteClient);
   static final Logger _logger = Logger('KidsContentService');
 
   // Collections
@@ -13,6 +19,153 @@ class KidsContentService {
   static const String _serviceProjectsCollection = 'service_projects';
   static const String _kidsStoriesCollection = 'kids_stories';
   static const String _learningResourcesCollection = 'learning_resources';
+
+  static String _collectionId(String collection) {
+    return switch (collection) {
+      _memoryVersesCollection => AppwriteBackendConfig.memoryVersesCollectionId,
+      _prayerActivitiesCollection =>
+        AppwriteBackendConfig.prayerActivitiesCollectionId,
+      _serviceProjectsCollection =>
+        AppwriteBackendConfig.serviceProjectsCollectionId,
+      _kidsStoriesCollection => AppwriteBackendConfig.kidsStoriesCollectionId,
+      _learningResourcesCollection =>
+        AppwriteBackendConfig.learningResourcesCollectionId,
+      _ => collection,
+    };
+  }
+
+  static String _now() => DateTime.now().toUtc().toIso8601String();
+
+  static Map<String, dynamic> _documentData(dynamic document) {
+    return _normalizeReadData({
+      ...Map<String, dynamic>.from(document.data as Map),
+      'id': document.$id,
+    });
+  }
+
+  static Map<String, dynamic> _normalizeReadData(Map<String, dynamic> data) {
+    return {
+      ...data,
+      if (data['age_group'] != null) 'ageGroup': data['age_group'],
+      if (data['resource_type'] != null) 'resourceType': data['resource_type'],
+      if (data['moral_lesson'] != null) 'moralLesson': data['moral_lesson'],
+      if (data['bible_reference'] != null)
+        'bibleReference': data['bible_reference'],
+      if (data['image_url'] != null) 'imageUrl': data['image_url'],
+      if (data['audio_url'] != null) 'audioUrl': data['audio_url'],
+      if (data['created_at'] != null) 'createdAt': data['created_at'],
+      if (data['updated_at'] != null) 'updatedAt': data['updated_at'],
+    };
+  }
+
+  static Map<String, dynamic> _writeData(Map<String, dynamic> data) {
+    final mapped = <String, dynamic>{};
+    for (final entry in data.entries) {
+      if (entry.key == 'id' || entry.key.startsWith(r'$')) continue;
+      final key = switch (entry.key) {
+        'ageGroup' => 'age_group',
+        'resourceType' => 'resource_type',
+        'moralLesson' => 'moral_lesson',
+        'bibleReference' => 'bible_reference',
+        'imageUrl' => 'image_url',
+        'audioUrl' => 'audio_url',
+        'illustrationUrl' => 'illustration_url',
+        'mediaUrl' => 'media_url',
+        'isActive' => 'is_active',
+        'createdAt' => 'created_at',
+        'updatedAt' => 'updated_at',
+        _ => entry.key,
+      };
+      final value = entry.value;
+      if (value is FieldValue) {
+        mapped[key] = _now();
+      } else {
+        mapped[key] = value;
+      }
+    }
+    return mapped;
+  }
+
+  static Future<List<Map<String, dynamic>>> _listAppwrite(
+    String collection, {
+    String? category,
+    String? ageGroup,
+    String? qualifierKey,
+    String? qualifierValue,
+  }) async {
+    final snapshot = await _databases.listDocuments(
+      databaseId: AppwriteBackendConfig.databaseId,
+      collectionId: _collectionId(collection),
+      queries: [aw.Query.limit(200)],
+    );
+    return snapshot.documents
+        .map(_documentData)
+        .where((item) => _matchesFilters(
+              item,
+              category: category,
+              ageGroup: ageGroup,
+              qualifierKey: qualifierKey,
+              qualifierValue: qualifierValue,
+            ))
+        .toList();
+  }
+
+  static bool _matchesFilters(
+    Map<String, dynamic> item, {
+    String? category,
+    String? ageGroup,
+    String? qualifierKey,
+    String? qualifierValue,
+  }) {
+    final categoryMatch =
+        category == null || item['category']?.toString() == category;
+    final ageGroupValue = item['ageGroup']?.toString();
+    final ageGroupMatch = ageGroup == null ||
+        ageGroupValue == null ||
+        ageGroupValue == ageGroup ||
+        ageGroupValue == 'all';
+    final qualifierMatch = qualifierKey == null ||
+        qualifierValue == null ||
+        item[qualifierKey]?.toString() == qualifierValue;
+    return categoryMatch && ageGroupMatch && qualifierMatch;
+  }
+
+  static Future<String> _createAppwriteDocument(
+      String collection, Map<String, dynamic> data) async {
+    final id = data['id'] as String? ?? aw.ID.unique();
+    final payload = _writeData({
+      ...data,
+      'created_at': data['created_at'] ?? data['createdAt'] ?? _now(),
+      'updated_at': _now(),
+      'is_active': data['is_active'] ?? data['isActive'] ?? true,
+    });
+    await _databases.createDocument(
+      databaseId: AppwriteBackendConfig.databaseId,
+      collectionId: _collectionId(collection),
+      documentId: id,
+      data: payload,
+    );
+    return id;
+  }
+
+  static Future<void> _updateAppwriteDocument(
+      String collection, String id, Map<String, dynamic> updates) async {
+    await _databases.updateDocument(
+      databaseId: AppwriteBackendConfig.databaseId,
+      collectionId: _collectionId(collection),
+      documentId: id,
+      data: _writeData({...updates, 'updated_at': _now()}),
+    );
+  }
+
+  static Future<void> _deleteAppwriteDocument(
+      String collection, String id) async {
+    await _databases.deleteDocument(
+      databaseId: AppwriteBackendConfig.databaseId,
+      collectionId: _collectionId(collection),
+      documentId: id,
+    );
+  }
 
   static final List<Map<String, dynamic>> _offlineMemoryVerses = [
     {
@@ -695,33 +848,22 @@ class KidsContentService {
     String? difficulty,
   }) async {
     try {
-      Query query = _firestore.collection(_memoryVersesCollection);
-
-      if (category != null) {
-        query = query.where('category', isEqualTo: category);
-      }
-      if (ageGroup != null) {
-        query = query.where('ageGroup', whereIn: [ageGroup, 'all']);
-      }
-      if (difficulty != null) {
-        query = query.where('difficulty', isEqualTo: difficulty);
-      }
-
-      final snapshot = await query.get();
-      return snapshot.docs
-          .map((doc) => {'id': doc.id, ...doc.data() as Map<String, dynamic>})
-          .toList();
-    } on FirebaseException catch (e) {
-      if (e.code == 'permission-denied' || e.code == 'unavailable') {
-        return _filterOfflineItems(
-          _offlineMemoryVerses,
-          category: category,
-          ageGroup: ageGroup,
-          qualifierKey: 'difficulty',
-          qualifierValue: difficulty,
-        );
-      }
-      rethrow;
+      return await _listAppwrite(
+        _memoryVersesCollection,
+        category: category,
+        ageGroup: ageGroup,
+        qualifierKey: 'difficulty',
+        qualifierValue: difficulty,
+      );
+    } catch (e) {
+      _logger.error('Error loading memory verses from Appwrite', e);
+      return _filterOfflineItems(
+        _offlineMemoryVerses,
+        category: category,
+        ageGroup: ageGroup,
+        qualifierKey: 'difficulty',
+        qualifierValue: difficulty,
+      );
     }
   }
 
@@ -732,33 +874,22 @@ class KidsContentService {
     String? category,
   }) async {
     try {
-      Query query = _firestore.collection(_prayerActivitiesCollection);
-
-      if (type != null) {
-        query = query.where('type', isEqualTo: type);
-      }
-      if (ageGroup != null) {
-        query = query.where('ageGroup', whereIn: [ageGroup, 'all']);
-      }
-      if (category != null) {
-        query = query.where('category', isEqualTo: category);
-      }
-
-      final snapshot = await query.get();
-      return snapshot.docs
-          .map((doc) => {'id': doc.id, ...doc.data() as Map<String, dynamic>})
-          .toList();
-    } on FirebaseException catch (e) {
-      if (e.code == 'permission-denied' || e.code == 'unavailable') {
-        return _filterOfflineItems(
-          _offlinePrayerActivities,
-          category: category,
-          ageGroup: ageGroup,
-          qualifierKey: 'type',
-          qualifierValue: type,
-        );
-      }
-      rethrow;
+      return await _listAppwrite(
+        _prayerActivitiesCollection,
+        category: category,
+        ageGroup: ageGroup,
+        qualifierKey: 'type',
+        qualifierValue: type,
+      );
+    } catch (e) {
+      _logger.error('Error loading prayer activities from Appwrite', e);
+      return _filterOfflineItems(
+        _offlinePrayerActivities,
+        category: category,
+        ageGroup: ageGroup,
+        qualifierKey: 'type',
+        qualifierValue: type,
+      );
     }
   }
 
@@ -769,33 +900,22 @@ class KidsContentService {
     String? difficulty,
   }) async {
     try {
-      Query query = _firestore.collection(_serviceProjectsCollection);
-
-      if (category != null) {
-        query = query.where('category', isEqualTo: category);
-      }
-      if (ageGroup != null) {
-        query = query.where('ageGroup', whereIn: [ageGroup, 'all']);
-      }
-      if (difficulty != null) {
-        query = query.where('difficulty', isEqualTo: difficulty);
-      }
-
-      final snapshot = await query.get();
-      return snapshot.docs
-          .map((doc) => {'id': doc.id, ...doc.data() as Map<String, dynamic>})
-          .toList();
-    } on FirebaseException catch (e) {
-      if (e.code == 'permission-denied' || e.code == 'unavailable') {
-        return _filterOfflineItems(
-          _offlineServiceProjects,
-          category: category,
-          ageGroup: ageGroup,
-          qualifierKey: 'difficulty',
-          qualifierValue: difficulty,
-        );
-      }
-      rethrow;
+      return await _listAppwrite(
+        _serviceProjectsCollection,
+        category: category,
+        ageGroup: ageGroup,
+        qualifierKey: 'difficulty',
+        qualifierValue: difficulty,
+      );
+    } catch (e) {
+      _logger.error('Error loading service projects from Appwrite', e);
+      return _filterOfflineItems(
+        _offlineServiceProjects,
+        category: category,
+        ageGroup: ageGroup,
+        qualifierKey: 'difficulty',
+        qualifierValue: difficulty,
+      );
     }
   }
 
@@ -806,60 +926,44 @@ class KidsContentService {
     String? sdaDoctrine,
   }) async {
     try {
-      Query query = _firestore.collection(_kidsStoriesCollection);
-
-      if (category != null) {
-        query = query.where('category', isEqualTo: category);
-      }
-      if (ageGroup != null) {
-        query = query.where('ageGroup', whereIn: [ageGroup, 'all']);
-      }
-      if (sdaDoctrine != null) {
-        query = query.where('sdaDoctrine', isEqualTo: sdaDoctrine);
-      }
-
-      final snapshot = await query.get();
-      return snapshot.docs
-          .map((doc) => {'id': doc.id, ...doc.data() as Map<String, dynamic>})
-          .toList();
-    } on FirebaseException catch (e) {
-      if (e.code == 'permission-denied' || e.code == 'unavailable') {
-        return _filterOfflineItems(
-          _offlineKidsStories,
-          category: category,
-          ageGroup: ageGroup,
-          qualifierKey: 'sdaDoctrine',
-          qualifierValue: sdaDoctrine,
-        );
-      }
-      rethrow;
+      return await _listAppwrite(
+        _kidsStoriesCollection,
+        category: category,
+        ageGroup: ageGroup,
+        qualifierKey: 'sdaDoctrine',
+        qualifierValue: sdaDoctrine,
+      );
+    } catch (e) {
+      _logger.error('Error loading kids stories from Appwrite', e);
+      return _filterOfflineItems(
+        _offlineKidsStories,
+        category: category,
+        ageGroup: ageGroup,
+        qualifierKey: 'sdaDoctrine',
+        qualifierValue: sdaDoctrine,
+      );
     }
   }
 
   /// Get all categories for memory verses
   static Future<List<String>> getMemoryVerseCategories() async {
-    final snapshot = await _firestore.collection(_memoryVersesCollection).get();
-    final categories = <String>{};
-    for (final doc in snapshot.docs) {
-      final data = doc.data();
-      if (data['category'] != null) {
-        categories.add(data['category'] as String);
-      }
-    }
+    final items = await getMemoryVerses();
+    final categories = items
+        .map((item) => item['category']?.toString())
+        .whereType<String>()
+        .where((value) => value.isNotEmpty)
+        .toSet();
     return categories.toList()..sort();
   }
 
   /// Get all categories for service projects
   static Future<List<String>> getServiceProjectCategories() async {
-    final snapshot =
-        await _firestore.collection(_serviceProjectsCollection).get();
-    final categories = <String>{};
-    for (final doc in snapshot.docs) {
-      final data = doc.data();
-      if (data['category'] != null) {
-        categories.add(data['category'] as String);
-      }
-    }
+    final items = await getServiceProjects();
+    final categories = items
+        .map((item) => item['category']?.toString())
+        .whereType<String>()
+        .where((value) => value.isNotEmpty)
+        .toSet();
     return categories.toList()..sort();
   }
 
@@ -913,14 +1017,8 @@ class KidsContentService {
   static Future<void> updateMemoryVerse(
       String id, Map<String, dynamic> updates) async {
     try {
-      final doc = _firestore.collection(_memoryVersesCollection).doc(id);
-      await doc.update({...updates, 'updatedAt': FieldValue.serverTimestamp()});
-    } on FirebaseException catch (e) {
-      if (e.code == 'permission-denied') {
-        throw AuthException(
-            'Admin permission required. Please ensure Firestore rules allow admin writes.',
-            originalError: e);
-      }
+      await _updateAppwriteDocument(_memoryVersesCollection, id, updates);
+    } catch (e) {
       throw DatabaseException('Failed to update memory verse',
           originalError: e);
     }
@@ -928,13 +1026,8 @@ class KidsContentService {
 
   static Future<void> deleteMemoryVerse(String id) async {
     try {
-      await _firestore.collection(_memoryVersesCollection).doc(id).delete();
-    } on FirebaseException catch (e) {
-      if (e.code == 'permission-denied') {
-        throw AuthException(
-            'Admin permission required. Please ensure Firestore rules allow admin writes.',
-            originalError: e);
-      }
+      await _deleteAppwriteDocument(_memoryVersesCollection, id);
+    } catch (e) {
       throw DatabaseException('Failed to delete memory verse',
           originalError: e);
     }
@@ -943,14 +1036,8 @@ class KidsContentService {
   static Future<void> updatePrayerActivity(
       String id, Map<String, dynamic> updates) async {
     try {
-      final doc = _firestore.collection(_prayerActivitiesCollection).doc(id);
-      await doc.update({...updates, 'updatedAt': FieldValue.serverTimestamp()});
-    } on FirebaseException catch (e) {
-      if (e.code == 'permission-denied') {
-        throw AuthException(
-            'Admin permission required. Please ensure Firestore rules allow admin writes.',
-            originalError: e);
-      }
+      await _updateAppwriteDocument(_prayerActivitiesCollection, id, updates);
+    } catch (e) {
       throw DatabaseException('Failed to update prayer activity',
           originalError: e);
     }
@@ -958,13 +1045,8 @@ class KidsContentService {
 
   static Future<void> deletePrayerActivity(String id) async {
     try {
-      await _firestore.collection(_prayerActivitiesCollection).doc(id).delete();
-    } on FirebaseException catch (e) {
-      if (e.code == 'permission-denied') {
-        throw AuthException(
-            'Admin permission required. Please ensure Firestore rules allow admin writes.',
-            originalError: e);
-      }
+      await _deleteAppwriteDocument(_prayerActivitiesCollection, id);
+    } catch (e) {
       throw DatabaseException('Failed to delete prayer activity',
           originalError: e);
     }
@@ -973,14 +1055,8 @@ class KidsContentService {
   static Future<void> updateServiceProject(
       String id, Map<String, dynamic> updates) async {
     try {
-      final doc = _firestore.collection(_serviceProjectsCollection).doc(id);
-      await doc.update({...updates, 'updatedAt': FieldValue.serverTimestamp()});
-    } on FirebaseException catch (e) {
-      if (e.code == 'permission-denied') {
-        throw AuthException(
-            'Admin permission required. Please ensure Firestore rules allow admin writes.',
-            originalError: e);
-      }
+      await _updateAppwriteDocument(_serviceProjectsCollection, id, updates);
+    } catch (e) {
       throw DatabaseException('Failed to update service project',
           originalError: e);
     }
@@ -988,13 +1064,8 @@ class KidsContentService {
 
   static Future<void> deleteServiceProject(String id) async {
     try {
-      await _firestore.collection(_serviceProjectsCollection).doc(id).delete();
-    } on FirebaseException catch (e) {
-      if (e.code == 'permission-denied') {
-        throw AuthException(
-            'Admin permission required. Please ensure Firestore rules allow admin writes.',
-            originalError: e);
-      }
+      await _deleteAppwriteDocument(_serviceProjectsCollection, id);
+    } catch (e) {
       throw DatabaseException('Failed to delete service project',
           originalError: e);
     }
@@ -1003,27 +1074,16 @@ class KidsContentService {
   static Future<void> updateKidsStory(
       String id, Map<String, dynamic> updates) async {
     try {
-      final doc = _firestore.collection(_kidsStoriesCollection).doc(id);
-      await doc.update({...updates, 'updatedAt': FieldValue.serverTimestamp()});
-    } on FirebaseException catch (e) {
-      if (e.code == 'permission-denied') {
-        throw AuthException(
-            'Admin permission required. Please ensure Firestore rules allow admin writes.',
-            originalError: e);
-      }
+      await _updateAppwriteDocument(_kidsStoriesCollection, id, updates);
+    } catch (e) {
       throw DatabaseException('Failed to update kids story', originalError: e);
     }
   }
 
   static Future<void> deleteKidsStory(String id) async {
     try {
-      await _firestore.collection(_kidsStoriesCollection).doc(id).delete();
-    } on FirebaseException catch (e) {
-      if (e.code == 'permission-denied') {
-        throw AuthException(
-            'Admin permission required. Please ensure Firestore rules allow admin writes.',
-            originalError: e);
-      }
+      await _deleteAppwriteDocument(_kidsStoriesCollection, id);
+    } catch (e) {
       throw DatabaseException('Failed to delete kids story', originalError: e);
     }
   }
@@ -1032,14 +1092,8 @@ class KidsContentService {
   static Future<void> updateLearningResource(
       String id, Map<String, dynamic> updates) async {
     try {
-      final doc = _firestore.collection(_learningResourcesCollection).doc(id);
-      await doc.update({...updates, 'updatedAt': FieldValue.serverTimestamp()});
-    } on FirebaseException catch (e) {
-      if (e.code == 'permission-denied') {
-        throw AuthException(
-            'Admin permission required. Please ensure Firestore rules allow admin writes.',
-            originalError: e);
-      }
+      await _updateAppwriteDocument(_learningResourcesCollection, id, updates);
+    } catch (e) {
       throw DatabaseException('Failed to update learning resource',
           originalError: e);
     }
@@ -1047,16 +1101,8 @@ class KidsContentService {
 
   static Future<void> deleteLearningResource(String id) async {
     try {
-      await _firestore
-          .collection(_learningResourcesCollection)
-          .doc(id)
-          .delete();
-    } on FirebaseException catch (e) {
-      if (e.code == 'permission-denied') {
-        throw AuthException(
-            'Admin permission required. Please ensure Firestore rules allow admin writes.',
-            originalError: e);
-      }
+      await _deleteAppwriteDocument(_learningResourcesCollection, id);
+    } catch (e) {
       throw DatabaseException('Failed to delete learning resource',
           originalError: e);
     }
@@ -1065,19 +1111,8 @@ class KidsContentService {
   // Static create helpers used by admin screen
   static Future<String> createMemoryVerse(Map<String, dynamic> verse) async {
     try {
-      final id = verse['id'] as String? ??
-          _firestore.collection(_memoryVersesCollection).doc().id;
-      final doc = _firestore.collection(_memoryVersesCollection).doc(id);
-      await doc.set(
-          {...verse, 'id': id, 'updatedAt': FieldValue.serverTimestamp()},
-          SetOptions(merge: true));
-      return id;
-    } on FirebaseException catch (e) {
-      if (e.code == 'permission-denied') {
-        throw AuthException(
-            'Admin permission required. Please ensure Firestore rules allow admin writes.',
-            originalError: e);
-      }
+      return await _createAppwriteDocument(_memoryVersesCollection, verse);
+    } catch (e) {
       throw DatabaseException('Failed to create memory verse',
           originalError: e);
     }
@@ -1086,19 +1121,9 @@ class KidsContentService {
   static Future<String> createPrayerActivity(
       Map<String, dynamic> activity) async {
     try {
-      final id = activity['id'] as String? ??
-          _firestore.collection(_prayerActivitiesCollection).doc().id;
-      final doc = _firestore.collection(_prayerActivitiesCollection).doc(id);
-      await doc.set(
-          {...activity, 'id': id, 'updatedAt': FieldValue.serverTimestamp()},
-          SetOptions(merge: true));
-      return id;
-    } on FirebaseException catch (e) {
-      if (e.code == 'permission-denied') {
-        throw AuthException(
-            'Admin permission required. Please ensure Firestore rules allow admin writes.',
-            originalError: e);
-      }
+      return await _createAppwriteDocument(
+          _prayerActivitiesCollection, activity);
+    } catch (e) {
       throw DatabaseException('Failed to create prayer activity',
           originalError: e);
     }
@@ -1107,19 +1132,8 @@ class KidsContentService {
   static Future<String> createServiceProject(
       Map<String, dynamic> project) async {
     try {
-      final id = project['id'] as String? ??
-          _firestore.collection(_serviceProjectsCollection).doc().id;
-      final doc = _firestore.collection(_serviceProjectsCollection).doc(id);
-      await doc.set(
-          {...project, 'id': id, 'updatedAt': FieldValue.serverTimestamp()},
-          SetOptions(merge: true));
-      return id;
-    } on FirebaseException catch (e) {
-      if (e.code == 'permission-denied') {
-        throw AuthException(
-            'Admin permission required. Please ensure Firestore rules allow admin writes.',
-            originalError: e);
-      }
+      return await _createAppwriteDocument(_serviceProjectsCollection, project);
+    } catch (e) {
       throw DatabaseException('Failed to create service project',
           originalError: e);
     }
@@ -1127,19 +1141,8 @@ class KidsContentService {
 
   static Future<String> createKidsStory(Map<String, dynamic> story) async {
     try {
-      final id = story['id'] as String? ??
-          _firestore.collection(_kidsStoriesCollection).doc().id;
-      final doc = _firestore.collection(_kidsStoriesCollection).doc(id);
-      await doc.set(
-          {...story, 'id': id, 'updatedAt': FieldValue.serverTimestamp()},
-          SetOptions(merge: true));
-      return id;
-    } on FirebaseException catch (e) {
-      if (e.code == 'permission-denied') {
-        throw AuthException(
-            'Admin permission required. Please ensure Firestore rules allow admin writes.',
-            originalError: e);
-      }
+      return await _createAppwriteDocument(_kidsStoriesCollection, story);
+    } catch (e) {
       throw DatabaseException('Failed to create kids story', originalError: e);
     }
   }
@@ -1147,19 +1150,9 @@ class KidsContentService {
   static Future<String> createLearningResource(
       Map<String, dynamic> resource) async {
     try {
-      final id = resource['id'] as String? ??
-          _firestore.collection(_learningResourcesCollection).doc().id;
-      final doc = _firestore.collection(_learningResourcesCollection).doc(id);
-      await doc.set(
-          {...resource, 'id': id, 'updatedAt': FieldValue.serverTimestamp()},
-          SetOptions(merge: true));
-      return id;
-    } on FirebaseException catch (e) {
-      if (e.code == 'permission-denied') {
-        throw AuthException(
-            'Admin permission required. Please ensure Firestore rules allow admin writes.',
-            originalError: e);
-      }
+      return await _createAppwriteDocument(
+          _learningResourcesCollection, resource);
+    } catch (e) {
       throw DatabaseException('Failed to create learning resource',
           originalError: e);
     }
@@ -1267,83 +1260,57 @@ Future<List<Map<String, dynamic>>> getLearningResources({
   String? resourceType,
 }) async {
   try {
-    Query query = FirebaseFirestore.instance.collection('learning_resources');
-    if (category != null) {
-      query = query.where('category', isEqualTo: category);
-    }
-    if (ageGroup != null) {
-      query = query.where('ageGroup', whereIn: [ageGroup, 'all']);
-    }
-    if (resourceType != null) {
-      query = query.where('resourceType', isEqualTo: resourceType);
-    }
-    final snapshot = await query.get();
-    return snapshot.docs
-        .map((doc) => {'id': doc.id, ...doc.data() as Map<String, dynamic>})
-        .toList();
-  } on FirebaseException catch (e) {
-    if (e.code == 'permission-denied' || e.code == 'unavailable') {
-      return KidsContentService._filterOfflineItems(
-        KidsContentService._offlineLearningResources,
-        category: category,
-        ageGroup: ageGroup,
-        qualifierKey: 'resourceType',
-        qualifierValue: resourceType,
-      );
-    }
-    rethrow;
+    return await KidsContentService._listAppwrite(
+      'learning_resources',
+      category: category,
+      ageGroup: ageGroup,
+      qualifierKey: 'resourceType',
+      qualifierValue: resourceType,
+    );
+  } catch (e) {
+    KidsContentService._logger
+        .error('Error loading learning resources from Appwrite', e);
+    return KidsContentService._filterOfflineItems(
+      KidsContentService._offlineLearningResources,
+      category: category,
+      ageGroup: ageGroup,
+      qualifierKey: 'resourceType',
+      qualifierValue: resourceType,
+    );
   }
 }
 
 Future<String> createLearningResource(Map<String, dynamic> resource) async {
   try {
-    final firestore = FirebaseFirestore.instance;
-    const collection = 'learning_resources';
-    final id =
-        resource['id'] as String? ?? firestore.collection(collection).doc().id;
-    final doc = firestore.collection(collection).doc(id);
-    await doc.set(
-        {...resource, 'id': id, 'updatedAt': FieldValue.serverTimestamp()},
-        SetOptions(merge: true));
-    return id;
-  } on FirebaseException catch (e) {
-    if (e.code == 'permission-denied') {
-      throw AuthException(
-          'Admin permission required. Please ensure Firestore rules allow admin writes.',
-          originalError: e);
-    }
-    rethrow;
+    return await KidsContentService._createAppwriteDocument(
+      'learning_resources',
+      resource,
+    );
+  } catch (e) {
+    throw DatabaseException('Failed to create learning resource',
+        originalError: e);
   }
 }
 
 Future<void> updateLearningResource(
     String id, Map<String, dynamic> updates) async {
   try {
-    final firestore = FirebaseFirestore.instance;
-    const collection = 'learning_resources';
-    final doc = firestore.collection(collection).doc(id);
-    await doc.update({...updates, 'updatedAt': FieldValue.serverTimestamp()});
-  } on FirebaseException catch (e) {
-    if (e.code == 'permission-denied') {
-      throw AuthException(
-          'Admin permission required. Please ensure Firestore rules allow admin writes.',
-          originalError: e);
-    }
-    rethrow;
+    await KidsContentService._updateAppwriteDocument(
+      'learning_resources',
+      id,
+      updates,
+    );
+  } catch (e) {
+    throw DatabaseException('Failed to update learning resource',
+        originalError: e);
   }
 }
 
 Future<void> deleteLearningResource(String id) async {
   try {
-    final firestore = FirebaseFirestore.instance;
-    const collection = 'learning_resources';
-    await firestore.collection(collection).doc(id).delete();
-  } on FirebaseException catch (e) {
-    if (e.code == 'permission-denied') {
-      throw AuthException(
-          'Admin permission required. Please ensure Firestore rules allow admin writes.',
-          originalError: e);
-    }
-    rethrow;
+    await KidsContentService._deleteAppwriteDocument('learning_resources', id);
+  } catch (e) {
+    throw DatabaseException('Failed to delete learning resource',
+        originalError: e);
   }
 }

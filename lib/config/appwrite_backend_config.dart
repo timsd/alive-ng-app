@@ -66,8 +66,12 @@ class AppwriteBackendConfig {
   static const String studyGuidesCollectionId = 'study_guides';
   static const String studyProgressCollectionId = 'study_progress';
   static const String dailyVersesCollectionId = 'daily_verses';
+  static const String memoryVersesCollectionId = 'memory_verses';
+  static const String prayerActivitiesCollectionId = 'prayer_activities';
+  static const String serviceProjectsCollectionId = 'service_projects';
   static const String kidsStoriesCollectionId = 'kids_stories';
   static const String kidsMissionsCollectionId = 'kids_missions';
+  static const String learningResourcesCollectionId = 'learning_resources';
   static const String missionsCollectionId = 'missions';
   static const String userMissionsCollectionId = 'user_missions';
   static const String podcastsCollectionId = 'podcasts';

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../constants/app_constants.dart';
 import '../../services/kids_content_service.dart';
 import '../../services/role_access_service.dart';
@@ -99,7 +98,6 @@ class _KidsContentAdminScreenState extends ConsumerState<KidsContentAdminScreen>
                 'reference': result['reference'] ?? '',
                 'category': result['category'] ?? 'General',
                 'ageGroup': 'all',
-                'createdAt': FieldValue.serverTimestamp(),
               });
               _mvKey.currentState?.refresh();
             }
@@ -113,7 +111,6 @@ class _KidsContentAdminScreenState extends ConsumerState<KidsContentAdminScreen>
                 'content': result['content'] ?? '',
                 'type': result['type'] ?? 'daily',
                 'ageGroup': 'all',
-                'createdAt': FieldValue.serverTimestamp(),
               });
               _paKey.currentState?.refresh();
             }
@@ -126,7 +123,6 @@ class _KidsContentAdminScreenState extends ConsumerState<KidsContentAdminScreen>
                 'title': result['title'] ?? '',
                 'category': result['category'] ?? 'General',
                 'ageGroup': 'all',
-                'createdAt': FieldValue.serverTimestamp(),
               });
               _spKey.currentState?.refresh();
             }
@@ -138,7 +134,6 @@ class _KidsContentAdminScreenState extends ConsumerState<KidsContentAdminScreen>
               await KidsContentService.createKidsStory({
                 'title': result['title'] ?? '',
                 'category': result['category'] ?? 'General',
-                'createdAt': FieldValue.serverTimestamp(),
               });
               _ksKey.currentState?.refresh();
             }
@@ -151,7 +146,6 @@ class _KidsContentAdminScreenState extends ConsumerState<KidsContentAdminScreen>
                 'title': result['title'] ?? '',
                 'resourceType': result['resourceType'] ?? 'activity_pack',
                 'downloadable': true,
-                'createdAt': FieldValue.serverTimestamp(),
               });
               _lrKey.currentState?.refresh();
             }
