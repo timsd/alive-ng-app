@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:convert';
 import 'dart:typed_data';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/tract_models.dart';
 import '../../models/podcast_models.dart';
 import '../../utils/responsive_utils.dart';
@@ -10,6 +9,55 @@ import '../../widgets/role_guard.dart';
 import '../../services/firebase_database_service.dart';
 import '../../services/pdf_extractor_service.dart';
 import '../../widgets/custom_image.dart';
+
+Map<String, dynamic> _podcastPayload(Podcast podcast, {String? category}) {
+  final now = DateTime.now().toUtc().toIso8601String();
+  return {
+    'title': podcast.title,
+    'description': podcast.description,
+    'category': category ?? podcast.category.displayName,
+    'host': podcast.host,
+    'episodes': podcast.episodes,
+    'rating': podcast.rating,
+    'is_subscribed': podcast.isSubscribed,
+    'tags': podcast.tags,
+    'cover_image': podcast.coverImage,
+    'audio_url': podcast.audioUrl,
+    'created_at': now,
+    'updated_at': now,
+  };
+}
+
+Map<String, dynamic> _episodePayload(PodcastEpisode episode) {
+  return {
+    'title': episode.title,
+    'podcast_id': episode.podcastId,
+    'podcast_title': episode.podcastTitle,
+    'description': episode.description,
+    'duration': episode.duration,
+    'audio_url': episode.audioUrl,
+    'publish_date': episode.publishDate.toUtc().toIso8601String(),
+    'is_downloaded': episode.isDownloaded,
+    'local_path': episode.localPath,
+  };
+}
+
+Map<String, dynamic> _categoryPayload({
+  required String name,
+  required int order,
+  String? imageUrl,
+}) {
+  return {
+    'name': name,
+    'description': '',
+    'image_url': imageUrl,
+    'order': order,
+    'is_active': true,
+  };
+}
+
+bool _activeFlag(Map<String, dynamic> data) =>
+    (data['is_active'] as bool?) ?? (data['isActive'] as bool?) ?? true;
 
 class TractPodcastAdminScreen extends StatefulWidget {
   const TractPodcastAdminScreen({super.key});
@@ -405,7 +453,7 @@ class _EpisodeFormDialogState extends State<_EpisodeFormDialog> {
           final timestamp = DateTime.now().millisecondsSinceEpoch;
           final fileName = '${timestamp}_${_selectedAudioName!}';
           audioUrl = await firebaseService.uploadFile(
-            'podcast-audio/${widget.podcast.id}/$fileName',
+            'audio-files/${widget.podcast.id}/$fileName',
             _selectedAudioBytes!,
             contentType: 'audio/mpeg',
           );
@@ -429,7 +477,7 @@ class _EpisodeFormDialogState extends State<_EpisodeFormDialog> {
         await firebaseService.createOrUpdateDocument(
           'podcast_episodes',
           episode.id,
-          episode.toJson(),
+          _episodePayload(episode),
         );
 
         // Update podcast episode count if new episode
@@ -441,12 +489,12 @@ class _EpisodeFormDialogState extends State<_EpisodeFormDialog> {
           await firebaseService.createOrUpdateDocument(
             'podcasts',
             updatedPodcast.id,
-            updatedPodcast.toJson(),
+            _podcastPayload(updatedPodcast),
           );
         }
 
         if (mounted) {
-          navigator.pop();
+          navigator.pop(episode);
           messenger.showSnackBar(
             SnackBar(
               content: Text(
@@ -811,7 +859,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
       final docs = await firebaseService.getCollection('tract_categories',
           orderBy: 'order');
       final categoryNames = docs
-          .where((d) => (d['isActive'] as bool?) != false)
+          .where(_activeFlag)
           .map((d) => d['name'] as String)
           .toList();
       if (!mounted) return;
@@ -1469,6 +1517,15 @@ class _PodcastManagementTab extends StatefulWidget {
 }
 
 class _PodcastManagementTabState extends State<_PodcastManagementTab> {
+  Future<List<Podcast>> _loadPodcasts() async {
+    final docs = await FirebaseDatabaseService.instance.getCollection(
+      'podcasts',
+    );
+    final podcasts = docs.map((doc) => Podcast.fromJson(doc)).toList();
+    podcasts.sort((a, b) => a.title.compareTo(b.title));
+    return podcasts;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -1493,11 +1550,8 @@ class _PodcastManagementTabState extends State<_PodcastManagementTab> {
 
         // Podcasts list
         Expanded(
-          child: StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('podcasts')
-                .orderBy('order')
-                .snapshots(),
+          child: FutureBuilder<List<Podcast>>(
+            future: _loadPodcasts(),
             builder: (context, snapshot) {
               if (snapshot.hasError) {
                 return const Center(
@@ -1507,22 +1561,19 @@ class _PodcastManagementTabState extends State<_PodcastManagementTab> {
                   ),
                 );
               }
-              if (!snapshot.hasData) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
-              final docs = snapshot.data!.docs;
-              if (docs.isEmpty) {
+              final podcasts = snapshot.data ?? [];
+              if (podcasts.isEmpty) {
                 return const Center(
                     child: Text('No podcasts yet. Tap + to add one.'));
               }
               return ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: docs.length,
+                itemCount: podcasts.length,
                 itemBuilder: (context, index) {
-                  final doc = docs[index];
-                  final data = doc.data() as Map<String, dynamic>;
-                  data['id'] = doc.id;
-                  final podcast = Podcast.fromJson(data);
+                  final podcast = podcasts[index];
 
                   return Card(
                     margin: const EdgeInsets.only(bottom: 8),
@@ -1632,14 +1683,22 @@ class _PodcastManagementTabState extends State<_PodcastManagementTab> {
     showDialog(
       context: context,
       builder: (context) => const _PodcastFormDialog(),
-    );
+    ).then((result) {
+      if (result is Podcast && mounted) {
+        setState(() {});
+      }
+    });
   }
 
   void _showEditPodcastDialog(Podcast podcast) {
     showDialog(
       context: context,
       builder: (context) => _PodcastFormDialog(podcast: podcast),
-    );
+    ).then((result) {
+      if (result is Podcast && mounted) {
+        setState(() {});
+      }
+    });
   }
 
   void _showEpisodesDialog(Podcast podcast) {
@@ -1685,12 +1744,14 @@ class _PodcastManagementTabState extends State<_PodcastManagementTab> {
                 // Find and delete all episodes and their audio files
                 final episodes = await firebaseService.getCollectionWhere(
                   'podcast_episodes',
-                  'podcastId',
+                  'podcast_id',
                   podcast.id,
                 );
 
                 for (final ep in episodes) {
-                  final audioUrl = (ep['audioUrl'] as String?) ?? '';
+                  final audioUrl = (ep['audio_url'] as String?) ??
+                      (ep['audioUrl'] as String?) ??
+                      '';
                   final episodeId = ep['id'] as String?;
 
                   if (audioUrl.isNotEmpty) {
@@ -1717,6 +1778,7 @@ class _PodcastManagementTabState extends State<_PodcastManagementTab> {
                 await firebaseService.deleteDocument('podcasts', podcast.id);
 
                 if (mounted) {
+                  setState(() {});
                   navigator.pop();
                   messenger.showSnackBar(
                     SnackBar(
@@ -1779,7 +1841,7 @@ class _CategoryManagementTabState extends State<_CategoryManagementTab> {
                   'id': d['id'] ?? d['docId'] ?? d['uid'],
                   'name': d['name'],
                   'order': d['order'] ?? 0,
-                  'isActive': d['isActive'] ?? true,
+                  'isActive': _activeFlag(d),
                 })
             .toList();
         _podcastCategoryDocs = podcastDocs
@@ -1787,7 +1849,7 @@ class _CategoryManagementTabState extends State<_CategoryManagementTab> {
                   'id': d['id'] ?? d['docId'] ?? d['uid'],
                   'name': d['name'],
                   'order': d['order'] ?? 0,
-                  'isActive': d['isActive'] ?? true,
+                  'isActive': _activeFlag(d),
                 })
             .toList();
         _loading = false;
@@ -1982,16 +2044,11 @@ class _CategoryManagementTabState extends State<_CategoryManagementTab> {
                       ? (_tractCategoryDocs.length + 1)
                       : (_podcastCategoryDocs.length + 1);
                   final id = DateTime.now().millisecondsSinceEpoch.toString();
-                  await firebaseService.createOrUpdateDocument(collection, id, {
-                    'id': id,
-                    'name': name,
-                    'description': '',
-                    'imageUrl': '',
-                    'order': order,
-                    'isActive': true,
-                    'createdAt': FieldValue.serverTimestamp(),
-                    'updatedAt': FieldValue.serverTimestamp(),
-                  });
+                  await firebaseService.createOrUpdateDocument(
+                    collection,
+                    id,
+                    _categoryPayload(name: name, order: order),
+                  );
                   if (!rootCtx.mounted) return;
                   navigator.pop();
                   await _refreshCategories();
@@ -2068,7 +2125,6 @@ class _CategoryManagementTabState extends State<_CategoryManagementTab> {
                   final firebaseService = FirebaseDatabaseService.instance;
                   await firebaseService.updateDocument(collection, id, {
                     'name': newName,
-                    'updatedAt': FieldValue.serverTimestamp(),
                   });
                   await _refreshCategories();
                   if (!mounted) return;
@@ -2610,15 +2666,10 @@ class _PodcastFormDialogState extends State<_PodcastFormDialog> {
         );
 
         // Save podcast to Firebase database with dynamic category string
-        final payload = {
-          ...podcast.toJson(),
-          'category':
-              _selectedPodcastCategoryName ?? podcast.category.displayName,
-          'imageUrl': podcast.coverImage,
-          'tags': podcast.tags,
-          'createdAt': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        };
+        final payload = _podcastPayload(
+          podcast,
+          category: _selectedPodcastCategoryName ?? podcast.category.displayName,
+        );
         await firebaseService.createOrUpdateDocument(
           'podcasts',
           podcast.id,
@@ -2626,7 +2677,7 @@ class _PodcastFormDialogState extends State<_PodcastFormDialog> {
         );
 
         if (!mounted) return;
-        navigator.pop();
+        navigator.pop(podcast);
         messenger.showSnackBar(
           SnackBar(
             content: Text(
@@ -2820,11 +2871,7 @@ class _EpisodeManagementDialogState extends State<_EpisodeManagementDialog> {
 
                 // Delete audio file from storage if it exists
                 if (episode.audioUrl.isNotEmpty) {
-                  // Extract the path from the URL
-                  final uri = Uri.parse(episode.audioUrl);
-                  final path = uri.path.split('/o/')[1].split('?')[0];
-                  final decodedPath = Uri.decodeComponent(path);
-                  await firebaseService.deleteFile(decodedPath);
+                  await firebaseService.deleteFileByUrl(episode.audioUrl);
                 }
 
                 // Update podcast episode count
@@ -2835,7 +2882,7 @@ class _EpisodeManagementDialogState extends State<_EpisodeManagementDialog> {
                 await firebaseService.createOrUpdateDocument(
                   'podcasts',
                   updatedPodcast.id,
-                  updatedPodcast.toJson(),
+                  _podcastPayload(updatedPodcast),
                 );
 
                 if (!mounted) return;
