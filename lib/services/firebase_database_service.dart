@@ -43,6 +43,7 @@ class FirebaseDatabaseService {
     'chat_channels': AppwriteBackendConfig.chatChannelsCollectionId,
     'chat_messages': AppwriteBackendConfig.chatMessagesCollectionId,
     'message_tags': AppwriteBackendConfig.messageTagsCollectionId,
+    'meeting_files': AppwriteBackendConfig.meetingFilesCollectionId,
   };
 
   static const Map<String, String> _appwriteBucketIds = {
@@ -1291,16 +1292,16 @@ class FirebaseDatabaseService {
   // Meeting File Sharing Methods
   Future<List<Map<String, dynamic>>> getMeetingFiles() async {
     try {
-      final snapshot = await _firestore
-          .collection('meeting_files')
-          .orderBy('created_at', descending: true)
-          .get();
+      final snapshot = await _appwriteDatabases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _collectionId('meeting_files'),
+        queries: [
+          aw.Query.orderDesc('created_at'),
+          aw.Query.limit(100),
+        ],
+      );
 
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return data;
-      }).toList();
+      return snapshot.documents.map(_documentData).toList();
     } catch (e) {
       _logger.error('Error getting meeting files: $e');
       throw DatabaseException('Failed to get meeting files', originalError: e);
@@ -1309,18 +1310,14 @@ class FirebaseDatabaseService {
 
   // Stream real-time updates for meeting files
   Stream<List<Map<String, dynamic>>> getMeetingFilesStream() {
-    return _firestore
-        .collection('meeting_files')
-        .orderBy('created_at', descending: true)
-        .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) {
-              final data = doc.data();
-              data['id'] = doc.id;
-              return data;
-            }).toList());
+    return (() async* {
+      yield await getMeetingFiles();
+      yield* Stream.periodic(const Duration(seconds: 30))
+          .asyncMap((_) => getMeetingFiles());
+    })();
   }
 
-  // Upload meeting file bytes to Firebase Storage and save metadata to Firestore
+  // Upload meeting file bytes to Appwrite Storage and save metadata to Appwrite.
   Future<void> uploadMeetingFileBytes(
     Uint8List data, {
     required String fileName,
@@ -1331,69 +1328,44 @@ class FirebaseDatabaseService {
     try {
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final fileType = fileName.split('.').last.toLowerCase();
-      final storagePath = 'meeting_files/$uploaderId/${timestamp}_$fileName';
+      final fileId = aw.ID.unique();
+      final createdAt = DateTime.now().toUtc().toIso8601String();
 
-      // Basic content type mapping
-      String? contentType;
-      switch (fileType) {
-        case 'png':
-          contentType = 'image/png';
-          break;
-        case 'jpg':
-        case 'jpeg':
-          contentType = 'image/jpeg';
-          break;
-        case 'gif':
-          contentType = 'image/gif';
-          break;
-        case 'pdf':
-          contentType = 'application/pdf';
-          break;
-        case 'doc':
-          contentType = 'application/msword';
-          break;
-        case 'docx':
-          contentType =
-              'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-          break;
-        case 'xls':
-          contentType = 'application/vnd.ms-excel';
-          break;
-        case 'xlsx':
-          contentType =
-              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-          break;
-        case 'ppt':
-          contentType = 'application/vnd.ms-powerpoint';
-          break;
-        case 'pptx':
-          contentType =
-              'application/vnd.openxmlformats-officedocument.presentationml.presentation';
-          break;
-        default:
-          contentType = null;
-      }
+      await _appwriteStorage.createFile(
+        bucketId: AppwriteBackendConfig.meetingFilesBucketId,
+        fileId: fileId,
+        file: aw.InputFile.fromBytes(
+          bytes: data,
+          filename: '${timestamp}_$fileName',
+        ),
+      );
 
-      // Upload to storage
-      final ref = _storage.ref().child(storagePath);
-      final metadata = SettableMetadata(contentType: contentType);
-      final taskSnapshot = await ref.putData(data, metadata);
-      await taskSnapshot.ref.getDownloadURL(); // ensure upload completes
+      await _appwriteDatabases.createDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _collectionId('meeting_files'),
+        documentId: aw.ID.unique(),
+        data: _sanitizeAppwriteData({
+          'meeting_id': 'general',
+          'name': fileName,
+          'file_url': _appwriteFileViewUrl(
+            AppwriteBackendConfig.meetingFilesBucketId,
+            fileId,
+          ),
+          'file_path': fileId,
+          'file_name': fileName,
+          'file_type': fileType,
+          'file_size': data.lengthInBytes,
+          'description': description,
+          'uploaded_by': uploadedBy,
+          'uploader_id': uploaderId,
+          'visibility': 'meeting',
+          'uploaded_at': createdAt,
+          'created_at': createdAt,
+          'updated_at': createdAt,
+        }),
+      );
 
-      // Save metadata document
-      await _firestore.collection('meeting_files').add({
-        'file_name': fileName,
-        'file_path': storagePath,
-        'file_type': fileType,
-        'file_size': data.lengthInBytes,
-        'description': description,
-        'uploaded_by': uploadedBy,
-        'uploader_id': uploaderId,
-        'uploaded_at': FieldValue.serverTimestamp(),
-        'created_at': FieldValue.serverTimestamp(),
-      });
-
-      _logger.info('Meeting file uploaded: $storagePath');
+      _logger.info('Meeting file uploaded: $fileId');
     } catch (e) {
       _logger.error('Error uploading meeting file: $e');
       throw DatabaseException('Failed to upload meeting file',
@@ -1401,26 +1373,54 @@ class FirebaseDatabaseService {
     }
   }
 
+  String _appwriteFileViewUrl(String bucketId, String fileId) {
+    final endpoint = AppwriteBackendConfig.endpoint.replaceFirst(
+      RegExp(r'/v1/?$'),
+      '',
+    );
+    final encodedBucket = Uri.encodeComponent(bucketId);
+    final encodedFile = Uri.encodeComponent(fileId);
+    final encodedProject = Uri.encodeComponent(AppwriteBackendConfig.projectId);
+    return '$endpoint/v1/storage/buckets/$encodedBucket/files/$encodedFile/view?project=$encodedProject';
+  }
+
   // Get a download URL for a meeting file path
   Future<String> getMeetingFileDownloadUrl(String filePath) async {
     try {
-      final ref = _storage.ref().child(filePath);
-      return await ref.getDownloadURL();
+      if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+        return filePath;
+      }
+      return _appwriteFileViewUrl(
+        AppwriteBackendConfig.meetingFilesBucketId,
+        filePath,
+      );
     } catch (e) {
       _logger.error('Error getting download URL for $filePath: $e');
       throw DatabaseException('Failed to get download URL', originalError: e);
     }
   }
 
-  // Delete meeting file from storage and Firestore
+  // Delete meeting file from Appwrite Storage and database
   Future<void> deleteMeetingFile(String documentId, String filePath) async {
     try {
-      // Delete storage file
-      final ref = _storage.ref().child(filePath);
-      await ref.delete();
+      if (filePath.isNotEmpty &&
+          !filePath.startsWith('http://') &&
+          !filePath.startsWith('https://')) {
+        try {
+          await _appwriteStorage.deleteFile(
+            bucketId: AppwriteBackendConfig.meetingFilesBucketId,
+            fileId: filePath,
+          );
+        } on aw.AppwriteException catch (e) {
+          if (e.code != 404) rethrow;
+        }
+      }
 
-      // Delete Firestore doc
-      await _firestore.collection('meeting_files').doc(documentId).delete();
+      await _appwriteDatabases.deleteDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _collectionId('meeting_files'),
+        documentId: documentId,
+      );
       _logger.info('Meeting file deleted: $filePath (doc: $documentId)');
     } catch (e) {
       _logger.error('Error deleting meeting file: $e');

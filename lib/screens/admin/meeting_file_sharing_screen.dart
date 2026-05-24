@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/firebase_database_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/role_access_service.dart';
@@ -539,7 +538,7 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
 
   Future<void> _downloadFile(MeetingFile file) async {
     try {
-      // Get the download URL from Firebase Storage
+      // Get the download URL from Appwrite Storage.
       final downloadUrl =
           await _databaseService.getMeetingFileDownloadUrl(file.filePath);
 
@@ -590,7 +589,7 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
 
   Future<void> _deleteFile(MeetingFile file) async {
     try {
-      // Delete from Firebase Storage and database
+      // Delete from Appwrite Storage and database.
       await _databaseService.deleteMeetingFile(file.id, file.filePath);
 
       if (mounted) {
@@ -630,9 +629,7 @@ class MeetingFile {
   factory MeetingFile.fromJson(Map<String, dynamic> json) {
     DateTime uploadedAt;
     final rawUploadedAt = json['uploaded_at'];
-    if (rawUploadedAt is Timestamp) {
-      uploadedAt = rawUploadedAt.toDate();
-    } else if (rawUploadedAt is String) {
+    if (rawUploadedAt is String) {
       uploadedAt = DateTime.parse(rawUploadedAt);
     } else if (rawUploadedAt is DateTime) {
       uploadedAt = rawUploadedAt;

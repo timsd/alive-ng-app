@@ -15,8 +15,8 @@ still import Firebase services and must be replaced one workflow at a time.
   analytics event persistence, user Bible/prayer/study statistics, study progress, lesson-level study progress, study, health, health tracking helper,
   health recipe/remedy submissions, onboarding content, admin dashboard stats, admin app settings, admin content management, admin tract/podcast management, kids content CRUD, admin kids story/mission publishing, events, announcements and announcement editing, public missions, podcast listing/episode provider and audio actions, tract remote sync/progress, tract PDF text extraction, tract reader progress, app update settings, approval link
   tokens, daily verse records/generation settings, donation records, donation
-  projects/settings reads, kids stories/missions public screens, Appwrite-backed tract and
-  board storage compatibility, and the Paystack function flow.
+  projects/settings reads, kids stories/missions public screens, Appwrite-backed tract,
+  board storage compatibility, meeting file sharing storage/metadata, and the Paystack function flow.
 - LiveKit is the current meeting stack through the `createLiveKitToken`
   Appwrite function.
 - `scripts/appwrite_infrastructure_schema.mjs` is the source of truth for
