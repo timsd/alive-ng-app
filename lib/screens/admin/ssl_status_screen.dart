@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../services/ssl_service.dart';
-import '../../services/firebase_database_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/custom_card.dart';
 import '../../widgets/loading_widget.dart';
@@ -28,12 +27,13 @@ class _SSLStatusScreenState extends ConsumerState<SSLStatusScreen> {
 
   Future<void> _loadSSLStatus() async {
     setState(() => _isLoading = true);
-    
+
     try {
       final sslStatus = await SSLService.instance.getSSLStatus();
-      final connectionTest = await FirebaseDatabaseService.instance.verifySSLConfiguration();
+      final connectionTest =
+          await SSLService.instance.verifyAppwriteConnection();
       final securityTest = await SSLService.instance.testSSLSecurity();
-      
+
       setState(() {
         _sslStatus = sslStatus;
         _connectionTest = connectionTest;
@@ -52,19 +52,20 @@ class _SSLStatusScreenState extends ConsumerState<SSLStatusScreen> {
 
   Future<void> _testSSLConnection() async {
     setState(() => _isLoading = true);
-    
+
     try {
-      final result = await FirebaseDatabaseService.instance.testSSLConnection();
-      
+      final result = await SSLService.instance.testAppwriteConnection();
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? 'SSL test completed'),
-            backgroundColor: result['success'] == true ? Colors.green : Colors.red,
+            backgroundColor:
+                result['success'] == true ? Colors.green : Colors.red,
           ),
         );
       }
-      
+
       // Reload status after test
       await _loadSSLStatus();
     } catch (e) {
@@ -115,7 +116,7 @@ class _SSLStatusScreenState extends ConsumerState<SSLStatusScreen> {
   Widget _buildSSLOverviewCard() {
     final sslEnabled = _sslStatus?['ssl_enabled'] ?? false;
     final certificateLoaded = _sslStatus?['certificate_loaded'] ?? false;
-    
+
     return CustomCard(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -141,7 +142,7 @@ class _SSLStatusScreenState extends ConsumerState<SSLStatusScreen> {
             _buildStatusRow('Certificate Loaded', certificateLoaded),
             if (_connectionTest != null)
               _buildStatusRow(
-                'Connection Secure', 
+                'Connection Secure',
                 _connectionTest!['ssl_enabled'] ?? false,
               ),
           ],
@@ -152,10 +153,10 @@ class _SSLStatusScreenState extends ConsumerState<SSLStatusScreen> {
 
   Widget _buildConnectionStatusCard() {
     if (_connectionTest == null) return const SizedBox.shrink();
-    
+
     final isSecure = _connectionTest!['ssl_enabled'] ?? false;
     final url = _connectionTest!['url'] ?? 'Unknown';
-    
+
     return CustomCard(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -181,7 +182,9 @@ class _SSLStatusScreenState extends ConsumerState<SSLStatusScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: isSecure ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
+                color: isSecure
+                    ? Colors.green.withValues(alpha: 0.1)
+                    : Colors.red.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: isSecure ? Colors.green : Colors.red,
@@ -189,7 +192,7 @@ class _SSLStatusScreenState extends ConsumerState<SSLStatusScreen> {
                 ),
               ),
               child: Text(
-                isSecure ? '✅ Secure HTTPS Connection' : '⚠️ Insecure Connection',
+                isSecure ? 'Secure HTTPS Connection' : 'Insecure Connection',
                 style: TextStyle(
                   color: isSecure ? Colors.green : Colors.red,
                   fontWeight: FontWeight.w500,
@@ -204,10 +207,10 @@ class _SSLStatusScreenState extends ConsumerState<SSLStatusScreen> {
 
   Widget _buildSecurityTestCard() {
     if (_securityTest == null) return const SizedBox.shrink();
-    
+
     final isSecure = _securityTest!['secure'] ?? false;
     final checks = _securityTest!['checks'] as Map<String, dynamic>? ?? {};
-    
+
     return CustomCard(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -228,9 +231,9 @@ class _SSLStatusScreenState extends ConsumerState<SSLStatusScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            ...checks.entries.map((entry) => 
-              _buildStatusRow(
-                _formatCheckName(entry.key), 
+            ...checks.entries.map(
+              (entry) => _buildStatusRow(
+                _formatCheckName(entry.key),
                 entry.value == true,
               ),
             ),
@@ -241,11 +244,12 @@ class _SSLStatusScreenState extends ConsumerState<SSLStatusScreen> {
   }
 
   Widget _buildCertificateInfoCard() {
-    final certificateInfo = _sslStatus?['certificate_info'] as Map<String, dynamic>?;
+    final certificateInfo =
+        _sslStatus?['certificate_info'] as Map<String, dynamic>?;
     if (certificateInfo == null) return const SizedBox.shrink();
-    
+
     final isValid = certificateInfo['valid'] ?? false;
-    
+
     return CustomCard(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -278,9 +282,10 @@ class _SSLStatusScreenState extends ConsumerState<SSLStatusScreen> {
   }
 
   Widget _buildRecommendationsCard() {
-    final recommendations = _sslStatus?['recommendations'] as List<dynamic>? ?? [];
+    final recommendations =
+        _sslStatus?['recommendations'] as List<dynamic>? ?? [];
     if (recommendations.isEmpty) return const SizedBox.shrink();
-    
+
     return CustomCard(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -298,16 +303,21 @@ class _SSLStatusScreenState extends ConsumerState<SSLStatusScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            ...recommendations.map((rec) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('• ', style: TextStyle(fontWeight: FontWeight.bold)),
-                  Expanded(child: Text(rec.toString())),
-                ],
+            ...recommendations.map(
+              (rec) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '- ',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    Expanded(child: Text(rec.toString())),
+                  ],
+                ),
               ),
-            )),
+            ),
           ],
         ),
       ),
@@ -371,6 +381,3 @@ class _SSLStatusScreenState extends ConsumerState<SSLStatusScreen> {
     return TextFormatter.formatText(key);
   }
 }
-
-
-
