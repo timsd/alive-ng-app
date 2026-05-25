@@ -70,6 +70,9 @@ class AppwriteBackendConfig {
   static const String contentPagesCollectionId = 'content_pages';
   static const String dynamicContentCollectionId = 'dynamic_content';
   static const String featuredContentCollectionId = 'featured_content';
+  static const String booksCollectionId = 'books';
+  static const String articlesCollectionId = 'articles';
+  static const String videosCollectionId = 'videos';
   static const String studyGuidesCollectionId = 'study_guides';
   static const String studyLessonsCollectionId = 'study_lessons';
   static const String studyQuestionsCollectionId = 'study_questions';
@@ -99,6 +102,9 @@ class AppwriteBackendConfig {
   static const String meetingFilesCollectionId = 'meeting_files';
   static const String missionsCollectionId = 'missions';
   static const String userMissionsCollectionId = 'user_missions';
+  static const String tractsCollectionId = 'tracts';
+  static const String tractContentsCollectionId = 'tract_contents';
+  static const String tractCategoriesCollectionId = 'tract_categories';
   static const String podcastsCollectionId = 'podcasts';
   static const String podcastEpisodesCollectionId = 'podcast_episodes';
   static const String podcastCategoriesCollectionId = 'podcast_categories';

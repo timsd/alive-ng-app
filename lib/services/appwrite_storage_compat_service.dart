@@ -30,6 +30,89 @@ class AppwriteStorageCompatService {
   static const String whatTheBibleSaysPath = 'Tracts/What_The_Bible_Says';
   static const String boardDocumentsPath = 'board_documents';
 
+  static const Map<String, String> _legacyBucketIds = {
+    'audio-files': AppwriteBackendConfig.podcastMediaBucketId,
+    'video-files': AppwriteBackendConfig.contentMediaBucketId,
+    'pdf-files': AppwriteBackendConfig.tractFilesBucketId,
+    'profile-pictures': AppwriteBackendConfig.profileFilesBucketId,
+    'tract-avatars': AppwriteBackendConfig.tractFilesBucketId,
+    'podcast-covers': AppwriteBackendConfig.podcastMediaBucketId,
+    'meeting-files': AppwriteBackendConfig.meetingFilesBucketId,
+    'system-backups': AppwriteBackendConfig.systemExportsBucketId,
+    'app-logs': AppwriteBackendConfig.systemExportsBucketId,
+    'Tracts': AppwriteBackendConfig.tractFilesBucketId,
+    'board_documents': AppwriteBackendConfig.boardDocumentsBucketId,
+    'meeting_files': AppwriteBackendConfig.meetingFilesBucketId,
+    'profile_files': AppwriteBackendConfig.profileFilesBucketId,
+    'content_media': AppwriteBackendConfig.contentMediaBucketId,
+    'podcast_media': AppwriteBackendConfig.podcastMediaBucketId,
+    'system_exports': AppwriteBackendConfig.systemExportsBucketId,
+  };
+
+  Future<List<AppwriteStorageReference>> listFiles(String legacyBucket) async {
+    return _listBucket(_bucketIdFor(legacyBucket));
+  }
+
+  Future<String> uploadFile(
+    String legacyPath,
+    Uint8List data, {
+    String? contentType,
+  }) async {
+    final target = _storageTarget(legacyPath);
+    final url = await _uploadBytes(
+      bucketId: target.bucketId,
+      objectName: target.objectName,
+      bytes: data,
+      contentType: contentType ?? 'application/octet-stream',
+      logLabel: 'file',
+    );
+    return url ??
+        appwriteFileUrl(
+          target.bucketId,
+          _stableFileId(target.objectName),
+        );
+  }
+
+  Future<void> deleteFile(String legacyPath) async {
+    final target = _storageTarget(legacyPath);
+    try {
+      await _storage.deleteFile(
+        bucketId: target.bucketId,
+        fileId: _stableFileId(target.objectName),
+      );
+    } catch (e) {
+      _logger.error('Error deleting Appwrite file', e);
+      throw StorageException('Failed to delete file', originalError: e);
+    }
+  }
+
+  Future<void> deleteFileByUrl(String downloadUrl) async {
+    try {
+      final uri = Uri.parse(downloadUrl);
+      final segments = uri.pathSegments;
+      final bucketIndex = segments.indexOf('buckets');
+      final fileIndex = segments.indexOf('files');
+      if (bucketIndex == -1 ||
+          fileIndex == -1 ||
+          bucketIndex + 1 >= segments.length ||
+          fileIndex + 1 >= segments.length) {
+        throw const FormatException('Unsupported Appwrite storage URL');
+      }
+      await _storage.deleteFile(
+        bucketId: segments[bucketIndex + 1],
+        fileId: segments[fileIndex + 1],
+      );
+    } catch (e) {
+      _logger.error('Error deleting Appwrite file by URL', e);
+      throw StorageException('Failed to delete file by URL', originalError: e);
+    }
+  }
+
+  Future<String> getDownloadUrl(String legacyPath) async {
+    final target = _storageTarget(legacyPath);
+    return _downloadUrl(target.bucketId, _stableFileId(target.objectName));
+  }
+
   Future<String?> uploadBoardDocument(
       Uint8List bytes, String fileName, String contentType) async {
     return _uploadBytes(
@@ -246,6 +329,20 @@ class AppwriteStorageCompatService {
       return fileName;
     }
     return '$legacyPrefix/$fileName';
+  }
+
+  String _bucketIdFor(String legacyBucket) {
+    return _legacyBucketIds[legacyBucket] ?? legacyBucket;
+  }
+
+  ({String bucketId, String objectName}) _storageTarget(String legacyPath) {
+    final normalized = legacyPath.replaceAll('\\', '/');
+    final parts = normalized.split('/');
+    final bucketKey = parts.first;
+    final bucketId = _bucketIdFor(bucketKey);
+    final objectName =
+        parts.length > 1 ? parts.sublist(1).join('/') : parts.first;
+    return (bucketId: bucketId, objectName: objectName);
   }
 
   String _stableFileId(String objectName) {

@@ -34,9 +34,9 @@ for payments, and Resend-backed Appwrite Functions for email.
 - **Payments:** Paystack, handled server-side through Appwrite Functions
 - **Email:** Resend via the `send_email` Appwrite Function
 - **Local data:** SQLite/Sqflite, SharedPreferences, Secure Storage
-- **Remaining compatibility:** Some legacy Firebase bridge code remains only
-  where active screens still depend on it. Do not delete Firebase config, rules,
-  indexes, or packages until those imports are fully gone.
+- **Remaining compatibility:** Firebase remains only for the FCM web/Android
+  bridge plus analytics/crash reporting while Appwrite Messaging provider setup
+  is completed.
 
 ## Repository Layout
 
@@ -173,8 +173,8 @@ Set Coolify build argument:
 FLUTTER_BUILD_ARGS=--dart-define=APPWRITE_ENDPOINT=... --dart-define=APPWRITE_PROJECT_ID=... --dart-define=APPWRITE_DATABASE_ID=... --dart-define=LIVEKIT_URL=...
 ```
 
-Also configure public Firebase web-push bridge values only while the FCM web
-service worker remains in use. Do not pass private secrets as build args.
+Also configure public FCM web-push bridge values only while the web service
+worker remains in use. Do not pass private secrets as build args.
 
 ## Android Release
 
@@ -213,16 +213,17 @@ build/app/outputs/bundle/release/app-release.aab
 
 ## Migration And Archive Policy
 
-The app is almost fully migrated to Appwrite, but a few active modules still use
-the compatibility bridge. Legacy files that are no longer imported are moved to
-`oldfirebasedelete/` first instead of being deleted immediately. This keeps a
-safe rollback/reference trail while the final Firebase removal is completed.
+The app is code-side migrated to Appwrite for database, storage, auth, and
+function-backed workflows. Legacy files that are no longer imported are moved
+to `oldfirebasedelete/` first instead of being deleted immediately. This keeps
+a safe rollback/reference trail while the final Firebase removal is completed.
 
 Current remaining migration targets are primarily:
 
-- Firebase Messaging bridge to final Appwrite Messaging/FCM flow
-- Admin/library/offline screens still importing `FirebaseDatabaseService`
-- Legacy Firebase config/rules/indexes after all active imports are gone
+- Appwrite Messaging provider validation for the final FCM delivery path
+- Browser QA once the Coolify/Appwrite endpoint is reachable
+- Legacy Firebase config/rules/indexes after messaging/telemetry replacement is
+  fully decided
 
 ## Project Health Commands
 

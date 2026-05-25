@@ -6,7 +6,8 @@ import '../../models/tract_models.dart';
 import '../../models/podcast_models.dart';
 import '../../utils/responsive_utils.dart';
 import '../../widgets/role_guard.dart';
-import '../../services/firebase_database_service.dart';
+import '../../services/appwrite_admin_content_service.dart';
+import '../../services/appwrite_storage_compat_service.dart';
 import '../../services/pdf_extractor_service.dart';
 import '../../widgets/custom_image.dart';
 
@@ -445,14 +446,15 @@ class _EpisodeFormDialogState extends State<_EpisodeFormDialog> {
       final navigator = Navigator.of(context);
       final messenger = ScaffoldMessenger.of(context);
       try {
-        final firebaseService = FirebaseDatabaseService.instance;
+        final contentService = AppwriteAdminContentService.instance;
+        final storageService = AppwriteStorageCompatService();
 
         // Upload audio file
         String? audioUrl;
         if (_selectedAudioBytes != null && _selectedAudioName != null) {
           final timestamp = DateTime.now().millisecondsSinceEpoch;
           final fileName = '${timestamp}_${_selectedAudioName!}';
-          audioUrl = await firebaseService.uploadFile(
+          audioUrl = await storageService.uploadFile(
             'audio-files/${widget.podcast.id}/$fileName',
             _selectedAudioBytes!,
             contentType: 'audio/mpeg',
@@ -473,8 +475,7 @@ class _EpisodeFormDialogState extends State<_EpisodeFormDialog> {
           isDownloaded: false,
         );
 
-        // Save episode to Firebase
-        await firebaseService.createOrUpdateDocument(
+        await contentService.upsertDocument(
           'podcast_episodes',
           episode.id,
           _episodePayload(episode),
@@ -486,7 +487,7 @@ class _EpisodeFormDialogState extends State<_EpisodeFormDialog> {
             episodes: widget.podcast.episodes + 1,
           );
 
-          await firebaseService.createOrUpdateDocument(
+          await contentService.upsertDocument(
             'podcasts',
             updatedPodcast.id,
             _podcastPayload(updatedPodcast),
@@ -533,13 +534,13 @@ class _TractManagementTab extends StatefulWidget {
 
 class _TractManagementTabState extends State<_TractManagementTab> {
   Future<List<Tract>> _loadTracts() async {
-    final docs = await FirebaseDatabaseService.instance.getCollection(
+    final docs = await AppwriteAdminContentService.instance.listCollection(
       'tracts',
       orderBy: 'order',
     );
     return docs.map((doc) {
       final id = doc['id'] as String? ?? '';
-      return Tract.fromFirestore(doc, id);
+      return Tract.fromDocument(doc, id);
     }).toList();
   }
 
@@ -722,9 +723,9 @@ class _TractManagementTabState extends State<_TractManagementTab> {
           TextButton(
             onPressed: () async {
               try {
-                final firebaseService = FirebaseDatabaseService.instance;
+                final contentService = AppwriteAdminContentService.instance;
+                final storageService = AppwriteStorageCompatService();
 
-                // Delete associated files from Firebase Storage
                 final List<String> filesToDelete = [];
 
                 // Add PDF file if exists
@@ -747,14 +748,14 @@ class _TractManagementTabState extends State<_TractManagementTab> {
                 // Delete files from Storage
                 for (final fileUrl in filesToDelete) {
                   try {
-                    await firebaseService.deleteFileByUrl(fileUrl);
+                    await storageService.deleteFileByUrl(fileUrl);
                   } catch (e) {
                     debugPrint('Warning: Could not delete file $fileUrl: $e');
                     // Continue with other deletions even if one fails
                   }
                 }
 
-                await firebaseService.deleteDocument('tracts', tract.id);
+                await contentService.deleteDocument('tracts', tract.id);
 
                 if (!mounted) return;
                 setState(() {});
@@ -806,7 +807,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
   final _pagesController = TextEditingController();
   final _tagsController = TextEditingController();
 
-  // Dynamic tract categories from Firestore
+  // Dynamic tract categories from Appwrite
   List<String> _tractCategories = [];
   String? _selectedCategoryName;
   bool _loadingTractCategories = true;
@@ -839,7 +840,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
       _selectedCoverNames = List<String>.from(widget.tract!.coverImages);
     }
 
-    // Load tract categories from Firestore
+    // Load tract categories from Appwrite
     _loadTractCategories();
   }
 
@@ -855,13 +856,10 @@ class _TractFormDialogState extends State<_TractFormDialog> {
 
   Future<void> _loadTractCategories() async {
     try {
-      final firebaseService = FirebaseDatabaseService.instance;
-      final docs = await firebaseService.getCollection('tract_categories',
-          orderBy: 'order');
-      final categoryNames = docs
-          .where(_activeFlag)
-          .map((d) => d['name'] as String)
-          .toList();
+      final docs = await AppwriteAdminContentService.instance
+          .listCollection('tract_categories', orderBy: 'order');
+      final categoryNames =
+          docs.where(_activeFlag).map((d) => d['name'] as String).toList();
       if (!mounted) return;
       setState(() {
         _tractCategories = categoryNames;
@@ -970,7 +968,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Category (dynamic from Firestore)
+                      // Category (dynamic from Appwrite)
                       _loadingTractCategories
                           ? const Padding(
                               padding: EdgeInsets.symmetric(vertical: 12.0),
@@ -1332,7 +1330,8 @@ class _TractFormDialogState extends State<_TractFormDialog> {
       final navigator = Navigator.of(context);
       final messenger = ScaffoldMessenger.of(context);
       try {
-        final firebaseService = FirebaseDatabaseService.instance;
+        final contentService = AppwriteAdminContentService.instance;
+        final storageService = AppwriteStorageCompatService();
 
         // For editing: collect old files to delete after successful upload
         final List<String> oldFilesToDelete = [];
@@ -1348,7 +1347,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
 
           final timestamp = DateTime.now().millisecondsSinceEpoch;
           final fileName = '${timestamp}_${_selectedPdfName!}';
-          pdfUrl = await firebaseService.uploadFile(
+          pdfUrl = await storageService.uploadFile(
             'pdf-files/$fileName',
             _selectedPdfBytes!,
             contentType: 'application/pdf',
@@ -1366,7 +1365,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
 
           final timestamp = DateTime.now().millisecondsSinceEpoch;
           final fileName = '${timestamp}_${_selectedCoverImageName!}';
-          coverImageUrl = await firebaseService.uploadFile(
+          coverImageUrl = await storageService.uploadFile(
             'tract-avatars/$fileName',
             _selectedCoverImageBytes!,
             contentType: 'image/jpeg',
@@ -1382,7 +1381,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
           final bytes = _selectedCoverImages[i];
           final timestamp = DateTime.now().millisecondsSinceEpoch;
           final fileName = '${timestamp}_$name';
-          final url = await firebaseService.uploadFile(
+          final url = await storageService.uploadFile(
             'tract-avatars/$fileName',
             bytes,
             contentType: 'image/jpeg',
@@ -1397,7 +1396,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
           title: _titleController.text,
           author: _authorController.text,
           description: _descriptionController.text,
-          // Local enum used only for UI visuals; Firestore payload will use name string
+          // Local enum used only for UI visuals; Appwrite payload uses a name string
           category: _selectedCategory,
           pages: int.parse(_pagesController.text),
           tags: _tagsController.text
@@ -1413,7 +1412,6 @@ class _TractFormDialogState extends State<_TractFormDialog> {
           ),
         );
 
-        // Save tract to Firebase database (upsert into 'tracts' collection)
         final payload = {
           'title': tract.title,
           'description': tract.description,
@@ -1428,13 +1426,12 @@ class _TractFormDialogState extends State<_TractFormDialog> {
           'language': 'en',
           'featured': tract.featured,
           'tags': tract.tags,
-          'created_at':
-              widget.tract?.createdAt?.toUtc().toIso8601String() ??
-                  DateTime.now().toUtc().toIso8601String(),
+          'created_at': widget.tract?.createdAt?.toUtc().toIso8601String() ??
+              DateTime.now().toUtc().toIso8601String(),
           'updated_at': DateTime.now().toUtc().toIso8601String(),
         };
 
-        await firebaseService.createOrUpdateDocument(
+        await contentService.upsertDocument(
           'tracts',
           tract.id,
           payload,
@@ -1445,7 +1442,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
             final extractedText = await PdfExtractorService()
                 .extractTextFromBytes(_selectedPdfBytes!, _selectedPdfName!);
             if (extractedText.trim().isNotEmpty) {
-              await firebaseService.createOrUpdateDocument(
+              await contentService.upsertDocument(
                 'tract_contents',
                 tract.id,
                 {
@@ -1468,7 +1465,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
         // Clean up old files after successful save
         for (final fileUrl in oldFilesToDelete) {
           try {
-            await firebaseService.deleteFileByUrl(fileUrl);
+            await storageService.deleteFileByUrl(fileUrl);
           } catch (e) {
             debugPrint('Warning: Could not delete old file $fileUrl: $e');
             // Continue even if cleanup fails - the main operation succeeded
@@ -1518,7 +1515,7 @@ class _PodcastManagementTab extends StatefulWidget {
 
 class _PodcastManagementTabState extends State<_PodcastManagementTab> {
   Future<List<Podcast>> _loadPodcasts() async {
-    final docs = await FirebaseDatabaseService.instance.getCollection(
+    final docs = await AppwriteAdminContentService.instance.listCollection(
       'podcasts',
     );
     final podcasts = docs.map((doc) => Podcast.fromJson(doc)).toList();
@@ -1728,13 +1725,14 @@ class _PodcastManagementTabState extends State<_PodcastManagementTab> {
           TextButton(
             onPressed: () async {
               try {
-                final firebaseService = FirebaseDatabaseService.instance;
+                final contentService = AppwriteAdminContentService.instance;
+                final storageService = AppwriteStorageCompatService();
 
                 // Delete associated cover image if present
                 if (podcast.coverImage != null &&
                     podcast.coverImage!.isNotEmpty) {
                   try {
-                    await firebaseService.deleteFileByUrl(podcast.coverImage!);
+                    await storageService.deleteFileByUrl(podcast.coverImage!);
                   } catch (e) {
                     debugPrint(
                         'Warning: Could not delete podcast cover image: $e');
@@ -1742,7 +1740,7 @@ class _PodcastManagementTabState extends State<_PodcastManagementTab> {
                 }
 
                 // Find and delete all episodes and their audio files
-                final episodes = await firebaseService.getCollectionWhere(
+                final episodes = await contentService.listWhere(
                   'podcast_episodes',
                   'podcast_id',
                   podcast.id,
@@ -1756,7 +1754,7 @@ class _PodcastManagementTabState extends State<_PodcastManagementTab> {
 
                   if (audioUrl.isNotEmpty) {
                     try {
-                      await firebaseService.deleteFileByUrl(audioUrl);
+                      await storageService.deleteFileByUrl(audioUrl);
                     } catch (e) {
                       debugPrint(
                           'Warning: Could not delete episode audio $audioUrl: $e');
@@ -1765,7 +1763,7 @@ class _PodcastManagementTabState extends State<_PodcastManagementTab> {
 
                   if (episodeId != null && episodeId.isNotEmpty) {
                     try {
-                      await firebaseService.deleteDocument(
+                      await contentService.deleteDocument(
                           'podcast_episodes', episodeId);
                     } catch (e) {
                       debugPrint(
@@ -1775,7 +1773,7 @@ class _PodcastManagementTabState extends State<_PodcastManagementTab> {
                 }
 
                 // Delete podcast document
-                await firebaseService.deleteDocument('podcasts', podcast.id);
+                await contentService.deleteDocument('podcasts', podcast.id);
 
                 if (mounted) {
                   setState(() {});
@@ -1814,7 +1812,7 @@ class _CategoryManagementTab extends StatefulWidget {
 }
 
 class _CategoryManagementTabState extends State<_CategoryManagementTab> {
-  // Firestore-backed categories
+  // Appwrite-backed categories
   List<Map<String, dynamic>> _tractCategoryDocs = [];
   List<Map<String, dynamic>> _podcastCategoryDocs = [];
   bool _loading = true;
@@ -1830,11 +1828,11 @@ class _CategoryManagementTabState extends State<_CategoryManagementTab> {
       _loading = true;
     });
     try {
-      final firebaseService = FirebaseDatabaseService.instance;
-      final tractDocs = await firebaseService.getCollection('tract_categories',
+      final contentService = AppwriteAdminContentService.instance;
+      final tractDocs = await contentService.listCollection('tract_categories',
           orderBy: 'order');
-      final podcastDocs = await firebaseService
-          .getCollection('podcast_categories', orderBy: 'order');
+      final podcastDocs = await contentService
+          .listCollection('podcast_categories', orderBy: 'order');
       setState(() {
         _tractCategoryDocs = tractDocs
             .map((d) => {
@@ -2036,7 +2034,7 @@ class _CategoryManagementTabState extends State<_CategoryManagementTab> {
                   final navigator = Navigator.of(rootCtx);
                   final messenger = ScaffoldMessenger.of(rootCtx);
                   final name = controller.text.trim();
-                  final firebaseService = FirebaseDatabaseService.instance;
+                  final contentService = AppwriteAdminContentService.instance;
                   final collection = type == 'tract'
                       ? 'tract_categories'
                       : 'podcast_categories';
@@ -2044,7 +2042,7 @@ class _CategoryManagementTabState extends State<_CategoryManagementTab> {
                       ? (_tractCategoryDocs.length + 1)
                       : (_podcastCategoryDocs.length + 1);
                   final id = DateTime.now().millisecondsSinceEpoch.toString();
-                  await firebaseService.createOrUpdateDocument(
+                  await contentService.upsertDocument(
                     collection,
                     id,
                     _categoryPayload(name: name, order: order),
@@ -2122,8 +2120,8 @@ class _CategoryManagementTabState extends State<_CategoryManagementTab> {
                   if (id == null) {
                     throw Exception('Category not found');
                   }
-                  final firebaseService = FirebaseDatabaseService.instance;
-                  await firebaseService.updateDocument(collection, id, {
+                  await AppwriteAdminContentService.instance
+                      .updateDocument(collection, id, {
                     'name': newName,
                   });
                   await _refreshCategories();
@@ -2162,18 +2160,18 @@ class _CategoryManagementTabState extends State<_CategoryManagementTab> {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     try {
-      final firebaseService = FirebaseDatabaseService.instance;
+      final contentService = AppwriteAdminContentService.instance;
       // Check usage in related collections
       int usageCount = 0;
       if (type == 'tract') {
-        final tractsUsing = await firebaseService.getCollectionWhere(
-            'tracts', 'category', name);
+        final tractsUsing =
+            await contentService.listWhere('tracts', 'category', name);
         usageCount = tractsUsing.length;
       } else {
         // Podcast category may be stored as enum name or display name
-        final byDisplay = await firebaseService.getCollectionWhere(
-            'podcasts', 'category', name);
-        final byEnum = await firebaseService.getCollectionWhere(
+        final byDisplay =
+            await contentService.listWhere('podcasts', 'category', name);
+        final byEnum = await contentService.listWhere(
             'podcasts', 'category', name.toLowerCase());
         usageCount = byDisplay.length + byEnum.length;
       }
@@ -2228,7 +2226,7 @@ class _CategoryManagementTabState extends State<_CategoryManagementTab> {
 
       final collection =
           type == 'tract' ? 'tract_categories' : 'podcast_categories';
-      await firebaseService.deleteDocument(collection, id);
+      await contentService.deleteDocument(collection, id);
       if (!mounted) return;
       await _refreshCategories();
       if (!mounted) return;
@@ -2270,7 +2268,7 @@ class _PodcastFormDialogState extends State<_PodcastFormDialog> {
   final _descriptionController = TextEditingController();
   final _tagsController = TextEditingController();
 
-  // Dynamic podcast categories from Firestore
+  // Dynamic podcast categories from Appwrite
   List<String> _podcastCategories = [];
   String? _selectedPodcastCategoryName;
   bool _loadingPodcastCategories = true;
@@ -2300,9 +2298,8 @@ class _PodcastFormDialogState extends State<_PodcastFormDialog> {
       _loadingPodcastCategories = true;
     });
     try {
-      final firebaseService = FirebaseDatabaseService.instance;
-      final docs = await firebaseService.getCollection('podcast_categories',
-          orderBy: 'order');
+      final docs = await AppwriteAdminContentService.instance
+          .listCollection('podcast_categories', orderBy: 'order');
       final names = docs
           .map((d) => (d['name'] as String?) ?? '')
           .where((n) => n.isNotEmpty)
@@ -2419,7 +2416,7 @@ class _PodcastFormDialogState extends State<_PodcastFormDialog> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Category (dynamic from Firestore)
+                      // Category (dynamic from Appwrite)
                       _loadingPodcastCategories
                           ? const Padding(
                               padding: EdgeInsets.symmetric(vertical: 12.0),
@@ -2630,7 +2627,8 @@ class _PodcastFormDialogState extends State<_PodcastFormDialog> {
       final navigator = Navigator.of(context);
       final messenger = ScaffoldMessenger.of(context);
       try {
-        final firebaseService = FirebaseDatabaseService.instance;
+        final contentService = AppwriteAdminContentService.instance;
+        final storageService = AppwriteStorageCompatService();
 
         // Upload cover image
         String? coverImageUrl;
@@ -2638,7 +2636,7 @@ class _PodcastFormDialogState extends State<_PodcastFormDialog> {
             _selectedCoverImageName != null) {
           final timestamp = DateTime.now().millisecondsSinceEpoch;
           final fileName = '${timestamp}_${_selectedCoverImageName!}';
-          coverImageUrl = await firebaseService.uploadFile(
+          coverImageUrl = await storageService.uploadFile(
             'podcast-covers/$fileName',
             _selectedCoverImageBytes!,
             contentType: 'image/jpeg',
@@ -2665,12 +2663,12 @@ class _PodcastFormDialogState extends State<_PodcastFormDialog> {
           audioUrl: widget.podcast?.audioUrl,
         );
 
-        // Save podcast to Firebase database with dynamic category string
         final payload = _podcastPayload(
           podcast,
-          category: _selectedPodcastCategoryName ?? podcast.category.displayName,
+          category:
+              _selectedPodcastCategoryName ?? podcast.category.displayName,
         );
-        await firebaseService.createOrUpdateDocument(
+        await contentService.upsertDocument(
           'podcasts',
           podcast.id,
           payload,
@@ -2863,15 +2861,15 @@ class _EpisodeManagementDialogState extends State<_EpisodeManagementDialog> {
           TextButton(
             onPressed: () async {
               try {
-                final firebaseService = FirebaseDatabaseService.instance;
+                final contentService = AppwriteAdminContentService.instance;
+                final storageService = AppwriteStorageCompatService();
 
-                // Delete episode from Firebase
-                await firebaseService.deleteDocument(
+                await contentService.deleteDocument(
                     'podcast_episodes', episode.id);
 
                 // Delete audio file from storage if it exists
                 if (episode.audioUrl.isNotEmpty) {
-                  await firebaseService.deleteFileByUrl(episode.audioUrl);
+                  await storageService.deleteFileByUrl(episode.audioUrl);
                 }
 
                 // Update podcast episode count
@@ -2879,7 +2877,7 @@ class _EpisodeManagementDialogState extends State<_EpisodeManagementDialog> {
                   episodes: widget.podcast.episodes - 1,
                 );
 
-                await firebaseService.createOrUpdateDocument(
+                await contentService.upsertDocument(
                   'podcasts',
                   updatedPodcast.id,
                   _podcastPayload(updatedPodcast),

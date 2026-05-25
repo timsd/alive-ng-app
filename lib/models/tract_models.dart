@@ -7,9 +7,10 @@ class Tract {
   final String id;
   final String title;
   final String description;
-  /// Firestore-stored category string (also maps to [TractCategory.name])
+
+  /// Remote category string, also maps to [TractCategory.name].
   final String category;
-  // ---- Online / Firestore fields ----
+  // ---- Remote/Appwrite fields ----
   final String? pdfUrl;
   final String? localPdfPath;
   final String? imageUrl;
@@ -25,6 +26,7 @@ class Tract {
   final List<String> tags;
   final String? coverImage;
   final List<String> coverImages;
+
   /// Alias for pdfUrl, kept for backward compat
   String? get downloadUrl => pdfUrl;
 
@@ -52,8 +54,8 @@ class Tract {
   factory Tract.fromJson(Map<String, dynamic> json) => _$TractFromJson(json);
   Map<String, dynamic> toJson() => _$TractToJson(this);
 
-  /// Build from Firestore document (flexible field names)
-  factory Tract.fromFirestore(Map<String, dynamic> data, String docId) {
+  /// Build from an Appwrite or legacy document with flexible field names.
+  factory Tract.fromDocument(Map<String, dynamic> data, String docId) {
     DateTime? parseDate(dynamic v) {
       if (v == null) return null;
       if (v is DateTime) return v;
@@ -70,22 +72,35 @@ class Tract {
       description: data['description'] as String? ?? '',
       category: data['category'] as String? ?? 'evangelism',
       pdfUrl: data['pdfUrl'] as String? ?? data['pdf_url'] as String?,
-      localPdfPath: data['localPdfPath'] as String? ?? data['local_pdf_path'] as String?,
-      imageUrl: data['imageUrl'] as String? ?? data['image_url'] as String? ?? data['coverImage'] as String?,
+      localPdfPath:
+          data['localPdfPath'] as String? ?? data['local_pdf_path'] as String?,
+      imageUrl: data['imageUrl'] as String? ??
+          data['image_url'] as String? ??
+          data['coverImage'] as String?,
       createdAt: parseDate(data['createdAt'] ?? data['created_at']),
       updatedAt: parseDate(data['updatedAt'] ?? data['updated_at']),
-      isDownloaded: data['isDownloaded'] as bool? ?? data['is_downloaded'] as bool? ?? false,
+      isDownloaded: data['isDownloaded'] as bool? ??
+          data['is_downloaded'] as bool? ??
+          false,
       order: data['order'] as int? ?? 0,
       language: data['language'] as String? ?? 'en',
       author: data['author'] as String?,
       pages: data['pages'] as int?,
       featured: data['featured'] as bool? ?? false,
       tags: data['tags'] != null ? List<String>.from(data['tags'] as List) : [],
-      coverImage: data['coverImage'] as String? ?? data['cover_image'] as String?,
-      coverImages: data['coverImages'] != null
-          ? List<String>.from(data['coverImages'] as List)
-          : [],
+      coverImage:
+          data['coverImage'] as String? ?? data['cover_image'] as String?,
+      coverImages: _stringList(data['coverImages'] ?? data['cover_images']),
     );
+  }
+
+  @Deprecated('Use Tract.fromDocument for Appwrite and legacy documents.')
+  factory Tract.fromFirestore(Map<String, dynamic> data, String docId) =>
+      Tract.fromDocument(data, docId);
+
+  static List<String> _stringList(dynamic value) {
+    if (value is List) return value.map((item) => item.toString()).toList();
+    return const [];
   }
 
   Tract copyWith({
@@ -142,7 +157,9 @@ class Tract {
   List<String> get allCovers {
     final all = <String>[];
     if (coverImage != null && coverImage!.isNotEmpty) all.add(coverImage!);
-    if (imageUrl != null && imageUrl!.isNotEmpty && !all.contains(imageUrl)) all.add(imageUrl!);
+    if (imageUrl != null && imageUrl!.isNotEmpty && !all.contains(imageUrl)) {
+      all.add(imageUrl!);
+    }
     for (final img in coverImages) {
       if (!all.contains(img)) all.add(img);
     }
@@ -154,13 +171,20 @@ class Tract {
 extension TractCategoryDisplay on String {
   String get tractDisplayName {
     switch (toLowerCase()) {
-      case 'evangelism': return 'Evangelism';
-      case 'doctrine': return 'Doctrine';
-      case 'health': return 'Health';
-      case 'prophecy': return 'Prophecy';
-      case 'lifestyle': return 'Lifestyle';
-      case 'children': return 'Children';
-      case 'biblesays': return 'What the Bible Says';
+      case 'evangelism':
+        return 'Evangelism';
+      case 'doctrine':
+        return 'Doctrine';
+      case 'health':
+        return 'Health';
+      case 'prophecy':
+        return 'Prophecy';
+      case 'lifestyle':
+        return 'Lifestyle';
+      case 'children':
+        return 'Children';
+      case 'biblesays':
+        return 'What the Bible Says';
       default:
         if (isEmpty) return 'General';
         return this[0].toUpperCase() + substring(1);
@@ -184,7 +208,8 @@ class TractContent {
     this.metadata,
   });
 
-  factory TractContent.fromJson(Map<String, dynamic> json) => _$TractContentFromJson(json);
+  factory TractContent.fromJson(Map<String, dynamic> json) =>
+      _$TractContentFromJson(json);
   Map<String, dynamic> toJson() => _$TractContentToJson(this);
 }
 
@@ -206,7 +231,8 @@ class TractQuestion {
     required this.order,
   });
 
-  factory TractQuestion.fromJson(Map<String, dynamic> json) => _$TractQuestionFromJson(json);
+  factory TractQuestion.fromJson(Map<String, dynamic> json) =>
+      _$TractQuestionFromJson(json);
   Map<String, dynamic> toJson() => _$TractQuestionToJson(this);
 }
 
@@ -230,7 +256,8 @@ class UserTractAnswer {
     required this.score,
   });
 
-  factory UserTractAnswer.fromJson(Map<String, dynamic> json) => _$UserTractAnswerFromJson(json);
+  factory UserTractAnswer.fromJson(Map<String, dynamic> json) =>
+      _$UserTractAnswerFromJson(json);
   Map<String, dynamic> toJson() => _$UserTractAnswerToJson(this);
 }
 
@@ -252,7 +279,8 @@ class TractCategory {
     required this.isActive,
   });
 
-  factory TractCategory.fromJson(Map<String, dynamic> json) => _$TractCategoryFromJson(json);
+  factory TractCategory.fromJson(Map<String, dynamic> json) =>
+      _$TractCategoryFromJson(json);
   Map<String, dynamic> toJson() => _$TractCategoryToJson(this);
 
   String get displayName => name;
@@ -276,7 +304,8 @@ class TractProgress {
     required this.lastUpdated,
   });
 
-  factory TractProgress.fromJson(Map<String, dynamic> json) => _$TractProgressFromJson(json);
+  factory TractProgress.fromJson(Map<String, dynamic> json) =>
+      _$TractProgressFromJson(json);
   Map<String, dynamic> toJson() => _$TractProgressToJson(this);
 }
 
@@ -294,6 +323,7 @@ class TractStatistics {
     required this.categoryDistribution,
   });
 
-  factory TractStatistics.fromJson(Map<String, dynamic> json) => _$TractStatisticsFromJson(json);
+  factory TractStatistics.fromJson(Map<String, dynamic> json) =>
+      _$TractStatisticsFromJson(json);
   Map<String, dynamic> toJson() => _$TractStatisticsToJson(this);
 }

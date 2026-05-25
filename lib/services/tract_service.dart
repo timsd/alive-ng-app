@@ -30,7 +30,8 @@ class TractService {
   static const String _cacheKey = 'tract_cache';
   static const String _lastUpdateKey = 'tract_last_update';
 
-  static const String _remoteTractPath = AppwriteStorageCompatService.tractsPath;
+  static const String _remoteTractPath =
+      AppwriteStorageCompatService.tractsPath;
 
   // What the Bible Says series lessons (1-11)
   static const List<String> _bibleSaysLessons = [
@@ -210,8 +211,7 @@ class TractService {
       return null;
     } catch (e) {
       _logger.error('Error getting tract progress', e);
-      throw DatabaseException('Failed to get tract progress',
-          originalError: e);
+      throw DatabaseException('Failed to get tract progress', originalError: e);
     }
   }
 
@@ -283,8 +283,8 @@ class TractService {
           collectionId: 'tracts',
           documentId: tractId,
         );
-        totalDownloads =
-            _intValue(tractDoc.data['downloadCount'] ?? tractDoc.data['downloads']);
+        totalDownloads = _intValue(
+            tractDoc.data['downloadCount'] ?? tractDoc.data['downloads']);
       } catch (_) {}
 
       return TractStatistics(
@@ -404,7 +404,7 @@ class TractService {
         ],
       );
       return querySnapshot.documents.map((doc) {
-        return Tract.fromFirestore(doc.data, doc.$id);
+        return Tract.fromDocument(doc.data, doc.$id);
       }).toList();
     } catch (e) {
       _logger.error('Error fetching tracts from Appwrite', e);
@@ -419,7 +419,7 @@ class TractService {
         collectionId: 'tracts',
         documentId: tractId,
       );
-      return Tract.fromFirestore(doc.data, doc.$id);
+      return Tract.fromDocument(doc.data, doc.$id);
     } on AppwriteException catch (e) {
       if (e.code == 404) return null;
       _logger.error('Error fetching tract from Appwrite', e);

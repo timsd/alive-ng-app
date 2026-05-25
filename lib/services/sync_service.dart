@@ -1,9 +1,13 @@
+// ignore_for_file: deprecated_member_use
+
 import 'dart:async';
+import 'package:appwrite/appwrite.dart';
+import 'package:appwrite/models.dart' as models;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'firebase_database_service.dart';
+import '../config/appwrite_backend_config.dart';
+import '../main.dart';
+import 'appwrite_profile_service.dart';
 import 'storage_service.dart';
 import 'auth_service.dart';
 import 'daily_verse_generation_service.dart';
@@ -19,9 +23,11 @@ class SyncService {
     _initializeSync();
   }
 
-  final FirebaseDatabaseService _firebase = FirebaseDatabaseService.instance;
+  final Databases _databases = Databases(appwriteClient);
+  final Realtime _realtime = Realtime(appwriteClient);
   final StorageService _storage = StorageService.instance;
   final AuthService _auth = AuthService.instance;
+  final AppwriteProfileService _profileService = AppwriteProfileService();
   final DailyVerseGenerationService _verseGenerator =
       DailyVerseGenerationService.instance;
   final Logger _logger = Logger('SyncService');
@@ -33,7 +39,7 @@ class SyncService {
   bool _isSyncing = false;
 
   // Real-time subscriptions
-  final Map<String, dynamic> _realtimeChannels = {};
+  final Map<String, RealtimeSubscription> _realtimeChannels = {};
   final StreamController<RealtimeUpdate> _realtimeUpdatesController =
       StreamController<RealtimeUpdate>.broadcast();
 
@@ -51,149 +57,83 @@ class SyncService {
   void _setupRealtimeSync() {
     if (!_auth.isAuthenticated) return;
 
-    final userId = _auth.currentUser?.uid;
+    final userId = _auth.currentUser?.$id;
     if (userId == null) return;
 
-    _logger.info('Setting up real-time sync subscriptions (Firebase)');
+    _logger.info('Setting up real-time sync subscriptions (Appwrite)');
 
-    // Prayer Requests (user-specific)
-    final prSub = FirebaseFirestore.instance
-        .collection('prayer_requests')
-        .where('user_id', isEqualTo: userId)
-        .snapshots()
-        .listen((snapshot) {
-      for (final change in snapshot.docChanges) {
-        final data = change.doc.data();
-        if (data != null) {
-          final payload = {...data, 'id': change.doc.id};
-          _handleRealtimeUpdate('prayer_requests', payload);
-        }
-      }
-    }, onError: (e) {
-      _logger.error('Prayer requests realtime error: $e');
-    });
-    _realtimeChannels['prayer_requests'] = prSub;
+    _subscribeCollection(
+      tableName: 'prayer_requests',
+      collectionId: AppwriteBackendConfig.prayerRequestsCollectionId,
+      userId: userId,
+      userFields: const ['user_id', 'userId', 'requestedById'],
+    );
+    _subscribeCollection(
+      tableName: 'health_tracking',
+      collectionId: AppwriteBackendConfig.healthTrackingCollectionId,
+      userId: userId,
+      userFields: const ['user_id'],
+    );
+    _subscribeCollection(
+      tableName: 'mission_participants',
+      collectionId: AppwriteBackendConfig.userMissionsCollectionId,
+      userId: userId,
+      userFields: const ['user_id'],
+    );
+    _subscribeCollection(
+      tableName: 'study_guide_progress',
+      collectionId: AppwriteBackendConfig.studyProgressCollectionId,
+      userId: userId,
+      userFields: const ['user_id'],
+    );
+    _subscribeCollection(
+      tableName: 'user_profiles',
+      collectionId: AppwriteBackendConfig.usersCollectionId,
+      userId: userId,
+      documentId: userId,
+    );
+    _subscribeCollection(
+      tableName: 'missions',
+      collectionId: AppwriteBackendConfig.missionsCollectionId,
+    );
+    _subscribeCollection(
+      tableName: 'study_guides',
+      collectionId: AppwriteBackendConfig.studyGuidesCollectionId,
+    );
+    _subscribeCollection(
+      tableName: 'daily_verses',
+      collectionId: AppwriteBackendConfig.dailyVersesCollectionId,
+    );
+  }
 
-    // Health Tracking (user-specific)
-    final healthSub = FirebaseFirestore.instance
-        .collection('health_tracking')
-        .where('user_id', isEqualTo: userId)
-        .snapshots()
-        .listen((snapshot) {
-      for (final change in snapshot.docChanges) {
-        final data = change.doc.data();
-        if (data != null) {
-          final payload = {...data, 'id': change.doc.id};
-          _handleRealtimeUpdate('health_tracking', payload);
-        }
-      }
-    }, onError: (e) {
-      _logger.error('Health tracking realtime error: $e');
-    });
-    _realtimeChannels['health_tracking'] = healthSub;
+  void _subscribeCollection({
+    required String tableName,
+    required String collectionId,
+    String? userId,
+    List<String> userFields = const [],
+    String? documentId,
+  }) {
+    final subscription = _realtime.subscribe([
+      'databases.${AppwriteBackendConfig.databaseId}.collections.$collectionId.documents',
+    ]);
 
-    // Mission Participants (user-specific)
-    final missionParticipantsSub = FirebaseFirestore.instance
-        .collection('mission_participants')
-        .where('user_id', isEqualTo: userId)
-        .snapshots()
-        .listen((snapshot) {
-      for (final change in snapshot.docChanges) {
-        final data = change.doc.data();
-        if (data != null) {
-          final payload = {...data, 'id': change.doc.id};
-          _handleRealtimeUpdate('mission_participants', payload);
-        }
-      }
-    }, onError: (e) {
-      _logger.error('Mission participants realtime error: $e');
-    });
-    _realtimeChannels['mission_participants'] = missionParticipantsSub;
+    subscription.stream.listen((event) {
+      final document = models.Document.fromMap(event.payload);
+      if (documentId != null && document.$id != documentId) return;
 
-    // Study Guide Progress (user-specific)
-    final studyProgressSub = FirebaseFirestore.instance
-        .collection('study_guide_progress')
-        .where('user_id', isEqualTo: userId)
-        .snapshots()
-        .listen((snapshot) {
-      for (final change in snapshot.docChanges) {
-        final data = change.doc.data();
-        if (data != null) {
-          final payload = {...data, 'id': change.doc.id};
-          _handleRealtimeUpdate('study_guide_progress', payload);
-        }
+      final data = Map<String, dynamic>.from(document.data);
+      if (userId != null &&
+          userFields.isNotEmpty &&
+          !userFields.any((field) => data[field] == userId)) {
+        return;
       }
-    }, onError: (e) {
-      _logger.error('Study guide progress realtime error: $e');
-    });
-    _realtimeChannels['study_guide_progress'] = studyProgressSub;
 
-    // User Profiles (document-specific)
-    final userProfileSub = FirebaseFirestore.instance
-        .collection('user_profiles')
-        .doc(userId)
-        .snapshots()
-        .listen((doc) {
-      final data = doc.data();
-      if (data != null) {
-        final payload = {...data, 'id': doc.id};
-        _handleRealtimeUpdate('user_profiles', payload);
-      }
+      _handleRealtimeUpdate(tableName, {...data, 'id': document.$id});
     }, onError: (e) {
-      _logger.error('User profile realtime error: $e');
+      _logger.error('$tableName realtime error: $e');
     });
-    _realtimeChannels['user_profiles'] = userProfileSub;
 
-    // Missions (global)
-    final missionsSub = FirebaseFirestore.instance
-        .collection('missions')
-        .snapshots()
-        .listen((snapshot) {
-      for (final change in snapshot.docChanges) {
-        final data = change.doc.data();
-        if (data != null) {
-          final payload = {...data, 'id': change.doc.id};
-          _handleRealtimeUpdate('missions', payload);
-        }
-      }
-    }, onError: (e) {
-      _logger.error('Missions realtime error: $e');
-    });
-    _realtimeChannels['missions'] = missionsSub;
-
-    // Study Guides (global)
-    final studyGuidesSub = FirebaseFirestore.instance
-        .collection('study_guides')
-        .snapshots()
-        .listen((snapshot) {
-      for (final change in snapshot.docChanges) {
-        final data = change.doc.data();
-        if (data != null) {
-          final payload = {...data, 'id': change.doc.id};
-          _handleRealtimeUpdate('study_guides', payload);
-        }
-      }
-    }, onError: (e) {
-      _logger.error('Study guides realtime error: $e');
-    });
-    _realtimeChannels['study_guides'] = studyGuidesSub;
-
-    // Daily Verses (global)
-    final versesSub = FirebaseFirestore.instance
-        .collection('daily_verses')
-        .snapshots()
-        .listen((snapshot) {
-      for (final change in snapshot.docChanges) {
-        final data = change.doc.data();
-        if (data != null) {
-          final payload = {...data, 'id': change.doc.id};
-          _handleRealtimeUpdate('daily_verses', payload);
-        }
-      }
-    }, onError: (e) {
-      _logger.error('Daily verses realtime error: $e');
-    });
-    _realtimeChannels['daily_verses'] = versesSub;
+    _realtimeChannels[tableName] = subscription;
   }
 
   // Handle real-time updates
@@ -255,13 +195,7 @@ class SyncService {
   void disableRealtimeSync() {
     for (final channel in _realtimeChannels.values) {
       try {
-        if (channel is StreamSubscription) {
-          channel.cancel();
-        } else {
-          // Fallback for any legacy channel types
-          // ignore: invalid_use_of_protected_member
-          channel.unsubscribe();
-        }
+        channel.close();
       } catch (e) {
         _logger.error('Error cancelling realtime subscription: $e');
       }
@@ -368,7 +302,8 @@ class SyncService {
         return false;
       }
 
-      final remoteProfile = await _firebase.getUserProfile(currentUser.uid);
+      final remoteProfile =
+          await _profileService.getUserProfileModel(currentUser.$id);
 
       if (remoteProfile != null) {
         final remoteTimestamp = remoteProfile.updatedAt.toIso8601String();
@@ -391,7 +326,11 @@ class SyncService {
           // Local is newer, update remote
           try {
             final localProfile = UserProfile.fromJson(localProfileJson);
-            await _firebase.updateUserProfile(localProfile);
+            await _profileService.updateUserProfile(
+              userId: currentUser.$id,
+              profileData:
+                  _profileService.userProfileToAppwriteData(localProfile),
+            );
           } catch (e) {
             _logger
                 .warning('Failed to update remote user profile from local: $e');
@@ -409,22 +348,17 @@ class SyncService {
   // Sync prayer requests
   Future<bool> _syncPrayerRequests() async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
+      final user = _auth.currentUser;
       if (user == null) return false;
 
-      // Fetch prayer requests from Firebase
-      final snapshot = await FirebaseFirestore.instance
-          .collection('prayer_requests')
-          .where('user_id', isEqualTo: user.uid)
-          .orderBy('created_at', descending: true)
-          .get();
-
-      // Convert to list of maps for storage
-      final response = snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return data;
-      }).toList();
+      final response = await _listDocuments(
+        AppwriteBackendConfig.prayerRequestsCollectionId,
+        queries: [
+          Query.equal('user_id', user.$id),
+          Query.orderDesc('created_at'),
+          Query.limit(100),
+        ],
+      );
 
       // Store in local storage for offline access
       await _storage.setJsonList('prayer_requests', response);
@@ -439,23 +373,17 @@ class SyncService {
   // Sync health activities
   Future<bool> _syncHealthActivities() async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
+      final user = _auth.currentUser;
       if (user == null) return false;
 
-      // Fetch health tracking data from Firebase
-      final snapshot = await FirebaseFirestore.instance
-          .collection('health_tracking')
-          .where('user_id', isEqualTo: user.uid)
-          .orderBy('date', descending: true)
-          .limit(30) // Last 30 days
-          .get();
-
-      // Convert to list of maps for storage
-      final response = snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return data;
-      }).toList();
+      final response = await _listDocuments(
+        AppwriteBackendConfig.healthTrackingCollectionId,
+        queries: [
+          Query.equal('user_id', user.$id),
+          Query.orderDesc('date'),
+          Query.limit(30),
+        ],
+      );
 
       // Store in local storage for offline access
       await _storage.setJsonList('health_tracking', response);
@@ -470,36 +398,29 @@ class SyncService {
   // Sync missions
   Future<bool> _syncMissions() async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
+      final user = _auth.currentUser;
       if (user == null) return false;
 
-      // Fetch missions data from Firestore
-      final missionsSnapshot = await FirebaseFirestore.instance
-          .collection('missions')
-          .orderBy('created_at', descending: true)
-          .get();
-      final missions = missionsSnapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return data;
-      }).toList();
-
-      // Fetch user's mission participation
-      final participationSnapshot = await FirebaseFirestore.instance
-          .collection('mission_participants')
-          .where('user_id', isEqualTo: user.uid)
-          .get();
-      final participation = participationSnapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return data;
-      }).toList();
+      final missions = await _listDocuments(
+        AppwriteBackendConfig.missionsCollectionId,
+        queries: [
+          Query.orderDesc('created_at'),
+          Query.limit(100),
+        ],
+      );
+      final participation = await _listDocuments(
+        AppwriteBackendConfig.userMissionsCollectionId,
+        queries: [
+          Query.equal('user_id', user.$id),
+          Query.limit(100),
+        ],
+      );
 
       // Store in local storage for offline access
       await _storage.setJsonList('missions', missions);
       await _storage.setJsonList('mission_participation', participation);
       _logger.info(
-          'Missions synced (Firestore): ${missions.length} missions, ${participation.length} participations');
+          'Missions synced (Appwrite): ${missions.length} missions, ${participation.length} participations');
       return true;
     } catch (e) {
       _logger.error('Missions sync error', e);
@@ -510,36 +431,29 @@ class SyncService {
   // Sync study programs
   Future<bool> _syncStudyPrograms() async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
+      final user = _auth.currentUser;
       if (user == null) return false;
 
-      // Fetch study guides from Firestore
-      final guidesSnapshot = await FirebaseFirestore.instance
-          .collection('study_guides')
-          .orderBy('created_at', descending: true)
-          .get();
-      final studyGuides = guidesSnapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return data;
-      }).toList();
-
-      // Fetch user's study progress
-      final progressSnapshot = await FirebaseFirestore.instance
-          .collection('study_guide_progress')
-          .where('user_id', isEqualTo: user.uid)
-          .get();
-      final progress = progressSnapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return data;
-      }).toList();
+      final studyGuides = await _listDocuments(
+        AppwriteBackendConfig.studyGuidesCollectionId,
+        queries: [
+          Query.orderDesc('created_at'),
+          Query.limit(100),
+        ],
+      );
+      final progress = await _listDocuments(
+        AppwriteBackendConfig.studyProgressCollectionId,
+        queries: [
+          Query.equal('user_id', user.$id),
+          Query.limit(100),
+        ],
+      );
 
       // Store in local storage for offline access
       await _storage.setJsonList('study_guides', studyGuides);
       await _storage.setJsonList('study_progress', progress);
       _logger.info(
-          'Study programs synced (Firestore): ${studyGuides.length} guides, ${progress.length} progress records');
+          'Study programs synced (Appwrite): ${studyGuides.length} guides, ${progress.length} progress records');
       return true;
     } catch (e) {
       _logger.error('Study programs sync error', e);
@@ -570,7 +484,7 @@ class SyncService {
         await _verseGenerator.generateDailyVerseForDate(tomorrow);
       }
 
-      // Fetch daily verses from Firestore (last 30 days + next 7 days)
+      // Fetch daily verses from Appwrite (last 30 days + next 7 days)
       final startDate = DateTime.now().subtract(const Duration(days: 30));
       final endDate = DateTime.now().add(const Duration(days: 7));
 
@@ -586,7 +500,7 @@ class SyncService {
       await _storage.setJson('daily_verse_stats', stats);
 
       _logger.info(
-          '✅ Daily verses synced (Firestore) ${_formatDateForDatabase(DateTime.now())}: ${response.length} verses');
+          'Daily verses synced (Appwrite) ${_formatDateForDatabase(DateTime.now())}: ${response.length} verses');
       return true;
     } catch (e) {
       _logger.error('❌ Daily verses sync error', e);
@@ -597,6 +511,23 @@ class SyncService {
   /// Format date for database queries
   String _formatDateForDatabase(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  Future<List<Map<String, dynamic>>> _listDocuments(
+    String collectionId, {
+    List<String>? queries,
+  }) async {
+    final response = await _databases.listDocuments(
+      databaseId: AppwriteBackendConfig.databaseId,
+      collectionId: collectionId,
+      queries: queries,
+    );
+    return response.documents
+        .map((document) => {
+              ...Map<String, dynamic>.from(document.data),
+              'id': document.$id,
+            })
+        .toList();
   }
 
   // Queue local change for sync

@@ -3,10 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart';
-// Removed supabase_flutter import - using Firebase now
-import '../../services/firebase_database_service.dart';
 // import '../../services/auth_service.dart';
 // import '../../services/storage_service.dart';
+import '../../services/appwrite_storage_compat_service.dart';
 import '../../utils/toast_utils.dart';
 import '../../utils/logger.dart';
 import '../../services/material_sync_service.dart';
@@ -21,8 +20,8 @@ class StorageAdminScreen extends StatefulWidget {
 
 class _StorageAdminScreenState extends State<StorageAdminScreen>
     with SingleTickerProviderStateMixin {
-  final FirebaseDatabaseService _firebaseService =
-      FirebaseDatabaseService.instance;
+  final AppwriteStorageCompatService _storageService =
+      AppwriteStorageCompatService();
   final Logger _logger = Logger('StorageAdminScreen');
   late TabController _tabController;
 
@@ -82,7 +81,7 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
     });
 
     try {
-      final refs = await _firebaseService.listFiles(bucket);
+      final refs = await _storageService.listFiles(bucket);
       final files = await Future.wait(refs.map((ref) async {
         final md = await ref.getMetadata();
         return {
@@ -192,7 +191,7 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
     try {
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final filePath = '$bucket/${timestamp}_${file.name}';
-      await _firebaseService.uploadFile(
+      await _storageService.uploadFile(
         filePath,
         file.bytes!,
         contentType:
@@ -234,7 +233,7 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
 
     if (confirmed == true) {
       try {
-        await _firebaseService.deleteFile('$bucket/$fileName');
+        await _storageService.deleteFile('$bucket/$fileName');
         await _loadBucketFiles(bucket);
         ToastUtils.showSuccess('File deleted successfully');
       } catch (e) {
@@ -352,7 +351,7 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
                 break;
               case 'download':
                 final url =
-                    await _firebaseService.getDownloadUrl('$bucket/$name');
+                    await _storageService.getDownloadUrl('$bucket/$name');
                 if (await canLaunchUrl(Uri.parse(url))) {
                   await launchUrl(Uri.parse(url),
                       mode: LaunchMode.externalApplication);
@@ -447,7 +446,7 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
 
   void _copyPublicUrl(String bucket, String fileName) async {
     try {
-      final url = await _firebaseService.getDownloadUrl('$bucket/$fileName');
+      final url = await _storageService.getDownloadUrl('$bucket/$fileName');
       await Clipboard.setData(ClipboardData(text: url));
       ToastUtils.showSuccess('URL copied to clipboard');
     } catch (e) {

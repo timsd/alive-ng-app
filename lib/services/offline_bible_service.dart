@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_exception.dart';
-import 'firebase_database_service.dart';
 import '../models/bible_models.dart';
 import 'bible_database_helper.dart';
 import '../config/app_config.dart';
@@ -12,24 +11,19 @@ import '../utils/logger.dart';
 class OfflineBibleService {
   static final OfflineBibleService _instance = OfflineBibleService._internal();
   factory OfflineBibleService() => _instance;
-  final FirebaseDatabaseService _databaseService;
   final BibleDatabaseHelper _dbHelper;
 
   static final Logger _logger = Logger('OfflineBibleService');
 
   OfflineBibleService._internal({
-    FirebaseDatabaseService? databaseService,
     BibleDatabaseHelper? dbHelper,
-  })  : _databaseService = databaseService ?? FirebaseDatabaseService.instance,
-        _dbHelper = dbHelper ?? BibleDatabaseHelper();
+  }) : _dbHelper = dbHelper ?? BibleDatabaseHelper();
 
   @visibleForTesting
   factory OfflineBibleService.test({
-    required FirebaseDatabaseService databaseService,
     required BibleDatabaseHelper dbHelper,
   }) {
     return OfflineBibleService._internal(
-      databaseService: databaseService,
       dbHelper: dbHelper,
     );
   }
@@ -122,12 +116,6 @@ class OfflineBibleService {
             .toList();
       }
 
-      // If not in assets, fetch from Firebase (kept for compatibility)
-      final firebaseBooks = await _fetchBooksFromFirebase(lang);
-      if (firebaseBooks.isNotEmpty) {
-        return firebaseBooks;
-      }
-
       // Return books from database (default books are inserted during creation)
       return await _dbHelper.getAllBooks();
     } catch (e) {
@@ -163,7 +151,7 @@ class OfflineBibleService {
         return assetChapter;
       }
 
-      // Local-only mode: do not call external or Firebase
+      // Local-only mode: do not call external providers.
       throw NotFoundException('Bible chapter not found');
     } catch (e) {
       if (e is AppException) rethrow;
@@ -221,7 +209,7 @@ class OfflineBibleService {
         return localResults;
       }
 
-      // Local-only mode: do not search Firebase
+      // Local-only mode: do not search remote providers.
       return [];
     } catch (e) {
       _logger.error('Error searching Bible verses', e);
@@ -267,8 +255,12 @@ class OfflineBibleService {
       // Download each chapter
       for (final book in books) {
         for (int chapter = 1; chapter <= book.chapters; chapter++) {
-          final chapterData = await _fetchChapterFromFirebase(
-              book.name, chapter, version, language);
+          final chapterData = await _loadChapterFromAssets(
+            book.name,
+            chapter,
+            version,
+            language,
+          );
           if (chapterData != null) {
             await _dbHelper.insertChapter(chapterData);
           }
@@ -554,52 +546,7 @@ class OfflineBibleService {
         .toList();
   }
 
-  Future<List<BibleBook>> _fetchBooksFromFirebase(String language) async {
-    try {
-      final snapshot = await _databaseService.firestore
-          .collection('bible_books')
-          .where('language', isEqualTo: language)
-          .orderBy('order')
-          .get();
-
-      if (snapshot.docs.isEmpty) {
-        return [];
-      }
-
-      final books = <BibleBook>[];
-      for (final doc in snapshot.docs) {
-        final data = doc.data();
-        final book = BibleBook(
-          name: data['name'],
-          abbreviation: data['abbreviation'],
-          chapters: data['chapters'],
-          testament: data['testament'],
-          order: data['order'],
-          translations: data['translations'] != null
-              ? Map<String, String>.from(data['translations'])
-              : null,
-        );
-
-        books.add(book);
-
-        // Local DB already seeded with default books; skip duplication
-      }
-
-      return books;
-    } catch (e) {
-      _logger.error('Error fetching books from Firebase', e);
-      throw DatabaseException('Failed to fetch books from Firebase',
-          originalError: e);
-    }
-  }
-
-  Future<BibleChapter?> _fetchChapterFromFirebase(
-      String book, int chapter, String version, String language) async {
-    // Firebase chapter fetching disabled for local-only mode
-    return null;
-  }
-
-  // API.Bible integration intentionally removed for offline/local assets only
+  // Remote Bible integrations intentionally removed for offline/local assets.
 
   // Verify required versions/languages availability in local storage
   Future<Map<String, dynamic>> verifyRequiredImports() async {
@@ -649,7 +596,7 @@ class OfflineBibleService {
 
       if (existingChapter == null) {
         // If we don't have the chapter, fetch it and save it
-        await _fetchChapterFromFirebase(
+        await _loadChapterFromAssets(
             result.book, result.chapter, result.version, result.language);
       }
     } catch (e) {

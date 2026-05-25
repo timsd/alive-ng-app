@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../utils/responsive_utils.dart';
-import '../../services/firebase_database_service.dart';
+import '../../services/appwrite_library_service.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class LibraryScreen extends ConsumerStatefulWidget {
   const LibraryScreen({super.key});
@@ -19,6 +20,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   String _searchQuery = '';
   final String _selectedCategory = 'all';
   final String _selectedLanguage = 'all';
+  final AppwriteLibraryService _libraryService =
+      AppwriteLibraryService.instance;
 
   // Sample data with categories for proper indexing
   final List<Map<String, dynamic>> _allBooks = [
@@ -213,8 +216,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               child: Text(
                 'No books found matching your search criteria',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
               ),
             )
           : GridView.builder(
@@ -246,8 +249,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               child: Text(
                 'No articles found matching your search criteria',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
               ),
             )
           : ListView.builder(
@@ -270,8 +273,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               child: Text(
                 'No audio content found matching your search criteria',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
               ),
             )
           : ListView.builder(
@@ -294,8 +297,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               child: Text(
                 'No videos found matching your search criteria',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
               ),
             )
           : GridView.builder(
@@ -357,7 +360,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 height: ResponsiveUtils.getResponsiveValue(
                     context: context, mobile: 80, tablet: 90, desktop: 100),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .primary
+                      .withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color:
@@ -389,7 +395,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     Text(
                       'By ${book['author']}',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.7),
                           ),
                     ),
                     const SizedBox(height: 4),
@@ -467,15 +476,17 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color:
-                          Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       article['category'],
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: Theme.of(context).colorScheme.primary,
-                fontSize: 12,
+                            fontSize: 12,
                           ),
                     ),
                   ),
@@ -514,11 +525,16 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 width: 60,
                 height: 60,
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .primary
+                      .withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(30),
                   border: Border.all(
-                    color:
-                        Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withValues(alpha: 0.3),
                     width: 1,
                   ),
                 ),
@@ -594,7 +610,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               child: Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .primary
+                      .withValues(alpha: 0.1),
                   borderRadius: BorderRadius.vertical(
                     top: Radius.circular(ResponsiveUtils.getResponsiveValue(
                         context: context, mobile: 12, tablet: 14, desktop: 16)),
@@ -625,7 +644,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                               tablet: 10,
                               desktop: 12)),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.7),
+                        color: Theme.of(context)
+                            .colorScheme
+                            .shadow
+                            .withValues(alpha: 0.7),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -691,17 +713,20 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                             horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: Theme.of(context)
-                              .colorScheme.primary
+                              .colorScheme
+                              .primary
                               .withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           video['category'],
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Theme.of(context).colorScheme.primary,
-                                    fontSize: 12,
-                                  ),
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(
+                                color: Theme.of(context).colorScheme.primary,
+                                fontSize: 12,
+                              ),
                         ),
                       ),
                     ],
@@ -770,9 +795,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
             child: Text(
               'Cancel',
               style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                fontSize: ResponsiveUtils.getResponsiveValue(
-                    context: context, mobile: 14, tablet: 15, desktop: 16),
-              ),
+                    fontSize: ResponsiveUtils.getResponsiveValue(
+                        context: context, mobile: 14, tablet: 15, desktop: 16),
+                  ),
             ),
           ),
           ElevatedButton(
@@ -783,9 +808,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
             child: Text(
               'Apply',
               style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                fontSize: ResponsiveUtils.getResponsiveValue(
-                    context: context, mobile: 14, tablet: 15, desktop: 16),
-              ),
+                    fontSize: ResponsiveUtils.getResponsiveValue(
+                        context: context, mobile: 14, tablet: 15, desktop: 16),
+                  ),
             ),
           ),
         ],
@@ -797,8 +822,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   void _navigateToBookReader(String bookId) async {
     debugPrint('Navigating to book reader for book ID: $bookId');
     try {
-      final doc =
-          await FirebaseDatabaseService.instance.getDocument('books', bookId);
+      final doc = await _libraryService.getBook(bookId);
       if (doc != null && mounted) {
         // Navigate to actual reader screen (assuming BooksTractsScreen or similar)
         // For now, we'll just show the success message as the reader might need specific arguments
@@ -818,8 +842,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   void _navigateToArticle(String articleId) async {
     debugPrint('Navigating to article for article ID: $articleId');
     try {
-      final doc = await FirebaseDatabaseService.instance
-          .getDocument('articles', articleId);
+      final doc = await _libraryService.getArticle(articleId);
       if (doc != null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Opening article: ${doc['title']}')),
@@ -842,23 +865,17 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     debugPrint('Playing audio for audio ID: $audioId');
     final messenger = ScaffoldMessenger.of(context);
     try {
-      // In a real implementation, you would fetch the audio URL from Firebase
-      // based on the audioId. Here we're assuming the audioId is stored in
-      // the 'podcast_episodes' collection
-      final firebaseService = FirebaseDatabaseService.instance;
-      final episodeData =
-          await firebaseService.getDocument('podcast_episodes', audioId);
+      final episodeData = await _libraryService.getPodcastEpisode(audioId);
 
       if (episodeData == null ||
-          episodeData['audioUrl'] == null ||
-          episodeData['audioUrl'].isEmpty) {
+          _contentUrl(episodeData, 'audioUrl', 'audio_url') == null) {
         messenger.showSnackBar(
           const SnackBar(content: Text('No audio available for this episode')),
         );
         return;
       }
 
-      final audioUrl = episodeData['audioUrl'];
+      final audioUrl = _contentUrl(episodeData, 'audioUrl', 'audio_url')!;
 
       // Show loading indicator
       messenger.showSnackBar(
@@ -904,34 +921,21 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
         ),
       );
 
-      // In a real implementation, you would fetch the audio URL from Firebase
-      // based on the audioId
-      final firebaseService = FirebaseDatabaseService.instance;
-      final episodeData =
-          await firebaseService.getDocument('podcast_episodes', audioId);
+      final episodeData = await _libraryService.getPodcastEpisode(audioId);
 
       if (episodeData == null ||
-          episodeData['audioUrl'] == null ||
-          episodeData['audioUrl'].isEmpty) {
+          _contentUrl(episodeData, 'audioUrl', 'audio_url') == null) {
         messenger.showSnackBar(
           const SnackBar(content: Text('No audio available for this episode')),
         );
         return;
       }
 
-      final audioUrl = episodeData['audioUrl'];
-
-      // Download the file
-      final audioData = await firebaseService.downloadFile(
-        Uri.parse(audioUrl).pathSegments.last,
-      );
-
-      if (audioData == null) {
-        throw Exception('Failed to download audio file');
+      final audioUrl = _contentUrl(episodeData, 'audioUrl', 'audio_url')!;
+      final uri = Uri.parse(audioUrl);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
       }
-
-      // In a real app, you would save the file to local storage here
-      // and update a local database to track downloaded episodes
 
       messenger.showSnackBar(
         SnackBar(
@@ -955,8 +959,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   void _playVideo(String videoId) async {
     debugPrint('Playing video for video ID: $videoId');
     try {
-      final doc =
-          await FirebaseDatabaseService.instance.getDocument('videos', videoId);
+      final doc = await _libraryService.getVideo(videoId);
       if (doc != null && mounted) {
         // In a real app, launch video player
         ScaffoldMessenger.of(context).showSnackBar(
@@ -989,5 +992,15 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Filters applied successfully')),
     );
+  }
+
+  String? _contentUrl(
+    Map<String, dynamic> data,
+    String camelCaseKey,
+    String snakeCaseKey,
+  ) {
+    final value = data[camelCaseKey] ?? data[snakeCaseKey];
+    if (value is String && value.trim().isNotEmpty) return value.trim();
+    return null;
   }
 }

@@ -18,7 +18,7 @@ import 'storage_admin_screen.dart';
 import 'admin_claims_preview_screen.dart';
 import 'role_management_screen.dart';
 import 'board_reports_screen.dart';
-import '../../services/firebase_database_service.dart';
+import '../../services/appwrite_admin_export_service.dart';
 import '../../utils/responsive_utils.dart';
 
 import 'package:url_launcher/url_launcher.dart';
@@ -263,7 +263,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
             onPressed: () async {
               try {
                 final data =
-                    await FirebaseDatabaseService.instance.exportDataBackup(
+                    await AppwriteAdminExportService.instance.exportDataBackup(
                   collections: [
                     'profiles',
                     'prayer_requests',
@@ -344,7 +344,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
             onPressed: () async {
               try {
                 final data =
-                    await FirebaseDatabaseService.instance.exportChatBackup(
+                    await AppwriteAdminExportService.instance.exportChatBackup(
                   type: 'messaging',
                 );
                 if (context.mounted) {
@@ -402,8 +402,8 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
             tooltip: 'Export Chat Messages',
             onPressed: () async {
               try {
-                final data =
-                    await FirebaseDatabaseService.instance.exportChatMessages(
+                final data = await AppwriteAdminExportService.instance
+                    .exportChatMessages(
                   type: 'messaging',
                   limitPerChannel: 500,
                 );

@@ -29,7 +29,6 @@ dependencies:
   # json_serializable removed from dependencies; kept in dev_dependencies
   
   # Database & Storage
-  cloud_firestore: ^6.1.0
   shared_preferences: ^2.5.4
   flutter_secure_storage: ^9.0.0
   sqflite: ^2.3.0
@@ -41,14 +40,11 @@ dependencies:
   # Appwrite backend
   appwrite: ^24.0.0
 
-  # Firebase compatibility while remaining modules migrate to Appwrite
+  # Firebase compatibility for FCM web/Android bridge and telemetry
   firebase_core: ^4.2.1
-  firebase_auth: ^6.1.2
-  firebase_storage: ^13.0.4
   firebase_messaging: ^16.0.4
   firebase_analytics: ^12.0.4
   firebase_crashlytics: ^5.0.4
-  cloud_functions: ^6.0.4
   
   # Date & Time
   intl: 0.20.2

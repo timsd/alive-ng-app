@@ -6,17 +6,17 @@ Last updated from codebase review: 2026-05-25
 
 ## Migration Snapshot
 
-The app is migrating from Firebase, Jitsi, and GetStream to Appwrite, LiveKit, and Coolify. Treat Firebase as a legacy compatibility layer until the remaining modules below are migrated.
+The app has migrated its active database, storage, auth, and function-backed workflows from Firebase/Jitsi/GetStream to Appwrite, LiveKit, and Coolify. Treat Firebase as a narrow FCM/telemetry compatibility layer until push delivery is fully validated through Appwrite Messaging.
 
-Estimated overall migration progress: about 99.5%.
+Estimated overall migration progress: about 99.8%.
 
 - Appwrite-backed and validated with `flutter analyze`: auth/profile bootstrap, chat, LiveKit token flow, Paystack payment functions, Resend email function wiring/deployment variables, Appwrite push target registration, prayer, testimonies, notification settings/reminder records, admin notification records, admin user archive, profile file cleanup, tag visibility checks, analytics event persistence, user Bible/prayer/study statistics, study screen/progress, lesson-level study progress, health screen, enhanced health service, health tracking helper, health recipe/remedy submissions, daily verse records/generation settings, onboarding content, admin dashboard stats, admin app settings, admin content management, admin tract/podcast management, chapter management, leadership records/transitions, discipleship tracking, kids content CRUD, admin kids story/mission publishing, events, announcement editing, public missions, podcast listing/episode provider and audio actions, tract remote sync/progress, tract PDF text extraction, tract reader progress, app update settings, approval link tokens, donation project/settings reads, kids stories/missions public screens, meeting file sharing storage/metadata, Bible game flow fixes, and the tract/board storage compatibility bridge.
 - Appwrite infrastructure schema is maintained in `scripts/appwrite_infrastructure_schema.mjs`.
 - Provision safely against the current Appwrite 1.7.4 server with `npm run appwrite:dry-run` and then `npm run appwrite:provision:legacy`.
   If provisioning returns `fetch failed`, the local schema/dry-run can still be valid; rerun once the Appwrite endpoint is reachable.
 - The current schema includes analytics/statistics tables: `analytics_events`, `user_activities`, `reading_sessions`, and `chapter_readings`.
-- Coolify web hosting is supported by the root `Dockerfile`; pass Flutter values through the `FLUTTER_BUILD_ARGS` build argument and pass Firebase web push bridge values as Docker build args so the service worker is configured during image build.
-- Firebase rules, indexes, and config files remain in place because several modules still import Firebase directly.
+- Coolify web hosting is supported by the root `Dockerfile`; pass Flutter values through the `FLUTTER_BUILD_ARGS` build argument and pass public FCM web push bridge values as Docker build args so the service worker is configured during image build.
+- Firebase rules, indexes, and config files are legacy references now; keep them archived/available until Appwrite Messaging FCM delivery and telemetry decisions are final.
 
 ## Core App Stack
 
@@ -81,11 +81,11 @@ Estimated overall migration progress: about 99.5%.
 
 ## Legacy Firebase Compatibility
 
-Firebase packages remain in `pubspec.yaml` for modules not migrated yet. Do not delete these until the direct imports are gone and `flutter analyze` stays clean.
+Firebase packages remain in `pubspec.yaml` only where still imported by the notification bridge or telemetry setup. Firestore/Auth/Storage/Functions packages have been removed from the active dependency graph.
 
-- Firebase Core, Auth, Firestore, Storage, Functions, Messaging, Analytics, and Crashlytics are still present.
-- `FirebaseDatabaseService` is still a mixed compatibility bridge and should keep its name until its Firebase Auth/Firestore/Storage/Functions internals are fully removed.
-- Root Firebase files still needed during migration:
+- Firebase Core, Messaging, Analytics, and Crashlytics are still present.
+- `FirebaseDatabaseService` has been archived to `oldfirebasedelete/lib_services/` after active imports were removed.
+- Root Firebase files still kept as legacy references while messaging/telemetry are settled:
   - `.firebaserc`
   - `firebase.json`
   - `firestore.indexes.json`
@@ -95,11 +95,11 @@ Firebase packages remain in `pubspec.yaml` for modules not migrated yet. Do not 
 
 ## Remaining Migration Areas
 
-- Admin console screens and services: role management, board reports/documents/decisions, dashboard stats, and deeper `FirebaseDatabaseService` internals.
-- Library, books reader UI, podcast offline download persistence, sync/offline sync, mission participation/progress internals, notification delivery internals, and deeper legacy health/offline sync overlap.
+- Appwrite Messaging FCM provider validation and final target/subscriber QA.
+- Browser QA for Coolify web once `app.alivenigeria.org` and the Appwrite endpoint are reachable.
+- Podcast offline download persistence can be improved beyond opening the Appwrite file URL externally.
 - The board/tract storage compatibility facade is now `AppwriteStorageCompatService`; remove it only after those screens move to narrower feature-specific services.
-- Firebase Cloud Functions callers should move to Appwrite functions or direct Appwrite service calls.
-- Firebase rules/indexes can be archived after the last Firestore caller is removed.
+- Firebase rules/indexes can be moved fully into archive once FCM/telemetry cleanup is finalized.
 
 ## Secrets And Runtime Parameters
 
@@ -128,7 +128,7 @@ Keep these out of Git. Configure them in `.env`, Coolify build variables, or App
 
 - Run `flutter analyze` after each migration slice.
 - Run `dart scripts/duplicate_dart_files.dart android appwrite_functions assets build docs firebase functions ios lib scripts server test tool tools web windows` to inspect duplicate Dart filenames across the project.
-- Keep migrated Firebase files in `oldfirebasedelete/` only after confirming the replacement path is live. Unused legacy `admin_service.dart` is archived there because it had no runtime callers and `flutter analyze` stays clean.
+- Keep migrated Firebase files in `oldfirebasedelete/` only after confirming the replacement path is live. The old mixed `FirebaseDatabaseService` bridge is archived there because active callers have moved to Appwrite and `flutter analyze` stays clean.
 - Keep `scripts/appwrite_infrastructure_schema.mjs` as the source of truth for Appwrite infrastructure until `appwrite.config.json` can fully represent this self-hosted Appwrite version.
 
 ## Standard Functionality Review Targets
