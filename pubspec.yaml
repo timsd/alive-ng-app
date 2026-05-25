@@ -25,7 +25,6 @@ dependencies:
   
   # HTTP & API
   http: ^1.1.2
-  dio: ^5.4.0
   json_annotation: ^4.8.1
   # json_serializable removed from dependencies; kept in dev_dependencies
   

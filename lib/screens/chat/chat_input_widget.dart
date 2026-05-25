@@ -6,6 +6,7 @@ import '../../services/auth_service.dart';
 import '../../services/appwrite_storage_service.dart';
 import '../../models/chat_models.dart';
 import '../../utils/responsive_utils.dart';
+import '../../config/chat_config.dart';
 
 class ChatInputWidget extends StatefulWidget {
   final TextEditingController controller;
@@ -121,12 +122,21 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
     });
 
     try {
-      final String fileName = 'chat_images/${DateTime.now().millisecondsSinceEpoch}_${image.name}';
+      final extension = image.name.split('.').last.toLowerCase();
+      final contentType = _getContentType(extension);
       final Uint8List imageData = await image.readAsBytes();
+      _validateAttachment(
+        fileName: image.name,
+        size: imageData.lengthInBytes,
+        contentType: contentType,
+        extension: extension,
+      );
+
+      final String fileName = 'chat_images/${DateTime.now().millisecondsSinceEpoch}_${image.name}';
       final String downloadUrl = await AppwriteStorageService.instance.uploadChatFile(
         bytes: imageData,
         fileName: fileName,
-        contentType: 'image/${image.name.split('.').last}',
+        contentType: contentType,
       );
       
       // Send message with image attachment
@@ -166,10 +176,14 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
     });
 
     try {
-      // Check file size (limit to 10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        throw Exception('File size must be less than 10MB');
-      }
+      final extension = (file.extension ?? '').toLowerCase();
+      final contentType = _getContentType(extension);
+      _validateAttachment(
+        fileName: file.name,
+        size: file.size,
+        contentType: contentType,
+        extension: extension,
+      );
 
       final String fileName = 'chat_files/${DateTime.now().millisecondsSinceEpoch}_${file.name}';
       if (file.bytes == null) {
@@ -179,7 +193,7 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
       final String downloadUrl = await AppwriteStorageService.instance.uploadChatFile(
         bytes: file.bytes!,
         fileName: fileName,
-        contentType: _getContentType(file.extension ?? ''),
+        contentType: contentType,
       );
       
       // Send message with file attachment
@@ -218,8 +232,9 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
       case 'pdf':
         return 'application/pdf';
       case 'doc':
-      case 'docx':
         return 'application/msword';
+      case 'docx':
+        return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
       case 'xls':
       case 'xlsx':
         return 'application/vnd.ms-excel';
@@ -241,6 +256,32 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
         return 'audio/mpeg';
       default:
         return 'application/octet-stream';
+    }
+  }
+
+  void _validateAttachment({
+    required String fileName,
+    required int size,
+    required String contentType,
+    required String extension,
+  }) {
+    final uploadConfig =
+        ChatConfig.chatOptions['file_upload_config'] as Map<String, dynamic>;
+    final sizeLimit = uploadConfig['size_limit'] as int;
+    final allowedExtensions =
+        List<String>.from(uploadConfig['allowed_file_extensions']);
+    final allowedMimeTypes =
+        List<String>.from(uploadConfig['allowed_mime_types']);
+
+    if (size > sizeLimit) {
+      final sizeLimitMb = sizeLimit ~/ (1024 * 1024);
+      throw Exception('File size must be less than ${sizeLimitMb}MB');
+    }
+    if (!allowedExtensions.contains(extension)) {
+      throw Exception('Unsupported file type for $fileName');
+    }
+    if (!allowedMimeTypes.contains(contentType)) {
+      throw Exception('Unsupported file format for $fileName');
     }
   }
 

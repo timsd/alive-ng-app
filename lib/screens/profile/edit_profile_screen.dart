@@ -3,7 +3,7 @@ import 'package:file_picker/file_picker.dart';
 import '../../models/app_models.dart';
 import '../../utils/responsive_utils.dart';
 import '../../utils/layout_fix_utils.dart';
-import '../../services/firebase_database_service.dart';
+import '../../services/appwrite_storage_service.dart';
 import '../../services/auth_service.dart';
 import '../../utils/toast_utils.dart';
 import '../../widgets/custom_image.dart';
@@ -777,7 +777,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
         try {
           final authService = AuthService.instance;
-          final databaseService = FirebaseDatabaseService.instance;
           final user = authService.currentUser;
 
           if (user == null) {
@@ -789,12 +788,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           final timestamp = DateTime.now().millisecondsSinceEpoch;
           final extension = file.extension ?? 'jpg';
           final fileName = 'profile_${user.uid}_$timestamp.$extension';
+          final contentType = switch (extension.toLowerCase()) {
+            'png' => 'image/png',
+            'webp' => 'image/webp',
+            _ => 'image/jpeg',
+          };
 
-          // Upload to Firebase Storage
-          final publicUrl = await databaseService.uploadFile(
-            'profile-pictures/$fileName',
-            file.bytes!,
-            contentType: 'image/$extension',
+          final publicUrl = await AppwriteStorageService.instance.uploadProfileFile(
+            bytes: file.bytes!,
+            fileName: 'profile-pictures/$fileName',
+            contentType: contentType,
           );
 
           setState(() {
@@ -804,22 +807,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
           ToastUtils.showSuccess('Profile picture uploaded successfully!');
 
-          // Cleanup old profile pictures in Firebase Storage
           if (widget.userProfile.avatarUrl != null &&
               widget.userProfile.avatarUrl!.isNotEmpty) {
             try {
-              final oldUrl = widget.userProfile.avatarUrl!;
-              // Extract Firebase Storage file path from download URL
-              final uri = Uri.parse(oldUrl);
-              final segments = uri.pathSegments;
-              final oIndex = segments.indexOf('o');
-              if (oIndex != -1 && oIndex < segments.length - 1) {
-                final encodedPath = segments[oIndex + 1];
-                final filePath = Uri.decodeComponent(encodedPath);
-                if (filePath.isNotEmpty) {
-                  await databaseService.deleteFile(filePath);
-                }
-              }
+              await AppwriteStorageService.instance
+                  .deleteFileByUrl(widget.userProfile.avatarUrl!);
             } catch (e) {
               // Ignore errors when deleting old file
             }
