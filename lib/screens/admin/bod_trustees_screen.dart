@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-// Removed supabase_flutter import - using Firebase now
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../services/firebase_database_service.dart';
+import '../../services/appwrite_profile_service.dart';
 import '../../services/auth_service.dart';
 import '../../models/app_models.dart';
 import 'board_reports_screen.dart';
@@ -17,7 +16,7 @@ class BodTrusteesScreen extends StatefulWidget {
 }
 
 class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
-  final FirebaseDatabaseService _firebaseService = FirebaseDatabaseService.instance;
+  final AppwriteProfileService _profileService = AppwriteProfileService();
   final AuthService _authService = AuthService.instance;
   bool _isLoading = true;
   bool _hasAccess = false;
@@ -34,9 +33,9 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
       // Check if user has admin, leader, or BOD access
       final user = _authService.currentUser;
       if (user != null) {
-        final userProfile = await _firebaseService.getUserProfile(user.uid);
+        final userProfile = await _profileService.getUserProfileModel(user.uid);
         _currentUserId = user.uid;
-        
+
         // Only admin, leader, and BOD members can access this page
         final role = userProfile?.role ?? '';
         _hasAccess = role == 'admin' ||
@@ -141,22 +140,25 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
                           size: 28,
                         ),
                         const SizedBox(width: 12),
-                        FutureBuilder<UserProfile?>(  
+                        FutureBuilder<UserProfile?>(
                           future: _currentUserId != null
-                              ? _firebaseService.getUserProfile(_currentUserId!)
+                              ? _profileService
+                                  .getUserProfileModel(_currentUserId!)
                               : Future<UserProfile?>.value(null),
                           builder: (context, snapshot) {
                             final profile = snapshot.data;
-                            final userEmail = profile?.email ?? profile?.fullName ?? 'Administrator';
+                            final userEmail = profile?.email ??
+                                profile?.fullName ??
+                                'Administrator';
                             return Text(
                               'Welcome, $userEmail',
                               style: const TextStyle(
-                            fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green,
-                            ),
-                          );
-                        },
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green,
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -574,13 +576,13 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
     try {
       // Launch LiveKit meeting URL
       final meetingUrl = 'https://meet.jit.si/$meetingId';
-      
+
       if (await canLaunchUrl(Uri.parse(meetingUrl))) {
         await launchUrl(
           Uri.parse(meetingUrl),
           mode: LaunchMode.externalApplication,
         );
-        
+
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -602,7 +604,3 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
     }
   }
 }
-
-
-
-

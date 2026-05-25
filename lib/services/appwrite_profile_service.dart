@@ -36,6 +36,17 @@ class AppwriteProfileService {
     }
   }
 
+  Future<UserProfile?> getUserProfileModel(String userId) async {
+    final document = await getUserProfile(userId);
+    if (document == null) return null;
+    return userProfileFromDocument(
+      document,
+      fallbackEmail: (document.data['email'] ?? '').toString(),
+      fallbackFullName:
+          (document.data['fullName'] ?? document.data['full_name'])?.toString(),
+    );
+  }
+
   Future<List<UserProfile>> getAllUsers() async {
     final response = await _databases.listDocuments(
       databaseId: AppwriteBackendConfig.databaseId,
@@ -190,8 +201,7 @@ class AppwriteProfileService {
           fallbackFullName,
       avatarUrl: _stringValue(data, 'avatar_url'),
       photoUrl: _stringValue(data, 'photo_url') ?? photoUrl,
-      isEmailVerified:
-          _boolValue(data, 'is_email_verified') ?? isEmailVerified,
+      isEmailVerified: _boolValue(data, 'is_email_verified') ?? isEmailVerified,
       isAnonymous: _boolValue(data, 'is_anonymous') ?? isAnonymous,
       provider: _stringValue(data, 'provider') ?? 'appwrite',
       dateOfBirth: _dateValue(data, 'date_of_birth'),
@@ -219,8 +229,7 @@ class AppwriteProfileService {
       conference: _stringValue(data, 'conference'),
       isChapterVerified: _boolValue(data, 'is_chapter_verified') ?? false,
       isChurchVerified: _boolValue(data, 'is_church_verified') ?? false,
-      isConferenceVerified:
-          _boolValue(data, 'is_conference_verified') ?? false,
+      isConferenceVerified: _boolValue(data, 'is_conference_verified') ?? false,
       commitmentType: _stringValue(data, 'commitment_type'),
       financialCommitment: _doubleValue(data, 'financial_commitment'),
       availabilityCommitment: _stringValue(data, 'availability_commitment'),
@@ -303,7 +312,11 @@ class AppwriteProfileService {
 
   int? _intValue(Map<String, dynamic> data, String key) {
     final value = data[key];
-    return value is int ? value : value is num ? value.toInt() : null;
+    return value is int
+        ? value
+        : value is num
+            ? value.toInt()
+            : null;
   }
 
   double? _doubleValue(Map<String, dynamic> data, String key) {
