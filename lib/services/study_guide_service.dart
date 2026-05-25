@@ -1,19 +1,25 @@
+// ignore_for_file: deprecated_member_use
+
+import 'dart:convert';
+
+import 'package:appwrite/appwrite.dart';
 import 'package:uuid/uuid.dart';
+
+import '../config/appwrite_backend_config.dart';
+import '../main.dart';
 import '../models/study_guide_models.dart';
 import '../utils/app_exception.dart';
 import '../utils/logger.dart';
-import 'firebase_database_service.dart';
 
 class StudyGuideService {
   static final StudyGuideService _instance = StudyGuideService._internal();
   factory StudyGuideService() => _instance;
   StudyGuideService._internal();
 
-  final FirebaseDatabaseService _firebase = FirebaseDatabaseService.instance;
+  late final Databases _databases = Databases(appwriteClient);
   final Logger _logger = Logger('StudyGuideService');
   final Uuid _uuid = const Uuid();
 
-  // Study Guide Management
   Future<List<StudyGuide>> getStudyGuides({
     StudyGuideType? type,
     StudyDifficulty? difficulty,
@@ -21,15 +27,41 @@ class StudyGuideService {
     String? searchQuery,
   }) async {
     try {
-      final studyGuides = await _firebase.getStudyGuides(
-        type: type?.name,
-        difficulty: difficulty?.name,
-        isActive: isActive,
-        searchQuery: searchQuery,
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.studyGuidesCollectionId,
+        queries: [
+          Query.limit(200),
+          Query.orderAsc('title'),
+        ],
       );
-      return studyGuides
-          .map<StudyGuide>((json) => StudyGuide.fromJson(json))
+
+      var guides = response.documents
+          .map((doc) => _studyGuideFromData(doc.$id, doc.data, doc.$createdAt,
+              doc.$updatedAt))
           .toList();
+
+      if (type != null) {
+        guides = guides.where((guide) => guide.type == type).toList();
+      }
+      if (difficulty != null) {
+        guides = guides
+            .where((guide) => guide.difficulty == difficulty)
+            .toList();
+      }
+      if (isActive != null) {
+        guides = guides.where((guide) => guide.isActive == isActive).toList();
+      }
+      if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+        final query = searchQuery.toLowerCase().trim();
+        guides = guides
+            .where((guide) =>
+                guide.title.toLowerCase().contains(query) ||
+                guide.description.toLowerCase().contains(query))
+            .toList();
+      }
+
+      return guides;
     } catch (e) {
       _logger.error('Error fetching study guides', e);
       throw DatabaseException('Failed to fetch study guides', originalError: e);
@@ -38,10 +70,18 @@ class StudyGuideService {
 
   Future<StudyGuide?> getStudyGuideById(String studyGuideId) async {
     try {
-      final response = await _firebase.getStudyGuideById(studyGuideId);
-      return StudyGuide.fromJson(response);
+      final doc = await _databases.getDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.studyGuidesCollectionId,
+        documentId: studyGuideId,
+      );
+      return _studyGuideFromData(doc.$id, doc.data, doc.$createdAt,
+          doc.$updatedAt);
+    } on AppwriteException catch (e) {
+      if (e.code == 404) return null;
+      _logger.error('Error fetching study guide', e);
+      throw DatabaseException('Failed to fetch study guide', originalError: e);
     } catch (e) {
-      if (e is AppException) rethrow;
       _logger.error('Error fetching study guide', e);
       throw DatabaseException('Failed to fetch study guide', originalError: e);
     }
@@ -49,9 +89,10 @@ class StudyGuideService {
 
   Future<List<StudyGuide>> getFeaturedStudyGuides() async {
     try {
-      final response = await _firebase.getFeaturedStudyGuides();
-      return response
-          .map<StudyGuide>((json) => StudyGuide.fromJson(json))
+      final guides = await getStudyGuides(isActive: true);
+      return guides
+          .where((guide) => _bool(guide.metadata['is_featured']))
+          .take(10)
           .toList();
     } catch (e) {
       _logger.error('Error fetching featured study guides', e);
@@ -62,13 +103,19 @@ class StudyGuideService {
 
   Future<StudyGuide> createStudyGuide(StudyGuide studyGuide) async {
     try {
+      final now = DateTime.now();
       final newStudyGuide = studyGuide.copyWith(
         id: _uuid.v4(),
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
+        createdAt: now,
+        updatedAt: now,
       );
 
-      await _firebase.createStudyGuide(newStudyGuide.toJson());
+      await _databases.createDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.studyGuidesCollectionId,
+        documentId: newStudyGuide.id,
+        data: _studyGuideToData(newStudyGuide),
+      );
       return newStudyGuide;
     } catch (e) {
       _logger.error('Error creating study guide', e);
@@ -79,9 +126,12 @@ class StudyGuideService {
   Future<StudyGuide> updateStudyGuide(StudyGuide studyGuide) async {
     try {
       final updatedStudyGuide = studyGuide.copyWith(updatedAt: DateTime.now());
-
-      await _firebase.updateStudyGuide(
-          studyGuide.id, updatedStudyGuide.toJson());
+      await _databases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.studyGuidesCollectionId,
+        documentId: studyGuide.id,
+        data: _studyGuideToData(updatedStudyGuide),
+      );
       return updatedStudyGuide;
     } catch (e) {
       _logger.error('Error updating study guide', e);
@@ -89,12 +139,20 @@ class StudyGuideService {
     }
   }
 
-  // Lesson Management
   Future<List<StudyLesson>> getLessons(String studyGuideId) async {
     try {
-      final response = await _firebase.getStudyLessons(studyGuideId);
-      return response
-          .map<StudyLesson>((json) => StudyLesson.fromJson(json))
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.studyLessonsCollectionId,
+        queries: [
+          Query.equal('study_guide_id', studyGuideId),
+          Query.orderAsc('lesson_number'),
+          Query.limit(200),
+        ],
+      );
+      return response.documents
+          .map((doc) => _lessonFromData(doc.$id, doc.data, doc.$createdAt,
+              doc.$updatedAt))
           .toList();
     } catch (e) {
       _logger.error('Error fetching lessons', e);
@@ -104,10 +162,17 @@ class StudyGuideService {
 
   Future<StudyLesson?> getLessonById(String lessonId) async {
     try {
-      final response = await _firebase.getStudyLessonById(lessonId);
-      return StudyLesson.fromJson(response);
+      final doc = await _databases.getDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.studyLessonsCollectionId,
+        documentId: lessonId,
+      );
+      return _lessonFromData(doc.$id, doc.data, doc.$createdAt, doc.$updatedAt);
+    } on AppwriteException catch (e) {
+      if (e.code == 404) return null;
+      _logger.error('Error fetching lesson', e);
+      throw DatabaseException('Failed to fetch lesson', originalError: e);
     } catch (e) {
-      if (e is AppException) rethrow;
       _logger.error('Error fetching lesson', e);
       throw DatabaseException('Failed to fetch lesson', originalError: e);
     }
@@ -116,11 +181,19 @@ class StudyGuideService {
   Future<StudyLesson?> getLessonByNumber(
       String studyGuideId, int lessonNumber) async {
     try {
-      final response =
-          await _firebase.getStudyLessonByNumber(studyGuideId, lessonNumber);
-      return StudyLesson.fromJson(response);
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.studyLessonsCollectionId,
+        queries: [
+          Query.equal('study_guide_id', studyGuideId),
+          Query.equal('lesson_number', lessonNumber),
+          Query.limit(1),
+        ],
+      );
+      if (response.documents.isEmpty) return null;
+      final doc = response.documents.first;
+      return _lessonFromData(doc.$id, doc.data, doc.$createdAt, doc.$updatedAt);
     } catch (e) {
-      if (e is AppException) rethrow;
       _logger.error('Error fetching lesson by number', e);
       throw DatabaseException('Failed to fetch lesson by number',
           originalError: e);
@@ -129,6 +202,7 @@ class StudyGuideService {
 
   Future<StudyLesson> createLesson(StudyLesson lesson) async {
     try {
+      final now = DateTime.now();
       final newLesson = StudyLesson(
         id: _uuid.v4(),
         studyGuideId: lesson.studyGuideId,
@@ -141,11 +215,16 @@ class StudyGuideService {
         lessonNumber: lesson.lessonNumber,
         estimatedDurationMinutes: lesson.estimatedDurationMinutes,
         resources: lesson.resources,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
+        createdAt: now,
+        updatedAt: now,
       );
 
-      await _firebase.createStudyLesson(newLesson.toJson());
+      await _databases.createDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.studyLessonsCollectionId,
+        documentId: newLesson.id,
+        data: _lessonToData(newLesson),
+      );
       return newLesson;
     } catch (e) {
       _logger.error('Error creating lesson', e);
@@ -153,12 +232,19 @@ class StudyGuideService {
     }
   }
 
-  // Question Management
   Future<List<StudyQuestion>> getQuestions(String lessonId) async {
     try {
-      final response = await _firebase.getStudyQuestions(lessonId);
-      return response
-          .map<StudyQuestion>((json) => StudyQuestion.fromJson(json))
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.studyQuestionsCollectionId,
+        queries: [
+          Query.equal('lesson_id', lessonId),
+          Query.orderAsc('order'),
+          Query.limit(200),
+        ],
+      );
+      return response.documents
+          .map((doc) => _questionFromData(doc.$id, doc.data, doc.$createdAt))
           .toList();
     } catch (e) {
       _logger.error('Error fetching questions', e);
@@ -183,7 +269,12 @@ class StudyGuideService {
         createdAt: DateTime.now(),
       );
 
-      await _firebase.createStudyQuestion(newQuestion.toJson());
+      await _databases.createDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.studyQuestionsCollectionId,
+        documentId: newQuestion.id,
+        data: _questionToData(newQuestion),
+      );
       return newQuestion;
     } catch (e) {
       _logger.error('Error creating question', e);
@@ -191,13 +282,21 @@ class StudyGuideService {
     }
   }
 
-  // User Progress Management
   Future<List<UserStudyProgress>> getUserProgress(String userId) async {
     try {
-      final response = await _firebase.getUserStudyProgressList(userId);
-
-      return response
-          .map<UserStudyProgress>((json) => UserStudyProgress.fromJson(json))
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.studyProgressCollectionId,
+        queries: [
+          Query.equal('user_id', userId),
+          Query.limit(200),
+        ],
+      );
+      return response.documents
+          .where((doc) => _string(doc.data['study_guide_id']).isNotEmpty)
+          .where((doc) => _string(doc.data['lesson_id']).isEmpty)
+          .map((doc) => _studyProgressFromData(
+              doc.$id, doc.data, doc.$createdAt, doc.$updatedAt))
           .toList();
     } catch (e) {
       _logger.error('Error fetching user progress', e);
@@ -209,11 +308,23 @@ class StudyGuideService {
   Future<UserStudyProgress?> getUserStudyProgress(
       String userId, String studyGuideId) async {
     try {
-      final response =
-          await _firebase.getUserStudyProgress(userId, studyGuideId);
-      return UserStudyProgress.fromJson(response);
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.studyProgressCollectionId,
+        queries: [
+          Query.equal('user_id', userId),
+          Query.equal('study_guide_id', studyGuideId),
+          Query.limit(50),
+        ],
+      );
+      final docs = response.documents
+          .where((doc) => _string(doc.data['lesson_id']).isEmpty)
+          .toList();
+      if (docs.isEmpty) return null;
+      final doc = docs.first;
+      return _studyProgressFromData(
+          doc.$id, doc.data, doc.$createdAt, doc.$updatedAt);
     } catch (e) {
-      if (e is AppException) rethrow;
       _logger.error('Error fetching user study progress', e);
       throw DatabaseException('Failed to fetch user study progress',
           originalError: e);
@@ -223,27 +334,30 @@ class StudyGuideService {
   Future<UserStudyProgress> startStudyGuide(
       String userId, String studyGuideId) async {
     try {
-      // Check if progress already exists
       final existingProgress = await getUserStudyProgress(userId, studyGuideId);
-      if (existingProgress != null) {
-        return existingProgress;
-      }
+      if (existingProgress != null) return existingProgress;
 
+      final now = DateTime.now();
       final progress = UserStudyProgress(
-        id: _uuid.v4(),
+        id: '${userId}_$studyGuideId',
         userId: userId,
         studyGuideId: studyGuideId,
         status: StudyStatus.inProgress,
-        startedAt: DateTime.now(),
+        startedAt: now,
         currentLessonNumber: 1,
         progressPercentage: 0.0,
         totalTimeSpentMinutes: 0,
         notes: {},
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
+        createdAt: now,
+        updatedAt: now,
       );
 
-      await _firebase.createUserStudyProgress(progress.toJson());
+      await _databases.createDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.studyProgressCollectionId,
+        documentId: progress.id,
+        data: _studyProgressToData(progress),
+      );
       return progress;
     } catch (e) {
       _logger.error('Error starting study guide', e);
@@ -255,10 +369,12 @@ class StudyGuideService {
       UserStudyProgress progress) async {
     try {
       final updatedProgress = progress.copyWith(updatedAt: DateTime.now());
-
-      await _firebase.updateUserStudyProgress(
-          progress.id, updatedProgress.toJson());
-
+      await _databases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.studyProgressCollectionId,
+        documentId: progress.id,
+        data: _studyProgressToData(updatedProgress),
+      );
       return updatedProgress;
     } catch (e) {
       _logger.error('Error updating study progress', e);
@@ -281,10 +397,12 @@ class StudyGuideService {
         progressPercentage: 100.0,
         updatedAt: DateTime.now(),
       );
-
-      await _firebase.updateUserStudyProgress(
-          progress.id, completedProgress.toJson());
-
+      await _databases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.studyProgressCollectionId,
+        documentId: progress.id,
+        data: _studyProgressToData(completedProgress),
+      );
       return completedProgress;
     } catch (e) {
       if (e is AppException) rethrow;
@@ -294,28 +412,29 @@ class StudyGuideService {
     }
   }
 
-  // Lesson Progress Management
   Future<List<UserLessonProgress>> getUserLessonProgress(
       String userId, String studyGuideId) async {
     try {
-      // Get all lessons for the study guide
       final lessons = await getLessons(studyGuideId);
-      final lessonIds = lessons.map((l) => l.id).toList();
-
+      final lessonIds = lessons.map((lesson) => lesson.id).toSet();
       if (lessonIds.isEmpty) return [];
 
-      // Since Firebase doesn't support inFilter directly, we'll fetch each lesson progress individually
-      final progressList = <UserLessonProgress>[];
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.studyProgressCollectionId,
+        queries: [
+          Query.equal('user_id', userId),
+          Query.equal('study_guide_id', studyGuideId),
+          Query.limit(200),
+        ],
+      );
 
-      for (final lessonId in lessonIds) {
-        final response =
-            await _firebase.getUserLessonProgress(userId, lessonId);
-        progressList.add(UserLessonProgress.fromJson(response));
-      }
-
-      // Sort by created_at to match original behavior
+      final progressList = response.documents
+          .where((doc) => lessonIds.contains(_string(doc.data['lesson_id'])))
+          .map((doc) => _lessonProgressFromData(
+              doc.$id, doc.data, doc.$createdAt, doc.$updatedAt))
+          .toList();
       progressList.sort((a, b) => a.createdAt.compareTo(b.createdAt));
-
       return progressList;
     } catch (e) {
       _logger.error('Error fetching lesson progress', e);
@@ -327,10 +446,20 @@ class StudyGuideService {
   Future<UserLessonProgress?> getUserLessonProgressById(
       String userId, String lessonId) async {
     try {
-      final response = await _firebase.getUserLessonProgress(userId, lessonId);
-      return UserLessonProgress.fromJson(response);
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.studyProgressCollectionId,
+        queries: [
+          Query.equal('user_id', userId),
+          Query.equal('lesson_id', lessonId),
+          Query.limit(1),
+        ],
+      );
+      if (response.documents.isEmpty) return null;
+      final doc = response.documents.first;
+      return _lessonProgressFromData(
+          doc.$id, doc.data, doc.$createdAt, doc.$updatedAt);
     } catch (e) {
-      if (e is AppException) rethrow;
       _logger.error('Error fetching user lesson progress', e);
       throw DatabaseException('Failed to fetch user lesson progress',
           originalError: e);
@@ -339,26 +468,30 @@ class StudyGuideService {
 
   Future<UserLessonProgress> startLesson(String userId, String lessonId) async {
     try {
-      // Check if progress already exists
       final existingProgress =
           await getUserLessonProgressById(userId, lessonId);
-      if (existingProgress != null) {
-        return existingProgress;
-      }
+      if (existingProgress != null) return existingProgress;
 
+      final lesson = await getLessonById(lessonId);
+      final now = DateTime.now();
       final progress = UserLessonProgress(
-        id: _uuid.v4(),
+        id: '${userId}_lesson_$lessonId',
         userId: userId,
         lessonId: lessonId,
         status: StudyStatus.inProgress,
-        startedAt: DateTime.now(),
+        startedAt: now,
         timeSpentMinutes: 0,
         answers: {},
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
+        createdAt: now,
+        updatedAt: now,
       );
 
-      await _firebase.createUserLessonProgress(progress.toJson());
+      await _databases.createDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.studyProgressCollectionId,
+        documentId: progress.id,
+        data: _lessonProgressToData(progress, lesson?.studyGuideId ?? ''),
+      );
       return progress;
     } catch (e) {
       _logger.error('Error starting lesson', e);
@@ -390,9 +523,16 @@ class StudyGuideService {
         updatedAt: DateTime.now(),
       );
 
-      await _firebase.updateUserLessonProgress(
-          progress.id, updatedProgress.toJson());
-
+      final lesson = await getLessonById(lessonId);
+      await _databases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.studyProgressCollectionId,
+        documentId: progress.id,
+        data: _lessonProgressToData(
+          updatedProgress,
+          lesson?.studyGuideId ?? '',
+        ),
+      );
       return updatedProgress;
     } catch (e) {
       _logger.error('Error saving answer', e);
@@ -423,12 +563,17 @@ class StudyGuideService {
         updatedAt: DateTime.now(),
       );
 
-      await _firebase.updateUserLessonProgress(
-          progress.id, completedProgress.toJson());
-
-      // Update overall study guide progress
+      final lesson = await getLessonById(lessonId);
+      await _databases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.studyProgressCollectionId,
+        documentId: progress.id,
+        data: _lessonProgressToData(
+          completedProgress,
+          lesson?.studyGuideId ?? '',
+        ),
+      );
       await _updateStudyGuideProgress(userId, lessonId);
-
       return completedProgress;
     } catch (e) {
       if (e is AppException) rethrow;
@@ -437,7 +582,6 @@ class StudyGuideService {
     }
   }
 
-  // Study Session Management
   Future<List<StudySession>> getStudySessions({
     String? facilitatorId,
     List<String>? participantIds,
@@ -446,16 +590,38 @@ class StudyGuideService {
     StudySessionStatus? status,
   }) async {
     try {
-      final response = await _firebase.getStudySessions(
-        facilitatorId: facilitatorId,
-        participantIds: participantIds,
-        startDate: startDate,
-        endDate: endDate,
-        status: status?.name,
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.studySessionsCollectionId,
+        queries: [
+          if (facilitatorId != null)
+            Query.equal('facilitator_id', facilitatorId),
+          if (status != null) Query.equal('status', status.name),
+          Query.orderDesc('scheduled_at'),
+          Query.limit(200),
+        ],
       );
-      return response
-          .map<StudySession>((json) => StudySession.fromJson(json))
+      var sessions = response.documents
+          .map((doc) => _sessionFromData(doc.$id, doc.data, doc.$createdAt,
+              doc.$updatedAt))
           .toList();
+      if (participantIds != null && participantIds.isNotEmpty) {
+        sessions = sessions
+            .where((session) => participantIds
+                .any((id) => session.participantIds.contains(id)))
+            .toList();
+      }
+      if (startDate != null) {
+        sessions = sessions
+            .where((session) => !session.scheduledAt.isBefore(startDate))
+            .toList();
+      }
+      if (endDate != null) {
+        sessions = sessions
+            .where((session) => !session.scheduledAt.isAfter(endDate))
+            .toList();
+      }
+      return sessions;
     } catch (e) {
       _logger.error('Error fetching study sessions', e);
       throw DatabaseException('Failed to fetch study sessions',
@@ -465,6 +631,7 @@ class StudyGuideService {
 
   Future<StudySession> createStudySession(StudySession session) async {
     try {
+      final now = DateTime.now();
       final newSession = StudySession(
         id: _uuid.v4(),
         studyGuideId: session.studyGuideId,
@@ -480,11 +647,16 @@ class StudyGuideService {
         location: session.location,
         resources: session.resources,
         notes: session.notes,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
+        createdAt: now,
+        updatedAt: now,
       );
 
-      await _firebase.createStudySession(newSession.toJson());
+      await _databases.createDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.studySessionsCollectionId,
+        documentId: newSession.id,
+        data: _sessionToData(newSession),
+      );
       return newSession;
     } catch (e) {
       _logger.error('Error creating study session', e);
@@ -493,11 +665,9 @@ class StudyGuideService {
     }
   }
 
-  // Statistics and Analytics
   Future<Map<String, dynamic>> getStudyStatistics(String userId) async {
     try {
       final progress = await getUserProgress(userId);
-
       final totalStudies = progress.length;
       final completedStudies =
           progress.where((p) => p.status == StudyStatus.completed).length;
@@ -505,17 +675,13 @@ class StudyGuideService {
           progress.where((p) => p.status == StudyStatus.inProgress).length;
       final totalTimeSpent =
           progress.fold<int>(0, (sum, p) => sum + p.totalTimeSpentMinutes);
-
-      // Calculate average progress
       final averageProgress = progress.isEmpty
           ? 0.0
           : progress.fold<double>(0, (sum, p) => sum + p.progressPercentage) /
               progress.length;
 
-      // Get study type distribution
       final studyGuides = await getStudyGuides();
       final typeDistribution = <StudyGuideType, int>{};
-
       for (final p in progress) {
         final studyGuide = studyGuides.firstWhere(
           (sg) => sg.id == p.studyGuideId,
@@ -531,7 +697,6 @@ class StudyGuideService {
             updatedAt: DateTime.now(),
           ),
         );
-
         typeDistribution[studyGuide.type] =
             (typeDistribution[studyGuide.type] ?? 0) + 1;
       }
@@ -554,12 +719,12 @@ class StudyGuideService {
     }
   }
 
-  // Helper Methods
   Future<void> _updateStudyGuideProgress(String userId, String lessonId) async {
     try {
       final lesson = await getLessonById(lessonId);
+      if (lesson == null) throw NotFoundException('Lesson not found');
       final studyGuideProgress =
-          await getUserStudyProgress(userId, lesson!.studyGuideId);
+          await getUserStudyProgress(userId, lesson.studyGuideId);
       if (studyGuideProgress == null) {
         throw NotFoundException('Study progress not found');
       }
@@ -570,10 +735,8 @@ class StudyGuideService {
       final completedCount = completedLessons
           .where((lp) => lp.status == StudyStatus.completed)
           .length;
-
       final progressPercentage =
           allLessons.isEmpty ? 0.0 : (completedCount / allLessons.length * 100);
-
       final updatedProgress = studyGuideProgress.copyWith(
         progressPercentage: progressPercentage,
         currentLessonNumber: completedCount + 1,
@@ -582,7 +745,6 @@ class StudyGuideService {
             : StudyStatus.inProgress,
         completedAt: progressPercentage >= 100 ? DateTime.now() : null,
       );
-
       await updateStudyProgress(updatedProgress);
     } catch (e) {
       if (e is AppException) rethrow;
@@ -596,7 +758,7 @@ class StudyGuideService {
       List<StudyQuestion> questions, Map<String, String> answers) {
     if (questions.isEmpty) return 0.0;
 
-    int correctAnswers = 0;
+    var correctAnswers = 0;
     for (final question in questions) {
       final userAnswer = answers[question.id];
       if (userAnswer != null && question.correctAnswer != null) {
@@ -610,7 +772,7 @@ class StudyGuideService {
       }
     }
 
-    return (correctAnswers / questions.length * 100);
+    return correctAnswers / questions.length * 100;
   }
 
   String getTypeDescription(StudyGuideType type) {
@@ -626,23 +788,19 @@ class StudyGuideService {
     return StudyGuideConstants.questionTypeDescriptions[type] ?? 'Question';
   }
 
-  List<String> getBibleBooks() {
-    return StudyGuideConstants.bibleBooks;
-  }
+  List<String> getBibleBooks() => StudyGuideConstants.bibleBooks;
 
   String getInspirationalQuote(String key) {
     return StudyGuideConstants.inspirationalQuotes[key] ?? '';
   }
 
-  // Initialize default study guides
   Future<void> initializeDefaultStudyGuides() async {
     try {
       final existingGuides = await getStudyGuides();
-      if (existingGuides.isNotEmpty) return; // Already initialized
+      if (existingGuides.isNotEmpty) return;
 
-      for (int i = 0; i < StudyGuideConstants.defaultStudyGuides.length; i++) {
+      for (var i = 0; i < StudyGuideConstants.defaultStudyGuides.length; i++) {
         final guideData = StudyGuideConstants.defaultStudyGuides[i];
-
         final studyGuide = StudyGuide(
           id: _uuid.v4(),
           title: guideData['title'] as String,
@@ -661,11 +819,371 @@ class StudyGuideService {
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         );
-
         await createStudyGuide(studyGuide);
       }
     } catch (e) {
       _logger.error('Error initializing default study guides', e);
     }
+  }
+
+  StudyGuide _studyGuideFromData(
+      String id, Map<String, dynamic> data, String createdAt, String updatedAt) {
+    final metadata = _map(data['metadata']);
+    metadata['is_featured'] = _bool(data['is_featured']);
+    return StudyGuide(
+      id: id,
+      title: _string(data['title'], fallback: 'Study Guide'),
+      description: _string(data['description']),
+      type: _enumByName(
+        StudyGuideType.values,
+        _string(data['type'], fallback: StudyGuideType.doctrine.name),
+        StudyGuideType.doctrine,
+      ),
+      difficulty: _enumByName(
+        StudyDifficulty.values,
+        _string(data['difficulty'], fallback: StudyDifficulty.beginner.name),
+        StudyDifficulty.beginner,
+      ),
+      estimatedDurationMinutes: _int(data['estimated_duration_minutes'],
+          fallback: _int(data['duration'], fallback: 60)),
+      objectives: _list(data['objectives']),
+      prerequisites: _list(data['prerequisites']),
+      imageUrl: _string(data['image_url'] ?? data['cover_image_url']),
+      isActive: _bool(data['is_active'] ?? data['is_published'], fallback: true),
+      sortOrder: _int(data['sort_order']),
+      metadata: metadata,
+      createdAt: _date(data['created_at'], fallback: createdAt),
+      updatedAt: _date(data['updated_at'], fallback: updatedAt),
+    );
+  }
+
+  Map<String, dynamic> _studyGuideToData(StudyGuide guide) {
+    return {
+      'title': guide.title,
+      'description': guide.description,
+      'type': guide.type.name,
+      'difficulty': guide.difficulty.name,
+      'cover_image_url': guide.imageUrl ?? '',
+      'lesson_count': _int(guide.metadata['lesson_count']),
+      'is_featured': _bool(guide.metadata['is_featured']),
+      'is_published': guide.isActive,
+      'created_at': guide.createdAt.toIso8601String(),
+      'updated_at': guide.updatedAt.toIso8601String(),
+    };
+  }
+
+  StudyLesson _lessonFromData(
+      String id, Map<String, dynamic> data, String createdAt, String updatedAt) {
+    final resources = _map(data['resources']);
+    return StudyLesson(
+      id: id,
+      studyGuideId: _string(data['study_guide_id']),
+      title: _string(data['title'], fallback: 'Lesson'),
+      content: _string(data['content']),
+      keyVerses: _list(resources['key_verses']),
+      supportingVerses: _list(resources['supporting_verses']),
+      summary: _string(resources['summary']),
+      practicalApplication: _string(resources['practical_application']),
+      lessonNumber: _int(data['lesson_number']),
+      estimatedDurationMinutes:
+          _int(resources['estimated_duration_minutes'], fallback: 30),
+      resources: resources,
+      createdAt: _date(data['created_at'], fallback: createdAt),
+      updatedAt: _date(data['updated_at'], fallback: updatedAt),
+    );
+  }
+
+  Map<String, dynamic> _lessonToData(StudyLesson lesson) {
+    final resources = Map<String, dynamic>.from(lesson.resources);
+    resources.addAll({
+      'key_verses': lesson.keyVerses,
+      'supporting_verses': lesson.supportingVerses,
+      'summary': lesson.summary,
+      'practical_application': lesson.practicalApplication,
+      'estimated_duration_minutes': lesson.estimatedDurationMinutes,
+    });
+    return {
+      'study_guide_id': lesson.studyGuideId,
+      'lesson_number': lesson.lessonNumber,
+      'title': lesson.title,
+      'content': lesson.content,
+      'resources': jsonEncode(resources),
+      'created_at': lesson.createdAt.toIso8601String(),
+      'updated_at': lesson.updatedAt.toIso8601String(),
+    };
+  }
+
+  StudyQuestion _questionFromData(
+      String id, Map<String, dynamic> data, String createdAt) {
+    return StudyQuestion(
+      id: id,
+      lessonId: _string(data['lesson_id']),
+      question: _string(data['question']),
+      type: _enumByName(
+        QuestionType.values,
+        _string(data['type'], fallback: QuestionType.shortAnswer.name),
+        QuestionType.shortAnswer,
+      ),
+      options: _list(data['options']),
+      correctAnswer: _string(data['correct_answer']),
+      explanation: _string(data['explanation']),
+      bibleReferences: _list(data['bible_references']),
+      questionNumber: _int(data['question_number'],
+          fallback: _int(data['order'], fallback: 1)),
+      isRequired: _bool(data['is_required'], fallback: true),
+      metadata: _map(data['metadata']),
+      createdAt: _date(data['created_at'], fallback: createdAt),
+    );
+  }
+
+  Map<String, dynamic> _questionToData(StudyQuestion question) {
+    return {
+      'lesson_id': question.lessonId,
+      'question': question.question,
+      'type': question.type.name,
+      'options': jsonEncode(question.options),
+      'correct_answer': question.correctAnswer ?? '',
+      'order': question.questionNumber,
+    };
+  }
+
+  UserStudyProgress _studyProgressFromData(
+      String id, Map<String, dynamic> data, String createdAt, String updatedAt) {
+    final completed = _bool(data['completed']);
+    return UserStudyProgress(
+      id: id,
+      userId: _string(data['user_id']),
+      studyGuideId: _string(data['study_guide_id'] ?? data['program_id']),
+      status: _statusFromData(data['status'], completed),
+      startedAt: _date(data['started_at'], fallback: createdAt),
+      completedAt: _nullableDate(data['completed_at']),
+      currentLessonNumber: _int(data['current_lesson'], fallback: 1),
+      progressPercentage: _double(data['progress_percentage']),
+      totalTimeSpentMinutes: _int(data['total_time_spent_minutes']),
+      notes: _map(data['notes']),
+      createdAt: _date(data['created_at'], fallback: createdAt),
+      updatedAt: _date(data['updated_at'], fallback: updatedAt),
+    );
+  }
+
+  Map<String, dynamic> _studyProgressToData(UserStudyProgress progress) {
+    return {
+      'user_id': progress.userId,
+      'program_id': progress.studyGuideId,
+      'study_guide_id': progress.studyGuideId,
+      'lesson_id': '',
+      'status': progress.status.name,
+      'completed': progress.status == StudyStatus.completed,
+      'score': 0,
+      'current_lesson': progress.currentLessonNumber,
+      'completed_lessons': 0,
+      'progress_percentage': progress.progressPercentage,
+      'started_at': progress.startedAt.toIso8601String(),
+      'completed_at': progress.completedAt?.toIso8601String(),
+      'time_spent_minutes': 0,
+      'total_time_spent_minutes': progress.totalTimeSpentMinutes,
+      'answers': jsonEncode({}),
+      'notes': jsonEncode(progress.notes),
+      'last_accessed_at': progress.updatedAt.toIso8601String(),
+      'created_at': progress.createdAt.toIso8601String(),
+      'updated_at': progress.updatedAt.toIso8601String(),
+    };
+  }
+
+  UserLessonProgress _lessonProgressFromData(
+      String id, Map<String, dynamic> data, String createdAt, String updatedAt) {
+    final completed = _bool(data['completed']);
+    final notes = _map(data['notes']);
+    return UserLessonProgress(
+      id: id,
+      userId: _string(data['user_id']),
+      lessonId: _string(data['lesson_id']),
+      status: _statusFromData(data['status'], completed),
+      startedAt: _date(data['started_at'], fallback: createdAt),
+      completedAt: _nullableDate(data['completed_at']),
+      timeSpentMinutes: _int(data['time_spent_minutes']),
+      answers: Map<String, String>.from(_map(data['answers'])),
+      score: _nullableDouble(data['score']),
+      notes: _string(notes['notes']),
+      createdAt: _date(data['created_at'], fallback: createdAt),
+      updatedAt: _date(data['updated_at'], fallback: updatedAt),
+    );
+  }
+
+  Map<String, dynamic> _lessonProgressToData(
+      UserLessonProgress progress, String studyGuideId) {
+    return {
+      'user_id': progress.userId,
+      'program_id': studyGuideId,
+      'study_guide_id': studyGuideId,
+      'lesson_id': progress.lessonId,
+      'status': progress.status.name,
+      'completed': progress.status == StudyStatus.completed,
+      'score': (progress.score ?? 0).round(),
+      'current_lesson': 0,
+      'completed_lessons': progress.status == StudyStatus.completed ? 1 : 0,
+      'progress_percentage':
+          progress.status == StudyStatus.completed ? 100.0 : 0.0,
+      'started_at': progress.startedAt.toIso8601String(),
+      'completed_at': progress.completedAt?.toIso8601String(),
+      'time_spent_minutes': progress.timeSpentMinutes,
+      'total_time_spent_minutes': 0,
+      'answers': jsonEncode(progress.answers),
+      'notes': jsonEncode({'notes': progress.notes}),
+      'last_accessed_at': progress.updatedAt.toIso8601String(),
+      'created_at': progress.createdAt.toIso8601String(),
+      'updated_at': progress.updatedAt.toIso8601String(),
+    };
+  }
+
+  StudySession _sessionFromData(
+      String id, Map<String, dynamic> data, String createdAt, String updatedAt) {
+    return StudySession(
+      id: id,
+      studyGuideId: _string(data['study_guide_id']),
+      lessonId: _string(data['lesson_id']),
+      facilitatorId: _string(data['facilitator_id']),
+      participantIds: _list(data['participant_ids']),
+      title: _string(data['title'], fallback: 'Study Session'),
+      description: _string(data['description']),
+      scheduledAt: _date(data['scheduled_at'], fallback: createdAt),
+      durationMinutes: _int(data['duration_minutes'], fallback: 60),
+      status: _enumByName(
+        StudySessionStatus.values,
+        _string(data['status'], fallback: StudySessionStatus.scheduled.name),
+        StudySessionStatus.scheduled,
+      ),
+      meetingLink: _string(data['meeting_link']),
+      location: _string(data['location']),
+      resources: _map(data['resources']),
+      notes: _string(data['notes']),
+      createdAt: _date(data['created_at'], fallback: createdAt),
+      updatedAt: _date(data['updated_at'], fallback: updatedAt),
+    );
+  }
+
+  Map<String, dynamic> _sessionToData(StudySession session) {
+    return {
+      'study_guide_id': session.studyGuideId,
+      'lesson_id': session.lessonId ?? '',
+      'facilitator_id': session.facilitatorId,
+      'participant_ids': session.participantIds,
+      'title': session.title,
+      'description': session.description ?? '',
+      'scheduled_at': session.scheduledAt.toIso8601String(),
+      'duration_minutes': session.durationMinutes,
+      'status': session.status.name,
+      'meeting_link': session.meetingLink ?? '',
+      'location': session.location ?? '',
+      'resources': jsonEncode(session.resources),
+      'notes': session.notes ?? '',
+      'created_at': session.createdAt.toIso8601String(),
+      'updated_at': session.updatedAt.toIso8601String(),
+    };
+  }
+
+  T _enumByName<T extends Enum>(
+      List<T> values, String name, T fallback) {
+    return values.firstWhere(
+      (value) => value.name == name,
+      orElse: () => fallback,
+    );
+  }
+
+  StudyStatus _statusFromData(dynamic value, bool completed) {
+    if (completed) return StudyStatus.completed;
+    return _enumByName(
+      StudyStatus.values,
+      _string(value, fallback: StudyStatus.inProgress.name),
+      StudyStatus.inProgress,
+    );
+  }
+
+  String _string(dynamic value, {String fallback = ''}) {
+    if (value is String && value.trim().isNotEmpty) return value.trim();
+    return fallback;
+  }
+
+  int _int(dynamic value, {int fallback = 0}) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? fallback;
+    return fallback;
+  }
+
+  double _double(dynamic value, {double fallback = 0}) {
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? fallback;
+    return fallback;
+  }
+
+  double? _nullableDouble(dynamic value) {
+    if (value == null) return null;
+    return _double(value);
+  }
+
+  bool _bool(dynamic value, {bool fallback = false}) {
+    if (value is bool) return value;
+    if (value is String) {
+      return value.toLowerCase() == 'true'
+          ? true
+          : value.toLowerCase() == 'false'
+              ? false
+              : fallback;
+    }
+    return fallback;
+  }
+
+  DateTime _date(dynamic value, {required String fallback}) {
+    if (value is DateTime) return value;
+    if (value is String) {
+      return DateTime.tryParse(value) ?? DateTime.parse(fallback);
+    }
+    return DateTime.parse(fallback);
+  }
+
+  DateTime? _nullableDate(dynamic value) {
+    if (value == null) return null;
+    if (value is String && value.trim().isEmpty) return null;
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value);
+    return null;
+  }
+
+  List<String> _list(dynamic value) {
+    if (value is List) return value.map((item) => item.toString()).toList();
+    if (value is String && value.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(value);
+        if (decoded is List) {
+          return decoded.map((item) => item.toString()).toList();
+        }
+      } catch (_) {
+        return value
+            .split(',')
+            .map((item) => item.trim())
+            .where((item) => item.isNotEmpty)
+            .toList();
+      }
+    }
+    return const [];
+  }
+
+  Map<String, dynamic> _map(dynamic value) {
+    if (value is Map<String, dynamic>) return Map<String, dynamic>.from(value);
+    if (value is Map) {
+      return value.map((key, item) => MapEntry(key.toString(), item));
+    }
+    if (value is String && value.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(value);
+        if (decoded is Map) {
+          return decoded.map((key, item) => MapEntry(key.toString(), item));
+        }
+      } catch (_) {
+        return const {};
+      }
+    }
+    return const {};
   }
 }

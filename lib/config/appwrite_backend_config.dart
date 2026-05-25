@@ -69,7 +69,10 @@ class AppwriteBackendConfig {
   static const String dynamicContentCollectionId = 'dynamic_content';
   static const String featuredContentCollectionId = 'featured_content';
   static const String studyGuidesCollectionId = 'study_guides';
+  static const String studyLessonsCollectionId = 'study_lessons';
+  static const String studyQuestionsCollectionId = 'study_questions';
   static const String studyProgressCollectionId = 'study_progress';
+  static const String studySessionsCollectionId = 'study_sessions';
   static const String taskAssignmentsCollectionId = 'task_assignments';
   static const String dailyVersesCollectionId = 'daily_verses';
   static const String memoryVersesCollectionId = 'memory_verses';
