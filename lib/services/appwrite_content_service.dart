@@ -46,4 +46,50 @@ class AppwriteContentService {
       throw DatabaseException('Failed to fetch content page', originalError: e);
     }
   }
+
+  Future<String> createContentPage(Map<String, dynamic> data) async {
+    try {
+      final doc = await _databases.createDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.contentPagesCollectionId,
+        documentId: ID.unique(),
+        data: _sanitizeContentPageData(data),
+      );
+      return doc.$id;
+    } catch (e) {
+      _logger.error('Failed to create content page', e);
+      throw DatabaseException('Failed to create content page',
+          originalError: e);
+    }
+  }
+
+  Future<void> updateContentPage(
+    String documentId,
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      await _databases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.contentPagesCollectionId,
+        documentId: documentId,
+        data: _sanitizeContentPageData(data),
+      );
+    } catch (e) {
+      _logger.error('Failed to update content page', e);
+      throw DatabaseException('Failed to update content page',
+          originalError: e);
+    }
+  }
+
+  Map<String, dynamic> _sanitizeContentPageData(Map<String, dynamic> data) {
+    final sanitized = Map<String, dynamic>.from(data)
+      ..remove('id')
+      ..removeWhere((key, value) => key.startsWith(r'$') || value == null);
+
+    sanitized.putIfAbsent('language', () => 'en');
+    sanitized.putIfAbsent('language_code', () => 'en');
+    sanitized.putIfAbsent('category', () => sanitized['page_type'] ?? 'page');
+
+    return sanitized;
+  }
 }

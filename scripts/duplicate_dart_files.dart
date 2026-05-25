@@ -1,20 +1,26 @@
 import 'dart:io';
 
 void main(List<String> args) {
-  final target = args.isEmpty ? 'lib' : args.first;
-  final root = Directory(target);
-
-  if (!root.existsSync()) {
-    stderr.writeln('Directory not found: $target');
-    exitCode = 1;
-    return;
-  }
+  final targets = args.isEmpty
+      ? ['lib']
+      : args.where((arg) => arg.trim().isNotEmpty).toList();
 
   final byName = <String, List<String>>{};
-  for (final entity in root.listSync(recursive: true, followLinks: false)) {
-    if (entity is! File || !entity.path.endsWith('.dart')) continue;
-    final name = entity.uri.pathSegments.last;
-    byName.putIfAbsent(name, () => []).add(entity.path);
+  final missingTargets = <String>[];
+
+  for (final target in targets) {
+    final root = Directory(target);
+
+    if (!root.existsSync()) {
+      missingTargets.add(target);
+      continue;
+    }
+
+    for (final entity in root.listSync(recursive: true, followLinks: false)) {
+      if (entity is! File || !entity.path.endsWith('.dart')) continue;
+      final name = entity.uri.pathSegments.last;
+      byName.putIfAbsent(name, () => []).add(entity.path);
+    }
   }
 
   final duplicates = byName.entries
@@ -23,7 +29,13 @@ void main(List<String> args) {
     ..sort((a, b) => a.key.compareTo(b.key));
 
   if (duplicates.isEmpty) {
-    stdout.writeln('No duplicate Dart filenames found under $target.');
+    stdout.writeln(
+      'No duplicate Dart filenames found under ${targets.join(', ')}.',
+    );
+    if (missingTargets.isNotEmpty) {
+      stdout
+          .writeln('Skipped missing directories: ${missingTargets.join(', ')}');
+    }
     return;
   }
 
@@ -33,4 +45,10 @@ void main(List<String> args) {
       stdout.writeln('  - $path');
     }
   }
+
+  if (missingTargets.isNotEmpty) {
+    stdout.writeln('Skipped missing directories: ${missingTargets.join(', ')}');
+  }
+
+  exitCode = 1;
 }

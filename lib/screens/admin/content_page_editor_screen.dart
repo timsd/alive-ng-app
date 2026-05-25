@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../services/firebase_database_service.dart';
+import '../../services/appwrite_content_service.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/role_guard.dart';
 import '../../widgets/loading_widget.dart';
@@ -8,33 +8,35 @@ import '../../utils/text_formatter.dart';
 
 class ContentPageEditorScreen extends StatefulWidget {
   final Map<String, dynamic>? page;
-  
+
   const ContentPageEditorScreen({
     super.key,
     this.page,
   });
 
   @override
-  State<ContentPageEditorScreen> createState() => _ContentPageEditorScreenState();
+  State<ContentPageEditorScreen> createState() =>
+      _ContentPageEditorScreenState();
 }
 
 class _ContentPageEditorScreenState extends State<ContentPageEditorScreen> {
   final _formKey = GlobalKey<FormState>();
-  final FirebaseDatabaseService _databaseService = FirebaseDatabaseService.instance;
+  final AppwriteContentService _contentService =
+      AppwriteContentService.instance;
   final AuthService _authService = AuthService.instance;
-  
+
   late TextEditingController _titleController;
   late TextEditingController _slugController;
   late TextEditingController _contentController;
   late TextEditingController _metaDescriptionController;
   late TextEditingController _metaKeywordsController;
-  
+
   bool _isLoading = false;
   bool _isPublished = false;
   DateTime? _publishDate;
   String _pageType = 'article';
   int _sortOrder = 0;
-  
+
   final List<String> _pageTypes = [
     'article',
     'page',
@@ -58,7 +60,7 @@ class _ContentPageEditorScreenState extends State<ContentPageEditorScreen> {
     _contentController = TextEditingController();
     _metaDescriptionController = TextEditingController();
     _metaKeywordsController = TextEditingController();
-    
+
     // Auto-generate slug from title
     _titleController.addListener(_generateSlug);
   }
@@ -86,7 +88,7 @@ class _ContentPageEditorScreenState extends State<ContentPageEditorScreen> {
       _isPublished = page['is_published'] ?? false;
       _pageType = page['page_type'] ?? 'article';
       _sortOrder = page['sort_order'] ?? 0;
-      
+
       if (page['publish_date'] != null) {
         _publishDate = DateTime.parse(page['publish_date']);
       }
@@ -137,14 +139,17 @@ class _ContentPageEditorScreenState extends State<ContentPageEditorScreen> {
                     children: [
                       // Page Status Card
                       Card(
-                        color: _isPublished ? Colors.green.shade50 : Colors.orange.shade50,
+                        color: _isPublished
+                            ? Colors.green.shade50
+                            : Colors.orange.shade50,
                         child: Padding(
                           padding: const EdgeInsets.all(16.0),
                           child: Row(
                             children: [
                               Icon(
                                 _isPublished ? Icons.public : Icons.drafts,
-                                color: _isPublished ? Colors.green : Colors.orange,
+                                color:
+                                    _isPublished ? Colors.green : Colors.orange,
                               ),
                               const SizedBox(width: 12),
                               Expanded(
@@ -155,7 +160,9 @@ class _ContentPageEditorScreenState extends State<ContentPageEditorScreen> {
                                       _isPublished ? 'Published' : 'Draft',
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
-                                        color: _isPublished ? Colors.green : Colors.orange,
+                                        color: _isPublished
+                                            ? Colors.green
+                                            : Colors.orange,
                                       ),
                                     ),
                                     if (_publishDate != null)
@@ -182,9 +189,9 @@ class _ContentPageEditorScreenState extends State<ContentPageEditorScreen> {
                           ),
                         ),
                       ),
-                      
+
                       const SizedBox(height: 24),
-                      
+
                       // Basic Information
                       const Text(
                         'Basic Information',
@@ -194,7 +201,7 @@ class _ContentPageEditorScreenState extends State<ContentPageEditorScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      
+
                       TextFormField(
                         controller: _titleController,
                         decoration: const InputDecoration(
@@ -210,9 +217,9 @@ class _ContentPageEditorScreenState extends State<ContentPageEditorScreen> {
                           return null;
                         },
                       ),
-                      
+
                       const SizedBox(height: 16),
-                      
+
                       TextFormField(
                         controller: _slugController,
                         decoration: const InputDecoration(
@@ -232,9 +239,9 @@ class _ContentPageEditorScreenState extends State<ContentPageEditorScreen> {
                           return null;
                         },
                       ),
-                      
+
                       const SizedBox(height: 16),
-                      
+
                       Row(
                         children: [
                           Expanded(
@@ -248,7 +255,8 @@ class _ContentPageEditorScreenState extends State<ContentPageEditorScreen> {
                               items: _pageTypes.map((type) {
                                 return DropdownMenuItem(
                                   value: type,
-                                  child: Text(TextFormatter.formatCategory(type).toUpperCase()),
+                                  child: Text(TextFormatter.formatCategory(type)
+                                      .toUpperCase()),
                                 );
                               }).toList(),
                               onChanged: (value) {
@@ -276,9 +284,9 @@ class _ContentPageEditorScreenState extends State<ContentPageEditorScreen> {
                           ),
                         ],
                       ),
-                      
+
                       const SizedBox(height: 24),
-                      
+
                       // Content Section
                       const Text(
                         'Content',
@@ -288,7 +296,7 @@ class _ContentPageEditorScreenState extends State<ContentPageEditorScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      
+
                       TextFormField(
                         controller: _contentController,
                         decoration: const InputDecoration(
@@ -305,9 +313,9 @@ class _ContentPageEditorScreenState extends State<ContentPageEditorScreen> {
                           return null;
                         },
                       ),
-                      
+
                       const SizedBox(height: 24),
-                      
+
                       // SEO Section
                       const Text(
                         'SEO & Metadata',
@@ -317,7 +325,7 @@ class _ContentPageEditorScreenState extends State<ContentPageEditorScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      
+
                       TextFormField(
                         controller: _metaDescriptionController,
                         decoration: const InputDecoration(
@@ -330,9 +338,9 @@ class _ContentPageEditorScreenState extends State<ContentPageEditorScreen> {
                         maxLines: 3,
                         maxLength: 160,
                       ),
-                      
+
                       const SizedBox(height: 16),
-                      
+
                       TextFormField(
                         controller: _metaKeywordsController,
                         decoration: const InputDecoration(
@@ -343,9 +351,9 @@ class _ContentPageEditorScreenState extends State<ContentPageEditorScreen> {
                           helperText: 'Separate keywords with commas',
                         ),
                       ),
-                      
+
                       const SizedBox(height: 32),
-                      
+
                       // Action Buttons
                       Row(
                         children: [
@@ -361,7 +369,9 @@ class _ContentPageEditorScreenState extends State<ContentPageEditorScreen> {
                             child: ElevatedButton.icon(
                               onPressed: _savePage,
                               icon: const Icon(Icons.save),
-                              label: Text(widget.page == null ? 'Create Page' : 'Update Page'),
+                              label: Text(widget.page == null
+                                  ? 'Create Page'
+                                  : 'Update Page'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.green,
                                 foregroundColor: Colors.white,
@@ -370,7 +380,7 @@ class _ContentPageEditorScreenState extends State<ContentPageEditorScreen> {
                           ),
                         ],
                       ),
-                      
+
                       const SizedBox(height: 16),
                     ],
                   ),
@@ -394,8 +404,8 @@ class _ContentPageEditorScreenState extends State<ContentPageEditorScreen> {
         'content': _contentController.text.trim(),
         'page_type': _pageType,
         'is_published': _isPublished,
-        'publish_date': _isPublished && _publishDate != null 
-            ? _publishDate!.toIso8601String() 
+        'publish_date': _isPublished && _publishDate != null
+            ? _publishDate!.toIso8601String()
             : null,
         'meta_description': _metaDescriptionController.text.trim(),
         'meta_keywords': _metaKeywordsController.text.trim(),
@@ -407,14 +417,14 @@ class _ContentPageEditorScreenState extends State<ContentPageEditorScreen> {
         // Create new page
         pageData['created_at'] = DateTime.now().toIso8601String();
         pageData['author_id'] = _authService.currentUser?.uid;
-        
-        await _databaseService.createDocument('content_pages', pageData);
-        
+
+        await _contentService.createContentPage(pageData);
+
         ToastUtils.showSuccess('Page created successfully');
       } else {
         // Update existing page
-        await _databaseService.updateDocument('content_pages', widget.page!['id'], pageData);
-        
+        await _contentService.updateContentPage(widget.page!['id'], pageData);
+
         ToastUtils.showSuccess('Page updated successfully');
       }
 
@@ -432,8 +442,8 @@ class _ContentPageEditorScreenState extends State<ContentPageEditorScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(_titleController.text.isNotEmpty 
-            ? _titleController.text 
+        title: Text(_titleController.text.isNotEmpty
+            ? _titleController.text
             : 'Page Preview'),
         content: SingleChildScrollView(
           child: Column(
@@ -458,8 +468,8 @@ class _ContentPageEditorScreenState extends State<ContentPageEditorScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  _contentController.text.isNotEmpty 
-                      ? _contentController.text 
+                  _contentController.text.isNotEmpty
+                      ? _contentController.text
                       : 'No content yet...',
                   style: const TextStyle(fontSize: 14),
                 ),
@@ -477,6 +487,3 @@ class _ContentPageEditorScreenState extends State<ContentPageEditorScreen> {
     );
   }
 }
-
-
-
