@@ -34,7 +34,7 @@ class BibleSource {
   /// Get a random verse from the daily corpus
   BibleVerse? randomVerse() {
     if (dailyCorpus.isEmpty) return null;
-    dailyCorpus.shuffle();
-    return dailyCorpus.first;
+    final verses = List<BibleVerse>.of(dailyCorpus)..shuffle();
+    return verses.first;
   }
 }

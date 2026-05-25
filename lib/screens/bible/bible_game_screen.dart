@@ -30,6 +30,7 @@ class BibleGameState {
   final bool showStarAnimation;
   final bool hasCheckedAnswer;
   final int? selectedChoiceIndex;
+  final List<String> multipleChoiceOptions;
   final bool showAnswer;
   final int attemptCount;
   final bool showHintButton;
@@ -48,6 +49,7 @@ class BibleGameState {
     this.showStarAnimation = false,
     this.hasCheckedAnswer = false,
     this.selectedChoiceIndex,
+    this.multipleChoiceOptions = const [],
     this.showAnswer = false,
     this.attemptCount = 0,
     this.showHintButton = false,
@@ -67,12 +69,16 @@ class BibleGameState {
     bool? showStarAnimation,
     bool? hasCheckedAnswer,
     int? selectedChoiceIndex,
+    List<String>? multipleChoiceOptions,
     bool? showAnswer,
     int? attemptCount,
     bool? showHintButton,
+    bool clearCurrentVerse = false,
+    bool clearSelectedChoiceIndex = false,
   }) {
     return BibleGameState(
-      currentVerse: currentVerse ?? this.currentVerse,
+      currentVerse:
+          clearCurrentVerse ? null : currentVerse ?? this.currentVerse,
       selectedVersion: selectedVersion ?? this.selectedVersion,
       currentLevel: currentLevel ?? this.currentLevel,
       score: score ?? this.score,
@@ -84,7 +90,10 @@ class BibleGameState {
       showHint: showHint ?? this.showHint,
       showStarAnimation: showStarAnimation ?? this.showStarAnimation,
       hasCheckedAnswer: hasCheckedAnswer ?? this.hasCheckedAnswer,
-      selectedChoiceIndex: selectedChoiceIndex ?? this.selectedChoiceIndex,
+      selectedChoiceIndex: clearSelectedChoiceIndex
+          ? null
+          : selectedChoiceIndex ?? this.selectedChoiceIndex,
+      multipleChoiceOptions: multipleChoiceOptions ?? this.multipleChoiceOptions,
       showAnswer: showAnswer ?? this.showAnswer,
       attemptCount: attemptCount ?? this.attemptCount,
       showHintButton: showHintButton ?? this.showHintButton,
@@ -116,11 +125,16 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
   }
 
   Future<void> loadNewVerse() async {
+    final previousReference = state.currentVerse?.reference;
+
     // Show loading state implicitly by clearing out the current verse briefly
-    state = state.copyWith(currentVerse: null);
+    state = state.copyWith(
+      clearCurrentVerse: true,
+      clearSelectedChoiceIndex: true,
+    );
 
     if (_remainingVerseReferences.isEmpty) {
-      _rebuildVersePool(avoidReference: state.currentVerse?.reference);
+      _rebuildVersePool(avoidReference: previousReference);
     }
     if (_remainingVerseReferences.isEmpty) {
       _rebuildVersePool();
@@ -138,14 +152,17 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
     final textForVersion =
         verse.text[state.selectedVersion] ?? verse.text.values.first;
     final blankedWords = _generateBlankedWords(textForVersion);
+    final multipleChoiceOptions =
+        _generateMultipleChoiceOptions(verse, state.selectedVersion);
 
     state = state.copyWith(
       currentVerse: verse,
       blankedWords: blankedWords,
+      multipleChoiceOptions: multipleChoiceOptions,
       userInput: '',
       showHint: false,
       hasCheckedAnswer: false,
-      selectedChoiceIndex: null,
+      clearSelectedChoiceIndex: true,
       showAnswer: false,
       attemptCount: 0,
       showHintButton: false,
@@ -153,18 +170,50 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
   }
 
   List<int> _generateBlankedWords(String text) {
-    final words = text.split(' ');
-    final numBlanks = (words.length * 0.2).ceil(); // 20% of words
-    final blankedIndices = <int>[];
+    final words =
+        text.split(RegExp(r'\s+')).where((word) => word.isNotEmpty).toList();
+    if (words.isEmpty) return const [];
 
-    while (blankedIndices.length < numBlanks) {
-      final index = _random.nextInt(words.length);
-      if (!blankedIndices.contains(index)) {
-        blankedIndices.add(index);
+    final candidates = words.asMap().entries.where((entry) {
+      final normalized = _normalizeText(entry.value);
+      return normalized.length > 2;
+    }).map((entry) => entry.key).toList()
+      ..shuffle(_random);
+
+    if (candidates.isEmpty) return const [];
+
+    final numBlanks =
+        max(1, min((words.length * 0.2).ceil(), candidates.length));
+    final blankedIndices = candidates.take(numBlanks).toList();
+
+    return blankedIndices..sort();
+  }
+
+  List<String> _generateMultipleChoiceOptions(
+    BibleVerse verse,
+    String selectedVersion,
+  ) {
+    final correctAnswer = verse.text[selectedVersion] ?? verse.text.values.first;
+    final normalizedCorrect = _normalizeText(correctAnswer);
+
+    final wrongAnswers = BibleSource.instance.dailyCorpus
+        .where((candidate) => candidate.reference != verse.reference)
+        .map((candidate) =>
+            candidate.text[selectedVersion] ?? candidate.text.values.first)
+        .where((answer) => _normalizeText(answer) != normalizedCorrect)
+        .toList()
+      ..shuffle(_random);
+
+    final options = <String>[correctAnswer];
+    for (final answer in wrongAnswers) {
+      if (options.length == 4) break;
+      if (!options.contains(answer)) {
+        options.add(answer);
       }
     }
 
-    return blankedIndices..sort();
+    options.shuffle(_random);
+    return options;
   }
 
   void setGameMode(GameMode mode) {
@@ -174,6 +223,8 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
       showHintButton: false,
       hasCheckedAnswer: false,
       showHint: false,
+      showAnswer: false,
+      clearSelectedChoiceIndex: true,
     );
   }
 
@@ -357,14 +408,28 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
   }
 
   void checkMultipleChoiceAnswer() {
-    if (state.selectedChoiceIndex == null) return;
+    final selectedIndex = state.selectedChoiceIndex;
+    if (selectedIndex == null ||
+        selectedIndex < 0 ||
+        selectedIndex >= state.multipleChoiceOptions.length ||
+        state.currentVerse == null) {
+      return;
+    }
 
+    final correctAnswer = state.currentVerse!.text[state.selectedVersion] ??
+        state.currentVerse!.text.values.first;
+    final selectedAnswer = state.multipleChoiceOptions[selectedIndex];
     final isCorrect =
-        state.selectedChoiceIndex == 0; // First option is always correct
+        _normalizeText(selectedAnswer) == _normalizeText(correctAnswer);
 
     if (isCorrect) {
+      final newCompleted = [
+        ...state.completedVerses,
+        state.currentVerse!.reference
+      ];
       state = state.copyWith(
         score: state.score + 10,
+        completedVerses: newCompleted,
         showStarAnimation: true,
         showAnswer: true,
       );
@@ -407,7 +472,9 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
       onError: (error) => debugPrint('Speech recognition error: $error'),
       onStatus: (status) => debugPrint('Speech recognition status: $status'),
     );
-    setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _initializeTts() async {
@@ -475,6 +542,8 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
 
   @override
   void dispose() {
+    _speech.stop();
+    _tts.stop();
     _textController.dispose();
     for (final controller in _blankControllers.values) {
       controller.dispose();
@@ -970,7 +1039,8 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
 
   Widget _buildFillInTheGapText(BibleGameState gameState) {
     final text = gameState.currentVerse!.text[gameState.selectedVersion] ?? '';
-    final words = text.split(' ');
+    final words =
+        text.split(RegExp(r'\s+')).where((word) => word.isNotEmpty).toList();
 
     final controllerKey =
         '${gameState.currentVerse!.reference}|${gameState.selectedVersion}|${gameState.blankedWords.join(',')}';
@@ -1223,7 +1293,10 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
                               final text = gameState.currentVerse!
                                       .text[gameState.selectedVersion] ??
                                   '';
-                              final words = text.split(' ');
+                              final words = text
+                                  .split(RegExp(r'\s+'))
+                                  .where((word) => word.isNotEmpty)
+                                  .toList();
                               for (final index in gameState.blankedWords) {
                                 if (_blankControllers.containsKey(index) &&
                                     index < words.length) {
@@ -1356,10 +1429,11 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
     final currentVerse = gameState.currentVerse;
     if (currentVerse == null) return const SizedBox.shrink();
 
-    // Generate multiple choice options
     final correctAnswer = currentVerse.text[gameState.selectedVersion] ??
         currentVerse.text.values.first;
-    final options = _generateMultipleChoiceOptions(correctAnswer);
+    final options = gameState.multipleChoiceOptions.isEmpty
+        ? <String>[correctAnswer]
+        : gameState.multipleChoiceOptions;
 
     return Card(
       child: Padding(
@@ -1467,31 +1541,4 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
     );
   }
 
-  List<String> _generateMultipleChoiceOptions(String correctAnswer) {
-    // This is a simplified implementation
-    // In a real app, you'd want more sophisticated wrong answers
-    final options = <String>[correctAnswer];
-
-    // Add some generic wrong answers
-    final wrongAnswers = [
-      'For God so loved the world that he gave his one and only Son.',
-      'The Lord is my shepherd, I lack nothing.',
-      'Trust in the Lord with all your heart and lean not on your own understanding.',
-      'I can do all this through him who gives me strength.',
-      'Be strong and courageous. Do not be afraid; do not be discouraged.',
-    ];
-
-    // Remove the correct answer if it's in wrong answers
-    wrongAnswers.removeWhere((answer) => answer == correctAnswer);
-
-    // Add 3 wrong answers
-    for (int i = 0; i < 3 && i < wrongAnswers.length; i++) {
-      options.add(wrongAnswers[i]);
-    }
-
-    // Shuffle the options
-    options.shuffle();
-
-    return options;
-  }
 }
