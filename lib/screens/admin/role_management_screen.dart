@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/app_models.dart';
-import '../../services/firebase_database_service.dart';
+import '../../services/appwrite_profile_service.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/role_guard.dart';
 import '../../widgets/custom_image.dart';
@@ -35,8 +35,7 @@ class _RoleManagementContent extends StatefulWidget {
 }
 
 class _RoleManagementContentState extends State<_RoleManagementContent> {
-  final FirebaseDatabaseService _databaseService =
-      FirebaseDatabaseService.instance;
+  final AppwriteProfileService _profileService = AppwriteProfileService();
   final AuthService _authService = AuthService.instance;
   bool _isLoading = true;
   String? _currentUserId;
@@ -76,8 +75,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
 
   Future<void> _loadUsers() async {
     try {
-      // Fetch users from Firebase
-      final users = await _databaseService.getAllUsers();
+      final users = await _profileService.getAllUsers();
 
       setState(() {
         _users = users;
@@ -696,7 +694,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
           user.role != newRole) {
         final archiveRecord = await _showArchiveRoleDialog(user);
         if (archiveRecord != null) {
-          await _databaseService.archiveLeadershipRole(archiveRecord);
+          await _profileService.archiveLeadershipRole(archiveRecord);
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -709,8 +707,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
         }
       }
 
-      // Update user role in Firebase
-      await _databaseService.updateUserRole(user.id, newRole);
+      await _profileService.updateUserRole(user.id, newRole);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -763,8 +760,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
 
     if (confirmed == true) {
       try {
-        // Archive user in Firebase
-        await _databaseService.archiveUser(user.id);
+        await _profileService.archiveUser(user.id);
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -893,7 +889,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
             width: double.maxFinite,
             height: 400,
             child: FutureBuilder<List<LeadershipRecord>>(
-              future: _databaseService.getLeadershipHistory(user.id),
+              future: _profileService.getLeadershipHistory(user.id),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());

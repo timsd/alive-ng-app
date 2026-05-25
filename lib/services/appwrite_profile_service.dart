@@ -36,6 +36,79 @@ class AppwriteProfileService {
     }
   }
 
+  Future<List<UserProfile>> getAllUsers() async {
+    final response = await _databases.listDocuments(
+      databaseId: AppwriteBackendConfig.databaseId,
+      collectionId: AppwriteBackendConfig.usersCollectionId,
+      queries: [
+        Query.limit(500),
+      ],
+    );
+
+    return response.documents.map((document) {
+      return userProfileFromDocument(
+        document,
+        fallbackEmail: (document.data['email'] ?? '').toString(),
+        fallbackFullName:
+            (document.data['fullName'] ?? document.data['full_name'])
+                ?.toString(),
+      );
+    }).toList();
+  }
+
+  Future<void> updateUserRole(String userId, String newRole) async {
+    await _databases.updateDocument(
+      databaseId: AppwriteBackendConfig.databaseId,
+      collectionId: AppwriteBackendConfig.usersCollectionId,
+      documentId: userId,
+      data: {
+        'role': newRole,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      },
+    );
+  }
+
+  Future<void> archiveUser(String userId) async {
+    await _databases.updateDocument(
+      databaseId: AppwriteBackendConfig.databaseId,
+      collectionId: AppwriteBackendConfig.usersCollectionId,
+      documentId: userId,
+      data: {
+        'is_archived': true,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      },
+    );
+  }
+
+  Future<void> archiveLeadershipRole(LeadershipRecord record) async {
+    await _databases.createDocument(
+      databaseId: AppwriteBackendConfig.databaseId,
+      collectionId: AppwriteBackendConfig.leadershipHistoryCollectionId,
+      documentId: record.id,
+      data: record.toJson()..remove('id'),
+    );
+  }
+
+  Future<List<LeadershipRecord>> getLeadershipHistory(String userId) async {
+    final response = await _databases.listDocuments(
+      databaseId: AppwriteBackendConfig.databaseId,
+      collectionId: AppwriteBackendConfig.leadershipHistoryCollectionId,
+      queries: [
+        Query.equal('user_id', userId),
+        Query.limit(100),
+      ],
+    );
+
+    final records = response.documents.map((document) {
+      return LeadershipRecord.fromJson({
+        'id': document.$id,
+        ...document.data,
+      });
+    }).toList();
+    records.sort((a, b) => b.endDate.compareTo(a.endDate));
+    return records;
+  }
+
   Future<models.Document> ensureUserProfile({
     required String userId,
     required String email,
