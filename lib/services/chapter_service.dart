@@ -1,7 +1,14 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+// ignore_for_file: deprecated_member_use
+
+import 'dart:convert';
+
+import 'package:appwrite/appwrite.dart';
 import 'package:uuid/uuid.dart';
-import '../models/chapter_models.dart';
+
+import '../config/appwrite_backend_config.dart';
+import '../main.dart';
 import '../models/app_models.dart' show TaskAssignment;
+import '../models/chapter_models.dart';
 import '../utils/app_exception.dart';
 
 class ChapterService {
@@ -10,32 +17,36 @@ class ChapterService {
   ChapterService._internal();
 
   final Uuid _uuid = const Uuid();
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final Databases _databases = Databases(appwriteClient);
 
-  // Chapter Management
+  static const _chaptersCollection = AppwriteBackendConfig.chaptersCollectionId;
+  static const _membersCollection =
+      AppwriteBackendConfig.chapterMembersCollectionId;
+  static const _activitiesCollection =
+      AppwriteBackendConfig.chapterActivitiesCollectionId;
+  static const _tasksCollection = AppwriteBackendConfig.chapterTasksCollectionId;
+  static const _reportsCollection =
+      AppwriteBackendConfig.chapterReportsCollectionId;
+  static const _taskAssignmentsCollection =
+      AppwriteBackendConfig.taskAssignmentsCollectionId;
+
   Future<List<Chapter>> getChapters({
     WorkersType? type,
     bool? isActive,
     String? searchQuery,
   }) async {
     try {
-      Query query = _firestore.collection('chapters');
+      final queries = <String>[Query.orderAsc('name'), Query.limit(500)];
+      if (type != null) queries.add(Query.equal('type', type.name));
+      if (isActive != null) queries.add(Query.equal('is_active', isActive));
 
-      if (type != null) {
-        query = query.where('type', isEqualTo: type.name);
-      }
-      if (isActive != null) {
-        query = query.where('is_active', isEqualTo: isActive);
-      }
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _chaptersCollection,
+        queries: queries,
+      );
 
-      final snapshot = await query.orderBy('name').get();
-
-      var chapters = snapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
-        data['id'] = doc.id;
-        return Chapter.fromJson(data);
-      }).toList();
-
+      var chapters = response.documents.map(_chapterFromDocument).toList();
       if (searchQuery != null && searchQuery.isNotEmpty) {
         final queryLower = searchQuery.toLowerCase();
         chapters = chapters
@@ -53,59 +64,29 @@ class ChapterService {
 
   Future<Chapter?> getChapterById(String chapterId) async {
     try {
-      final doc = await _firestore.collection('chapters').doc(chapterId).get();
-      if (!doc.exists) return null;
-
-      final data = doc.data() as Map<String, dynamic>;
-      data['id'] = doc.id;
-      return Chapter.fromJson(data);
+      final document = await _databases.getDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _chaptersCollection,
+        documentId: chapterId,
+      );
+      return _chapterFromDocument(document);
+    } on AppwriteException catch (e) {
+      if (e.code == 404) return null;
+      throw DatabaseException('Failed to get chapter by ID', originalError: e);
     } catch (e) {
-      // Return null for not found, but log or throw for other errors?
-      // Original code returned null on error, which might mask actual DB errors.
-      // Keeping behavior but wrapping in try/catch to return null is fine if that's the intent.
-      // But if it's a DB error, we might want to know.
-      // However, to keep signature 'Future<Chapter?>', returning null is standard for 'not found'.
-      // If 'e' is a connection error, returning null is misleading.
-      // Let's stick to original behavior for now to avoid breaking changes, or improve it.
-      // Original: return null;
       throw DatabaseException('Failed to get chapter by ID', originalError: e);
     }
   }
 
   Future<List<Chapter>> getUserChapters(String userId) async {
     try {
-      // 1. Get chapter_members where user_id equals userId and is_active is true
-      final membershipSnapshot = await _firestore
-          .collection('chapter_members')
-          .where('user_id', isEqualTo: userId)
-          .where('is_active', isEqualTo: true)
-          .get();
+      final memberships = await getUserMemberships(userId);
+      final chapterIds = memberships.map((m) => m.chapterId).toSet().toList();
+      final chapters = <Chapter>[];
 
-      if (membershipSnapshot.docs.isEmpty) return [];
-
-      final chapterIds = membershipSnapshot.docs
-          .map((doc) => doc.data()['chapter_id'] as String)
-          .toList();
-
-      if (chapterIds.isEmpty) return [];
-
-      // 2. Get chapters (handling whereIn limit of 10)
-      List<Chapter> chapters = [];
-      for (var i = 0; i < chapterIds.length; i += 10) {
-        final end = (i + 10 < chapterIds.length) ? i + 10 : chapterIds.length;
-        final chunk = chapterIds.sublist(i, end);
-
-        final chapterSnapshot = await _firestore
-            .collection('chapters')
-            .where(FieldPath.documentId, whereIn: chunk)
-            .where('is_active', isEqualTo: true)
-            .get();
-
-        chapters.addAll(chapterSnapshot.docs.map((doc) {
-          final data = doc.data();
-          data['id'] = doc.id;
-          return Chapter.fromJson(data);
-        }));
+      for (final chapterId in chapterIds) {
+        final chapter = await getChapterById(chapterId);
+        if (chapter != null && chapter.isActive) chapters.add(chapter);
       }
 
       return chapters;
@@ -117,26 +98,21 @@ class ChapterService {
 
   Future<Chapter> createChapter(Chapter chapter) async {
     try {
-      final chapterData = chapter.toJson();
-      chapterData.remove(
-          'id'); // Let Firestore generate ID or use the one provided if manually set
-      chapterData['created_at'] = FieldValue.serverTimestamp();
-      chapterData['updated_at'] = FieldValue.serverTimestamp();
-
-      // If chapter.id is empty or null, add() will generate one.
-      // If we want to use UUID from client:
-      // final docRef = _firestore.collection('chapters').doc(_uuid.v4());
-      // await docRef.set(chapterData);
-
-      // Using add() is simpler
-      final docRef = await _firestore.collection('chapters').add(chapterData);
-
+      final now = DateTime.now().toUtc();
+      final id = chapter.id.isNotEmpty ? chapter.id : _uuid.v4();
       final newChapter = chapter.copyWith(
-        id: docRef.id,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
+        id: id,
+        createdAt: now,
+        updatedAt: now,
       );
-      return newChapter;
+
+      final document = await _databases.createDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _chaptersCollection,
+        documentId: id,
+        data: _chapterData(newChapter),
+      );
+      return _chapterFromDocument(document);
     } catch (e) {
       throw DatabaseException('Failed to create chapter', originalError: e);
     }
@@ -144,16 +120,14 @@ class ChapterService {
 
   Future<Chapter> updateChapter(Chapter chapter) async {
     try {
-      final chapterData = chapter.toJson();
-      chapterData.remove('id');
-      chapterData['updated_at'] = FieldValue.serverTimestamp();
-
-      await _firestore
-          .collection('chapters')
-          .doc(chapter.id)
-          .update(chapterData);
-
-      return chapter.copyWith(updatedAt: DateTime.now());
+      final updatedChapter = chapter.copyWith(updatedAt: DateTime.now().toUtc());
+      final document = await _databases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _chaptersCollection,
+        documentId: updatedChapter.id,
+        data: _chapterData(updatedChapter),
+      );
+      return _chapterFromDocument(document);
     } catch (e) {
       throw DatabaseException('Failed to update chapter', originalError: e);
     }
@@ -161,44 +135,53 @@ class ChapterService {
 
   Future<void> updateChapterFields(String id, Map<String, dynamic> data) async {
     try {
-      final updatedData = Map<String, dynamic>.from(data);
-      updatedData['updated_at'] = FieldValue.serverTimestamp();
-      await _firestore.collection('chapters').doc(id).update(updatedData);
+      await _databases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _chaptersCollection,
+        documentId: id,
+        data: _normalizeChapterUpdates({
+          ...data,
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        }),
+      );
     } catch (e) {
-      throw DatabaseException('Failed to update chapter fields', originalError: e);
+      throw DatabaseException('Failed to update chapter fields',
+          originalError: e);
     }
   }
 
   Future<void> deleteChapter(String chapterId) async {
     try {
-      // Soft delete
-      await _firestore.collection('chapters').doc(chapterId).update({
-        'is_active': false,
-        'updated_at': FieldValue.serverTimestamp(),
-      });
+      await _databases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _chaptersCollection,
+        documentId: chapterId,
+        data: {
+          'is_active': false,
+          'updated_at': _iso(DateTime.now()),
+        },
+      );
     } catch (e) {
       throw DatabaseException('Failed to delete chapter', originalError: e);
     }
   }
 
-  // Member Management
   Future<List<ChapterMember>> getChapterMembers(String chapterId,
       {bool? isActive}) async {
     try {
-      Query query = _firestore
-          .collection('chapter_members')
-          .where('chapter_id', isEqualTo: chapterId);
+      final queries = <String>[
+        Query.equal('chapter_id', chapterId),
+        Query.orderDesc('joined_at'),
+        Query.limit(500),
+      ];
+      if (isActive != null) queries.add(Query.equal('is_active', isActive));
 
-      if (isActive != null) {
-        query = query.where('is_active', isEqualTo: isActive);
-      }
-
-      final snapshot = await query.orderBy('joined_at', descending: true).get();
-      return snapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
-        data['id'] = doc.id;
-        return ChapterMember.fromJson(data);
-      }).toList();
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _membersCollection,
+        queries: queries,
+      );
+      return response.documents.map(_memberFromDocument).toList();
     } catch (e) {
       throw DatabaseException('Failed to get chapter members', originalError: e);
     }
@@ -207,19 +190,17 @@ class ChapterService {
   Future<ChapterMember?> getChapterMember(
       String chapterId, String userId) async {
     try {
-      final snapshot = await _firestore
-          .collection('chapter_members')
-          .where('chapter_id', isEqualTo: chapterId)
-          .where('user_id', isEqualTo: userId)
-          .limit(1)
-          .get();
-
-      if (snapshot.docs.isEmpty) return null;
-
-      final doc = snapshot.docs.first;
-      final data = doc.data();
-      data['id'] = doc.id;
-      return ChapterMember.fromJson(data);
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _membersCollection,
+        queries: [
+          Query.equal('chapter_id', chapterId),
+          Query.equal('user_id', userId),
+          Query.limit(1),
+        ],
+      );
+      if (response.documents.isEmpty) return null;
+      return _memberFromDocument(response.documents.first);
     } catch (e) {
       throw DatabaseException('Failed to get chapter member', originalError: e);
     }
@@ -227,44 +208,45 @@ class ChapterService {
 
   Future<List<ChapterMember>> getUserMemberships(String userId) async {
     try {
-      final snapshot = await _firestore
-          .collection('chapter_members')
-          .where('user_id', isEqualTo: userId)
-          .where('is_active', isEqualTo: true)
-          .orderBy('joined_at', descending: true)
-          .get();
-
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return ChapterMember.fromJson(data);
-      }).toList();
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _membersCollection,
+        queries: [
+          Query.equal('user_id', userId),
+          Query.equal('is_active', true),
+          Query.orderDesc('joined_at'),
+          Query.limit(500),
+        ],
+      );
+      return response.documents.map(_memberFromDocument).toList();
     } catch (e) {
-      throw DatabaseException('Failed to get user memberships', originalError: e);
+      throw DatabaseException('Failed to get user memberships',
+          originalError: e);
     }
   }
 
   Future<ChapterMember> addMember(
       String chapterId, String userId, MemberRole role) async {
-    final memberId = _uuid.v4();
+    final now = DateTime.now().toUtc();
     final member = ChapterMember(
-      id: memberId,
+      id: _uuid.v4(),
       chapterId: chapterId,
       userId: userId,
       role: role,
-      joinedAt: DateTime.now(),
+      joinedAt: now,
       isActive: true,
-      permissions: Map<String, dynamic>.from((ChapterConstants
-              .rolePermissions[role.name] as Map<String, dynamic>?) ??
-          {}),
+      permissions: _rolePermissions(role),
       metadata: {},
     );
+
     try {
-      await _firestore.collection('chapter_members').doc(memberId).set({
-        ...member.toJson(),
-        'joined_at': FieldValue.serverTimestamp(),
-      });
-      return member;
+      final document = await _databases.createDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _membersCollection,
+        documentId: member.id,
+        data: _memberData(member),
+      );
+      return _memberFromDocument(document);
     } catch (e) {
       throw DatabaseException('Failed to add chapter member', originalError: e);
     }
@@ -277,19 +259,18 @@ class ChapterService {
       throw NotFoundException('Member not found');
     }
 
-    final updatedMember = member.copyWith(
-      role: newRole,
-      permissions: Map<String, dynamic>.from((ChapterConstants
-              .rolePermissions[newRole.name] as Map<String, dynamic>?) ??
-          {}),
-    );
     try {
-      await _firestore.collection('chapter_members').doc(member.id).update({
-        'role': newRole.name,
-        'permissions': updatedMember.permissions,
-        'updated_at': FieldValue.serverTimestamp(),
-      });
-      return updatedMember;
+      final document = await _databases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _membersCollection,
+        documentId: member.id,
+        data: {
+          'role': newRole.name,
+          'permissions': jsonEncode(_rolePermissions(newRole)),
+          'updated_at': _iso(DateTime.now()),
+        },
+      );
+      return _memberFromDocument(document);
     } catch (e) {
       throw DatabaseException('Failed to update member role', originalError: e);
     }
@@ -297,24 +278,24 @@ class ChapterService {
 
   Future<void> removeMember(String chapterId, String userId) async {
     try {
-      final snapshot = await _firestore
-          .collection('chapter_members')
-          .where('chapter_id', isEqualTo: chapterId)
-          .where('user_id', isEqualTo: userId)
-          .get();
+      final member = await getChapterMember(chapterId, userId);
+      if (member == null) return;
 
-      for (var doc in snapshot.docs) {
-        await doc.reference.update({
+      await _databases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _membersCollection,
+        documentId: member.id,
+        data: {
           'is_active': false,
-          'left_at': FieldValue.serverTimestamp(),
-        });
-      }
+          'left_at': _iso(DateTime.now()),
+          'updated_at': _iso(DateTime.now()),
+        },
+      );
     } catch (e) {
       throw DatabaseException('Failed to remove member', originalError: e);
     }
   }
 
-  // Activity Management
   Future<List<ChapterActivity>> getChapterActivities(
     String chapterId, {
     ActivityType? type,
@@ -323,31 +304,21 @@ class ChapterService {
     DateTime? endDate,
   }) async {
     try {
-      Query query = _firestore
-          .collection('chapter_activities')
-          .where('chapter_id', isEqualTo: chapterId);
+      final queries = _dateRangeQueries(
+        orderKey: 'scheduled_at',
+        startDate: startDate,
+        endDate: endDate,
+      );
+      queries.add(Query.equal('chapter_id', chapterId));
+      if (type != null) queries.add(Query.equal('type', type.name));
+      if (status != null) queries.add(Query.equal('status', status.name));
 
-      if (type != null) {
-        query = query.where('type', isEqualTo: type.name);
-      }
-      if (status != null) {
-        query = query.where('status', isEqualTo: status.name);
-      }
-      if (startDate != null) {
-        query = query.where('start_date', isGreaterThanOrEqualTo: startDate);
-      }
-      if (endDate != null) {
-        query = query.where('end_date', isLessThanOrEqualTo: endDate);
-      }
-
-      final snapshot =
-          await query.orderBy('start_date', descending: true).get();
-
-      return snapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
-        data['id'] = doc.id;
-        return ChapterActivity.fromJson(data);
-      }).toList();
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _activitiesCollection,
+        queries: queries,
+      );
+      return response.documents.map(_activityFromDocument).toList();
     } catch (e) {
       throw DatabaseException('Failed to get chapter activities',
           originalError: e);
@@ -356,20 +327,16 @@ class ChapterService {
 
   Future<List<ChapterActivity>> getUserActivities(String userId) async {
     try {
-      // Assuming activities have a list of participants or assigned users.
-      // Or maybe just created_by? Let's check model if possible, but standard is usually array.
-      // For now, let's assume 'participants' array contains userId.
-      final snapshot = await _firestore
-          .collection('chapter_activities')
-          .where('participants', arrayContains: userId)
-          .orderBy('start_date', descending: true)
-          .get();
-
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return ChapterActivity.fromJson(data);
-      }).toList();
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _activitiesCollection,
+        queries: [
+          Query.containsAny('assigned_member_ids', [userId]),
+          Query.orderDesc('scheduled_at'),
+          Query.limit(500),
+        ],
+      );
+      return response.documents.map(_activityFromDocument).toList();
     } catch (e) {
       throw DatabaseException('Failed to get user activities',
           originalError: e);
@@ -377,42 +344,60 @@ class ChapterService {
   }
 
   Future<ChapterActivity> createActivity(ChapterActivity activity) async {
-    final newActivity = activity.copyWith(
-      id: _uuid.v4(),
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-    );
-    return newActivity;
+    try {
+      final now = DateTime.now().toUtc();
+      final newActivity = activity.copyWith(
+        id: activity.id.isNotEmpty ? activity.id : _uuid.v4(),
+        createdAt: now,
+        updatedAt: now,
+      );
+      final document = await _databases.createDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _activitiesCollection,
+        documentId: newActivity.id,
+        data: _activityData(newActivity),
+      );
+      return _activityFromDocument(document);
+    } catch (e) {
+      throw DatabaseException('Failed to create activity', originalError: e);
+    }
   }
 
   Future<ChapterActivity> updateActivity(ChapterActivity activity) async {
-    final updatedActivity = activity.copyWith(updatedAt: DateTime.now());
-    return updatedActivity;
+    try {
+      final updatedActivity =
+          activity.copyWith(updatedAt: DateTime.now().toUtc());
+      final document = await _databases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _activitiesCollection,
+        documentId: updatedActivity.id,
+        data: _activityData(updatedActivity),
+      );
+      return _activityFromDocument(document);
+    } catch (e) {
+      throw DatabaseException('Failed to update activity', originalError: e);
+    }
   }
 
   Future<ChapterActivity> updateActivityStatus(
       String activityId, ActivityStatus status) async {
     try {
-      await _firestore.collection('chapter_activities').doc(activityId).update({
-        'status': status.name, // Enum to string
-        'updated_at': FieldValue.serverTimestamp(),
-      });
-
-      // Fetch updated activity
-      final doc = await _firestore
-          .collection('chapter_activities')
-          .doc(activityId)
-          .get();
-      final data = doc.data()!;
-      data['id'] = doc.id;
-      return ChapterActivity.fromJson(data);
+      final document = await _databases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _activitiesCollection,
+        documentId: activityId,
+        data: {
+          'status': status.name,
+          'updated_at': _iso(DateTime.now()),
+        },
+      );
+      return _activityFromDocument(document);
     } catch (e) {
       throw DatabaseException('Failed to update activity status',
           originalError: e);
     }
   }
 
-  // Task Management
   Future<List<ChapterTask>> getChapterTasks(
     String chapterId, {
     String? assignedTo,
@@ -420,27 +405,21 @@ class ChapterService {
     int? priority,
   }) async {
     try {
-      Query query = _firestore
-          .collection('chapter_tasks')
-          .where('chapter_id', isEqualTo: chapterId);
+      final queries = <String>[
+        Query.equal('chapter_id', chapterId),
+        Query.orderAsc('due_date'),
+        Query.limit(500),
+      ];
+      if (assignedTo != null) queries.add(Query.equal('assigned_to', assignedTo));
+      if (status != null) queries.add(Query.equal('status', status.name));
+      if (priority != null) queries.add(Query.equal('priority', priority));
 
-      if (assignedTo != null) {
-        query = query.where('assigned_to', isEqualTo: assignedTo);
-      }
-      if (status != null) {
-        query = query.where('status', isEqualTo: status.name);
-      }
-      if (priority != null) {
-        query = query.where('priority', isEqualTo: priority);
-      }
-
-      final snapshot = await query.orderBy('due_date').get();
-
-      return snapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
-        data['id'] = doc.id;
-        return ChapterTask.fromJson(data);
-      }).toList();
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _tasksCollection,
+        queries: queries,
+      );
+      return response.documents.map(_taskFromDocument).toList();
     } catch (e) {
       throw DatabaseException('Failed to get chapter tasks', originalError: e);
     }
@@ -448,57 +427,78 @@ class ChapterService {
 
   Future<List<ChapterTask>> getUserTasks(String userId) async {
     try {
-      final snapshot = await _firestore
-          .collection('chapter_tasks')
-          .where('assigned_to', isEqualTo: userId)
-          .where('status', isNotEqualTo: ActivityStatus.completed.name)
-          .orderBy('status') // needed for inequality filter
-          .orderBy('due_date')
-          .get();
-
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return ChapterTask.fromJson(data);
-      }).toList();
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _tasksCollection,
+        queries: [
+          Query.equal('assigned_to', userId),
+          Query.orderAsc('due_date'),
+          Query.limit(500),
+        ],
+      );
+      return response.documents
+          .map(_taskFromDocument)
+          .where((task) => task.status != ActivityStatus.completed)
+          .toList();
     } catch (e) {
       throw DatabaseException('Failed to get user tasks', originalError: e);
     }
   }
 
   Future<ChapterTask> createTask(ChapterTask task) async {
-    final newTask = task.copyWith(
-      id: _uuid.v4(),
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-    );
-    return newTask;
+    try {
+      final now = DateTime.now().toUtc();
+      final newTask = task.copyWith(
+        id: task.id.isNotEmpty ? task.id : _uuid.v4(),
+        createdAt: now,
+        updatedAt: now,
+      );
+      final document = await _databases.createDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _tasksCollection,
+        documentId: newTask.id,
+        data: _taskData(newTask),
+      );
+      return _taskFromDocument(document);
+    } catch (e) {
+      throw DatabaseException('Failed to create task', originalError: e);
+    }
   }
 
   Future<ChapterTask> updateTask(ChapterTask task) async {
-    final updatedTask = task.copyWith(updatedAt: DateTime.now());
-    return updatedTask;
+    try {
+      final updatedTask = task.copyWith(updatedAt: DateTime.now().toUtc());
+      final document = await _databases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _tasksCollection,
+        documentId: updatedTask.id,
+        data: _taskData(updatedTask),
+      );
+      return _taskFromDocument(document);
+    } catch (e) {
+      throw DatabaseException('Failed to update task', originalError: e);
+    }
   }
 
   Future<ChapterTask> completeTask(String taskId) async {
     try {
-      await _firestore.collection('chapter_tasks').doc(taskId).update({
-        'status': ActivityStatus.completed.name,
-        'completed_at': FieldValue.serverTimestamp(),
-        'updated_at': FieldValue.serverTimestamp(),
-      });
-
-      final doc =
-          await _firestore.collection('chapter_tasks').doc(taskId).get();
-      final data = doc.data()!;
-      data['id'] = doc.id;
-      return ChapterTask.fromJson(data);
+      final now = DateTime.now().toUtc();
+      final document = await _databases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _tasksCollection,
+        documentId: taskId,
+        data: {
+          'status': ActivityStatus.completed.name,
+          'completed_at': _iso(now),
+          'updated_at': _iso(now),
+        },
+      );
+      return _taskFromDocument(document);
     } catch (e) {
       throw DatabaseException('Failed to complete task', originalError: e);
     }
   }
 
-  // Report Management
   Future<List<ChapterReport>> getChapterReports(
     String chapterId, {
     ReportStatus? status,
@@ -506,28 +506,20 @@ class ChapterService {
     DateTime? endDate,
   }) async {
     try {
-      Query query = _firestore
-          .collection('chapter_reports')
-          .where('chapter_id', isEqualTo: chapterId);
+      final queries = _dateRangeQueries(
+        orderKey: 'created_at',
+        startDate: startDate,
+        endDate: endDate,
+      );
+      queries.add(Query.equal('chapter_id', chapterId));
+      if (status != null) queries.add(Query.equal('status', status.name));
 
-      if (status != null) {
-        query = query.where('status', isEqualTo: status.name);
-      }
-      if (startDate != null) {
-        query = query.where('created_at', isGreaterThanOrEqualTo: startDate);
-      }
-      if (endDate != null) {
-        query = query.where('created_at', isLessThanOrEqualTo: endDate);
-      }
-
-      final snapshot =
-          await query.orderBy('created_at', descending: true).get();
-
-      return snapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
-        data['id'] = doc.id;
-        return ChapterReport.fromJson(data);
-      }).toList();
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _reportsCollection,
+        queries: queries,
+      );
+      return response.documents.map(_reportFromDocument).toList();
     } catch (e) {
       throw DatabaseException('Failed to get chapter reports',
           originalError: e);
@@ -536,28 +528,16 @@ class ChapterService {
 
   Future<List<ChapterReport>> getReportsForReview(String reviewerId) async {
     try {
-      // Logic depends on how reviewers are assigned.
-      // If reviewers are assigned explicitly: where('reviewer_id', isEqualTo: reviewerId)
-      // Or if it's based on role, we might just fetch all submitted reports.
-      // Let's assume there is a 'reviewer_id' field or we fetch submitted reports.
-      // Given the argument 'reviewerId', let's filter by it if it's assigned,
-      // OR maybe it's just fetching ALL reports that need review?
-      // But the argument suggests filtering. Let's assume 'assigned_reviewer' or similar.
-      // If not present, maybe we should return all submitted reports?
-      // Let's try to query for submitted reports first.
-
-      final snapshot = await _firestore
-          .collection('chapter_reports')
-          .where('status', isEqualTo: ReportStatus.submitted.name)
-          // .where('reviewer_id', isEqualTo: reviewerId) // Optional if we have assignment
-          .orderBy('created_at', descending: false) // Oldest first for review
-          .get();
-
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return ChapterReport.fromJson(data);
-      }).toList();
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _reportsCollection,
+        queries: [
+          Query.equal('status', ReportStatus.submitted.name),
+          Query.orderAsc('created_at'),
+          Query.limit(500),
+        ],
+      );
+      return response.documents.map(_reportFromDocument).toList();
     } catch (e) {
       throw DatabaseException('Failed to get reports for review',
           originalError: e);
@@ -565,32 +545,54 @@ class ChapterService {
   }
 
   Future<ChapterReport> createReport(ChapterReport report) async {
-    final newReport = report.copyWith(
-      id: _uuid.v4(),
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-    );
-    return newReport;
+    try {
+      final now = DateTime.now().toUtc();
+      final newReport = report.copyWith(
+        id: report.id.isNotEmpty ? report.id : _uuid.v4(),
+        createdAt: now,
+        updatedAt: now,
+      );
+      final document = await _databases.createDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _reportsCollection,
+        documentId: newReport.id,
+        data: _reportData(newReport),
+      );
+      return _reportFromDocument(document);
+    } catch (e) {
+      throw DatabaseException('Failed to create report', originalError: e);
+    }
   }
 
   Future<ChapterReport> updateReport(ChapterReport report) async {
-    final updatedReport = report.copyWith(updatedAt: DateTime.now());
-    return updatedReport;
+    try {
+      final updatedReport = report.copyWith(updatedAt: DateTime.now().toUtc());
+      final document = await _databases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _reportsCollection,
+        documentId: updatedReport.id,
+        data: _reportData(updatedReport),
+      );
+      return _reportFromDocument(document);
+    } catch (e) {
+      throw DatabaseException('Failed to update report', originalError: e);
+    }
   }
 
   Future<ChapterReport> submitReport(String reportId) async {
     try {
-      await _firestore.collection('chapter_reports').doc(reportId).update({
-        'status': ReportStatus.submitted.name,
-        'submitted_at': FieldValue.serverTimestamp(),
-        'updated_at': FieldValue.serverTimestamp(),
-      });
-
-      final doc =
-          await _firestore.collection('chapter_reports').doc(reportId).get();
-      final data = doc.data()!;
-      data['id'] = doc.id;
-      return ChapterReport.fromJson(data);
+      final now = DateTime.now().toUtc();
+      final document = await _databases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _reportsCollection,
+        documentId: reportId,
+        data: {
+          'status': ReportStatus.submitted.name,
+          'submitted_at': _iso(now),
+          'updated_at': _iso(now),
+        },
+      );
+      return _reportFromDocument(document);
     } catch (e) {
       throw DatabaseException('Failed to submit report', originalError: e);
     }
@@ -603,25 +605,25 @@ class ChapterService {
     String? comments,
   ) async {
     try {
-      await _firestore.collection('chapter_reports').doc(reportId).update({
-        'status': status.name,
-        'reviewed_by': reviewerId,
-        'reviewed_at': FieldValue.serverTimestamp(),
-        'review_comments': comments,
-        'updated_at': FieldValue.serverTimestamp(),
-      });
-
-      final doc =
-          await _firestore.collection('chapter_reports').doc(reportId).get();
-      final data = doc.data()!;
-      data['id'] = doc.id;
-      return ChapterReport.fromJson(data);
+      final now = DateTime.now().toUtc();
+      final document = await _databases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _reportsCollection,
+        documentId: reportId,
+        data: _stripNulls({
+          'status': status.name,
+          'reviewed_by': reviewerId,
+          'reviewed_at': _iso(now),
+          'review_comments': comments,
+          'updated_at': _iso(now),
+        }),
+      );
+      return _reportFromDocument(document);
     } catch (e) {
       throw DatabaseException('Failed to review report', originalError: e);
     }
   }
 
-  // Statistics and Analytics
   Future<Map<String, dynamic>> getChapterStatistics(String chapterId) async {
     try {
       final results = await Future.wait([
@@ -636,27 +638,20 @@ class ChapterService {
       final tasks = results[2] as List<ChapterTask>;
       final reports = results[3] as List<ChapterReport>;
 
-      // Calculate activity statistics
       final completedActivities =
           activities.where((a) => a.status == ActivityStatus.completed).length;
       final ongoingActivities =
           activities.where((a) => a.status == ActivityStatus.ongoing).length;
       final plannedActivities =
           activities.where((a) => a.status == ActivityStatus.planned).length;
-
-      // Calculate task statistics
       final completedTasks =
           tasks.where((t) => t.status == ActivityStatus.completed).length;
       final pendingTasks =
           tasks.where((t) => t.status != ActivityStatus.completed).length;
-
-      // Calculate report statistics
       final submittedReports =
           reports.where((r) => r.status == ReportStatus.submitted).length;
       final approvedReports =
           reports.where((r) => r.status == ReportStatus.approved).length;
-
-      // Role distribution
       final roleDistribution = <MemberRole, int>{};
       for (final member in members) {
         roleDistribution[member.role] =
@@ -699,7 +694,6 @@ class ChapterService {
       final memberships = results[0] as List<ChapterMember>;
       final activities = results[1] as List<ChapterActivity>;
       final tasks = results[2] as List<ChapterTask>;
-
       final completedActivities =
           activities.where((a) => a.status == ActivityStatus.completed).length;
       final completedTasks =
@@ -724,32 +718,25 @@ class ChapterService {
     }
   }
 
-  // Helper Methods
   bool hasPermission(ChapterMember member, String permission) {
     final permissions =
         member.permissions['permissions'] as List<dynamic>? ?? [];
     return permissions.contains(permission);
   }
 
-  String getTypeDescription(WorkersType type) {
-    return ChapterConstants.typeDescriptions[type] ?? 'Chapter';
-  }
+  String getTypeDescription(WorkersType type) =>
+      ChapterConstants.typeDescriptions[type] ?? 'Chapter';
 
-  String getRoleDescription(MemberRole role) {
-    return ChapterConstants.roleDescriptions[role] ?? 'Member';
-  }
+  String getRoleDescription(MemberRole role) =>
+      ChapterConstants.roleDescriptions[role] ?? 'Member';
 
-  String getActivityDescription(ActivityType type) {
-    return ChapterConstants.activityDescriptions[type] ?? 'Activity';
-  }
+  String getActivityDescription(ActivityType type) =>
+      ChapterConstants.activityDescriptions[type] ?? 'Activity';
 
-  List<String> getDefaultTags() {
-    return ChapterConstants.defaultTags;
-  }
+  List<String> getDefaultTags() => ChapterConstants.defaultTags;
 
-  String getReportTemplate(String templateType) {
-    return ChapterConstants.reportTemplates[templateType] ?? 'Report Template';
-  }
+  String getReportTemplate(String templateType) =>
+      ChapterConstants.reportTemplates[templateType] ?? 'Report Template';
 
   String getBibleVerse(int index) {
     if (index >= 0 && index < ChapterConstants.bibleVerses.length) {
@@ -758,21 +745,17 @@ class ChapterService {
     return ChapterConstants.bibleVerses[0];
   }
 
-  // Generate automatic reports
   Future<ChapterReport> generateMonthlyReport(
       String chapterId, DateTime month) async {
     try {
       final startDate = DateTime(month.year, month.month, 1);
       final endDate = DateTime(month.year, month.month + 1, 0);
-
       final activities = await getChapterActivities(
         chapterId,
         startDate: startDate,
         endDate: endDate,
       );
-
       final statistics = await getChapterStatistics(chapterId);
-
       final content =
           _generateReportContent(activities, statistics, startDate, endDate);
 
@@ -787,12 +770,12 @@ class ChapterService {
         activityIds: activities.map((a) => a.id).toList(),
         statistics: statistics,
         attachments: {},
-        submittedBy: '', // Will be set when submitted
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
+        submittedBy: '',
+        createdAt: DateTime.now().toUtc(),
+        updatedAt: DateTime.now().toUtc(),
       );
 
-      return await createReport(report);
+      return createReport(report);
     } catch (e) {
       throw DatabaseException('Failed to generate monthly report',
           originalError: e);
@@ -811,7 +794,6 @@ class ChapterService {
     buffer.writeln(
         '**Period:** ${_formatDate(startDate)} - ${_formatDate(endDate)}');
     buffer.writeln();
-
     buffer.writeln('## Summary');
     buffer.writeln('- Total Activities: ${activities.length}');
     buffer.writeln(
@@ -820,8 +802,8 @@ class ChapterService {
     buffer
         .writeln('- Completion Rate: ${statistics['activityCompletionRate']}%');
     buffer.writeln();
-
     buffer.writeln('## Activities');
+
     for (final activity in activities) {
       buffer.writeln('### ${activity.title}');
       buffer.writeln('- **Type:** ${activity.type.name.toUpperCase()}');
@@ -836,6 +818,219 @@ class ChapterService {
 
     return buffer.toString();
   }
+
+  Chapter _chapterFromDocument(dynamic document) {
+    final data = _documentData(document);
+    data['member_ids'] = _stringList(data['member_ids']);
+    data['settings'] = _decodeMap(data['settings']);
+    return Chapter.fromJson(data);
+  }
+
+  ChapterMember _memberFromDocument(dynamic document) {
+    final data = _documentData(document);
+    data['permissions'] = _decodeMap(data['permissions']);
+    data['metadata'] = _decodeMap(data['metadata']);
+    return ChapterMember.fromJson(data);
+  }
+
+  ChapterActivity _activityFromDocument(dynamic document) {
+    final data = _documentData(document);
+    data['assigned_member_ids'] = _stringList(data['assigned_member_ids']);
+    data['resources'] = _decodeMap(data['resources']);
+    data['results'] = _decodeMap(data['results']);
+    return ChapterActivity.fromJson(data);
+  }
+
+  ChapterTask _taskFromDocument(dynamic document) {
+    final data = _documentData(document);
+    data['tags'] = _stringList(data['tags']);
+    data['metadata'] = _decodeMap(data['metadata']);
+    return ChapterTask.fromJson(data);
+  }
+
+  ChapterReport _reportFromDocument(dynamic document) {
+    final data = _documentData(document);
+    data['activity_ids'] = _stringList(data['activity_ids']);
+    data['statistics'] = _decodeMap(data['statistics']);
+    data['attachments'] = _decodeMap(data['attachments']);
+    return ChapterReport.fromJson(data);
+  }
+
+  TaskAssignment _taskAssignmentFromDocument(dynamic document) {
+    return TaskAssignment.fromJson(_documentData(document));
+  }
+
+  Map<String, dynamic> _chapterData(Chapter chapter) {
+    return _stripNulls({
+      'name': chapter.name,
+      'description': chapter.description,
+      'type': chapter.type.name,
+      'coordinator_id': chapter.coordinatorId,
+      'director_id': chapter.directorId,
+      'member_ids': chapter.memberIds,
+      'settings': jsonEncode(chapter.settings),
+      'is_active': chapter.isActive,
+      'created_at': _iso(chapter.createdAt),
+      'updated_at': _iso(chapter.updatedAt),
+    });
+  }
+
+  Map<String, dynamic> _memberData(ChapterMember member) {
+    return _stripNulls({
+      'chapter_id': member.chapterId,
+      'user_id': member.userId,
+      'role': member.role.name,
+      'joined_at': _iso(member.joinedAt),
+      'left_at': _nullableIso(member.leftAt),
+      'is_active': member.isActive,
+      'permissions': jsonEncode(member.permissions),
+      'metadata': jsonEncode(member.metadata),
+    });
+  }
+
+  Map<String, dynamic> _activityData(ChapterActivity activity) {
+    return _stripNulls({
+      'chapter_id': activity.chapterId,
+      'title': activity.title,
+      'description': activity.description,
+      'type': activity.type.name,
+      'status': activity.status.name,
+      'scheduled_at': _iso(activity.scheduledAt),
+      'started_at': _nullableIso(activity.startedAt),
+      'completed_at': _nullableIso(activity.completedAt),
+      'location': activity.location,
+      'assigned_member_ids': activity.assignedMemberIds,
+      'resources': jsonEncode(activity.resources),
+      'results': jsonEncode(activity.results),
+      'created_by': activity.createdBy,
+      'created_at': _iso(activity.createdAt),
+      'updated_at': _iso(activity.updatedAt),
+    });
+  }
+
+  Map<String, dynamic> _taskData(ChapterTask task) {
+    return _stripNulls({
+      'chapter_id': task.chapterId,
+      'title': task.title,
+      'description': task.description,
+      'assigned_to': task.assignedTo,
+      'assigned_by': task.assignedBy,
+      'due_date': _iso(task.dueDate),
+      'status': task.status.name,
+      'priority': task.priority,
+      'tags': task.tags,
+      'metadata': jsonEncode(task.metadata),
+      'completed_at': _nullableIso(task.completedAt),
+      'created_at': _iso(task.createdAt),
+      'updated_at': _iso(task.updatedAt),
+    });
+  }
+
+  Map<String, dynamic> _reportData(ChapterReport report) {
+    return _stripNulls({
+      'chapter_id': report.chapterId,
+      'title': report.title,
+      'content': report.content,
+      'status': report.status.name,
+      'report_period_start': _iso(report.reportPeriodStart),
+      'report_period_end': _iso(report.reportPeriodEnd),
+      'activity_ids': report.activityIds,
+      'statistics': jsonEncode(report.statistics),
+      'attachments': jsonEncode(report.attachments),
+      'submitted_by': report.submittedBy,
+      'submitted_at': _nullableIso(report.submittedAt),
+      'reviewed_by': report.reviewedBy,
+      'reviewed_at': _nullableIso(report.reviewedAt),
+      'review_comments': report.reviewComments,
+      'created_at': _iso(report.createdAt),
+      'updated_at': _iso(report.updatedAt),
+    });
+  }
+
+  Map<String, dynamic> _taskAssignmentData(TaskAssignment assignment) {
+    return _stripNulls(Map<String, dynamic>.from(assignment.toJson())
+      ..remove('id')
+      ..update('due_date', (value) => _iso(DateTime.parse(value as String)))
+      ..update('created_at', (value) => _iso(DateTime.parse(value as String)))
+      ..update('updated_at', (value) => _iso(DateTime.parse(value as String)))
+      ..update(
+        'completed_at',
+        (value) => value == null ? null : _iso(DateTime.parse(value as String)),
+        ifAbsent: () => null,
+      ));
+  }
+
+  Map<String, dynamic> _normalizeChapterUpdates(Map<String, dynamic> updates) {
+    final normalized = <String, dynamic>{};
+    for (final entry in updates.entries) {
+      if (entry.key == 'id') continue;
+      final value = entry.value;
+      if (value == null) continue;
+      if (value is DateTime) {
+        normalized[entry.key] = _iso(value);
+      } else if (value is Enum) {
+        normalized[entry.key] = value.name;
+      } else if (entry.key == 'settings' && value is Map) {
+        normalized[entry.key] = jsonEncode(value);
+      } else {
+        normalized[entry.key] = value;
+      }
+    }
+    return normalized;
+  }
+
+  Map<String, dynamic> _rolePermissions(MemberRole role) {
+    return {
+      'permissions': List<String>.from(ChapterConstants.rolePermissions[role.name] ?? const []),
+    };
+  }
+
+  Map<String, dynamic> _documentData(dynamic document) {
+    final data = Map<String, dynamic>.from(document.data as Map);
+    data['id'] = document.$id;
+    return data;
+  }
+
+  List<String> _dateRangeQueries({
+    required String orderKey,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) {
+    final queries = <String>[Query.orderDesc(orderKey), Query.limit(500)];
+    if (startDate != null) {
+      queries.add(Query.greaterThanEqual(orderKey, _iso(startDate)));
+    }
+    if (endDate != null) {
+      queries.add(Query.lessThanEqual(orderKey, _iso(endDate)));
+    }
+    return queries;
+  }
+
+  Map<String, dynamic> _stripNulls(Map<String, dynamic> data) {
+    return Map<String, dynamic>.fromEntries(
+      data.entries.where((entry) => entry.value != null),
+    );
+  }
+
+  Map<String, dynamic> _decodeMap(dynamic value) {
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) return Map<String, dynamic>.from(value);
+    if (value is String && value.trim().isNotEmpty) {
+      final decoded = jsonDecode(value);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    }
+    return <String, dynamic>{};
+  }
+
+  List<String> _stringList(dynamic value) {
+    if (value is List) return value.map((item) => item.toString()).toList();
+    return <String>[];
+  }
+
+  String _iso(DateTime date) => date.toUtc().toIso8601String();
+
+  String? _nullableIso(DateTime? date) => date == null ? null : _iso(date);
 
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
@@ -860,9 +1055,7 @@ class ChapterService {
   }
 }
 
-/// Extension on ChapterService for [TaskAssignment] model integration.
 extension ChapterServiceTaskAssignment on ChapterService {
-  /// Create a [TaskAssignment] within a chapter.
   Future<TaskAssignment> createTaskAssignment({
     required String title,
     required String description,
@@ -874,7 +1067,7 @@ extension ChapterServiceTaskAssignment on ChapterService {
     String? teamId,
   }) async {
     try {
-      final now = DateTime.now();
+      final now = DateTime.now().toUtc();
       final assignment = TaskAssignment(
         id: const Uuid().v4(),
         title: title,
@@ -890,52 +1083,49 @@ extension ChapterServiceTaskAssignment on ChapterService {
         updatedAt: now,
       );
 
-      await FirebaseFirestore.instance
-          .collection('task_assignments')
-          .doc(assignment.id)
-          .set(assignment.toJson());
-
-      return assignment;
+      final document = await _databases.createDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: ChapterService._taskAssignmentsCollection,
+        documentId: assignment.id,
+        data: _taskAssignmentData(assignment),
+      );
+      return _taskAssignmentFromDocument(document);
     } catch (e) {
       throw DatabaseException('Failed to create task assignment',
           originalError: e);
     }
   }
 
-  /// Get all [TaskAssignment]s for a chapter.
   Future<List<TaskAssignment>> getChapterTaskAssignments(
       String chapterId) async {
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('task_assignments')
-          .where('chapter_id', isEqualTo: chapterId)
-          .orderBy('due_date')
-          .get();
-
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return TaskAssignment.fromJson(data);
-      }).toList();
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: ChapterService._taskAssignmentsCollection,
+        queries: [
+          Query.equal('chapter_id', chapterId),
+          Query.orderAsc('due_date'),
+          Query.limit(500),
+        ],
+      );
+      return response.documents.map(_taskAssignmentFromDocument).toList();
     } catch (e) {
       return [];
     }
   }
 
-  /// Get all [TaskAssignment]s for a specific user.
   Future<List<TaskAssignment>> getUserTaskAssignments(String userId) async {
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('task_assignments')
-          .where('assigned_to_id', isEqualTo: userId)
-          .orderBy('due_date')
-          .get();
-
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return TaskAssignment.fromJson(data);
-      }).toList();
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: ChapterService._taskAssignmentsCollection,
+        queries: [
+          Query.equal('assigned_to_id', userId),
+          Query.orderAsc('due_date'),
+          Query.limit(500),
+        ],
+      );
+      return response.documents.map(_taskAssignmentFromDocument).toList();
     } catch (e) {
       return [];
     }

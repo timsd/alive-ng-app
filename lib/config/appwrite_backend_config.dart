@@ -57,6 +57,11 @@ class AppwriteBackendConfig {
   static const String userActivitiesCollectionId = 'user_activities';
   static const String readingSessionsCollectionId = 'reading_sessions';
   static const String chapterReadingsCollectionId = 'chapter_readings';
+  static const String chaptersCollectionId = 'chapters';
+  static const String chapterMembersCollectionId = 'chapter_members';
+  static const String chapterActivitiesCollectionId = 'chapter_activities';
+  static const String chapterTasksCollectionId = 'chapter_tasks';
+  static const String chapterReportsCollectionId = 'chapter_reports';
   static const String eventsCollectionId = 'events';
   static const String userEventsCollectionId = 'user_events';
   static const String announcementsCollectionId = 'announcements';
@@ -65,6 +70,7 @@ class AppwriteBackendConfig {
   static const String featuredContentCollectionId = 'featured_content';
   static const String studyGuidesCollectionId = 'study_guides';
   static const String studyProgressCollectionId = 'study_progress';
+  static const String taskAssignmentsCollectionId = 'task_assignments';
   static const String dailyVersesCollectionId = 'daily_verses';
   static const String memoryVersesCollectionId = 'memory_verses';
   static const String prayerActivitiesCollectionId = 'prayer_activities';

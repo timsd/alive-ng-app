@@ -92,3 +92,4 @@ logs/
 # Local IDE/workspace metadata
 .trae/
 .vscode/
+.claude/

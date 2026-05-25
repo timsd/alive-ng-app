@@ -14,6 +14,7 @@ Format: [Semantic Versioning](https://semver.org) - `MAJOR.MINOR.PATCH+BUILD`
 - Enhanced health service now uses Appwrite Databases instead of Firestore.
 - Leadership records and leadership transition history now use Appwrite Databases instead of Firestore.
 - Discipleship contacts, interactions, study sessions, prayer tracking, milestones, and reports now use dedicated Appwrite collections instead of Firestore.
+- Chapter management, memberships, activities, tasks, reports, and task assignments now use Appwrite collections instead of Firestore.
 - Archived unused `FirestoreService` into `oldfirebasedelete`.
 - Renamed the Appwrite-backed storage compatibility facade from `FirebaseStorageService` to `AppwriteStorageCompatService`.
 - Updated Appwrite/Coolify/LiveKit/Paystack documentation to reflect current migration state and server reachability blocker.
