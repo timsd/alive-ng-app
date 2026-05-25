@@ -53,13 +53,13 @@ Firebase files still exist and should not be moved blindly. Firebase Hosting is
 disabled and the old `public/` hosting files have been moved to
 `oldfirebasedelete/firebase_hosting_public`, but several app areas still import
 Firebase services, including sync/offline sync, admin internals,
-discipleship, notifications, native analytics/crash compatibility, web push,
+notifications, native analytics/crash compatibility, web push,
 and legacy server/functions code. Only files already replaced should go into
 `oldfirebasedelete`.
 
 ## Current Appwrite Client Migration
 
-- Appwrite auth/profile, chat, LiveKit token creation, testimonies, notification settings storage, donation records/material downloads, gift submissions, Paystack initialization/webhook code, kids content CRUD/seeding, tract/podcast admin flows, enhanced health service, leadership records/transitions, and meeting file storage/metadata are now wired.
+- Appwrite auth/profile, chat, LiveKit token creation, testimonies, notification settings storage, donation records/material downloads, gift submissions, Paystack initialization/webhook code, kids content CRUD/seeding, tract/podcast admin flows, enhanced health service, leadership records/transitions, discipleship tracking, and meeting file storage/metadata are now wired.
 - Push notification delivery still uses Firebase Messaging compatibility while Appwrite Messaging targeting is being completed.
 - `DonationService` no longer imports Firebase; downloadable material URLs should now be Appwrite/external URLs, not Firebase Storage URLs.
 - The old `FirebaseStorageService` facade has been renamed to `AppwriteStorageCompatService`; it remains a temporary compatibility layer for board and tract storage methods.

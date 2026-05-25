@@ -1,9 +1,15 @@
-// Using Firebase for discipleship data
-import 'package:cloud_firestore/cloud_firestore.dart';
+// ignore_for_file: deprecated_member_use
+
+import 'dart:convert';
+
+import 'package:appwrite/appwrite.dart';
 import 'package:uuid/uuid.dart';
+
+import '../config/appwrite_backend_config.dart';
+import '../main.dart';
 import '../models/discipleship_models.dart';
-import '../utils/logger.dart';
 import '../utils/app_exception.dart';
+import '../utils/logger.dart';
 
 class DiscipleshipService {
   static final DiscipleshipService _instance = DiscipleshipService._internal();
@@ -12,8 +18,21 @@ class DiscipleshipService {
 
   final Uuid _uuid = const Uuid();
   final Logger _logger = Logger('DiscipleshipService');
+  final Databases _databases = Databases(appwriteClient);
 
-  // Contact Management
+  static const _contactsCollection =
+      AppwriteBackendConfig.discipleshipContactsCollectionId;
+  static const _interactionsCollection =
+      AppwriteBackendConfig.contactInteractionsCollectionId;
+  static const _studySessionsCollection =
+      AppwriteBackendConfig.discipleshipStudySessionsCollectionId;
+  static const _prayerRequestsCollection =
+      AppwriteBackendConfig.discipleshipPrayerRequestsCollectionId;
+  static const _milestonesCollection =
+      AppwriteBackendConfig.progressMilestonesCollectionId;
+  static const _reportsCollection =
+      AppwriteBackendConfig.discipleshipReportsCollectionId;
+
   Future<List<DiscipleshipContact>> getContacts({
     String? discipleMakerId,
     DiscipleshipLevel? level,
@@ -21,31 +40,29 @@ class DiscipleshipService {
     String? searchQuery,
   }) async {
     try {
-      Query<Map<String, dynamic>> query =
-          FirebaseFirestore.instance.collection('discipleship_contacts');
-
+      final queries = <String>[Query.orderDesc('updated_at')];
       if (discipleMakerId != null) {
-        query = query.where('disciple_maker_id', isEqualTo: discipleMakerId);
+        queries.add(Query.equal('disciple_maker_id', discipleMakerId));
       }
       if (level != null) {
-        query = query.where('current_level', isEqualTo: level.name);
+        queries.add(Query.equal('current_level', level.name));
       }
       if (isActive != null) {
-        query = query.where('is_active', isEqualTo: isActive);
+        queries.add(Query.equal('is_active', isActive));
       }
 
-      query = query.orderBy('updated_at', descending: true);
-      final snapshot = await query.get();
-      var contacts = snapshot.docs
-          .map((doc) => DiscipleshipContact.fromJson(doc.data()))
-          .toList();
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _contactsCollection,
+        queries: queries,
+      );
 
+      var contacts = response.documents.map(_contactFromDocument).toList();
       if (searchQuery != null && searchQuery.trim().isNotEmpty) {
         final q = searchQuery.trim().toLowerCase();
-        contacts = contacts.where((c) {
-          final name = c.fullName.toLowerCase();
-          final notes = (c.notes ?? '').toLowerCase();
-          return name.contains(q) || notes.contains(q);
+        contacts = contacts.where((contact) {
+          return contact.fullName.toLowerCase().contains(q) ||
+              (contact.notes ?? '').toLowerCase().contains(q);
         }).toList();
       }
 
@@ -58,15 +75,16 @@ class DiscipleshipService {
 
   Future<DiscipleshipContact> getContactById(String contactId) async {
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('discipleship_contacts')
-          .doc(contactId)
-          .get();
-
-      if (doc.exists) {
-        return DiscipleshipContact.fromJson(doc.data()!);
-      }
-      throw NotFoundException('Contact not found');
+      final document = await _databases.getDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _contactsCollection,
+        documentId: contactId,
+      );
+      return _contactFromDocument(document);
+    } on AppwriteException catch (e) {
+      if (e.code == 404) throw NotFoundException('Contact not found');
+      _logger.error('Failed to get contact by id', e);
+      throw DatabaseException('Failed to get contact', originalError: e);
     } catch (e) {
       if (e is AppException) rethrow;
       _logger.error('Failed to get contact by id', e);
@@ -76,17 +94,20 @@ class DiscipleshipService {
 
   Future<DiscipleshipContact> createContact(DiscipleshipContact contact) async {
     try {
+      final now = DateTime.now().toUtc();
       final newContact = contact.copyWith(
-        id: _uuid.v4(),
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
+        id: contact.id.isNotEmpty ? contact.id : _uuid.v4(),
+        createdAt: now,
+        updatedAt: now,
       );
 
-      await FirebaseFirestore.instance
-          .collection('discipleship_contacts')
-          .doc(newContact.id)
-          .set(newContact.toJson());
-      return newContact;
+      final document = await _databases.createDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _contactsCollection,
+        documentId: newContact.id,
+        data: _contactData(newContact),
+      );
+      return _contactFromDocument(document);
     } catch (e) {
       _logger.error('Failed to create contact', e);
       throw DatabaseException('Failed to create contact', originalError: e);
@@ -95,14 +116,14 @@ class DiscipleshipService {
 
   Future<DiscipleshipContact> updateContact(DiscipleshipContact contact) async {
     try {
-      final updatedContact = contact.copyWith(updatedAt: DateTime.now());
-
-      await FirebaseFirestore.instance
-          .collection('discipleship_contacts')
-          .doc(contact.id)
-          .update(updatedContact.toJson());
-
-      return updatedContact;
+      final updatedContact = contact.copyWith(updatedAt: DateTime.now().toUtc());
+      final document = await _databases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _contactsCollection,
+        documentId: updatedContact.id,
+        data: _contactData(updatedContact),
+      );
+      return _contactFromDocument(document);
     } catch (e) {
       _logger.error('Failed to update contact', e);
       throw DatabaseException('Failed to update contact', originalError: e);
@@ -111,10 +132,11 @@ class DiscipleshipService {
 
   Future<void> deleteContact(String contactId) async {
     try {
-      await FirebaseFirestore.instance
-          .collection('discipleship_contacts')
-          .doc(contactId)
-          .delete();
+      await _databases.deleteDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _contactsCollection,
+        documentId: contactId,
+      );
     } catch (e) {
       _logger.error('Failed to delete contact', e);
       throw DatabaseException('Failed to delete contact', originalError: e);
@@ -125,25 +147,24 @@ class DiscipleshipService {
       String contactId, DiscipleshipLevel newLevel) async {
     try {
       final contact = await getContactById(contactId);
+      final now = DateTime.now().toUtc();
 
-      // Create milestone for level change
       if (contact.currentLevel != newLevel) {
         await createProgressMilestone(ProgressMilestone(
           id: _uuid.v4(),
           contactId: contactId,
           fromLevel: contact.currentLevel,
           toLevel: newLevel,
-          date: DateTime.now(),
-          createdAt: DateTime.now(),
+          date: now,
+          createdAt: now,
         ));
       }
 
-      return await updateContact(contact.copyWith(
+      return updateContact(contact.copyWith(
         currentLevel: newLevel,
-        lastContact: DateTime.now(),
-        baptismDate: newLevel == DiscipleshipLevel.baptized
-            ? DateTime.now()
-            : contact.baptismDate,
+        lastContact: now,
+        baptismDate:
+            newLevel == DiscipleshipLevel.baptized ? now : contact.baptismDate,
       ));
     } catch (e) {
       if (e is AppException) rethrow;
@@ -153,7 +174,6 @@ class DiscipleshipService {
     }
   }
 
-  // Interaction Management
   Future<List<ContactInteraction>> getInteractions({
     String? contactId,
     String? discipleMakerId,
@@ -161,34 +181,22 @@ class DiscipleshipService {
     DateTime? endDate,
   }) async {
     try {
-      Query<Map<String, dynamic>> query =
-          FirebaseFirestore.instance.collection('contact_interactions');
-
-      if (contactId != null) {
-        query = query.where('contact_id', isEqualTo: contactId);
-      }
-
+      final queries = _dateRangeQueries(
+        orderKey: 'date',
+        startDate: startDate,
+        endDate: endDate,
+      );
+      if (contactId != null) queries.add(Query.equal('contact_id', contactId));
       if (discipleMakerId != null) {
-        query = query.where('disciple_maker_id', isEqualTo: discipleMakerId);
+        queries.add(Query.equal('disciple_maker_id', discipleMakerId));
       }
 
-      if (startDate != null) {
-        query = query.where('date',
-            isGreaterThanOrEqualTo: startDate.toIso8601String());
-      }
-
-      if (endDate != null) {
-        query =
-            query.where('date', isLessThanOrEqualTo: endDate.toIso8601String());
-      }
-
-      query = query.orderBy('date', descending: true);
-
-      final snapshot = await query.get();
-      return snapshot.docs
-          .map<ContactInteraction>(
-              (doc) => ContactInteraction.fromJson(doc.data()))
-          .toList();
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _interactionsCollection,
+        queries: queries,
+      );
+      return response.documents.map(_interactionFromDocument).toList();
     } catch (e) {
       _logger.error('Failed to fetch interactions', e);
       throw DatabaseException('Failed to fetch interactions', originalError: e);
@@ -199,7 +207,7 @@ class DiscipleshipService {
       ContactInteraction interaction) async {
     try {
       final newInteraction = ContactInteraction(
-        id: _uuid.v4(),
+        id: interaction.id.isNotEmpty ? interaction.id : _uuid.v4(),
         contactId: interaction.contactId,
         discipleMakerId: interaction.discipleMakerId,
         method: interaction.method,
@@ -210,31 +218,33 @@ class DiscipleshipService {
         outcome: interaction.outcome,
         nextSteps: interaction.nextSteps,
         attachments: interaction.attachments,
-        createdAt: DateTime.now(),
+        createdAt: DateTime.now().toUtc(),
       );
 
-      await FirebaseFirestore.instance
-          .collection('contact_interactions')
-          .doc(newInteraction.id)
-          .set(newInteraction.toJson());
+      final document = await _databases.createDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _interactionsCollection,
+        documentId: newInteraction.id,
+        data: _interactionData(newInteraction),
+      );
 
-      // Update contact's last contact date
-      await FirebaseFirestore.instance
-          .collection('discipleship_contacts')
-          .doc(interaction.contactId)
-          .update({
-        'last_contact': newInteraction.date.toIso8601String().split('T')[0],
-        'updated_at': DateTime.now().toIso8601String(),
-      });
+      await _databases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _contactsCollection,
+        documentId: interaction.contactId,
+        data: {
+          'last_contact': _iso(interaction.date),
+          'updated_at': _iso(DateTime.now()),
+        },
+      );
 
-      return newInteraction;
+      return _interactionFromDocument(document);
     } catch (e) {
       _logger.error('Failed to create interaction', e);
       throw DatabaseException('Failed to create interaction', originalError: e);
     }
   }
 
-  // Study Session Management
   Future<List<StudySession>> getStudySessions({
     String? contactId,
     String? discipleMakerId,
@@ -243,37 +253,23 @@ class DiscipleshipService {
     DateTime? endDate,
   }) async {
     try {
-      Query<Map<String, dynamic>> query =
-          FirebaseFirestore.instance.collection('study_sessions');
-
-      if (contactId != null) {
-        query = query.where('contact_id', isEqualTo: contactId);
-      }
-
+      final queries = _dateRangeQueries(
+        orderKey: 'date',
+        startDate: startDate,
+        endDate: endDate,
+      );
+      if (contactId != null) queries.add(Query.equal('contact_id', contactId));
       if (discipleMakerId != null) {
-        query = query.where('disciple_maker_id', isEqualTo: discipleMakerId);
+        queries.add(Query.equal('disciple_maker_id', discipleMakerId));
       }
+      if (type != null) queries.add(Query.equal('type', type.name));
 
-      if (type != null) {
-        query = query.where('type', isEqualTo: type.name);
-      }
-
-      if (startDate != null) {
-        query = query.where('date',
-            isGreaterThanOrEqualTo: startDate.toIso8601String());
-      }
-
-      if (endDate != null) {
-        query =
-            query.where('date', isLessThanOrEqualTo: endDate.toIso8601String());
-      }
-
-      query = query.orderBy('date', descending: true);
-
-      final snapshot = await query.get();
-      return snapshot.docs
-          .map<StudySession>((doc) => StudySession.fromJson(doc.data()))
-          .toList();
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _studySessionsCollection,
+        queries: queries,
+      );
+      return response.documents.map(_studySessionFromDocument).toList();
     } catch (e) {
       _logger.error('Failed to fetch study sessions', e);
       throw DatabaseException('Failed to fetch study sessions',
@@ -284,7 +280,7 @@ class DiscipleshipService {
   Future<StudySession> createStudySession(StudySession session) async {
     try {
       final newSession = StudySession(
-        id: _uuid.v4(),
+        id: session.id.isNotEmpty ? session.id : _uuid.v4(),
         contactId: session.contactId,
         discipleMakerId: session.discipleMakerId,
         type: session.type,
@@ -297,14 +293,16 @@ class DiscipleshipService {
         homework: session.homework,
         rating: session.rating,
         completed: session.completed,
-        createdAt: DateTime.now(),
+        createdAt: DateTime.now().toUtc(),
       );
 
-      await FirebaseFirestore.instance
-          .collection('study_sessions')
-          .doc(newSession.id)
-          .set(newSession.toJson());
-      return newSession;
+      final document = await _databases.createDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _studySessionsCollection,
+        documentId: newSession.id,
+        data: _studySessionData(newSession),
+      );
+      return _studySessionFromDocument(document);
     } catch (e) {
       _logger.error('Failed to create study session', e);
       throw DatabaseException('Failed to create study session',
@@ -314,12 +312,13 @@ class DiscipleshipService {
 
   Future<StudySession> updateStudySession(StudySession session) async {
     try {
-      await FirebaseFirestore.instance
-          .collection('study_sessions')
-          .doc(session.id)
-          .update(session.toJson());
-
-      return session;
+      final document = await _databases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _studySessionsCollection,
+        documentId: session.id,
+        data: _studySessionData(session),
+      );
+      return _studySessionFromDocument(document);
     } catch (e) {
       _logger.error('Failed to update study session', e);
       throw DatabaseException('Failed to update study session',
@@ -327,34 +326,25 @@ class DiscipleshipService {
     }
   }
 
-  // Prayer Request Management
   Future<List<PrayerRequest>> getPrayerRequests({
     String? contactId,
     String? discipleMakerId,
     PrayerRequestStatus? status,
   }) async {
     try {
-      Query<Map<String, dynamic>> query =
-          FirebaseFirestore.instance.collection('prayer_requests');
-
-      if (contactId != null) {
-        query = query.where('contact_id', isEqualTo: contactId);
-      }
-
+      final queries = <String>[Query.orderDesc('date_requested')];
+      if (contactId != null) queries.add(Query.equal('contact_id', contactId));
       if (discipleMakerId != null) {
-        query = query.where('disciple_maker_id', isEqualTo: discipleMakerId);
+        queries.add(Query.equal('disciple_maker_id', discipleMakerId));
       }
+      if (status != null) queries.add(Query.equal('status', status.name));
 
-      if (status != null) {
-        query = query.where('status', isEqualTo: status.name);
-      }
-
-      query = query.orderBy('date_requested', descending: true);
-
-      final snapshot = await query.get();
-      return snapshot.docs
-          .map<PrayerRequest>((doc) => PrayerRequest.fromJson(doc.data()))
-          .toList();
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _prayerRequestsCollection,
+        queries: queries,
+      );
+      return response.documents.map(_prayerRequestFromDocument).toList();
     } catch (e) {
       _logger.error('Failed to fetch prayer requests', e);
       throw DatabaseException('Failed to fetch prayer requests',
@@ -364,8 +354,9 @@ class DiscipleshipService {
 
   Future<PrayerRequest> createPrayerRequest(PrayerRequest request) async {
     try {
+      final now = DateTime.now().toUtc();
       final newRequest = PrayerRequest(
-        id: _uuid.v4(),
+        id: request.id.isNotEmpty ? request.id : _uuid.v4(),
         contactId: request.contactId,
         discipleMakerId: request.discipleMakerId,
         request: request.request,
@@ -375,15 +366,17 @@ class DiscipleshipService {
         dateAnswered: request.dateAnswered,
         answer: request.answer,
         notes: request.notes,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
+        createdAt: now,
+        updatedAt: now,
       );
 
-      await FirebaseFirestore.instance
-          .collection('prayer_requests')
-          .doc(newRequest.id)
-          .set(newRequest.toJson());
-      return newRequest;
+      final document = await _databases.createDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _prayerRequestsCollection,
+        documentId: newRequest.id,
+        data: _prayerRequestData(newRequest),
+      );
+      return _prayerRequestFromDocument(document);
     } catch (e) {
       _logger.error('Failed to create prayer request', e);
       throw DatabaseException('Failed to create prayer request',
@@ -405,15 +398,16 @@ class DiscipleshipService {
         answer: request.answer,
         notes: request.notes,
         createdAt: request.createdAt,
-        updatedAt: DateTime.now(),
+        updatedAt: DateTime.now().toUtc(),
       );
 
-      await FirebaseFirestore.instance
-          .collection('prayer_requests')
-          .doc(updatedRequest.id)
-          .update(updatedRequest.toJson());
-
-      return updatedRequest;
+      final document = await _databases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _prayerRequestsCollection,
+        documentId: updatedRequest.id,
+        data: _prayerRequestData(updatedRequest),
+      );
+      return _prayerRequestFromDocument(document);
     } catch (e) {
       _logger.error('Failed to update prayer request', e);
       throw DatabaseException('Failed to update prayer request',
@@ -421,20 +415,18 @@ class DiscipleshipService {
     }
   }
 
-  // Progress Milestone Management
   Future<List<ProgressMilestone>> getProgressMilestones(
       String contactId) async {
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('progress_milestones')
-          .where('contact_id', isEqualTo: contactId)
-          .orderBy('date', descending: true)
-          .get();
-
-      return snapshot.docs
-          .map<ProgressMilestone>(
-              (doc) => ProgressMilestone.fromJson(doc.data()))
-          .toList();
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _milestonesCollection,
+        queries: [
+          Query.equal('contact_id', contactId),
+          Query.orderDesc('date'),
+        ],
+      );
+      return response.documents.map(_milestoneFromDocument).toList();
     } catch (e) {
       _logger.error('Failed to fetch progress milestones', e);
       throw DatabaseException('Failed to fetch progress milestones',
@@ -445,11 +437,14 @@ class DiscipleshipService {
   Future<ProgressMilestone> createProgressMilestone(
       ProgressMilestone milestone) async {
     try {
-      await FirebaseFirestore.instance
-          .collection('progress_milestones')
-          .doc(milestone.id)
-          .set(milestone.toJson());
-      return milestone;
+      final id = milestone.id.isNotEmpty ? milestone.id : _uuid.v4();
+      final document = await _databases.createDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _milestonesCollection,
+        documentId: id,
+        data: _milestoneData(milestone),
+      );
+      return _milestoneFromDocument(document);
     } catch (e) {
       _logger.error('Failed to create progress milestone', e);
       throw DatabaseException('Failed to create progress milestone',
@@ -457,7 +452,6 @@ class DiscipleshipService {
     }
   }
 
-  // Report Management
   Future<List<DiscipleshipReport>> getReports({
     String? discipleMakerId,
     String? supervisorId,
@@ -465,34 +459,26 @@ class DiscipleshipService {
     DateTime? endDate,
   }) async {
     try {
-      Query<Map<String, dynamic>> query =
-          FirebaseFirestore.instance.collection('discipleship_reports');
-
+      final queries = _dateRangeQueries(
+        orderKey: 'created_at',
+        startKey: 'report_period_start',
+        endKey: 'report_period_end',
+        startDate: startDate,
+        endDate: endDate,
+      );
       if (discipleMakerId != null) {
-        query = query.where('disciple_maker_id', isEqualTo: discipleMakerId);
+        queries.add(Query.equal('disciple_maker_id', discipleMakerId));
       }
-
       if (supervisorId != null) {
-        query = query.where('supervisor_id', isEqualTo: supervisorId);
+        queries.add(Query.equal('supervisor_id', supervisorId));
       }
 
-      if (startDate != null) {
-        query = query.where('report_period_start',
-            isGreaterThanOrEqualTo: startDate.toIso8601String());
-      }
-
-      if (endDate != null) {
-        query = query.where('report_period_end',
-            isLessThanOrEqualTo: endDate.toIso8601String());
-      }
-
-      query = query.orderBy('created_at', descending: true);
-
-      final snapshot = await query.get();
-      return snapshot.docs
-          .map<DiscipleshipReport>(
-              (doc) => DiscipleshipReport.fromJson(doc.data()))
-          .toList();
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _reportsCollection,
+        queries: queries,
+      );
+      return response.documents.map(_reportFromDocument).toList();
     } catch (e) {
       _logger.error('Failed to fetch reports', e);
       throw DatabaseException('Failed to fetch reports', originalError: e);
@@ -511,7 +497,6 @@ class DiscipleshipService {
     String? goals,
   }) async {
     try {
-      // Get statistics for the period
       final contacts = await getContacts(discipleMakerId: discipleMakerId);
       final interactions = await getInteractions(
         discipleMakerId: discipleMakerId,
@@ -524,21 +509,7 @@ class DiscipleshipService {
         endDate: endDate,
       );
 
-      // Count new contacts in period
-      final newContacts = contacts
-          .where((c) =>
-              c.firstContact.isAfter(startDate) &&
-              c.firstContact.isBefore(endDate.add(const Duration(days: 1))))
-          .length;
-
-      // Count baptisms in period
-      final baptisms = contacts
-          .where((c) =>
-              c.baptismDate != null &&
-              c.baptismDate!.isAfter(startDate) &&
-              c.baptismDate!.isBefore(endDate.add(const Duration(days: 1))))
-          .length;
-
+      final endInclusive = endDate.add(const Duration(days: 1));
       final report = DiscipleshipReport(
         id: _uuid.v4(),
         discipleMakerId: discipleMakerId,
@@ -547,8 +518,17 @@ class DiscipleshipService {
         reportPeriodEnd: endDate,
         totalContacts: contacts.length,
         activeContacts: contacts.where((c) => c.isActive).length,
-        newContacts: newContacts,
-        baptisms: baptisms,
+        newContacts: contacts
+            .where((c) =>
+                c.firstContact.isAfter(startDate) &&
+                c.firstContact.isBefore(endInclusive))
+            .length,
+        baptisms: contacts
+            .where((c) =>
+                c.baptismDate != null &&
+                c.baptismDate!.isAfter(startDate) &&
+                c.baptismDate!.isBefore(endInclusive))
+            .length,
         studySessions: studySessions.length,
         interactions: interactions.length,
         highlights: highlights,
@@ -556,14 +536,16 @@ class DiscipleshipService {
         prayerRequests: prayerRequests,
         goals: goals,
         frequency: frequency,
-        createdAt: DateTime.now(),
+        createdAt: DateTime.now().toUtc(),
       );
 
-      await FirebaseFirestore.instance
-          .collection('discipleship_reports')
-          .doc(report.id)
-          .set(report.toJson());
-      return report;
+      final document = await _databases.createDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _reportsCollection,
+        documentId: report.id,
+        data: _reportData(report),
+      );
+      return _reportFromDocument(document);
     } catch (e) {
       _logger.error('Failed to generate report', e);
       throw DatabaseException('Failed to generate report', originalError: e);
@@ -572,23 +554,19 @@ class DiscipleshipService {
 
   Future<DiscipleshipReport> submitReport(String reportId) async {
     try {
-      final now = DateTime.now();
-      await FirebaseFirestore.instance
-          .collection('discipleship_reports')
-          .doc(reportId)
-          .update({'submitted_at': now.toIso8601String()});
-      final doc = await FirebaseFirestore.instance
-          .collection('discipleship_reports')
-          .doc(reportId)
-          .get();
-      return DiscipleshipReport.fromJson(doc.data()!);
+      final document = await _databases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _reportsCollection,
+        documentId: reportId,
+        data: {'submitted_at': _iso(DateTime.now())},
+      );
+      return _reportFromDocument(document);
     } catch (e) {
       _logger.error('Failed to submit report', e);
       throw DatabaseException('Failed to submit report', originalError: e);
     }
   }
 
-  // Statistics and Analytics
   Future<Map<String, dynamic>> getDiscipleshipStatistics(
       String discipleMakerId) async {
     try {
@@ -600,19 +578,18 @@ class DiscipleshipService {
       final prayerRequests =
           await getPrayerRequests(discipleMakerId: discipleMakerId);
 
-      // Level distribution
       final levelCounts = <DiscipleshipLevel, int>{};
       for (final level in DiscipleshipLevel.values) {
         levelCounts[level] =
             contacts.where((c) => c.currentLevel == level).length;
       }
 
-      // Recent activity (last 30 days)
       final thirtyDaysAgo = DateTime.now().subtract(const Duration(days: 30));
       final recentInteractions =
           interactions.where((i) => i.date.isAfter(thirtyDaysAgo)).length;
       final recentStudySessions =
           studySessions.where((s) => s.date.isAfter(thirtyDaysAgo)).length;
+      final ratedSessions = studySessions.where((s) => s.rating != null);
 
       return {
         'totalContacts': contacts.length,
@@ -634,14 +611,10 @@ class DiscipleshipService {
           'interactions': recentInteractions,
           'studySessions': recentStudySessions,
         },
-        'averageStudyRating':
-            studySessions.where((s) => s.rating != null).isEmpty
-                ? 0.0
-                : studySessions
-                        .where((s) => s.rating != null)
-                        .map((s) => s.rating!)
-                        .reduce((a, b) => a + b) /
-                    studySessions.where((s) => s.rating != null).length,
+        'averageStudyRating': ratedSessions.isEmpty
+            ? 0.0
+            : ratedSessions.map((s) => s.rating!).reduce((a, b) => a + b) /
+                ratedSessions.length,
       };
     } catch (e) {
       _logger.error('Failed to get discipleship statistics', e);
@@ -650,7 +623,6 @@ class DiscipleshipService {
     }
   }
 
-  // Helper methods
   String getNextStepsForLevel(DiscipleshipLevel level) {
     return DiscipleshipConstants.nextSteps[level] ??
         'Continue building relationship';
@@ -660,15 +632,196 @@ class DiscipleshipService {
     return DiscipleshipConstants.levelDescriptions[level] ?? 'Unknown level';
   }
 
-  List<String> getStudyTopics() {
-    return DiscipleshipConstants.studyTopics;
+  List<String> getStudyTopics() => DiscipleshipConstants.studyTopics;
+
+  List<String> getPrayerCategories() =>
+      DiscipleshipConstants.prayerCategories;
+
+  String getBibleVerse(String key) => DiscipleshipConstants.bibleVerses[key] ?? '';
+
+  DiscipleshipContact _contactFromDocument(dynamic document) {
+    final data = _documentData(document);
+    data['custom_fields'] = _decodeJsonMap(data['custom_fields']);
+    data['tags'] = _stringList(data['tags']);
+    return DiscipleshipContact.fromJson(data);
   }
 
-  List<String> getPrayerCategories() {
-    return DiscipleshipConstants.prayerCategories;
+  ContactInteraction _interactionFromDocument(dynamic document) {
+    final data = _documentData(document);
+    data['attachments'] = _stringList(data['attachments']);
+    return ContactInteraction.fromJson(data);
   }
 
-  String getBibleVerse(String key) {
-    return DiscipleshipConstants.bibleVerses[key] ?? '';
+  StudySession _studySessionFromDocument(dynamic document) {
+    return StudySession.fromJson(_documentData(document));
+  }
+
+  PrayerRequest _prayerRequestFromDocument(dynamic document) {
+    return PrayerRequest.fromJson(_documentData(document));
+  }
+
+  ProgressMilestone _milestoneFromDocument(dynamic document) {
+    return ProgressMilestone.fromJson(_documentData(document));
+  }
+
+  DiscipleshipReport _reportFromDocument(dynamic document) {
+    return DiscipleshipReport.fromJson(_documentData(document));
+  }
+
+  Map<String, dynamic> _contactData(DiscipleshipContact contact) {
+    return _stripNulls({
+      'disciple_maker_id': contact.discipleMakerId,
+      'first_name': contact.firstName,
+      'last_name': contact.lastName,
+      'email': contact.email,
+      'phone': contact.phone,
+      'address': contact.address,
+      'date_of_birth': _nullableIso(contact.dateOfBirth),
+      'occupation': contact.occupation,
+      'interests': contact.interests,
+      'current_level': contact.currentLevel.name,
+      'first_contact': _iso(contact.firstContact),
+      'last_contact': _nullableIso(contact.lastContact),
+      'baptism_date': _nullableIso(contact.baptismDate),
+      'notes': contact.notes,
+      'is_active': contact.isActive,
+      'tags': contact.tags,
+      'custom_fields': jsonEncode(contact.customFields),
+      'created_at': _iso(contact.createdAt),
+      'updated_at': _iso(contact.updatedAt),
+    });
+  }
+
+  Map<String, dynamic> _interactionData(ContactInteraction interaction) {
+    return _stripNulls({
+      'contact_id': interaction.contactId,
+      'disciple_maker_id': interaction.discipleMakerId,
+      'method': interaction.method.name,
+      'title': interaction.title,
+      'description': interaction.description,
+      'date': _iso(interaction.date),
+      'duration_minutes': interaction.durationMinutes,
+      'outcome': interaction.outcome,
+      'next_steps': interaction.nextSteps,
+      'attachments': interaction.attachments,
+      'created_at': _iso(interaction.createdAt),
+    });
+  }
+
+  Map<String, dynamic> _studySessionData(StudySession session) {
+    return _stripNulls({
+      'contact_id': session.contactId,
+      'disciple_maker_id': session.discipleMakerId,
+      'type': session.type.name,
+      'title': session.title,
+      'topic': session.topic,
+      'bible_texts': session.bibleTexts,
+      'date': _iso(session.date),
+      'duration_minutes': session.durationMinutes,
+      'notes': session.notes,
+      'homework': session.homework,
+      'rating': session.rating,
+      'completed': session.completed,
+      'created_at': _iso(session.createdAt),
+    });
+  }
+
+  Map<String, dynamic> _prayerRequestData(PrayerRequest request) {
+    return _stripNulls({
+      'contact_id': request.contactId,
+      'disciple_maker_id': request.discipleMakerId,
+      'request': request.request,
+      'category': request.category,
+      'status': request.status.name,
+      'date_requested': _iso(request.dateRequested),
+      'date_answered': _nullableIso(request.dateAnswered),
+      'answer': request.answer,
+      'notes': request.notes,
+      'created_at': _iso(request.createdAt),
+      'updated_at': _iso(request.updatedAt),
+    });
+  }
+
+  Map<String, dynamic> _milestoneData(ProgressMilestone milestone) {
+    return _stripNulls({
+      'contact_id': milestone.contactId,
+      'from_level': milestone.fromLevel.name,
+      'to_level': milestone.toLevel.name,
+      'date': _iso(milestone.date),
+      'notes': milestone.notes,
+      'celebration_plan': milestone.celebrationPlan,
+      'created_at': _iso(milestone.createdAt),
+    });
+  }
+
+  Map<String, dynamic> _reportData(DiscipleshipReport report) {
+    return _stripNulls({
+      'disciple_maker_id': report.discipleMakerId,
+      'supervisor_id': report.supervisorId,
+      'report_period_start': _iso(report.reportPeriodStart),
+      'report_period_end': _iso(report.reportPeriodEnd),
+      'total_contacts': report.totalContacts,
+      'active_contacts': report.activeContacts,
+      'new_contacts': report.newContacts,
+      'baptisms': report.baptisms,
+      'study_sessions': report.studySessions,
+      'interactions': report.interactions,
+      'highlights': report.highlights,
+      'challenges': report.challenges,
+      'prayer_requests': report.prayerRequests,
+      'goals': report.goals,
+      'frequency': report.frequency.name,
+      'created_at': _iso(report.createdAt),
+      'submitted_at': _nullableIso(report.submittedAt),
+    });
+  }
+
+  Map<String, dynamic> _documentData(dynamic document) {
+    final data = Map<String, dynamic>.from(document.data as Map);
+    data['id'] = document.$id;
+    return data;
+  }
+
+  List<String> _dateRangeQueries({
+    required String orderKey,
+    String? startKey,
+    String? endKey,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) {
+    final queries = <String>[Query.orderDesc(orderKey)];
+    if (startDate != null) {
+      queries.add(Query.greaterThanEqual(startKey ?? orderKey, _iso(startDate)));
+    }
+    if (endDate != null) {
+      queries.add(Query.lessThanEqual(endKey ?? orderKey, _iso(endDate)));
+    }
+    return queries;
+  }
+
+  Map<String, dynamic> _stripNulls(Map<String, dynamic> data) {
+    return Map<String, dynamic>.fromEntries(
+      data.entries.where((entry) => entry.value != null),
+    );
+  }
+
+  String _iso(DateTime date) => date.toUtc().toIso8601String();
+
+  String? _nullableIso(DateTime? date) => date == null ? null : _iso(date);
+
+  Map<String, dynamic> _decodeJsonMap(dynamic value) {
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) return Map<String, dynamic>.from(value);
+    if (value is String && value.trim().isNotEmpty) {
+      final decoded = jsonDecode(value);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    }
+    return <String, dynamic>{};
+  }
+
+  List<String> _stringList(dynamic value) {
+    if (value is List) return value.map((item) => item.toString()).toList();
+    return <String>[];
   }
 }

@@ -221,6 +221,88 @@ export const tables = [
   { id: 'board_documents', name: 'Board Documents', columns: [s('title', 255, true), mediumtext('description'), s('file_url', 2048), s('file_path', 1024), s('uploaded_by', 128), s('category', 128), s('visibility', 128), dt('created_at'), dt('updated_at')] },
   { id: 'board_decisions', name: 'Board Decisions', columns: [s('title', 255, true), mediumtext('description'), s('status', 64), s('created_by', 128), s('approved_by', 128, false, true), s('attachments', 2048, false, true), dt('created_at'), dt('updated_at')] },
   {
+    id: 'discipleship_contacts',
+    name: 'Discipleship Contacts',
+    columns: [
+      s('disciple_maker_id', 128, true), s('first_name', 128, true), s('last_name', 128, true), s('email', 320),
+      s('phone', 64), text('address'), dt('date_of_birth'), s('occupation', 255), text('interests'),
+      s('current_level', 64, true), dt('first_contact', true), dt('last_contact'), dt('baptism_date'),
+      text('notes'), b('is_active', false, true), s('tags', 128, false, true), mediumtext('custom_fields'),
+      dt('created_at', true), dt('updated_at', true),
+    ],
+    indexes: [
+      { key: 'discipleship_contacts_maker_idx', type: 'key', columns: ['disciple_maker_id'] },
+      { key: 'discipleship_contacts_level_idx', type: 'key', columns: ['current_level'] },
+      { key: 'discipleship_contacts_active_idx', type: 'key', columns: ['is_active'] },
+      { key: 'discipleship_contacts_updated_idx', type: 'key', columns: ['updated_at'], orders: ['DESC'] },
+    ],
+  },
+  {
+    id: 'contact_interactions',
+    name: 'Contact Interactions',
+    columns: [
+      s('contact_id', 128, true), s('disciple_maker_id', 128, true), s('method', 64, true), s('title', 255, true),
+      mediumtext('description'), dt('date', true), i('duration_minutes'), text('outcome'), text('next_steps'),
+      s('attachments', 2048, false, true), dt('created_at', true),
+    ],
+    indexes: [
+      { key: 'contact_interactions_contact_idx', type: 'key', columns: ['contact_id'] },
+      { key: 'contact_interactions_maker_idx', type: 'key', columns: ['disciple_maker_id'] },
+      { key: 'contact_interactions_date_idx', type: 'key', columns: ['date'], orders: ['DESC'] },
+    ],
+  },
+  {
+    id: 'discipleship_study_sessions',
+    name: 'Discipleship Study Sessions',
+    columns: [
+      s('contact_id', 128, true), s('disciple_maker_id', 128, true), s('type', 64, true), s('title', 255, true),
+      s('topic', 255), text('bible_texts'), dt('date', true), i('duration_minutes'), text('notes'), text('homework'),
+      i('rating'), b('completed', false, false), dt('created_at', true),
+    ],
+    indexes: [
+      { key: 'discipleship_study_contact_idx', type: 'key', columns: ['contact_id'] },
+      { key: 'discipleship_study_maker_idx', type: 'key', columns: ['disciple_maker_id'] },
+      { key: 'discipleship_study_type_idx', type: 'key', columns: ['type'] },
+      { key: 'discipleship_study_date_idx', type: 'key', columns: ['date'], orders: ['DESC'] },
+    ],
+  },
+  {
+    id: 'discipleship_prayer_requests',
+    name: 'Discipleship Prayer Requests',
+    columns: [
+      s('contact_id', 128, true), s('disciple_maker_id', 128, true), mediumtext('request', true), s('category', 128),
+      s('status', 64, true), dt('date_requested', true), dt('date_answered'), mediumtext('answer'), text('notes'),
+      dt('created_at', true), dt('updated_at', true),
+    ],
+    indexes: [
+      { key: 'discipleship_prayer_contact_idx', type: 'key', columns: ['contact_id'] },
+      { key: 'discipleship_prayer_maker_idx', type: 'key', columns: ['disciple_maker_id'] },
+      { key: 'discipleship_prayer_status_idx', type: 'key', columns: ['status'] },
+      { key: 'discipleship_prayer_date_idx', type: 'key', columns: ['date_requested'], orders: ['DESC'] },
+    ],
+  },
+  {
+    id: 'progress_milestones',
+    name: 'Discipleship Progress Milestones',
+    columns: [s('contact_id', 128, true), s('from_level', 64, true), s('to_level', 64, true), dt('date', true), text('notes'), text('celebration_plan'), dt('created_at', true)],
+    indexes: [{ key: 'progress_milestones_contact_idx', type: 'key', columns: ['contact_id'] }, { key: 'progress_milestones_date_idx', type: 'key', columns: ['date'], orders: ['DESC'] }],
+  },
+  {
+    id: 'discipleship_reports',
+    name: 'Discipleship Reports',
+    columns: [
+      s('disciple_maker_id', 128, true), s('supervisor_id', 128), dt('report_period_start', true), dt('report_period_end', true),
+      i('total_contacts', true), i('active_contacts', true), i('new_contacts', true), i('baptisms', true),
+      i('study_sessions', true), i('interactions', true), text('highlights'), text('challenges'), text('prayer_requests'),
+      text('goals'), s('frequency', 64, true), dt('created_at', true), dt('submitted_at'),
+    ],
+    indexes: [
+      { key: 'discipleship_reports_maker_idx', type: 'key', columns: ['disciple_maker_id'] },
+      { key: 'discipleship_reports_supervisor_idx', type: 'key', columns: ['supervisor_id'] },
+      { key: 'discipleship_reports_created_idx', type: 'key', columns: ['created_at'], orders: ['DESC'] },
+    ],
+  },
+  {
     id: 'leadership_records',
     name: 'Leadership Records',
     columns: [

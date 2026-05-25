@@ -72,6 +72,15 @@ class AppwriteBackendConfig {
   static const String kidsStoriesCollectionId = 'kids_stories';
   static const String kidsMissionsCollectionId = 'kids_missions';
   static const String learningResourcesCollectionId = 'learning_resources';
+  static const String discipleshipContactsCollectionId =
+      'discipleship_contacts';
+  static const String contactInteractionsCollectionId = 'contact_interactions';
+  static const String discipleshipStudySessionsCollectionId =
+      'discipleship_study_sessions';
+  static const String discipleshipPrayerRequestsCollectionId =
+      'discipleship_prayer_requests';
+  static const String progressMilestonesCollectionId = 'progress_milestones';
+  static const String discipleshipReportsCollectionId = 'discipleship_reports';
   static const String leadershipRecordsCollectionId = 'leadership_records';
   static const String leadershipTransitionsCollectionId =
       'leadership_transitions';
