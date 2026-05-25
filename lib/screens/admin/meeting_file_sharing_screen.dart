@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../services/firebase_database_service.dart';
+import '../../services/appwrite_meeting_file_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/role_access_service.dart';
 import '../../utils/responsive_utils.dart';
@@ -20,8 +20,8 @@ class MeetingFileSharingScreen extends StatefulWidget {
 }
 
 class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
-  final FirebaseDatabaseService _databaseService =
-      FirebaseDatabaseService.instance;
+  final AppwriteMeetingFileService _meetingFileService =
+      AppwriteMeetingFileService.instance;
   final AuthService _authService = AuthService.instance;
   List<MeetingFile> _files = [];
   bool _isLoading = true;
@@ -46,7 +46,7 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
   void _setupRealtimeSubscription() {
     // Set up real-time subscription for file changes
     _filesSubscription =
-        _databaseService.getMeetingFilesStream().listen((files) {
+        _meetingFileService.getMeetingFilesStream().listen((files) {
       if (mounted) {
         setState(() {
           _files = files.map((json) => MeetingFile.fromJson(json)).toList();
@@ -59,7 +59,7 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
     try {
       setState(() => _isLoading = true);
 
-      final files = await _databaseService.getMeetingFiles();
+      final files = await _meetingFileService.getMeetingFiles();
 
       if (mounted) {
         setState(() {
@@ -516,7 +516,7 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
         ),
       );
 
-      await _databaseService.uploadMeetingFileBytes(
+      await _meetingFileService.uploadMeetingFileBytes(
         data,
         fileName: fileName,
         description: description,
@@ -542,7 +542,7 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
     try {
       // Get the download URL from Appwrite Storage.
       final downloadUrl =
-          await _databaseService.getMeetingFileDownloadUrl(file.filePath);
+          _meetingFileService.getMeetingFileDownloadUrl(file.filePath);
 
       // Launch the URL to download the file
       if (await canLaunchUrl(Uri.parse(downloadUrl))) {
@@ -592,7 +592,7 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
   Future<void> _deleteFile(MeetingFile file) async {
     try {
       // Delete from Appwrite Storage and database.
-      await _databaseService.deleteMeetingFile(file.id, file.filePath);
+      await _meetingFileService.deleteMeetingFile(file.id, file.filePath);
 
       if (mounted) {
         ToastUtils.showSuccess('File deleted successfully');

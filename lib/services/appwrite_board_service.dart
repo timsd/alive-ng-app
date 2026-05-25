@@ -44,6 +44,16 @@ class AppwriteBoardService {
     return _list(AppwriteBackendConfig.boardDecisionsCollectionId);
   }
 
+  Future<List<Map<String, dynamic>>> getBoardDocuments() async {
+    return _list(AppwriteBackendConfig.boardDocumentsCollectionId);
+  }
+
+  Future<bool> addBoardDocument(Map<String, dynamic> documentData) async {
+    await _create(
+        AppwriteBackendConfig.boardDocumentsCollectionId, documentData);
+    return true;
+  }
+
   Future<bool> addBoardDecision(Map<String, dynamic> decisionData) async {
     await _create(AppwriteBackendConfig.boardDecisionsCollectionId, {
       ...decisionData,

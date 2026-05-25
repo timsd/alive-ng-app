@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/board_models.dart';
-import '../../services/firebase_database_service.dart';
+import '../../services/appwrite_board_service.dart';
 import '../../services/appwrite_storage_compat_service.dart';
 import '../../services/auth_service.dart';
 import '../../utils/responsive_utils.dart';
@@ -17,8 +17,7 @@ class BoardDocumentsScreen extends StatefulWidget {
 }
 
 class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
-  final FirebaseDatabaseService _databaseService =
-      FirebaseDatabaseService.instance;
+  final AppwriteBoardService _boardService = AppwriteBoardService.instance;
   final AuthService _authService = AuthService.instance;
   List<BoardDocument> _documents = [];
   bool _isLoading = true;
@@ -53,15 +52,10 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final snapshot = await _databaseService.firestore
-          .collection('board_documents')
-          .orderBy('uploaded_at', descending: true)
-          .get();
+      final docs = await _boardService.getBoardDocuments();
 
       setState(() {
-        _documents = snapshot.docs
-            .map((doc) => BoardDocument.fromJson(doc.data()))
-            .toList();
+        _documents = docs.map((doc) => BoardDocument.fromJson(doc)).toList();
         _isLoading = false;
       });
     } catch (e) {
@@ -928,7 +922,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
         throw 'Failed to upload file to storage';
       }
 
-      // Save document metadata to Firebase
+      // Save document metadata to Appwrite
       final currentUser = _authService.currentUser;
       final document = BoardDocument(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -946,8 +940,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
         tags: tags,
       );
 
-      await _databaseService.createDocument(
-          'board_documents', document.toJson());
+      await _boardService.addBoardDocument(document.toJson());
 
       if (!mounted) return;
       messenger.showSnackBar(
