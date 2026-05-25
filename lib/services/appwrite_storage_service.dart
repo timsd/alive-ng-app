@@ -37,6 +37,19 @@ class AppwriteStorageService {
     );
   }
 
+  Future<String> uploadContentFile({
+    required Uint8List bytes,
+    required String fileName,
+    required String contentType,
+  }) async {
+    return _uploadFile(
+      bucketId: AppwriteBackendConfig.contentMediaBucketId,
+      bytes: bytes,
+      fileName: fileName,
+      contentType: contentType,
+    );
+  }
+
   Future<void> deleteFileByUrl(String fileUrl) async {
     final uri = Uri.tryParse(fileUrl);
     if (uri == null) return;

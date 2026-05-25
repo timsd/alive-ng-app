@@ -16,6 +16,7 @@ class KidsContentService {
   static const String _prayerActivitiesCollection = 'prayer_activities';
   static const String _serviceProjectsCollection = 'service_projects';
   static const String _kidsStoriesCollection = 'kids_stories';
+  static const String _kidsMissionsCollection = 'kids_missions';
   static const String _learningResourcesCollection = 'learning_resources';
 
   static String _collectionId(String collection) {
@@ -26,6 +27,7 @@ class KidsContentService {
       _serviceProjectsCollection =>
         AppwriteBackendConfig.serviceProjectsCollectionId,
       _kidsStoriesCollection => AppwriteBackendConfig.kidsStoriesCollectionId,
+      _kidsMissionsCollection => AppwriteBackendConfig.kidsMissionsCollectionId,
       _learningResourcesCollection =>
         AppwriteBackendConfig.learningResourcesCollectionId,
       _ => collection,
@@ -1162,6 +1164,15 @@ class KidsContentService {
       return await _createAppwriteDocument(_kidsStoriesCollection, story);
     } catch (e) {
       throw DatabaseException('Failed to create kids story', originalError: e);
+    }
+  }
+
+  static Future<String> createKidsMission(Map<String, dynamic> mission) async {
+    try {
+      return await _createAppwriteDocument(_kidsMissionsCollection, mission);
+    } catch (e) {
+      throw DatabaseException('Failed to create kids mission',
+          originalError: e);
     }
   }
 

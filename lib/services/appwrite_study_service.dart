@@ -1,5 +1,7 @@
 // ignore_for_file: deprecated_member_use
 
+import 'dart:convert';
+
 import 'package:appwrite/appwrite.dart';
 
 import '../config/appwrite_backend_config.dart';
@@ -86,6 +88,52 @@ class AppwriteStudyService {
     }
   }
 
+  Future<String> createStudyGuide(Map<String, dynamic> data) async {
+    try {
+      final doc = await _databases.createDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.studyGuidesCollectionId,
+        documentId: data['id']?.toString() ?? ID.unique(),
+        data: _sanitizeWriteData(data),
+      );
+      return doc.$id;
+    } catch (e) {
+      _logger.error('Failed to create study guide', e);
+      throw DatabaseException('Failed to create study guide', originalError: e);
+    }
+  }
+
+  Future<String> createStudyLesson(Map<String, dynamic> data) async {
+    try {
+      final doc = await _databases.createDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: AppwriteBackendConfig.studyLessonsCollectionId,
+        documentId: data['id']?.toString() ?? ID.unique(),
+        data: _sanitizeWriteData(data),
+      );
+      return doc.$id;
+    } catch (e) {
+      _logger.error('Failed to create study lesson', e);
+      throw DatabaseException('Failed to create study lesson',
+          originalError: e);
+    }
+  }
+
+  Map<String, dynamic> _sanitizeWriteData(Map<String, dynamic> data) {
+    final sanitized = Map<String, dynamic>.from(data)
+      ..remove('id')
+      ..removeWhere((key, value) => key.startsWith(r'$') || value == null);
+
+    for (final entry in sanitized.entries.toList()) {
+      final value = entry.value;
+      if (value is Map || value is List) {
+        sanitized[entry.key] = jsonEncode(value);
+      }
+    }
+
+    return sanitized;
+  }
+
   String _string(dynamic value, {String fallback = ''}) {
     if (value is String && value.trim().isNotEmpty) return value.trim();
     return fallback;
@@ -106,7 +154,9 @@ class AppwriteStudyService {
 
   DateTime _date(dynamic value, {required String fallback}) {
     if (value is DateTime) return value;
-    if (value is String) return DateTime.tryParse(value) ?? DateTime.parse(fallback);
+    if (value is String) {
+      return DateTime.tryParse(value) ?? DateTime.parse(fallback);
+    }
     return DateTime.parse(fallback);
   }
 }

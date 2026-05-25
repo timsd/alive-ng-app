@@ -3,7 +3,8 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../services/pdf_extractor_service.dart';
-import '../../services/firebase_database_service.dart';
+import '../../services/appwrite_storage_service.dart';
+import '../../services/kids_content_service.dart';
 import '../../models/kids_missions.dart';
 
 class AdminKidsMissionsScreen extends StatefulWidget {
@@ -17,7 +18,7 @@ class AdminKidsMissionsScreen extends StatefulWidget {
 class _AdminKidsMissionsScreenState extends State<AdminKidsMissionsScreen> {
   final _formKey = GlobalKey<FormState>();
   final _pdfExtractor = PdfExtractorService();
-  final _dbService = FirebaseDatabaseService.instance;
+  final _storageService = AppwriteStorageService.instance;
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
@@ -112,9 +113,12 @@ class _AdminKidsMissionsScreenState extends State<AdminKidsMissionsScreen> {
 
       // 1. Upload Media
       if (_mediaBytes != null && _mediaName != null) {
-        final path =
-            'content_media/kids_missions/${DateTime.now().millisecondsSinceEpoch}_$_mediaName';
-        uploadedMediaUrl = await _dbService.uploadFile(path, _mediaBytes!);
+        uploadedMediaUrl = await _storageService.uploadContentFile(
+          bytes: _mediaBytes!,
+          fileName:
+              'kids_missions/${DateTime.now().millisecondsSinceEpoch}_$_mediaName',
+          contentType: 'application/octet-stream',
+        );
       }
 
       // 2. Build Payload
@@ -147,7 +151,7 @@ class _AdminKidsMissionsScreenState extends State<AdminKidsMissionsScreen> {
       };
 
       // 3. Save to Appwrite
-      await _dbService.createDocument('kids_missions', payload);
+      await KidsContentService.createKidsMission(payload);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

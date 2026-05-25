@@ -2,7 +2,8 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../services/pdf_extractor_service.dart';
-import '../../services/firebase_database_service.dart';
+import '../../services/appwrite_storage_service.dart';
+import '../../services/kids_content_service.dart';
 import '../../models/kids_models.dart';
 
 class AdminKidsStoriesScreen extends StatefulWidget {
@@ -15,7 +16,7 @@ class AdminKidsStoriesScreen extends StatefulWidget {
 class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
   final _formKey = GlobalKey<FormState>();
   final _pdfExtractor = PdfExtractorService();
-  final _dbService = FirebaseDatabaseService.instance;
+  final _storageService = AppwriteStorageService.instance;
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _subtitleController = TextEditingController();
@@ -123,15 +124,21 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
 
       // 1. Upload Media
       if (_coverImageBytes != null && _coverImageName != null) {
-        final path =
-            'content_media/kids_stories/images/${DateTime.now().millisecondsSinceEpoch}_$_coverImageName';
-        uploadedImageUrl = await _dbService.uploadFile(path, _coverImageBytes!);
+        uploadedImageUrl = await _storageService.uploadContentFile(
+          bytes: _coverImageBytes!,
+          fileName:
+              'kids_stories/images/${DateTime.now().millisecondsSinceEpoch}_$_coverImageName',
+          contentType: 'image/*',
+        );
       }
 
       if (_audioBytes != null && _audioName != null) {
-        final path =
-            'content_media/kids_stories/audio/${DateTime.now().millisecondsSinceEpoch}_$_audioName';
-        uploadedAudioUrl = await _dbService.uploadFile(path, _audioBytes!);
+        uploadedAudioUrl = await _storageService.uploadContentFile(
+          bytes: _audioBytes!,
+          fileName:
+              'kids_stories/audio/${DateTime.now().millisecondsSinceEpoch}_$_audioName',
+          contentType: 'audio/*',
+        );
       }
 
       // 2. Build Document Payload
@@ -160,7 +167,7 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
       };
 
       // 3. Save to Appwrite
-      await _dbService.createDocument('kids_stories', payload);
+      await KidsContentService.createKidsStory(payload);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

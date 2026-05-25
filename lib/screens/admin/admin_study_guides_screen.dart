@@ -2,7 +2,8 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../services/pdf_extractor_service.dart';
-import '../../services/firebase_database_service.dart';
+import '../../services/appwrite_storage_service.dart';
+import '../../services/appwrite_study_service.dart';
 import '../../models/study_guide_models.dart';
 
 class AdminStudyGuidesScreen extends StatefulWidget {
@@ -15,7 +16,8 @@ class AdminStudyGuidesScreen extends StatefulWidget {
 class _AdminStudyGuidesScreenState extends State<AdminStudyGuidesScreen> {
   final _formKey = GlobalKey<FormState>();
   final _pdfExtractor = PdfExtractorService();
-  final _dbService = FirebaseDatabaseService.instance;
+  final _storageService = AppwriteStorageService.instance;
+  final _studyService = AppwriteStudyService.instance;
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
@@ -108,9 +110,12 @@ class _AdminStudyGuidesScreenState extends State<AdminStudyGuidesScreen> {
 
       // 1. Upload Cover Image
       if (_coverImageBytes != null && _coverImageName != null) {
-        final path =
-            'study_guides/covers/${DateTime.now().millisecondsSinceEpoch}_$_coverImageName';
-        uploadedImageUrl = await _dbService.uploadFile(path, _coverImageBytes!);
+        uploadedImageUrl = await _storageService.uploadContentFile(
+          bytes: _coverImageBytes!,
+          fileName:
+              'study_guides/covers/${DateTime.now().millisecondsSinceEpoch}_$_coverImageName',
+          contentType: 'image/*',
+        );
       }
 
       // 2. Build Study Guide Payload
@@ -136,10 +141,12 @@ class _AdminStudyGuidesScreenState extends State<AdminStudyGuidesScreen> {
       );
 
       // Save Guide
-      await _dbService.firestore
-          .collection('study_guides')
-          .doc(guideId)
-          .set(guide.toJson());
+      await _studyService.createStudyGuide({
+        ...guide.toJson(),
+        'cover_image_url': uploadedImageUrl,
+        'is_published': true,
+        'lesson_count': _lessonContentController.text.isNotEmpty ? 1 : 0,
+      });
 
       // 3. Build & Save Initial Lesson from Extracted Content
       final rawVerses = _keyVersesController.text.trim();
@@ -165,12 +172,7 @@ class _AdminStudyGuidesScreenState extends State<AdminStudyGuidesScreen> {
           updatedAt: DateTime.now(),
         );
 
-        await _dbService.firestore
-            .collection('study_guides')
-            .doc(guideId)
-            .collection('lessons')
-            .doc(lessonId)
-            .set(lesson.toJson());
+        await _studyService.createStudyLesson(lesson.toJson());
       }
 
       if (mounted) {
