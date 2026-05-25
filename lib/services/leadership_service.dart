@@ -1,10 +1,16 @@
-// Removed supabase_flutter import - using Firebase now
-import '../models/leadership_models.dart';
+// ignore_for_file: deprecated_member_use
+
+import 'dart:convert';
+
+import 'package:appwrite/appwrite.dart';
 import 'package:uuid/uuid.dart';
-import 'auth_service.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../config/appwrite_backend_config.dart';
+import '../main.dart';
+import '../models/leadership_models.dart';
 import '../utils/app_exception.dart';
 import '../utils/logger.dart';
+import 'auth_service.dart';
 
 class LeadershipService {
   static final LeadershipService _instance = LeadershipService._internal();
@@ -13,25 +19,23 @@ class LeadershipService {
 
   static final Logger _logger = Logger('LeadershipService');
   final AuthService _authService = AuthService.instance;
+  final Databases _databases = Databases(appwriteClient);
   final Uuid _uuid = const Uuid();
 
-  // Get current user's leadership records
+  static const _recordsCollection =
+      AppwriteBackendConfig.leadershipRecordsCollectionId;
+  static const _transitionsCollection =
+      AppwriteBackendConfig.leadershipTransitionsCollectionId;
+
   Future<List<LeadershipRecord>> getCurrentUserRecords() async {
     try {
       final userId = _authService.currentUser?.uid;
       if (userId == null) throw AuthException('User not authenticated');
 
-      final querySnapshot = await FirebaseFirestore.instance
-          .collection('leadership_records')
-          .where('user_id', isEqualTo: userId)
-          .orderBy('created_at', descending: true)
-          .get();
-
-      return querySnapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return LeadershipRecord.fromJson(data);
-      }).toList();
+      return _listRecords([
+        Query.equal('user_id', userId),
+        Query.orderDesc('created_at'),
+      ]);
     } catch (e) {
       if (e is AppException) rethrow;
       _logger.error('Failed to fetch leadership records', e);
@@ -40,7 +44,6 @@ class LeadershipService {
     }
   }
 
-  // Get all leadership records (admin only)
   Future<List<LeadershipRecord>> getAllRecords({
     ServiceStatus? status,
     LeadershipPosition? position,
@@ -48,30 +51,21 @@ class LeadershipService {
     int? offset,
   }) async {
     try {
-      Query<Map<String, dynamic>> query =
-          FirebaseFirestore.instance.collection('leadership_records');
-
+      final queries = <String>[Query.orderDesc('created_at')];
       if (status != null) {
-        query = query.where('status', isEqualTo: status.name);
+        queries.add(Query.equal('status', status.name));
       }
-
       if (position != null) {
-        query = query.where('position', isEqualTo: position.name);
+        queries.add(Query.equal('position', position.name));
       }
-
-      query = query.orderBy('created_at', descending: true);
-
       if (limit != null) {
-        query = query.limit(limit);
+        queries.add(Query.limit(limit));
+      }
+      if (offset != null) {
+        queries.add(Query.offset(offset));
       }
 
-      final querySnapshot = await query.get();
-
-      return querySnapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return LeadershipRecord.fromJson(data);
-      }).toList();
+      return _listRecords(queries);
     } catch (e) {
       _logger.error('Failed to fetch all leadership records', e);
       throw DatabaseException('Failed to fetch all leadership records',
@@ -79,12 +73,11 @@ class LeadershipService {
     }
   }
 
-  // Convenience: Get active leadership records
   Future<List<LeadershipRecord>> getActiveRecords({
     LeadershipPosition? position,
     int? limit,
     int? offset,
-  }) async {
+  }) {
     return getAllRecords(
       status: ServiceStatus.active,
       position: position,
@@ -93,12 +86,11 @@ class LeadershipService {
     );
   }
 
-  // Convenience: Get archived leadership records
   Future<List<LeadershipRecord>> getArchivedRecords({
     LeadershipPosition? position,
     int? limit,
     int? offset,
-  }) async {
+  }) {
     return getAllRecords(
       status: ServiceStatus.archived,
       position: position,
@@ -107,19 +99,20 @@ class LeadershipService {
     );
   }
 
-  // Get leadership record by ID
   Future<LeadershipRecord?> getRecordById(String recordId) async {
     try {
-      final docSnapshot = await FirebaseFirestore.instance
-          .collection('leadership_records')
-          .doc(recordId)
-          .get();
+      final document = await _databases.getDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _recordsCollection,
+        documentId: recordId,
+      );
 
-      if (!docSnapshot.exists) return null;
-
-      final data = docSnapshot.data()!;
-      data['id'] = docSnapshot.id;
-      return LeadershipRecord.fromJson(data);
+      return _recordFromDocument(document);
+    } on AppwriteException catch (e) {
+      if (e.code == 404) return null;
+      _logger.error('Failed to fetch leadership record', e);
+      throw DatabaseException('Failed to fetch leadership record',
+          originalError: e);
     } catch (e) {
       _logger.error('Failed to fetch leadership record', e);
       throw DatabaseException('Failed to fetch leadership record',
@@ -127,25 +120,31 @@ class LeadershipService {
     }
   }
 
-  // Create new leadership record
   Future<LeadershipRecord> createRecord(LeadershipRecord record) async {
     try {
       final currentUserId = _authService.currentUser?.uid;
       if (currentUserId == null) throw AuthException('User not authenticated');
 
-      final recordData = record.toJson();
-      recordData['id'] = _uuid.v4();
-      recordData['user_id'] = currentUserId;
-      recordData['created_at'] = DateTime.now().toIso8601String();
-      recordData['updated_at'] = DateTime.now().toIso8601String();
-      recordData['status'] = ServiceStatus.pending.name;
+      final now = DateTime.now().toUtc();
+      final id = _uuid.v4();
+      final data = _recordToAppwriteData(record.copyWith(
+        id: id,
+        userId: currentUserId,
+        status: ServiceStatus.pending,
+        createdAt: now,
+        updatedAt: now,
+        createdBy: record.createdBy ?? currentUserId,
+        updatedBy: currentUserId,
+      ));
 
-      final docRef = await FirebaseFirestore.instance
-          .collection('leadership_records')
-          .add(recordData);
+      final document = await _databases.createDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _recordsCollection,
+        documentId: id,
+        data: data,
+      );
 
-      recordData['id'] = docRef.id;
-      return LeadershipRecord.fromJson(recordData);
+      return _recordFromDocument(document);
     } catch (e) {
       if (e is AppException) rethrow;
       _logger.error('Failed to create leadership record', e);
@@ -154,34 +153,26 @@ class LeadershipService {
     }
   }
 
-  // Update leadership record
   Future<LeadershipRecord> updateRecord(
       String recordId, Map<String, dynamic> updates) async {
     try {
       final currentUserId = _authService.currentUser?.uid;
       if (currentUserId == null) throw AuthException('User not authenticated');
 
-      updates['updated_at'] = DateTime.now().toIso8601String();
-      updates['updated_by'] = currentUserId;
+      final payload = _normalizeRecordUpdates({
+        ...updates,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+        'updated_by': currentUserId,
+      });
 
-      await FirebaseFirestore.instance
-          .collection('leadership_records')
-          .doc(recordId)
-          .update(updates);
+      final document = await _databases.updateDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _recordsCollection,
+        documentId: recordId,
+        data: payload,
+      );
 
-      // Get updated record
-      final docSnapshot = await FirebaseFirestore.instance
-          .collection('leadership_records')
-          .doc(recordId)
-          .get();
-
-      if (!docSnapshot.exists) {
-        throw NotFoundException('Record not found after update');
-      }
-
-      final data = docSnapshot.data()!;
-      data['id'] = docSnapshot.id;
-      return LeadershipRecord.fromJson(data);
+      return _recordFromDocument(document);
     } catch (e) {
       if (e is AppException) rethrow;
       _logger.error('Failed to update leadership record', e);
@@ -190,13 +181,13 @@ class LeadershipService {
     }
   }
 
-  // Delete leadership record
   Future<void> deleteRecord(String recordId) async {
     try {
-      await FirebaseFirestore.instance
-          .collection('leadership_records')
-          .doc(recordId)
-          .delete();
+      await _databases.deleteDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _recordsCollection,
+        documentId: recordId,
+      );
     } catch (e) {
       _logger.error('Failed to delete leadership record', e);
       throw DatabaseException('Failed to delete leadership record',
@@ -204,162 +195,64 @@ class LeadershipService {
     }
   }
 
-  // Get records by chapter
-  Future<List<LeadershipRecord>> getRecordsByChapter(String chapterId) async {
-    try {
-      final querySnapshot = await FirebaseFirestore.instance
-          .collection('leadership_records')
-          .where('chapter_id', isEqualTo: chapterId)
-          .orderBy('created_at', descending: true)
-          .get();
-
-      return querySnapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return LeadershipRecord.fromJson(data);
-      }).toList();
-    } catch (e) {
-      throw DatabaseException('Failed to fetch chapter leadership records',
-          originalError: e);
-    }
+  Future<List<LeadershipRecord>> getRecordsByChapter(String chapterId) {
+    return _listRecords([
+      Query.equal('chapter_id', chapterId),
+      Query.orderDesc('created_at'),
+    ]);
   }
 
-  // Get records by position
   Future<List<LeadershipRecord>> getRecordsByPosition(
-      LeadershipPosition position) async {
-    try {
-      final querySnapshot = await FirebaseFirestore.instance
-          .collection('leadership_records')
-          .where('position', isEqualTo: position.name)
-          .orderBy('created_at', descending: true)
-          .get();
-
-      return querySnapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return LeadershipRecord.fromJson(data);
-      }).toList();
-    } catch (e) {
-      throw DatabaseException('Failed to fetch position leadership records',
-          originalError: e);
-    }
+      LeadershipPosition position) {
+    return _listRecords([
+      Query.equal('position', position.name),
+      Query.orderDesc('created_at'),
+    ]);
   }
 
-  // Approve leadership record
   Future<LeadershipRecord> approveRecord(String recordId,
       {String? notes}) async {
-    try {
-      final currentUserId = _authService.currentUser?.uid;
-      if (currentUserId == null) throw AuthException('User not authenticated');
-
-      final updates = {
-        'status': ServiceStatus.approved.name,
-        'approved_by': currentUserId,
-        'approved_at': DateTime.now().toIso8601String(),
-        'updated_at': DateTime.now().toIso8601String(),
-        'updated_by': currentUserId,
-      };
-
-      if (notes != null) {
-        updates['approval_notes'] = notes;
-      }
-
-      await FirebaseFirestore.instance
-          .collection('leadership_records')
-          .doc(recordId)
-          .update(updates);
-
-      // Get updated record
-      final docSnapshot = await FirebaseFirestore.instance
-          .collection('leadership_records')
-          .doc(recordId)
-          .get();
-
-      if (!docSnapshot.exists) {
-        throw NotFoundException('Record not found after update');
-      }
-
-      final data = docSnapshot.data()!;
-      data['id'] = docSnapshot.id;
-      return LeadershipRecord.fromJson(data);
-    } catch (e) {
-      if (e is AppException) rethrow;
-      throw DatabaseException('Failed to approve leadership record',
-          originalError: e);
-    }
+    final currentUserId = _requireCurrentUserId();
+    final updates = <String, dynamic>{
+      'status': ServiceStatus.approved.name,
+      'approved_by': currentUserId,
+      'approved_at': DateTime.now().toUtc().toIso8601String(),
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+      'updated_by': currentUserId,
+    };
+    if (notes != null) updates['approval_notes'] = notes;
+    return updateRecord(recordId, updates);
   }
 
-  // Reject leadership record
   Future<LeadershipRecord> rejectRecord(String recordId,
       {String? reason}) async {
-    try {
-      final currentUserId = _authService.currentUser?.uid;
-      if (currentUserId == null) throw AuthException('User not authenticated');
-
-      final updates = {
-        'status': ServiceStatus.rejected.name,
-        'rejected_by': currentUserId,
-        'rejected_at': DateTime.now().toIso8601String(),
-        'updated_at': DateTime.now().toIso8601String(),
-        'updated_by': currentUserId,
-      };
-
-      if (reason != null) {
-        updates['rejection_reason'] = reason;
-      }
-
-      await FirebaseFirestore.instance
-          .collection('leadership_records')
-          .doc(recordId)
-          .update(updates);
-
-      // Get updated record
-      final docSnapshot = await FirebaseFirestore.instance
-          .collection('leadership_records')
-          .doc(recordId)
-          .get();
-
-      if (!docSnapshot.exists) {
-        throw NotFoundException('Record not found after update');
-      }
-
-      final data = docSnapshot.data()!;
-      data['id'] = docSnapshot.id;
-      return LeadershipRecord.fromJson(data);
-    } catch (e) {
-      if (e is AppException) rethrow;
-      throw DatabaseException('Failed to reject leadership record',
-          originalError: e);
-    }
+    final currentUserId = _requireCurrentUserId();
+    final updates = <String, dynamic>{
+      'status': ServiceStatus.rejected.name,
+      'rejected_by': currentUserId,
+      'rejected_at': DateTime.now().toUtc().toIso8601String(),
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+      'updated_by': currentUserId,
+    };
+    if (reason != null) updates['rejection_reason'] = reason;
+    return updateRecord(recordId, updates);
   }
 
-  // Complete leadership service
   Future<LeadershipRecord> completeService(String recordId,
       {String? completionNotes}) async {
     try {
-      final currentUserId = _authService.currentUser?.uid;
-      if (currentUserId == null) throw AuthException('User not authenticated');
-
-      // Get current record before completion for transition tracking
+      final currentUserId = _requireCurrentUserId();
       final currentRecord = await getRecordById(recordId);
-
-      final updates = {
+      final updates = <String, dynamic>{
         'status': ServiceStatus.completed.name,
-        'completed_at': DateTime.now().toIso8601String(),
-        'updated_at': DateTime.now().toIso8601String(),
+        'completed_at': DateTime.now().toUtc().toIso8601String(),
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
         'updated_by': currentUserId,
       };
+      if (completionNotes != null) updates['completion_notes'] = completionNotes;
 
-      if (completionNotes != null) {
-        updates['completion_notes'] = completionNotes;
-      }
+      final updatedRecord = await updateRecord(recordId, updates);
 
-      await FirebaseFirestore.instance
-          .collection('leadership_records')
-          .doc(recordId)
-          .update(updates);
-
-      // Record the leadership transition
       if (currentRecord != null) {
         await recordLeadershipTransition(LeadershipTransition(
           id: _uuid.v4(),
@@ -368,26 +261,14 @@ class LeadershipService {
           toPosition: currentRecord.position,
           fromPositionTitle: currentRecord.positionTitle,
           toPositionTitle: currentRecord.positionTitle,
-          transitionDate: DateTime.now(),
+          transitionDate: DateTime.now().toUtc(),
           reason: completionNotes ?? 'Service completed',
           approvedBy: currentUserId,
-          createdAt: DateTime.now(),
+          createdAt: DateTime.now().toUtc(),
         ));
       }
 
-      // Get updated record
-      final docSnapshot = await FirebaseFirestore.instance
-          .collection('leadership_records')
-          .doc(recordId)
-          .get();
-
-      if (!docSnapshot.exists) {
-        throw NotFoundException('Record not found after update');
-      }
-
-      final data = docSnapshot.data()!;
-      data['id'] = docSnapshot.id;
-      return LeadershipRecord.fromJson(data);
+      return updatedRecord;
     } catch (e) {
       if (e is AppException) rethrow;
       throw DatabaseException('Failed to complete leadership service',
@@ -395,76 +276,38 @@ class LeadershipService {
     }
   }
 
-  // Archive leadership record
   Future<LeadershipRecord> archiveRecord(String recordId) async {
-    try {
-      final currentUserId = _authService.currentUser?.uid;
-      if (currentUserId == null) throw AuthException('User not authenticated');
-
-      final updates = {
-        'status': ServiceStatus.archived.name,
-        'updated_at': DateTime.now().toIso8601String(),
-        'updated_by': currentUserId,
-      };
-
-      await FirebaseFirestore.instance
-          .collection('leadership_records')
-          .doc(recordId)
-          .update(updates);
-
-      // Get updated record
-      final docSnapshot = await FirebaseFirestore.instance
-          .collection('leadership_records')
-          .doc(recordId)
-          .get();
-
-      if (!docSnapshot.exists) {
-        throw NotFoundException('Record not found after update');
-      }
-
-      final data = docSnapshot.data()!;
-      data['id'] = docSnapshot.id;
-      return LeadershipRecord.fromJson(data);
-    } catch (e) {
-      if (e is AppException) rethrow;
-      throw DatabaseException('Failed to archive leadership record',
-          originalError: e);
-    }
+    final currentUserId = _requireCurrentUserId();
+    return updateRecord(recordId, {
+      'status': ServiceStatus.archived.name,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+      'updated_by': currentUserId,
+    });
   }
 
-  // Get leadership statistics
   Future<Map<String, dynamic>> getLeadershipStatistics(
       {String? chapterId}) async {
     try {
-      Query<Map<String, dynamic>> query =
-          FirebaseFirestore.instance.collection('leadership_records');
-
+      final queries = <String>[];
       if (chapterId != null) {
-        query = query.where('chapter_id', isEqualTo: chapterId);
+        queries.add(Query.equal('chapter_id', chapterId));
       }
+      queries.add(Query.limit(5000));
 
-      final querySnapshot = await query.get();
-      final records = querySnapshot.docs;
+      final records = await _listRecords(queries);
       int activeCount = 0;
       int completedCount = 0;
       int archivedCount = 0;
       final positionCounts = <String, int>{};
 
-      for (final doc in records) {
-        final data = doc.data();
-        final status = (data['status'] as String?) ?? '';
-        final position = data['position'] as String?;
-
-        final isActiveLike = status == ServiceStatus.active.name ||
-            status == ServiceStatus.approved.name;
-        if (isActiveLike) {
+      for (final record in records) {
+        if (record.isActive) {
           activeCount += 1;
-          if (position != null) {
-            positionCounts[position] = (positionCounts[position] ?? 0) + 1;
-          }
-        } else if (status == ServiceStatus.completed.name) {
+          positionCounts[record.position.name] =
+              (positionCounts[record.position.name] ?? 0) + 1;
+        } else if (record.status == ServiceStatus.completed) {
           completedCount += 1;
-        } else if (status == ServiceStatus.archived.name) {
+        } else if (record.status == ServiceStatus.archived) {
           archivedCount += 1;
         }
       }
@@ -482,21 +325,16 @@ class LeadershipService {
     }
   }
 
-  // Search leadership records
   Future<List<LeadershipRecord>> searchRecords(String searchTerm) async {
     try {
-      // Note: Firestore doesn't support full-text search natively
-      // This is a basic implementation that searches by name
-      final querySnapshot = await FirebaseFirestore.instance
-          .collection('leadership_records')
-          .where('name', isGreaterThanOrEqualTo: searchTerm)
-          .where('name', isLessThanOrEqualTo: '$searchTerm\uf8ff')
-          .get();
+      final term = searchTerm.trim().toLowerCase();
+      if (term.isEmpty) return getAllRecords(limit: 100);
 
-      return querySnapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return LeadershipRecord.fromJson(data);
+      final records = await getAllRecords(limit: 500);
+      return records.where((record) {
+        return record.userName.toLowerCase().contains(term) ||
+            record.userEmail.toLowerCase().contains(term) ||
+            record.positionTitle.toLowerCase().contains(term);
       }).toList();
     } catch (e) {
       throw DatabaseException('Failed to search leadership records',
@@ -504,67 +342,27 @@ class LeadershipService {
     }
   }
 
-  // Get user's active leadership positions
   Future<List<LeadershipRecord>> getUserActivePositions(String userId) async {
-    try {
-      final querySnapshot = await FirebaseFirestore.instance
-          .collection('leadership_records')
-          .where('user_id', isEqualTo: userId)
-          .where('status',
-              whereIn: [ServiceStatus.approved.name, ServiceStatus.active.name])
-          .orderBy('created_at', descending: true)
-          .get();
-
-      return querySnapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return LeadershipRecord.fromJson(data);
-      }).toList();
-    } catch (e) {
-      throw DatabaseException('Failed to fetch user active positions',
-          originalError: e);
-    }
+    final records = await _listRecords([
+      Query.equal('user_id', userId),
+      Query.orderDesc('created_at'),
+    ]);
+    return records.where((record) => record.isActive).toList();
   }
 
-  /// Get a comprehensive [LeadershipSummary] for a user, including service
-  /// history and transitions.
   Future<LeadershipSummary> getUserLeadershipSummary(String userId) async {
     try {
-      // Fetch all records for the user
-      final recordsSnapshot = await FirebaseFirestore.instance
-          .collection('leadership_records')
-          .where('user_id', isEqualTo: userId)
-          .orderBy('created_at', descending: true)
-          .get();
-
-      final records = recordsSnapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return LeadershipRecord.fromJson(data);
-      }).toList();
-
-      // Fetch transitions for the user
-      final transitionsSnapshot = await FirebaseFirestore.instance
-          .collection('leadership_transitions')
-          .where('user_id', isEqualTo: userId)
-          .orderBy('transition_date', descending: true)
-          .get();
-
-      final transitions = transitionsSnapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return LeadershipTransition.fromJson(data);
-      }).toList();
-
-      // Determine current position
+      final records = await _listRecords([
+        Query.equal('user_id', userId),
+        Query.orderDesc('created_at'),
+      ]);
+      final transitions = await getUserTransitions(userId);
       final activeRecord = records.where((r) => r.isActive).firstOrNull;
       final userName = records.isNotEmpty ? records.first.userName : '';
-
-      // Calculate total years of service
-      int totalYears = 0;
-      for (final record in records) {
-        totalYears += record.yearsOfService;
-      }
+      final totalYears = records.fold<int>(
+        0,
+        (total, record) => total + record.yearsOfService,
+      );
 
       return LeadershipSummary(
         userId: userId,
@@ -584,18 +382,18 @@ class LeadershipService {
     }
   }
 
-  /// Record a [LeadershipTransition] when a leader changes positions
-  /// or completes service.
   Future<LeadershipTransition> recordLeadershipTransition(
       LeadershipTransition transition) async {
     try {
-      final data = transition.toJson();
-      final docRef = await FirebaseFirestore.instance
-          .collection('leadership_transitions')
-          .add(data);
+      final id = transition.id.isNotEmpty ? transition.id : _uuid.v4();
+      final document = await _databases.createDocument(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _transitionsCollection,
+        documentId: id,
+        data: _transitionToAppwriteData(transition),
+      );
 
-      data['id'] = docRef.id;
-      return LeadershipTransition.fromJson(data);
+      return _transitionFromDocument(document);
     } catch (e) {
       _logger.error('Failed to record leadership transition', e);
       throw DatabaseException('Failed to record leadership transition',
@@ -603,24 +401,89 @@ class LeadershipService {
     }
   }
 
-  /// Get transition history for a user.
   Future<List<LeadershipTransition>> getUserTransitions(String userId) async {
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('leadership_transitions')
-          .where('user_id', isEqualTo: userId)
-          .orderBy('transition_date', descending: true)
-          .get();
+      final response = await _databases.listDocuments(
+        databaseId: AppwriteBackendConfig.databaseId,
+        collectionId: _transitionsCollection,
+        queries: [
+          Query.equal('user_id', userId),
+          Query.orderDesc('transition_date'),
+        ],
+      );
 
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return LeadershipTransition.fromJson(data);
-      }).toList();
+      return response.documents.map(_transitionFromDocument).toList();
     } catch (e) {
       _logger.error('Failed to get user transitions', e);
       throw DatabaseException('Failed to get user transitions',
           originalError: e);
     }
+  }
+
+  Future<List<LeadershipRecord>> _listRecords(List<String> queries) async {
+    final response = await _databases.listDocuments(
+      databaseId: AppwriteBackendConfig.databaseId,
+      collectionId: _recordsCollection,
+      queries: queries,
+    );
+    return response.documents.map(_recordFromDocument).toList();
+  }
+
+  LeadershipRecord _recordFromDocument(dynamic document) {
+    final data = Map<String, dynamic>.from(document.data as Map);
+    data['id'] = document.$id;
+    data['contact_info'] = _decodeJsonMap(data['contact_info']);
+    return LeadershipRecord.fromJson(data);
+  }
+
+  LeadershipTransition _transitionFromDocument(dynamic document) {
+    final data = Map<String, dynamic>.from(document.data as Map);
+    data['id'] = document.$id;
+    return LeadershipTransition.fromJson(data);
+  }
+
+  Map<String, dynamic> _recordToAppwriteData(LeadershipRecord record) {
+    return _normalizeRecordUpdates(record.toJson())..remove('id');
+  }
+
+  Map<String, dynamic> _transitionToAppwriteData(
+      LeadershipTransition transition) {
+    return Map<String, dynamic>.from(transition.toJson())..remove('id');
+  }
+
+  Map<String, dynamic> _normalizeRecordUpdates(Map<String, dynamic> updates) {
+    final normalized = <String, dynamic>{};
+    for (final entry in updates.entries) {
+      if (entry.key == 'id') continue;
+      final value = entry.value;
+      if (value == null) continue;
+      if (entry.key == 'contact_info' && value is Map) {
+        normalized[entry.key] = jsonEncode(value);
+      } else if (value is DateTime) {
+        normalized[entry.key] = value.toUtc().toIso8601String();
+      } else if (value is Enum) {
+        normalized[entry.key] = value.name;
+      } else {
+        normalized[entry.key] = value;
+      }
+    }
+    return normalized;
+  }
+
+  Map<String, dynamic>? _decodeJsonMap(dynamic value) {
+    if (value == null) return null;
+    if (value is Map<String, dynamic>) return value;
+    if (value is String && value.trim().isNotEmpty) {
+      final decoded = jsonDecode(value);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    }
+    return null;
+  }
+
+  String _requireCurrentUserId() {
+    final currentUserId = _authService.currentUser?.uid;
+    if (currentUserId == null) throw AuthException('User not authenticated');
+    return currentUserId;
   }
 }

@@ -72,6 +72,9 @@ class AppwriteBackendConfig {
   static const String kidsStoriesCollectionId = 'kids_stories';
   static const String kidsMissionsCollectionId = 'kids_missions';
   static const String learningResourcesCollectionId = 'learning_resources';
+  static const String leadershipRecordsCollectionId = 'leadership_records';
+  static const String leadershipTransitionsCollectionId =
+      'leadership_transitions';
   static const String meetingFilesCollectionId = 'meeting_files';
   static const String missionsCollectionId = 'missions';
   static const String userMissionsCollectionId = 'user_missions';

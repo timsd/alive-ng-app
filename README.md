@@ -15,7 +15,7 @@ move it until the remaining Firebase internals are gone.
 - Appwrite now backs auth/profile bootstrap, chat, prayer, testimonies,
   notification settings/reminder records, admin notification records, admin user archive, profile file cleanup, tag visibility checks,
   analytics event persistence, user Bible/prayer/study statistics, study progress, lesson-level study progress, study, enhanced health, health tracking helper,
-  health recipe/remedy submissions, onboarding content, admin dashboard stats, admin app settings, admin content management, admin tract/podcast management, kids content CRUD, admin kids story/mission publishing, events, announcements and announcement editing, public missions, podcast listing/episode provider and audio actions, tract remote sync/progress, tract PDF text extraction, tract reader progress, app update settings, approval link
+  health recipe/remedy submissions, onboarding content, admin dashboard stats, admin app settings, admin content management, admin tract/podcast management, leadership records/transitions, kids content CRUD, admin kids story/mission publishing, events, announcements and announcement editing, public missions, podcast listing/episode provider and audio actions, tract remote sync/progress, tract PDF text extraction, tract reader progress, app update settings, approval link
   tokens, daily verse records/generation settings, donation records, donation
   projects/settings reads, kids stories/missions public screens, Appwrite-backed tract,
   board storage compatibility, meeting file sharing storage/metadata, and the Paystack function flow.
@@ -309,7 +309,7 @@ if (res.isSuccess) {
 - `AuthService` and `AppwriteAuthService`: account, profile, OAuth, and admin team sync.
 - `AppwriteChatService`: real-time chat messages, attachments, and mentions.
 - `DonationService` and `PaymentService`: donation records, Paystack initialization, projects, and settings.
-- `AppwritePrayerService`, `AppwriteStudyService`, `AppwriteHealthService`, `AppwriteEventsService`, and `AppwriteContentService`: migrated app feature data.
+- `AppwritePrayerService`, `AppwriteStudyService`, `AppwriteHealthService`, `AppwriteEventsService`, `AppwriteContentService`, and `LeadershipService`: migrated app feature data.
 - Legacy `FirebaseDatabaseService` remains only for modules not migrated yet.
 
 ```dart

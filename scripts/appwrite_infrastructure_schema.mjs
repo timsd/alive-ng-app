@@ -220,6 +220,37 @@ export const tables = [
   { id: 'board_reports', name: 'Board Reports', columns: [s('title', 255, true), mediumtext('content'), s('type', 128), s('author_id', 128), s('chapter_id', 128), s('team_id', 128), s('status', 64), s('attachments', 2048, false, true), dt('created_at'), dt('updated_at'), dt('submitted_at'), dt('reviewed_at')] },
   { id: 'board_documents', name: 'Board Documents', columns: [s('title', 255, true), mediumtext('description'), s('file_url', 2048), s('file_path', 1024), s('uploaded_by', 128), s('category', 128), s('visibility', 128), dt('created_at'), dt('updated_at')] },
   { id: 'board_decisions', name: 'Board Decisions', columns: [s('title', 255, true), mediumtext('description'), s('status', 64), s('created_by', 128), s('approved_by', 128, false, true), s('attachments', 2048, false, true), dt('created_at'), dt('updated_at')] },
+  {
+    id: 'leadership_records',
+    name: 'Leadership Records',
+    columns: [
+      s('user_id', 128, true), s('user_name', 255, true), s('user_email', 320, true), s('user_phone', 64),
+      s('position', 128, true), s('position_title', 255, true), s('chapter_id', 128), dt('start_date', true),
+      dt('end_date'), i('years_of_service', true), s('status', 64, true), text('notes'), mediumtext('achievements'),
+      mediumtext('contact_info'), s('created_by', 128), s('updated_by', 128), s('approved_by', 128), dt('approved_at'),
+      text('approval_notes'), s('rejected_by', 128), dt('rejected_at'), text('rejection_reason'), dt('completed_at'),
+      text('completion_notes'), dt('created_at', true), dt('updated_at', true),
+    ],
+    indexes: [
+      { key: 'leadership_records_user_idx', type: 'key', columns: ['user_id'] },
+      { key: 'leadership_records_status_idx', type: 'key', columns: ['status'] },
+      { key: 'leadership_records_position_idx', type: 'key', columns: ['position'] },
+      { key: 'leadership_records_chapter_idx', type: 'key', columns: ['chapter_id'] },
+    ],
+  },
+  {
+    id: 'leadership_transitions',
+    name: 'Leadership Transitions',
+    columns: [
+      s('user_id', 128, true), s('from_position', 128), s('to_position', 128, true), s('from_position_title', 255),
+      s('to_position_title', 255, true), dt('transition_date', true), text('reason'), text('notes'), s('approved_by', 128),
+      dt('created_at', true),
+    ],
+    indexes: [
+      { key: 'leadership_transitions_user_idx', type: 'key', columns: ['user_id'] },
+      { key: 'leadership_transitions_date_idx', type: 'key', columns: ['transition_date'], orders: ['DESC'] },
+    ],
+  },
   { id: 'leadership_history', name: 'Leadership History', columns: [s('user_id', 128, true), s('role', 128, true), dt('start_date'), dt('end_date'), s('chapter_id', 128), text('notes')] },
   { id: 'teams', name: 'Teams', columns: [s('name', 255, true), s('type', 128), mediumtext('description'), s('coordinator_id', 128), s('member_ids', 128, false, true), s('chapter_id', 128), b('is_active', false, true), dt('created_at'), dt('updated_at')] },
   { id: 'task_assignments', name: 'Task Assignments', columns: [s('title', 255, true), mediumtext('description'), s('assigned_by_id', 128), s('assigned_to_id', 128), s('team_id', 128), s('chapter_id', 128), s('priority', 64), s('status', 64), dt('due_date'), dt('created_at'), dt('updated_at'), dt('completed_at')] },
