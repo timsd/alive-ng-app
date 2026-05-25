@@ -1,6 +1,5 @@
 class AppwriteBackendConfig {
-  static const String endpoint =
-      String.fromEnvironment(
+  static const String endpoint = String.fromEnvironment(
     'APPWRITE_ENDPOINT',
     defaultValue:
         'http://appwrite-he4p5j9b9dj42v5nzeklu2u3.84.8.219.248.sslip.io/v1',
@@ -44,6 +43,9 @@ class AppwriteBackendConfig {
   static const String paymentLogsCollectionId = 'payment_logs';
   static const String giftSubmissionsCollectionId = 'gift_submissions';
   static const String appSettingsCollectionId = 'app_settings';
+  static const String boardReportsCollectionId = 'board_reports';
+  static const String boardDocumentsCollectionId = 'board_documents';
+  static const String boardDecisionsCollectionId = 'board_decisions';
   static const String prayerRequestsCollectionId = 'prayer_requests';
   static const String prayerInteractionsCollectionId = 'prayer_interactions';
   static const String prayerStrengtheningFeedCollectionId =

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../models/board_models.dart';
-import '../../services/firebase_database_service.dart';
+import '../../services/appwrite_board_service.dart';
 import '../../services/auth_service.dart';
 
 class BoardDecisionsScreen extends StatefulWidget {
@@ -12,8 +12,7 @@ class BoardDecisionsScreen extends StatefulWidget {
 }
 
 class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
-  final FirebaseDatabaseService _firebaseService =
-      FirebaseDatabaseService.instance;
+  final AppwriteBoardService _boardService = AppwriteBoardService.instance;
   List<BoardDecision> _decisions = [];
   bool _isLoading = true;
   String _selectedStatus = 'all';
@@ -36,7 +35,7 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
   Future<void> _loadDecisions() async {
     setState(() => _isLoading = true);
     try {
-      final decisions = await _firebaseService.getBoardDecisions();
+      final decisions = await _boardService.getBoardDecisions();
       final mapped = decisions.map((e) => BoardDecision.fromJson(e)).toList();
       setState(() {
         _decisions = mapped;
@@ -68,9 +67,9 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
         title: Text(
           'Board Decisions',
           style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onPrimary,
-              ),
+            fontWeight: FontWeight.bold,
+            color: colorScheme.onPrimary,
+          ),
         ),
         centerTitle: true,
         flexibleSpace: Container(
@@ -155,8 +154,7 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.gavel_outlined,
-                                size: 64,
-                                color: colorScheme.onSurfaceVariant),
+                                size: 64, color: colorScheme.onSurfaceVariant),
                             const SizedBox(height: 16),
                             Text('No decisions found',
                                 style: TextStyle(
@@ -309,8 +307,8 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                             borderRadius: BorderRadius.circular(6),
                             boxShadow: [
                               BoxShadow(
-                                color: colorScheme.tertiary
-                                    .withValues(alpha: 0.3),
+                                color:
+                                    colorScheme.tertiary.withValues(alpha: 0.3),
                                 blurRadius: 8,
                                 offset: const Offset(0, 4),
                               ),
@@ -338,8 +336,8 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   decoration: BoxDecoration(
-                    border:
-                        Border(top: BorderSide(color: colorScheme.outlineVariant)),
+                    border: Border(
+                        top: BorderSide(color: colorScheme.outlineVariant)),
                   ),
                   child: Row(
                     children: [
@@ -514,7 +512,7 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                     onPressed: () async {
                       final authService = AuthService.instance;
                       final success =
-                          await _firebaseService.castBoardVote(decision.id, {
+                          await _boardService.castBoardVote(decision.id, {
                         'voter_id': authService.currentUser?.uid ?? 'unknown',
                         'voter_name':
                             authService.currentUser?.displayName ?? 'Admin',
@@ -535,7 +533,7 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                     onPressed: () async {
                       final authService = AuthService.instance;
                       final success =
-                          await _firebaseService.castBoardVote(decision.id, {
+                          await _boardService.castBoardVote(decision.id, {
                         'voter_id': authService.currentUser?.uid ?? 'unknown',
                         'voter_name':
                             authService.currentUser?.displayName ?? 'Admin',
@@ -657,7 +655,7 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                     };
 
                     final success =
-                        await _firebaseService.addBoardDecision(decision);
+                        await _boardService.addBoardDecision(decision);
                     if (success && context.mounted) {
                       Navigator.pop(context);
                       _loadDecisions();

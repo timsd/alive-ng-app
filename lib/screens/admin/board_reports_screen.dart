@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../models/board_models.dart';
-import '../../services/firebase_database_service.dart';
+import '../../services/appwrite_board_service.dart';
 import '../../services/auth_service.dart';
 import '../../config/meeting_links_config.dart';
 import '../conference/livekit_meeting_screen.dart';
@@ -21,8 +21,7 @@ class BoardReportsScreen extends StatefulWidget {
 }
 
 class _BoardReportsScreenState extends State<BoardReportsScreen> {
-  final FirebaseDatabaseService _firebaseService =
-      FirebaseDatabaseService.instance;
+  final AppwriteBoardService _boardService = AppwriteBoardService.instance;
   final AuthService _authService = AuthService.instance;
   List<BoardReport> _reports = [];
   bool _isLoading = true;
@@ -61,7 +60,7 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final reports = await _firebaseService.getBoardReports();
+      final reports = await _boardService.getBoardReports();
       final mapped = reports.map((e) => BoardReport.fromJson(e)).toList();
       setState(() {
         _reports = mapped;
@@ -375,8 +374,8 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
             if (report.status == 'submitted')
               ElevatedButton(
                 onPressed: () async {
-                  final success = await _firebaseService
-                      .updateBoardReportStatus(report.id, 'reviewed');
+                  final success = await _boardService.updateBoardReportStatus(
+                      report.id, 'reviewed');
                   if (success && context.mounted) {
                     Navigator.pop(context);
                     _loadReports();
@@ -390,8 +389,8 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
             if (report.status == 'reviewed')
               ElevatedButton(
                 onPressed: () async {
-                  final success = await _firebaseService
-                      .updateBoardReportStatus(report.id, 'approved');
+                  final success = await _boardService.updateBoardReportStatus(
+                      report.id, 'approved');
                   if (success && context.mounted) {
                     Navigator.pop(context);
                     _loadReports();
@@ -486,8 +485,7 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
                       'createdAt': DateTime.now().toIso8601String(),
                     };
 
-                    final success =
-                        await _firebaseService.addBoardReport(report);
+                    final success = await _boardService.addBoardReport(report);
                     if (success && context.mounted) {
                       Navigator.pop(context);
                       _loadReports();
