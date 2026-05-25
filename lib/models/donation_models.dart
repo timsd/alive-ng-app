@@ -19,11 +19,7 @@ enum DonationStatus {
 }
 
 enum PaymentMethod {
-  paystack, // Only payment provider: Paystack handles card, bank, USSD, QR etc
-  // Legacy values kept for backward-compat with old Firestore records only:
-  paypal,
-  bankTransfer,
-  mobileMoney,
+  paystack, // Paystack handles card, bank, USSD, QR, and transfer flows.
 }
 
 class DonationRecord extends Equatable {
@@ -533,7 +529,3 @@ class DonationConstants {
     'CA': 'CAD',
   };
 }
-
-
-
-

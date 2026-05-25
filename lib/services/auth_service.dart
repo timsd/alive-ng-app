@@ -12,8 +12,7 @@ export '../utils/appwrite_user_extensions.dart';
 
 /// Appwrite-backed authentication service.
 ///
-/// The class name is retained while the app migrates older call sites from the
-/// Firebase-era `AuthService.instance` API.
+/// App-level auth facade backed by Appwrite.
 class AuthService {
   static AuthService? _instance;
   static AuthService get instance => _instance ??= AuthService._();
@@ -189,7 +188,6 @@ class AuthService {
     );
     return userProfile;
   }
-
 }
 
 class AuthResult {

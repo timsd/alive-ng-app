@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:appwrite/appwrite.dart';
 import '../config/appwrite_backend_config.dart';
@@ -7,21 +5,21 @@ import '../main.dart';
 import '../models/podcast_models.dart';
 
 class PodcastNotifier extends StateNotifier<List<Podcast>> {
-  final Databases _databases;
+  final TablesDB _tables;
 
-  PodcastNotifier(this._databases) : super([]) {
+  PodcastNotifier(this._tables) : super([]) {
     loadPodcasts();
   }
 
   Future<void> loadPodcasts() async {
     try {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.podcastsCollectionId,
+        tableId: AppwriteBackendConfig.podcastsCollectionId,
         queries: [Query.orderDesc('created_at'), Query.limit(100)],
       );
-      final podcasts = response.documents
-          .map((doc) => Podcast.fromJson({...doc.data, 'id': doc.$id}))
+      final podcasts = response.rows
+          .map((row) => Podcast.fromJson({...row.data, 'id': row.$id}))
           .toList();
       state = podcasts;
     } catch (e) {
@@ -32,9 +30,9 @@ class PodcastNotifier extends StateNotifier<List<Podcast>> {
 
   Future<List<PodcastEpisode>> getEpisodesForPodcast(String podcastId) async {
     try {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.podcastEpisodesCollectionId,
+        tableId: AppwriteBackendConfig.podcastEpisodesCollectionId,
         queries: [
           Query.equal('podcast_id', podcastId),
           Query.orderDesc('publish_date'),
@@ -42,7 +40,7 @@ class PodcastNotifier extends StateNotifier<List<Podcast>> {
         ],
       );
       final episodesData =
-          response.documents.map((doc) => {...doc.data, 'id': doc.$id});
+          response.rows.map((row) => {...row.data, 'id': row.$id});
 
       return episodesData.map(PodcastEpisode.fromJson).toList();
     } catch (e) {
@@ -62,7 +60,7 @@ class PodcastNotifier extends StateNotifier<List<Podcast>> {
 
 final podcastProvider =
     StateNotifierProvider<PodcastNotifier, List<Podcast>>((ref) {
-  return PodcastNotifier(Databases(appwriteClient));
+  return PodcastNotifier(TablesDB(appwriteClient));
 });
 
 final podcastEpisodesProvider =

@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:async';
 import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/models.dart' as models;
@@ -23,7 +21,7 @@ class SyncService {
     _initializeSync();
   }
 
-  final Databases _databases = Databases(appwriteClient);
+  final TablesDB _tables = TablesDB(appwriteClient);
   final Realtime _realtime = Realtime(appwriteClient);
   final StorageService _storage = StorageService.instance;
   final AuthService _auth = AuthService.instance;
@@ -114,21 +112,21 @@ class SyncService {
     String? documentId,
   }) {
     final subscription = _realtime.subscribe([
-      'databases.${AppwriteBackendConfig.databaseId}.collections.$collectionId.documents',
+      'databases.${AppwriteBackendConfig.databaseId}.tables.$collectionId.rows',
     ]);
 
     subscription.stream.listen((event) {
-      final document = models.Document.fromMap(event.payload);
-      if (documentId != null && document.$id != documentId) return;
+      final row = models.Row.fromMap(event.payload);
+      if (documentId != null && row.$id != documentId) return;
 
-      final data = Map<String, dynamic>.from(document.data);
+      final data = Map<String, dynamic>.from(row.data);
       if (userId != null &&
           userFields.isNotEmpty &&
           !userFields.any((field) => data[field] == userId)) {
         return;
       }
 
-      _handleRealtimeUpdate(tableName, {...data, 'id': document.$id});
+      _handleRealtimeUpdate(tableName, {...data, 'id': row.$id});
     }, onError: (e) {
       _logger.error('$tableName realtime error: $e');
     });
@@ -517,15 +515,15 @@ class SyncService {
     String collectionId, {
     List<String>? queries,
   }) async {
-    final response = await _databases.listDocuments(
+    final response = await _tables.listRows(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: collectionId,
+      tableId: collectionId,
       queries: queries,
     );
-    return response.documents
-        .map((document) => {
-              ...Map<String, dynamic>.from(document.data),
-              'id': document.$id,
+    return response.rows
+        .map((row) => {
+              ...Map<String, dynamic>.from(row.data),
+              'id': row.$id,
             })
         .toList();
   }

@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/models.dart' as appwrite_models;
 import 'package:flutter/material.dart';
@@ -50,7 +48,7 @@ class _AdminDashboardContent extends StatefulWidget {
 
 class _AdminDashboardContentState extends State<_AdminDashboardContent> {
   final RoleAccessService _roleService = RoleAccessService.instance;
-  final Databases _databases = Databases(appwriteClient);
+  final TablesDB _tables = TablesDB(appwriteClient);
   bool _isLoading = true;
   bool _hasAccess = false;
   appwrite_models.User? _currentUser;
@@ -148,9 +146,9 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
     String collectionId, {
     List<String> queries = const [],
   }) async {
-    final response = await _databases.listDocuments(
+    final response = await _tables.listRows(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: collectionId,
+      tableId: collectionId,
       queries: [...queries, Query.limit(1)],
     );
     return response.total;
@@ -160,13 +158,13 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
     String collectionId, {
     List<String> queries = const [],
   }) async {
-    final response = await _databases.listDocuments(
+    final response = await _tables.listRows(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: collectionId,
+      tableId: collectionId,
       queries: queries,
     );
-    return response.documents
-        .map((doc) => {...Map<String, dynamic>.from(doc.data), 'id': doc.$id})
+    return response.rows
+        .map((row) => {...Map<String, dynamic>.from(row.data), 'id': row.$id})
         .toList();
   }
 

@@ -1,9 +1,8 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:appwrite/appwrite.dart';
+import 'package:appwrite/models.dart' as models;
 
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';
@@ -16,7 +15,7 @@ class AppwriteAdminExportService {
   static final AppwriteAdminExportService instance =
       AppwriteAdminExportService._();
 
-  final Databases _databases = Databases(appwriteClient);
+  final TablesDB _tables = TablesDB(appwriteClient);
   final Storage _storage = Storage(appwriteClient);
   final Logger _logger = Logger('AppwriteAdminExportService');
 
@@ -186,16 +185,16 @@ class AppwriteAdminExportService {
     String channelId, {
     required int limit,
   }) async {
-    final response = await _databases.listDocuments(
+    final response = await _tables.listRows(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: AppwriteBackendConfig.chatMessagesCollectionId,
+      tableId: AppwriteBackendConfig.chatMessagesCollectionId,
       queries: [
         Query.equal('channel_id', channelId),
         Query.orderDesc('timestamp'),
         Query.limit(limit),
       ],
     );
-    return response.documents.map(_documentData).toList();
+    return response.rows.map(_rowData).toList();
   }
 
   Future<List<Map<String, dynamic>>> _listAllDocuments(
@@ -206,31 +205,31 @@ class AppwriteAdminExportService {
     String? cursor;
 
     while (true) {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: collectionId,
+        tableId: collectionId,
         queries: [
           ...baseQueries,
           Query.limit(_pageSize),
           if (cursor != null) Query.cursorAfter(cursor),
         ],
       );
-      if (response.documents.isEmpty) break;
+      if (response.rows.isEmpty) break;
 
-      documents.addAll(response.documents.map(_documentData));
-      if (response.documents.length < _pageSize) break;
-      cursor = response.documents.last.$id;
+      documents.addAll(response.rows.map(_rowData));
+      if (response.rows.length < _pageSize) break;
+      cursor = response.rows.last.$id;
     }
 
     return documents;
   }
 
-  Map<String, dynamic> _documentData(dynamic document) {
+  Map<String, dynamic> _rowData(models.Row row) {
     return {
-      'id': document.$id,
-      ...Map<String, dynamic>.from(document.data),
-      'created_at': document.$createdAt,
-      'updated_at': document.$updatedAt,
+      'id': row.$id,
+      ...Map<String, dynamic>.from(row.data),
+      'created_at': row.$createdAt,
+      'updated_at': row.$updatedAt,
     };
   }
 

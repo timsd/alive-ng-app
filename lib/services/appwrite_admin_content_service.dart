@@ -1,6 +1,5 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:appwrite/appwrite.dart';
+import 'package:appwrite/models.dart' as models;
 
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';
@@ -10,7 +9,7 @@ class AppwriteAdminContentService {
   static final AppwriteAdminContentService instance =
       AppwriteAdminContentService._();
 
-  final Databases _databases = Databases(appwriteClient);
+  final TablesDB _tables = TablesDB(appwriteClient);
 
   Future<List<Map<String, dynamic>>> listCollection(
     String collection, {
@@ -45,42 +44,33 @@ class AppwriteAdminContentService {
   ) async {
     final collectionId = _collectionId(collection);
     final payload = _sanitize(collectionId, data);
-    try {
-      await _databases.updateDocument(
-        databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: collectionId,
-        documentId: documentId,
-        data: payload,
-      );
-    } on AppwriteException catch (e) {
-      if (e.code != 404) rethrow;
-      await _databases.createDocument(
-        databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: collectionId,
-        documentId: documentId,
-        data: payload,
-      );
-    }
+    await _tables.upsertRow(
+      databaseId: AppwriteBackendConfig.databaseId,
+      tableId: collectionId,
+      rowId: documentId,
+      data: payload,
+    );
   }
 
   Future<void> updateDocument(
     String collection,
     String documentId,
     Map<String, dynamic> data,
-  ) {
-    return _databases.updateDocument(
+  ) async {
+    final collectionId = _collectionId(collection);
+    await _tables.updateRow(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: _collectionId(collection),
-      documentId: documentId,
-      data: _sanitize(_collectionId(collection), data),
+      tableId: collectionId,
+      rowId: documentId,
+      data: _sanitize(collectionId, data),
     );
   }
 
-  Future<void> deleteDocument(String collection, String documentId) {
-    return _databases.deleteDocument(
+  Future<void> deleteDocument(String collection, String documentId) async {
+    await _tables.deleteRow(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: _collectionId(collection),
-      documentId: documentId,
+      tableId: _collectionId(collection),
+      rowId: documentId,
     );
   }
 
@@ -88,18 +78,18 @@ class AppwriteAdminContentService {
     String collectionId,
     List<String> queries,
   ) async {
-    final response = await _databases.listDocuments(
+    final response = await _tables.listRows(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: collectionId,
+      tableId: collectionId,
       queries: queries,
     );
-    return response.documents
-        .map((document) => {
-              ...Map<String, dynamic>.from(document.data),
-              'id': document.$id,
-            })
-        .toList();
+    return response.rows.map(_rowData).toList();
   }
+
+  Map<String, dynamic> _rowData(models.Row row) => {
+        ...Map<String, dynamic>.from(row.data),
+        'id': row.$id,
+      };
 
   Map<String, dynamic> _sanitize(
     String collectionId,

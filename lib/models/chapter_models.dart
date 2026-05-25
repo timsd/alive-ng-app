@@ -1,16 +1,9 @@
-// Helper function for parsing DateTime from Appwrite strings, DateTime values,
-// or legacy Firestore-like Timestamp objects during migration.
+// Helper function for parsing DateTime from Appwrite strings or DateTime values.
 DateTime _parseDateTime(dynamic value) {
   if (value is String) {
     return DateTime.parse(value);
   } else if (value is DateTime) {
     return value;
-  }
-  final dynamic timestampLike = value;
-  final toDate = timestampLike?.toDate;
-  if (toDate is Function) {
-    final parsed = toDate();
-    if (parsed is DateTime) return parsed;
   }
   return DateTime.now();
 }

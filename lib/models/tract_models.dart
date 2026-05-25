@@ -27,7 +27,7 @@ class Tract {
   final String? coverImage;
   final List<String> coverImages;
 
-  /// Alias for pdfUrl, kept for backward compat
+  /// Alias used by reader/admin screens.
   String? get downloadUrl => pdfUrl;
 
   const Tract({
@@ -54,7 +54,7 @@ class Tract {
   factory Tract.fromJson(Map<String, dynamic> json) => _$TractFromJson(json);
   Map<String, dynamic> toJson() => _$TractToJson(this);
 
-  /// Build from an Appwrite or legacy document with flexible field names.
+  /// Build from an Appwrite document with flexible field names.
   factory Tract.fromDocument(Map<String, dynamic> data, String docId) {
     DateTime? parseDate(dynamic v) {
       if (v == null) return null;
@@ -93,10 +93,6 @@ class Tract {
       coverImages: _stringList(data['coverImages'] ?? data['cover_images']),
     );
   }
-
-  @Deprecated('Use Tract.fromDocument for Appwrite and legacy documents.')
-  factory Tract.fromFirestore(Map<String, dynamic> data, String docId) =>
-      Tract.fromDocument(data, docId);
 
   static List<String> _stringList(dynamic value) {
     if (value is List) return value.map((item) => item.toString()).toList();

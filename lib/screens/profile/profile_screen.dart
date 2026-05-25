@@ -48,7 +48,6 @@ final userStatisticsProvider =
   }
 
   try {
-    // Use Firebase user ID
     final userId = user.uid;
 
     final stats =
@@ -1089,4 +1088,3 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 }
-

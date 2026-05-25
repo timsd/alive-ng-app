@@ -1,6 +1,5 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:appwrite/appwrite.dart';
+import 'package:appwrite/models.dart' as models;
 
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';
@@ -11,7 +10,7 @@ class AppwriteLibraryService {
   static final AppwriteLibraryService instance =
       AppwriteLibraryService._internal();
 
-  final Databases _databases = Databases(appwriteClient);
+  final TablesDB _tables = TablesDB(appwriteClient);
   final Logger _logger = Logger('AppwriteLibraryService');
 
   Future<Map<String, dynamic>?> getBook(String idOrTitle) {
@@ -41,12 +40,12 @@ class AppwriteLibraryService {
     String idOrTitle,
   ) async {
     try {
-      final doc = await _databases.getDocument(
+      final row = await _tables.getRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: collectionId,
-        documentId: idOrTitle,
+        tableId: collectionId,
+        rowId: idOrTitle,
       );
-      return _documentData(doc.data, doc.$id);
+      return _rowData(row);
     } on AppwriteException catch (e) {
       if (e.code != 404) {
         _logger.error('Error reading $collectionId/$idOrTitle', e);
@@ -55,17 +54,16 @@ class AppwriteLibraryService {
     }
 
     try {
-      final docs = await _databases.listDocuments(
+      final rows = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: collectionId,
+        tableId: collectionId,
         queries: [
           Query.equal('title', idOrTitle),
           Query.limit(1),
         ],
       );
-      if (docs.documents.isEmpty) return null;
-      final doc = docs.documents.first;
-      return _documentData(doc.data, doc.$id);
+      if (rows.rows.isEmpty) return null;
+      return _rowData(rows.rows.first);
     } on AppwriteException catch (e) {
       if (e.code == 404) return null;
       _logger.error('Error finding $collectionId by title', e);
@@ -73,10 +71,8 @@ class AppwriteLibraryService {
     }
   }
 
-  Map<String, dynamic> _documentData(Map<String, dynamic> data, String id) {
-    return {
-      ...Map<String, dynamic>.from(data),
-      'id': id,
-    };
-  }
+  Map<String, dynamic> _rowData(models.Row row) => {
+        ...Map<String, dynamic>.from(row.data),
+        'id': row.$id,
+      };
 }

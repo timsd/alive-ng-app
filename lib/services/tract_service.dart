@@ -315,7 +315,6 @@ class TractService {
           // On web, return the Appwrite Storage download URL.
           final url = await _storageService.downloadTractPDF(fileName);
           if (url != null) {
-            // Store the URL in the localPdfPath field for compatibility
             await _dbHelper.updateTractPdfPath(tractId, url);
           }
           return url;
@@ -324,7 +323,6 @@ class TractService {
 
       // For other tracts, use the PDF URL directly (store URL instead of downloading to local filesystem)
       if (pdfUrl.isNotEmpty) {
-        // Store the URL in the localPdfPath field for compatibility
         await _dbHelper.updateTractPdfPath(tractId, pdfUrl);
         return pdfUrl;
       }
@@ -358,8 +356,7 @@ class TractService {
     }
   }
 
-  // Sync all tract data with Appwrite.
-  Future<void> syncWithFirebase() async {
+  Future<void> syncWithAppwrite() async {
     try {
       // Load What the Bible Says tracts from Appwrite Storage.
       await _loadWhatTheBibleSaysTracts();
