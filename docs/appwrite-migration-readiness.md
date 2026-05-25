@@ -52,7 +52,7 @@ Use this safer sequence for remaining migration:
 Firebase files still exist and should not be moved blindly. Firebase Hosting is
 disabled and the old `public/` hosting files have been moved to
 `oldfirebasedelete/firebase_hosting_public`, but several app areas still import
-Firebase services, including sync/offline sync, admin internals,
+Firebase services, including sync/offline sync,
 notifications, native analytics/crash compatibility, web push,
 and legacy server/functions code. Only files already replaced should go into
 `oldfirebasedelete`.
@@ -60,9 +60,11 @@ and legacy server/functions code. Only files already replaced should go into
 ## Current Appwrite Client Migration
 
 - Appwrite auth/profile, chat, LiveKit token creation, testimonies, notification settings storage, donation records/material downloads, gift submissions, Paystack initialization/webhook code, kids content CRUD/seeding, tract/podcast admin flows, enhanced health service, chapter management, leadership records/transitions, discipleship tracking, and meeting file storage/metadata are now wired.
+- Bible game flow has been stabilized locally: nullable state reset works, multiple-choice options are stable per verse, blank generation avoids fragile words, and the daily verse corpus is no longer shuffled globally.
 - Push notification delivery still uses Firebase Messaging compatibility while Appwrite Messaging targeting is being completed.
 - `DonationService` no longer imports Firebase; downloadable material URLs should now be Appwrite/external URLs, not Firebase Storage URLs.
 - The old `FirebaseStorageService` facade has been renamed to `AppwriteStorageCompatService`; it remains a temporary compatibility layer for board and tract storage methods.
+- The unused legacy `lib/services/admin_service.dart` file has been moved to `oldfirebasedelete/lib_services/admin_service.dart`.
 
 ## Play Store GitHub Actions
 

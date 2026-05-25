@@ -5,7 +5,7 @@ A comprehensive Flutter application for the ALIVE-NG Ministry, providing feature
 ## Current Migration Status
 
 The app is mid-migration from Firebase/Jitsi/GetStream pieces to Appwrite,
-LiveKit, and Coolify. Estimated overall migration progress is about 99%.
+LiveKit, and Coolify. Estimated overall migration progress is about 99.5%.
 Do not remove remaining Firebase files only because Appwrite files now exist;
 some admin, library, chapter, notification, analytics, and sync modules
 still import Firebase services and must be replaced one workflow at a time.
