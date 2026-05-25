@@ -186,6 +186,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   }
 
   Widget _buildEmptyState() {
+    final colorScheme = Theme.of(context).colorScheme;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -193,20 +194,20 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           Icon(
             Icons.settings,
             size: 64,
-            color: Colors.grey.shade400,
+            color: colorScheme.onSurfaceVariant,
           ),
           const SizedBox(height: 16),
           Text(
             'No Settings Found',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: Colors.grey.shade600,
+                  color: colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             'Add your first app setting to get started',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Colors.grey.shade500,
+                  color: colorScheme.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: 24),
@@ -242,6 +243,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   }
 
   Widget _buildCategorySection(String category, List<Map<String, dynamic>> settings) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       child: Padding(
@@ -267,7 +269,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 Text(
                   '${settings.length} setting${settings.length != 1 ? 's' : ''}',
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: Colors.grey.shade600,
+                    color: colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -281,6 +283,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   }
 
   Widget _buildSettingItem(Map<String, dynamic> setting) {
+    final colorScheme = Theme.of(context).colorScheme;
     final key = _settingKey(setting);
     final dataType = _settingDataType(setting);
     final isActive = setting['is_active'] as bool? ?? true;
@@ -290,10 +293,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         border: Border.all(
-          color: isActive ? Colors.grey.shade300 : Colors.grey.shade400,
+          color: isActive ? colorScheme.outlineVariant : colorScheme.outline,
         ),
         borderRadius: BorderRadius.circular(8),
-        color: isActive ? null : Colors.grey.shade50,
+        color: isActive ? null : colorScheme.surfaceContainerHighest,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -308,7 +311,9 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                       setting['display_name'] ?? key,
                       style: TextStyle(
                         fontWeight: FontWeight.w500,
-                        color: isActive ? Theme.of(context).colorScheme.onSurface : Colors.grey.shade600,
+                        color: isActive
+                            ? colorScheme.onSurface
+                            : colorScheme.onSurfaceVariant,
                       ),
                     ),
                     if (setting['description'] != null) ...[
@@ -316,7 +321,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                       Text(
                         setting['description'],
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: Colors.grey.shade600,
+                          color: colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],

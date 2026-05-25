@@ -51,6 +51,7 @@ class RoleGuard extends StatelessWidget {
   }
 
   Widget _buildDefaultFallback(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -59,13 +60,13 @@ class RoleGuard extends StatelessWidget {
           Icon(
             Icons.lock_outline,
             size: 64,
-            color: Colors.grey[400],
+            color: colorScheme.onSurfaceVariant,
           ),
           const SizedBox(height: 16),
           Text(
             'Access Restricted',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: Colors.grey[600],
+                  color: colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 8),
@@ -73,7 +74,7 @@ class RoleGuard extends StatelessWidget {
             'You need ${_getRoleDisplayName(requiredRole)} privileges to access this content.',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Colors.grey[500],
+                  color: colorScheme.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: 24),
@@ -82,8 +83,8 @@ class RoleGuard extends StatelessWidget {
             icon: const Icon(Icons.arrow_back),
             label: const Text('Go Back'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.grey[300],
-              foregroundColor: Colors.grey[700],
+              backgroundColor: colorScheme.surfaceContainerHighest,
+              foregroundColor: colorScheme.onSurface,
             ),
           ),
         ],
@@ -188,8 +189,8 @@ class RoleProtectedScreen extends StatelessWidget {
       fallback: Scaffold(
         appBar: AppBar(
           title: const Text('Access Denied'),
-          backgroundColor: Colors.red[400],
-          foregroundColor: Colors.white,
+          backgroundColor: Theme.of(context).colorScheme.error,
+          foregroundColor: Theme.of(context).colorScheme.onError,
         ),
         body: _buildAccessDeniedBody(context),
       ),
@@ -200,6 +201,7 @@ class RoleProtectedScreen extends StatelessWidget {
   Widget _buildAccessDeniedBody(BuildContext context) {
     final roleService = RoleAccessService.instance;
     final currentRole = roleService.getCurrentUserRole();
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Center(
       child: Padding(
@@ -210,15 +212,15 @@ class RoleProtectedScreen extends StatelessWidget {
             Icon(
               Icons.security,
               size: 80,
-              color: Colors.red[300],
+              color: colorScheme.error,
             ),
             const SizedBox(height: 24),
             Text(
               'Access Denied',
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                color: Colors.red[600],
-                fontWeight: FontWeight.bold,
-              ),
+                    color: colorScheme.error,
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             const SizedBox(height: 16),
             Text(
@@ -230,8 +232,8 @@ class RoleProtectedScreen extends StatelessWidget {
             Text(
               'Current role: ${_getRoleDisplayName(currentRole ?? 'none')}',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.grey[600],
-              ),
+                    color: colorScheme.onSurfaceVariant,
+                  ),
             ),
             const SizedBox(height: 32),
             Row(

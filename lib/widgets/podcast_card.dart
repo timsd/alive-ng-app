@@ -16,6 +16,7 @@ class PodcastCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Card(
       margin: EdgeInsets.only(
         bottom: ResponsiveUtils.getResponsiveSpacing(context, 16),
@@ -53,11 +54,11 @@ class PodcastCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(
                   ResponsiveUtils.getResponsiveSpacing(context, 8),
                 ),
-                backgroundColor: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                backgroundColor: colorScheme.primary.withValues(alpha: 0.1),
                 placeholder: Icon(
                   Icons.headset,
                   size: ResponsiveUtils.getResponsiveIconSize(context, 40),
-                  color: Theme.of(context).primaryColor,
+                  color: colorScheme.primary,
                 ),
               ),
               SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 16)),
@@ -101,7 +102,7 @@ class PodcastCard extends StatelessWidget {
                         Icon(
                           Icons.schedule,
                           size: ResponsiveUtils.getResponsiveIconSize(context, 16),
-                          color: Colors.grey[600],
+                          color: colorScheme.onSurfaceVariant,
                         ),
                         SizedBox(
                           width: ResponsiveUtils.getResponsiveSpacing(context, 4),
@@ -109,7 +110,7 @@ class PodcastCard extends StatelessWidget {
                         LayoutFixUtils.safeText(
                           '${podcast.episodes} episodes',
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Colors.grey[600],
+                                color: colorScheme.onSurfaceVariant,
                                 fontSize:
                                     ResponsiveUtils.getResponsiveFontSize(context, 12),
                               ),
@@ -128,7 +129,7 @@ class PodcastCard extends StatelessWidget {
                         LayoutFixUtils.safeText(
                           podcast.rating.toStringAsFixed(1),
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Colors.grey[600],
+                                color: colorScheme.onSurfaceVariant,
                                 fontSize:
                                     ResponsiveUtils.getResponsiveFontSize(context, 12),
                               ),
@@ -140,8 +141,8 @@ class PodcastCard extends StatelessWidget {
                           podcast.isSubscribed ? Icons.favorite : Icons.favorite_border,
                           size: ResponsiveUtils.getResponsiveIconSize(context, 16),
                           color: podcast.isSubscribed
-                              ? Theme.of(context).primaryColor
-                              : Colors.grey[600],
+                              ? colorScheme.primary
+                              : colorScheme.onSurfaceVariant,
                         ),
                         SizedBox(
                           width: ResponsiveUtils.getResponsiveSpacing(context, 4),
@@ -151,7 +152,7 @@ class PodcastCard extends StatelessWidget {
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                 fontSize: ResponsiveUtils.getResponsiveFontSize(context, 10),
                                 color: podcast.isSubscribed
-                                    ? Theme.of(context).primaryColor
+                                    ? colorScheme.primary
                                     : null,
                               ),
                         ),

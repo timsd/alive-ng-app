@@ -89,11 +89,12 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Meeting File Sharing'),
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
+        backgroundColor: colorScheme.primary,
+        foregroundColor: colorScheme.onPrimary,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -106,7 +107,7 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
           // Search Bar
           Container(
             padding: ResponsiveUtils.getResponsivePadding(context),
-            color: Colors.grey.shade50,
+            color: colorScheme.surfaceContainerHighest,
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
@@ -126,7 +127,7 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
                   borderSide: BorderSide.none,
                 ),
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: colorScheme.surface,
               ),
               onChanged: (value) => setState(() => _searchQuery = value),
             ),
@@ -144,7 +145,7 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
                             Icon(
                               Icons.folder_open,
                               size: 64,
-                              color: Colors.grey.shade400,
+                              color: colorScheme.onSurfaceVariant,
                             ),
                             SizedBox(
                                 height: ResponsiveUtils.getResponsiveSpacing(
@@ -156,7 +157,7 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
                               style: TextStyle(
                                 fontSize: ResponsiveUtils.getResponsiveFontSize(
                                     context, 16),
-                                color: Colors.grey.shade600,
+                                color: colorScheme.onSurfaceVariant,
                               ),
                             ),
                           ],
@@ -179,8 +180,8 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showUploadDialog,
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
+        backgroundColor: colorScheme.primary,
+        foregroundColor: colorScheme.onPrimary,
         icon: const Icon(Icons.upload_file),
         label: const Text('Share File'),
       ),
@@ -188,6 +189,7 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
   }
 
   Widget _buildFileCard(MeetingFile file) {
+    final colorScheme = Theme.of(context).colorScheme;
     IconData fileIcon;
     Color fileIconColor;
 
@@ -266,7 +268,7 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
                             style: TextStyle(
                               fontSize: ResponsiveUtils.getResponsiveFontSize(
                                   context, 14),
-                              color: Colors.grey.shade600,
+                              color: colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -318,7 +320,7 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
                   Icon(
                     Icons.person,
                     size: ResponsiveUtils.getResponsiveIconSize(context, 16),
-                    color: Colors.grey.shade600,
+                    color: colorScheme.onSurfaceVariant,
                   ),
                   SizedBox(
                       width: ResponsiveUtils.getResponsiveSpacing(context, 4)),
@@ -327,7 +329,7 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
                     style: TextStyle(
                       fontSize:
                           ResponsiveUtils.getResponsiveFontSize(context, 12),
-                      color: Colors.grey.shade600,
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ),
                   SizedBox(
@@ -335,7 +337,7 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
                   Icon(
                     Icons.access_time,
                     size: ResponsiveUtils.getResponsiveIconSize(context, 16),
-                    color: Colors.grey.shade600,
+                    color: colorScheme.onSurfaceVariant,
                   ),
                   SizedBox(
                       width: ResponsiveUtils.getResponsiveSpacing(context, 4)),
@@ -344,7 +346,7 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
                     style: TextStyle(
                       fontSize:
                           ResponsiveUtils.getResponsiveFontSize(context, 12),
-                      color: Colors.grey.shade600,
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ),
                   SizedBox(
@@ -352,7 +354,7 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
                   Icon(
                     Icons.storage,
                     size: ResponsiveUtils.getResponsiveIconSize(context, 16),
-                    color: Colors.grey.shade600,
+                    color: colorScheme.onSurfaceVariant,
                   ),
                   SizedBox(
                       width: ResponsiveUtils.getResponsiveSpacing(context, 4)),
@@ -361,7 +363,7 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
                     style: TextStyle(
                       fontSize:
                           ResponsiveUtils.getResponsiveFontSize(context, 12),
-                      color: Colors.grey.shade600,
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],

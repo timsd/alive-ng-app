@@ -10,6 +10,7 @@ Format: [Semantic Versioning](https://semver.org) - `MAJOR.MINOR.PATCH+BUILD`
 ### Changed
 - Continued Firebase-to-Appwrite migration; project status is about 99.5% migrated.
 - Stabilized Bible game state handling, multiple-choice answer checking, fill-gap blank selection, speech/TTS cleanup, and daily verse randomization.
+- Improved UI/theme consistency for shared buttons, admin settings/board/meeting file surfaces, podcast cards, tract reader progress text, and role access screens in light and dark mode.
 - Kids content CRUD and default seeding now use Appwrite instead of Firestore.
 - Meeting file sharing now stores files and metadata through Appwrite Storage/Databases.
 - Enhanced health service now uses Appwrite Databases instead of Firestore.

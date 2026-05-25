@@ -226,6 +226,8 @@ class AppTheme {
           elevation: 2,
           shadowColor: lightPrimary.withValues(alpha: 0.3),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          minimumSize: const Size(48, 48),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
@@ -234,9 +236,9 @@ class AppTheme {
             width: 1,
           ),
           textStyle: const TextStyle(
-            fontSize: 16,
+            fontSize: 14,
             fontWeight: FontWeight.w600,
-            letterSpacing: 0.5,
+            letterSpacing: 0,
           ),
         ),
       ),
@@ -246,13 +248,15 @@ class AppTheme {
         style: TextButton.styleFrom(
           foregroundColor: lightPrimary,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          minimumSize: const Size(48, 44),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
           ),
           textStyle: const TextStyle(
-            fontSize: 16,
+            fontSize: 14,
             fontWeight: FontWeight.w600,
-            letterSpacing: 0.3,
+            letterSpacing: 0,
           ),
         ),
       ),
@@ -263,13 +267,15 @@ class AppTheme {
           foregroundColor: lightPrimary,
           side: const BorderSide(color: lightBorder, width: 1.5),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          minimumSize: const Size(48, 48),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
           textStyle: const TextStyle(
-            fontSize: 16,
+            fontSize: 14,
             fontWeight: FontWeight.w600,
-            letterSpacing: 0.5,
+            letterSpacing: 0,
           ),
         ),
       ),
@@ -379,7 +385,7 @@ class AppTheme {
       // Standard Text Hierarchy — visible in light mode (dark text on light bg)
       textTheme: const TextTheme(
         // Display — hero banners & splash screens
-        displayLarge:   TextStyle(fontSize: 57, fontWeight: FontWeight.w700, letterSpacing: -0.25, color: lightCardForeground, fontFamily: 'Inter'),
+        displayLarge:   TextStyle(fontSize: 57, fontWeight: FontWeight.w700, letterSpacing: 0, color: lightCardForeground, fontFamily: 'Inter'),
         displayMedium:  TextStyle(fontSize: 45, fontWeight: FontWeight.w700, color: lightCardForeground, fontFamily: 'Inter'),
         displaySmall:   TextStyle(fontSize: 36, fontWeight: FontWeight.w600, color: lightCardForeground, fontFamily: 'Inter'),
         // Headline — screen/section titles
@@ -388,16 +394,16 @@ class AppTheme {
         headlineSmall:  TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: lightCardForeground, fontFamily: 'Inter'),
         // Title — card headers, dialog titles
         titleLarge:     TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: lightCardForeground, fontFamily: 'Inter'),
-        titleMedium:    TextStyle(fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 0.15, color: lightCardForeground, fontFamily: 'Inter'),
-        titleSmall:     TextStyle(fontSize: 14, fontWeight: FontWeight.w500, letterSpacing: 0.1, color: lightCardForeground, fontFamily: 'Inter'),
+        titleMedium:    TextStyle(fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 0, color: lightCardForeground, fontFamily: 'Inter'),
+        titleSmall:     TextStyle(fontSize: 14, fontWeight: FontWeight.w500, letterSpacing: 0, color: lightCardForeground, fontFamily: 'Inter'),
         // Body — main content
-        bodyLarge:      TextStyle(fontSize: 16, fontWeight: FontWeight.w400, letterSpacing: 0.5, height: 1.5, color: lightCardForeground, fontFamily: 'Inter'),
-        bodyMedium:     TextStyle(fontSize: 14, fontWeight: FontWeight.w400, letterSpacing: 0.25, height: 1.4, color: lightCardForeground, fontFamily: 'Inter'),
-        bodySmall:      TextStyle(fontSize: 12, fontWeight: FontWeight.w400, letterSpacing: 0.4, height: 1.4, color: lightMutedForeground, fontFamily: 'Inter'),
+        bodyLarge:      TextStyle(fontSize: 16, fontWeight: FontWeight.w400, letterSpacing: 0, height: 1.5, color: lightCardForeground, fontFamily: 'Inter'),
+        bodyMedium:     TextStyle(fontSize: 14, fontWeight: FontWeight.w400, letterSpacing: 0, height: 1.4, color: lightCardForeground, fontFamily: 'Inter'),
+        bodySmall:      TextStyle(fontSize: 12, fontWeight: FontWeight.w400, letterSpacing: 0, height: 1.4, color: lightMutedForeground, fontFamily: 'Inter'),
         // Label — buttons, chips, tabs, captions
-        labelLarge:     TextStyle(fontSize: 14, fontWeight: FontWeight.w600, letterSpacing: 0.1, color: lightCardForeground, fontFamily: 'Inter'),
-        labelMedium:    TextStyle(fontSize: 12, fontWeight: FontWeight.w500, letterSpacing: 0.5, color: lightMutedForeground, fontFamily: 'Inter'),
-        labelSmall:     TextStyle(fontSize: 11, fontWeight: FontWeight.w500, letterSpacing: 0.5, color: lightMutedForeground, fontFamily: 'Inter'),
+        labelLarge:     TextStyle(fontSize: 14, fontWeight: FontWeight.w600, letterSpacing: 0, color: lightCardForeground, fontFamily: 'Inter'),
+        labelMedium:    TextStyle(fontSize: 12, fontWeight: FontWeight.w500, letterSpacing: 0, color: lightMutedForeground, fontFamily: 'Inter'),
+        labelSmall:     TextStyle(fontSize: 11, fontWeight: FontWeight.w500, letterSpacing: 0, color: lightMutedForeground, fontFamily: 'Inter'),
       ),
     );
   }
@@ -506,6 +512,8 @@ class AppTheme {
           elevation: 3,
           shadowColor: darkPrimary.withValues(alpha: 0.3),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          minimumSize: const Size(48, 48),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
@@ -514,9 +522,9 @@ class AppTheme {
             width: 1,
           ),
           textStyle: const TextStyle(
-            fontSize: 16,
+            fontSize: 14,
             fontWeight: FontWeight.w600,
-            letterSpacing: 0.5,
+            letterSpacing: 0,
           ),
         ),
       ),
@@ -526,13 +534,15 @@ class AppTheme {
         style: TextButton.styleFrom(
           foregroundColor: darkPrimary,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          minimumSize: const Size(48, 44),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
           ),
           textStyle: const TextStyle(
-            fontSize: 16,
+            fontSize: 14,
             fontWeight: FontWeight.w600,
-            letterSpacing: 0.3,
+            letterSpacing: 0,
           ),
         ),
       ),
@@ -543,13 +553,15 @@ class AppTheme {
           foregroundColor: darkPrimary,
           side: const BorderSide(color: darkPrimary, width: 1.5),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          minimumSize: const Size(48, 48),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
           textStyle: const TextStyle(
-            fontSize: 16,
+            fontSize: 14,
             fontWeight: FontWeight.w600,
-            letterSpacing: 0.5,
+            letterSpacing: 0,
           ),
         ),
       ),
@@ -658,21 +670,21 @@ class AppTheme {
 
       // Standard Text Hierarchy — visible in dark mode (light text on dark bg)
       textTheme: const TextTheme(
-        displayLarge:   TextStyle(fontSize: 57, fontWeight: FontWeight.w700, letterSpacing: -0.25, color: darkCardForeground, fontFamily: 'Inter'),
+        displayLarge:   TextStyle(fontSize: 57, fontWeight: FontWeight.w700, letterSpacing: 0, color: darkCardForeground, fontFamily: 'Inter'),
         displayMedium:  TextStyle(fontSize: 45, fontWeight: FontWeight.w700, color: darkCardForeground, fontFamily: 'Inter'),
         displaySmall:   TextStyle(fontSize: 36, fontWeight: FontWeight.w600, color: darkCardForeground, fontFamily: 'Inter'),
         headlineLarge:  TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: darkCardForeground, fontFamily: 'Inter'),
         headlineMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: darkCardForeground, fontFamily: 'Inter'),
         headlineSmall:  TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: darkCardForeground, fontFamily: 'Inter'),
         titleLarge:     TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: darkCardForeground, fontFamily: 'Inter'),
-        titleMedium:    TextStyle(fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 0.15, color: darkCardForeground, fontFamily: 'Inter'),
-        titleSmall:     TextStyle(fontSize: 14, fontWeight: FontWeight.w500, letterSpacing: 0.1, color: darkCardForeground, fontFamily: 'Inter'),
-        bodyLarge:      TextStyle(fontSize: 16, fontWeight: FontWeight.w400, letterSpacing: 0.5, height: 1.5, color: darkCardForeground, fontFamily: 'Inter'),
-        bodyMedium:     TextStyle(fontSize: 14, fontWeight: FontWeight.w400, letterSpacing: 0.25, height: 1.4, color: darkCardForeground, fontFamily: 'Inter'),
-        bodySmall:      TextStyle(fontSize: 12, fontWeight: FontWeight.w400, letterSpacing: 0.4, height: 1.4, color: darkMutedForeground, fontFamily: 'Inter'),
-        labelLarge:     TextStyle(fontSize: 14, fontWeight: FontWeight.w600, letterSpacing: 0.1, color: darkCardForeground, fontFamily: 'Inter'),
-        labelMedium:    TextStyle(fontSize: 12, fontWeight: FontWeight.w500, letterSpacing: 0.5, color: darkMutedForeground, fontFamily: 'Inter'),
-        labelSmall:     TextStyle(fontSize: 11, fontWeight: FontWeight.w500, letterSpacing: 0.5, color: darkMutedForeground, fontFamily: 'Inter'),
+        titleMedium:    TextStyle(fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 0, color: darkCardForeground, fontFamily: 'Inter'),
+        titleSmall:     TextStyle(fontSize: 14, fontWeight: FontWeight.w500, letterSpacing: 0, color: darkCardForeground, fontFamily: 'Inter'),
+        bodyLarge:      TextStyle(fontSize: 16, fontWeight: FontWeight.w400, letterSpacing: 0, height: 1.5, color: darkCardForeground, fontFamily: 'Inter'),
+        bodyMedium:     TextStyle(fontSize: 14, fontWeight: FontWeight.w400, letterSpacing: 0, height: 1.4, color: darkCardForeground, fontFamily: 'Inter'),
+        bodySmall:      TextStyle(fontSize: 12, fontWeight: FontWeight.w400, letterSpacing: 0, height: 1.4, color: darkMutedForeground, fontFamily: 'Inter'),
+        labelLarge:     TextStyle(fontSize: 14, fontWeight: FontWeight.w600, letterSpacing: 0, color: darkCardForeground, fontFamily: 'Inter'),
+        labelMedium:    TextStyle(fontSize: 12, fontWeight: FontWeight.w500, letterSpacing: 0, color: darkMutedForeground, fontFamily: 'Inter'),
+        labelSmall:     TextStyle(fontSize: 11, fontWeight: FontWeight.w500, letterSpacing: 0, color: darkMutedForeground, fontFamily: 'Inter'),
       ),
     );
   }

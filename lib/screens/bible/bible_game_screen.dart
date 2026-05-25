@@ -458,6 +458,8 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
   final Map<int, TextEditingController> _blankControllers = {};
   String _blankControllerKey = '';
   bool _speechEnabled = false;
+  bool _speechReady = false;
+  bool _ttsReady = false;
 
   @override
   void initState() {
@@ -467,29 +469,41 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
   }
 
   void _initializeSpeech() async {
-    _speech = stt.SpeechToText();
-    _speechEnabled = await _speech.initialize(
-      onError: (error) => debugPrint('Speech recognition error: $error'),
-      onStatus: (status) => debugPrint('Speech recognition status: $status'),
-    );
-    if (mounted) {
-      setState(() {});
+    try {
+      _speech = stt.SpeechToText();
+      _speechEnabled = await _speech.initialize(
+        onError: (error) => debugPrint('Speech recognition error: $error'),
+        onStatus: (status) => debugPrint('Speech recognition status: $status'),
+      );
+      _speechReady = true;
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (error) {
+      debugPrint('Speech recognition initialization failed: $error');
     }
   }
 
   void _initializeTts() async {
-    _tts = FlutterTts();
-    await _tts.setLanguage('en-NG'); // Nigerian English
-    await _tts.setSpeechRate(0.58);
-    await _tts.setQueueMode(0);
-    await _tts.awaitSpeakCompletion(true);
+    try {
+      _tts = FlutterTts();
+      await _tts.setLanguage('en-NG'); // Nigerian English
+      await _tts.setSpeechRate(0.58);
+      await _tts.setQueueMode(0);
+      await _tts.awaitSpeakCompletion(true);
+      _ttsReady = true;
+    } catch (error) {
+      debugPrint('TTS initialization failed: $error');
+    }
   }
 
   void _startListening() async {
-    if (_speechEnabled) {
+    if (_speechEnabled && _speechReady) {
       ref.read(bibleGameProvider.notifier).resetVoicePrompt();
       ref.read(bibleGameProvider.notifier).setListening(true);
-      await _tts.stop();
+      if (_ttsReady) {
+        await _tts.stop();
+      }
       await _speech.listen(
         onResult: (result) {
           final transcript = result.recognizedWords.trim();
@@ -522,7 +536,9 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
   }
 
   void _stopListening() async {
-    await _speech.stop();
+    if (_speechReady) {
+      await _speech.stop();
+    }
     ref.read(bibleGameProvider.notifier).setListening(false);
     final gameState = ref.read(bibleGameProvider);
     if (gameState.gameMode == GameMode.voiceRecitation &&
@@ -532,18 +548,26 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
   }
 
   void _speakVerse(String text) async {
-    await _tts.speak(text);
+    if (_ttsReady) {
+      await _tts.speak(text);
+    }
   }
 
   void _playSuccessSound() async {
-    await _tts.stop();
-    await _tts.speak('Word Perfect! Well Done!');
+    if (_ttsReady) {
+      await _tts.stop();
+      await _tts.speak('Word Perfect! Well Done!');
+    }
   }
 
   @override
   void dispose() {
-    _speech.stop();
-    _tts.stop();
+    if (_speechReady) {
+      _speech.stop();
+    }
+    if (_ttsReady) {
+      _tts.stop();
+    }
     _textController.dispose();
     for (final controller in _blankControllers.values) {
       controller.dispose();

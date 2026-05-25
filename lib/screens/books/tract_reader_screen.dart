@@ -141,6 +141,7 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -239,7 +240,7 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
                     Text(
                       widget.tract.category.tractDisplayName,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.grey[600],
+                            color: colorScheme.onSurfaceVariant,
                           ),
                     ),
                   ],
@@ -247,9 +248,9 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
                 const SizedBox(height: 8),
                 LinearProgressIndicator(
                   value: (_currentPage + 1) / _getTotalPages(),
-                  backgroundColor: Colors.grey[300],
+                  backgroundColor: colorScheme.surfaceContainerHighest,
                   valueColor: AlwaysStoppedAnimation<Color>(
-                    Theme.of(context).primaryColor,
+                    colorScheme.primary,
                   ),
                 ),
               ],

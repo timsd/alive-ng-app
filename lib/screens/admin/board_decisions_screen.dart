@@ -46,7 +46,7 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text('Error loading decisions: $e'),
-              backgroundColor: Colors.red),
+              backgroundColor: Theme.of(context).colorScheme.error),
         );
       }
     } finally {
@@ -61,13 +61,15 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     return Scaffold(
       appBar: AppBar(
         title: Text(
           'Board Decisions',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+          style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: colorScheme.onPrimary,
               ),
         ),
         centerTitle: true,
@@ -76,7 +78,10 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Colors.indigo.shade800, Colors.indigo.shade600],
+              colors: [
+                colorScheme.primary,
+                colorScheme.primary.withValues(alpha: 0.82),
+              ],
             ),
           ),
         ),
@@ -86,7 +91,7 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
           Padding(
             padding: const EdgeInsets.only(right: 8.0),
             child: IconButton(
-              icon: const Icon(Icons.add_task, color: Colors.white),
+              icon: Icon(Icons.add_task, color: colorScheme.onPrimary),
               onPressed: () => _showProposeDecisionDialog(),
               tooltip: 'Propose New Decision',
             ),
@@ -114,25 +119,26 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                       style: TextStyle(
                         fontSize: 11,
                         letterSpacing: 0.5,
-                        color:
-                            isSelected ? Colors.white : Colors.indigo.shade700,
+                        color: isSelected
+                            ? colorScheme.onPrimary
+                            : colorScheme.primary,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                     selected: isSelected,
                     onSelected: (val) =>
                         setState(() => _selectedStatus = status),
-                    selectedColor: Colors.indigo.shade700,
-                    backgroundColor: Colors.indigo.shade50,
-                    checkmarkColor: Colors.white,
+                    selectedColor: colorScheme.primary,
+                    backgroundColor: colorScheme.surfaceContainerHighest,
+                    checkmarkColor: colorScheme.onPrimary,
                     elevation: isSelected ? 4 : 0,
                     pressElevation: 8,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                       side: BorderSide(
                         color: isSelected
-                            ? Colors.indigo.shade700
-                            : Colors.indigo.shade100,
+                            ? colorScheme.primary
+                            : colorScheme.outlineVariant,
                       ),
                     ),
                   ),
@@ -149,10 +155,12 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.gavel_outlined,
-                                size: 64, color: Colors.grey.shade400),
+                                size: 64,
+                                color: colorScheme.onSurfaceVariant),
                             const SizedBox(height: 16),
                             Text('No decisions found',
-                                style: TextStyle(color: Colors.grey.shade600)),
+                                style: TextStyle(
+                                    color: colorScheme.onSurfaceVariant)),
                           ],
                         ),
                       )
@@ -174,6 +182,8 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
   }
 
   Widget _buildDecisionCard(BoardDecision decision) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final approveVotes =
         decision.votes.where((v) => v.vote == 'approve').length;
     final rejectVotes = decision.votes.where((v) => v.vote == 'reject').length;
@@ -184,16 +194,18 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 20, left: 20, right: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
+            color: colorScheme.shadow.withValues(
+              alpha: theme.brightness == Brightness.dark ? 0.28 : 0.06,
+            ),
             blurRadius: 24,
             offset: const Offset(0, 12),
           ),
         ],
-        border: Border.all(color: Colors.indigo.shade50, width: 1),
+        border: Border.all(color: colorScheme.outlineVariant, width: 1),
       ),
       child: Material(
         color: Colors.transparent,
@@ -211,11 +223,11 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.indigo.shade50,
+                        color: colorScheme.primaryContainer,
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Icon(Icons.gavel_rounded,
-                          color: Colors.indigo.shade700, size: 24),
+                          color: colorScheme.onPrimaryContainer, size: 24),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -229,8 +241,8 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                                 .titleLarge
                                 ?.copyWith(
                                   fontWeight: FontWeight.w800,
-                                  letterSpacing: -0.5,
-                                  color: Colors.indigo.shade900,
+                                  letterSpacing: 0,
+                                  color: colorScheme.onSurface,
                                 ),
                           ),
                           const SizedBox(height: 4),
@@ -246,7 +258,7 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey.shade700,
+                        color: colorScheme.onSurfaceVariant,
                         height: 1.5,
                       ),
                 ),
@@ -260,8 +272,8 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w900,
-                          letterSpacing: 1.2,
-                          color: Colors.grey.shade500,
+                          letterSpacing: 0,
+                          color: colorScheme.onSurfaceVariant,
                         ),
                       ),
                       Text(
@@ -269,7 +281,7 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w900,
-                          color: Colors.green.shade700,
+                          color: colorScheme.tertiary,
                         ),
                       ),
                     ],
@@ -281,7 +293,7 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                         height: 12,
                         width: double.infinity,
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
+                          color: colorScheme.surfaceContainerHighest,
                           borderRadius: BorderRadius.circular(6),
                         ),
                       ),
@@ -297,7 +309,8 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                             borderRadius: BorderRadius.circular(6),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.green.withValues(alpha: 0.3),
+                                color: colorScheme.tertiary
+                                    .withValues(alpha: 0.3),
                                 blurRadius: 8,
                                 offset: const Offset(0, 4),
                               ),
@@ -313,7 +326,11 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                     children: [
                       _buildVoteStat('Approve', approveVotes, Colors.green),
                       _buildVoteStat('Reject', rejectVotes, Colors.red),
-                      _buildVoteStat('Abstain', abstainVotes, Colors.grey),
+                      _buildVoteStat(
+                        'Abstain',
+                        abstainVotes,
+                        colorScheme.onSurfaceVariant,
+                      ),
                     ],
                   ),
                 ],
@@ -322,19 +339,19 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   decoration: BoxDecoration(
                     border:
-                        Border(top: BorderSide(color: Colors.grey.shade100)),
+                        Border(top: BorderSide(color: colorScheme.outlineVariant)),
                   ),
                   child: Row(
                     children: [
                       CircleAvatar(
                         radius: 14,
-                        backgroundColor: Colors.indigo.shade100,
+                        backgroundColor: colorScheme.primaryContainer,
                         child: Text(
                           decision.proposedBy[0].toUpperCase(),
                           style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
-                              color: Colors.indigo.shade800),
+                              color: colorScheme.onPrimaryContainer),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -344,18 +361,18 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                           style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: Colors.grey.shade700),
+                              color: colorScheme.onSurfaceVariant),
                         ),
                       ),
                       Icon(Icons.calendar_today_rounded,
-                          size: 14, color: Colors.grey.shade400),
+                          size: 14, color: colorScheme.onSurfaceVariant),
                       const SizedBox(width: 4),
                       Text(
                         DateFormat('MMM dd, yyyy').format(decision.proposedAt),
                         style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color: Colors.grey.shade500),
+                            color: colorScheme.onSurfaceVariant),
                       ),
                     ],
                   ),
@@ -369,6 +386,7 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
   }
 
   Widget _buildVoteStat(String label, int count, Color color) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -377,8 +395,8 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
           style: TextStyle(
               fontSize: 9,
               fontWeight: FontWeight.w900,
-              color: Colors.grey.shade500,
-              letterSpacing: 0.5),
+              color: colorScheme.onSurfaceVariant,
+              letterSpacing: 0),
         ),
         const SizedBox(height: 2),
         Text(
@@ -391,6 +409,7 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
   }
 
   Widget _buildStatusBadge(String status) {
+    final colorScheme = Theme.of(context).colorScheme;
     Color color;
     switch (status) {
       case 'approved':
@@ -400,13 +419,13 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
         color = Colors.red.shade600;
         break;
       case 'voting':
-        color = Colors.indigo.shade600;
+        color = colorScheme.primary;
         break;
       case 'deferred':
         color = Colors.orange.shade700;
         break;
       default:
-        color = Colors.grey.shade600;
+        color = colorScheme.onSurfaceVariant;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -421,7 +440,7 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
           color: color,
           fontSize: 10,
           fontWeight: FontWeight.w900,
-          letterSpacing: 1.0,
+          letterSpacing: 0,
         ),
       ),
     );
@@ -432,6 +451,7 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
       context: context,
       builder: (context) {
         final theme = Theme.of(context);
+        final colorScheme = theme.colorScheme;
         return AlertDialog(
           backgroundColor:
               theme.dialogTheme.backgroundColor ?? theme.colorScheme.surface,
@@ -444,7 +464,7 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                 Text('Description:',
                     style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Colors.indigo.shade800)),
+                        color: colorScheme.primary)),
                 Text(decision.description,
                     style: TextStyle(color: theme.colorScheme.onSurface)),
                 const SizedBox(height: 16),
@@ -452,7 +472,7 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                   Text('Resolution:',
                       style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: Colors.green.shade800)),
+                          color: colorScheme.tertiary)),
                   Text(decision.resolution!,
                       style: TextStyle(color: theme.colorScheme.onSurface)),
                   const SizedBox(height: 16),
@@ -460,7 +480,7 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                 Text('Meta Info:',
                     style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Colors.indigo.shade800)),
+                        color: colorScheme.primary)),
                 Text('Proposer: ${decision.proposedBy}',
                     style: TextStyle(
                         color: theme.colorScheme.onSurface
@@ -477,7 +497,7 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                 if (decision.votingDeadline != null)
                   Text(
                       'Deadline: ${DateFormat('MMM dd, yyyy').format(decision.votingDeadline!)}',
-                      style: const TextStyle(color: Colors.red)),
+                      style: TextStyle(color: colorScheme.error)),
               ],
             ),
           ),
@@ -506,8 +526,8 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white),
+                        backgroundColor: colorScheme.tertiary,
+                        foregroundColor: colorScheme.onTertiary),
                     child: const Text('Approve'),
                   ),
                   const SizedBox(width: 8),
@@ -527,8 +547,8 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white),
+                        backgroundColor: colorScheme.error,
+                        foregroundColor: colorScheme.onError),
                     child: const Text('Reject'),
                   ),
                 ],
@@ -549,6 +569,7 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
       context: context,
       builder: (context) {
         final theme = Theme.of(context);
+        final colorScheme = theme.colorScheme;
         return StatefulBuilder(
           builder: (context, setDialogState) => AlertDialog(
             backgroundColor:
@@ -648,8 +669,8 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                   }
                 },
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.indigo,
-                    foregroundColor: Colors.white),
+                    backgroundColor: colorScheme.primary,
+                    foregroundColor: colorScheme.onPrimary),
                 child: const Text('Propose'),
               ),
             ],
