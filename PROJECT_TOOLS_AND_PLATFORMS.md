@@ -127,7 +127,7 @@ Keep these out of Git. Configure them in `.env`, Coolify build variables, or App
 ## Maintenance Notes
 
 - Run `flutter analyze` after each migration slice.
-- Run `dart tool/scripts/duplicate_dart_files.dart` to inspect duplicate Dart filenames.
+- Run `dart scripts/duplicate_dart_files.dart android appwrite_functions assets build docs firebase functions ios lib scripts server test tool tools web windows` to inspect duplicate Dart filenames across the project.
 - Keep migrated Firebase files in `oldfirebasedelete/` only after confirming the replacement path is live. Unused legacy `admin_service.dart` is archived there because it had no runtime callers and `flutter analyze` stays clean.
 - Keep `scripts/appwrite_infrastructure_schema.mjs` as the source of truth for Appwrite infrastructure until `appwrite.config.json` can fully represent this self-hosted Appwrite version.
 

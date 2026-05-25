@@ -235,7 +235,7 @@ npm run appwrite:ping
 Duplicate Dart filename check:
 
 ```bash
-dart scripts/duplicate_dart_files.dart lib
+dart scripts/duplicate_dart_files.dart android appwrite_functions assets build docs firebase functions ios lib scripts server test tool tools web windows
 ```
 
 ## Support
