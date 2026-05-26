@@ -990,8 +990,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
               value: 'delete',
               child: ListTile(
                 leading: Icon(Icons.delete, color: Colors.red),
-                title:
-                    Text('Delete', style: TextStyle(color: Colors.red)),
+                title: Text('Delete', style: TextStyle(color: Colors.red)),
                 contentPadding: EdgeInsets.zero,
               ),
             ),
@@ -1349,8 +1348,8 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                     await _createAdminDocument(
                       AppwriteBackendConfig.contentPagesCollectionId,
                       {
-                      ...payload,
-                      'created_at': DateTime.now().toIso8601String(),
+                        ...payload,
+                        'created_at': DateTime.now().toIso8601String(),
                       },
                     );
                     ToastUtils.showSuccess('Onboarding content created');
@@ -1410,8 +1409,8 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
         AppwriteBackendConfig.contentPagesCollectionId,
         page['id'],
         {
-        'is_published': publish,
-        'publish_date': publish ? DateTime.now().toIso8601String() : null,
+          'is_published': publish,
+          'publish_date': publish ? DateTime.now().toIso8601String() : null,
           'updated_at': DateTime.now().toIso8601String(),
         },
       );
@@ -1747,6 +1746,36 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                   Text(project['image_url'],
                       style: const TextStyle(fontSize: 12, color: Colors.blue)),
                 ],
+                if ((project['fund_update_title'] ?? '')
+                        .toString()
+                        .trim()
+                        .isNotEmpty ||
+                    (project['fund_update_text'] ?? '')
+                        .toString()
+                        .trim()
+                        .isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  const Text('Fund update:',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  if ((project['fund_update_title'] ?? '')
+                      .toString()
+                      .trim()
+                      .isNotEmpty)
+                    Text(project['fund_update_title'].toString()),
+                  if ((project['fund_update_text'] ?? '')
+                      .toString()
+                      .trim()
+                      .isNotEmpty)
+                    Text(project['fund_update_text'].toString()),
+                ],
+                if (_projectImageList(project['fund_update_images'])
+                    .isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    '${_projectImageList(project['fund_update_images']).length} fund update image(s)',
+                    style: const TextStyle(fontSize: 12, color: Colors.blue),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 Row(
                   children: [
@@ -1811,6 +1840,13 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
         TextEditingController(text: (project?['raised'] ?? 0).toString());
     final imageUrlController =
         TextEditingController(text: project?['image_url'] ?? '');
+    final fundUpdateTitleController =
+        TextEditingController(text: project?['fund_update_title'] ?? '');
+    final fundUpdateTextController =
+        TextEditingController(text: project?['fund_update_text'] ?? '');
+    final fundUpdateImagesController = TextEditingController(
+      text: _projectImageList(project?['fund_update_images']).join('\n'),
+    );
     final priorityController =
         TextEditingController(text: (project?['priority'] ?? 100).toString());
     String status = project?['status'] ?? 'active';
@@ -1856,6 +1892,30 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                   decoration: const InputDecoration(labelText: 'Image URL'),
                 ),
                 TextField(
+                  controller: fundUpdateTitleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Fund update title',
+                    hintText: 'What has been done so far?',
+                  ),
+                ),
+                TextField(
+                  controller: fundUpdateTextController,
+                  decoration: const InputDecoration(
+                    labelText: 'Fund update text',
+                    hintText:
+                        'Explain what the received funds have helped accomplish.',
+                  ),
+                  maxLines: 4,
+                ),
+                TextField(
+                  controller: fundUpdateImagesController,
+                  decoration: const InputDecoration(
+                    labelText: 'Fund update image URLs',
+                    hintText: 'One image URL per line, maximum 10 images',
+                  ),
+                  maxLines: 5,
+                ),
+                TextField(
                   controller: priorityController,
                   decoration:
                       const InputDecoration(labelText: 'Priority (ascending)'),
@@ -1898,6 +1958,8 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     );
 
     if (result == true) {
+      final fundUpdateImages =
+          _projectImageList(fundUpdateImagesController.text).take(10).toList();
       final projectData = {
         'title': titleController.text,
         'summary': summaryController.text,
@@ -1905,6 +1967,13 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
         'goal': double.tryParse(goalController.text) ?? 0,
         'raised': double.tryParse(raisedController.text) ?? 0,
         'image_url': imageUrlController.text,
+        'fund_update_title': fundUpdateTitleController.text,
+        'fund_update_text': fundUpdateTextController.text,
+        'fund_update_images': fundUpdateImages,
+        if (fundUpdateTitleController.text.trim().isNotEmpty ||
+            fundUpdateTextController.text.trim().isNotEmpty ||
+            fundUpdateImages.isNotEmpty)
+          'fund_update_updated_at': DateTime.now().toIso8601String(),
         'priority': int.tryParse(priorityController.text) ?? 100,
         'status': status,
       };
@@ -1938,6 +2007,24 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
         ToastUtils.showError('Error saving project: $e');
       }
     }
+  }
+
+  List<String> _projectImageList(dynamic value) {
+    if (value == null) return const [];
+    if (value is List) {
+      return value
+          .map((item) => item.toString().trim())
+          .where((item) => item.isNotEmpty)
+          .take(10)
+          .toList();
+    }
+    return value
+        .toString()
+        .split(RegExp(r'[\r\n,]+'))
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .take(10)
+        .toList();
   }
 
   Future<void> _deleteProject(Map<String, dynamic> project) async {
@@ -2027,6 +2114,10 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
           'cta_label': 'Donate for this item',
           'image_url':
               'https://images.unsplash.com/photo-1593914370442-49d414beca24?q=80&w=1031&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+          'fund_update_title': 'Progress so far',
+          'fund_update_text':
+              'Seed funding has helped prepare the project scope, early planning, and ministry coordination for the hub.',
+          'fund_update_images': <String>[],
         },
         {
           'id': 'vehicle_purchase',
@@ -2042,6 +2133,9 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
           'cta_label': 'Donate for this item',
           'image_url':
               'https://images.unsplash.com/photo-1597685204565-110abf469a1e?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+          'fund_update_title': '',
+          'fund_update_text': '',
+          'fund_update_images': <String>[],
         },
         {
           'id': 'media_studio_setup',
@@ -2057,6 +2151,9 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
           'cta_label': 'Donate for this item',
           'image_url':
               'https://images.unsplash.com/photo-1769699167906-a44d5ae50abb?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+          'fund_update_title': '',
+          'fund_update_text': '',
+          'fund_update_images': <String>[],
         },
       ];
 

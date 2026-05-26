@@ -813,7 +813,10 @@
         status: 'active',
         priority: 1,
         cta_label: 'Donate for this item',
-        image_url: 'https://images.unsplash.com/photo-1593914370442-49d414beca24?q=80&w=1031&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'
+        image_url: 'https://images.unsplash.com/photo-1593914370442-49d414beca24?q=80&w=1031&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        fund_update_title: 'Progress so far',
+        fund_update_text: 'Seed funding has helped prepare the project scope, early planning, and ministry coordination for the hub.',
+        fund_update_images: []
       },
       {
         id: 'vehicle_purchase',
@@ -826,7 +829,8 @@
         status: 'active',
         priority: 2,
         cta_label: 'Donate for this item',
-        image_url: 'https://images.unsplash.com/photo-1597685204565-110abf469a1e?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'
+        image_url: 'https://images.unsplash.com/photo-1597685204565-110abf469a1e?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        fund_update_images: []
       },
       {
         id: 'media_studio_setup',
@@ -839,7 +843,8 @@
         status: 'planning',
         priority: 3,
         cta_label: 'Donate for this item',
-        image_url: 'https://images.unsplash.com/photo-1769699167906-a44d5ae50abb?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'
+        image_url: 'https://images.unsplash.com/photo-1769699167906-a44d5ae50abb?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        fund_update_images: []
       }
     ];
 
@@ -925,6 +930,14 @@
       const statusBadge = p.status ? `<span style="padding:4px 8px;border-radius:999px;background:#EDF2F7;color:#2D3748;font-size:12px;">${escapeHtml(p.status)}</span>` : '';
       const image = p.image_url ? `<img src="${escapeHtml(p.image_url)}" alt="${escapeHtml(p.title)}" style="width:100%;height:220px;object-fit:cover;border-radius:8px;"/>`
         : `<img src="https://images.unsplash.com/photo-1593914370442-49d414beca24?q=80&w=1031&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="Project image" style="width:100%;height:220px;object-fit:cover;border-radius:8px;"/>`;
+      const fundImages = Array.isArray(p.fund_update_images) ? p.fund_update_images.slice(0, 10) : [];
+      const fundUpdate = (p.fund_update_title || p.fund_update_text || fundImages.length) ? `
+        <div style="margin-top:14px;padding:14px;border-radius:14px;background:#FFFBEB;border:1px solid #FDE68A;">
+          <div style="font-size:12px;color:#92400E;font-weight:800;letter-spacing:.06em;text-transform:uppercase;">Fund update</div>
+          ${p.fund_update_title ? `<div style="margin-top:6px;font-weight:800;color:#1F2937;">${escapeHtml(p.fund_update_title)}</div>` : ``}
+          ${p.fund_update_text ? `<div style="margin-top:6px;color:#4B5563;line-height:1.55;">${escapeHtml(p.fund_update_text)}</div>` : ``}
+          ${fundImages.length ? `<div style="display:flex;gap:8px;overflow:auto;margin-top:10px;">${fundImages.map(url => `<img src="${escapeHtml(url)}" alt="Fund update image" style="width:96px;height:72px;object-fit:cover;border-radius:10px;flex:0 0 auto;"/>`).join('')}</div>` : ``}
+        </div>` : '';
       const adminVisible = !!window._isAdmin;
       el.innerHTML = `
         ${image}
@@ -945,6 +958,7 @@
           <div style="margin-top:8px;font-size:12px;color:#64748B;">${percentValue.toFixed(0)}% of target reached. Figures refresh automatically when new donations are confirmed.</div>
         </div>
         ${p.description ? `<div style="margin-top:12px;color:#4A5568">${escapeHtml(p.description)}</div>` : ''}
+        ${fundUpdate}
         <div class="project-actions">
           <button class="btn primary" id="donate-${p.id}">${escapeHtml(p.cta_label || 'Donate for this item')}</button>
           ${adminVisible ? `<button class="btn warn" id="admin-note-${p.id}" title="Admins update projects inside the app">Admin Update</button>` : ``}

@@ -155,7 +155,9 @@ export const tables = [
     columns: [
       s('title', 255, true), s('summary', 512), mediumtext('description'), s('category', 128), s('type', 128),
       s('status', 64), f('goal'), f('target_amount'), f('raised'), f('amount_raised'), s('currency', 16),
-      s('image_url', 1024), s('cta_label', 128), i('priority'), b('is_active', false, true), dt('created_at'), dt('updated_at'),
+      s('image_url', 1024), s('fund_update_title', 255), mediumtext('fund_update_text'),
+      s('fund_update_images', 2048, false, true), dt('fund_update_updated_at'),
+      s('cta_label', 128), i('priority'), b('is_active', false, true), dt('created_at'), dt('updated_at'),
     ],
     indexes: [{ key: 'projects_priority_idx', type: 'key', columns: ['priority'] }],
   },

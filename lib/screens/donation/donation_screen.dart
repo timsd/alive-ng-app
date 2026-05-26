@@ -34,6 +34,10 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       'cta_label': 'Donate for this item',
       'image_url':
           'https://images.unsplash.com/photo-1593914370442-49d414beca24?q=80&w=1031&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+      'fund_update_title': 'Progress so far',
+      'fund_update_text':
+          'Seed funding has helped prepare the project scope, early planning, and ministry coordination for the hub.',
+      'fund_update_images': <String>[],
     },
     {
       'id': 'vehicle_purchase',
@@ -49,6 +53,9 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       'cta_label': 'Donate for this item',
       'image_url':
           'https://images.unsplash.com/photo-1597685204565-110abf469a1e?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+      'fund_update_title': '',
+      'fund_update_text': '',
+      'fund_update_images': <String>[],
     },
     {
       'id': 'media_studio_setup',
@@ -64,6 +71,9 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       'cta_label': 'Donate for this item',
       'image_url':
           'https://images.unsplash.com/photo-1769699167906-a44d5ae50abb?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+      'fund_update_title': '',
+      'fund_update_text': '',
+      'fund_update_images': <String>[],
     },
   ];
 
@@ -216,8 +226,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                       ),
                     if (_selectedProjectId != null)
                       FutureBuilder<Map<String, dynamic>?>(
-                        future: DonationService()
-                            .getProject(_selectedProjectId!),
+                        future:
+                            DonationService().getProject(_selectedProjectId!),
                         builder: (context, snapshot) {
                           if (!snapshot.hasData || snapshot.data == null) {
                             return const SizedBox.shrink();
@@ -315,6 +325,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                                     ),
                                   ],
                                 ),
+                                _buildFundUpdateSection(context, data),
                               ],
                             ),
                           );
@@ -1604,6 +1615,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                                         style: theme.textTheme.labelMedium,
                                       ),
                                     ],
+                                    _buildFundUpdateSection(context, project),
                                     const SizedBox(height: 12),
                                     SizedBox(
                                       width: double.infinity,
@@ -1658,6 +1670,115 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
     return _fallbackProjects;
   }
 
+  Widget _buildFundUpdateSection(
+      BuildContext context, Map<String, dynamic> project) {
+    final theme = Theme.of(context);
+    final title = (project['fund_update_title'] ?? '').toString().trim();
+    final text = (project['fund_update_text'] ?? '').toString().trim();
+    final imageUrls = _fundUpdateImages(project['fund_update_images']);
+
+    if (title.isEmpty && text.isEmpty && imageUrls.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest.withValues(
+            alpha: theme.brightness == Brightness.dark ? 0.34 : 0.56,
+          ),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.task_alt,
+                    size: 18,
+                    color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      title.isNotEmpty ? title : 'What your giving has done',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (text.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  text,
+                  style: theme.textTheme.bodySmall?.copyWith(height: 1.45),
+                ),
+              ],
+              if (imageUrls.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 88,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: imageUrls.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (context, index) {
+                      return ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.network(
+                          imageUrls[index],
+                          width: 112,
+                          height: 88,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            width: 112,
+                            height: 88,
+                            color: theme.colorScheme.surfaceContainerHighest,
+                            child: Icon(
+                              Icons.image_not_supported_outlined,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<String> _fundUpdateImages(dynamic value) {
+    if (value == null) return const [];
+    if (value is List) {
+      return value
+          .map((item) => item.toString().trim())
+          .where((item) => item.isNotEmpty)
+          .take(10)
+          .toList();
+    }
+    return value
+        .toString()
+        .split(RegExp(r'[\r\n,]+'))
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .take(10)
+        .toList();
+  }
+
   /// Formats a number with compact suffix
   String _formatCompact(double value) {
     if (value >= 1000000) {
@@ -1668,4 +1789,3 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
     return value.toStringAsFixed(0);
   }
 }
-
