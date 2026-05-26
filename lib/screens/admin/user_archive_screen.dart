@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/models.dart' as appwrite_models;
 import 'package:flutter/material.dart';
@@ -20,7 +18,7 @@ class UserArchiveScreen extends StatefulWidget {
 }
 
 class _UserArchiveScreenState extends State<UserArchiveScreen> {
-  late final Databases _databases = Databases(appwriteClient);
+  late final TablesDB _tables = TablesDB(appwriteClient);
   final Logger _logger = Logger('UserArchiveScreen');
   bool _isLoading = true;
   bool _hasAccess = false;
@@ -58,9 +56,9 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
 
   Future<void> _loadArchivedUsers() async {
     try {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.usersCollectionId,
+        tableId: AppwriteBackendConfig.usersCollectionId,
         queries: [
           Query.equal('is_archived', true),
           Query.orderDesc('updated_at'),
@@ -69,11 +67,11 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
       );
 
       final List<UserProfile> archivedUsers = [];
-      for (final doc in response.documents) {
+      for (final row in response.rows) {
         try {
           archivedUsers.add(UserProfile.fromJson({
-            ...doc.data,
-            'id': doc.$id,
+            ...row.data,
+            'id': row.$id,
           }));
         } catch (e) {
           _logger.error('Error parsing user data', e);
@@ -547,10 +545,10 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
       final messenger = ScaffoldMessenger.of(context);
       final theme = Theme.of(context);
 
-      await _databases.updateDocument(
+      await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.usersCollectionId,
-        documentId: user.id,
+        tableId: AppwriteBackendConfig.usersCollectionId,
+        rowId: user.id,
         data: {
           'is_archived': false,
           'updated_at': DateTime.now().toUtc().toIso8601String(),
@@ -623,10 +621,10 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
             user.id,
           ),
         ]);
-        await _databases.deleteDocument(
+        await _tables.deleteRow(
           databaseId: AppwriteBackendConfig.databaseId,
-          collectionId: AppwriteBackendConfig.usersCollectionId,
-          documentId: user.id,
+          tableId: AppwriteBackendConfig.usersCollectionId,
+          rowId: user.id,
         );
 
         // Store context in local variable before async gap
@@ -652,9 +650,9 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
   }
 
   Future<void> _deleteUserRows(String collectionId, String userId) async {
-    final response = await _databases.listDocuments(
+    final response = await _tables.listRows(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: collectionId,
+      tableId: collectionId,
       queries: [
         Query.equal('user_id', userId),
         Query.limit(100),
@@ -662,11 +660,11 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
     );
 
     await Future.wait(
-      response.documents.map(
-        (doc) => _databases.deleteDocument(
+      response.rows.map(
+        (row) => _tables.deleteRow(
           databaseId: AppwriteBackendConfig.databaseId,
-          collectionId: collectionId,
-          documentId: doc.$id,
+          tableId: collectionId,
+          rowId: row.$id,
         ),
       ),
     );

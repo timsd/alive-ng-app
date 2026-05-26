@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:appwrite/appwrite.dart';
@@ -17,10 +15,10 @@ import '../../services/role_access_service.dart';
 
 // Provider for missions data
 final missionsProvider = FutureProvider<List<Mission>>((ref) async {
-  final databases = Databases(appwriteClient);
-  final snapshot = await databases.listDocuments(
+  final tables = TablesDB(appwriteClient);
+  final snapshot = await tables.listRows(
     databaseId: AppwriteBackendConfig.databaseId,
-    collectionId: AppwriteBackendConfig.missionsCollectionId,
+    tableId: AppwriteBackendConfig.missionsCollectionId,
     queries: [
       Query.equal('is_active', true),
       Query.orderDesc('start_date'),
@@ -28,18 +26,18 @@ final missionsProvider = FutureProvider<List<Mission>>((ref) async {
     ],
   );
 
-  return snapshot.documents
+  return snapshot.rows
       .map(_mapMissionDocument)
       .map(Mission.fromJson)
       .toList();
 });
 
-Map<String, dynamic> _mapMissionDocument(appwrite_models.Document doc) {
-  final data = Map<String, dynamic>.from(doc.data);
+Map<String, dynamic> _mapMissionDocument(appwrite_models.Row row) {
+  final data = Map<String, dynamic>.from(row.data);
   final now = DateTime.now().toIso8601String();
 
   return {
-    'id': doc.$id,
+    'id': row.$id,
     'title': data['title'] ?? 'Mission',
     'description': data['description'] ?? '',
     'location': data['location'] ?? '',
@@ -566,10 +564,10 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
 
               try {
                 final now = DateTime.now();
-                await Databases(appwriteClient).createDocument(
+                await TablesDB(appwriteClient).createRow(
                   databaseId: AppwriteBackendConfig.databaseId,
-                  collectionId: AppwriteBackendConfig.missionsCollectionId,
-                  documentId: ID.unique(),
+                  tableId: AppwriteBackendConfig.missionsCollectionId,
+                  rowId: ID.unique(),
                   data: {
                     'title': title,
                     'description': description,

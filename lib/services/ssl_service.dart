@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:appwrite/appwrite.dart';
 import 'package:flutter/services.dart';
 
@@ -15,7 +13,7 @@ class SSLService {
   SSLService._();
 
   final Logger _logger = Logger('SSLService');
-  late final Databases _databases = Databases(appwriteClient);
+  late final TablesDB _tables = TablesDB(appwriteClient);
 
   /// Load SSL certificate from assets
   Future<String?> loadSSLCertificate() async {
@@ -151,9 +149,9 @@ class SSLService {
 
   Future<Map<String, dynamic>> verifyAppwriteConnection() async {
     try {
-      await _databases.listDocuments(
+      await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.appSettingsCollectionId,
+        tableId: AppwriteBackendConfig.appSettingsCollectionId,
         queries: [Query.limit(1)],
       );
 
@@ -189,9 +187,9 @@ class SSLService {
   Future<Map<String, dynamic>> testAppwriteConnection() async {
     final start = DateTime.now();
     try {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.appSettingsCollectionId,
+        tableId: AppwriteBackendConfig.appSettingsCollectionId,
         queries: [Query.limit(1)],
       );
       final duration = DateTime.now().difference(start).inMilliseconds;

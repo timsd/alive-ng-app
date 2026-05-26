@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:convert';
 
 import 'package:appwrite/appwrite.dart';
@@ -23,7 +21,7 @@ class TractService {
 
   final AuthService _authService = AuthService.instance;
   final TractDatabaseHelper _dbHelper = TractDatabaseHelper();
-  final Databases _databases = Databases(appwriteClient);
+  final TablesDB _tables = TablesDB(appwriteClient);
   final AppwriteStorageCompatService _storageService =
       AppwriteStorageCompatService();
 
@@ -175,19 +173,19 @@ class TractService {
   /// Get detailed progress for a specific tract using [TractProgress] model.
   Future<TractProgress?> getTractProgress(String userId, String tractId) async {
     try {
-      final doc = await _databases.getDocument(
+      final row = await _tables.getRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: 'tract_progress',
-        documentId: '${userId}_$tractId',
+        tableId: 'tract_progress',
+        rowId: '${userId}_$tractId',
       );
       return TractProgress.fromJson({
-        'id': doc.$id,
-        'userId': doc.data['user_id'] ?? userId,
-        'tractId': doc.data['tract_id'] ?? tractId,
-        'currentPage': doc.data['current_page'] ?? 0,
-        'isCompleted': doc.data['is_completed'] ?? false,
+        'id': row.$id,
+        'userId': row.data['user_id'] ?? userId,
+        'tractId': row.data['tract_id'] ?? tractId,
+        'currentPage': row.data['current_page'] ?? 0,
+        'isCompleted': row.data['is_completed'] ?? false,
         'lastUpdated':
-            doc.data['last_updated'] ?? DateTime.now().toIso8601String(),
+            row.data['last_updated'] ?? DateTime.now().toIso8601String(),
       });
     } on AppwriteException catch (e) {
       if (e.code != 404) {
@@ -227,18 +225,18 @@ class TractService {
       };
       final docId = '${progress.userId}_${progress.tractId}';
       try {
-        await _databases.updateDocument(
+        await _tables.updateRow(
           databaseId: AppwriteBackendConfig.databaseId,
-          collectionId: 'tract_progress',
-          documentId: docId,
+          tableId: 'tract_progress',
+          rowId: docId,
           data: payload,
         );
       } on AppwriteException catch (e) {
         if (e.code != 404) rethrow;
-        await _databases.createDocument(
+        await _tables.createRow(
           databaseId: AppwriteBackendConfig.databaseId,
-          collectionId: 'tract_progress',
-          documentId: docId,
+          tableId: 'tract_progress',
+          rowId: docId,
           data: payload,
         );
       }
@@ -252,9 +250,9 @@ class TractService {
   /// Get aggregated statistics for a tract using [TractStatistics] model.
   Future<TractStatistics> getTractStatistics(String tractId) async {
     try {
-      final answersSnapshot = await _databases.listDocuments(
+      final answersSnapshot = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: 'user_tract_answers',
+        tableId: 'user_tract_answers',
         queries: [
           Query.equal('tract_id', tractId),
           Query.limit(200),
@@ -264,8 +262,8 @@ class TractService {
       int totalCompletions = 0;
       final questionStats = <String, int>{};
 
-      for (final doc in answersSnapshot.documents) {
-        final data = doc.data;
+      for (final row in answersSnapshot.rows) {
+        final data = row.data;
         if (data['is_completed'] == true) {
           totalCompletions++;
           final answers = _decodeMap(data['answers']) ?? {};
@@ -278,13 +276,13 @@ class TractService {
       // Get download count from tract metadata
       var totalDownloads = 0;
       try {
-        final tractDoc = await _databases.getDocument(
+        final tractRow = await _tables.getRow(
           databaseId: AppwriteBackendConfig.databaseId,
-          collectionId: 'tracts',
-          documentId: tractId,
+          tableId: 'tracts',
+          rowId: tractId,
         );
         totalDownloads = _intValue(
-            tractDoc.data['downloadCount'] ?? tractDoc.data['downloads']);
+            tractRow.data['downloadCount'] ?? tractRow.data['downloads']);
       } catch (_) {}
 
       return TractStatistics(
@@ -392,16 +390,16 @@ class TractService {
 
   Future<List<Tract>> _fetchTractsFromAppwrite() async {
     try {
-      final querySnapshot = await _databases.listDocuments(
+      final querySnapshot = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: 'tracts',
+        tableId: 'tracts',
         queries: [
           Query.orderAsc('order'),
           Query.limit(200),
         ],
       );
-      return querySnapshot.documents.map((doc) {
-        return Tract.fromDocument(doc.data, doc.$id);
+      return querySnapshot.rows.map((row) {
+        return Tract.fromDocument(row.data, row.$id);
       }).toList();
     } catch (e) {
       _logger.error('Error fetching tracts from Appwrite', e);
@@ -411,12 +409,12 @@ class TractService {
 
   Future<Tract?> _fetchTractFromAppwrite(String tractId) async {
     try {
-      final doc = await _databases.getDocument(
+      final row = await _tables.getRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: 'tracts',
-        documentId: tractId,
+        tableId: 'tracts',
+        rowId: tractId,
       );
-      return Tract.fromDocument(doc.data, doc.$id);
+      return Tract.fromDocument(row.data, row.$id);
     } on AppwriteException catch (e) {
       if (e.code == 404) return null;
       _logger.error('Error fetching tract from Appwrite', e);
@@ -429,14 +427,14 @@ class TractService {
 
   Future<TractContent?> _fetchTractContentFromAppwrite(String tractId) async {
     try {
-      final doc = await _databases.getDocument(
+      final row = await _tables.getRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: 'tract_contents',
-        documentId: tractId,
+        tableId: 'tract_contents',
+        rowId: tractId,
       );
-      final data = doc.data;
+      final data = row.data;
       return TractContent(
-        id: doc.$id,
+        id: row.$id,
         tractId: tractId,
         content: data['content']?.toString() ?? '',
         questions: _decodeQuestions(data['questions']),
@@ -463,18 +461,18 @@ class TractService {
         'score': answer.score,
       };
       try {
-        await _databases.updateDocument(
+        await _tables.updateRow(
           databaseId: AppwriteBackendConfig.databaseId,
-          collectionId: 'user_tract_answers',
-          documentId: answer.id,
+          tableId: 'user_tract_answers',
+          rowId: answer.id,
           data: payload,
         );
       } on AppwriteException catch (e) {
         if (e.code != 404) rethrow;
-        await _databases.createDocument(
+        await _tables.createRow(
           databaseId: AppwriteBackendConfig.databaseId,
-          collectionId: 'user_tract_answers',
-          documentId: answer.id,
+          tableId: 'user_tract_answers',
+          rowId: answer.id,
           data: payload,
         );
       }

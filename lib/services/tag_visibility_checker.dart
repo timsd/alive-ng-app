@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:appwrite/appwrite.dart';
 
 import '../config/appwrite_backend_config.dart';
@@ -7,10 +5,10 @@ import '../main.dart';
 import '../models/chat_models.dart';
 import '../utils/logger.dart';
 
-/// Handles tag visibility and access control for messages.
+  /// Handles tag visibility and access control for messages.
 class TagVisibilityChecker {
   static final Logger _logger = Logger('TagVisibilityChecker');
-  static final Databases _databases = Databases(appwriteClient);
+  static final TablesDB _tables = TablesDB(appwriteClient);
 
   /// Check if user can see a message based on its tags.
   static Future<bool> canUserSeeMessage(
@@ -382,9 +380,9 @@ class TagVisibilityChecker {
   /// Check if user is participant of a specific event type.
   static Future<bool> isEventParticipant(String userId, String eventType) async {
     try {
-      final registrations = await _databases.listDocuments(
+      final registrations = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.userEventsCollectionId,
+        tableId: AppwriteBackendConfig.userEventsCollectionId,
         queries: [
           Query.equal('user_id', userId),
           Query.limit(100),
@@ -392,7 +390,7 @@ class TagVisibilityChecker {
       );
       final normalizedEventType = eventType.toLowerCase();
 
-      return registrations.documents.any((registration) {
+      return registrations.rows.any((registration) {
         final data = registration.data;
         final status = (data['status'] as String?)?.toLowerCase();
         if (status == 'cancelled' || status == 'declined') return false;
@@ -444,10 +442,10 @@ class TagVisibilityChecker {
   }
 
   static Future<Map<String, dynamic>> _getUserProfile(String userId) async {
-    final user = await _databases.getDocument(
+    final user = await _tables.getRow(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: AppwriteBackendConfig.usersCollectionId,
-      documentId: userId,
+      tableId: AppwriteBackendConfig.usersCollectionId,
+      rowId: userId,
     );
     return user.data;
   }
