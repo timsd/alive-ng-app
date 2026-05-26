@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -95,7 +96,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     }
     await OnboardingService.complete();
     if (mounted) {
-      context.go(AppConstants.homeRoute);
+      context.go(kIsWeb ? AppConstants.homeRoute : AppConstants.authRoute);
     }
   }
 

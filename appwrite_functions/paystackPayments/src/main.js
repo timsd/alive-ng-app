@@ -9,11 +9,6 @@ export default async ({ req, res, log, error }) => {
   }
 
   try {
-    const userId = req.headers['x-appwrite-user-id'];
-    if (!userId) {
-      return res.json({ error: 'Authentication required.' }, 401);
-    }
-
     const secret = process.env.PAYSTACK_SECRET_KEY;
     if (!secret) {
       error('Missing PAYSTACK_SECRET_KEY.');
@@ -28,12 +23,23 @@ export default async ({ req, res, log, error }) => {
     const action = body.action || 'initialize_transaction';
     const reference = validateReference(body.reference);
     const email = validateEmail(body.email);
+    const appwriteUserId =
+      typeof req.headers['x-appwrite-user-id'] === 'string'
+        ? req.headers['x-appwrite-user-id']
+        : '';
+    const bodyUserId =
+      typeof body.appwrite_user_id === 'string'
+        ? body.appwrite_user_id.trim()
+        : '';
+    const userId = appwriteUserId || bodyUserId || 'guest';
+    const isGuest = !appwriteUserId;
     const callbackUrl = body.callback_url;
     const channels = Array.isArray(body.channels) ? body.channels : undefined;
     const currency = typeof body.currency === 'string' && body.currency.trim() ? body.currency : 'NGN';
     const metadata = {
       ...(body.metadata || {}),
       appwrite_user_id: userId,
+      guest_donation: isGuest,
       reference,
     };
 

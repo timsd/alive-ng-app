@@ -28,35 +28,35 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
   late Animation<double> _progressAnimation;
 
   Timer? _animationTimer;
+  Timer? _fadeStartTimer;
 
   @override
   void initState() {
     super.initState();
-    debugPrint('AnimatedSplashScreen init');
     _initializeAnimations();
     _startAnimationSequence();
   }
 
   void _initializeAnimations() {
     _progressController = AnimationController(
-      duration: const Duration(milliseconds: 2500),
+      duration: const Duration(milliseconds: 1600),
       vsync: this,
     );
 
     // Glow animation controller
     _glowController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 1200),
       vsync: this,
     );
 
     _zoomController = AnimationController(
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 800),
       vsync: this,
     );
 
     // Fade animation controller
     _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 420),
       vsync: this,
     );
 
@@ -100,13 +100,15 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
     _glowController.repeat(reverse: true);
     _progressController.forward();
 
-    _animationTimer = Timer(const Duration(milliseconds: 500), () {
+    _animationTimer = Timer(const Duration(milliseconds: 180), () {
       _zoomController.forward();
 
       // Start fade animation when zoom is almost complete
-      Timer(const Duration(milliseconds: 900), () {
+      _fadeStartTimer = Timer(const Duration(milliseconds: 520), () {
         _fadeController.forward().then((_) {
-          widget.onAnimationComplete();
+          if (mounted) {
+            widget.onAnimationComplete();
+          }
         });
       });
     });
@@ -119,6 +121,7 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
     _fadeController.dispose();
     _progressController.dispose();
     _animationTimer?.cancel();
+    _fadeStartTimer?.cancel();
     super.dispose();
   }
 
@@ -134,7 +137,6 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
           _progressAnimation,
         ]),
         builder: (context, child) {
-          debugPrint('AnimatedSplashScreen build');
           return Opacity(
             opacity: _fadeAnimation.value,
             child: Center(
@@ -219,14 +221,14 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
                     )),
 
                     Builder(builder: (context) {
-                      const totalMs = 2500;
+                      const totalMs = 1600;
                       final remainingMs =
                           (totalMs - (_progressAnimation.value * totalMs))
                               .clamp(0, totalMs)
                               .toInt();
                       final remainingSec = (remainingMs / 1000).ceil();
                       return Text(
-                        'Opening app in ${remainingSec}s…',
+                        'Opening app in ${remainingSec}s...',
                         style: TextStyle(
                           fontSize: context.responsiveFontSize(14),
                           color: Theme.of(context)

@@ -763,6 +763,7 @@ class DonationService {
       // Use PaymentService to process the payment
       final baseMetadata = {
         'donation_id': donationId,
+        'appwrite_user_id': donation.userId,
         'donation_type': donation.type.name,
         'material_title': donation.materialTitle,
         if (donation.metadata?['project_title'] != null)

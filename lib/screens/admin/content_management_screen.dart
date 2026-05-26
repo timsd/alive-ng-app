@@ -282,7 +282,13 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
   @override
   Widget build(BuildContext context) {
     return RoleVisibility(
-      allowedRoles: const ['admin', 'super_admin', 'content_manager'],
+      allowedRoles: const [
+        'admin',
+        'super_admin',
+        'content_manager',
+        'director',
+        'president',
+      ],
       child: Scaffold(
         appBar: AppBar(
           title: Text(

@@ -789,6 +789,16 @@ class MainNavigationScreen extends ConsumerWidget {
               ],
               if (isAuthenticated && canAccessRoleGated) ...[
                 const Divider(),
+                if (roleService.canCreateContent())
+                  _buildDrawerSection(context, 'Content Tools', [
+                    _buildDrawerItem(
+                      context,
+                      Icons.edit_note,
+                      'Content Management',
+                      AppConstants.contentManagementRoute,
+                    ),
+                  ]),
+                if (roleService.canCreateContent()) const Divider(),
                 RoleVisibility(
                   allowedRoles: const ['admin'],
                   child: _buildDrawerSection(context, 'Admin', [

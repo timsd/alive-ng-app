@@ -22,6 +22,7 @@ class AppConstants {
   static const String aboutAppRoute = '/about-app';
   static const String aboutAliveRoute = '/about-alive';
   static const String adminRoute = '/admin';
+  static const String contentManagementRoute = '/content-management';
   static const String bodTrusteesRoute = '/bod-trustees';
   static const String userArchiveRoute = '/user-archive';
   static const String roleManagementRoute = '/role-management';

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,6 +17,7 @@ import '../screens/navigation/main_navigation_screen.dart';
 import '../screens/about/about_app_screen.dart';
 import '../screens/about/about_alive_screen.dart';
 import '../screens/admin/admin_dashboard_screen.dart';
+import '../screens/admin/content_management_screen.dart';
 import '../screens/admin/kids_content_admin_screen.dart';
 import '../screens/admin/admin_kids_stories_screen.dart';
 import '../screens/admin/admin_kids_missions_screen.dart';
@@ -210,8 +212,10 @@ final routerProvider = Provider<GoRouter>((ref) {
               show = false;
             }
             if (!context.mounted) return;
-            context.go(
-                show ? AppConstants.onboardingRoute : AppConstants.homeRoute);
+            final nextRoute = show
+                ? AppConstants.onboardingRoute
+                : (kIsWeb ? AppConstants.homeRoute : AppConstants.authRoute);
+            context.go(nextRoute);
           },
         ),
       ),
@@ -313,6 +317,21 @@ final routerProvider = Provider<GoRouter>((ref) {
               final roleService = RoleAccessService.instance;
               if (!roleService.canAccessAdmin()) {
                 return '/home';
+              }
+              return null;
+            },
+          ),
+
+          GoRoute(
+            path: AppConstants.contentManagementRoute,
+            builder: (context, state) => ContentManagementScreen(
+              contentType: state.uri.queryParameters['type'],
+            ),
+            redirect: (context, state) {
+              final roleService = RoleAccessService.instance;
+              if (!roleService.canAccessRoleGatedFeatures() ||
+                  !roleService.canCreateContent()) {
+                return AppConstants.homeRoute;
               }
               return null;
             },

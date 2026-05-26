@@ -75,6 +75,8 @@ class PaymentService {
             : currency,
         'email': email,
         'reference': ref,
+        if (metadata?['appwrite_user_id'] is String)
+          'appwrite_user_id': metadata!['appwrite_user_id'],
         'callback_url': PaymentConfig.paystackCallbackUrl,
         'channels': PaymentConfig.paystackChannels,
         if (metadata != null) 'metadata': metadata,
@@ -127,6 +129,8 @@ class PaymentService {
         'currency': currency,
         'email': email,
         'reference': ref,
+        if (metadata?['appwrite_user_id'] is String)
+          'appwrite_user_id': metadata!['appwrite_user_id'],
         'planCode': planCode,
         'callback_url': PaymentConfig.paystackCallbackUrl,
         'channels': PaymentConfig.paystackChannels,

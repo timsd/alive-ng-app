@@ -67,7 +67,7 @@
             "path": "appwrite_functions/paystackPayments",
             "entrypoint": "src/main.js",
             "execute": [
-                "users"
+                "any"
             ],
             "enabled": true,
             "logging": true,

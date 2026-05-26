@@ -320,6 +320,10 @@ class RoleAccessService {
       '/resources',
     ];
 
+    if (canCreateContent()) {
+      routes.add('/content-management');
+    }
+
     // Add role-specific routes
     if (hasRole('coordinator')) {
       routes.addAll([
