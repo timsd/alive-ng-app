@@ -86,6 +86,7 @@ logs/
 !README.md
 !PROJECT_TOOLS_AND_PLATFORMS.md
 !docs/**/*.md
+docs/oracle-free-tier-deployment-roadmap.md
 !/functions/**/README.md
  
 # Local Chrome downloaded by tooling

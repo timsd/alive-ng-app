@@ -762,11 +762,7 @@
       });
     })();
     document.getElementById('open-web-app')?.addEventListener('click', function () {
-      if (window._isLoggedIn) {
-        loadFlutterApp('/');
-      } else {
-        loadFlutterApp('/auth');
-      }
+      loadFlutterApp('/');
     });
     (function bootstrapDeepLinks() {
       try {
