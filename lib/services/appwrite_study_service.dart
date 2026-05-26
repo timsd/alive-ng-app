@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:convert';
 
 import 'package:appwrite/appwrite.dart';
@@ -15,14 +13,14 @@ class AppwriteStudyService {
 
   AppwriteStudyService._();
 
-  late final Databases _databases = Databases(appwriteClient);
+  late final TablesDB _tables = TablesDB(appwriteClient);
   final Logger _logger = Logger('AppwriteStudyService');
 
   Future<List<StudyProgram>> getStudyPrograms() async {
     try {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.studyGuidesCollectionId,
+        tableId: AppwriteBackendConfig.studyGuidesCollectionId,
         queries: [
           Query.equal('is_published', true),
           Query.orderDesc('created_at'),
@@ -30,10 +28,10 @@ class AppwriteStudyService {
         ],
       );
 
-      return response.documents.map((doc) {
-        final data = doc.data;
+      return response.rows.map((row) {
+        final data = row.data;
         return StudyProgram(
-          id: doc.$id,
+          id: row.$id,
           title: _string(data['title'], fallback: 'Study Program'),
           description: _string(data['description']),
           category: _string(data['type'], fallback: 'general'),
@@ -41,8 +39,8 @@ class AppwriteStudyService {
           duration: _int(data['duration']),
           totalLessons: _int(data['lesson_count']),
           imageUrl: _string(data['cover_image_url']),
-          createdAt: _date(data['created_at'], fallback: doc.$createdAt),
-          updatedAt: _date(data['updated_at'], fallback: doc.$updatedAt),
+          createdAt: _date(data['created_at'], fallback: row.$createdAt),
+          updatedAt: _date(data['updated_at'], fallback: row.$updatedAt),
         );
       }).toList();
     } catch (e) {
@@ -54,9 +52,9 @@ class AppwriteStudyService {
 
   Future<List<StudyProgress>> getUserStudyProgress(String userId) async {
     try {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.studyProgressCollectionId,
+        tableId: AppwriteBackendConfig.studyProgressCollectionId,
         queries: [
           Query.equal('user_id', userId),
           Query.orderDesc('last_accessed_at'),
@@ -64,10 +62,10 @@ class AppwriteStudyService {
         ],
       );
 
-      return response.documents.map((doc) {
-        final data = doc.data;
+      return response.rows.map((row) {
+        final data = row.data;
         return StudyProgress(
-          id: doc.$id,
+          id: row.$id,
           userId: _string(data['user_id']),
           programId: _string(
             data['program_id'] ?? data['study_guide_id'],
@@ -76,9 +74,9 @@ class AppwriteStudyService {
           completedLessons: _int(data['completed_lessons']),
           progressPercentage: _double(data['progress_percentage']),
           lastAccessedAt:
-              _date(data['last_accessed_at'], fallback: doc.$updatedAt),
-          createdAt: _date(data['created_at'], fallback: doc.$createdAt),
-          updatedAt: _date(data['updated_at'], fallback: doc.$updatedAt),
+              _date(data['last_accessed_at'], fallback: row.$updatedAt),
+          createdAt: _date(data['created_at'], fallback: row.$createdAt),
+          updatedAt: _date(data['updated_at'], fallback: row.$updatedAt),
         );
       }).toList();
     } catch (e) {
@@ -90,13 +88,13 @@ class AppwriteStudyService {
 
   Future<String> createStudyGuide(Map<String, dynamic> data) async {
     try {
-      final doc = await _databases.createDocument(
+      final row = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.studyGuidesCollectionId,
-        documentId: data['id']?.toString() ?? ID.unique(),
+        tableId: AppwriteBackendConfig.studyGuidesCollectionId,
+        rowId: data['id']?.toString() ?? ID.unique(),
         data: _sanitizeWriteData(data),
       );
-      return doc.$id;
+      return row.$id;
     } catch (e) {
       _logger.error('Failed to create study guide', e);
       throw DatabaseException('Failed to create study guide', originalError: e);
@@ -105,13 +103,13 @@ class AppwriteStudyService {
 
   Future<String> createStudyLesson(Map<String, dynamic> data) async {
     try {
-      final doc = await _databases.createDocument(
+      final row = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.studyLessonsCollectionId,
-        documentId: data['id']?.toString() ?? ID.unique(),
+        tableId: AppwriteBackendConfig.studyLessonsCollectionId,
+        rowId: data['id']?.toString() ?? ID.unique(),
         data: _sanitizeWriteData(data),
       );
-      return doc.$id;
+      return row.$id;
     } catch (e) {
       _logger.error('Failed to create study lesson', e);
       throw DatabaseException('Failed to create study lesson',

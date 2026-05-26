@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:convert';
 
 import 'package:appwrite/appwrite.dart';
@@ -14,7 +12,7 @@ class MaterialSyncService {
   MaterialSyncService._();
   static final MaterialSyncService instance = MaterialSyncService._();
 
-  late final Databases _db = Databases(appwriteClient);
+  late final TablesDB _tables = TablesDB(appwriteClient);
   late final Storage _storage = Storage(appwriteClient);
 
   /// Sync all PDF files in the Appwrite tracts bucket into
@@ -48,10 +46,10 @@ class MaterialSyncService {
       var existingDownloadCount = 0;
       var createdAt = nowIso;
       try {
-        final existing = await _db.getDocument(
+        final existing = await _tables.getRow(
           databaseId: AppwriteBackendConfig.databaseId,
-          collectionId: AppwriteBackendConfig.downloadableMaterialsCollectionId,
-          documentId: id,
+          tableId: AppwriteBackendConfig.downloadableMaterialsCollectionId,
+          rowId: id,
         );
         existingDownloadCount = existing.data['download_count'] ?? 0;
         createdAt = existing.data['created_at'] ?? nowIso;
@@ -82,18 +80,18 @@ class MaterialSyncService {
       };
 
       try {
-        await _db.updateDocument(
+        await _tables.updateRow(
           databaseId: AppwriteBackendConfig.databaseId,
-          collectionId: AppwriteBackendConfig.downloadableMaterialsCollectionId,
-          documentId: id,
+          tableId: AppwriteBackendConfig.downloadableMaterialsCollectionId,
+          rowId: id,
           data: data,
         );
       } on AppwriteException catch (e) {
         if (e.code != 404) rethrow;
-        await _db.createDocument(
+        await _tables.createRow(
           databaseId: AppwriteBackendConfig.databaseId,
-          collectionId: AppwriteBackendConfig.downloadableMaterialsCollectionId,
-          documentId: id,
+          tableId: AppwriteBackendConfig.downloadableMaterialsCollectionId,
+          rowId: id,
           data: data,
         );
       }

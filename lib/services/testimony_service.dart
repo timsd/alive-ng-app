@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:appwrite/appwrite.dart';
 
 import '../config/appwrite_backend_config.dart';
@@ -12,10 +10,10 @@ import 'auth_service.dart';
 class TestimonyService {
   static final TestimonyService _instance = TestimonyService._internal();
   factory TestimonyService() => _instance;
-  TestimonyService._internal() : _databases = Databases(appwriteClient);
+  TestimonyService._internal() : _tables = TablesDB(appwriteClient);
   static TestimonyService get instance => _instance;
 
-  final Databases _databases;
+  final TablesDB _tables;
   final AuthService _authService = AuthService.instance;
   final Logger _logger = Logger('TestimonyService');
 
@@ -27,9 +25,9 @@ class TestimonyService {
 
   Future<List<Testimony>> fetchTestimonies() async {
     try {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: databaseId,
-        collectionId: testimoniesCollectionId,
+        tableId: testimoniesCollectionId,
         queries: [
           Query.equal('is_approved', true),
           Query.orderDesc('created_at'),
@@ -37,8 +35,8 @@ class TestimonyService {
         ],
       );
 
-      return response.documents
-          .map((document) => _testimonyFromData(document.$id, document.data))
+      return response.rows
+          .map((row) => _testimonyFromData(row.$id, row.data))
           .toList();
     } catch (e) {
       _logger.error('Error fetching testimonies from Appwrite', e);
@@ -51,9 +49,9 @@ class TestimonyService {
       final user = _authService.currentUser;
       if (user == null) return <Testimony>[];
 
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: databaseId,
-        collectionId: testimoniesCollectionId,
+        tableId: testimoniesCollectionId,
         queries: [
           Query.equal('user_id', user.uid),
           Query.orderDesc('created_at'),
@@ -61,8 +59,8 @@ class TestimonyService {
         ],
       );
 
-      return response.documents
-          .map((document) => _testimonyFromData(document.$id, document.data))
+      return response.rows
+          .map((row) => _testimonyFromData(row.$id, row.data))
           .toList();
     } catch (e) {
       _logger.error('Error fetching my testimonies from Appwrite', e);
@@ -88,10 +86,10 @@ class TestimonyService {
       final visibleUserName = isAnonymous ? 'Anonymous' : userName;
       final avatarUrl = isAnonymous ? null : user.photoURL;
 
-      await _databases.createDocument(
+      await _tables.createRow(
         databaseId: databaseId,
-        collectionId: testimoniesCollectionId,
-        documentId: documentId,
+        tableId: testimoniesCollectionId,
+        rowId: documentId,
         data: {
           'user_id': user.uid,
           'userId': user.uid,
@@ -107,10 +105,10 @@ class TestimonyService {
         },
       );
 
-      await _databases.createDocument(
+      await _tables.createRow(
         databaseId: databaseId,
-        collectionId: prayerFeedCollectionId,
-        documentId: documentId,
+        tableId: prayerFeedCollectionId,
+        rowId: documentId,
         data: {
           'source_id': documentId,
           'testimony_id': documentId,

@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/enums.dart' as appwrite_enums;
 import 'package:appwrite/models.dart' as models;
@@ -24,17 +22,18 @@ final appwriteUserProvider =
 
 class AppwriteAuthService {
   late final Account _account;
-  late final Databases _databases;
+  late final TablesDB _tables;
   late final Teams _teams;
   late final AppwriteProfileService _profileService;
   models.User? _currentUser;
 
   static const String databaseId = AppwriteBackendConfig.databaseId;
-  static const String usersCollectionId = AppwriteBackendConfig.usersCollectionId;
+  static const String usersCollectionId =
+      AppwriteBackendConfig.usersCollectionId;
 
   AppwriteAuthService() {
     _account = Account(appwriteClient);
-    _databases = Databases(appwriteClient);
+    _tables = TablesDB(appwriteClient);
     _teams = Teams(appwriteClient);
     _profileService = AppwriteProfileService();
   }
@@ -66,10 +65,10 @@ class AppwriteAuthService {
 
       if (!isAdmin) return;
 
-      await _databases.updateDocument(
+      await _tables.updateRow(
         databaseId: databaseId,
-        collectionId: usersCollectionId,
-        documentId: userId,
+        tableId: usersCollectionId,
+        rowId: userId,
         data: {
           'role': 'admin',
           'approval_status': 'approved',

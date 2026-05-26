@@ -1,9 +1,8 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:appwrite/appwrite.dart';
+import 'package:appwrite/models.dart' as models;
 
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';
@@ -16,21 +15,21 @@ class AppwriteMeetingFileService {
 
   AppwriteMeetingFileService._();
 
-  final Databases _databases = Databases(appwriteClient);
+  final TablesDB _tables = TablesDB(appwriteClient);
   final Storage _storage = Storage(appwriteClient);
   final Logger _logger = Logger('AppwriteMeetingFileService');
 
   Future<List<Map<String, dynamic>>> getMeetingFiles() async {
     try {
-      final snapshot = await _databases.listDocuments(
+      final snapshot = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.meetingFilesCollectionId,
+        tableId: AppwriteBackendConfig.meetingFilesCollectionId,
         queries: [
           Query.orderDesc('created_at'),
           Query.limit(100),
         ],
       );
-      return snapshot.documents.map(_documentData).toList();
+      return snapshot.rows.map(_rowData).toList();
     } catch (e) {
       _logger.error('Error getting meeting files', e);
       throw DatabaseException('Failed to get meeting files', originalError: e);
@@ -67,10 +66,10 @@ class AppwriteMeetingFileService {
         ),
       );
 
-      await _databases.createDocument(
+      await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.meetingFilesCollectionId,
-        documentId: ID.unique(),
+        tableId: AppwriteBackendConfig.meetingFilesCollectionId,
+        rowId: ID.unique(),
         data: {
           'meeting_id': 'general',
           'name': fileName,
@@ -90,8 +89,10 @@ class AppwriteMeetingFileService {
       );
     } catch (e) {
       _logger.error('Error uploading meeting file', e);
-      throw DatabaseException('Failed to upload meeting file',
-          originalError: e);
+      throw DatabaseException(
+        'Failed to upload meeting file',
+        originalError: e,
+      );
     }
   }
 
@@ -119,22 +120,24 @@ class AppwriteMeetingFileService {
         }
       }
 
-      await _databases.deleteDocument(
+      await _tables.deleteRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.meetingFilesCollectionId,
-        documentId: documentId,
+        tableId: AppwriteBackendConfig.meetingFilesCollectionId,
+        rowId: documentId,
       );
     } catch (e) {
       _logger.error('Error deleting meeting file', e);
-      throw DatabaseException('Failed to delete meeting file',
-          originalError: e);
+      throw DatabaseException(
+        'Failed to delete meeting file',
+        originalError: e,
+      );
     }
   }
 
-  Map<String, dynamic> _documentData(dynamic document) {
+  Map<String, dynamic> _rowData(models.Row row) {
     return {
-      ...Map<String, dynamic>.from(document.data as Map),
-      'id': document.$id,
+      ...Map<String, dynamic>.from(row.data),
+      'id': row.$id,
     };
   }
 }

@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:appwrite/appwrite.dart';
@@ -15,14 +13,14 @@ class KidsMissionScreen extends ConsumerWidget {
   const KidsMissionScreen({super.key});
 
   Stream<List<Mission>> _getMissionsStream() {
-    return Stream.fromFuture(Databases(appwriteClient).listDocuments(
+    return Stream.fromFuture(TablesDB(appwriteClient).listRows(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: AppwriteBackendConfig.kidsMissionsCollectionId,
+      tableId: AppwriteBackendConfig.kidsMissionsCollectionId,
       queries: [Query.equal('is_active', true), Query.limit(100)],
     ).then((snapshot) {
-      return snapshot.documents
-          .map((doc) {
-            final data = _mapMissionDocument(doc);
+      return snapshot.rows
+          .map((row) {
+            final data = _mapMissionDocument(row);
 
             try {
               return Mission.fromJson(data);
@@ -35,11 +33,11 @@ class KidsMissionScreen extends ConsumerWidget {
     }));
   }
 
-  Map<String, dynamic> _mapMissionDocument(appwrite_models.Document doc) {
-    final data = Map<String, dynamic>.from(doc.data);
+  Map<String, dynamic> _mapMissionDocument(appwrite_models.Row row) {
+    final data = Map<String, dynamic>.from(row.data);
 
     return {
-      'id': doc.$id,
+      'id': row.$id,
       'title': data['title'] ?? 'Mission',
       'description': data['description'] ?? '',
       'location': data['location'] ?? 'Home',

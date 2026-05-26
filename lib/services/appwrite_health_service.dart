@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:appwrite/appwrite.dart';
 
 import '../config/appwrite_backend_config.dart';
@@ -13,14 +11,14 @@ class AppwriteHealthService {
 
   AppwriteHealthService._();
 
-  late final Databases _databases = Databases(appwriteClient);
+  late final TablesDB _tables = TablesDB(appwriteClient);
   final Logger _logger = Logger('AppwriteHealthService');
 
   Future<List<HealthTracking>> getUserHealthTracking(String userId) async {
     try {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.healthTrackingCollectionId,
+        tableId: AppwriteBackendConfig.healthTrackingCollectionId,
         queries: [
           Query.equal('user_id', userId),
           Query.orderDesc('tracked_at'),
@@ -28,17 +26,17 @@ class AppwriteHealthService {
         ],
       );
 
-      return response.documents.map((doc) {
-        final data = doc.data;
+      return response.rows.map((row) {
+        final data = row.data;
         return HealthTracking(
-          id: doc.$id,
+          id: row.$id,
           userId: _string(data['user_id']),
           category: _string(data['category'], fallback: 'general'),
           value: _double(data['value']),
           unit: _string(data['unit']),
           notes: data['notes'] as String?,
-          trackedAt: _date(data['tracked_at'], fallback: doc.$createdAt),
-          createdAt: _date(data['created_at'], fallback: doc.$createdAt),
+          trackedAt: _date(data['tracked_at'], fallback: row.$createdAt),
+          createdAt: _date(data['created_at'], fallback: row.$createdAt),
         );
       }).toList();
     } catch (e) {
@@ -61,7 +59,9 @@ class AppwriteHealthService {
 
   DateTime _date(dynamic value, {required String fallback}) {
     if (value is DateTime) return value;
-    if (value is String) return DateTime.tryParse(value) ?? DateTime.parse(fallback);
+    if (value is String) {
+      return DateTime.tryParse(value) ?? DateTime.parse(fallback);
+    }
     return DateTime.parse(fallback);
   }
 }

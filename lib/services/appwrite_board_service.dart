@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:convert';
 
 import 'package:appwrite/appwrite.dart';
@@ -14,7 +12,7 @@ class AppwriteBoardService {
 
   AppwriteBoardService._();
 
-  final Databases _databases = Databases(appwriteClient);
+  final TablesDB _tables = TablesDB(appwriteClient);
   final Logger _logger = Logger('AppwriteBoardService');
 
   Future<List<Map<String, dynamic>>> getBoardReports() async {
@@ -27,10 +25,10 @@ class AppwriteBoardService {
   }
 
   Future<bool> updateBoardReportStatus(String reportId, String status) async {
-    await _databases.updateDocument(
+    await _tables.updateRow(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: AppwriteBackendConfig.boardReportsCollectionId,
-      documentId: reportId,
+      tableId: AppwriteBackendConfig.boardReportsCollectionId,
+      rowId: reportId,
       data: {
         'status': status,
         'updated_at': _now(),
@@ -67,10 +65,10 @@ class AppwriteBoardService {
     Map<String, dynamic> voteData,
   ) async {
     try {
-      final current = await _databases.getDocument(
+      final current = await _tables.getRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.boardDecisionsCollectionId,
-        documentId: decisionId,
+        tableId: AppwriteBackendConfig.boardDecisionsCollectionId,
+        rowId: decisionId,
       );
       final data = _documentData(current);
       final votes = List<Map<String, dynamic>>.from(
@@ -96,10 +94,10 @@ class AppwriteBoardService {
         votes.add(nextVote);
       }
 
-      await _databases.updateDocument(
+      await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.boardDecisionsCollectionId,
-        documentId: decisionId,
+        tableId: AppwriteBackendConfig.boardDecisionsCollectionId,
+        rowId: decisionId,
         data: {
           'votes': jsonEncode(votes),
           'updated_at': _now(),
@@ -114,12 +112,12 @@ class AppwriteBoardService {
 
   Future<List<Map<String, dynamic>>> _list(String collectionId) async {
     try {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: collectionId,
+        tableId: collectionId,
         queries: [Query.orderDesc('created_at'), Query.limit(200)],
       );
-      return response.documents.map(_documentData).toList();
+      return response.rows.map(_documentData).toList();
     } catch (e) {
       _logger.error('Failed to fetch board collection', e);
       throw DatabaseException('Failed to fetch board data', originalError: e);
@@ -128,10 +126,10 @@ class AppwriteBoardService {
 
   Future<String> _create(String collectionId, Map<String, dynamic> data) async {
     try {
-      final doc = await _databases.createDocument(
+      final doc = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: collectionId,
-        documentId: data['id']?.toString() ?? ID.unique(),
+        tableId: collectionId,
+        rowId: data['id']?.toString() ?? ID.unique(),
         data: _writeData(data),
       );
       return doc.$id;

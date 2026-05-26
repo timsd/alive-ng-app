@@ -8,12 +8,12 @@ import '../utils/logger.dart';
 
 class AppwriteAdminNotificationStore {
   AppwriteAdminNotificationStore._internal()
-      : _databases = Databases(appwriteClient);
+      : _tables = TablesDB(appwriteClient);
 
   static final AppwriteAdminNotificationStore instance =
       AppwriteAdminNotificationStore._internal();
 
-  final Databases _databases;
+  final TablesDB _tables;
   final Logger _logger = Logger('AppwriteAdminNotificationStore');
 
   Future<void> createNotificationRecord({
@@ -27,11 +27,10 @@ class AppwriteAdminNotificationStore {
     bool isRead = false,
   }) async {
     try {
-      // ignore: deprecated_member_use
-      await _databases.createDocument(
+      await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.adminNotificationsCollectionId,
-        documentId: ID.unique(),
+        tableId: AppwriteBackendConfig.adminNotificationsCollectionId,
+        rowId: ID.unique(),
         data: {
           'type': type,
           if (title != null) 'title': title,
@@ -54,19 +53,18 @@ class AppwriteAdminNotificationStore {
     int limit = 50,
   }) async {
     try {
-      // ignore: deprecated_member_use
-      final snapshot = await _databases.listDocuments(
+      final snapshot = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.adminNotificationsCollectionId,
+        tableId: AppwriteBackendConfig.adminNotificationsCollectionId,
         queries: [
           Query.orderDesc('created_at'),
           Query.limit(limit),
         ],
       );
 
-      return snapshot.documents.map((document) {
-        final data = Map<String, dynamic>.from(document.data);
-        data['id'] = document.$id;
+      return snapshot.rows.map((row) {
+        final data = Map<String, dynamic>.from(row.data);
+        data['id'] = row.$id;
         data['details'] = _decodeJsonMap(data['details']);
         data['metadata'] = _decodeJsonMap(data['metadata']);
         return data;

@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/models.dart' as models;
 import 'package:flutter/foundation.dart';
@@ -14,18 +12,18 @@ final appwriteProfileServiceProvider = Provider<AppwriteProfileService>((ref) {
 });
 
 class AppwriteProfileService {
-  late final Databases _databases;
+  late final TablesDB _tables;
 
   AppwriteProfileService() {
-    _databases = Databases(appwriteClient);
+    _tables = TablesDB(appwriteClient);
   }
 
-  Future<models.Document?> getUserProfile(String userId) async {
+  Future<models.Row?> getUserProfile(String userId) async {
     try {
-      return await _databases.getDocument(
+      return await _tables.getRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.usersCollectionId,
-        documentId: userId,
+        tableId: AppwriteBackendConfig.usersCollectionId,
+        rowId: userId,
       );
     } on AppwriteException catch (e) {
       if (e.code == 404) {
@@ -48,15 +46,15 @@ class AppwriteProfileService {
   }
 
   Future<List<UserProfile>> getAllUsers() async {
-    final response = await _databases.listDocuments(
+    final response = await _tables.listRows(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: AppwriteBackendConfig.usersCollectionId,
+      tableId: AppwriteBackendConfig.usersCollectionId,
       queries: [
         Query.limit(500),
       ],
     );
 
-    return response.documents.map((document) {
+    return response.rows.map((document) {
       return userProfileFromDocument(
         document,
         fallbackEmail: (document.data['email'] ?? '').toString(),
@@ -68,10 +66,10 @@ class AppwriteProfileService {
   }
 
   Future<void> updateUserRole(String userId, String newRole) async {
-    await _databases.updateDocument(
+    await _tables.updateRow(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: AppwriteBackendConfig.usersCollectionId,
-      documentId: userId,
+      tableId: AppwriteBackendConfig.usersCollectionId,
+      rowId: userId,
       data: {
         'role': newRole,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
@@ -80,10 +78,10 @@ class AppwriteProfileService {
   }
 
   Future<void> archiveUser(String userId) async {
-    await _databases.updateDocument(
+    await _tables.updateRow(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: AppwriteBackendConfig.usersCollectionId,
-      documentId: userId,
+      tableId: AppwriteBackendConfig.usersCollectionId,
+      rowId: userId,
       data: {
         'is_archived': true,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
@@ -92,25 +90,25 @@ class AppwriteProfileService {
   }
 
   Future<void> archiveLeadershipRole(LeadershipRecord record) async {
-    await _databases.createDocument(
+    await _tables.createRow(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: AppwriteBackendConfig.leadershipHistoryCollectionId,
-      documentId: record.id,
+      tableId: AppwriteBackendConfig.leadershipHistoryCollectionId,
+      rowId: record.id,
       data: record.toJson()..remove('id'),
     );
   }
 
   Future<List<LeadershipRecord>> getLeadershipHistory(String userId) async {
-    final response = await _databases.listDocuments(
+    final response = await _tables.listRows(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: AppwriteBackendConfig.leadershipHistoryCollectionId,
+      tableId: AppwriteBackendConfig.leadershipHistoryCollectionId,
       queries: [
         Query.equal('user_id', userId),
         Query.limit(100),
       ],
     );
 
-    final records = response.documents.map((document) {
+    final records = response.rows.map((document) {
       return LeadershipRecord.fromJson({
         'id': document.$id,
         ...document.data,
@@ -120,7 +118,7 @@ class AppwriteProfileService {
     return records;
   }
 
-  Future<models.Document> ensureUserProfile({
+  Future<models.Row> ensureUserProfile({
     required String userId,
     required String email,
     required String fullName,
@@ -139,17 +137,17 @@ class AppwriteProfileService {
     );
   }
 
-  Future<models.Document> createUserProfile({
+  Future<models.Row> createUserProfile({
     required String userId,
     required String email,
     required String fullName,
     String role = 'member',
     Map<String, dynamic>? profileData,
   }) {
-    return _databases.createDocument(
+    return _tables.createRow(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: AppwriteBackendConfig.usersCollectionId,
-      documentId: userId,
+      tableId: AppwriteBackendConfig.usersCollectionId,
+      rowId: userId,
       data: _buildProfileData(
         email: email,
         fullName: fullName,
@@ -160,7 +158,7 @@ class AppwriteProfileService {
     );
   }
 
-  Future<models.Document> updateUserProfile({
+  Future<models.Row> updateUserProfile({
     required String userId,
     String? email,
     String? fullName,
@@ -175,16 +173,16 @@ class AppwriteProfileService {
       includeDefaults: false,
     );
 
-    return _databases.updateDocument(
+    return _tables.updateRow(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: AppwriteBackendConfig.usersCollectionId,
-      documentId: userId,
+      tableId: AppwriteBackendConfig.usersCollectionId,
+      rowId: userId,
       data: data,
     );
   }
 
   UserProfile userProfileFromDocument(
-    models.Document document, {
+    models.Row document, {
     required String fallbackEmail,
     String? fallbackFullName,
     bool? isEmailVerified,

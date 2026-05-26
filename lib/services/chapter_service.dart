@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:convert';
 
 import 'package:appwrite/appwrite.dart';
@@ -17,14 +15,15 @@ class ChapterService {
   ChapterService._internal();
 
   final Uuid _uuid = const Uuid();
-  final Databases _databases = Databases(appwriteClient);
+  final TablesDB _tables = TablesDB(appwriteClient);
 
   static const _chaptersCollection = AppwriteBackendConfig.chaptersCollectionId;
   static const _membersCollection =
       AppwriteBackendConfig.chapterMembersCollectionId;
   static const _activitiesCollection =
       AppwriteBackendConfig.chapterActivitiesCollectionId;
-  static const _tasksCollection = AppwriteBackendConfig.chapterTasksCollectionId;
+  static const _tasksCollection =
+      AppwriteBackendConfig.chapterTasksCollectionId;
   static const _reportsCollection =
       AppwriteBackendConfig.chapterReportsCollectionId;
   static const _taskAssignmentsCollection =
@@ -40,13 +39,13 @@ class ChapterService {
       if (type != null) queries.add(Query.equal('type', type.name));
       if (isActive != null) queries.add(Query.equal('is_active', isActive));
 
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _chaptersCollection,
+        tableId: _chaptersCollection,
         queries: queries,
       );
 
-      var chapters = response.documents.map(_chapterFromDocument).toList();
+      var chapters = response.rows.map(_chapterFromDocument).toList();
       if (searchQuery != null && searchQuery.isNotEmpty) {
         final queryLower = searchQuery.toLowerCase();
         chapters = chapters
@@ -64,10 +63,10 @@ class ChapterService {
 
   Future<Chapter?> getChapterById(String chapterId) async {
     try {
-      final document = await _databases.getDocument(
+      final document = await _tables.getRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _chaptersCollection,
-        documentId: chapterId,
+        tableId: _chaptersCollection,
+        rowId: chapterId,
       );
       return _chapterFromDocument(document);
     } on AppwriteException catch (e) {
@@ -106,10 +105,10 @@ class ChapterService {
         updatedAt: now,
       );
 
-      final document = await _databases.createDocument(
+      final document = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _chaptersCollection,
-        documentId: id,
+        tableId: _chaptersCollection,
+        rowId: id,
         data: _chapterData(newChapter),
       );
       return _chapterFromDocument(document);
@@ -120,11 +119,12 @@ class ChapterService {
 
   Future<Chapter> updateChapter(Chapter chapter) async {
     try {
-      final updatedChapter = chapter.copyWith(updatedAt: DateTime.now().toUtc());
-      final document = await _databases.updateDocument(
+      final updatedChapter =
+          chapter.copyWith(updatedAt: DateTime.now().toUtc());
+      final document = await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _chaptersCollection,
-        documentId: updatedChapter.id,
+        tableId: _chaptersCollection,
+        rowId: updatedChapter.id,
         data: _chapterData(updatedChapter),
       );
       return _chapterFromDocument(document);
@@ -135,10 +135,10 @@ class ChapterService {
 
   Future<void> updateChapterFields(String id, Map<String, dynamic> data) async {
     try {
-      await _databases.updateDocument(
+      await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _chaptersCollection,
-        documentId: id,
+        tableId: _chaptersCollection,
+        rowId: id,
         data: _normalizeChapterUpdates({
           ...data,
           'updated_at': DateTime.now().toUtc().toIso8601String(),
@@ -152,10 +152,10 @@ class ChapterService {
 
   Future<void> deleteChapter(String chapterId) async {
     try {
-      await _databases.updateDocument(
+      await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _chaptersCollection,
-        documentId: chapterId,
+        tableId: _chaptersCollection,
+        rowId: chapterId,
         data: {
           'is_active': false,
           'updated_at': _iso(DateTime.now()),
@@ -176,31 +176,32 @@ class ChapterService {
       ];
       if (isActive != null) queries.add(Query.equal('is_active', isActive));
 
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _membersCollection,
+        tableId: _membersCollection,
         queries: queries,
       );
-      return response.documents.map(_memberFromDocument).toList();
+      return response.rows.map(_memberFromDocument).toList();
     } catch (e) {
-      throw DatabaseException('Failed to get chapter members', originalError: e);
+      throw DatabaseException('Failed to get chapter members',
+          originalError: e);
     }
   }
 
   Future<ChapterMember?> getChapterMember(
       String chapterId, String userId) async {
     try {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _membersCollection,
+        tableId: _membersCollection,
         queries: [
           Query.equal('chapter_id', chapterId),
           Query.equal('user_id', userId),
           Query.limit(1),
         ],
       );
-      if (response.documents.isEmpty) return null;
-      return _memberFromDocument(response.documents.first);
+      if (response.rows.isEmpty) return null;
+      return _memberFromDocument(response.rows.first);
     } catch (e) {
       throw DatabaseException('Failed to get chapter member', originalError: e);
     }
@@ -208,9 +209,9 @@ class ChapterService {
 
   Future<List<ChapterMember>> getUserMemberships(String userId) async {
     try {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _membersCollection,
+        tableId: _membersCollection,
         queries: [
           Query.equal('user_id', userId),
           Query.equal('is_active', true),
@@ -218,7 +219,7 @@ class ChapterService {
           Query.limit(500),
         ],
       );
-      return response.documents.map(_memberFromDocument).toList();
+      return response.rows.map(_memberFromDocument).toList();
     } catch (e) {
       throw DatabaseException('Failed to get user memberships',
           originalError: e);
@@ -240,10 +241,10 @@ class ChapterService {
     );
 
     try {
-      final document = await _databases.createDocument(
+      final document = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _membersCollection,
-        documentId: member.id,
+        tableId: _membersCollection,
+        rowId: member.id,
         data: _memberData(member),
       );
       return _memberFromDocument(document);
@@ -260,10 +261,10 @@ class ChapterService {
     }
 
     try {
-      final document = await _databases.updateDocument(
+      final document = await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _membersCollection,
-        documentId: member.id,
+        tableId: _membersCollection,
+        rowId: member.id,
         data: {
           'role': newRole.name,
           'permissions': jsonEncode(_rolePermissions(newRole)),
@@ -281,10 +282,10 @@ class ChapterService {
       final member = await getChapterMember(chapterId, userId);
       if (member == null) return;
 
-      await _databases.updateDocument(
+      await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _membersCollection,
-        documentId: member.id,
+        tableId: _membersCollection,
+        rowId: member.id,
         data: {
           'is_active': false,
           'left_at': _iso(DateTime.now()),
@@ -313,12 +314,12 @@ class ChapterService {
       if (type != null) queries.add(Query.equal('type', type.name));
       if (status != null) queries.add(Query.equal('status', status.name));
 
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _activitiesCollection,
+        tableId: _activitiesCollection,
         queries: queries,
       );
-      return response.documents.map(_activityFromDocument).toList();
+      return response.rows.map(_activityFromDocument).toList();
     } catch (e) {
       throw DatabaseException('Failed to get chapter activities',
           originalError: e);
@@ -327,16 +328,16 @@ class ChapterService {
 
   Future<List<ChapterActivity>> getUserActivities(String userId) async {
     try {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _activitiesCollection,
+        tableId: _activitiesCollection,
         queries: [
           Query.containsAny('assigned_member_ids', [userId]),
           Query.orderDesc('scheduled_at'),
           Query.limit(500),
         ],
       );
-      return response.documents.map(_activityFromDocument).toList();
+      return response.rows.map(_activityFromDocument).toList();
     } catch (e) {
       throw DatabaseException('Failed to get user activities',
           originalError: e);
@@ -351,10 +352,10 @@ class ChapterService {
         createdAt: now,
         updatedAt: now,
       );
-      final document = await _databases.createDocument(
+      final document = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _activitiesCollection,
-        documentId: newActivity.id,
+        tableId: _activitiesCollection,
+        rowId: newActivity.id,
         data: _activityData(newActivity),
       );
       return _activityFromDocument(document);
@@ -367,10 +368,10 @@ class ChapterService {
     try {
       final updatedActivity =
           activity.copyWith(updatedAt: DateTime.now().toUtc());
-      final document = await _databases.updateDocument(
+      final document = await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _activitiesCollection,
-        documentId: updatedActivity.id,
+        tableId: _activitiesCollection,
+        rowId: updatedActivity.id,
         data: _activityData(updatedActivity),
       );
       return _activityFromDocument(document);
@@ -382,10 +383,10 @@ class ChapterService {
   Future<ChapterActivity> updateActivityStatus(
       String activityId, ActivityStatus status) async {
     try {
-      final document = await _databases.updateDocument(
+      final document = await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _activitiesCollection,
-        documentId: activityId,
+        tableId: _activitiesCollection,
+        rowId: activityId,
         data: {
           'status': status.name,
           'updated_at': _iso(DateTime.now()),
@@ -410,16 +411,18 @@ class ChapterService {
         Query.orderAsc('due_date'),
         Query.limit(500),
       ];
-      if (assignedTo != null) queries.add(Query.equal('assigned_to', assignedTo));
+      if (assignedTo != null) {
+        queries.add(Query.equal('assigned_to', assignedTo));
+      }
       if (status != null) queries.add(Query.equal('status', status.name));
       if (priority != null) queries.add(Query.equal('priority', priority));
 
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _tasksCollection,
+        tableId: _tasksCollection,
         queries: queries,
       );
-      return response.documents.map(_taskFromDocument).toList();
+      return response.rows.map(_taskFromDocument).toList();
     } catch (e) {
       throw DatabaseException('Failed to get chapter tasks', originalError: e);
     }
@@ -427,16 +430,16 @@ class ChapterService {
 
   Future<List<ChapterTask>> getUserTasks(String userId) async {
     try {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _tasksCollection,
+        tableId: _tasksCollection,
         queries: [
           Query.equal('assigned_to', userId),
           Query.orderAsc('due_date'),
           Query.limit(500),
         ],
       );
-      return response.documents
+      return response.rows
           .map(_taskFromDocument)
           .where((task) => task.status != ActivityStatus.completed)
           .toList();
@@ -453,10 +456,10 @@ class ChapterService {
         createdAt: now,
         updatedAt: now,
       );
-      final document = await _databases.createDocument(
+      final document = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _tasksCollection,
-        documentId: newTask.id,
+        tableId: _tasksCollection,
+        rowId: newTask.id,
         data: _taskData(newTask),
       );
       return _taskFromDocument(document);
@@ -468,10 +471,10 @@ class ChapterService {
   Future<ChapterTask> updateTask(ChapterTask task) async {
     try {
       final updatedTask = task.copyWith(updatedAt: DateTime.now().toUtc());
-      final document = await _databases.updateDocument(
+      final document = await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _tasksCollection,
-        documentId: updatedTask.id,
+        tableId: _tasksCollection,
+        rowId: updatedTask.id,
         data: _taskData(updatedTask),
       );
       return _taskFromDocument(document);
@@ -483,10 +486,10 @@ class ChapterService {
   Future<ChapterTask> completeTask(String taskId) async {
     try {
       final now = DateTime.now().toUtc();
-      final document = await _databases.updateDocument(
+      final document = await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _tasksCollection,
-        documentId: taskId,
+        tableId: _tasksCollection,
+        rowId: taskId,
         data: {
           'status': ActivityStatus.completed.name,
           'completed_at': _iso(now),
@@ -514,12 +517,12 @@ class ChapterService {
       queries.add(Query.equal('chapter_id', chapterId));
       if (status != null) queries.add(Query.equal('status', status.name));
 
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _reportsCollection,
+        tableId: _reportsCollection,
         queries: queries,
       );
-      return response.documents.map(_reportFromDocument).toList();
+      return response.rows.map(_reportFromDocument).toList();
     } catch (e) {
       throw DatabaseException('Failed to get chapter reports',
           originalError: e);
@@ -528,16 +531,16 @@ class ChapterService {
 
   Future<List<ChapterReport>> getReportsForReview(String reviewerId) async {
     try {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _reportsCollection,
+        tableId: _reportsCollection,
         queries: [
           Query.equal('status', ReportStatus.submitted.name),
           Query.orderAsc('created_at'),
           Query.limit(500),
         ],
       );
-      return response.documents.map(_reportFromDocument).toList();
+      return response.rows.map(_reportFromDocument).toList();
     } catch (e) {
       throw DatabaseException('Failed to get reports for review',
           originalError: e);
@@ -552,10 +555,10 @@ class ChapterService {
         createdAt: now,
         updatedAt: now,
       );
-      final document = await _databases.createDocument(
+      final document = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _reportsCollection,
-        documentId: newReport.id,
+        tableId: _reportsCollection,
+        rowId: newReport.id,
         data: _reportData(newReport),
       );
       return _reportFromDocument(document);
@@ -567,10 +570,10 @@ class ChapterService {
   Future<ChapterReport> updateReport(ChapterReport report) async {
     try {
       final updatedReport = report.copyWith(updatedAt: DateTime.now().toUtc());
-      final document = await _databases.updateDocument(
+      final document = await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _reportsCollection,
-        documentId: updatedReport.id,
+        tableId: _reportsCollection,
+        rowId: updatedReport.id,
         data: _reportData(updatedReport),
       );
       return _reportFromDocument(document);
@@ -582,10 +585,10 @@ class ChapterService {
   Future<ChapterReport> submitReport(String reportId) async {
     try {
       final now = DateTime.now().toUtc();
-      final document = await _databases.updateDocument(
+      final document = await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _reportsCollection,
-        documentId: reportId,
+        tableId: _reportsCollection,
+        rowId: reportId,
         data: {
           'status': ReportStatus.submitted.name,
           'submitted_at': _iso(now),
@@ -606,10 +609,10 @@ class ChapterService {
   ) async {
     try {
       final now = DateTime.now().toUtc();
-      final document = await _databases.updateDocument(
+      final document = await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _reportsCollection,
-        documentId: reportId,
+        tableId: _reportsCollection,
+        rowId: reportId,
         data: _stripNulls({
           'status': status.name,
           'reviewed_by': reviewerId,
@@ -981,7 +984,8 @@ class ChapterService {
 
   Map<String, dynamic> _rolePermissions(MemberRole role) {
     return {
-      'permissions': List<String>.from(ChapterConstants.rolePermissions[role.name] ?? const []),
+      'permissions': List<String>.from(
+          ChapterConstants.rolePermissions[role.name] ?? const []),
     };
   }
 
@@ -1083,10 +1087,10 @@ extension ChapterServiceTaskAssignment on ChapterService {
         updatedAt: now,
       );
 
-      final document = await _databases.createDocument(
+      final document = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: ChapterService._taskAssignmentsCollection,
-        documentId: assignment.id,
+        tableId: ChapterService._taskAssignmentsCollection,
+        rowId: assignment.id,
         data: _taskAssignmentData(assignment),
       );
       return _taskAssignmentFromDocument(document);
@@ -1099,16 +1103,16 @@ extension ChapterServiceTaskAssignment on ChapterService {
   Future<List<TaskAssignment>> getChapterTaskAssignments(
       String chapterId) async {
     try {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: ChapterService._taskAssignmentsCollection,
+        tableId: ChapterService._taskAssignmentsCollection,
         queries: [
           Query.equal('chapter_id', chapterId),
           Query.orderAsc('due_date'),
           Query.limit(500),
         ],
       );
-      return response.documents.map(_taskAssignmentFromDocument).toList();
+      return response.rows.map(_taskAssignmentFromDocument).toList();
     } catch (e) {
       return [];
     }
@@ -1116,16 +1120,16 @@ extension ChapterServiceTaskAssignment on ChapterService {
 
   Future<List<TaskAssignment>> getUserTaskAssignments(String userId) async {
     try {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: ChapterService._taskAssignmentsCollection,
+        tableId: ChapterService._taskAssignmentsCollection,
         queries: [
           Query.equal('assigned_to_id', userId),
           Query.orderAsc('due_date'),
           Query.limit(500),
         ],
       );
-      return response.documents.map(_taskAssignmentFromDocument).toList();
+      return response.rows.map(_taskAssignmentFromDocument).toList();
     } catch (e) {
       return [];
     }

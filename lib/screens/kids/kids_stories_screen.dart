@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:appwrite/appwrite.dart';
@@ -121,14 +119,14 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
 
   // Appwrite-backed stream wrapper for StreamBuilder compatibility.
   Stream<List<BibleStory>> _getStoriesStream() {
-    return Stream.fromFuture(Databases(appwriteClient).listDocuments(
+    return Stream.fromFuture(TablesDB(appwriteClient).listRows(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: AppwriteBackendConfig.kidsStoriesCollectionId,
+      tableId: AppwriteBackendConfig.kidsStoriesCollectionId,
       queries: [Query.equal('is_active', true), Query.limit(100)],
     ).then((snapshot) {
-      return snapshot.documents
-          .map((doc) {
-            final data = _mapStoryDocument(doc);
+      return snapshot.rows
+          .map((row) {
+            final data = _mapStoryDocument(row);
 
             try {
               return BibleStory.fromJson(data);
@@ -141,14 +139,14 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
     }));
   }
 
-  Map<String, dynamic> _mapStoryDocument(appwrite_models.Document doc) {
-    final data = Map<String, dynamic>.from(doc.data);
+  Map<String, dynamic> _mapStoryDocument(appwrite_models.Row row) {
+    final data = Map<String, dynamic>.from(row.data);
     final categories = _stringList(data['categories']);
     final category = (data['category'] as String?) ??
         (categories.isNotEmpty ? categories.first : 'oldTestament');
 
     return {
-      'id': doc.$id,
+      'id': row.$id,
       'title': data['title'] ?? 'Untitled Story',
       'subtitle': data['subtitle'] ?? '',
       'ageGroup': _storyAgeGroup(data['age_group']),

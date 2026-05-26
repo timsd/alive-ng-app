@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:convert';
 
 import 'package:appwrite/appwrite.dart';
@@ -18,7 +16,7 @@ class DiscipleshipService {
 
   final Uuid _uuid = const Uuid();
   final Logger _logger = Logger('DiscipleshipService');
-  final Databases _databases = Databases(appwriteClient);
+  final TablesDB _tables = TablesDB(appwriteClient);
 
   static const _contactsCollection =
       AppwriteBackendConfig.discipleshipContactsCollectionId;
@@ -51,13 +49,13 @@ class DiscipleshipService {
         queries.add(Query.equal('is_active', isActive));
       }
 
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _contactsCollection,
+        tableId: _contactsCollection,
         queries: queries,
       );
 
-      var contacts = response.documents.map(_contactFromDocument).toList();
+      var contacts = response.rows.map(_contactFromDocument).toList();
       if (searchQuery != null && searchQuery.trim().isNotEmpty) {
         final q = searchQuery.trim().toLowerCase();
         contacts = contacts.where((contact) {
@@ -75,10 +73,10 @@ class DiscipleshipService {
 
   Future<DiscipleshipContact> getContactById(String contactId) async {
     try {
-      final document = await _databases.getDocument(
+      final document = await _tables.getRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _contactsCollection,
-        documentId: contactId,
+        tableId: _contactsCollection,
+        rowId: contactId,
       );
       return _contactFromDocument(document);
     } on AppwriteException catch (e) {
@@ -101,10 +99,10 @@ class DiscipleshipService {
         updatedAt: now,
       );
 
-      final document = await _databases.createDocument(
+      final document = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _contactsCollection,
-        documentId: newContact.id,
+        tableId: _contactsCollection,
+        rowId: newContact.id,
         data: _contactData(newContact),
       );
       return _contactFromDocument(document);
@@ -116,11 +114,12 @@ class DiscipleshipService {
 
   Future<DiscipleshipContact> updateContact(DiscipleshipContact contact) async {
     try {
-      final updatedContact = contact.copyWith(updatedAt: DateTime.now().toUtc());
-      final document = await _databases.updateDocument(
+      final updatedContact =
+          contact.copyWith(updatedAt: DateTime.now().toUtc());
+      final document = await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _contactsCollection,
-        documentId: updatedContact.id,
+        tableId: _contactsCollection,
+        rowId: updatedContact.id,
         data: _contactData(updatedContact),
       );
       return _contactFromDocument(document);
@@ -132,10 +131,10 @@ class DiscipleshipService {
 
   Future<void> deleteContact(String contactId) async {
     try {
-      await _databases.deleteDocument(
+      await _tables.deleteRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _contactsCollection,
-        documentId: contactId,
+        tableId: _contactsCollection,
+        rowId: contactId,
       );
     } catch (e) {
       _logger.error('Failed to delete contact', e);
@@ -191,12 +190,12 @@ class DiscipleshipService {
         queries.add(Query.equal('disciple_maker_id', discipleMakerId));
       }
 
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _interactionsCollection,
+        tableId: _interactionsCollection,
         queries: queries,
       );
-      return response.documents.map(_interactionFromDocument).toList();
+      return response.rows.map(_interactionFromDocument).toList();
     } catch (e) {
       _logger.error('Failed to fetch interactions', e);
       throw DatabaseException('Failed to fetch interactions', originalError: e);
@@ -221,17 +220,17 @@ class DiscipleshipService {
         createdAt: DateTime.now().toUtc(),
       );
 
-      final document = await _databases.createDocument(
+      final document = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _interactionsCollection,
-        documentId: newInteraction.id,
+        tableId: _interactionsCollection,
+        rowId: newInteraction.id,
         data: _interactionData(newInteraction),
       );
 
-      await _databases.updateDocument(
+      await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _contactsCollection,
-        documentId: interaction.contactId,
+        tableId: _contactsCollection,
+        rowId: interaction.contactId,
         data: {
           'last_contact': _iso(interaction.date),
           'updated_at': _iso(DateTime.now()),
@@ -264,12 +263,12 @@ class DiscipleshipService {
       }
       if (type != null) queries.add(Query.equal('type', type.name));
 
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _studySessionsCollection,
+        tableId: _studySessionsCollection,
         queries: queries,
       );
-      return response.documents.map(_studySessionFromDocument).toList();
+      return response.rows.map(_studySessionFromDocument).toList();
     } catch (e) {
       _logger.error('Failed to fetch study sessions', e);
       throw DatabaseException('Failed to fetch study sessions',
@@ -296,10 +295,10 @@ class DiscipleshipService {
         createdAt: DateTime.now().toUtc(),
       );
 
-      final document = await _databases.createDocument(
+      final document = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _studySessionsCollection,
-        documentId: newSession.id,
+        tableId: _studySessionsCollection,
+        rowId: newSession.id,
         data: _studySessionData(newSession),
       );
       return _studySessionFromDocument(document);
@@ -312,10 +311,10 @@ class DiscipleshipService {
 
   Future<StudySession> updateStudySession(StudySession session) async {
     try {
-      final document = await _databases.updateDocument(
+      final document = await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _studySessionsCollection,
-        documentId: session.id,
+        tableId: _studySessionsCollection,
+        rowId: session.id,
         data: _studySessionData(session),
       );
       return _studySessionFromDocument(document);
@@ -339,12 +338,12 @@ class DiscipleshipService {
       }
       if (status != null) queries.add(Query.equal('status', status.name));
 
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _prayerRequestsCollection,
+        tableId: _prayerRequestsCollection,
         queries: queries,
       );
-      return response.documents.map(_prayerRequestFromDocument).toList();
+      return response.rows.map(_prayerRequestFromDocument).toList();
     } catch (e) {
       _logger.error('Failed to fetch prayer requests', e);
       throw DatabaseException('Failed to fetch prayer requests',
@@ -370,10 +369,10 @@ class DiscipleshipService {
         updatedAt: now,
       );
 
-      final document = await _databases.createDocument(
+      final document = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _prayerRequestsCollection,
-        documentId: newRequest.id,
+        tableId: _prayerRequestsCollection,
+        rowId: newRequest.id,
         data: _prayerRequestData(newRequest),
       );
       return _prayerRequestFromDocument(document);
@@ -401,10 +400,10 @@ class DiscipleshipService {
         updatedAt: DateTime.now().toUtc(),
       );
 
-      final document = await _databases.updateDocument(
+      final document = await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _prayerRequestsCollection,
-        documentId: updatedRequest.id,
+        tableId: _prayerRequestsCollection,
+        rowId: updatedRequest.id,
         data: _prayerRequestData(updatedRequest),
       );
       return _prayerRequestFromDocument(document);
@@ -418,15 +417,15 @@ class DiscipleshipService {
   Future<List<ProgressMilestone>> getProgressMilestones(
       String contactId) async {
     try {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _milestonesCollection,
+        tableId: _milestonesCollection,
         queries: [
           Query.equal('contact_id', contactId),
           Query.orderDesc('date'),
         ],
       );
-      return response.documents.map(_milestoneFromDocument).toList();
+      return response.rows.map(_milestoneFromDocument).toList();
     } catch (e) {
       _logger.error('Failed to fetch progress milestones', e);
       throw DatabaseException('Failed to fetch progress milestones',
@@ -438,10 +437,10 @@ class DiscipleshipService {
       ProgressMilestone milestone) async {
     try {
       final id = milestone.id.isNotEmpty ? milestone.id : _uuid.v4();
-      final document = await _databases.createDocument(
+      final document = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _milestonesCollection,
-        documentId: id,
+        tableId: _milestonesCollection,
+        rowId: id,
         data: _milestoneData(milestone),
       );
       return _milestoneFromDocument(document);
@@ -473,12 +472,12 @@ class DiscipleshipService {
         queries.add(Query.equal('supervisor_id', supervisorId));
       }
 
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _reportsCollection,
+        tableId: _reportsCollection,
         queries: queries,
       );
-      return response.documents.map(_reportFromDocument).toList();
+      return response.rows.map(_reportFromDocument).toList();
     } catch (e) {
       _logger.error('Failed to fetch reports', e);
       throw DatabaseException('Failed to fetch reports', originalError: e);
@@ -539,10 +538,10 @@ class DiscipleshipService {
         createdAt: DateTime.now().toUtc(),
       );
 
-      final document = await _databases.createDocument(
+      final document = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _reportsCollection,
-        documentId: report.id,
+        tableId: _reportsCollection,
+        rowId: report.id,
         data: _reportData(report),
       );
       return _reportFromDocument(document);
@@ -554,10 +553,10 @@ class DiscipleshipService {
 
   Future<DiscipleshipReport> submitReport(String reportId) async {
     try {
-      final document = await _databases.updateDocument(
+      final document = await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _reportsCollection,
-        documentId: reportId,
+        tableId: _reportsCollection,
+        rowId: reportId,
         data: {'submitted_at': _iso(DateTime.now())},
       );
       return _reportFromDocument(document);
@@ -634,10 +633,10 @@ class DiscipleshipService {
 
   List<String> getStudyTopics() => DiscipleshipConstants.studyTopics;
 
-  List<String> getPrayerCategories() =>
-      DiscipleshipConstants.prayerCategories;
+  List<String> getPrayerCategories() => DiscipleshipConstants.prayerCategories;
 
-  String getBibleVerse(String key) => DiscipleshipConstants.bibleVerses[key] ?? '';
+  String getBibleVerse(String key) =>
+      DiscipleshipConstants.bibleVerses[key] ?? '';
 
   DiscipleshipContact _contactFromDocument(dynamic document) {
     final data = _documentData(document);
@@ -791,7 +790,8 @@ class DiscipleshipService {
   }) {
     final queries = <String>[Query.orderDesc(orderKey)];
     if (startDate != null) {
-      queries.add(Query.greaterThanEqual(startKey ?? orderKey, _iso(startDate)));
+      queries
+          .add(Query.greaterThanEqual(startKey ?? orderKey, _iso(startDate)));
     }
     if (endDate != null) {
       queries.add(Query.lessThanEqual(endKey ?? orderKey, _iso(endDate)));

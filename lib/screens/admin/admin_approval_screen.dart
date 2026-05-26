@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
 import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/models.dart' as models;
@@ -20,7 +18,7 @@ class AdminApprovalScreen extends StatefulWidget {
 
 class _AdminApprovalScreenState extends State<AdminApprovalScreen>
     with SingleTickerProviderStateMixin {
-  late final Databases _databases;
+  late final TablesDB _tables;
   final AppwriteProfileService _profileService = AppwriteProfileService();
   final AuthService _authService = AuthService.instance;
   late TabController _tabController;
@@ -35,7 +33,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
   @override
   void initState() {
     super.initState();
-    _databases = Databases(appwriteClient);
+    _tables = TablesDB(appwriteClient);
     _tabController = TabController(length: 3, vsync: this);
     _currentUserId = _authService.currentUser?.uid;
     _loadUsers();
@@ -74,30 +72,30 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
     }
   }
 
-  Future<List<models.Document>> _listUsers() async {
+  Future<List<models.Row>> _listUsers() async {
     try {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.usersCollectionId,
+        tableId: AppwriteBackendConfig.usersCollectionId,
         queries: [
           Query.orderDesc('created_at'),
           Query.limit(200),
         ],
       );
-      return response.documents;
+      return response.rows;
     } on AppwriteException {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.usersCollectionId,
+        tableId: AppwriteBackendConfig.usersCollectionId,
         queries: [
           Query.limit(200),
         ],
       );
-      return response.documents;
+      return response.rows;
     }
   }
 
-  UserProfile _profileFromDocument(models.Document document) {
+  UserProfile _profileFromDocument(models.Row document) {
     return _profileService.userProfileFromDocument(
       document,
       fallbackEmail: document.data['email']?.toString() ?? '',
@@ -109,10 +107,10 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
   Future<void> _approveUser(UserProfile user) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await _databases.updateDocument(
+      await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.usersCollectionId,
-        documentId: user.id,
+        tableId: AppwriteBackendConfig.usersCollectionId,
+        rowId: user.id,
         data: {
           'is_approved': true,
           'approval_status': 'approved',
@@ -147,10 +145,10 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
   Future<void> _rejectUser(UserProfile user, String reason) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await _databases.updateDocument(
+      await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.usersCollectionId,
-        documentId: user.id,
+        tableId: AppwriteBackendConfig.usersCollectionId,
+        rowId: user.id,
         data: {
           'is_approved': false,
           'approval_status': 'rejected',
