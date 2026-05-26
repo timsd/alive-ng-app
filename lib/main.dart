@@ -28,7 +28,6 @@ import 'services/crash_reporting_service.dart';
 // Global Appwrite service instances for provider access.
 final appwriteClient = Client();
 late final Account appwriteAccount;
-late final Databases appwriteDatabases;
 late final Storage appwriteStorage;
 late final Realtime appwriteRealtime;
 
@@ -50,7 +49,6 @@ void main() {
           .setSelfSigned(status: !kReleaseMode);
 
       appwriteAccount = Account(appwriteClient);
-      appwriteDatabases = Databases(appwriteClient);
       appwriteStorage = Storage(appwriteClient);
       appwriteRealtime = Realtime(appwriteClient);
 

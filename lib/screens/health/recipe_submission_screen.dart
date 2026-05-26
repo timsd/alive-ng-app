@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
@@ -25,7 +23,7 @@ class RecipeSubmissionScreen extends ConsumerStatefulWidget {
 class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormBuilderState>();
-  late final Databases _databases = Databases(appwriteClient);
+  late final TablesDB _tables = TablesDB(appwriteClient);
   late TabController _tabController;
   bool _isSubmitting = false;
 
@@ -108,7 +106,8 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
       ),
       body: Center(
         child: Padding(
-          padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(context: context, mobile: 16, tablet: 20, desktop: 24)),
+          padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(
+              context: context, mobile: 16, tablet: 20, desktop: 24)),
           child: const GuestAccessIndicator(
             featureName: 'Recipe Sharing',
             description:
@@ -174,7 +173,9 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
                 FormBuilderValidators.maxLength(100),
               ]),
             ),
-            SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveValue(
+                    context: context, mobile: 12, tablet: 16, desktop: 20)),
 
             // Category
             FormBuilderDropdown<String>(
@@ -193,7 +194,9 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
                       ))
                   .toList(),
             ),
-            SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveValue(
+                    context: context, mobile: 12, tablet: 16, desktop: 20)),
 
             // Difficulty Level
             FormBuilderDropdown<String>(
@@ -212,7 +215,9 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
                       ))
                   .toList(),
             ),
-            SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveValue(
+                    context: context, mobile: 12, tablet: 16, desktop: 20)),
 
             // Preparation Time
             FormBuilderDropdown<String>(
@@ -231,7 +236,9 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
                       ))
                   .toList(),
             ),
-            SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveValue(
+                    context: context, mobile: 12, tablet: 16, desktop: 20)),
 
             // Servings
             FormBuilderTextField(
@@ -251,7 +258,9 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
                 FormBuilderValidators.max(50),
               ]),
             ),
-            SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveValue(
+                    context: context, mobile: 12, tablet: 16, desktop: 20)),
 
             // Ingredients
             FormBuilderTextField(
@@ -269,7 +278,9 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
                 FormBuilderValidators.minLength(10),
               ]),
             ),
-            SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveValue(
+                    context: context, mobile: 12, tablet: 16, desktop: 20)),
 
             // Instructions
             FormBuilderTextField(
@@ -287,7 +298,9 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
                 FormBuilderValidators.minLength(20),
               ]),
             ),
-            SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveValue(
+                    context: context, mobile: 12, tablet: 16, desktop: 20)),
 
             // Nutritional Benefits
             FormBuilderTextField(
@@ -301,7 +314,9 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
               ),
               maxLines: 4,
             ),
-            SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveValue(
+                    context: context, mobile: 12, tablet: 16, desktop: 20)),
 
             // Cultural Significance
             FormBuilderTextField(
@@ -315,7 +330,9 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
               ),
               maxLines: 3,
             ),
-            SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 20, tablet: 24, desktop: 28)),
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveValue(
+                    context: context, mobile: 20, tablet: 24, desktop: 28)),
 
             // Submit Button
             SizedBox(
@@ -360,7 +377,9 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
                 FormBuilderValidators.maxLength(100),
               ]),
             ),
-            SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveValue(
+                    context: context, mobile: 12, tablet: 16, desktop: 20)),
 
             // Category
             FormBuilderDropdown<String>(
@@ -379,7 +398,9 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
                       ))
                   .toList(),
             ),
-            SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveValue(
+                    context: context, mobile: 12, tablet: 16, desktop: 20)),
 
             // Difficulty Level
             FormBuilderDropdown<String>(
@@ -398,7 +419,9 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
                       ))
                   .toList(),
             ),
-            SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveValue(
+                    context: context, mobile: 12, tablet: 16, desktop: 20)),
 
             // Preparation Time
             FormBuilderDropdown<String>(
@@ -417,7 +440,9 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
                       ))
                   .toList(),
             ),
-            SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveValue(
+                    context: context, mobile: 12, tablet: 16, desktop: 20)),
 
             // Ingredients/Materials
             FormBuilderTextField(
@@ -435,7 +460,9 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
                 FormBuilderValidators.minLength(10),
               ]),
             ),
-            SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveValue(
+                    context: context, mobile: 12, tablet: 16, desktop: 20)),
 
             // Preparation Instructions
             FormBuilderTextField(
@@ -453,7 +480,9 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
                 FormBuilderValidators.minLength(20),
               ]),
             ),
-            SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveValue(
+                    context: context, mobile: 12, tablet: 16, desktop: 20)),
 
             // Usage Instructions
             FormBuilderTextField(
@@ -468,7 +497,9 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
               maxLines: 4,
               validator: FormBuilderValidators.required(),
             ),
-            SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveValue(
+                    context: context, mobile: 12, tablet: 16, desktop: 20)),
 
             // Health Benefits
             FormBuilderTextField(
@@ -483,7 +514,9 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
               maxLines: 4,
               validator: FormBuilderValidators.required(),
             ),
-            SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveValue(
+                    context: context, mobile: 12, tablet: 16, desktop: 20)),
 
             // Precautions
             FormBuilderTextField(
@@ -497,7 +530,9 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
               ),
               maxLines: 3,
             ),
-            SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveValue(
+                    context: context, mobile: 12, tablet: 16, desktop: 20)),
 
             // Traditional Source
             FormBuilderTextField(
@@ -511,7 +546,9 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
               ),
               maxLines: 2,
             ),
-            SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 18, tablet: 24, desktop: 30)),
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveValue(
+                    context: context, mobile: 18, tablet: 24, desktop: 30)),
 
             // Submit Button
             SizedBox(
@@ -571,15 +608,15 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
         'created_at': DateTime.now().toIso8601String(),
       };
 
-      await _databases.createDocument(
+      await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.userSubmittedRecipesCollectionId,
-        documentId: ID.unique(),
+        tableId: AppwriteBackendConfig.userSubmittedRecipesCollectionId,
+        rowId: ID.unique(),
         data: recipeData,
       );
 
       if (!mounted) return;
-      
+
       messenger.showSnackBar(
         SnackBar(
           content: Text(successMessage),
@@ -591,7 +628,7 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
       _formKey.currentState!.reset();
     } catch (e) {
       if (!mounted) return;
-      
+
       messenger.showSnackBar(
         SnackBar(
           content: Text('$errorMessage: $e'),
@@ -648,16 +685,15 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
         'created_at': DateTime.now().toIso8601String(),
       };
 
-      await _databases.createDocument(
+      await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId:
-            AppwriteBackendConfig.userSubmittedHealthTipsCollectionId,
-        documentId: ID.unique(),
+        tableId: AppwriteBackendConfig.userSubmittedHealthTipsCollectionId,
+        rowId: ID.unique(),
         data: recipeData,
       );
 
       if (!mounted) return;
-      
+
       messenger.showSnackBar(
         SnackBar(
           content: Text(successMessage),
@@ -669,7 +705,7 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
       _formKey.currentState!.reset();
     } catch (e) {
       if (!mounted) return;
-      
+
       messenger.showSnackBar(
         SnackBar(
           content: Text('$errorMessage: $e'),
@@ -685,7 +721,3 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
     }
   }
 }
-
-
-
-

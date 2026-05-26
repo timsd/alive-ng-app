@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:appwrite/appwrite.dart' as aw;
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';
@@ -8,7 +6,7 @@ import '../utils/logger.dart';
 
 /// Service for managing kids' content including memory verses, prayers, and activities
 class KidsContentService {
-  static final aw.Databases _databases = aw.Databases(appwriteClient);
+  static final aw.TablesDB _tables = aw.TablesDB(appwriteClient);
   static final Logger _logger = Logger('KidsContentService');
 
   // Collections
@@ -92,12 +90,12 @@ class KidsContentService {
     String? qualifierKey,
     String? qualifierValue,
   }) async {
-    final snapshot = await _databases.listDocuments(
+    final snapshot = await _tables.listRows(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: _collectionId(collection),
+      tableId: _collectionId(collection),
       queries: [aw.Query.limit(200)],
     );
-    return snapshot.documents
+    return snapshot.rows
         .map(_documentData)
         .where((item) => _matchesFilters(
               item,
@@ -138,10 +136,10 @@ class KidsContentService {
       'updated_at': _now(),
       'is_active': data['is_active'] ?? data['isActive'] ?? true,
     });
-    await _databases.createDocument(
+    await _tables.createRow(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: _collectionId(collection),
-      documentId: id,
+      tableId: _collectionId(collection),
+      rowId: id,
       data: payload,
     );
     return id;
@@ -149,20 +147,20 @@ class KidsContentService {
 
   static Future<void> _updateAppwriteDocument(
       String collection, String id, Map<String, dynamic> updates) async {
-    await _databases.updateDocument(
+    await _tables.updateRow(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: _collectionId(collection),
-      documentId: id,
+      tableId: _collectionId(collection),
+      rowId: id,
       data: _writeData({...updates, 'updated_at': _now()}),
     );
   }
 
   static Future<void> _deleteAppwriteDocument(
       String collection, String id) async {
-    await _databases.deleteDocument(
+    await _tables.deleteRow(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: _collectionId(collection),
-      documentId: id,
+      tableId: _collectionId(collection),
+      rowId: id,
     );
   }
 
@@ -177,18 +175,18 @@ class KidsContentService {
     });
 
     try {
-      await _databases.createDocument(
+      await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _collectionId(collection),
-        documentId: id,
+        tableId: _collectionId(collection),
+        rowId: id,
         data: payload,
       );
     } on aw.AppwriteException catch (e) {
       if (e.code != 409) rethrow;
-      await _databases.updateDocument(
+      await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _collectionId(collection),
-        documentId: id,
+        tableId: _collectionId(collection),
+        rowId: id,
         data: payload,
       );
     }

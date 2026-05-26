@@ -1,8 +1,7 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:convert';
 
 import 'package:appwrite/appwrite.dart';
+import 'package:appwrite/models.dart' as models;
 import 'package:uuid/uuid.dart';
 
 import '../config/appwrite_backend_config.dart';
@@ -120,7 +119,7 @@ class HealthService {
   HealthService._internal();
 
   final Uuid _uuid = const Uuid();
-  final Databases _databases = Databases(appwriteClient);
+  final TablesDB _tables = TablesDB(appwriteClient);
   final Logger _logger = Logger('HealthService');
 
   Future<List<HealthData>> fetchHealthData(String userId) async {
@@ -176,10 +175,10 @@ class HealthService {
 
   Future<void> deleteHealthData(String id) async {
     try {
-      await _databases.deleteDocument(
+      await _tables.deleteRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.healthTrackingCollectionId,
-        documentId: id,
+        tableId: AppwriteBackendConfig.healthTrackingCollectionId,
+        rowId: id,
       );
     } catch (e) {
       _logger.error('Failed to delete health data', e);
@@ -222,7 +221,8 @@ class HealthService {
               doc['difficulty_level'] == difficulty.name ||
               doc['difficulty'] == difficulty.name)
           .where((doc) =>
-              durationDays == null || _int(doc['duration_days']) == durationDays)
+              durationDays == null ||
+              _int(doc['duration_days']) == durationDays)
           .map((doc) => NigerianMealPlan.fromJson(_mealPlanJson(doc)))
           .toList();
     } catch (e) {
@@ -233,12 +233,12 @@ class HealthService {
 
   Future<NigerianMealPlan?> getMealPlan(String id) async {
     try {
-      final doc = await _databases.getDocument(
+      final row = await _tables.getRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: 'nigerian_meal_plans',
-        documentId: id,
+        tableId: 'nigerian_meal_plans',
+        rowId: id,
       );
-      return NigerianMealPlan.fromJson(_mealPlanJson(_documentData(doc)));
+      return NigerianMealPlan.fromJson(_mealPlanJson(_rowData(row)));
     } on AppwriteException catch (e) {
       if (e.code == 404) return null;
       rethrow;
@@ -297,7 +297,9 @@ class HealthService {
           Query.limit(limit),
         ],
       );
-      return docs.map((doc) => WholesomeLivingTip.fromJson(_tipJson(doc))).toList();
+      return docs
+          .map((doc) => WholesomeLivingTip.fromJson(_tipJson(doc)))
+          .toList();
     } catch (e) {
       _logger.error('Failed to fetch wholesome tips', e);
       throw DatabaseException('Failed to fetch wholesome tips',
@@ -362,9 +364,11 @@ class HealthService {
     }
   }
 
-  Future<LifestyleTracker> saveLifestyleTracker(LifestyleTracker tracker) async {
+  Future<LifestyleTracker> saveLifestyleTracker(
+      LifestyleTracker tracker) async {
     try {
-      await _upsert('lifestyle_trackers', tracker.id, _lifestyleTrackerWrite(tracker));
+      await _upsert(
+          'lifestyle_trackers', tracker.id, _lifestyleTrackerWrite(tracker));
       return tracker;
     } catch (e) {
       _logger.error('Failed to save lifestyle tracker', e);
@@ -405,7 +409,9 @@ class HealthService {
           Query.orderDesc('created_at'),
         ],
       );
-      return docs.map((doc) => LifestyleGoalSetting.fromJson(_goalJson(doc))).toList();
+      return docs
+          .map((doc) => LifestyleGoalSetting.fromJson(_goalJson(doc)))
+          .toList();
     } catch (e) {
       _logger.error('Failed to fetch lifestyle goals', e);
       throw DatabaseException('Failed to fetch lifestyle goals',
@@ -519,10 +525,9 @@ class HealthService {
         }
 
         final sleepHours = (recent.metrics['sleep_hours'] ?? 0).toDouble();
-        final sleepTarget =
-            (HealthConstants.dailyTargets[NaturalRemedy.rest]!['sleep_hours']
-                    as int)
-                .toDouble();
+        final sleepTarget = (HealthConstants
+                .dailyTargets[NaturalRemedy.rest]!['sleep_hours'] as int)
+            .toDouble();
 
         if (sleepHours < sleepTarget) {
           insights.add(_insight(
@@ -576,35 +581,28 @@ class HealthService {
         final metrics = tracker.metrics;
         final overallScore = (metrics['overall_score'] ?? 0).toDouble();
         totalScore += overallScore;
-        categoryTotals['nutrition'] =
-            categoryTotals['nutrition']! +
-                (metrics['nutrition_score'] ?? 0).toDouble();
-        categoryTotals['exercise'] =
-            categoryTotals['exercise']! +
-                ((metrics['exercise_minutes'] ?? 0).toDouble() >= 30
-                    ? 10
-                    : (metrics['exercise_minutes'] ?? 0).toDouble() / 3);
-        categoryTotals['water'] =
-            categoryTotals['water']! +
-                ((metrics['water_glasses'] ?? 0).toDouble() >= 8
-                    ? 10
-                    : (metrics['water_glasses'] ?? 0).toDouble() * 1.25);
-        categoryTotals['sunlight'] =
-            categoryTotals['sunlight']! +
-                ((metrics['sunlight_minutes'] ?? 0).toDouble() >= 15
-                    ? 10
-                    : (metrics['sunlight_minutes'] ?? 0).toDouble() * 0.67);
-        categoryTotals['temperance'] =
-            categoryTotals['temperance']! +
-                (metrics['temperance_score'] ?? 0).toDouble();
-        categoryTotals['air'] =
-            categoryTotals['air']! +
-                (metrics['air_quality_score'] ?? 0).toDouble();
-        categoryTotals['rest'] =
-            categoryTotals['rest']! +
-                ((metrics['sleep_hours'] ?? 0).toDouble() >= 7
-                    ? 10
-                    : (metrics['sleep_hours'] ?? 0).toDouble() * 1.43);
+        categoryTotals['nutrition'] = categoryTotals['nutrition']! +
+            (metrics['nutrition_score'] ?? 0).toDouble();
+        categoryTotals['exercise'] = categoryTotals['exercise']! +
+            ((metrics['exercise_minutes'] ?? 0).toDouble() >= 30
+                ? 10
+                : (metrics['exercise_minutes'] ?? 0).toDouble() / 3);
+        categoryTotals['water'] = categoryTotals['water']! +
+            ((metrics['water_glasses'] ?? 0).toDouble() >= 8
+                ? 10
+                : (metrics['water_glasses'] ?? 0).toDouble() * 1.25);
+        categoryTotals['sunlight'] = categoryTotals['sunlight']! +
+            ((metrics['sunlight_minutes'] ?? 0).toDouble() >= 15
+                ? 10
+                : (metrics['sunlight_minutes'] ?? 0).toDouble() * 0.67);
+        categoryTotals['temperance'] = categoryTotals['temperance']! +
+            (metrics['temperance_score'] ?? 0).toDouble();
+        categoryTotals['air'] = categoryTotals['air']! +
+            (metrics['air_quality_score'] ?? 0).toDouble();
+        categoryTotals['rest'] = categoryTotals['rest']! +
+            ((metrics['sleep_hours'] ?? 0).toDouble() >= 7
+                ? 10
+                : (metrics['sleep_hours'] ?? 0).toDouble() * 1.43);
         categoryTotals['trust'] =
             categoryTotals['trust']! + (metrics['trust_score'] ?? 0).toDouble();
       }
@@ -643,18 +641,18 @@ class HealthService {
     String collectionId, {
     List<String> queries = const [],
   }) async {
-    final response = await _databases.listDocuments(
+    final response = await _tables.listRows(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: collectionId,
+      tableId: collectionId,
       queries: queries,
     );
-    return response.documents.map(_documentData).toList();
+    return response.rows.map(_rowData).toList();
   }
 
-  Map<String, dynamic> _documentData(dynamic document) {
+  Map<String, dynamic> _rowData(models.Row row) {
     return {
-      ...Map<String, dynamic>.from(document.data as Map),
-      'id': document.$id,
+      ...Map<String, dynamic>.from(row.data),
+      'id': row.$id,
     };
   }
 
@@ -666,22 +664,12 @@ class HealthService {
     final payload = Map<String, dynamic>.from(data)
       ..remove('id')
       ..removeWhere((key, _) => key.startsWith(r'$'));
-    try {
-      await _databases.createDocument(
-        databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: collectionId,
-        documentId: documentId,
-        data: payload,
-      );
-    } on AppwriteException catch (e) {
-      if (e.code != 409) rethrow;
-      await _databases.updateDocument(
-        databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: collectionId,
-        documentId: documentId,
-        data: payload,
-      );
-    }
+    await _tables.upsertRow(
+      databaseId: AppwriteBackendConfig.databaseId,
+      tableId: collectionId,
+      rowId: documentId,
+      data: payload,
+    );
   }
 
   static (String, String) _todayRange() {
@@ -756,8 +744,8 @@ class HealthService {
   static Map<String, dynamic> _mealPlanJson(Map<String, dynamic> data) {
     return {
       ...data,
-      'availableIngredients':
-          _stringList(data['available_ingredients'] ?? data['availableIngredients']),
+      'availableIngredients': _stringList(
+          data['available_ingredients'] ?? data['availableIngredients']),
       'days': _mapList(data['days']),
       'healthPrinciples':
           _stringList(data['health_principles'] ?? data['healthPrinciples']),
@@ -811,8 +799,8 @@ class HealthService {
       'startDate': data['start_date'] ?? data['startDate'],
       'targetDate': data['target_date'] ?? data['targetDate'],
       'targetMetrics': _map(data['target_metrics'] ?? data['targetMetrics']),
-      'completedMilestones':
-          _stringList(data['completed_milestones'] ?? data['completedMilestones']),
+      'completedMilestones': _stringList(
+          data['completed_milestones'] ?? data['completedMilestones']),
       'isActive': data['is_active'] ?? data['isActive'] ?? true,
       'createdAt': data['created_at'] ?? data['createdAt'],
       'updatedAt': data['updated_at'] ?? data['updatedAt'],
@@ -825,9 +813,10 @@ class HealthService {
       'userId': data['user_id'] ?? data['userId'],
       'preferredRegion':
           data['preferred_region'] ?? data['preferredRegion'] ?? 'west',
-      'dietaryRestrictions':
-          _stringList(data['dietary_restrictions'] ?? data['dietaryRestrictions']),
-      'currentGoals': _stringList(data['current_goals'] ?? data['currentGoals']),
+      'dietaryRestrictions': _stringList(
+          data['dietary_restrictions'] ?? data['dietaryRestrictions']),
+      'currentGoals':
+          _stringList(data['current_goals'] ?? data['currentGoals']),
       'healthConditions':
           _map(data['health_conditions'] ?? data['healthConditions']),
       'createdAt': data['created_at'] ?? data['createdAt'],

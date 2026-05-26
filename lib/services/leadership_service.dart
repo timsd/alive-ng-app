@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:convert';
 
 import 'package:appwrite/appwrite.dart';
@@ -19,7 +17,7 @@ class LeadershipService {
 
   static final Logger _logger = Logger('LeadershipService');
   final AuthService _authService = AuthService.instance;
-  final Databases _databases = Databases(appwriteClient);
+  final TablesDB _tables = TablesDB(appwriteClient);
   final Uuid _uuid = const Uuid();
 
   static const _recordsCollection =
@@ -101,10 +99,10 @@ class LeadershipService {
 
   Future<LeadershipRecord?> getRecordById(String recordId) async {
     try {
-      final document = await _databases.getDocument(
+      final document = await _tables.getRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _recordsCollection,
-        documentId: recordId,
+        tableId: _recordsCollection,
+        rowId: recordId,
       );
 
       return _recordFromDocument(document);
@@ -137,10 +135,10 @@ class LeadershipService {
         updatedBy: currentUserId,
       ));
 
-      final document = await _databases.createDocument(
+      final document = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _recordsCollection,
-        documentId: id,
+        tableId: _recordsCollection,
+        rowId: id,
         data: data,
       );
 
@@ -165,10 +163,10 @@ class LeadershipService {
         'updated_by': currentUserId,
       });
 
-      final document = await _databases.updateDocument(
+      final document = await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _recordsCollection,
-        documentId: recordId,
+        tableId: _recordsCollection,
+        rowId: recordId,
         data: payload,
       );
 
@@ -183,10 +181,10 @@ class LeadershipService {
 
   Future<void> deleteRecord(String recordId) async {
     try {
-      await _databases.deleteDocument(
+      await _tables.deleteRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _recordsCollection,
-        documentId: recordId,
+        tableId: _recordsCollection,
+        rowId: recordId,
       );
     } catch (e) {
       _logger.error('Failed to delete leadership record', e);
@@ -249,7 +247,9 @@ class LeadershipService {
         'updated_at': DateTime.now().toUtc().toIso8601String(),
         'updated_by': currentUserId,
       };
-      if (completionNotes != null) updates['completion_notes'] = completionNotes;
+      if (completionNotes != null) {
+        updates['completion_notes'] = completionNotes;
+      }
 
       final updatedRecord = await updateRecord(recordId, updates);
 
@@ -386,10 +386,10 @@ class LeadershipService {
       LeadershipTransition transition) async {
     try {
       final id = transition.id.isNotEmpty ? transition.id : _uuid.v4();
-      final document = await _databases.createDocument(
+      final document = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _transitionsCollection,
-        documentId: id,
+        tableId: _transitionsCollection,
+        rowId: id,
         data: _transitionToAppwriteData(transition),
       );
 
@@ -403,16 +403,16 @@ class LeadershipService {
 
   Future<List<LeadershipTransition>> getUserTransitions(String userId) async {
     try {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: _transitionsCollection,
+        tableId: _transitionsCollection,
         queries: [
           Query.equal('user_id', userId),
           Query.orderDesc('transition_date'),
         ],
       );
 
-      return response.documents.map(_transitionFromDocument).toList();
+      return response.rows.map(_transitionFromDocument).toList();
     } catch (e) {
       _logger.error('Failed to get user transitions', e);
       throw DatabaseException('Failed to get user transitions',
@@ -421,12 +421,12 @@ class LeadershipService {
   }
 
   Future<List<LeadershipRecord>> _listRecords(List<String> queries) async {
-    final response = await _databases.listDocuments(
+    final response = await _tables.listRows(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: _recordsCollection,
+      tableId: _recordsCollection,
       queries: queries,
     );
-    return response.documents.map(_recordFromDocument).toList();
+    return response.rows.map(_recordFromDocument).toList();
   }
 
   LeadershipRecord _recordFromDocument(dynamic document) {

@@ -10,7 +10,7 @@ class DailyVerseRepository {
   static final DailyVerseRepository instance = DailyVerseRepository._();
 
   final Logger _logger = Logger('DailyVerseRepository');
-  final Databases _db = Databases(appwriteClient);
+  final TablesDB _tables = TablesDB(appwriteClient);
 
   String _dateKey(DateTime date) =>
       '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
@@ -18,13 +18,12 @@ class DailyVerseRepository {
   Future<DailyVerse?> getDailyVerse(DateTime date) async {
     try {
       final id = _dateKey(date);
-      // ignore: deprecated_member_use
-      final doc = await _db.getDocument(
+      final row = await _tables.getRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.dailyVersesCollectionId,
-        documentId: id,
+        tableId: AppwriteBackendConfig.dailyVersesCollectionId,
+        rowId: id,
       );
-      return DailyVerse.fromJson(_dailyVerseData(doc.$id, doc.data));
+      return DailyVerse.fromJson(_dailyVerseData(row.$id, row.data));
     } catch (e) {
       if (e is AppwriteException && e.code == 404) return null;
       _logger.error('Error getting daily verse for ${_dateKey(date)}: $e');
@@ -53,8 +52,8 @@ class DailyVerseRepository {
         ...data,
       });
     } catch (e) {
-      _logger
-          .error('Error creating daily verse for ${_dateKey(dailyVerse.date)}: $e');
+      _logger.error(
+          'Error creating daily verse for ${_dateKey(dailyVerse.date)}: $e');
       rethrow;
     }
   }
@@ -62,18 +61,17 @@ class DailyVerseRepository {
   Future<List<DailyVerse>> getDailyVersesInRange(
       DateTime startDate, DateTime endDate) async {
     try {
-      // ignore: deprecated_member_use
-      final query = await _db.listDocuments(
+      final query = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.dailyVersesCollectionId,
+        tableId: AppwriteBackendConfig.dailyVersesCollectionId,
         queries: [
           Query.greaterThanEqual('date', _dateKey(startDate)),
           Query.lessThanEqual('date', _dateKey(endDate)),
           Query.orderDesc('date'),
         ],
       );
-      return query.documents
-          .map((doc) => DailyVerse.fromJson(_dailyVerseData(doc.$id, doc.data)))
+      return query.rows
+          .map((row) => DailyVerse.fromJson(_dailyVerseData(row.$id, row.data)))
           .toList();
     } catch (e) {
       _logger.error('Error querying daily verses range: $e');
@@ -83,10 +81,9 @@ class DailyVerseRepository {
 
   Future<int> countDailyVerses() async {
     try {
-      // ignore: deprecated_member_use
-      final result = await _db.listDocuments(
+      final result = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.dailyVersesCollectionId,
+        tableId: AppwriteBackendConfig.dailyVersesCollectionId,
         queries: [Query.limit(1)],
       );
       return result.total;
@@ -98,20 +95,18 @@ class DailyVerseRepository {
 
   Future<void> _upsertDailyVerse(String id, Map<String, dynamic> data) async {
     try {
-      // ignore: deprecated_member_use
-      await _db.updateDocument(
+      await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.dailyVersesCollectionId,
-        documentId: id,
+        tableId: AppwriteBackendConfig.dailyVersesCollectionId,
+        rowId: id,
         data: data,
       );
     } catch (e) {
       if (e is! AppwriteException || e.code != 404) rethrow;
-      // ignore: deprecated_member_use
-      await _db.createDocument(
+      await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.dailyVersesCollectionId,
-        documentId: id,
+        tableId: AppwriteBackendConfig.dailyVersesCollectionId,
+        rowId: id,
         data: data,
       );
     }

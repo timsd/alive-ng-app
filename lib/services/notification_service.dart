@@ -25,7 +25,7 @@ class NotificationService extends FirebaseMessagingBase {
 
   final AuthService _authService = AuthService.instance;
   final Logger _logger = Logger('NotificationService');
-  final Databases _databases = Databases(appwriteClient);
+  final TablesDB _tables = TablesDB(appwriteClient);
 
   // Global navigator key for navigation from background contexts
   static final GlobalKey<NavigatorState> _navigatorKey =
@@ -413,14 +413,13 @@ class NotificationService extends FirebaseMessagingBase {
   // Fetch notification settings for a user
   Future<NotificationSettings> fetchSettings(String userId) async {
     try {
-      // ignore: deprecated_member_use
-      final doc = await _databases.getDocument(
+      final row = await _tables.getRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.notificationSettingsCollectionId,
-        documentId: userId,
+        tableId: AppwriteBackendConfig.notificationSettingsCollectionId,
+        rowId: userId,
       );
 
-      return NotificationSettings.fromJson({...doc.data, 'id': doc.$id});
+      return NotificationSettings.fromJson({...row.data, 'id': row.$id});
     } catch (e) {
       if (_isMissingDocument(e)) {
         return await createDefaultSettings(userId);
@@ -440,20 +439,18 @@ class NotificationService extends FirebaseMessagingBase {
   ) async {
     final payload = _settingsPayload(data);
     try {
-      // ignore: deprecated_member_use
-      await _databases.updateDocument(
+      await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.notificationSettingsCollectionId,
-        documentId: userId,
+        tableId: AppwriteBackendConfig.notificationSettingsCollectionId,
+        rowId: userId,
         data: payload,
       );
     } catch (e) {
       if (!_isMissingDocument(e)) rethrow;
-      // ignore: deprecated_member_use
-      await _databases.createDocument(
+      await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.notificationSettingsCollectionId,
-        documentId: userId,
+        tableId: AppwriteBackendConfig.notificationSettingsCollectionId,
+        rowId: userId,
         data: payload,
       );
     }
@@ -716,10 +713,11 @@ class NotificationSettings {
       dailyVerseTime: json['daily_verse_time'] != null
           ? DateTime.parse(json['daily_verse_time'])
           : null,
-      healthReminderSettings: (_decodeJsonList(json['health_reminder_settings']))
-              ?.map((e) => HealthReminderSetting.fromJson(e))
-              .toList() ??
-          [],
+      healthReminderSettings:
+          (_decodeJsonList(json['health_reminder_settings']))
+                  ?.map((e) => HealthReminderSetting.fromJson(e))
+                  .toList() ??
+              [],
       studyReminderSettings: (_decodeJsonList(json['study_reminder_settings']))
               ?.map((e) => StudyReminderSetting.fromJson(e))
               .toList() ??

@@ -32,7 +32,7 @@ class DailyVerseGenerationService {
 
   final Logger _logger = Logger('DailyVerseGenerationService');
   final DailyVerseRepository _repo;
-  final Databases _databases = Databases(appwriteClient);
+  final TablesDB _tables = TablesDB(appwriteClient);
 
   /// Initialize the verse generation system
   Future<void> initializeVerseGeneration() async {
@@ -67,7 +67,7 @@ class DailyVerseGenerationService {
         _logger.info('Daily verse already exists for $dateString');
         return existingVerse;
       }
-      
+
       // Deterministically pick a verse based on the date seed
       final random = Random(date.year * 10000 + date.month * 100 + date.day);
 
@@ -103,7 +103,8 @@ class DailyVerseGenerationService {
       final fallback = staticCorpus[random.nextInt(staticCorpus.length)];
       return await _createDailyVerseFromBibleVerse(fallback, date);
     } catch (e) {
-      _logger.error('❌ Failed to generate daily verse for ${_formatDateForDatabase(date)}: $e');
+      _logger.error(
+          '❌ Failed to generate daily verse for ${_formatDateForDatabase(date)}: $e');
       return null;
     }
   }
@@ -196,13 +197,12 @@ class DailyVerseGenerationService {
   /// Check if auto-generation is enabled
   Future<bool> isAutoGenerationEnabled() async {
     try {
-      // ignore: deprecated_member_use
-      final doc = await _databases.getDocument(
+      final row = await _tables.getRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.appSettingsCollectionId,
-        documentId: 'daily_verse_auto_generation',
+        tableId: AppwriteBackendConfig.appSettingsCollectionId,
+        rowId: 'daily_verse_auto_generation',
       );
-      final value = doc.data['value'];
+      final value = row.data['value'];
       if (value is bool) return value;
       if (value is String) return value.toLowerCase() == 'true';
       return true;
@@ -248,20 +248,18 @@ class DailyVerseGenerationService {
     };
 
     try {
-      // ignore: deprecated_member_use
-      await _databases.updateDocument(
+      await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.appSettingsCollectionId,
-        documentId: key,
+        tableId: AppwriteBackendConfig.appSettingsCollectionId,
+        rowId: key,
         data: data,
       );
     } catch (e) {
       if (e is! AppwriteException || e.code != 404) rethrow;
-      // ignore: deprecated_member_use
-      await _databases.createDocument(
+      await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.appSettingsCollectionId,
-        documentId: key,
+        tableId: AppwriteBackendConfig.appSettingsCollectionId,
+        rowId: key,
         data: data,
       );
     }
