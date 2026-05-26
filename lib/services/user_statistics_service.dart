@@ -1,9 +1,8 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:async';
 import 'dart:convert';
 
 import 'package:appwrite/appwrite.dart';
+import 'package:appwrite/models.dart' as models;
 
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';
@@ -19,7 +18,7 @@ class UserStatisticsService {
 
   static UserStatisticsService get instance => _instance;
 
-  final Databases _databases = Databases(appwriteClient);
+  final TablesDB _tables = TablesDB(appwriteClient);
   final Logger _logger = Logger('UserStatisticsService');
   Timer? _readingTimer;
   DateTime? _sessionStartTime;
@@ -72,10 +71,10 @@ class UserStatisticsService {
         'last_reading_date': now,
       });
 
-      await _databases.createDocument(
+      await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.readingSessionsCollectionId,
-        documentId: ID.unique(),
+        tableId: AppwriteBackendConfig.readingSessionsCollectionId,
+        rowId: ID.unique(),
         data: {
           'user_id': _currentUserId!,
           'duration_minutes': duration.inMinutes,
@@ -104,10 +103,10 @@ class UserStatisticsService {
         'last_reading_date': now,
       });
 
-      await _databases.createDocument(
+      await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.chapterReadingsCollectionId,
-        documentId: ID.unique(),
+        tableId: AppwriteBackendConfig.chapterReadingsCollectionId,
+        rowId: ID.unique(),
         data: {
           'user_id': _currentUserId!,
           'book': book,
@@ -269,12 +268,12 @@ class UserStatisticsService {
   /// Get user statistics from the Appwrite users table.
   Future<Map<String, dynamic>> getUserStatistics(String userId) async {
     try {
-      final doc = await _databases.getDocument(
+      final row = await _tables.getRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.usersCollectionId,
-        documentId: userId,
+        tableId: AppwriteBackendConfig.usersCollectionId,
+        rowId: userId,
       );
-      return doc.data;
+      return row.data;
     } on AppwriteException catch (e) {
       if (e.code == 404) {
         throw NotFoundException('User statistics not found');
@@ -477,10 +476,10 @@ class UserStatisticsService {
   /// Reset statistics for a user.
   Future<void> resetUserStatistics(String userId) async {
     try {
-      await _databases.updateDocument(
+      await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.usersCollectionId,
-        documentId: userId,
+        tableId: AppwriteBackendConfig.usersCollectionId,
+        rowId: userId,
         data: {
           'total_reading_time': 0,
           'chapters_read': 0,
@@ -526,10 +525,10 @@ class UserStatisticsService {
 
     try {
       final now = DateTime.now().toUtc().toIso8601String();
-      await _databases.createDocument(
+      await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.userActivitiesCollectionId,
-        documentId: ID.unique(),
+        tableId: AppwriteBackendConfig.userActivitiesCollectionId,
+        rowId: ID.unique(),
         data: {
           'user_id': _currentUserId!,
           'activity_type': activityType,
@@ -595,10 +594,10 @@ class UserStatisticsService {
       incrementalUpdates['updated_at'] =
           DateTime.now().toUtc().toIso8601String();
 
-      await _databases.updateDocument(
+      await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.usersCollectionId,
-        documentId: _currentUserId!,
+        tableId: AppwriteBackendConfig.usersCollectionId,
+        rowId: _currentUserId!,
         data: incrementalUpdates,
       );
     } catch (e) {
@@ -612,12 +611,16 @@ class UserStatisticsService {
     String collectionId,
     List<String> queries,
   ) async {
-    final response = await _databases.listDocuments(
+    final response = await _tables.listRows(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: collectionId,
+      tableId: collectionId,
       queries: queries,
     );
-    return response.documents.map((doc) => doc.data).toList();
+    return response.rows.map(_rowData).toList();
+  }
+
+  Map<String, dynamic> _rowData(models.Row row) {
+    return Map<String, dynamic>.from(row.data);
   }
 
   Future<List<Map<String, dynamic>>> _listAnalyticsEvents({

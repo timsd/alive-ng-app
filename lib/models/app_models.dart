@@ -4,9 +4,9 @@ class UserProfile {
   final String? email;
   final String? fullName;
   final String? avatarUrl;
-  final String? photoUrl; // Firebase photo URL
-  final bool? isEmailVerified; // Firebase email verification
-  final bool? isAnonymous; // Firebase anonymous user
+  final String? photoUrl;
+  final bool? isEmailVerified;
+  final bool? isAnonymous;
   final String? provider; // Authentication provider (google, email, anonymous)
   final DateTime? dateOfBirth;
   final String? phoneNumber;
@@ -17,14 +17,14 @@ class UserProfile {
   final bool isArchived;
   final bool isNewConvert;
   final DateTime? convertDate;
-  
+
   // Admin approval fields
   final bool isApproved;
   final String? approvedBy;
   final DateTime? approvedAt;
   final String approvalStatus; // pending, approved, rejected
   final String? rejectionReason;
-  
+
   // Enhanced profile fields for admin approval
   final String? location; // City, State, Country
   final String? localChurch; // Local church name
@@ -33,20 +33,20 @@ class UserProfile {
   final String? workContact; // Work-related contact
   final String? homeContact; // Home contact
   final String? generalInfo; // Other general information
-  
+
   // Verification fields
   final String? localChapter;
   final String? conference;
   final bool isChapterVerified;
   final bool isChurchVerified;
   final bool isConferenceVerified;
-  
+
   // Commitment tracking
   final String? commitmentType; // financial, active_availability, both
   final double? financialCommitment;
   final String? availabilityCommitment;
   final Map<String, dynamic>? commitmentDetails;
-  
+
   // User statistics (only count after registration)
   final int? totalReadingTime; // in minutes
   final int? chaptersRead;
@@ -54,7 +54,7 @@ class UserProfile {
   final int? prayersOffered;
   final int? studySessionsCompleted;
   final DateTime? statsStartDate; // When to start counting stats
-  
+
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -76,14 +76,14 @@ class UserProfile {
     this.isArchived = false,
     this.isNewConvert = false,
     this.convertDate,
-    
+
     // Admin approval fields
     this.isApproved = false,
     this.approvedBy,
     this.approvedAt,
     this.approvalStatus = 'pending',
     this.rejectionReason,
-    
+
     // Enhanced profile fields
     this.location,
     this.localChurch,
@@ -92,20 +92,20 @@ class UserProfile {
     this.workContact,
     this.homeContact,
     this.generalInfo,
-    
+
     // Verification fields
     this.localChapter,
     this.conference,
     this.isChapterVerified = false,
     this.isChurchVerified = false,
     this.isConferenceVerified = false,
-    
+
     // Commitment tracking
     this.commitmentType,
     this.financialCommitment,
     this.availabilityCommitment,
     this.commitmentDetails,
-    
+
     // User statistics
     this.totalReadingTime,
     this.chaptersRead,
@@ -113,7 +113,6 @@ class UserProfile {
     this.prayersOffered,
     this.studySessionsCompleted,
     this.statsStartDate,
-    
     required this.createdAt,
     required this.updatedAt,
   });
@@ -141,7 +140,7 @@ class UserProfile {
       convertDate: json['convert_date'] != null
           ? DateTime.parse(json['convert_date'] as String)
           : null,
-      
+
       // Admin approval fields
       isApproved: json['is_approved'] as bool? ?? false,
       approvedBy: json['approved_by'] as String?,
@@ -150,7 +149,7 @@ class UserProfile {
           : null,
       approvalStatus: json['approval_status'] as String? ?? 'pending',
       rejectionReason: json['rejection_reason'] as String?,
-      
+
       // Enhanced profile fields
       location: json['location'] as String?,
       localChurch: json['local_church'] as String?,
@@ -159,14 +158,14 @@ class UserProfile {
       workContact: json['work_contact'] as String?,
       homeContact: json['home_contact'] as String?,
       generalInfo: json['general_info'] as String?,
-      
+
       // Verification fields
       localChapter: json['local_chapter'] as String?,
       conference: json['conference'] as String?,
       isChapterVerified: json['is_chapter_verified'] as bool? ?? false,
       isChurchVerified: json['is_church_verified'] as bool? ?? false,
       isConferenceVerified: json['is_conference_verified'] as bool? ?? false,
-      
+
       // Commitment tracking
       commitmentType: json['commitment_type'] as String?,
       financialCommitment: json['financial_commitment'] != null
@@ -174,7 +173,7 @@ class UserProfile {
           : null,
       availabilityCommitment: json['availability_commitment'] as String?,
       commitmentDetails: json['commitment_details'] as Map<String, dynamic>?,
-      
+
       // User statistics
       totalReadingTime: json['total_reading_time'] as int?,
       chaptersRead: json['chapters_read'] as int?,
@@ -184,7 +183,7 @@ class UserProfile {
       statsStartDate: json['stats_start_date'] != null
           ? DateTime.parse(json['stats_start_date'] as String)
           : null,
-      
+
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );
@@ -205,14 +204,14 @@ class UserProfile {
       'is_archived': isArchived,
       'is_new_convert': isNewConvert,
       'convert_date': convertDate?.toIso8601String(),
-      
+
       // Admin approval fields
       'is_approved': isApproved,
       'approved_by': approvedBy,
       'approved_at': approvedAt?.toIso8601String(),
       'approval_status': approvalStatus,
       'rejection_reason': rejectionReason,
-      
+
       // Enhanced profile fields
       'location': location,
       'local_church': localChurch,
@@ -221,20 +220,20 @@ class UserProfile {
       'work_contact': workContact,
       'home_contact': homeContact,
       'general_info': generalInfo,
-      
+
       // Verification fields
       'local_chapter': localChapter,
       'conference': conference,
       'is_chapter_verified': isChapterVerified,
       'is_church_verified': isChurchVerified,
       'is_conference_verified': isConferenceVerified,
-      
+
       // Commitment tracking
       'commitment_type': commitmentType,
       'financial_commitment': financialCommitment,
       'availability_commitment': availabilityCommitment,
       'commitment_details': commitmentDetails,
-      
+
       // User statistics
       'total_reading_time': totalReadingTime,
       'chapters_read': chaptersRead,
@@ -242,7 +241,7 @@ class UserProfile {
       'prayers_offered': prayersOffered,
       'study_sessions_completed': studySessionsCompleted,
       'stats_start_date': statsStartDate?.toIso8601String(),
-      
+
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -334,13 +333,15 @@ class UserProfile {
       isConferenceVerified: isConferenceVerified ?? this.isConferenceVerified,
       commitmentType: commitmentType ?? this.commitmentType,
       financialCommitment: financialCommitment ?? this.financialCommitment,
-      availabilityCommitment: availabilityCommitment ?? this.availabilityCommitment,
+      availabilityCommitment:
+          availabilityCommitment ?? this.availabilityCommitment,
       commitmentDetails: commitmentDetails ?? this.commitmentDetails,
       totalReadingTime: totalReadingTime ?? this.totalReadingTime,
       chaptersRead: chaptersRead ?? this.chaptersRead,
       versesRead: versesRead ?? this.versesRead,
       prayersOffered: prayersOffered ?? this.prayersOffered,
-      studySessionsCompleted: studySessionsCompleted ?? this.studySessionsCompleted,
+      studySessionsCompleted:
+          studySessionsCompleted ?? this.studySessionsCompleted,
       statsStartDate: statsStartDate ?? this.statsStartDate,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -365,7 +366,7 @@ class ConferenceMeeting {
   final String status;
   final String roomName;
   final String? recordingLink;
-  
+
   ConferenceMeeting({
     required this.id,
     required this.title,
@@ -389,7 +390,9 @@ class ConferenceMeeting {
       id: json['id'] as String? ?? '',
       title: json['title'] as String? ?? 'Meeting',
       description: json['description'] as String? ?? '',
-      scheduledTime: json['scheduled_time'] != null ? DateTime.parse(json['scheduled_time'] as String) : DateTime.now(),
+      scheduledTime: json['scheduled_time'] != null
+          ? DateTime.parse(json['scheduled_time'] as String)
+          : DateTime.now(),
       duration: json['duration'] as int? ?? 60,
       hostId: json['host_id'] as String? ?? '',
       hostName: json['host_name'] as String? ?? 'Host',

@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:appwrite/appwrite.dart' hide Permission;
 import 'package:permission_handler/permission_handler.dart';
 
@@ -12,7 +10,7 @@ import 'auth_service.dart';
 import 'storage_service.dart';
 
 class NotificationSettingsService {
-  static final Databases _databases = Databases(appwriteClient);
+  static final TablesDB _tables = TablesDB(appwriteClient);
   static final _logger = Logger('NotificationSettingsService');
   static const String _databaseId = AppwriteBackendConfig.databaseId;
   static const String _collectionId =
@@ -24,12 +22,12 @@ class NotificationSettingsService {
       if (user == null) return null;
 
       try {
-        final doc = await _databases.getDocument(
+        final row = await _tables.getRow(
           databaseId: _databaseId,
-          collectionId: _collectionId,
-          documentId: user.uid,
+          tableId: _collectionId,
+          rowId: user.uid,
         );
-        final settings = NotificationSettings.fromJson(doc.data);
+        final settings = NotificationSettings.fromJson(row.data);
         await StorageHelper.setNotificationSettings(settings.toJson());
         return settings;
       } on AppwriteException catch (e) {
@@ -46,10 +44,10 @@ class NotificationSettingsService {
           pushNotificationsEnabled: false,
         );
 
-        await _databases.createDocument(
+        await _tables.createRow(
           databaseId: _databaseId,
-          collectionId: _collectionId,
-          documentId: user.uid,
+          tableId: _collectionId,
+          rowId: user.uid,
           data: {
             ...defaultSettings.toJson(),
             ..._legacyTopicFlags(defaultSettings),
@@ -76,10 +74,10 @@ class NotificationSettingsService {
       }
 
       try {
-        await _databases.updateDocument(
+        await _tables.updateRow(
           databaseId: _databaseId,
-          collectionId: _collectionId,
-          documentId: user.uid,
+          tableId: _collectionId,
+          rowId: user.uid,
           data: {
             ...settings.toJson(),
             ..._legacyTopicFlags(settings),
@@ -88,10 +86,10 @@ class NotificationSettingsService {
         );
       } on AppwriteException catch (e) {
         if (e.code != 404) rethrow;
-        await _databases.createDocument(
+        await _tables.createRow(
           databaseId: _databaseId,
-          collectionId: _collectionId,
-          documentId: user.uid,
+          tableId: _collectionId,
+          rowId: user.uid,
           data: {
             ...settings.toJson(),
             ..._legacyTopicFlags(settings),

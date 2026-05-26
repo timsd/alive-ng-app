@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:convert';
 
 import 'package:appwrite/appwrite.dart';
@@ -17,7 +15,7 @@ class AppwritePushService {
   static final AppwritePushService instance = AppwritePushService._();
 
   final Account _account = Account(appwriteClient);
-  final Databases _databases = Databases(appwriteClient);
+  final TablesDB _tables = TablesDB(appwriteClient);
   final Messaging _messaging = Messaging(appwriteClient);
   final Logger _logger = Logger('AppwritePushService');
 
@@ -120,18 +118,18 @@ class AppwritePushService {
     };
 
     try {
-      await _databases.updateDocument(
+      await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.pushTokensCollectionId,
-        documentId: targetId,
+        tableId: AppwriteBackendConfig.pushTokensCollectionId,
+        rowId: targetId,
         data: data,
       );
     } on AppwriteException catch (e) {
       if (e.code != 404) rethrow;
-      await _databases.createDocument(
+      await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.pushTokensCollectionId,
-        documentId: targetId,
+        tableId: AppwriteBackendConfig.pushTokensCollectionId,
+        rowId: targetId,
         data: {
           ...data,
           'created_at': now,

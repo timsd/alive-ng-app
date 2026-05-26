@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:async';
 import 'dart:convert';
 
@@ -20,7 +18,7 @@ class AnalyticsService {
 
   static final Logger _logger = Logger('AnalyticsService');
 
-  final Databases _databases = Databases(appwriteClient);
+  final TablesDB _tables = TablesDB(appwriteClient);
   final StorageService _storage = StorageService.instance;
   final AuthService _auth = AuthService.instance;
 
@@ -150,10 +148,10 @@ class AnalyticsService {
       // Optionally persist to Appwrite for audit/debugging.
       if (_auth.isAuthenticated) {
         try {
-          await _databases.createDocument(
+          await _tables.createRow(
             databaseId: AppwriteBackendConfig.databaseId,
-            collectionId: AppwriteBackendConfig.analyticsEventsCollectionId,
-            documentId: ID.unique(),
+            tableId: AppwriteBackendConfig.analyticsEventsCollectionId,
+            rowId: ID.unique(),
             data: {
               'user_id': _auth.currentUser!.uid,
               'event_name': eventName,

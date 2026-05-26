@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:math';
 
 import 'package:appwrite/appwrite.dart';
@@ -13,7 +11,7 @@ class ApprovalLinkService {
   static final ApprovalLinkService instance = ApprovalLinkService._();
   ApprovalLinkService._();
 
-  final Databases _databases = Databases(appwriteClient);
+  final TablesDB _tables = TablesDB(appwriteClient);
 
   Future<String> generateToken({
     required String userId,
@@ -23,10 +21,10 @@ class ApprovalLinkService {
     final now = DateTime.now();
     final expires = now.add(ttl);
 
-    await _databases.createDocument(
+    await _tables.createRow(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: AppwriteBackendConfig.approvalTokensCollectionId,
-      documentId: token,
+      tableId: AppwriteBackendConfig.approvalTokensCollectionId,
+      rowId: token,
       data: {
         'token': token,
         'userId': userId,
@@ -46,13 +44,13 @@ class ApprovalLinkService {
     required String token,
   }) async {
     try {
-      final doc = await _databases.getDocument(
+      final row = await _tables.getRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.approvalTokensCollectionId,
-        documentId: token,
+        tableId: AppwriteBackendConfig.approvalTokensCollectionId,
+        rowId: token,
       );
 
-      final data = doc.data;
+      final data = row.data;
       if (data['used'] == true || data['userId'] != userId) {
         return false;
       }
@@ -66,10 +64,10 @@ class ApprovalLinkService {
       final approverId =
           AuthService.instance.currentUser?.uid ?? 'approval_link';
 
-      await _databases.updateDocument(
+      await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.usersCollectionId,
-        documentId: userId,
+        tableId: AppwriteBackendConfig.usersCollectionId,
+        rowId: userId,
         data: {
           'is_approved': true,
           'approval_status': 'approved',
@@ -79,10 +77,10 @@ class ApprovalLinkService {
         },
       );
 
-      await _databases.updateDocument(
+      await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.approvalTokensCollectionId,
-        documentId: token,
+        tableId: AppwriteBackendConfig.approvalTokensCollectionId,
+        rowId: token,
         data: {
           'used': true,
           'usedAt': now,

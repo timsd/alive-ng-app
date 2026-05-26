@@ -1,6 +1,5 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:appwrite/appwrite.dart';
+import 'package:appwrite/models.dart' as models;
 
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';
@@ -12,7 +11,7 @@ class AppwriteContentService {
 
   AppwriteContentService._();
 
-  late final Databases _databases = Databases(appwriteClient);
+  late final TablesDB _tables = TablesDB(appwriteClient);
   final Logger _logger = Logger('AppwriteContentService');
 
   Future<Map<String, dynamic>?> getContentPageBySlug(
@@ -20,9 +19,9 @@ class AppwriteContentService {
     String languageCode = 'en',
   }) async {
     try {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.contentPagesCollectionId,
+        tableId: AppwriteBackendConfig.contentPagesCollectionId,
         queries: [
           Query.equal('slug', slug),
           Query.equal('is_published', true),
@@ -30,17 +29,14 @@ class AppwriteContentService {
         ],
       );
 
-      if (response.documents.isEmpty) return null;
+      if (response.rows.isEmpty) return null;
 
-      final preferred = response.documents.firstWhere(
-        (doc) => doc.data['language_code'] == languageCode,
-        orElse: () => response.documents.first,
+      final preferred = response.rows.firstWhere(
+        (row) => row.data['language_code'] == languageCode,
+        orElse: () => response.rows.first,
       );
 
-      return {
-        ...Map<String, dynamic>.from(preferred.data),
-        'id': preferred.$id,
-      };
+      return _rowToMap(preferred);
     } catch (e) {
       _logger.error('Failed to fetch content page', e);
       throw DatabaseException('Failed to fetch content page', originalError: e);
@@ -49,17 +45,19 @@ class AppwriteContentService {
 
   Future<String> createContentPage(Map<String, dynamic> data) async {
     try {
-      final doc = await _databases.createDocument(
+      final row = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.contentPagesCollectionId,
-        documentId: ID.unique(),
+        tableId: AppwriteBackendConfig.contentPagesCollectionId,
+        rowId: ID.unique(),
         data: _sanitizeContentPageData(data),
       );
-      return doc.$id;
+      return row.$id;
     } catch (e) {
       _logger.error('Failed to create content page', e);
-      throw DatabaseException('Failed to create content page',
-          originalError: e);
+      throw DatabaseException(
+        'Failed to create content page',
+        originalError: e,
+      );
     }
   }
 
@@ -68,18 +66,25 @@ class AppwriteContentService {
     Map<String, dynamic> data,
   ) async {
     try {
-      await _databases.updateDocument(
+      await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.contentPagesCollectionId,
-        documentId: documentId,
+        tableId: AppwriteBackendConfig.contentPagesCollectionId,
+        rowId: documentId,
         data: _sanitizeContentPageData(data),
       );
     } catch (e) {
       _logger.error('Failed to update content page', e);
-      throw DatabaseException('Failed to update content page',
-          originalError: e);
+      throw DatabaseException(
+        'Failed to update content page',
+        originalError: e,
+      );
     }
   }
+
+  Map<String, dynamic> _rowToMap(models.Row row) => {
+        ...Map<String, dynamic>.from(row.data),
+        'id': row.$id,
+      };
 
   Map<String, dynamic> _sanitizeContentPageData(Map<String, dynamic> data) {
     final sanitized = Map<String, dynamic>.from(data)

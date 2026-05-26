@@ -1,6 +1,5 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:appwrite/appwrite.dart';
+import 'package:appwrite/models.dart' as models;
 
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';
@@ -12,20 +11,21 @@ class AppwriteEventsService {
 
   AppwriteEventsService._();
 
-  late final Databases _databases = Databases(appwriteClient);
+  late final TablesDB _tables = TablesDB(appwriteClient);
   final Logger _logger = Logger('AppwriteEventsService');
 
   Future<List<Map<String, dynamic>>> listEvents() async {
     try {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.eventsCollectionId,
+        tableId: AppwriteBackendConfig.eventsCollectionId,
         queries: [Query.limit(100)],
       );
 
-      final events = response.documents.map(_documentToMap).toList();
+      final events = response.rows.map(_rowToMap).toList();
       events.sort(
-        (a, b) => _sortDate(b, 'created_at').compareTo(_sortDate(a, 'created_at')),
+        (a, b) =>
+            _sortDate(b, 'created_at').compareTo(_sortDate(a, 'created_at')),
       );
       return events;
     } catch (e) {
@@ -36,15 +36,16 @@ class AppwriteEventsService {
 
   Future<List<Map<String, dynamic>>> listAnnouncements() async {
     try {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.announcementsCollectionId,
+        tableId: AppwriteBackendConfig.announcementsCollectionId,
         queries: [Query.limit(100)],
       );
 
-      final announcements = response.documents.map(_documentToMap).toList();
+      final announcements = response.rows.map(_rowToMap).toList();
       announcements.sort(
-        (a, b) => _sortDate(b, 'created_at').compareTo(_sortDate(a, 'created_at')),
+        (a, b) =>
+            _sortDate(b, 'created_at').compareTo(_sortDate(a, 'created_at')),
       );
       return announcements;
     } catch (e) {
@@ -75,10 +76,10 @@ class AppwriteEventsService {
     }
 
     try {
-      await _databases.createDocument(
+      await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.eventsCollectionId,
-        documentId: ID.unique(),
+        tableId: AppwriteBackendConfig.eventsCollectionId,
+        rowId: ID.unique(),
         data: data,
       );
     } catch (e) {
@@ -95,10 +96,10 @@ class AppwriteEventsService {
   }) async {
     final now = DateTime.now();
     try {
-      await _databases.createDocument(
+      await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.announcementsCollectionId,
-        documentId: ID.unique(),
+        tableId: AppwriteBackendConfig.announcementsCollectionId,
+        rowId: ID.unique(),
         data: {
           'title': title,
           'content': content.trim().isEmpty ? title : content,
@@ -116,10 +117,10 @@ class AppwriteEventsService {
     }
   }
 
-  Map<String, dynamic> _documentToMap(dynamic doc) {
+  Map<String, dynamic> _rowToMap(models.Row row) {
     return {
-      ...Map<String, dynamic>.from(doc.data as Map),
-      'id': doc.$id,
+      ...Map<String, dynamic>.from(row.data),
+      'id': row.$id,
     };
   }
 

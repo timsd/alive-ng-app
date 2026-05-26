@@ -1,13 +1,12 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:convert';
 
+import 'package:appwrite/appwrite.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:in_app_update/in_app_update.dart';
-import 'package:appwrite/appwrite.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';
 import '../utils/logger.dart';
@@ -16,7 +15,7 @@ class AppUpdateService {
   static final AppUpdateService instance = AppUpdateService._();
   AppUpdateService._();
 
-  final Databases _databases = Databases(appwriteClient);
+  final TablesDB _tables = TablesDB(appwriteClient);
   final Logger _logger = Logger('AppUpdateService');
 
   /// Checks for updates. On Android, uses Play in-app update.
@@ -61,26 +60,26 @@ class AppUpdateService {
 
   Future<Map<String, dynamic>?> _loadAppVersionConfig() async {
     try {
-      final doc = await _databases.getDocument(
+      final row = await _tables.getRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.appSettingsCollectionId,
-        documentId: 'app_version',
+        tableId: AppwriteBackendConfig.appSettingsCollectionId,
+        rowId: 'app_version',
       );
-      return _normalizeAppVersionConfig(doc.data);
+      return _normalizeAppVersionConfig(row.data);
     } on AppwriteException catch (e) {
       if (e.code != 404) rethrow;
 
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.appSettingsCollectionId,
+        tableId: AppwriteBackendConfig.appSettingsCollectionId,
         queries: [
           Query.equal('key', 'app_version'),
           Query.limit(1),
         ],
       );
 
-      if (response.documents.isEmpty) return null;
-      return _normalizeAppVersionConfig(response.documents.first.data);
+      if (response.rows.isEmpty) return null;
+      return _normalizeAppVersionConfig(response.rows.first.data);
     }
   }
 
@@ -167,7 +166,7 @@ class AppUpdateService {
     while (latestParts.length < 3) {
       latestParts.add(0);
     }
-    
+
     for (int i = 0; i < 3; i++) {
       if (latestParts[i] > currentParts[i]) return true;
       if (latestParts[i] < currentParts[i]) return false;
