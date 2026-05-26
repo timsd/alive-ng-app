@@ -21,8 +21,8 @@ for payments, and Resend-backed Appwrite Functions for email.
   and secure webhook processing
 - Chapter, board, leadership, discipleship, and meeting-file administration
 - LiveKit meetings through an Appwrite token function
-- Appwrite Messaging/FCM-compatible notification direction, with local reminder
-  support while final messaging migration is completed
+- Appwrite Messaging records and local reminders, with Firebase Cloud Messaging
+  retained only as the Android/Web push delivery bridge
 
 ## Current Stack
 
@@ -53,11 +53,9 @@ lib/
   widgets/         Reusable UI components
 
 scripts/           Appwrite provisioning, build config, and content tooling
-functions/         Appwrite Functions source
-server/            Supporting Node server utilities
+appwrite_functions/ Appwrite Functions source
 assets/            Bundled images, fonts, Bible/content assets
 docs/              Operational setup and migration notes
-oldfirebasedelete/ Archived legacy files kept for reference during migration
 ```
 
 ## Required Local Setup
@@ -138,6 +136,7 @@ Useful setup docs:
 
 - `docs/appwrite-coolify-livekit-setup.md`
 - `docs/appwrite-migration-readiness.md`
+- `docs/oracle-free-tier-deployment-roadmap.md`
 - `docs/paystack_functions_reference.md`
 
 ## Run The App
@@ -218,15 +217,15 @@ build/app/outputs/bundle/release/app-release.aab
 
 The app is code-side migrated to Appwrite for database, storage, auth,
 analytics/event tracking, and function-backed workflows. Firebase is retained
-only for FCM push delivery. Legacy files that are no longer imported are moved
-to `oldfirebasedelete/` first instead of being deleted immediately.
+only for FCM push delivery. Legacy Firebase Functions, Firestore rules/indexes,
+Firebase Hosting config, and the old Express/Firebase Admin sidecar have been
+removed from the active repository after replacement by `appwrite_functions/`
+and Appwrite infrastructure scripts.
 
 Current remaining migration targets are primarily:
 
 - Appwrite Messaging provider validation for the final FCM delivery path
 - Browser QA once the Coolify/Appwrite endpoint is reachable
-- Legacy Firebase config/rules/indexes after messaging/telemetry replacement is
-  fully decided
 
 ## Project Health Commands
 
@@ -239,7 +238,7 @@ npm run appwrite:ping
 Duplicate Dart filename check:
 
 ```bash
-dart scripts/duplicate_dart_files.dart android appwrite_functions assets build docs firebase functions ios lib scripts server test tool tools web windows
+dart scripts/duplicate_dart_files.dart android appwrite_functions assets build docs ios lib scripts test tool tools web windows
 ```
 
 ## Support

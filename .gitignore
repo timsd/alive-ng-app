@@ -84,6 +84,8 @@ logs/
 # Markdown docs (keep README.md)
 *.md
 !README.md
+!PROJECT_TOOLS_AND_PLATFORMS.md
+!docs/**/*.md
 !/functions/**/README.md
  
 # Local Chrome downloaded by tooling

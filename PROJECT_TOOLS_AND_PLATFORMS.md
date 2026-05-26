@@ -16,7 +16,10 @@ Estimated code-side migration progress: 100% for active Firebase database/storag
   If provisioning returns `fetch failed`, the local schema/dry-run can still be valid; rerun once the Appwrite endpoint is reachable.
 - The current schema includes analytics/statistics tables: `analytics_events`, `user_activities`, `reading_sessions`, and `chapter_readings`.
 - Coolify web hosting is supported by the root `Dockerfile`; pass Flutter values through the `FLUTTER_BUILD_ARGS` build argument and pass public FCM web push bridge values as Docker build args so the service worker is configured during image build.
-- Firebase rules, indexes, and config files are legacy references now; keep them archived/available until Appwrite Messaging FCM delivery is fully validated.
+- Firebase rules, indexes, Hosting config, legacy Firebase Functions, and the
+  old Express/Firebase Admin sidecar have been removed from the active tree
+  after Appwrite replacements were added. Firebase remains only for FCM push
+  delivery.
 
 ## Core App Stack
 
@@ -95,14 +98,13 @@ Estimated code-side migration progress: 100% for active Firebase database/storag
 Firebase packages remain in `pubspec.yaml` only where still imported by the FCM notification bridge. Firestore/Auth/Storage/Functions/Analytics/Crashlytics packages have been removed from the active dependency graph.
 
 - Firebase Core and Messaging are still present for Appwrite Messaging FCM delivery.
-- `FirebaseDatabaseService` has been archived to `oldfirebasedelete/lib_services/` after active imports were removed.
-- Root Firebase files still kept as legacy references while messaging/telemetry are settled:
-  - `.firebaserc`
-  - `firebase.json`
-  - `firestore.indexes.json`
-  - `firestore.rules`
-  - `android/app/google-services.json`
-- These can move to `oldfirebasedelete/` only after all dependent modules are migrated or intentionally retired.
+- Legacy `FirebaseDatabaseService`, Firebase Cloud Functions, and old archived
+  migration copies have been deleted after active imports were removed and
+  Appwrite replacements passed analysis.
+- Root Firebase Hosting, Firestore rules/indexes, Firebase Cloud Functions, and
+  the legacy Firebase Admin Express server have been removed from the active
+  repository. Keep `android/app/google-services.json` locally for FCM Android
+  builds; it must stay out of Git.
 
 ## Remaining Migration Areas
 
@@ -110,7 +112,8 @@ Firebase packages remain in `pubspec.yaml` only where still imported by the FCM 
 - Browser QA for Coolify web once `app.alivenigeria.org` and the Appwrite endpoint are reachable.
 - Podcast offline download persistence can be improved beyond opening the Appwrite file URL externally.
 - The board/tract storage compatibility facade is now `AppwriteStorageCompatService`; remove it only after those screens move to narrower feature-specific services.
-- Firebase rules/indexes can be moved fully into archive once FCM push delivery is validated.
+- Static web Firebase project/donation pages have been replaced by the Flutter
+  Appwrite donation route.
 
 ## Secrets And Runtime Parameters
 
@@ -142,8 +145,10 @@ Keep these out of Git. Configure them in `.env`, Coolify build variables, or App
 ## Maintenance Notes
 
 - Run `flutter analyze` after each migration slice.
-- Run `dart scripts/duplicate_dart_files.dart android appwrite_functions assets build docs firebase functions ios lib scripts server test tool tools web windows` to inspect duplicate Dart filenames across the project.
-- Keep migrated Firebase files in `oldfirebasedelete/` only after confirming the replacement path is live. The old mixed `FirebaseDatabaseService` bridge is archived there because active callers have moved to Appwrite and `flutter analyze` stays clean.
+- Run `dart scripts/duplicate_dart_files.dart android appwrite_functions assets build docs ios lib scripts test tool tools web windows` to inspect duplicate Dart filenames across the project.
+- Do not restore deleted Firebase Functions, Firestore rules/indexes, Firebase
+  Hosting config, or the old Express/Firebase Admin sidecar unless you are
+  intentionally testing a historical migration path.
 - Keep `scripts/appwrite_infrastructure_schema.mjs` as the source of truth for Appwrite infrastructure until `appwrite.config.json` can fully represent this self-hosted Appwrite version.
 
 ## Standard Functionality Review Targets

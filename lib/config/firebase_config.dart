@@ -60,17 +60,6 @@ class FirebaseConfig {
   // Private key should NEVER be in client code
   // static const String webPushPrivateKey = '...';
 
-  // Firebase Admin SDK Service Account
-  static const String serviceAccountEmail =
-      'firebase-adminsdk-fbsvc@alive-ng-flutter-app.iam.gserviceaccount.com';
-
-  /// Load Firebase Admin SDK configuration
-  /// Note: Reading local files is not supported in client apps or on web.
-  /// This method returns null to maintain web compatibility.
-  static Future<Map<String, dynamic>?> getAdminConfig() async {
-    return null;
-  }
-
   // Firebase Options for different platforms
   static FirebaseOptions get android => FirebaseOptions(
         apiKey: _getEnv('FIREBASE_ANDROID_API_KEY',

@@ -333,7 +333,7 @@ class RoleAccessService {
         '/user-management',
         '/financial-reports',
         '/board-documents',
-        '/user-archives',
+        '/user-archive',
       ]);
     }
 

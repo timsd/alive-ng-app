@@ -1,6 +1,6 @@
 # Appwrite Migration Readiness
 
-Last reviewed: 2026-05-25
+Last reviewed: 2026-05-26
 
 ## Chat UI
 
@@ -30,7 +30,11 @@ organization.
 - Webhooks: profile approval, chat file, and donation record webhooks are optional and skipped until the corresponding `APPWRITE_*_WEBHOOK_URL` values are present.
 - Topics / Messaging: all user, admin, BOD, directors, chapter leaders, approvals, prayer, chat, donations, events, study, kids, health, and content topics are declared.
 
-Current blocker: the Appwrite endpoint and `app.alivenigeria.org` are not reachable from this workspace, so real provisioning cannot be rerun yet. Continue code migration locally and rerun `npm run appwrite:provision:legacy` after server/proxy/firewall/DNS/Coolify is restored.
+Current blocker: the Appwrite endpoint and `app.alivenigeria.org` may still be
+unreachable depending on the current server/proxy/firewall/DNS/Coolify state.
+Local schema validation is clean with `npm run appwrite:dry-run`; rerun
+`npm run appwrite:provision` or `npm run appwrite:provision:legacy` after the
+server is reachable.
 
 ## Deployment Gate
 
@@ -44,27 +48,31 @@ Use this safer sequence for remaining migration:
 1. Keep running `npm run appwrite:dry-run` before schema changes.
 2. Apply schema with `npm run appwrite:provision:legacy`.
 3. Deploy functions one group at a time after dashboard env vars are set.
-4. Run Firebase data migration per collection/bucket after each Appwrite target is verified.
-5. Move Firebase files into `oldfirebasedelete` only after the active app path no longer imports or executes them.
+4. Run any remaining historical Firebase data migration per collection/bucket
+   only after each Appwrite target is verified.
+5. Keep only the FCM bridge files needed for Android/Web push delivery.
 
 ## Firebase Files
 
-Firebase files still exist and should not be moved blindly. Firebase Hosting is
-disabled and the old `public/` hosting files have been moved to
-`oldfirebasedelete/firebase_hosting_public`, but several app areas still import
-Firebase services, including sync/offline sync,
-notifications, native analytics/crash compatibility, web push,
-and legacy server/functions code. Only files already replaced should go into
-`oldfirebasedelete`.
+Firebase is now intentionally limited to the FCM bridge:
+
+- `firebase_core` and `firebase_messaging` in Flutter.
+- `lib/config/firebase_config.dart` and `lib/services/firebase_messaging_base.dart`.
+- `web/firebase-messaging-sw.js`.
+- local, uncommitted platform credentials such as `android/app/google-services.json`.
+
+Firebase Hosting config, Firestore rules/indexes, legacy Firebase Functions,
+static Firebase donation/project pages, old archived service copies, and the old
+Express/Firebase Admin sidecar have been removed from the active repository.
 
 ## Current Appwrite Client Migration
 
 - Appwrite auth/profile, chat, LiveKit token creation, testimonies, notification settings storage, donation records/material downloads, gift submissions, Paystack initialization/webhook code, kids content CRUD/seeding, tract/podcast admin flows, enhanced health service, chapter management, leadership records/transitions, discipleship tracking, and meeting file storage/metadata are now wired.
 - Bible game flow has been stabilized locally: nullable state reset works, multiple-choice options are stable per verse, blank generation avoids fragile words, and the daily verse corpus is no longer shuffled globally.
-- Push notification delivery still uses Firebase Messaging compatibility while Appwrite Messaging targeting is being completed.
+- Push notification delivery still uses Firebase Messaging compatibility while Appwrite Messaging provider/target QA is completed.
 - `DonationService` no longer imports Firebase; downloadable material URLs should now be Appwrite/external URLs, not Firebase Storage URLs.
 - The old `FirebaseStorageService` facade has been renamed to `AppwriteStorageCompatService`; it remains a temporary compatibility layer for board and tract storage methods.
-- The unused legacy `lib/services/admin_service.dart` file has been moved to `oldfirebasedelete/lib_services/admin_service.dart`.
+- Legacy service copies under `oldfirebasedelete/` were deleted after Appwrite replacements passed analysis.
 
 ## Play Store GitHub Actions
 

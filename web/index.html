@@ -31,10 +31,6 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png" />
 
-  <!-- Legacy Firebase SDK for web-only Auth/Firestore flows still pending migration. -->
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
   <script>
     (function () {
       try {
@@ -54,7 +50,6 @@
   <link rel="preload" as="script" href="flutter_bootstrap.js">
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://www.google.com" crossorigin>
-  <link rel="preconnect" href="https://firebase.googleapis.com" crossorigin>
   <link rel="preconnect" href="https://www.googleapis.com" crossorigin>
   <style>
     body {
@@ -633,7 +628,6 @@
 
     </div>
   </section>
-  <!-- Firebase Configuration -->
   <!-- Projects Modal -->
   <div id="projects-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="projects-title">
     <div class="modal">
@@ -668,46 +662,9 @@
   </div>
 
   <script>
-    try {
-      var firebaseAvailable = (typeof firebase !== 'undefined' && firebase && typeof firebase.initializeApp === 'function');
-      if (firebaseAvailable) {
-        const firebaseConfig = {
-          apiKey: "AIzaSyDmpl9Idp9Q0ult4BfWPg5J7A1URQOpDoU",
-          authDomain: "alive-ng-flutter-app.firebaseapp.com",
-          projectId: "alive-ng-flutter-app",
-          storageBucket: "alive-ng-flutter-app.firebasestorage.app",
-          messagingSenderId: "234909240985",
-          appId: "1:234909240985:web:9d703098e9fcce3e8e3208",
-          measurementId: "G-CC6JE7224Q"
-        };
-        firebase.initializeApp(firebaseConfig);
-        // Initialize Analytics if supported
-        try {
-          firebase.analytics();
-        } catch (_) { }
-        firebase.auth().onAuthStateChanged(async function (user) {
-          try {
-            if (!user) {
-              window._isAdmin = false;
-              window._isLoggedIn = false;
-              return;
-            }
-            const token = await user.getIdTokenResult();
-            window._isAdmin = !!(token.claims && token.claims.admin);
-            window._isLoggedIn = true;
-          } catch (_) {
-            window._isAdmin = false;
-            window._isLoggedIn = false;
-          }
-        });
-      } else {
-        console.warn('Firebase SDK not available, skipping initialization');
-      }
-    } catch (error) {
-      console.warn('Firebase initialization failed:', error);
-    }
-  </script>
-  <script>
+    window._isLoggedIn = false;
+    window._isAdmin = false;
+
     var _bootAttempts = 0;
     function loadFlutterApp(startRoute) {
       try {
@@ -843,13 +800,11 @@
       openProjectsModal();
     });
 
-    // Projects listing via Firestore
+    // Static project preview. The full app reads live project and donation data from Appwrite.
     let _projects = [];
     let _filtered = [];
     let _statusFilter = 'all';
     let _sortKey = 'priority';
-    let _unsubscribeProjects = null;
-    const db = firebase.firestore();
     const fallbackProjects = [
       {
         id: 'impact_hub_center',
@@ -893,35 +848,11 @@
     ];
 
     async function fetchProjects() {
-      try {
-        if (_unsubscribeProjects) {
-          _unsubscribeProjects();
-          _unsubscribeProjects = null;
-        }
-        _unsubscribeProjects = db.collection('projects')
-          .orderBy('priority', 'asc')
-          .onSnapshot((snap) => {
-            if (snap.empty) {
-              _projects = fallbackProjects.slice();
-            } else {
-              _projects = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            }
-            applyFiltersAndSort();
-            renderProjectsList();
-          }, (err) => {
-            console.error('Projects snapshot error', err);
-            _projects = fallbackProjects.slice();
-            applyFiltersAndSort();
-            renderProjectsList();
-          });
-      } catch (e) {
-        _projects = fallbackProjects.slice();
-        applyFiltersAndSort();
-      }
+      _projects = fallbackProjects.slice();
+      applyFiltersAndSort();
     }
 
     function openProjectsModal() {
-      try { firebase.analytics().logEvent('view_project_list'); } catch (_) { }
       const overlay = document.getElementById('projects-modal');
       overlay.style.display = 'flex';
       if (_projects.length === 0) {
@@ -933,12 +864,6 @@
 
     function closeProjectsModal() {
       document.getElementById('projects-modal').style.display = 'none';
-      try {
-        if (_unsubscribeProjects) {
-          _unsubscribeProjects();
-          _unsubscribeProjects = null;
-        }
-      } catch (_) { }
     }
 
     document.getElementById('projects-close')?.addEventListener('click', closeProjectsModal);
@@ -1030,10 +955,8 @@
         </div>
       `;
       document.getElementById(`donate-${p.id}`)?.addEventListener('click', () => {
-        try { firebase.analytics().logEvent('begin_checkout', { items: [{ item_id: p.id, item_name: p.title }] }); } catch (_) { }
         try { sessionStorage.setItem('selected_project_id', p.id); } catch (_) { }
-        // Navigate to the standalone HTML donation page
-        window.location.href = `donation.html?projectId=${p.id}`;
+        loadFlutterApp(`/donation?projectId=${encodeURIComponent(p.id)}`);
       });
       document.getElementById(`admin-note-${p.id}`)?.addEventListener('click', () => {
         alert('Admins can update project details inside the ALIVE-NG app. Open the app and use the Admin section.');

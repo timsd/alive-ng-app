@@ -62,7 +62,6 @@ import '../utils/web_launch_params.dart';
 // New screen imports
 import '../screens/admin/leadership_archive_screen.dart';
 
-
 const bool kMinimalRouterMode = false;
 
 // Helper function to determine if a route is accessible to guest users
@@ -436,6 +435,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const EnhancedHealthScreen(),
           ),
 
+          GoRoute(
+            path: AppConstants.recipesRoute,
+            builder: (context, state) => const EnhancedHealthScreen(),
+          ),
+
           // Recipe Submission Route (Auth Required)
           GoRoute(
             path: AppConstants.recipeSubmissionRoute,
@@ -613,10 +617,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           return null;
         },
       ),
-      GoRoute(
-        path: AppConstants.leadershipArchiveRoute,
-        builder: (context, state) => const LeadershipArchiveScreen(),
-      ),
     ],
 
     // Error handling
@@ -655,4 +655,3 @@ final routerProvider = Provider<GoRouter>((ref) {
     ),
   );
 });
-

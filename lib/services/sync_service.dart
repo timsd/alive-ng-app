@@ -486,9 +486,9 @@ class SyncService {
       final startDate = DateTime.now().subtract(const Duration(days: 30));
       final endDate = DateTime.now().add(const Duration(days: 7));
 
-      final firestoreVerses = await DailyVerseRepository.instance
+      final appwriteVerses = await DailyVerseRepository.instance
           .getDailyVersesInRange(startDate, endDate);
-      final response = firestoreVerses.map((v) => v.toJson()).toList();
+      final response = appwriteVerses.map((v) => v.toJson()).toList();
 
       // Store in local storage for offline access
       await _storage.setJsonList('daily_verses', response);
