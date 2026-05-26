@@ -6,7 +6,7 @@ Last updated from codebase review: 2026-05-25
 
 ## Migration Snapshot
 
-The app has migrated its active database, storage, auth, and function-backed workflows from Firebase/Jitsi/GetStream to Appwrite, LiveKit, and Coolify. Treat Firebase as a narrow FCM/telemetry compatibility layer until push delivery is fully validated through Appwrite Messaging.
+The app has migrated its active database, storage, auth, analytics/event tracking, crash reporting, and function-backed workflows from Firebase/Jitsi/GetStream to Appwrite, GlitchTip, LiveKit, and Coolify. Treat Firebase as a narrow FCM compatibility layer until push delivery is fully validated through Appwrite Messaging.
 
 Estimated overall migration progress: about 99.8%.
 
@@ -16,7 +16,7 @@ Estimated overall migration progress: about 99.8%.
   If provisioning returns `fetch failed`, the local schema/dry-run can still be valid; rerun once the Appwrite endpoint is reachable.
 - The current schema includes analytics/statistics tables: `analytics_events`, `user_activities`, `reading_sessions`, and `chapter_readings`.
 - Coolify web hosting is supported by the root `Dockerfile`; pass Flutter values through the `FLUTTER_BUILD_ARGS` build argument and pass public FCM web push bridge values as Docker build args so the service worker is configured during image build.
-- Firebase rules, indexes, and config files are legacy references now; keep them archived/available until Appwrite Messaging FCM delivery and telemetry decisions are final.
+- Firebase rules, indexes, and config files are legacy references now; keep them archived/available until Appwrite Messaging FCM delivery is fully validated.
 
 ## Core App Stack
 
@@ -79,11 +79,22 @@ Estimated overall migration progress: about 99.8%.
   - FCM setup requires Firebase project server credentials in Appwrite Messaging. The public `WEB_PUSH_CERT_KEY` helps the browser request a web push token, but it is not enough for Appwrite to send push by itself.
   - If the Appwrite FCM provider ID is not the default, pass it to Flutter as `APPWRITE_FCM_PROVIDER_ID`.
 
+## Analytics And Crash Reporting
+
+- App analytics/event tracking uses `lib/services/analytics_service.dart` and persists authenticated events to the Appwrite `analytics_events` table.
+- Firebase Analytics has been removed from the active dependency graph.
+- Crash/error reporting uses GlitchTip through the Sentry-compatible Flutter SDK.
+- Configure GlitchTip from the GlitchTip project DSN:
+  - `GLITCHTIP_DSN`
+  - `GLITCHTIP_ENVIRONMENT` such as `production`, `staging`, or `development`
+  - `GLITCHTIP_RELEASE` optional, for example `alive-ng-app@1.1.0+2`
+  - `GLITCHTIP_TRACES_SAMPLE_RATE` optional, default `0`
+
 ## Legacy Firebase Compatibility
 
-Firebase packages remain in `pubspec.yaml` only where still imported by the notification bridge or telemetry setup. Firestore/Auth/Storage/Functions packages have been removed from the active dependency graph.
+Firebase packages remain in `pubspec.yaml` only where still imported by the FCM notification bridge. Firestore/Auth/Storage/Functions/Analytics/Crashlytics packages have been removed from the active dependency graph.
 
-- Firebase Core, Messaging, Analytics, and Crashlytics are still present.
+- Firebase Core and Messaging are still present for Appwrite Messaging FCM delivery.
 - `FirebaseDatabaseService` has been archived to `oldfirebasedelete/lib_services/` after active imports were removed.
 - Root Firebase files still kept as legacy references while messaging/telemetry are settled:
   - `.firebaserc`
@@ -99,7 +110,7 @@ Firebase packages remain in `pubspec.yaml` only where still imported by the noti
 - Browser QA for Coolify web once `app.alivenigeria.org` and the Appwrite endpoint are reachable.
 - Podcast offline download persistence can be improved beyond opening the Appwrite file URL externally.
 - The board/tract storage compatibility facade is now `AppwriteStorageCompatService`; remove it only after those screens move to narrower feature-specific services.
-- Firebase rules/indexes can be moved fully into archive once FCM/telemetry cleanup is finalized.
+- Firebase rules/indexes can be moved fully into archive once FCM push delivery is validated.
 
 ## Secrets And Runtime Parameters
 
@@ -110,6 +121,10 @@ Keep these out of Git. Configure them in `.env`, Coolify build variables, or App
 - `APPWRITE_DATABASE_ID`
 - `APPWRITE_API_KEY`
 - `APPWRITE_FCM_PROVIDER_ID` only if the Appwrite FCM provider ID is not the default/only push provider
+- `GLITCHTIP_DSN`
+- `GLITCHTIP_ENVIRONMENT`
+- `GLITCHTIP_RELEASE`
+- `GLITCHTIP_TRACES_SAMPLE_RATE`
 - `FLUTTER_BUILD_ARGS`
 - `LIVEKIT_URL`
 - `LIVEKIT_API_KEY`

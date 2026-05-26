@@ -1,12 +1,13 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:firebase_analytics/firebase_analytics.dart';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 // Removed dart:io import for web compatibility
 
-/// Firebase Configuration for ALIVE-NG App
-/// Contains all Firebase project settings and initialization
+/// Firebase Cloud Messaging configuration for ALIVE-NG App.
+///
+/// Firebase is retained only as the Android/Web push delivery bridge used by
+/// Appwrite Messaging providers. Product analytics are stored in Appwrite, and
+/// crash reporting is handled by GlitchTip/Sentry-compatible reporting.
 class FirebaseConfig {
   // Firebase Project Details
   static const String projectName = 'aliveng-ministry-app';
@@ -155,13 +156,7 @@ class FirebaseConfig {
         debugPrint('Skipping Firebase Messaging auto-init on web startup');
       }
 
-      // Initialize Firebase Analytics
-      await _initializeAnalytics();
-
-      // Initialize Firebase Crashlytics
-      await _initializeCrashlytics();
-
-      debugPrint('Firebase initialized successfully');
+      debugPrint('Firebase Cloud Messaging initialized successfully');
     } catch (e) {
       debugPrint('Error initializing Firebase: $e');
       rethrow;
@@ -209,62 +204,6 @@ class FirebaseConfig {
       });
     } catch (e) {
       debugPrint('Error initializing Firebase Messaging: $e');
-    }
-  }
-
-  /// Initialize Firebase Analytics
-  static Future<void> _initializeAnalytics() async {
-    try {
-      final analytics = FirebaseAnalytics.instance;
-
-      // Enable analytics collection
-      await analytics.setAnalyticsCollectionEnabled(true);
-
-      // Set default event parameters (skip on web to avoid assertion failures)
-      if (!kIsWeb) {
-        await analytics.setDefaultEventParameters({
-          'app_version': '1.0.0',
-          'platform': defaultTargetPlatform.name,
-          'project': projectName,
-        });
-      }
-
-      debugPrint('Firebase Analytics initialized');
-    } catch (e) {
-      debugPrint('Error initializing Firebase Analytics: $e');
-    }
-  }
-
-  /// Initialize Firebase Crashlytics
-  static Future<void> _initializeCrashlytics() async {
-    try {
-      if (kIsWeb) {
-        // Crashlytics isn't supported on Flutter web; skip to prevent runtime errors
-        debugPrint('Skipping Crashlytics initialization on web');
-        return;
-      }
-      final crashlytics = FirebaseCrashlytics.instance;
-
-      // Enable crashlytics collection
-      await crashlytics.setCrashlyticsCollectionEnabled(true);
-
-      // Set user identifier
-      // This will be set when user logs in
-
-      // Pass all uncaught "fatal" errors from the framework to Crashlytics
-      FlutterError.onError = (errorDetails) {
-        FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
-      };
-
-      // Pass all uncaught asynchronous errors that aren't handled by the Flutter framework to Crashlytics
-      PlatformDispatcher.instance.onError = (error, stack) {
-        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-        return true;
-      };
-
-      debugPrint('Firebase Crashlytics initialized');
-    } catch (e) {
-      debugPrint('Error initializing Firebase Crashlytics: $e');
     }
   }
 
@@ -407,47 +346,19 @@ class FirebaseConfig {
     }
   }
 
-  /// Send analytics event
+  /// Product analytics are Appwrite-backed. Kept as a no-op compatibility hook.
   static Future<void> logEvent(
       String eventName, Map<String, dynamic> parameters) async {
-    try {
-      await FirebaseAnalytics.instance.logEvent(
-        name: eventName,
-        parameters: parameters.cast<String, Object>(),
-      );
-    } catch (e) {
-      debugPrint('Error logging analytics event: $e');
-    }
+    debugPrint('Appwrite analytics event requested: $eventName');
   }
 
-  /// Log user properties
+  /// Product analytics are Appwrite-backed. Kept as a no-op compatibility hook.
   static Future<void> setUserProperties(Map<String, String> properties) async {
-    try {
-      final analytics = FirebaseAnalytics.instance;
-
-      for (final entry in properties.entries) {
-        await analytics.setUserProperty(
-          name: entry.key,
-          value: entry.value,
-        );
-      }
-    } catch (e) {
-      debugPrint('Error setting user properties: $e');
-    }
+    debugPrint('Appwrite analytics user properties requested');
   }
 
-  /// Set user ID for analytics and crashlytics
+  /// Product analytics/crash reporting are not Firebase-backed.
   static Future<void> setUserId(String userId) async {
-    try {
-      // Set user ID for Analytics
-      await FirebaseAnalytics.instance.setUserId(id: userId);
-
-      // Set user identifier for Crashlytics
-      await FirebaseCrashlytics.instance.setUserIdentifier(userId);
-
-      debugPrint('User ID set: $userId');
-    } catch (e) {
-      debugPrint('Error setting user ID: $e');
-    }
+    debugPrint('Firebase FCM user ID bridge ignored: $userId');
   }
 }

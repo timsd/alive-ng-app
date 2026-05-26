@@ -35,8 +35,9 @@ for payments, and Resend-backed Appwrite Functions for email.
 - **Email:** Resend via the `send_email` Appwrite Function
 - **Local data:** SQLite/Sqflite, SharedPreferences, Secure Storage
 - **Remaining compatibility:** Firebase remains only for the FCM web/Android
-  bridge plus analytics/crash reporting while Appwrite Messaging provider setup
-  is completed.
+  bridge used by Appwrite Messaging push delivery.
+- **Crash reporting:** GlitchTip using the Sentry-compatible Flutter SDK
+- **Analytics:** Appwrite `analytics_events` plus local session/event storage
 
 ## Repository Layout
 
@@ -90,6 +91,8 @@ Key public Flutter build values:
 --dart-define=LIVEKIT_URL=...
 --dart-define=PAYSTACK_PUBLIC_KEY=...
 --dart-define=PAYSTACK_CALLBACK_URL=...
+--dart-define=GLITCHTIP_DSN=...
+--dart-define=GLITCHTIP_ENVIRONMENT=production
 ```
 
 Keep private values such as `APPWRITE_API_KEY`, `PAYSTACK_SECRET_KEY`,
@@ -170,7 +173,7 @@ The root `Dockerfile` builds Flutter web and serves it with Nginx.
 Set Coolify build argument:
 
 ```text
-FLUTTER_BUILD_ARGS=--dart-define=APPWRITE_ENDPOINT=... --dart-define=APPWRITE_PROJECT_ID=... --dart-define=APPWRITE_DATABASE_ID=... --dart-define=LIVEKIT_URL=...
+FLUTTER_BUILD_ARGS=--dart-define=APPWRITE_ENDPOINT=... --dart-define=APPWRITE_PROJECT_ID=... --dart-define=APPWRITE_DATABASE_ID=... --dart-define=LIVEKIT_URL=... --dart-define=GLITCHTIP_DSN=...
 ```
 
 Also configure public FCM web-push bridge values only while the web service
@@ -213,10 +216,10 @@ build/app/outputs/bundle/release/app-release.aab
 
 ## Migration And Archive Policy
 
-The app is code-side migrated to Appwrite for database, storage, auth, and
-function-backed workflows. Legacy files that are no longer imported are moved
-to `oldfirebasedelete/` first instead of being deleted immediately. This keeps
-a safe rollback/reference trail while the final Firebase removal is completed.
+The app is code-side migrated to Appwrite for database, storage, auth,
+analytics/event tracking, and function-backed workflows. Firebase is retained
+only for FCM push delivery. Legacy files that are no longer imported are moved
+to `oldfirebasedelete/` first instead of being deleted immediately.
 
 Current remaining migration targets are primarily:
 

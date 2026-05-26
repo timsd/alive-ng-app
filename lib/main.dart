@@ -22,6 +22,8 @@ import 'package:flutter/foundation.dart';
 import 'debug/dev_admin_override.dart';
 import 'providers/language_provider.dart';
 import 'config/appwrite_backend_config.dart';
+import 'services/analytics_service.dart';
+import 'services/crash_reporting_service.dart';
 
 // Global Appwrite service instances for provider access.
 final appwriteClient = Client();
@@ -33,9 +35,11 @@ late final Realtime appwriteRealtime;
 void main() {
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
+    await CrashReportingService.instance.initialize();
 
     FlutterError.onError = (details) {
       debugPrint(details.exceptionAsString());
+      CrashReportingService.instance.captureFlutterError(details);
     };
 
     var backendReady = false;
@@ -76,6 +80,12 @@ void main() {
 
       if (backendReady) {
         try {
+          await AnalyticsService.instance.initialize();
+        } catch (e) {
+          debugPrint('Appwrite analytics initialization failed: $e');
+        }
+
+        try {
           await KidsContentService.initializeKidsContent();
         } catch (e) {
           debugPrint('Failed to initialize Kids Content Service: $e');
@@ -92,6 +102,7 @@ void main() {
     });
   }, (error, stack) {
     debugPrint('Unhandled: $error');
+    CrashReportingService.instance.captureError(error, stack, fatal: true);
   });
 }
 
