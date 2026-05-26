@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
 import 'package:appwrite/appwrite.dart';
 import 'package:intl/intl.dart';
@@ -35,7 +33,7 @@ class ContentManagementScreen extends StatefulWidget {
 class _ContentManagementScreenState extends State<ContentManagementScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final Databases _databases = Databases(appwriteClient);
+  final TablesDB _tables = TablesDB(appwriteClient);
 
   bool _isLoading = false;
   List<Map<String, dynamic>> _contentPages = [];
@@ -216,13 +214,13 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     String collectionId, {
     List<String> queries = const [],
   }) async {
-    final response = await _databases.listDocuments(
+    final response = await _tables.listRows(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: collectionId,
+      tableId: collectionId,
       queries: queries,
     );
-    return response.documents
-        .map((doc) => {...Map<String, dynamic>.from(doc.data), 'id': doc.$id})
+    return response.rows
+        .map((row) => {...Map<String, dynamic>.from(row.data), 'id': row.$id})
         .toList();
   }
 
@@ -231,10 +229,10 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     Map<String, dynamic> data, {
     String? documentId,
   }) async {
-    await _databases.createDocument(
+    await _tables.createRow(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: collectionId,
-      documentId: documentId ?? ID.unique(),
+      tableId: collectionId,
+      rowId: documentId ?? ID.unique(),
       data: data,
     );
   }
@@ -245,10 +243,10 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     Map<String, dynamic> data,
   ) async {
     try {
-      await _databases.updateDocument(
+      await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: collectionId,
-        documentId: documentId,
+        tableId: collectionId,
+        rowId: documentId,
         data: data,
       );
     } on AppwriteException catch (e) {
@@ -262,10 +260,10 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     String documentId,
     Map<String, dynamic> data,
   ) async {
-    await _databases.updateDocument(
+    await _tables.updateRow(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: collectionId,
-      documentId: documentId,
+      tableId: collectionId,
+      rowId: documentId,
       data: data,
     );
   }
@@ -274,10 +272,10 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     String collectionId,
     String documentId,
   ) async {
-    await _databases.deleteDocument(
+    await _tables.deleteRow(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: collectionId,
-      documentId: documentId,
+      tableId: collectionId,
+      rowId: documentId,
     );
   }
 

@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:appwrite/appwrite.dart';
 import 'package:flutter/material.dart';
 import '../../config/appwrite_backend_config.dart';
@@ -18,7 +16,7 @@ class AppSettingsScreen extends StatefulWidget {
 }
 
 class _AppSettingsScreenState extends State<AppSettingsScreen> {
-  final Databases _databases = Databases(appwriteClient);
+  final TablesDB _tables = TablesDB(appwriteClient);
 
   bool _isLoading = true;
   final Map<String, List<Map<String, dynamic>>> _settingsByCategory = {};
@@ -80,44 +78,44 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   }
 
   Future<List<Map<String, dynamic>>> _listSettings() async {
-    final response = await _databases.listDocuments(
+    final response = await _tables.listRows(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: AppwriteBackendConfig.appSettingsCollectionId,
+      tableId: AppwriteBackendConfig.appSettingsCollectionId,
       queries: [
         Query.orderAsc('category'),
         Query.limit(200),
       ],
     );
-    return response.documents
-        .map((doc) => {...Map<String, dynamic>.from(doc.data), 'id': doc.$id})
+    return response.rows
+        .map((row) => {...Map<String, dynamic>.from(row.data), 'id': row.$id})
         .toList();
   }
 
   Future<void> _createSetting(Map<String, dynamic> data) async {
     final key = data['setting_key']?.toString() ?? data['key']?.toString();
-    await _databases.createDocument(
+    await _tables.createRow(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: AppwriteBackendConfig.appSettingsCollectionId,
-      documentId: key == null || key.isEmpty ? ID.unique() : key,
+      tableId: AppwriteBackendConfig.appSettingsCollectionId,
+      rowId: key == null || key.isEmpty ? ID.unique() : key,
       data: _normalizeSettingPayload(data),
     );
   }
 
   Future<void> _updateSetting(
       String documentId, Map<String, dynamic> data) async {
-    await _databases.updateDocument(
+    await _tables.updateRow(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: AppwriteBackendConfig.appSettingsCollectionId,
-      documentId: documentId,
+      tableId: AppwriteBackendConfig.appSettingsCollectionId,
+      rowId: documentId,
       data: _normalizeSettingPayload(data),
     );
   }
 
   Future<void> _deleteSettingDocument(String documentId) async {
-    await _databases.deleteDocument(
+    await _tables.deleteRow(
       databaseId: AppwriteBackendConfig.databaseId,
-      collectionId: AppwriteBackendConfig.appSettingsCollectionId,
-      documentId: documentId,
+      tableId: AppwriteBackendConfig.appSettingsCollectionId,
+      rowId: documentId,
     );
   }
 

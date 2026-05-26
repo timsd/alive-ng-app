@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:appwrite/appwrite.dart';
 
 import '../config/appwrite_backend_config.dart';
@@ -80,15 +78,15 @@ class StudyProgress {
 }
 
 class StudyService {
-  final Databases _databases = Databases(appwriteClient);
+  final TablesDB _tables = TablesDB(appwriteClient);
   final _logger = Logger('StudyService');
 
   // Fetch study progress for a user
   Future<List<StudyProgress>> fetchStudyProgress(String userId) async {
     try {
-      final snapshot = await _databases.listDocuments(
+      final snapshot = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: 'study_progress',
+        tableId: 'study_progress',
         queries: [
           Query.equal('user_id', userId),
           Query.orderAsc('created_at'),
@@ -96,7 +94,7 @@ class StudyService {
         ],
       );
 
-      return snapshot.documents
+      return snapshot.rows
           .map((doc) => StudyProgress.fromJson({...doc.data, 'id': doc.$id}))
           .toList();
     } catch (e) {
@@ -132,25 +130,25 @@ class StudyService {
       };
 
       try {
-        final existing = await _databases.getDocument(
+        final existing = await _tables.getRow(
           databaseId: AppwriteBackendConfig.databaseId,
-          collectionId: 'study_progress',
-          documentId: docId,
+          tableId: 'study_progress',
+          rowId: docId,
         );
         progressData['created_at'] = existing.data['created_at'] ?? now;
-        await _databases.updateDocument(
+        await _tables.updateRow(
           databaseId: AppwriteBackendConfig.databaseId,
-          collectionId: 'study_progress',
-          documentId: docId,
+          tableId: 'study_progress',
+          rowId: docId,
           data: progressData,
         );
       } on AppwriteException catch (e) {
         if (e.code != 404) rethrow;
         progressData['created_at'] = now;
-        await _databases.createDocument(
+        await _tables.createRow(
           databaseId: AppwriteBackendConfig.databaseId,
-          collectionId: 'study_progress',
-          documentId: docId,
+          tableId: 'study_progress',
+          rowId: docId,
           data: progressData,
         );
       }
@@ -167,9 +165,9 @@ class StudyService {
   Future<List<StudyProgress>> getProgramProgress(
       String userId, String programId) async {
     try {
-      final snapshot = await _databases.listDocuments(
+      final snapshot = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: 'study_progress',
+        tableId: 'study_progress',
         queries: [
           Query.equal('user_id', userId),
           Query.equal('program_id', programId),
@@ -178,7 +176,7 @@ class StudyService {
         ],
       );
 
-      return snapshot.documents
+      return snapshot.rows
           .map((doc) => StudyProgress.fromJson({...doc.data, 'id': doc.$id}))
           .toList();
     } catch (e) {
@@ -228,10 +226,10 @@ class StudyService {
     try {
       final docId = '${userId}_${programId}_$lessonId';
       try {
-        await _databases.deleteDocument(
+        await _tables.deleteRow(
           databaseId: AppwriteBackendConfig.databaseId,
-          collectionId: 'study_progress',
-          documentId: docId,
+          tableId: 'study_progress',
+          rowId: docId,
         );
       } on AppwriteException catch (e) {
         if (e.code != 404) rethrow;

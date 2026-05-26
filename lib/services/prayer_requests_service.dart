@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:appwrite/appwrite.dart';
 
 import '../config/appwrite_backend_config.dart';
@@ -16,7 +14,7 @@ class PrayerRequestsService {
   PrayerRequestsService._internal();
   static PrayerRequestsService get instance => _instance;
 
-  late final Databases _databases = Databases(appwriteClient);
+  late final TablesDB _tables = TablesDB(appwriteClient);
   final AuthService _authService = AuthService.instance;
   final Logger _logger = Logger('PrayerRequestsService');
 
@@ -27,13 +25,13 @@ class PrayerRequestsService {
         queries.add(Query.equal('category', category.trim()));
       }
 
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.prayerRequestsCollectionId,
+        tableId: AppwriteBackendConfig.prayerRequestsCollectionId,
         queries: queries,
       );
 
-      return response.documents
+      return response.rows
           .map((doc) => PrayerRequest.fromJson(_documentData(doc)))
           .toList();
     } catch (e) {
@@ -47,9 +45,9 @@ class PrayerRequestsService {
 
   Future<List<PrayerRequest>> fetchUserPrayerRequests(String userId) async {
     try {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.prayerRequestsCollectionId,
+        tableId: AppwriteBackendConfig.prayerRequestsCollectionId,
         queries: [
           Query.equal('user_id', userId),
           Query.orderDesc('created_at'),
@@ -57,7 +55,7 @@ class PrayerRequestsService {
         ],
       );
 
-      return response.documents
+      return response.rows
           .map((doc) => PrayerRequest.fromJson(_documentData(doc)))
           .toList();
     } catch (e) {
@@ -69,11 +67,12 @@ class PrayerRequestsService {
     }
   }
 
-  Future<List<PrayerRequest>> fetchSupportedPrayerRequests(String userId) async {
+  Future<List<PrayerRequest>> fetchSupportedPrayerRequests(
+      String userId) async {
     try {
-      final interactions = await _databases.listDocuments(
+      final interactions = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.prayerInteractionsCollectionId,
+        tableId: AppwriteBackendConfig.prayerInteractionsCollectionId,
         queries: [
           Query.equal('user_id', userId),
           Query.equal('type', 'pray'),
@@ -82,7 +81,7 @@ class PrayerRequestsService {
         ],
       );
 
-      final requestIds = interactions.documents
+      final requestIds = interactions.rows
           .map((doc) => doc.data['request_id'] as String?)
           .whereType<String>()
           .toSet()
@@ -91,10 +90,10 @@ class PrayerRequestsService {
       final requests = <PrayerRequest>[];
       for (final id in requestIds) {
         try {
-          final doc = await _databases.getDocument(
+          final doc = await _tables.getRow(
             databaseId: AppwriteBackendConfig.databaseId,
-            collectionId: AppwriteBackendConfig.prayerRequestsCollectionId,
-            documentId: id,
+            tableId: AppwriteBackendConfig.prayerRequestsCollectionId,
+            rowId: id,
           );
           requests.add(PrayerRequest.fromJson(_documentData(doc)));
         } catch (_) {
@@ -116,10 +115,10 @@ class PrayerRequestsService {
     try {
       final user = _authService.currentUser ?? await appwriteAccount.get();
       final now = DateTime.now().toIso8601String();
-      final document = await _databases.createDocument(
+      final document = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.prayerRequestsCollectionId,
-        documentId: ID.unique(),
+        tableId: AppwriteBackendConfig.prayerRequestsCollectionId,
+        rowId: ID.unique(),
         data: {
           'user_id': user.uid,
           'userId': user.uid,
@@ -153,18 +152,18 @@ class PrayerRequestsService {
 
   Future<void> prayForRequest(String requestId, String userId) async {
     try {
-      final doc = await _databases.getDocument(
+      final doc = await _tables.getRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.prayerRequestsCollectionId,
-        documentId: requestId,
+        tableId: AppwriteBackendConfig.prayerRequestsCollectionId,
+        rowId: requestId,
       );
       final count = (doc.data['prayer_count'] as int?) ?? 0;
       final now = DateTime.now().toIso8601String();
 
-      await _databases.createDocument(
+      await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.prayerInteractionsCollectionId,
-        documentId: ID.unique(),
+        tableId: AppwriteBackendConfig.prayerInteractionsCollectionId,
+        rowId: ID.unique(),
         data: {
           'request_id': requestId,
           'user_id': userId,
@@ -173,10 +172,10 @@ class PrayerRequestsService {
         },
       );
 
-      await _databases.updateDocument(
+      await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.prayerRequestsCollectionId,
-        documentId: requestId,
+        tableId: AppwriteBackendConfig.prayerRequestsCollectionId,
+        rowId: requestId,
         data: {
           'prayer_count': count + 1,
           'updated_at': now,
@@ -202,10 +201,10 @@ class PrayerRequestsService {
       if (description != null) updates['description'] = description;
       if (isAnonymous != null) updates['is_anonymous'] = isAnonymous;
 
-      await _databases.updateDocument(
+      await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.prayerRequestsCollectionId,
-        documentId: id,
+        tableId: AppwriteBackendConfig.prayerRequestsCollectionId,
+        rowId: id,
         data: updates,
       );
     } catch (e) {
@@ -219,10 +218,10 @@ class PrayerRequestsService {
 
   Future<void> deletePrayerRequest(String id) async {
     try {
-      await _databases.deleteDocument(
+      await _tables.deleteRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.prayerRequestsCollectionId,
-        documentId: id,
+        tableId: AppwriteBackendConfig.prayerRequestsCollectionId,
+        rowId: id,
       );
     } catch (e) {
       _logger.error('Error deleting prayer request', e);

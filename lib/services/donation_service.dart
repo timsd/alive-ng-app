@@ -1,8 +1,7 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:convert';
 
 import 'package:appwrite/appwrite.dart';
+import 'package:appwrite/models.dart' as models;
 import 'package:flutter/material.dart';
 
 import '../config/appwrite_backend_config.dart';
@@ -19,7 +18,7 @@ class DonationService {
   factory DonationService() => _instance;
   DonationService._internal();
 
-  late final Databases _db = Databases(appwriteClient);
+  late final TablesDB _tables = TablesDB(appwriteClient);
   final Uuid _uuid = const Uuid();
   final Logger _logger = Logger('DonationService');
 
@@ -34,10 +33,10 @@ class DonationService {
   String get _settingsCollectionId =>
       AppwriteBackendConfig.appSettingsCollectionId;
 
-  Map<String, dynamic> _documentData(dynamic document) {
+  Map<String, dynamic> _rowData(models.Row row) {
     return {
-      ...Map<String, dynamic>.from(document.data as Map),
-      'id': document.$id,
+      ...Map<String, dynamic>.from(row.data),
+      'id': row.$id,
     };
   }
 
@@ -74,31 +73,31 @@ class DonationService {
 
   Future<String?> getAppSettingValue(String key) async {
     try {
-      final snapshot = await _db.listDocuments(
+      final snapshot = await _tables.listRows(
         databaseId: _databaseId,
-        collectionId: _settingsCollectionId,
+        tableId: _settingsCollectionId,
         queries: [
           Query.equal('key', key),
           Query.limit(1),
         ],
       );
-      if (snapshot.documents.isEmpty) {
-        final fallback = await _db.listDocuments(
+      if (snapshot.rows.isEmpty) {
+        final fallback = await _tables.listRows(
           databaseId: _databaseId,
-          collectionId: _settingsCollectionId,
+          tableId: _settingsCollectionId,
           queries: [
             Query.equal('setting_key', key),
             Query.limit(1),
           ],
         );
-        if (fallback.documents.isEmpty) return null;
-        return (fallback.documents.first.data['value'] ??
-                fallback.documents.first.data['setting_value'])
+        if (fallback.rows.isEmpty) return null;
+        return (fallback.rows.first.data['value'] ??
+                fallback.rows.first.data['setting_value'])
             ?.toString();
       }
 
-      return (snapshot.documents.first.data['value'] ??
-              snapshot.documents.first.data['setting_value'])
+      return (snapshot.rows.first.data['value'] ??
+              snapshot.rows.first.data['setting_value'])
           ?.toString();
     } catch (e) {
       _logger.error('Failed to fetch app setting $key', e);
@@ -108,12 +107,12 @@ class DonationService {
 
   Future<Map<String, dynamic>?> getProject(String projectId) async {
     try {
-      final doc = await _db.getDocument(
+      final row = await _tables.getRow(
         databaseId: _databaseId,
-        collectionId: _projectsCollectionId,
-        documentId: projectId,
+        tableId: _projectsCollectionId,
+        rowId: projectId,
       );
-      return _documentData(doc);
+      return _rowData(row);
     } catch (_) {
       return null;
     }
@@ -121,15 +120,15 @@ class DonationService {
 
   Future<List<Map<String, dynamic>>> getDonationProjects() async {
     try {
-      final snapshot = await _db.listDocuments(
+      final snapshot = await _tables.listRows(
         databaseId: _databaseId,
-        collectionId: _projectsCollectionId,
+        tableId: _projectsCollectionId,
         queries: [
           Query.orderAsc('priority'),
           Query.limit(100),
         ],
       );
-      return snapshot.documents.map(_documentData).toList();
+      return snapshot.rows.map(_rowData).toList();
     } catch (e) {
       _logger.error('Failed to fetch donation projects', e);
       return [];
@@ -187,13 +186,13 @@ class DonationService {
       }
       queries.add(Query.orderDesc('created_at'));
 
-      final snapshot = await _db.listDocuments(
+      final snapshot = await _tables.listRows(
         databaseId: _databaseId,
-        collectionId: _materialsCollectionId,
+        tableId: _materialsCollectionId,
         queries: _queriesWithOffset(queries, limit, offset),
       );
-      return snapshot.documents
-          .map((d) => DownloadableMaterial.fromJson(_documentData(d)))
+      return snapshot.rows
+          .map((row) => DownloadableMaterial.fromJson(_rowData(row)))
           .toList();
     } catch (e) {
       throw DatabaseException('Failed to fetch materials', originalError: e);
@@ -203,12 +202,12 @@ class DonationService {
   // Get material by ID
   Future<DownloadableMaterial> getMaterialById(String materialId) async {
     try {
-      final doc = await _db.getDocument(
+      final row = await _tables.getRow(
         databaseId: _databaseId,
-        collectionId: _materialsCollectionId,
-        documentId: materialId,
+        tableId: _materialsCollectionId,
+        rowId: materialId,
       );
-      final data = _documentData(doc);
+      final data = _rowData(row);
       if (data['is_active'] != true) {
         throw NotFoundException('Material not found or inactive');
       }
@@ -233,14 +232,14 @@ class DonationService {
       }
 
       queries.add(Query.orderDesc('download_count'));
-      final snapshot = await _db.listDocuments(
+      final snapshot = await _tables.listRows(
         databaseId: _databaseId,
-        collectionId: _materialsCollectionId,
+        tableId: _materialsCollectionId,
         queries: _queriesWithLimit(queries, limit),
       );
       final lower = query.toLowerCase();
-      return snapshot.documents
-          .map((d) => DownloadableMaterial.fromJson(_documentData(d)))
+      return snapshot.rows
+          .map((row) => DownloadableMaterial.fromJson(_rowData(row)))
           .where((m) =>
               (m.title.toLowerCase().contains(lower)) ||
               (m.description.toLowerCase().contains(lower)))
@@ -253,13 +252,13 @@ class DonationService {
   // Get material categories
   Future<List<String>> getMaterialCategories() async {
     try {
-      final snapshot = await _db.listDocuments(
+      final snapshot = await _tables.listRows(
         databaseId: _databaseId,
-        collectionId: _materialsCollectionId,
+        tableId: _materialsCollectionId,
         queries: [Query.equal('is_active', true), Query.limit(5000)],
       );
-      final categories = snapshot.documents
-          .map((d) => d.data['category'] as String?)
+      final categories = snapshot.rows
+          .map((row) => row.data['category'] as String?)
           .whereType<String>()
           .toSet()
           .toList();
@@ -284,9 +283,9 @@ class DonationService {
       if (!material.requiresDonation) return true;
 
       // Check if user has made a successful donation for this material
-      final donationSnap = await _db.listDocuments(
+      final donationSnap = await _tables.listRows(
         databaseId: _databaseId,
-        collectionId: _donationsCollectionId,
+        tableId: _donationsCollectionId,
         queries: [
           Query.equal('user_id', userId),
           Query.equal('material_id', materialId),
@@ -295,7 +294,7 @@ class DonationService {
           Query.limit(1),
         ],
       );
-      return donationSnap.documents.isNotEmpty;
+      return donationSnap.rows.isNotEmpty;
     } catch (e) {
       if (e is AppException) rethrow;
       throw DatabaseException('Failed to check download permission',
@@ -359,10 +358,10 @@ class DonationService {
       data['reference'] = donation.id;
       data['amount_kobo'] = (donation.amount * 100).round();
 
-      await _db.createDocument(
+      await _tables.createRow(
         databaseId: _databaseId,
-        collectionId: _donationsCollectionId,
-        documentId: donation.id,
+        tableId: _donationsCollectionId,
+        rowId: donation.id,
         data: data,
       );
 
@@ -396,10 +395,10 @@ class DonationService {
       }
 
       if (metadata != null) {
-        final existing = await _db.getDocument(
+        final existing = await _tables.getRow(
           databaseId: _databaseId,
-          collectionId: _donationsCollectionId,
-          documentId: donationId,
+          tableId: _donationsCollectionId,
+          rowId: donationId,
         );
         updates['metadata'] = jsonEncode({
           ...?_parseMetadata(existing.data['metadata']),
@@ -411,18 +410,18 @@ class DonationService {
         updates['completed_at'] = DateTime.now().toIso8601String();
       }
 
-      await _db.updateDocument(
+      await _tables.updateRow(
         databaseId: _databaseId,
-        collectionId: _donationsCollectionId,
-        documentId: donationId,
+        tableId: _donationsCollectionId,
+        rowId: donationId,
         data: updates,
       );
-      final doc = await _db.getDocument(
+      final row = await _tables.getRow(
         databaseId: _databaseId,
-        collectionId: _donationsCollectionId,
-        documentId: donationId,
+        tableId: _donationsCollectionId,
+        rowId: donationId,
       );
-      return DonationRecord.fromJson(_documentData(doc));
+      return DonationRecord.fromJson(_rowData(row));
     } catch (e) {
       throw DatabaseException('Failed to update donation status',
           originalError: e);
@@ -449,10 +448,10 @@ class DonationService {
       final downloadUrl = _resolveMaterialUrl(path);
       await recordDownload(materialId, material.title);
 
-      await _db.updateDocument(
+      await _tables.updateRow(
         databaseId: _databaseId,
-        collectionId: _materialsCollectionId,
-        documentId: materialId,
+        tableId: _materialsCollectionId,
+        rowId: materialId,
         data: {
           'download_count': material.downloadCount + 1,
           'updated_at': DateTime.now().toIso8601String(),
@@ -476,9 +475,9 @@ class DonationService {
       if (userId == null) return;
 
       // Find associated donation if any
-      final donationsSnap = await _db.listDocuments(
+      final donationsSnap = await _tables.listRows(
         databaseId: _databaseId,
-        collectionId: _donationsCollectionId,
+        tableId: _donationsCollectionId,
         queries: [
           Query.equal('user_id', userId),
           Query.equal('material_id', materialId),
@@ -486,8 +485,7 @@ class DonationService {
           Query.limit(100),
         ],
       );
-      final donationDataList =
-          donationsSnap.documents.map(_documentData).toList();
+      final donationDataList = donationsSnap.rows.map(_rowData).toList();
       donationDataList.sort((a, b) {
         final ad = a['completed_at'] as String?;
         final bd = b['completed_at'] as String?;
@@ -513,10 +511,10 @@ class DonationService {
         downloadedAt: DateTime.now(),
       );
 
-      await _db.createDocument(
+      await _tables.createRow(
         databaseId: _databaseId,
-        collectionId: _downloadsCollectionId,
-        documentId: download.id,
+        tableId: _downloadsCollectionId,
+        rowId: download.id,
         data: _appwriteData(download.toJson()),
       );
     } catch (e) {
@@ -532,17 +530,17 @@ class DonationService {
       final userId = user?.uid;
       if (userId == null) throw AuthException('User not authenticated');
 
-      final snapshot = await _db.listDocuments(
+      final snapshot = await _tables.listRows(
         databaseId: _databaseId,
-        collectionId: _donationsCollectionId,
+        tableId: _donationsCollectionId,
         queries: [
           Query.equal('user_id', userId),
           Query.orderDesc('created_at'),
           Query.limit(500),
         ],
       );
-      return snapshot.documents
-          .map((d) => DonationRecord.fromJson(_documentData(d)))
+      return snapshot.rows
+          .map((row) => DonationRecord.fromJson(_rowData(row)))
           .toList();
     } catch (e) {
       if (e is AppException) rethrow;
@@ -558,17 +556,17 @@ class DonationService {
       final userId = user?.uid;
       if (userId == null) throw AuthException('User not authenticated');
 
-      final snapshot = await _db.listDocuments(
+      final snapshot = await _tables.listRows(
         databaseId: _databaseId,
-        collectionId: _downloadsCollectionId,
+        tableId: _downloadsCollectionId,
         queries: [
           Query.equal('user_id', userId),
           Query.orderDesc('downloaded_at'),
           Query.limit(500),
         ],
       );
-      return snapshot.documents
-          .map((d) => UserDownload.fromJson(_documentData(d)))
+      return snapshot.rows
+          .map((row) => UserDownload.fromJson(_rowData(row)))
           .toList();
     } catch (e) {
       if (e is AppException) rethrow;
@@ -624,22 +622,22 @@ class DonationService {
   Future<Map<String, dynamic>> getDonationStatistics() async {
     try {
       // Completed donations snapshot
-      final completedSnap = await _db.listDocuments(
+      final completedSnap = await _tables.listRows(
         databaseId: _databaseId,
-        collectionId: _donationsCollectionId,
+        tableId: _donationsCollectionId,
         queries: [Query.equal('status', DonationStatus.completed.name)],
       );
 
-      final totalAmount = completedSnap.documents
-          .map((d) => (d.data['amount'] as num?)?.toDouble() ?? 0)
+      final totalAmount = completedSnap.rows
+          .map((row) => (row.data['amount'] as num?)?.toDouble() ?? 0)
           .fold(0.0, (acc, amount) => acc + amount);
 
       // Donations by type
       final donationsByType = <String, int>{};
       for (final type in DonationType.values) {
-        final typeSnap = await _db.listDocuments(
+        final typeSnap = await _tables.listRows(
           databaseId: _databaseId,
-          collectionId: _donationsCollectionId,
+          tableId: _donationsCollectionId,
           queries: [
             Query.equal('type', type.name),
             Query.equal('status', DonationStatus.completed.name),
@@ -649,9 +647,9 @@ class DonationService {
       }
 
       // Recent donations
-      final recentSnap = await _db.listDocuments(
+      final recentSnap = await _tables.listRows(
         databaseId: _databaseId,
-        collectionId: _donationsCollectionId,
+        tableId: _donationsCollectionId,
         queries: [
           Query.equal('status', DonationStatus.completed.name),
           Query.orderDesc('completed_at'),
@@ -659,7 +657,7 @@ class DonationService {
         ],
       );
       final recentDonations =
-          recentSnap.documents.map((d) => _documentData(d)).toList();
+          recentSnap.rows.map((row) => _rowData(row)).toList();
 
       return {
         'total_amount': totalAmount,
@@ -747,12 +745,12 @@ class DonationService {
   }) async {
     try {
       // Get the donation record
-      final donationDoc = await _db.getDocument(
+      final donationRow = await _tables.getRow(
         databaseId: _databaseId,
-        collectionId: _donationsCollectionId,
-        documentId: donationId,
+        tableId: _donationsCollectionId,
+        rowId: donationId,
       );
-      final donation = DonationRecord.fromJson(_documentData(donationDoc));
+      final donation = DonationRecord.fromJson(_rowData(donationRow));
 
       // Ensure context is still valid before using it across async boundary
       if (!context.mounted) {
@@ -880,36 +878,36 @@ class DonationService {
   }) async {
     try {
       final user = await _currentUser();
-      await _db.createDocument(
+      await _tables.createRow(
         databaseId: _databaseId,
-        collectionId: AppwriteBackendConfig.giftSubmissionsCollectionId,
-        documentId: ID.unique(),
+        tableId: AppwriteBackendConfig.giftSubmissionsCollectionId,
+        rowId: ID.unique(),
         data: _appwriteData({
-        'gift_type': giftType,
-        'user_id': user?.uid,
-        'full_name': fullName,
-        'email': email,
-        'phone': phone,
-        if (itemType != null && itemType.trim().isNotEmpty)
-          'item_type': itemType,
-        if (quantity != null && quantity.trim().isNotEmpty)
-          'quantity': quantity,
-        if (estimatedValue != null && estimatedValue.trim().isNotEmpty)
-          'estimated_value': estimatedValue,
-        if (deliveryPreference != null && deliveryPreference.trim().isNotEmpty)
-          'delivery_preference': deliveryPreference,
-        if (location != null && location.trim().isNotEmpty)
-          'location': location,
-        if (skillsOrService != null && skillsOrService.trim().isNotEmpty)
-          'skills_or_service': skillsOrService,
-        if (availability != null && availability.trim().isNotEmpty)
-          'availability': availability,
-        if (description != null && description.trim().isNotEmpty)
-          'description': description,
-        'status': 'submitted',
-        'created_at': DateTime.now().toIso8601String(),
-        'updated_at': DateTime.now().toIso8601String(),
-      }),
+          'gift_type': giftType,
+          'user_id': user?.uid,
+          'full_name': fullName,
+          'email': email,
+          'phone': phone,
+          if (itemType != null && itemType.trim().isNotEmpty)
+            'item_type': itemType,
+          if (quantity != null && quantity.trim().isNotEmpty)
+            'quantity': quantity,
+          if (estimatedValue != null && estimatedValue.trim().isNotEmpty)
+            'estimated_value': estimatedValue,
+          if (deliveryPreference != null && deliveryPreference.trim().isNotEmpty)
+            'delivery_preference': deliveryPreference,
+          if (location != null && location.trim().isNotEmpty)
+            'location': location,
+          if (skillsOrService != null && skillsOrService.trim().isNotEmpty)
+            'skills_or_service': skillsOrService,
+          if (availability != null && availability.trim().isNotEmpty)
+            'availability': availability,
+          if (description != null && description.trim().isNotEmpty)
+            'description': description,
+          'status': 'submitted',
+          'created_at': DateTime.now().toIso8601String(),
+          'updated_at': DateTime.now().toIso8601String(),
+        }),
       );
     } catch (e) {
       throw DatabaseException('Failed to submit gift contribution',

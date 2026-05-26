@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
 import 'package:appwrite/appwrite.dart';
 import '../../config/appwrite_backend_config.dart';
@@ -624,20 +622,20 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
         announcementData['created_timestamp'] =
             DateTime.now().millisecondsSinceEpoch;
 
-        await Databases(appwriteClient).createDocument(
+        await TablesDB(appwriteClient).createRow(
           databaseId: AppwriteBackendConfig.databaseId,
-          collectionId: AppwriteBackendConfig.announcementsCollectionId,
-          documentId: ID.unique(),
+          tableId: AppwriteBackendConfig.announcementsCollectionId,
+          rowId: ID.unique(),
           data: announcementData,
         );
 
         ToastUtils.showSuccess('Announcement created successfully');
       } else {
         // Update existing announcement
-        await Databases(appwriteClient).updateDocument(
+        await TablesDB(appwriteClient).updateRow(
           databaseId: AppwriteBackendConfig.databaseId,
-          collectionId: AppwriteBackendConfig.announcementsCollectionId,
-          documentId: widget.announcement!['id'],
+          tableId: AppwriteBackendConfig.announcementsCollectionId,
+          rowId: widget.announcement!['id'],
           data: announcementData,
         );
 

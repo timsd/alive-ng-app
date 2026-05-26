@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:convert';
 
 import 'package:appwrite/appwrite.dart';
@@ -16,7 +14,7 @@ class StudyGuideService {
   factory StudyGuideService() => _instance;
   StudyGuideService._internal();
 
-  late final Databases _databases = Databases(appwriteClient);
+  late final TablesDB _tables = TablesDB(appwriteClient);
   final Logger _logger = Logger('StudyGuideService');
   final Uuid _uuid = const Uuid();
 
@@ -27,27 +25,26 @@ class StudyGuideService {
     String? searchQuery,
   }) async {
     try {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.studyGuidesCollectionId,
+        tableId: AppwriteBackendConfig.studyGuidesCollectionId,
         queries: [
           Query.limit(200),
           Query.orderAsc('title'),
         ],
       );
 
-      var guides = response.documents
-          .map((doc) => _studyGuideFromData(doc.$id, doc.data, doc.$createdAt,
-              doc.$updatedAt))
+      var guides = response.rows
+          .map((doc) => _studyGuideFromData(
+              doc.$id, doc.data, doc.$createdAt, doc.$updatedAt))
           .toList();
 
       if (type != null) {
         guides = guides.where((guide) => guide.type == type).toList();
       }
       if (difficulty != null) {
-        guides = guides
-            .where((guide) => guide.difficulty == difficulty)
-            .toList();
+        guides =
+            guides.where((guide) => guide.difficulty == difficulty).toList();
       }
       if (isActive != null) {
         guides = guides.where((guide) => guide.isActive == isActive).toList();
@@ -70,13 +67,13 @@ class StudyGuideService {
 
   Future<StudyGuide?> getStudyGuideById(String studyGuideId) async {
     try {
-      final doc = await _databases.getDocument(
+      final doc = await _tables.getRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.studyGuidesCollectionId,
-        documentId: studyGuideId,
+        tableId: AppwriteBackendConfig.studyGuidesCollectionId,
+        rowId: studyGuideId,
       );
-      return _studyGuideFromData(doc.$id, doc.data, doc.$createdAt,
-          doc.$updatedAt);
+      return _studyGuideFromData(
+          doc.$id, doc.data, doc.$createdAt, doc.$updatedAt);
     } on AppwriteException catch (e) {
       if (e.code == 404) return null;
       _logger.error('Error fetching study guide', e);
@@ -110,10 +107,10 @@ class StudyGuideService {
         updatedAt: now,
       );
 
-      await _databases.createDocument(
+      await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.studyGuidesCollectionId,
-        documentId: newStudyGuide.id,
+        tableId: AppwriteBackendConfig.studyGuidesCollectionId,
+        rowId: newStudyGuide.id,
         data: _studyGuideToData(newStudyGuide),
       );
       return newStudyGuide;
@@ -126,10 +123,10 @@ class StudyGuideService {
   Future<StudyGuide> updateStudyGuide(StudyGuide studyGuide) async {
     try {
       final updatedStudyGuide = studyGuide.copyWith(updatedAt: DateTime.now());
-      await _databases.updateDocument(
+      await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.studyGuidesCollectionId,
-        documentId: studyGuide.id,
+        tableId: AppwriteBackendConfig.studyGuidesCollectionId,
+        rowId: studyGuide.id,
         data: _studyGuideToData(updatedStudyGuide),
       );
       return updatedStudyGuide;
@@ -141,18 +138,18 @@ class StudyGuideService {
 
   Future<List<StudyLesson>> getLessons(String studyGuideId) async {
     try {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.studyLessonsCollectionId,
+        tableId: AppwriteBackendConfig.studyLessonsCollectionId,
         queries: [
           Query.equal('study_guide_id', studyGuideId),
           Query.orderAsc('lesson_number'),
           Query.limit(200),
         ],
       );
-      return response.documents
-          .map((doc) => _lessonFromData(doc.$id, doc.data, doc.$createdAt,
-              doc.$updatedAt))
+      return response.rows
+          .map((doc) => _lessonFromData(
+              doc.$id, doc.data, doc.$createdAt, doc.$updatedAt))
           .toList();
     } catch (e) {
       _logger.error('Error fetching lessons', e);
@@ -162,10 +159,10 @@ class StudyGuideService {
 
   Future<StudyLesson?> getLessonById(String lessonId) async {
     try {
-      final doc = await _databases.getDocument(
+      final doc = await _tables.getRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.studyLessonsCollectionId,
-        documentId: lessonId,
+        tableId: AppwriteBackendConfig.studyLessonsCollectionId,
+        rowId: lessonId,
       );
       return _lessonFromData(doc.$id, doc.data, doc.$createdAt, doc.$updatedAt);
     } on AppwriteException catch (e) {
@@ -181,17 +178,17 @@ class StudyGuideService {
   Future<StudyLesson?> getLessonByNumber(
       String studyGuideId, int lessonNumber) async {
     try {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.studyLessonsCollectionId,
+        tableId: AppwriteBackendConfig.studyLessonsCollectionId,
         queries: [
           Query.equal('study_guide_id', studyGuideId),
           Query.equal('lesson_number', lessonNumber),
           Query.limit(1),
         ],
       );
-      if (response.documents.isEmpty) return null;
-      final doc = response.documents.first;
+      if (response.rows.isEmpty) return null;
+      final doc = response.rows.first;
       return _lessonFromData(doc.$id, doc.data, doc.$createdAt, doc.$updatedAt);
     } catch (e) {
       _logger.error('Error fetching lesson by number', e);
@@ -219,10 +216,10 @@ class StudyGuideService {
         updatedAt: now,
       );
 
-      await _databases.createDocument(
+      await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.studyLessonsCollectionId,
-        documentId: newLesson.id,
+        tableId: AppwriteBackendConfig.studyLessonsCollectionId,
+        rowId: newLesson.id,
         data: _lessonToData(newLesson),
       );
       return newLesson;
@@ -234,16 +231,16 @@ class StudyGuideService {
 
   Future<List<StudyQuestion>> getQuestions(String lessonId) async {
     try {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.studyQuestionsCollectionId,
+        tableId: AppwriteBackendConfig.studyQuestionsCollectionId,
         queries: [
           Query.equal('lesson_id', lessonId),
           Query.orderAsc('order'),
           Query.limit(200),
         ],
       );
-      return response.documents
+      return response.rows
           .map((doc) => _questionFromData(doc.$id, doc.data, doc.$createdAt))
           .toList();
     } catch (e) {
@@ -269,10 +266,10 @@ class StudyGuideService {
         createdAt: DateTime.now(),
       );
 
-      await _databases.createDocument(
+      await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.studyQuestionsCollectionId,
-        documentId: newQuestion.id,
+        tableId: AppwriteBackendConfig.studyQuestionsCollectionId,
+        rowId: newQuestion.id,
         data: _questionToData(newQuestion),
       );
       return newQuestion;
@@ -284,15 +281,15 @@ class StudyGuideService {
 
   Future<List<UserStudyProgress>> getUserProgress(String userId) async {
     try {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.studyProgressCollectionId,
+        tableId: AppwriteBackendConfig.studyProgressCollectionId,
         queries: [
           Query.equal('user_id', userId),
           Query.limit(200),
         ],
       );
-      return response.documents
+      return response.rows
           .where((doc) => _string(doc.data['study_guide_id']).isNotEmpty)
           .where((doc) => _string(doc.data['lesson_id']).isEmpty)
           .map((doc) => _studyProgressFromData(
@@ -308,16 +305,16 @@ class StudyGuideService {
   Future<UserStudyProgress?> getUserStudyProgress(
       String userId, String studyGuideId) async {
     try {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.studyProgressCollectionId,
+        tableId: AppwriteBackendConfig.studyProgressCollectionId,
         queries: [
           Query.equal('user_id', userId),
           Query.equal('study_guide_id', studyGuideId),
           Query.limit(50),
         ],
       );
-      final docs = response.documents
+      final docs = response.rows
           .where((doc) => _string(doc.data['lesson_id']).isEmpty)
           .toList();
       if (docs.isEmpty) return null;
@@ -352,10 +349,10 @@ class StudyGuideService {
         updatedAt: now,
       );
 
-      await _databases.createDocument(
+      await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.studyProgressCollectionId,
-        documentId: progress.id,
+        tableId: AppwriteBackendConfig.studyProgressCollectionId,
+        rowId: progress.id,
         data: _studyProgressToData(progress),
       );
       return progress;
@@ -369,10 +366,10 @@ class StudyGuideService {
       UserStudyProgress progress) async {
     try {
       final updatedProgress = progress.copyWith(updatedAt: DateTime.now());
-      await _databases.updateDocument(
+      await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.studyProgressCollectionId,
-        documentId: progress.id,
+        tableId: AppwriteBackendConfig.studyProgressCollectionId,
+        rowId: progress.id,
         data: _studyProgressToData(updatedProgress),
       );
       return updatedProgress;
@@ -397,10 +394,10 @@ class StudyGuideService {
         progressPercentage: 100.0,
         updatedAt: DateTime.now(),
       );
-      await _databases.updateDocument(
+      await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.studyProgressCollectionId,
-        documentId: progress.id,
+        tableId: AppwriteBackendConfig.studyProgressCollectionId,
+        rowId: progress.id,
         data: _studyProgressToData(completedProgress),
       );
       return completedProgress;
@@ -419,9 +416,9 @@ class StudyGuideService {
       final lessonIds = lessons.map((lesson) => lesson.id).toSet();
       if (lessonIds.isEmpty) return [];
 
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.studyProgressCollectionId,
+        tableId: AppwriteBackendConfig.studyProgressCollectionId,
         queries: [
           Query.equal('user_id', userId),
           Query.equal('study_guide_id', studyGuideId),
@@ -429,7 +426,7 @@ class StudyGuideService {
         ],
       );
 
-      final progressList = response.documents
+      final progressList = response.rows
           .where((doc) => lessonIds.contains(_string(doc.data['lesson_id'])))
           .map((doc) => _lessonProgressFromData(
               doc.$id, doc.data, doc.$createdAt, doc.$updatedAt))
@@ -446,17 +443,17 @@ class StudyGuideService {
   Future<UserLessonProgress?> getUserLessonProgressById(
       String userId, String lessonId) async {
     try {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.studyProgressCollectionId,
+        tableId: AppwriteBackendConfig.studyProgressCollectionId,
         queries: [
           Query.equal('user_id', userId),
           Query.equal('lesson_id', lessonId),
           Query.limit(1),
         ],
       );
-      if (response.documents.isEmpty) return null;
-      final doc = response.documents.first;
+      if (response.rows.isEmpty) return null;
+      final doc = response.rows.first;
       return _lessonProgressFromData(
           doc.$id, doc.data, doc.$createdAt, doc.$updatedAt);
     } catch (e) {
@@ -486,10 +483,10 @@ class StudyGuideService {
         updatedAt: now,
       );
 
-      await _databases.createDocument(
+      await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.studyProgressCollectionId,
-        documentId: progress.id,
+        tableId: AppwriteBackendConfig.studyProgressCollectionId,
+        rowId: progress.id,
         data: _lessonProgressToData(progress, lesson?.studyGuideId ?? ''),
       );
       return progress;
@@ -524,10 +521,10 @@ class StudyGuideService {
       );
 
       final lesson = await getLessonById(lessonId);
-      await _databases.updateDocument(
+      await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.studyProgressCollectionId,
-        documentId: progress.id,
+        tableId: AppwriteBackendConfig.studyProgressCollectionId,
+        rowId: progress.id,
         data: _lessonProgressToData(
           updatedProgress,
           lesson?.studyGuideId ?? '',
@@ -564,10 +561,10 @@ class StudyGuideService {
       );
 
       final lesson = await getLessonById(lessonId);
-      await _databases.updateDocument(
+      await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.studyProgressCollectionId,
-        documentId: progress.id,
+        tableId: AppwriteBackendConfig.studyProgressCollectionId,
+        rowId: progress.id,
         data: _lessonProgressToData(
           completedProgress,
           lesson?.studyGuideId ?? '',
@@ -590,9 +587,9 @@ class StudyGuideService {
     StudySessionStatus? status,
   }) async {
     try {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.studySessionsCollectionId,
+        tableId: AppwriteBackendConfig.studySessionsCollectionId,
         queries: [
           if (facilitatorId != null)
             Query.equal('facilitator_id', facilitatorId),
@@ -601,14 +598,14 @@ class StudyGuideService {
           Query.limit(200),
         ],
       );
-      var sessions = response.documents
-          .map((doc) => _sessionFromData(doc.$id, doc.data, doc.$createdAt,
-              doc.$updatedAt))
+      var sessions = response.rows
+          .map((doc) => _sessionFromData(
+              doc.$id, doc.data, doc.$createdAt, doc.$updatedAt))
           .toList();
       if (participantIds != null && participantIds.isNotEmpty) {
         sessions = sessions
-            .where((session) => participantIds
-                .any((id) => session.participantIds.contains(id)))
+            .where((session) =>
+                participantIds.any((id) => session.participantIds.contains(id)))
             .toList();
       }
       if (startDate != null) {
@@ -651,10 +648,10 @@ class StudyGuideService {
         updatedAt: now,
       );
 
-      await _databases.createDocument(
+      await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.studySessionsCollectionId,
-        documentId: newSession.id,
+        tableId: AppwriteBackendConfig.studySessionsCollectionId,
+        rowId: newSession.id,
         data: _sessionToData(newSession),
       );
       return newSession;
@@ -826,8 +823,8 @@ class StudyGuideService {
     }
   }
 
-  StudyGuide _studyGuideFromData(
-      String id, Map<String, dynamic> data, String createdAt, String updatedAt) {
+  StudyGuide _studyGuideFromData(String id, Map<String, dynamic> data,
+      String createdAt, String updatedAt) {
     final metadata = _map(data['metadata']);
     metadata['is_featured'] = _bool(data['is_featured']);
     return StudyGuide(
@@ -849,7 +846,8 @@ class StudyGuideService {
       objectives: _list(data['objectives']),
       prerequisites: _list(data['prerequisites']),
       imageUrl: _string(data['image_url'] ?? data['cover_image_url']),
-      isActive: _bool(data['is_active'] ?? data['is_published'], fallback: true),
+      isActive:
+          _bool(data['is_active'] ?? data['is_published'], fallback: true),
       sortOrder: _int(data['sort_order']),
       metadata: metadata,
       createdAt: _date(data['created_at'], fallback: createdAt),
@@ -872,8 +870,8 @@ class StudyGuideService {
     };
   }
 
-  StudyLesson _lessonFromData(
-      String id, Map<String, dynamic> data, String createdAt, String updatedAt) {
+  StudyLesson _lessonFromData(String id, Map<String, dynamic> data,
+      String createdAt, String updatedAt) {
     final resources = _map(data['resources']);
     return StudyLesson(
       id: id,
@@ -947,8 +945,8 @@ class StudyGuideService {
     };
   }
 
-  UserStudyProgress _studyProgressFromData(
-      String id, Map<String, dynamic> data, String createdAt, String updatedAt) {
+  UserStudyProgress _studyProgressFromData(String id, Map<String, dynamic> data,
+      String createdAt, String updatedAt) {
     final completed = _bool(data['completed']);
     return UserStudyProgress(
       id: id,
@@ -990,8 +988,8 @@ class StudyGuideService {
     };
   }
 
-  UserLessonProgress _lessonProgressFromData(
-      String id, Map<String, dynamic> data, String createdAt, String updatedAt) {
+  UserLessonProgress _lessonProgressFromData(String id,
+      Map<String, dynamic> data, String createdAt, String updatedAt) {
     final completed = _bool(data['completed']);
     final notes = _map(data['notes']);
     return UserLessonProgress(
@@ -1036,8 +1034,8 @@ class StudyGuideService {
     };
   }
 
-  StudySession _sessionFromData(
-      String id, Map<String, dynamic> data, String createdAt, String updatedAt) {
+  StudySession _sessionFromData(String id, Map<String, dynamic> data,
+      String createdAt, String updatedAt) {
     return StudySession(
       id: id,
       studyGuideId: _string(data['study_guide_id']),
@@ -1082,8 +1080,7 @@ class StudyGuideService {
     };
   }
 
-  T _enumByName<T extends Enum>(
-      List<T> values, String name, T fallback) {
+  T _enumByName<T extends Enum>(List<T> values, String name, T fallback) {
     return values.firstWhere(
       (value) => value.name == name,
       orElse: () => fallback,

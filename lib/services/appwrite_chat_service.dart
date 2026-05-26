@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:async';
 
 import 'package:appwrite/appwrite.dart';
@@ -15,11 +13,11 @@ import 'auth_service.dart';
 
 class AppwriteChatService extends ChangeNotifier {
   AppwriteChatService() {
-    _databases = Databases(appwriteClient);
+    _tables = TablesDB(appwriteClient);
     _realtime = Realtime(appwriteClient);
   }
 
-  late final Databases _databases;
+  late final TablesDB _tables;
   late final Realtime _realtime;
   RealtimeSubscription? _subscription;
   final Logger _logger = Logger('AppwriteChatService');
@@ -37,9 +35,9 @@ class AppwriteChatService extends ChangeNotifier {
 
   Future<List<ChatChannel>> getUserChannels(String userId) async {
     try {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: databaseId,
-        collectionId: channelsCollectionId,
+        tableId: channelsCollectionId,
         queries: [
           Query.containsAny('members', [userId]),
           Query.equal('is_archived', false),
@@ -48,7 +46,7 @@ class AppwriteChatService extends ChangeNotifier {
         ],
       );
 
-      return response.documents.map(_channelFromDocument).toList();
+      return response.rows.map(_channelFromRow).toList();
     } catch (e) {
       _logger.error('Error fetching Appwrite chat channels: $e');
       throw DatabaseException('Failed to fetch chat channels',
@@ -71,18 +69,18 @@ class AppwriteChatService extends ChangeNotifier {
         queries.add(Query.cursorBefore(before));
       }
 
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: databaseId,
-        collectionId: messagesCollectionId,
+        tableId: messagesCollectionId,
         queries: queries,
       );
 
       _messageDocuments
         ..clear()
-        ..addAll(response.documents);
+        ..addAll(response.rows.map(_rowToDocument));
       notifyListeners();
 
-      return response.documents.map(_messageFromDocument).toList();
+      return response.rows.map(_messageFromRow).toList();
     } catch (e) {
       _logger.error('Error loading Appwrite chat history: $e');
       throw DatabaseException('Failed to fetch channel messages',
@@ -99,16 +97,16 @@ class AppwriteChatService extends ChangeNotifier {
     _logger.info('Opening Appwrite realtime channel for room: $roomId');
 
     _subscription = _realtime.subscribe([
-      'databases.$databaseId.collections.$messagesCollectionId.documents',
+      'databases.$databaseId.tables.$messagesCollectionId.rows',
     ]);
 
     _subscription!.stream.listen((event) {
       final isCreateEvent = event.events.any((name) =>
           name.endsWith('.create') ||
-          name == 'databases.*.collections.*.documents.*.create');
+          name == 'databases.*.tables.*.rows.*.create');
       if (!isCreateEvent) return;
 
-      final document = models.Document.fromMap(event.payload);
+      final document = _rowToDocument(models.Row.fromMap(event.payload));
       final data = document.data;
       final messageRoomId = data['channel_id'] ?? data['roomId'];
 
@@ -133,20 +131,21 @@ class AppwriteChatService extends ChangeNotifier {
     });
 
     final subscription = _realtime.subscribe([
-      'databases.$databaseId.collections.$messagesCollectionId.documents',
+      'databases.$databaseId.tables.$messagesCollectionId.rows',
     ]);
 
     subscription.stream.listen(
       (event) {
-        final isCreateEvent = event.events.any((name) => name.endsWith('.create'));
+        final isCreateEvent =
+            event.events.any((name) => name.endsWith('.create'));
         if (!isCreateEvent) return;
 
-        final document = models.Document.fromMap(event.payload);
-        final data = document.data;
+        final row = models.Row.fromMap(event.payload);
+        final data = row.data;
         final messageRoomId = data['channel_id'] ?? data['roomId'];
         if (messageRoomId != channelId) return;
 
-        messages.add(_messageFromDocument(document));
+        messages.add(_messageFromRow(row));
         controller.add(List.unmodifiable(messages));
       },
       onError: controller.addError,
@@ -181,10 +180,10 @@ class AppwriteChatService extends ChangeNotifier {
           .toList();
       final now = DateTime.now();
 
-      final document = await _databases.createDocument(
+      final row = await _tables.createRow(
         databaseId: databaseId,
-        collectionId: messagesCollectionId,
-        documentId: ID.unique(),
+        tableId: messagesCollectionId,
+        rowId: ID.unique(),
         data: {
           'channel_id': channelId,
           'roomId': channelId,
@@ -206,10 +205,10 @@ class AppwriteChatService extends ChangeNotifier {
         },
       );
 
-      await _storeMessageTags(document.$id, tags);
+      await _storeMessageTags(row.$id, tags);
       await _updateChannelLastMessage(channelId, content, user.$id);
 
-      return _messageFromDocument(document);
+      return _messageFromRow(row);
     } catch (e) {
       _logger.error('Failed to send Appwrite chat message: $e');
       if (e is AuthException) rethrow;
@@ -240,10 +239,10 @@ class AppwriteChatService extends ChangeNotifier {
       final allMembers = <String>{user.$id, ...members}.toList();
       final allAdmins = <String>{user.$id, ...admins}.toList();
 
-      final document = await _databases.createDocument(
+      final row = await _tables.createRow(
         databaseId: databaseId,
-        collectionId: channelsCollectionId,
-        documentId: ID.unique(),
+        tableId: channelsCollectionId,
+        rowId: ID.unique(),
         data: {
           'name': name,
           'description': description,
@@ -261,7 +260,7 @@ class AppwriteChatService extends ChangeNotifier {
         },
       );
 
-      return _channelFromDocument(document);
+      return _channelFromRow(row);
     } catch (e) {
       _logger.error('Error creating Appwrite chat channel: $e');
       if (e is AuthException) rethrow;
@@ -276,9 +275,9 @@ class AppwriteChatService extends ChangeNotifier {
         return _getSpecialTags(query);
       }
 
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: databaseId,
-        collectionId: AppwriteBackendConfig.usersCollectionId,
+        tableId: AppwriteBackendConfig.usersCollectionId,
         queries: [
           if (query.trim().isNotEmpty)
             Query.search('fullName', query.trim()),
@@ -286,12 +285,13 @@ class AppwriteChatService extends ChangeNotifier {
         ],
       );
 
-      final users = response.documents.map((document) {
-        final data = document.data;
+      final users = response.rows.map((row) {
+        final data = row.data;
         return TaggedEntity(
-          id: document.$id,
-          name: (data['fullName'] ?? data['full_name'] ?? data['email'] ?? 'User')
-              .toString(),
+          id: row.$id,
+          name:
+              (data['fullName'] ?? data['full_name'] ?? data['email'] ?? 'User')
+                  .toString(),
           type: TagType.user,
           avatar: data['avatar_url'] as String?,
         );
@@ -314,10 +314,10 @@ class AppwriteChatService extends ChangeNotifier {
     if (user == null) throw AuthException('User not authenticated');
     final channel = await _getChannel(channelId);
     if (channel == null || channel.members.contains(user.$id)) return;
-    await _databases.updateDocument(
+    await _tables.updateRow(
       databaseId: databaseId,
-      collectionId: channelsCollectionId,
-      documentId: channelId,
+      tableId: channelsCollectionId,
+      rowId: channelId,
       data: {'members': [...channel.members, user.$id]},
     );
   }
@@ -327,10 +327,10 @@ class AppwriteChatService extends ChangeNotifier {
     if (user == null) return;
     final channel = await _getChannel(channelId);
     if (channel == null) return;
-    await _databases.updateDocument(
+    await _tables.updateRow(
       databaseId: databaseId,
-      collectionId: channelsCollectionId,
-      documentId: channelId,
+      tableId: channelsCollectionId,
+      rowId: channelId,
       data: {
         'members': channel.members.where((id) => id != user.$id).toList(),
       },
@@ -345,18 +345,18 @@ class AppwriteChatService extends ChangeNotifier {
 
   Future<List<MessageTag>> getMessageTags(String messageId) async {
     try {
-      final response = await _databases.listDocuments(
+      final response = await _tables.listRows(
         databaseId: databaseId,
-        collectionId: messageTagsCollectionId,
+        tableId: messageTagsCollectionId,
         queries: [
           Query.equal('message_id', messageId),
           Query.limit(100),
         ],
       );
-      return response.documents.map((document) {
+      return response.rows.map((row) {
         return MessageTag.fromJson({
-          'id': document.$id,
-          ...document.data,
+          'id': row.$id,
+          ...row.data,
         });
       }).toList();
     } catch (e) {
@@ -367,16 +367,17 @@ class AppwriteChatService extends ChangeNotifier {
 
   Future<ChatUser?> getChatUser(String userId) async {
     try {
-      final document = await _databases.getDocument(
+      final row = await _tables.getRow(
         databaseId: databaseId,
-        collectionId: AppwriteBackendConfig.usersCollectionId,
-        documentId: userId,
+        tableId: AppwriteBackendConfig.usersCollectionId,
+        rowId: userId,
       );
-      final data = document.data;
+      final data = row.data;
       return ChatUser(
-        id: document.$id,
-        name: (data['fullName'] ?? data['full_name'] ?? data['email'] ?? 'User')
-            .toString(),
+        id: row.$id,
+        name:
+            (data['fullName'] ?? data['full_name'] ?? data['email'] ?? 'User')
+                .toString(),
         email: (data['email'] ?? '').toString(),
         avatar: data['avatar_url'] as String?,
         role: UserRole.values.firstWhere(
@@ -399,10 +400,10 @@ class AppwriteChatService extends ChangeNotifier {
     required bool isOnline,
   }) async {
     try {
-      await _databases.updateDocument(
+      await _tables.updateRow(
         databaseId: databaseId,
-        collectionId: AppwriteBackendConfig.usersCollectionId,
-        documentId: userId,
+        tableId: AppwriteBackendConfig.usersCollectionId,
+        rowId: userId,
         data: {
           'is_online': isOnline,
           'last_seen': DateTime.now().toIso8601String(),
@@ -425,36 +426,36 @@ class AppwriteChatService extends ChangeNotifier {
     return users;
   }
 
-  ChatChannel _channelFromDocument(models.Document document) {
+  ChatChannel _channelFromRow(models.Row row) {
     return ChatChannel.fromJson({
-      'id': document.$id,
-      ...document.data,
+      'id': row.$id,
+      ...row.data,
     });
   }
 
   Future<ChatChannel?> _getChannel(String channelId) async {
     try {
-      final document = await _databases.getDocument(
+      final row = await _tables.getRow(
         databaseId: databaseId,
-        collectionId: channelsCollectionId,
-        documentId: channelId,
+        tableId: channelsCollectionId,
+        rowId: channelId,
       );
-      return _channelFromDocument(document);
+      return _channelFromRow(row);
     } catch (e) {
       _logger.error('Error loading Appwrite chat channel: $e');
       return null;
     }
   }
 
-  ChatMessage _messageFromDocument(models.Document document) {
-    final data = document.data;
+  ChatMessage _messageFromRow(models.Row row) {
+    final data = row.data;
     return ChatMessage.fromJson({
-      'id': document.$id,
+      'id': row.$id,
       'sender_id': data['sender_id'] ?? data['senderId'],
       'sender_name': data['sender_name'] ?? data['senderName'] ?? 'User',
       'sender_avatar': data['sender_avatar'] ?? data['senderAvatar'] ?? '',
       'content': data['content'] ?? data['messageText'] ?? '',
-      'timestamp': data['timestamp'] ?? document.$createdAt,
+      'timestamp': data['timestamp'] ?? row.$createdAt,
       'type': data['type'] ?? MessageType.text.name,
       'tagged_users': data['tagged_users'] ?? const <String>[],
       'tagged_groups': data['tagged_groups'] ?? const <String>[],
@@ -465,14 +466,27 @@ class AppwriteChatService extends ChangeNotifier {
     });
   }
 
+  models.Document _rowToDocument(models.Row row) {
+    return models.Document(
+      $id: row.$id,
+      $sequence: row.$sequence,
+      $collectionId: row.$tableId,
+      $databaseId: row.$databaseId,
+      $createdAt: row.$createdAt,
+      $updatedAt: row.$updatedAt,
+      $permissions: row.$permissions,
+      data: row.data,
+    );
+  }
+
   Future<void> _storeMessageTags(
       String messageId, List<MessageTag> tags) async {
     for (final tag in tags) {
       try {
-        await _databases.createDocument(
+        await _tables.createRow(
           databaseId: databaseId,
-          collectionId: messageTagsCollectionId,
-          documentId: ID.unique(),
+          tableId: messageTagsCollectionId,
+          rowId: ID.unique(),
           data: {
             'message_id': messageId,
             ...tag.toJson(),
@@ -491,10 +505,10 @@ class AppwriteChatService extends ChangeNotifier {
     String senderId,
   ) async {
     try {
-      await _databases.updateDocument(
+      await _tables.updateRow(
         databaseId: databaseId,
-        collectionId: channelsCollectionId,
-        documentId: channelId,
+        tableId: channelsCollectionId,
+        rowId: channelId,
         data: {
           'last_message': content,
           'last_message_at': DateTime.now().toIso8601String(),
