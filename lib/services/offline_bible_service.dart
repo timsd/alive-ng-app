@@ -96,6 +96,23 @@ class OfflineBibleService {
       }
 
       // Try to get from local database (English defaults inserted on creation)
+      if (kIsWeb) {
+        final assetBooksDefault = await _loadBooksFromAssets(_defaultLanguage);
+        if (assetBooksDefault.isNotEmpty) {
+          return assetBooksDefault
+              .map((bookData) => BibleBook(
+                    name: bookData['name'],
+                    abbreviation: bookData['abbreviation'],
+                    chapters: bookData['chapters'],
+                    testament: bookData['testament'],
+                    order: bookData['order'],
+                    translations: bookData['translations'],
+                  ))
+              .toList();
+        }
+        return [];
+      }
+
       final books = await _dbHelper.getAllBooks();
       if (books.isNotEmpty) {
         return books;
@@ -136,18 +153,21 @@ class OfflineBibleService {
       final versionCode = version ?? _defaultVersion;
       final languageCode = language ?? _defaultLanguage;
 
-      // Try to get from local database first
-      final cachedChapter =
-          await _dbHelper.getChapter(book, chapter, versionCode, languageCode);
-      if (cachedChapter != null && cachedChapter.verses.isNotEmpty) {
-        return cachedChapter;
+      if (!kIsWeb) {
+        final cachedChapter =
+            await _dbHelper.getChapter(book, chapter, versionCode, languageCode);
+        if (cachedChapter != null && cachedChapter.verses.isNotEmpty) {
+          return cachedChapter;
+        }
       }
 
       // If not cached, try to get from assets
       final assetChapter = await _loadChapterFromAssets(
           book, chapter, versionCode, languageCode);
       if (assetChapter != null) {
-        await _dbHelper.insertChapter(assetChapter);
+        if (!kIsWeb) {
+          await _dbHelper.insertChapter(assetChapter);
+        }
         return assetChapter;
       }
 
@@ -199,6 +219,8 @@ class OfflineBibleService {
       final versionCode = version ?? _defaultVersion;
       final languageCode = language ?? _defaultLanguage;
 
+      if (kIsWeb) return [];
+
       // Search in local database first
       final localResults = await _dbHelper.searchVerses(query,
           version: versionCode, language: languageCode, limit: limit);
@@ -222,6 +244,12 @@ class OfflineBibleService {
   Future<bool> downloadBibleVersion(String version, String language) async {
     try {
       // Check if already downloaded
+      if (kIsWeb) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('bible_downloaded_${language}_$version', true);
+        return true;
+      }
+
       final versions = await _dbHelper.getAllVersions();
       final existingVersion = versions
           .where((v) => v.code == version && v.languageCode == language)
@@ -354,6 +382,11 @@ class OfflineBibleService {
   // Check if a version is downloaded
   Future<bool> _isVersionDownloaded(String version, String language) async {
     try {
+      if (kIsWeb) {
+        final prefs = await SharedPreferences.getInstance();
+        return prefs.getBool('bible_downloaded_${language}_$version') ?? false;
+      }
+
       final versions = await _dbHelper.getDownloadedVersions();
       return versions
           .any((v) => v.code == version && v.languageCode == language);
@@ -368,6 +401,11 @@ class OfflineBibleService {
   // Get downloaded Bible versions
   Future<List<BibleVersion>> getDownloadedVersions() async {
     try {
+      if (kIsWeb) {
+        final versions = await getAvailableVersions();
+        return versions.where((version) => version.isDownloaded).toList();
+      }
+
       return await _dbHelper.getDownloadedVersions();
     } catch (e) {
       _logger.error('Error getting downloaded versions', e);
@@ -379,6 +417,12 @@ class OfflineBibleService {
   // Delete downloaded version
   Future<bool> deleteDownloadedVersion(String version, String language) async {
     try {
+      if (kIsWeb) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('bible_downloaded_${language}_$version', false);
+        return true;
+      }
+
       await _dbHelper.updateVersionDownloadStatus(version, false);
       // Note: This doesn't actually delete the chapters, just marks as not downloaded
       // You might want to implement actual deletion of chapter data
@@ -403,6 +447,7 @@ class OfflineBibleService {
   Future<void> saveReadingProgress(String userId, String book, int chapter,
       int? verse, String version) async {
     try {
+      if (kIsWeb) return;
       await _dbHelper.saveUserProgress(
           userId, book, chapter, verse, version, 'reading', null);
     } catch (e) {
@@ -417,6 +462,7 @@ class OfflineBibleService {
   Future<List<Map<String, dynamic>>> getUserReadingProgress(
       String userId) async {
     try {
+      if (kIsWeb) return [];
       return await _dbHelper.getUserProgress(userId, progressType: 'reading');
     } catch (e) {
       _logger.error('Error getting reading progress', e);
@@ -590,6 +636,8 @@ class OfflineBibleService {
   // Save search result to local database
   Future<void> _saveSearchResultToDatabase(BibleSearchResult result) async {
     try {
+      if (kIsWeb) return;
+
       // First check if we already have this chapter
       final existingChapter = await _dbHelper.getChapter(
           result.book, result.chapter, result.version, result.language);
@@ -607,6 +655,7 @@ class OfflineBibleService {
   // Clear all cached Bible data
   Future<void> clearCache() async {
     try {
+      if (kIsWeb) return;
       await _dbHelper.clearCache();
       _logger.info('Bible cache cleared');
     } catch (e) {

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:appwrite/appwrite.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/appwrite_backend_config.dart';
@@ -49,6 +50,11 @@ class TractService {
   // Get all available tracts
   Future<List<Tract>> getAllTracts() async {
     try {
+      if (kIsWeb) {
+        final remoteTracts = await _fetchTractsFromAppwrite();
+        return remoteTracts.isNotEmpty ? remoteTracts : _getDefaultTracts();
+      }
+
       // Try to get from local database first
       final localTracts = await _dbHelper.getAllTracts();
       if (localTracts.isNotEmpty) {
@@ -77,6 +83,14 @@ class TractService {
   // Get tract by ID
   Future<Tract?> getTractById(String tractId) async {
     try {
+      if (kIsWeb) {
+        final remoteTract = await _fetchTractFromAppwrite(tractId);
+        if (remoteTract != null) return remoteTract;
+        return _getDefaultTracts()
+            .where((tract) => tract.id == tractId)
+            .firstOrNull;
+      }
+
       // Try local database first
       final localTract = await _dbHelper.getTractById(tractId);
       if (localTract != null) {
@@ -101,6 +115,11 @@ class TractService {
   // Get tract content with questions and answers
   Future<TractContent?> getTractContent(String tractId) async {
     try {
+      if (kIsWeb) {
+        final remoteContent = await _fetchTractContentFromAppwrite(tractId);
+        return remoteContent ?? _getDefaultTractContent(tractId);
+      }
+
       // Try local database first
       final localContent = await _dbHelper.getTractContent(tractId);
       if (localContent != null) {
@@ -136,8 +155,9 @@ class TractService {
         score: _calculateScore(answers),
       );
 
-      // Save to local database
-      await _dbHelper.insertUserAnswer(userAnswer);
+      if (!kIsWeb) {
+        await _dbHelper.insertUserAnswer(userAnswer);
+      }
 
       // Sync to Appwrite.
       await _syncUserAnswerToAppwrite(userAnswer);
@@ -153,6 +173,7 @@ class TractService {
   // Get user answers for a tract
   Future<UserTractAnswer?> getUserAnswers(String userId, String tractId) async {
     try {
+      if (kIsWeb) return null;
       return await _dbHelper.getUserAnswer(userId, tractId);
     } catch (e) {
       _logger.error('Error getting user answers', e);
@@ -163,6 +184,7 @@ class TractService {
   // Get user progress for all tracts
   Future<List<UserTractAnswer>> getUserProgress(String userId) async {
     try {
+      if (kIsWeb) return [];
       return await _dbHelper.getUserProgress(userId);
     } catch (e) {
       _logger.error('Error getting user progress', e);
@@ -195,7 +217,8 @@ class TractService {
       }
 
       // Build from local answers if no Appwrite progress doc exists.
-      final answer = await _dbHelper.getUserAnswer(userId, tractId);
+      final answer =
+          kIsWeb ? null : await _dbHelper.getUserAnswer(userId, tractId);
       if (answer != null) {
         return TractProgress(
           id: '${userId}_$tractId',
@@ -313,7 +336,9 @@ class TractService {
           // On web, return the Appwrite Storage download URL.
           final url = await _storageService.downloadTractPDF(fileName);
           if (url != null) {
-            await _dbHelper.updateTractPdfPath(tractId, url);
+            if (!kIsWeb) {
+              await _dbHelper.updateTractPdfPath(tractId, url);
+            }
           }
           return url;
         }
@@ -321,7 +346,9 @@ class TractService {
 
       // For other tracts, use the PDF URL directly (store URL instead of downloading to local filesystem)
       if (pdfUrl.isNotEmpty) {
-        await _dbHelper.updateTractPdfPath(tractId, pdfUrl);
+        if (!kIsWeb) {
+          await _dbHelper.updateTractPdfPath(tractId, pdfUrl);
+        }
         return pdfUrl;
       }
 
@@ -336,6 +363,17 @@ class TractService {
   // Search tracts by title or content
   Future<List<Tract>> searchTracts(String query) async {
     try {
+      if (kIsWeb) {
+        final normalized = query.toLowerCase().trim();
+        final tracts = await getAllTracts();
+        if (normalized.isEmpty) return tracts;
+        return tracts
+            .where((tract) =>
+                tract.title.toLowerCase().contains(normalized) ||
+                tract.description.toLowerCase().contains(normalized) ||
+                tract.category.toLowerCase().contains(normalized))
+            .toList();
+      }
       return await _dbHelper.searchTracts(query);
     } catch (e) {
       _logger.error('Error searching tracts', e);
@@ -346,6 +384,11 @@ class TractService {
   // Get tracts by category
   Future<List<Tract>> getTractsByCategory(String category) async {
     try {
+      if (kIsWeb) {
+        final tracts = await getAllTracts();
+        if (category == 'All') return tracts;
+        return tracts.where((tract) => tract.category == category).toList();
+      }
       return await _dbHelper.getTractsByCategory(category);
     } catch (e) {
       _logger.error('Error getting tracts by category', e);
@@ -357,20 +400,26 @@ class TractService {
   Future<void> syncWithAppwrite() async {
     try {
       // Load What the Bible Says tracts from Appwrite Storage.
-      await _loadWhatTheBibleSaysTracts();
+      if (!kIsWeb) {
+        await _loadWhatTheBibleSaysTracts();
+      }
 
       // Fetch latest tracts from Appwrite.
       final remoteTracts = await _fetchTractsFromAppwrite();
 
       // Update local database
-      for (final tract in remoteTracts) {
-        await _dbHelper.insertTract(tract);
+      if (!kIsWeb) {
+        for (final tract in remoteTracts) {
+          await _dbHelper.insertTract(tract);
+        }
       }
 
       // Sync user answers to Appwrite.
       final currentUser = _authService.currentUser;
       if (currentUser != null) {
-        final userAnswers = await _dbHelper.getUserProgress(currentUser.uid);
+        final userAnswers = kIsWeb
+            ? <UserTractAnswer>[]
+            : await _dbHelper.getUserProgress(currentUser.uid);
         for (final answer in userAnswers) {
           await _syncUserAnswerToAppwrite(answer);
         }
@@ -544,6 +593,17 @@ class TractService {
         language: 'en',
       );
     }).toList();
+  }
+
+  TractContent _getDefaultTractContent(String tractId) {
+    return TractContent(
+      id: '${tractId}_content',
+      tractId: tractId,
+      content:
+          'This tract is available as a downloadable PDF. Rich lesson content will appear here after the content manager publishes the extracted text.',
+      questions: const [],
+      metadata: const {'source': 'default_fallback'},
+    );
   }
 
   // Load "What the Bible Says" tracts from Appwrite Storage.

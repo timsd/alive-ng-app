@@ -13,6 +13,7 @@ import '../config/appwrite_backend_config.dart';
 import '../main.dart';
 import '../utils/logger.dart';
 import '../utils/app_exception.dart';
+import '../utils/navigation_keys.dart';
 import 'auth_service.dart';
 import 'firebase_messaging_base.dart';
 
@@ -28,9 +29,7 @@ class NotificationService extends FirebaseMessagingBase {
   final TablesDB _tables = TablesDB(appwriteClient);
 
   // Global navigator key for navigation from background contexts
-  static final GlobalKey<NavigatorState> _navigatorKey =
-      GlobalKey<NavigatorState>();
-  static GlobalKey<NavigatorState> get navigatorKey => _navigatorKey;
+  static GlobalKey<NavigatorState> get navigatorKey => rootNavigatorKey;
 
   bool _isInitialized = false;
 
@@ -137,7 +136,7 @@ class NotificationService extends FirebaseMessagingBase {
       _logger.info('Navigating to: ${data['screen']}');
 
       // Use the global navigator key to navigate
-      final context = _navigatorKey.currentContext;
+      final context = navigatorKey.currentContext;
       if (context != null) {
         final screen = data['screen'] as String;
         context.go(screen.startsWith('/') ? screen : '/$screen');
@@ -187,7 +186,7 @@ class NotificationService extends FirebaseMessagingBase {
     _logger.info('Navigating from notification: type=$type, id=$id');
 
     // Use the global navigator key to navigate from background contexts
-    final context = _navigatorKey.currentContext;
+    final context = navigatorKey.currentContext;
     if (context == null) {
       _logger.warning('Navigation context not available');
       return;

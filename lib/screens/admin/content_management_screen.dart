@@ -717,7 +717,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
             value: 'delete',
             child: ListTile(
               leading: Icon(Icons.delete, color: Colors.red),
-              title: Text('Delete', style: TextStyle(color: Colors.white)),
+              title: Text('Delete', style: TextStyle(color: Colors.red)),
               contentPadding: EdgeInsets.zero,
             ),
           ),

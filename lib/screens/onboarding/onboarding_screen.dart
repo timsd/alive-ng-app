@@ -197,61 +197,69 @@ class _OnboardingCard extends StatelessWidget {
       child: Card(
         elevation: 0,
         color: Colors.transparent,
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  icon,
-                  size: 80,
-                  color: iconColor,
-                ),
-              ),
-              SizedBox(height: context.responsivePadding.top * 1.5),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      fontSize: context.responsiveFontSize(24),
-                    ),
-              ),
-              SizedBox(height: context.responsivePadding.top),
-              Text(
-                body,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      fontSize: context.responsiveFontSize(16),
-                      height: 1.6,
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
-                    ),
-              ),
-              if (extra != null && extra!.trim().isNotEmpty) ...[
-                SizedBox(height: context.responsivePadding.top),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 680),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(12),
+                    color: iconColor.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
                   ),
-                  child: Text(
-                    extra!,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          height: 1.6,
-                        ),
+                  child: Icon(
+                    icon,
+                    size: 80,
+                    color: iconColor,
                   ),
                 ),
+                SizedBox(height: context.responsivePadding.top * 1.5),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        fontSize: context.responsiveFontSize(24),
+                      ),
+                ),
+                SizedBox(height: context.responsivePadding.top),
+                Text(
+                  body,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        fontSize: context.responsiveFontSize(16),
+                        height: 1.6,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.8),
+                      ),
+                ),
+                if (extra != null && extra!.trim().isNotEmpty) ...[
+                  SizedBox(height: context.responsivePadding.top),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      extra!,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            height: 1.6,
+                          ),
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

@@ -12,7 +12,8 @@
     "appwrite:app-version": "node scripts/upsert_appwrite_app_version.mjs",
     "appwrite:function-vars": "node scripts/upsert_appwrite_function_variables.mjs",
     "appwrite:deploy-functions": "node scripts/upsert_appwrite_function_variables.mjs --deploy",
-    "appwrite:deploy-send-email": "node scripts/upsert_appwrite_function_variables.mjs --deploy"
+    "appwrite:deploy-send-email": "node scripts/upsert_appwrite_function_variables.mjs --deploy",
+    "smoke:web-routes": "node test/integration/web_route_smoke_test.js"
   },
   "dependencies": {
     "node-appwrite": "^24.1.0",

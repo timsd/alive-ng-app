@@ -554,7 +554,7 @@ class DonationService {
     try {
       final user = await _currentUser();
       final userId = user?.uid;
-      if (userId == null) throw AuthException('User not authenticated');
+      if (userId == null) return [];
 
       final snapshot = await _tables.listRows(
         databaseId: _databaseId,
@@ -766,6 +766,8 @@ class DonationService {
         'appwrite_user_id': donation.userId,
         'donation_type': donation.type.name,
         'material_title': donation.materialTitle,
+        'amount': amount,
+        if (currency.toUpperCase() == 'NGN') 'amount_ngn': amount,
         if (donation.metadata?['project_title'] != null)
           'project_title': donation.metadata!['project_title'],
         if (donation.metadata?['project_id'] != null)

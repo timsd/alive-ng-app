@@ -60,6 +60,7 @@ import '../services/appwrite_auth_service.dart';
 import '../constants/app_constants.dart';
 import '../services/onboarding_service.dart';
 import '../utils/web_launch_params.dart';
+import '../utils/navigation_keys.dart';
 
 // New screen imports
 import '../screens/admin/leadership_archive_screen.dart';
@@ -120,6 +121,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   }
 
   return GoRouter(
+    navigatorKey: rootNavigatorKey,
     // Always start from splash so web/mobile behavior is consistent.
     initialLocation: AppConstants.splashRoute,
     redirect: (context, state) async {

@@ -24,6 +24,7 @@ import 'providers/language_provider.dart';
 import 'config/appwrite_backend_config.dart';
 import 'services/analytics_service.dart';
 import 'services/crash_reporting_service.dart';
+import 'services/notification_service.dart';
 
 // Global Appwrite service instances for provider access.
 final appwriteClient = Client();
@@ -81,6 +82,12 @@ void main() {
           await AnalyticsService.instance.initialize();
         } catch (e) {
           debugPrint('Appwrite analytics initialization failed: $e');
+        }
+
+        try {
+          await NotificationService.instance.initialize();
+        } catch (e) {
+          debugPrint('Notification initialization failed: $e');
         }
 
         try {
