@@ -13,6 +13,7 @@
     "appwrite:function-vars": "node scripts/upsert_appwrite_function_variables.mjs",
     "appwrite:deploy-functions": "node scripts/upsert_appwrite_function_variables.mjs --deploy",
     "appwrite:deploy-send-email": "node scripts/upsert_appwrite_function_variables.mjs --deploy",
+    "appwrite:verify-interrupted-cleanup": "node scripts/verify_interrupted_legacy_cleanup.mjs",
     "smoke:web-routes": "node test/integration/web_route_smoke_test.js"
   },
   "dependencies": {

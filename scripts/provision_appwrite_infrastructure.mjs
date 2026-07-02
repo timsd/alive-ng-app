@@ -17,7 +17,8 @@ function loadDotEnv(filePath = resolve(process.cwd(), '.env')) {
     const line = rawLine.trim();
     if (!line || line.startsWith('#') || !line.includes('=')) continue;
 
-    const [key, ...valueParts] = line.split('=');
+    const [rawKey, ...valueParts] = line.split('=');
+    const key = rawKey.trim();
     if (!key || process.env[key] !== undefined) continue;
 
     const value = valueParts.join('=').trim().replace(/^['"]|['"]$/g, '');
@@ -78,6 +79,33 @@ function cleanParams(value) {
   return Object.fromEntries(
     Object.entries(value).filter(([, item]) => item !== undefined),
   );
+}
+
+async function assertTablesDBAvailable() {
+  if (dryRun || useLegacyDatabases) return;
+
+  const response = await fetch(`${appwriteProject.endpoint}/tablesdb`, {
+    headers: {
+      'X-Appwrite-Project': appwriteProject.projectId,
+      'X-Appwrite-Key': apiKey,
+    },
+  });
+
+  if (response.status === 404) {
+    throw new Error(
+      'TablesDB routes are not available on this Appwrite server. ' +
+        'Upgrade Appwrite to a TablesDB-capable version before running ' +
+        'npm run appwrite:provision, or explicitly use ' +
+        'npm run appwrite:provision:legacy for legacy Databases.',
+    );
+  }
+
+  if (response.status === 401 || response.status === 403) {
+    throw new Error(
+      `TablesDB route check returned ${response.status}. Confirm APPWRITE_API_KEY has ` +
+        'databases/tables/columns/indexes/rows scopes.',
+    );
+  }
 }
 
 function clientFromEnv() {
@@ -390,6 +418,7 @@ async function main() {
   log(`Endpoint: ${appwriteProject.endpoint}`);
   log(`Mode: ${dryRun ? 'dry-run' : 'apply'} ${useLegacyDatabases ? '(legacy Databases)' : '(TablesDB)'}`);
 
+  await assertTablesDBAvailable();
   await ensureDatabase(tablesDB, databases);
   await ensureBuckets(storage);
   await ensureTeams(teamsService);

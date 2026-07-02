@@ -11,7 +11,7 @@ import '../main.dart';
 class LiveKitMeetingService extends ChangeNotifier {
   static const String livekitUrl = String.fromEnvironment(
     'LIVEKIT_URL',
-    defaultValue: 'ws://84.8.219.248:7880',
+    defaultValue: 'wss://livekit.alivenigeria.org',
   );
 
   Room? _room;

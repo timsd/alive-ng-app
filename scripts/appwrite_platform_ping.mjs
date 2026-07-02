@@ -1,7 +1,27 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+function loadDotEnv(filePath = resolve(process.cwd(), '.env')) {
+  if (!existsSync(filePath)) return;
+
+  for (const rawLine of readFileSync(filePath, 'utf8').split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#') || !line.includes('=')) continue;
+
+    const [rawKey, ...valueParts] = line.split('=');
+    const key = rawKey.trim();
+    if (!key || process.env[key] !== undefined) continue;
+
+    process.env[key] = valueParts.join('=').trim().replace(/^['"]|['"]$/g, '');
+  }
+}
+
+loadDotEnv();
+
 const endpoint =
   process.env.APPWRITE_ENDPOINT ||
-  'http://appwrite-he4p5j9b9dj42v5nzeklu2u3.84.8.219.248.sslip.io/v1';
-const projectId = process.env.APPWRITE_PROJECT_ID || '6a088e5f0003764bde50';
+  'https://api.alivenigeria.org/v1';
+const projectId = process.env.APPWRITE_PROJECT_ID || '6a3bef53002f5090dedf';
 const webOrigin = process.env.APPWRITE_WEB_ORIGIN || 'https://app.alivenigeria.org';
 
 async function ping(path, headers = {}) {

@@ -1,7 +1,7 @@
 {
-    "projectId": "6a088e5f0003764bde50",
-    "projectName": "ALIVE App Core",
-    "endpoint": "http://appwrite-he4p5j9b9dj42v5nzeklu2u3.84.8.219.248.sslip.io/v1",
+    "projectId": "6a3bef53002f5090dedf",
+    "projectName": "dbalive-app",
+    "endpoint": "https://api.alivenigeria.org/v1",
     "settings": {
         "services": {
             "account": true,

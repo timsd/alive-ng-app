@@ -4,7 +4,7 @@ This project is about 99% through the Firebase-to-Appwrite migration. Keep Fireb
 
 ## Appwrite Dashboard
 
-- Use project `6a088e5f0003764bde50` at `http://appwrite-he4p5j9b9dj42v5nzeklu2u3.84.8.219.248.sslip.io/v1`.
+- Use project `6a3bef53002f5090dedf` at `https://api.alivenigeria.org/v1`.
 - Enable Account, Databases, Storage, Teams, Users, Functions, Messaging, GraphQL, and Sites.
 - Enable auth methods used by the app: email/password, Google OAuth, JWT, phone, invites, anonymous, email OTP, and magic URL.
 - Add web platforms / allowed origins for `https://app.alivenigeria.org` and the active Coolify app domain.
@@ -42,19 +42,65 @@ Provisioned resources include storage buckets for chat files, profile files, boa
 - Flutter web env values are compile-time values. Set Coolify build arg `FLUTTER_BUILD_ARGS` with needed `--dart-define` values, for example:
 
 ```bash
---dart-define=LIVEKIT_URL=wss://livekit.example.com --dart-define=PAYSTACK_PUBLIC_KEY=pk_live_xxx --dart-define=GOOGLE_WEB_CLIENT_ID=xxx
+--dart-define=LIVEKIT_URL=wss://livekit.example.com --dart-define=PAYSTACK_PUBLIC_KEY=pk_live_xxx --dart-define=GOOGLE_WEB_CLIENT_ID=xxx --dart-define=GLITCHTIP_DSN=https://example@glitchtip.example/1 --dart-define=GLITCHTIP_ENVIRONMENT=production --dart-define=GLITCHTIP_RELEASE=alive-ng-app@1.1.0+2 --dart-define=GLITCHTIP_TRACES_SAMPLE_RATE=0
 ```
 
-- Add build-time values for Paystack, Google sign-in, reCAPTCHA, web push, LiveKit, Appwrite endpoint/project IDs, and any Firebase compatibility values still used by active legacy modules.
+- Add build-time values for Paystack, Google sign-in, reCAPTCHA, web push, LiveKit, GlitchTip, Appwrite endpoint/project IDs, and any Firebase compatibility values still used by active legacy modules.
 
 ## LiveKit
 
-- Run a LiveKit server reachable by the deployed app. Production web should use `wss://`, not `ws://`.
+- LiveKit is not a built-in Coolify service in this setup. Add it as a custom Docker Compose resource.
+- Create DNS `A livekit.alivenigeria.org YOUR_PUBLIC_IP`, then in Coolify add a Docker Compose / Empty Compose resource with domain `https://livekit.alivenigeria.org` and HTTP port `7880`.
+- Use this compose:
+
+```yaml
+services:
+  livekit:
+    image: livekit/livekit-server:latest
+    restart: unless-stopped
+    command: --config /etc/livekit.yaml
+    ports:
+      - "7880:7880/tcp"
+      - "7881:7881/tcp"
+      - "50100-50200:50100-50200/udp"
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+```
+
+- Add `livekit.yaml` beside the compose in Coolify and replace placeholders there only. Do not commit real keys.
+
+```yaml
+port: 7880
+log_level: info
+rtc:
+  tcp_port: 7881
+  port_range_start: 50100
+  port_range_end: 50200
+  use_external_ip: true
+keys:
+  YOUR_LIVEKIT_API_KEY: YOUR_LIVEKIT_API_SECRET
+```
+
+- Open OCI and `ufw` ports: TCP `7880`, TCP `7881`, UDP `50100-50200`.
+- If deploy fails with `failed to bind host port ... address already in use`, pick a different unused UDP range and update both the compose `ports` range and `rtc.port_range_start/end`.
+- Production web should use `wss://`, not `ws://`.
 - Set `LIVEKIT_URL` through Coolify `FLUTTER_BUILD_ARGS`.
 - Deploy Appwrite function `createLiveKitToken` from `appwrite_functions/createLiveKitToken`.
 - Set function env vars `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET` in Appwrite.
 - Keep the function execution role to authenticated users and confirm function ID `6a08e9010035dc8c1e51`, because the Flutter app calls that ID.
 - Ensure the LiveKit host/proxy allows WebSocket and media traffic needed for camera, mic, publish, and subscribe.
+
+## GlitchTip
+
+- The Flutter app already uses `sentry_flutter` through `CrashReportingService`.
+- Keep the real DSN in local `.env` and Coolify variables/build args only.
+- Required build defines:
+  - `GLITCHTIP_DSN`
+  - `GLITCHTIP_ENVIRONMENT`
+  - `GLITCHTIP_RELEASE`
+  - `GLITCHTIP_TRACES_SAMPLE_RATE`
+- Add the same defines to Android release build commands.
+- After deployment, confirm a test event arrives in the GlitchTip project before public launch.
 
 ## Current Migration Notes
 
