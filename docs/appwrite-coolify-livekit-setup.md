@@ -1,6 +1,6 @@
 # Appwrite, Coolify, and LiveKit Setup
 
-This project is about 99% through the Firebase-to-Appwrite migration. Keep Firebase enabled only for active compatibility paths until each remaining service is replaced and verified.
+This project is in the final live-deployment stage of the Firebase-to-Appwrite migration. Appwrite is the active backend target. Firebase remains only for FCM push delivery compatibility until Appwrite Messaging has a verified FCM provider.
 
 ## Appwrite Dashboard
 
@@ -17,8 +17,19 @@ This project is about 99% through the Firebase-to-Appwrite migration. Keep Fireb
 - Required local/provisioning env: `APPWRITE_API_KEY`.
 - Optional provisioning env: `APPWRITE_ENDPOINT`, `APPWRITE_PROJECT_ID`, `APPWRITE_DATABASE_ID`, `APPWRITE_PROVISION_DELAY_MS`, `APPWRITE_VERBOSE_WARNINGS`.
 - Optional webhook env before provisioning: `APPWRITE_PROFILE_APPROVAL_WEBHOOK_URL`, `APPWRITE_CHAT_FILE_WEBHOOK_URL`, `APPWRITE_DONATION_WEBHOOK_URL`, `APPWRITE_WEBHOOK_SECRET`.
+- Messaging provider verification: `npm run appwrite:providers`.
+- FCM provider auto-creation requires `APPWRITE_FCM_PROVIDER_ID` plus either `APPWRITE_FCM_SERVICE_ACCOUNT_PATH` or `APPWRITE_FCM_SERVICE_ACCOUNT_JSON`.
 
 Provisioned resources include storage buckets for chat files, profile files, board documents, tracts, podcasts, content media, meeting files, and exports; teams for administrators, BOD, trustees, directors, chapter leaders, content editors, and moderators; and messaging topics for users, leaders, approvals, prayer, chat, donations, events, study, kids, health, and content.
+
+Current production provisioning status:
+
+- `npm run appwrite:ping` reaches Appwrite at `https://api.alivenigeria.org/v1`.
+- `npm run appwrite:provision:legacy` completed against Appwrite `1.7.4`.
+- `npm run appwrite:app-version` created `app_settings/app_version`.
+- `npm run appwrite:function-vars` synced LiveKit, Paystack, and Resend variables.
+- `npm run appwrite:deploy-functions` uploaded active deployments for `createLiveKitToken`, `paystack_payments`, `paystack_webhook`, and `send_email`.
+- TablesDB mode is still unavailable on the current Appwrite server. Legacy Databases mode created the live schema, but some optional long/wide fields were skipped because of legacy collection attribute limits. Upgrade Appwrite to a TablesDB-capable version or split those optional fields into companion detail tables before calling the schema 100% equivalent.
 
 ## Appwrite Functions
 
@@ -39,13 +50,22 @@ Provisioned resources include storage buckets for chat files, profile files, boa
 - Deploy from the root `Dockerfile`; it builds Flutter web and serves through Nginx on port `80`.
 - Point the public domain to the Coolify app and configure the service port as `80`.
 - Keep the SPA fallback in `nginx.conf`.
-- Flutter web env values are compile-time values. Set Coolify build arg `FLUTTER_BUILD_ARGS` with needed `--dart-define` values, for example:
+- Flutter web env values are compile-time values. In Coolify set `FLUTTER_BUILD_ARGS` as a Docker build argument, not only as a runtime environment variable.
+- Do not put secret keys in `FLUTTER_BUILD_ARGS`. Use public/client values only.
+- Current required shape:
 
 ```bash
---dart-define=LIVEKIT_URL=wss://livekit.example.com --dart-define=PAYSTACK_PUBLIC_KEY=pk_live_xxx --dart-define=GOOGLE_WEB_CLIENT_ID=xxx --dart-define=GLITCHTIP_DSN=https://example@glitchtip.example/1 --dart-define=GLITCHTIP_ENVIRONMENT=production --dart-define=GLITCHTIP_RELEASE=alive-ng-app@1.1.0+2 --dart-define=GLITCHTIP_TRACES_SAMPLE_RATE=0
+--dart-define=APPWRITE_ENDPOINT=https://api.alivenigeria.org/v1 --dart-define=APPWRITE_PROJECT_ID=6a3bef53002f5090dedf --dart-define=APPWRITE_DATABASE_ID=6a089307002e54291a32 --dart-define=APPWRITE_FCM_PROVIDER_ID=6a0cbd1600215f960c03 --dart-define=LIVEKIT_URL=wss://livekit.alivenigeria.org --dart-define=PAYSTACK_PUBLIC_KEY=pk_live_xxx --dart-define=PAYSTACK_CALLBACK_URL=https://app.alivenigeria.org/payment/callback --dart-define=GOOGLE_WEB_CLIENT_ID=xxx --dart-define=WEB_PUSH_CERT_KEY=xxx --dart-define=GLITCHTIP_DSN=https://example@glitchtip.example/1 --dart-define=GLITCHTIP_ENVIRONMENT=production --dart-define=GLITCHTIP_RELEASE=alive-ng-app@1.1.0+2 --dart-define=GLITCHTIP_TRACES_SAMPLE_RATE=0 --dart-define=APPWRITE_RESOURCES_BASE_URL=https://app.alivenigeria.org/resources
 ```
 
-- Add build-time values for Paystack, Google sign-in, reCAPTCHA, web push, LiveKit, GlitchTip, Appwrite endpoint/project IDs, and any Firebase compatibility values still used by active legacy modules.
+- If `https://app.alivenigeria.org` returns `503`, check Coolify in this order:
+  - Application > Deployments: confirm the latest deployment finished successfully.
+  - Application > General/Network: exposed port must be `80`.
+  - Application > Domains: domain must be `https://app.alivenigeria.org`; SSL must be issued and active.
+  - Application > Build Variables: confirm `FLUTTER_BUILD_ARGS` is under build arguments.
+  - Application > Logs: look for Flutter build failure, Nginx startup failure, or container health failure.
+  - Server DNS: `A app.alivenigeria.org` points to the server public IP.
+  - Proxy: ensure Coolify proxy routes `app.alivenigeria.org` to the Flutter web app, not Appwrite or LiveKit.
 
 ## LiveKit
 
@@ -89,6 +109,7 @@ keys:
 - Set function env vars `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET` in Appwrite.
 - Keep the function execution role to authenticated users and confirm function ID `6a08e9010035dc8c1e51`, because the Flutter app calls that ID.
 - Ensure the LiveKit host/proxy allows WebSocket and media traffic needed for camera, mic, publish, and subscribe.
+- If `https://livekit.alivenigeria.org` reports a self-signed certificate, reissue SSL in Coolify for the LiveKit domain and confirm DNS points to the server public IP. Keep Flutter configured with `wss://livekit.alivenigeria.org` once TLS is valid.
 
 ## GlitchTip
 
@@ -102,10 +123,32 @@ keys:
 - Add the same defines to Android release build commands.
 - After deployment, confirm a test event arrives in the GlitchTip project before public launch.
 
+## FCM Provider
+
+Use Firebase only as the push transport provider for Appwrite Messaging.
+
+To create/verify the provider automatically:
+
+1. Open Firebase Console > project `alive-ng-flutter-app`.
+2. Go to Project settings > Service accounts.
+3. Generate a new private key and save it outside git, for example `E:\gradle-cache-alive-ng\secrets\firebase-fcm-service-account.json`.
+4. In local `.env`, set:
+
+```bash
+APPWRITE_FCM_PROVIDER_ID=6a0cbd1600215f960c03
+APPWRITE_FCM_SERVICE_ACCOUNT_PATH=E:\gradle-cache-alive-ng\secrets\firebase-fcm-service-account.json
+```
+
+5. Run `npm run appwrite:providers`.
+6. Keep `APPWRITE_FCM_PROVIDER_ID` in Coolify `FLUTTER_BUILD_ARGS`.
+
 ## Current Migration Notes
 
-- `flutter analyze` is clean with the current Appwrite-backed migration slices.
-- Appwrite dry-run is clean, but real provisioning is currently blocked while the Appwrite endpoint and `app.alivenigeria.org` are unreachable from this workspace.
+- Appwrite production infrastructure is provisioned and function deployments are active.
+- Local Flutter dependencies were restored with `PUB_CACHE=E:\gradle-cache-alive-ng\pub-cache`.
+- A local `flutter analyze` attempt stalled after dependency restoration; no analyzer process remains, but rerun analyze after restarting VS Code/terminal.
+- `https://app.alivenigeria.org` currently returns `503`; fix Coolify app deployment/proxy before web smoke testing.
+- `https://api.alivenigeria.org/v1/health` is reachable and returns Appwrite.
+- `https://livekit.alivenigeria.org` currently presents a self-signed certificate; fix SSL before production calls.
 - Firebase Hosting was disabled for project `alive-ng-flutter-app` on 2026-05-18; Coolify is now the intended web deployment path.
-- Do not remove active Firebase platform config, Firebase functions, storage rules, messaging compatibility, or central mixed Firebase services until their Appwrite replacements are wired and verified.
-- `AppwriteStorageCompatService` is the current Appwrite-backed compatibility layer for board and tract storage methods.
+- Do not remove active FCM platform config until Appwrite Messaging push is verified end to end.

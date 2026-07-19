@@ -250,14 +250,14 @@ function createFunctionArchive(config) {
   rmSync(archivePath, { force: true });
 
   const result = spawnSync(
-    'tar',
+    'tar.exe',
     ['-czf', archivePath, '-C', config.path, '.'],
     { cwd: process.cwd(), encoding: 'utf8' },
   );
 
   if (result.status !== 0) {
     throw new Error(
-      `Could not create ${config.id} archive: ${result.stderr || result.stdout}`,
+      `Could not create ${config.id} archive: ${result.error?.message || result.stderr || result.stdout}`,
     );
   }
 

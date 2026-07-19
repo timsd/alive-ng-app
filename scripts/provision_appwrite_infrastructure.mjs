@@ -51,6 +51,7 @@ const {
 
 const dryRun = process.argv.includes('--dry-run');
 const useLegacyDatabases = process.argv.includes('--legacy-databases');
+const onlyProviders = process.argv.includes('--only-providers');
 const onlyTableArg = process.argv.find((arg) => arg.startsWith('--only-table='));
 const onlyTableId = onlyTableArg?.split('=').slice(1).join('=');
 const apiKey = process.env.APPWRITE_API_KEY;
@@ -369,6 +370,58 @@ async function ensureTopics(messaging) {
   }
 }
 
+function optionalEnv(name) {
+  const value = process.env[name];
+  return value && value.trim() ? value.trim() : undefined;
+}
+
+function readFcmServiceAccountJSON() {
+  const inlineJSON = optionalEnv('APPWRITE_FCM_SERVICE_ACCOUNT_JSON');
+  if (inlineJSON) return inlineJSON;
+
+  const serviceAccountPath = optionalEnv('APPWRITE_FCM_SERVICE_ACCOUNT_PATH');
+  if (!serviceAccountPath) return undefined;
+
+  return readFileSync(resolve(process.cwd(), serviceAccountPath), 'utf8');
+}
+
+async function ensureMessagingProviders(messaging) {
+  const fcmProviderId = optionalEnv('APPWRITE_FCM_PROVIDER_ID');
+  if (!fcmProviderId) {
+    log('[skip] FCM provider: missing APPWRITE_FCM_PROVIDER_ID');
+    return;
+  }
+
+  if (dryRun) {
+    log(`[dry-run] FCM provider ${fcmProviderId}`);
+    return;
+  }
+
+  try {
+    await messaging.getProvider({ providerId: fcmProviderId });
+    log(`OK FCM provider ${fcmProviderId}`);
+    return;
+  } catch (error) {
+    if (!isMissing(error)) throw error;
+  }
+
+  const serviceAccountJSON = readFcmServiceAccountJSON();
+  if (!serviceAccountJSON) {
+    log(
+      `[skip] FCM provider ${fcmProviderId}: missing APPWRITE_FCM_SERVICE_ACCOUNT_JSON or APPWRITE_FCM_SERVICE_ACCOUNT_PATH`,
+    );
+    return;
+  }
+
+  await messaging.createFcmProvider({
+    providerId: fcmProviderId,
+    name: 'ALIVE FCM',
+    serviceAccountJSON,
+    enabled: true,
+  });
+  log(`Created FCM provider ${fcmProviderId}`);
+}
+
 async function ensureWebhooks(webhooksService) {
   for (const webhook of webhooks) {
     const url = process.env[webhook.urlEnv];
@@ -423,6 +476,12 @@ async function main() {
   await ensureBuckets(storage);
   await ensureTeams(teamsService);
   await ensureTopics(messaging);
+  await ensureMessagingProviders(messaging);
+
+  if (onlyProviders) {
+    log('Appwrite messaging provider verification complete.');
+    return;
+  }
 
   for (const table of tables) {
     if (onlyTableId && table.id !== onlyTableId) continue;
