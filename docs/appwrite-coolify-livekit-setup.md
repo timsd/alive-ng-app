@@ -100,6 +100,23 @@ Use these values when creating the missing web app resource:
 
 Do not add `APPWRITE_API_KEY`, `PAYSTACK_SECRET_KEY`, `LIVEKIT_API_SECRET`, `RESEND_API_KEY`, Android keystore passwords, or Firebase service account JSON to Flutter web build args. Those are server-side secrets only.
 
+For Coolify `v4.1.2`, use these exact corrections:
+
+- `Docker Build Stage Target`: leave empty. Do not put `FLUTTER_BUILD_ARGS` here.
+- `Custom Docker Options`: leave empty if `FLUTTER_BUILD_ARGS` is set in Environment Variables as a build variable.
+- If your Coolify screen has no build-variable toggle, then `Custom Docker Options` may be used like this instead:
+
+```text
+--build-arg FLUTTER_BUILD_ARGS="--dart-define=APPWRITE_ENDPOINT=https://api.alivenigeria.org/v1 --dart-define=APPWRITE_PROJECT_ID=6a3bef53002f5090dedf ..."
+```
+
+- Do not paste raw `--dart-define=...` values into `Custom Docker Options` without `--build-arg FLUTTER_BUILD_ARGS=`.
+- `Watch Paths`: leave empty for now, or use Flutter paths such as `lib/**`, `web/**`, `assets/**`, `pubspec.yaml`, `Dockerfile`.
+- `Ports Exposes`: `80`.
+- `Port Mappings`: leave empty unless you intentionally need a host port. Remove `3000:3000`.
+- `Pre-deployment`: leave empty. Remove `php artisan migrate`.
+- `Post-deployment`: leave empty. Remove `php artisan migrate`.
+
 ## Android and Play Store Build Values
 
 The Android app package ID is:
