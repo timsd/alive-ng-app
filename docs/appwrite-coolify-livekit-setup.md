@@ -47,6 +47,12 @@ Current production provisioning status:
 
 ## Coolify
 
+- Required Coolify resources for this project:
+  - `Appwrite` for backend, auth, database, storage, functions, and messaging.
+  - `LiveKit` for meetings/calls.
+  - `GlitchTip` for crash/error reporting.
+  - `ALIVE Flutter Web` for the public website/web-app at `https://app.alivenigeria.org`.
+- If Coolify only shows Appwrite, LiveKit, and GlitchTip, the Flutter web app resource has not been created yet.
 - Deploy from the root `Dockerfile`; it builds Flutter web and serves through Nginx on port `80`.
 - Point the public domain to the Coolify app and configure the service port as `80`.
 - Keep the SPA fallback in `nginx.conf`.
@@ -59,6 +65,16 @@ Current production provisioning status:
 ```
 
 - If `https://app.alivenigeria.org` returns `503`, check Coolify in this order:
+  - If there is no Flutter web app resource, create one first:
+    1. Project > New Resource.
+    2. Choose Public Repository / GitHub Repository.
+    3. Select `timsd/alive-ng-app`, branch `master`.
+    4. Choose Dockerfile build pack, or set build pack to Docker if Coolify asks.
+    5. Dockerfile path: `Dockerfile`.
+    6. Add domain `https://app.alivenigeria.org`.
+    7. Exposed/internal port: `80`.
+    8. Add `FLUTTER_BUILD_ARGS` as a build argument.
+    9. Deploy.
   - Application > Deployments: confirm the latest deployment finished successfully.
   - Application > General/Network: exposed port must be `80`.
   - Application > Domains: domain must be `https://app.alivenigeria.org`; SSL must be issued and active.
@@ -66,6 +82,69 @@ Current production provisioning status:
   - Application > Logs: look for Flutter build failure, Nginx startup failure, or container health failure.
   - Server DNS: `A app.alivenigeria.org` points to the server public IP.
   - Proxy: ensure Coolify proxy routes `app.alivenigeria.org` to the Flutter web app, not Appwrite or LiveKit.
+
+### Flutter Web Resource Setup
+
+Use these values when creating the missing web app resource:
+
+- Name: `ALIVE Flutter Web`
+- Repository: `https://github.com/timsd/alive-ng-app`
+- Branch: `master`
+- Build pack: Docker / Dockerfile
+- Dockerfile path: `Dockerfile`
+- Public domain: `https://app.alivenigeria.org`
+- Container port: `80`
+- Latest known good commit: `114cd99`
+- Build argument key: `FLUTTER_BUILD_ARGS`
+- Build argument value: copy the single-line `FLUTTER_BUILD_ARGS` value from local `.env`.
+
+Do not add `APPWRITE_API_KEY`, `PAYSTACK_SECRET_KEY`, `LIVEKIT_API_SECRET`, `RESEND_API_KEY`, Android keystore passwords, or Firebase service account JSON to Flutter web build args. Those are server-side secrets only.
+
+## Android and Play Store Build Values
+
+The Android app package ID is:
+
+```text
+com.alive.alivengandroidapp
+```
+
+The Android Firebase/FCM client values come from `android/app/google-services.json`:
+
+```text
+FIREBASE_ANDROID_API_KEY=<current_key from google-services.json>
+FIREBASE_ANDROID_APP_ID=<mobilesdk_app_id from google-services.json>
+```
+
+These are used only for the FCM client bridge on Android. Appwrite remains the backend.
+
+The release signing keystore is local at `android/app/alive-release.keystore`. It is used to sign release APK/AAB builds for Play Store. Keep the keystore and passwords out of git. Build/signing env vars:
+
+```text
+ANDROID_STORE_FILE=android/app/alive-release.keystore
+ANDROID_STORE_PASSWORD=<private>
+ANDROID_KEY_ALIAS=<private>
+ANDROID_KEY_PASSWORD=<private>
+```
+
+Use APK for direct testing and AAB for Play Store submission.
+
+## Appwrite TablesDB Upgrade
+
+TablesDB starts with Appwrite self-hosted `1.8.0`. The current recommended self-hosted target is the latest stable patch available from Appwrite, currently `1.9.5`.
+
+Do not upgrade by only changing the image tag in Coolify. Use the Appwrite upgrade task so the generated compose and supporting services are updated correctly:
+
+1. Back up Appwrite first from the server.
+2. SSH into the Oracle server.
+3. Go to the parent directory that contains the `appwrite` folder.
+4. Run the Appwrite upgrade task for `1.9.5`.
+5. Enter the `appwrite` directory.
+6. Run `docker compose exec appwrite migrate`.
+7. Confirm the Appwrite containers are healthy.
+8. From this project, run `npm run appwrite:ping`.
+9. Then run `npm run appwrite:provision`.
+
+If `1.9.5` fails to deploy in Coolify, check the Appwrite upgrade logs rather than returning directly to `1.7.4`. A failed upgrade usually means the generated compose, environment variables, or migration step did not complete.
 
 ## LiveKit
 
@@ -110,6 +189,36 @@ keys:
 - Keep the function execution role to authenticated users and confirm function ID `6a08e9010035dc8c1e51`, because the Flutter app calls that ID.
 - Ensure the LiveKit host/proxy allows WebSocket and media traffic needed for camera, mic, publish, and subscribe.
 - If `https://livekit.alivenigeria.org` reports a self-signed certificate, reissue SSL in Coolify for the LiveKit domain and confirm DNS points to the server public IP. Keep Flutter configured with `wss://livekit.alivenigeria.org` once TLS is valid.
+
+## Oracle SSH From Windows
+
+Use Windows Terminal or PowerShell.
+
+If your private key is in the normal Windows SSH folder:
+
+```powershell
+ssh -i "$env:USERPROFILE\.ssh\oracle-alive.key" opc@YOUR_SERVER_PUBLIC_IP
+```
+
+Common usernames:
+
+- Oracle Linux image: `opc`
+- Ubuntu image: `ubuntu`
+
+If SSH says the key is ignored because permissions are too open, fix it with:
+
+```powershell
+icacls "$env:USERPROFILE\.ssh\oracle-alive.key" /inheritance:r
+icacls "$env:USERPROFILE\.ssh\oracle-alive.key" /grant:r "$env:USERNAME:R"
+```
+
+Then retry:
+
+```powershell
+ssh -i "$env:USERPROFILE\.ssh\oracle-alive.key" opc@YOUR_SERVER_PUBLIC_IP
+```
+
+If the server rejects the key, confirm the matching public key was pasted into Oracle when creating the instance. The public key is the `.pub` file content, not the private `.key` file.
 
 ## GlitchTip
 

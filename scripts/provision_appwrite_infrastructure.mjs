@@ -494,5 +494,13 @@ async function main() {
 
 main().catch((error) => {
   console.error(error?.message || error);
+  if (error?.cause?.code || error?.cause?.message) {
+    console.error(
+      `Cause: ${[error.cause.code, error.cause.message].filter(Boolean).join(' - ')}`,
+    );
+  }
+  if (process.env.APPWRITE_VERBOSE_ERRORS === 'true' && error?.stack) {
+    console.error(error.stack);
+  }
   process.exitCode = 1;
 });
