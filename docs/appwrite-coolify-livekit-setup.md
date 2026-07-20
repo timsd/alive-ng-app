@@ -30,6 +30,7 @@ Current production provisioning status:
 - `npm run appwrite:app-version` created `app_settings/app_version`.
 - `npm run appwrite:function-vars` synced LiveKit, Paystack, and Resend variables.
 - `npm run appwrite:deploy-functions` uploaded active deployments for `createLiveKitToken`, `paystack_payments`, `paystack_webhook`, and `send_email`.
+- `extended_field_values` is provisioned for long optional fields that should not make primary TablesDB tables too wide.
 - Legacy Databases provisioning remains available only as `npm run appwrite:provision:legacy` for rollback/reference. Use TablesDB provisioning for normal work.
 
 ## Appwrite Functions
@@ -66,6 +67,7 @@ Current production provisioning status:
 ```
 
 - If `https://app.alivenigeria.org` returns `503`, check Coolify in this order:
+  - If the deployment log says `Failed to get installation token`, the failure happened before Dockerfile build. Reconnect the GitHub source in Coolify, confirm the Coolify GitHub App is installed for `timsd/alive-ng-app`, or temporarily recreate the resource as a public repository source and redeploy.
   - If there is no Flutter web app resource, create one first:
     1. Project > New Resource.
     2. Choose Public Repository / GitHub Repository.
@@ -180,6 +182,12 @@ services:
       - "7880:7880/tcp"
       - "7881:7881/tcp"
       - "50100-50200:50100-50200/udp"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:7880/ >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
     configs:
       - source: livekit_config
         target: /etc/livekit.yaml
@@ -218,6 +226,7 @@ keys:
 - Production web should use `wss://`, not `ws://`.
 - In Coolify, set the LiveKit resource domain to `https://livekit.alivenigeria.org` and the internal HTTP port to `7880`; do not set this service to port `80`.
 - If Cloudflare is used for DNS, keep `livekit.alivenigeria.org` as DNS-only unless you have a separate TURN/proxy setup. Cloudflare Tunnel/proxy can carry HTTPS/WebSocket signaling, but it does not expose the direct UDP media ports LiveKit needs.
+- If Coolify says `No health check configured`, that notice alone is not a failed LiveKit deploy. Add the healthcheck block above, redeploy, then check logs only if the resource still restarts or fails.
 - Set `LIVEKIT_URL` through Coolify `FLUTTER_BUILD_ARGS`.
 - Deploy Appwrite function `createLiveKitToken` from `appwrite_functions/createLiveKitToken`.
 - Set function env vars `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET` in Appwrite.

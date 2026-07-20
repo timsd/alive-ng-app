@@ -500,6 +500,18 @@ export const tables = [
       { key: 'chapter_readings_date_idx', type: 'key', columns: ['read_date'], orders: ['DESC'] },
     ],
   },
+  {
+    id: 'extended_field_values',
+    name: 'Extended Field Values',
+    columns: [
+      s('entity_table', 128, true), s('entity_id', 128, true), s('field_key', 128, true),
+      mediumtext('field_value'), s('value_type', 64), s('updated_by', 128), dt('created_at'), dt('updated_at'),
+    ],
+    indexes: [
+      { key: 'extended_fields_entity_idx', type: 'key', columns: ['entity_table', 'entity_id'] },
+      { key: 'extended_fields_field_idx', type: 'key', columns: ['field_key'] },
+    ],
+  },
   { id: 'admin_audit_logs', name: 'Admin Audit Logs', columns: [s('admin_id', 128), s('action', 255), s('resource', 128), s('resource_id', 128), mediumtext('old_values'), mediumtext('new_values'), s('ip_address', 128), s('user_agent', 512), dt('timestamp')], indexes: [{ key: 'audit_resource_idx', type: 'key', columns: ['resource'] }] },
 ];
 
@@ -508,7 +520,7 @@ export const webhooks = [
     id: 'profile_approval_events',
     name: 'Profile Approval Events',
     urlEnv: 'APPWRITE_PROFILE_APPROVAL_WEBHOOK_URL',
-    events: ['databases.*.collections.6a08943100226f5b4963.documents.*.update'],
+    events: ['databases.*.tables.6a08943100226f5b4963.rows.*.update'],
   },
   {
     id: 'chat_file_events',
@@ -520,6 +532,6 @@ export const webhooks = [
     id: 'donation_record_events',
     name: 'Donation Record Events',
     urlEnv: 'APPWRITE_DONATION_WEBHOOK_URL',
-    events: ['databases.*.collections.donation_records.documents.*.create', 'databases.*.collections.donation_records.documents.*.update'],
+    events: ['databases.*.tables.donation_records.rows.*.create', 'databases.*.tables.donation_records.rows.*.update'],
   },
 ];
