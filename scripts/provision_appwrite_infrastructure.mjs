@@ -71,9 +71,52 @@ function isConflict(error) {
   return error?.code === 409 || error?.response?.code === 409;
 }
 
+function isRouteNotFound(error) {
+  const message = error?.message || error?.response?.message || '';
+  return isMissing(error) && message.includes('Route not found');
+}
+
 function isCapacityLimit(error) {
   const message = error?.message || error?.response?.message || '';
-  return message.includes('maximum number or size of attributes');
+  return message.includes('maximum number or size of attributes') ||
+    message.includes('maximum number or size of columns');
+}
+
+function isTransientNetworkError(error) {
+  const code = error?.cause?.code || error?.code || '';
+  const message = [
+    error?.message,
+    error?.cause?.message,
+    error?.response?.message,
+  ].filter(Boolean).join(' ');
+
+  return [
+    'UND_ERR_CONNECT_TIMEOUT',
+    'UND_ERR_HEADERS_TIMEOUT',
+    'ECONNRESET',
+    'ECONNREFUSED',
+    'ETIMEDOUT',
+    'EAI_AGAIN',
+  ].includes(code) ||
+    message.includes('fetch failed') ||
+    message.includes('Connect Timeout') ||
+    message.includes('Connection lost');
+}
+
+async function withRetry(label, action, attempts = 3) {
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await action();
+    } catch (error) {
+      if (!isTransientNetworkError(error) || attempt === attempts) {
+        throw error;
+      }
+
+      const waitMs = provisionDelayMs * attempt * 8;
+      console.warn(`Transient Appwrite error during ${label}; retry ${attempt}/${attempts - 1} in ${waitMs}ms`);
+      await sleep(waitMs);
+    }
+  }
 }
 
 function cleanParams(value) {
@@ -227,10 +270,29 @@ async function ensureColumn(tablesDB, databases, tableId, column) {
 
 async function createTableColumn(tablesDB, base, column) {
   if (column.type === 'varchar') {
-    return tablesDB.createVarcharColumn(cleanParams({ ...base, size: column.size || 255, default: column.default }));
+    try {
+      return await tablesDB.createVarcharColumn(cleanParams({ ...base, size: column.size || 255, default: column.default }));
+    } catch (error) {
+      if (!isRouteNotFound(error)) throw error;
+      return tablesDB.createStringColumn(cleanParams({ ...base, size: column.size || 255, default: column.default }));
+    }
   }
-  if (column.type === 'text') return tablesDB.createTextColumn(cleanParams({ ...base, default: column.default }));
-  if (column.type === 'mediumtext') return tablesDB.createMediumtextColumn(cleanParams({ ...base, default: column.default }));
+  if (column.type === 'text') {
+    try {
+      return await tablesDB.createTextColumn(cleanParams({ ...base, default: column.default }));
+    } catch (error) {
+      if (!isRouteNotFound(error)) throw error;
+      return tablesDB.createStringColumn(cleanParams({ ...base, size: column.size || 10000, default: column.default }));
+    }
+  }
+  if (column.type === 'mediumtext') {
+    try {
+      return await tablesDB.createMediumtextColumn(cleanParams({ ...base, default: column.default }));
+    } catch (error) {
+      if (!isRouteNotFound(error)) throw error;
+      return tablesDB.createStringColumn(cleanParams({ ...base, size: column.size || 60000, default: column.default }));
+    }
+  }
   if (column.type === 'integer') return tablesDB.createIntegerColumn(cleanParams({ ...base, default: column.default }));
   if (column.type === 'float') return tablesDB.createFloatColumn(cleanParams({ ...base, default: column.default }));
   if (column.type === 'boolean') return tablesDB.createBooleanColumn(cleanParams({ ...base, default: column.default }));
@@ -485,10 +547,10 @@ async function main() {
 
   for (const table of tables) {
     if (onlyTableId && table.id !== onlyTableId) continue;
-    await ensureTable(tablesDB, databases, table);
+    await withRetry(`table ${table.id}`, () => ensureTable(tablesDB, databases, table));
   }
 
-  await ensureWebhooks(webhooksService);
+  await withRetry('webhook provisioning', () => ensureWebhooks(webhooksService));
   log('Appwrite infrastructure provisioning complete.');
 }
 

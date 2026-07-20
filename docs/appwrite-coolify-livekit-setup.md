@@ -26,10 +26,11 @@ Current production provisioning status:
 
 - `npm run appwrite:ping` reaches Appwrite at `https://api.alivenigeria.org/v1`.
 - `npm run appwrite:provision:legacy` completed against Appwrite `1.7.4`.
+- Appwrite is now on a TablesDB-capable `1.8.x` build, so `npm run appwrite:provision` is the primary provisioning path.
 - `npm run appwrite:app-version` created `app_settings/app_version`.
 - `npm run appwrite:function-vars` synced LiveKit, Paystack, and Resend variables.
 - `npm run appwrite:deploy-functions` uploaded active deployments for `createLiveKitToken`, `paystack_payments`, `paystack_webhook`, and `send_email`.
-- TablesDB mode is still unavailable on the current Appwrite server. Legacy Databases mode created the live schema, but some optional long/wide fields were skipped because of legacy collection attribute limits. Upgrade Appwrite to a TablesDB-capable version or split those optional fields into companion detail tables before calling the schema 100% equivalent.
+- Legacy Databases provisioning remains available only as `npm run appwrite:provision:legacy` for rollback/reference. Use TablesDB provisioning for normal work.
 
 ## Appwrite Functions
 
@@ -167,7 +168,7 @@ If `1.9.5` fails to deploy in Coolify, check the Appwrite upgrade logs rather th
 
 - LiveKit is not a built-in Coolify service in this setup. Add it as a custom Docker Compose resource.
 - Create DNS `A livekit.alivenigeria.org YOUR_PUBLIC_IP`, then in Coolify add a Docker Compose / Empty Compose resource with domain `https://livekit.alivenigeria.org` and HTTP port `7880`.
-- Use this compose:
+- Use this compose. It embeds the config into the compose resource so Coolify does not fail because `./livekit.yaml` is missing from the deployment directory:
 
 ```yaml
 services:
@@ -179,11 +180,26 @@ services:
       - "7880:7880/tcp"
       - "7881:7881/tcp"
       - "50100-50200:50100-50200/udp"
-    volumes:
-      - ./livekit.yaml:/etc/livekit.yaml:ro
+    configs:
+      - source: livekit_config
+        target: /etc/livekit.yaml
+
+configs:
+  livekit_config:
+    content: |
+      port: 7880
+      log_level: info
+      rtc:
+        tcp_port: 7881
+        port_range_start: 50100
+        port_range_end: 50200
+        use_external_ip: true
+      keys:
+        REPLACE_WITH_LIVEKIT_API_KEY: REPLACE_WITH_LIVEKIT_API_SECRET
 ```
 
-- Add `livekit.yaml` beside the compose in Coolify and replace placeholders there only. Do not commit real keys.
+- Replace the key and secret placeholders in Coolify only. Do not commit real keys. Use the same key/secret pair stored in the Appwrite `createLiveKitToken` function variables.
+- If your Coolify compose editor rejects `configs.content`, use Coolify's file/config mount feature instead: create `/etc/livekit.yaml` with this content and keep the `command: --config /etc/livekit.yaml` line.
 
 ```yaml
 port: 7880
@@ -194,18 +210,27 @@ rtc:
   port_range_end: 50200
   use_external_ip: true
 keys:
-  YOUR_LIVEKIT_API_KEY: YOUR_LIVEKIT_API_SECRET
+  REPLACE_WITH_LIVEKIT_API_KEY: REPLACE_WITH_LIVEKIT_API_SECRET
 ```
 
 - Open OCI and `ufw` ports: TCP `7880`, TCP `7881`, UDP `50100-50200`.
 - If deploy fails with `failed to bind host port ... address already in use`, pick a different unused UDP range and update both the compose `ports` range and `rtc.port_range_start/end`.
 - Production web should use `wss://`, not `ws://`.
+- In Coolify, set the LiveKit resource domain to `https://livekit.alivenigeria.org` and the internal HTTP port to `7880`; do not set this service to port `80`.
+- If Cloudflare is used for DNS, keep `livekit.alivenigeria.org` as DNS-only unless you have a separate TURN/proxy setup. Cloudflare Tunnel/proxy can carry HTTPS/WebSocket signaling, but it does not expose the direct UDP media ports LiveKit needs.
 - Set `LIVEKIT_URL` through Coolify `FLUTTER_BUILD_ARGS`.
 - Deploy Appwrite function `createLiveKitToken` from `appwrite_functions/createLiveKitToken`.
 - Set function env vars `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET` in Appwrite.
 - Keep the function execution role to authenticated users and confirm function ID `6a08e9010035dc8c1e51`, because the Flutter app calls that ID.
 - Ensure the LiveKit host/proxy allows WebSocket and media traffic needed for camera, mic, publish, and subscribe.
 - If `https://livekit.alivenigeria.org` reports a self-signed certificate, reissue SSL in Coolify for the LiveKit domain and confirm DNS points to the server public IP. Keep Flutter configured with `wss://livekit.alivenigeria.org` once TLS is valid.
+- If the resource stays unhealthy, inspect the exact container logs from the Oracle server:
+
+```bash
+sudo docker ps -a --format "table {{.Names}}\t{{.Image}}\t{{.Status}}" | grep -i livekit
+sudo docker logs --tail 120 LIVEKIT_CONTAINER_NAME
+sudo docker inspect LIVEKIT_CONTAINER_NAME --format '{{json .State.Health}}'
+```
 
 ## Oracle SSH From Windows
 
