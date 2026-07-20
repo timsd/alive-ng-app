@@ -1,41 +1,28 @@
 # syntax=docker/dockerfile:1
 
-# Use Instrumentisto's public, verified Flutter image
+# Stage 1: Build Flutter Web using public image
 FROM ghcr.io/instrumentisto/flutter:3.22.0 AS build
 
 WORKDIR /app
 
-# Build Arguments
+# Declare all your build args
 ARG FLUTTER_BUILD_ARGS=""
-ARG FIREBASE_API_KEY=""
-ARG FIREBASE_AUTH_DOMAIN=""
-ARG FIREBASE_PROJECT_ID=""
-ARG FIREBASE_STORAGE_BUCKET=""
-ARG FIREBASE_MESSAGING_SENDER_ID=""
-ARG FIREBASE_APP_ID=""
-ARG FIREBASE_MEASUREMENT_ID=""
-ARG FIREBASE_WEB_API_KEY=""
-ARG FIREBASE_WEB_AUTH_DOMAIN=""
-ARG FIREBASE_WEB_PROJECT_ID=""
-ARG FIREBASE_WEB_STORAGE_BUCKET=""
-ARG FIREBASE_WEB_MESSAGING_SENDER_ID=""
-ARG FIREBASE_WEB_APP_ID=""
-ARG FIREBASE_WEB_MEASUREMENT_ID=""
-ARG RECAPTCHA_SITE_KEY=""
+ARG COOLIFY_URL=""
 
-# Cache dependencies layer
+# Cache dependencies
 COPY pubspec.yaml pubspec.lock ./
 RUN flutter pub get
 
-# Copy source and build web release
+# Copy source and build
 COPY . .
 RUN flutter config --enable-web \
     && dart scripts/configure_web.dart \
     && flutter build web --release $FLUTTER_BUILD_ARGS
 
-# Stage 2: Web Server
+# Stage 2: Serve with Nginx
 FROM nginx:1.27-alpine
 
+# Copy your working Flutter Nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/build/web /usr/share/nginx/html
 
