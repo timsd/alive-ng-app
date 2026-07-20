@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
-# Switch to a lightweight web-focused Flutter image
-FROM plugaglobal/flutter:3.22.0 AS build
+# Use Instrumentisto's public, verified Flutter image
+FROM ghcr.io/instrumentisto/flutter:3.22.0 AS build
 
 WORKDIR /app
 
