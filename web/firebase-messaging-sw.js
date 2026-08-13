@@ -4,13 +4,13 @@ importScripts('https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js'
 importScripts('https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging-compat.js');
 
 firebase.initializeApp({
-  apiKey: '{{FIREBASE_API_KEY}}',
-  authDomain: '{{FIREBASE_AUTH_DOMAIN}}',
-  projectId: '{{FIREBASE_PROJECT_ID}}',
-  storageBucket: '{{FIREBASE_STORAGE_BUCKET}}',
-  messagingSenderId: '{{FIREBASE_MESSAGING_SENDER_ID}}',
-  appId: '{{FIREBASE_APP_ID}}',
-  measurementId: '{{FIREBASE_MEASUREMENT_ID}}',
+  apiKey: 'AIzaSyDmpl9Idp9Q0ult4BfWPg5J7A1URQOpDoU',
+  authDomain: 'alive-ng-flutter-app.firebaseapp.com',
+  projectId: 'alive-ng-flutter-app',
+  storageBucket: 'alive-ng-flutter-app.firebasestorage.app',
+  messagingSenderId: '234909240985',
+  appId: '1:234909240985:web:9d703098e9fcce3e8e3208',
+  measurementId: 'G-CC6JE7224Q',
 });
 
 const messaging = firebase.messaging();
