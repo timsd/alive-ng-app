@@ -5,6 +5,20 @@ FROM ghcr.io/cirruslabs/flutter:stable AS build
 WORKDIR /app
 
 ARG FLUTTER_BUILD_ARGS=""
+ARG APPWRITE_ENDPOINT=""
+ARG APPWRITE_PROJECT_ID=""
+ARG APPWRITE_DATABASE_ID=""
+ARG APPWRITE_FCM_PROVIDER_ID=""
+ARG LIVEKIT_URL=""
+ARG PAYSTACK_PUBLIC_KEY=""
+ARG PAYSTACK_CALLBACK_URL=""
+ARG GOOGLE_WEB_CLIENT_ID=""
+ARG WEB_PUSH_CERT_KEY=""
+ARG GLITCHTIP_DSN=""
+ARG GLITCHTIP_ENVIRONMENT="production"
+ARG GLITCHTIP_RELEASE=""
+ARG GLITCHTIP_TRACES_SAMPLE_RATE="0"
+ARG APPWRITE_RESOURCES_BASE_URL=""
 ARG FIREBASE_API_KEY=""
 ARG FIREBASE_AUTH_DOMAIN=""
 ARG FIREBASE_PROJECT_ID=""
@@ -27,7 +41,22 @@ RUN flutter pub get
 COPY . .
 RUN flutter config --enable-web \
     && dart scripts/configure_web.dart \
-    && flutter build web --release --no-wasm-dry-run $FLUTTER_BUILD_ARGS
+    && flutter build web --release --no-wasm-dry-run \
+      --dart-define=APPWRITE_ENDPOINT="${APPWRITE_ENDPOINT}" \
+      --dart-define=APPWRITE_PROJECT_ID="${APPWRITE_PROJECT_ID}" \
+      --dart-define=APPWRITE_DATABASE_ID="${APPWRITE_DATABASE_ID}" \
+      --dart-define=APPWRITE_FCM_PROVIDER_ID="${APPWRITE_FCM_PROVIDER_ID}" \
+      --dart-define=LIVEKIT_URL="${LIVEKIT_URL}" \
+      --dart-define=PAYSTACK_PUBLIC_KEY="${PAYSTACK_PUBLIC_KEY}" \
+      --dart-define=PAYSTACK_CALLBACK_URL="${PAYSTACK_CALLBACK_URL}" \
+      --dart-define=GOOGLE_WEB_CLIENT_ID="${GOOGLE_WEB_CLIENT_ID}" \
+      --dart-define=WEB_PUSH_CERT_KEY="${WEB_PUSH_CERT_KEY}" \
+      --dart-define=GLITCHTIP_DSN="${GLITCHTIP_DSN}" \
+      --dart-define=GLITCHTIP_ENVIRONMENT="${GLITCHTIP_ENVIRONMENT}" \
+      --dart-define=GLITCHTIP_RELEASE="${GLITCHTIP_RELEASE}" \
+      --dart-define=GLITCHTIP_TRACES_SAMPLE_RATE="${GLITCHTIP_TRACES_SAMPLE_RATE}" \
+      --dart-define=APPWRITE_RESOURCES_BASE_URL="${APPWRITE_RESOURCES_BASE_URL}" \
+      ${FLUTTER_BUILD_ARGS}
 
 FROM nginx:1.27-alpine
 
