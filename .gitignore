@@ -99,3 +99,5 @@ docs/oracle-free-tier-deployment-roadmap.md
 .trae/
 .vscode/
 .claude/
+
+/android/key.properties.*
