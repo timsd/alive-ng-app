@@ -1,4 +1,4 @@
-﻿import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 
 const mode = process.argv[2] ?? 'run';
@@ -45,7 +45,12 @@ const args = mode === 'build'
   ? ['build', 'web', '--release', '--no-wasm-dry-run', ...defines]
   : ['run', '-d', 'chrome', ...defines];
 
-const child = spawn(flutter, args, { stdio: 'inherit', shell: false });
+const isWindowsBatch = process.platform === 'win32' && /\.bat$/i.test(flutter);
+const child = isWindowsBatch
+  ? spawn(process.env.ComSpec ?? 'cmd.exe', ['/d', '/s', '/c', 'call', flutter, ...args], {
+      stdio: 'inherit',
+    })
+  : spawn(flutter, args, { stdio: 'inherit', shell: false });
 child.on('error', (error) => {
   console.error(`Unable to start Flutter: ${error.message}`);
   process.exitCode = 1;
