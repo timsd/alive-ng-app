@@ -1,5 +1,7 @@
 {
   "scripts": {
+    "dev": "node scripts/flutter_web.mjs run",
+    "build:web": "node scripts/flutter_web.mjs build",
     "appwrite:ping": "node scripts/appwrite_platform_ping.mjs",
     "appwrite:dry-run": "node scripts/provision_appwrite_infrastructure.mjs --dry-run",
     "appwrite:provision": "node scripts/provision_appwrite_infrastructure.mjs",

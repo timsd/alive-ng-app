@@ -4,7 +4,8 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        FLUTTER_BUILD_ARGS: ${FLUTTER_BUILD_ARGS:-}
+        ANDROID_APK_URL: ${ANDROID_APK_URL:-}
+        PLAY_STORE_URL: ${PLAY_STORE_URL:-}
         APPWRITE_ENDPOINT: ${APPWRITE_ENDPOINT:-}
         APPWRITE_PROJECT_ID: ${APPWRITE_PROJECT_ID:-}
         APPWRITE_DATABASE_ID: ${APPWRITE_DATABASE_ID:-}
