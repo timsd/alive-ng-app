@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/guest_provider.dart';
@@ -83,6 +85,10 @@ class HomeScreen extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const GreetingHeader(),
+          if (kIsWeb && _WebAndroidDownloadActions.isConfigured) ...[
+            SizedBox(height: context.isMobile ? 16 : 20),
+            const _WebAndroidDownloadActions(),
+          ],
           SizedBox(height: context.isMobile ? 16 : 24),
           Text(
             translate('daily_verse'),
@@ -120,6 +126,52 @@ class HomeScreen extends ConsumerWidget {
             ),
             SizedBox(height: context.isMobile ? 16 : 24),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+class _WebAndroidDownloadActions extends StatelessWidget {
+  const _WebAndroidDownloadActions();
+
+  static const _apkUrl = String.fromEnvironment(
+    'ANDROID_APK_URL',
+    defaultValue: '',
+  );
+  static const _playStoreUrl = String.fromEnvironment('PLAY_STORE_URL');
+
+  static bool get isConfigured =>
+      _apkUrl.isNotEmpty || _playStoreUrl.isNotEmpty;
+
+  Future<void> _open(String value) async {
+    final uri = Uri.base.resolve(value);
+    if (!await launchUrl(uri, webOnlyWindowName: '_blank')) {
+      throw StateError('Could not open $uri');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      container: true,
+      label: 'Download ALIVE Nigeria for Android',
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 10,
+        children: [
+          if (_apkUrl.isNotEmpty)
+            FilledButton.icon(
+              onPressed: () => _open(_apkUrl),
+              icon: const Icon(Icons.android),
+              label: const Text('Download Android app'),
+            ),
+          if (_playStoreUrl.isNotEmpty)
+            OutlinedButton.icon(
+              onPressed: () => _open(_playStoreUrl),
+              icon: const Icon(Icons.shop_outlined),
+              label: const Text('Get it on Google Play'),
+            ),
         ],
       ),
     );

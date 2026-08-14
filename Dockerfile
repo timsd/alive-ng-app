@@ -4,7 +4,8 @@ FROM ghcr.io/cirruslabs/flutter:stable AS build
 
 WORKDIR /app
 
-ARG FLUTTER_BUILD_ARGS=""
+ARG ANDROID_APK_URL=""
+ARG PLAY_STORE_URL=""
 ARG APPWRITE_ENDPOINT=""
 ARG APPWRITE_PROJECT_ID=""
 ARG APPWRITE_DATABASE_ID=""
@@ -56,7 +57,8 @@ RUN flutter config --enable-web \
       --dart-define=GLITCHTIP_RELEASE="${GLITCHTIP_RELEASE}" \
       --dart-define=GLITCHTIP_TRACES_SAMPLE_RATE="${GLITCHTIP_TRACES_SAMPLE_RATE}" \
       --dart-define=APPWRITE_RESOURCES_BASE_URL="${APPWRITE_RESOURCES_BASE_URL}" \
-      ${FLUTTER_BUILD_ARGS}
+      --dart-define=ANDROID_APK_URL="${ANDROID_APK_URL}" \
+      --dart-define=PLAY_STORE_URL="${PLAY_STORE_URL}"
 
 FROM nginx:1.27-alpine
 
@@ -64,4 +66,6 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/build/web /usr/share/nginx/html
 
 EXPOSE 80
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget -q --spider http://127.0.0.1/ || exit 1
 CMD ["nginx", "-g", "daemon off;"]
