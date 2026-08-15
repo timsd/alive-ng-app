@@ -75,9 +75,12 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildPrayerList(publicPrayerWallProvider, emptyText: 'No prayer requests found'),
-          _buildPrayerList(myPrayerWallProvider, emptyText: 'You have not created any prayer requests yet'),
-          _buildPrayerList(supportedPrayerWallProvider, emptyText: 'You are not supporting any prayer requests yet'),
+          _buildPrayerList(publicPrayerWallProvider,
+              emptyText: 'No prayer requests found'),
+          _buildPrayerList(myPrayerWallProvider,
+              emptyText: 'You have not created any prayer requests yet'),
+          _buildPrayerList(supportedPrayerWallProvider,
+              emptyText: 'You are not supporting any prayer requests yet'),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -212,7 +215,8 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete prayer request?'),
-        content: Text('This will remove "${request.title}" from the prayer wall.'),
+        content:
+            Text('This will remove "${request.title}" from the prayer wall.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -403,7 +407,7 @@ class _PrayerCard extends StatelessWidget {
             const SizedBox(height: 16),
             Row(
               children: [
-                Icon(
+                FaIcon(
                   FontAwesomeIcons.heart,
                   size: 18,
                   color: theme.colorScheme.onSurfaceVariant,

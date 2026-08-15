@@ -210,8 +210,8 @@ class MainNavigationScreen extends ConsumerWidget {
             label: translator('study'),
           ),
           BottomNavigationBarItem(
-            icon: const Icon(FontAwesomeIcons.personPraying),
-            activeIcon: const Icon(FontAwesomeIcons.personPraying),
+            icon: const FaIcon(FontAwesomeIcons.personPraying),
+            activeIcon: const FaIcon(FontAwesomeIcons.personPraying),
             label: translator('prayer'),
           ),
           BottomNavigationBarItem(
