@@ -38,7 +38,7 @@ dependencies:
   sqlite3: ^2.4.0
   
   # Appwrite backend
-  appwrite: ^24.0.0
+  appwrite: 21.3.0
 
   # Firebase compatibility for FCM web/Android bridge only
   firebase_core: ^4.2.1

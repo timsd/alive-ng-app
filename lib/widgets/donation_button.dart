@@ -23,7 +23,7 @@ class DonationButton extends ConsumerWidget {
     if (isFloating) {
       return FloatingActionButton.extended(
         onPressed: onPressed ?? () => _handleDonationTap(context),
-        icon: const Text('🤍'),
+        icon: const Icon(Icons.favorite_border),
         label: Text(
           translate('support_alive'),
           style: TextStyle(
@@ -46,7 +46,7 @@ class DonationButton extends ConsumerWidget {
 
     return ElevatedButton.icon(
       onPressed: onPressed ?? () => _handleDonationTap(context),
-      icon: const Text('🤍'),
+      icon: const Icon(Icons.favorite_border),
       label: Text(
         translate('support_alive'),
         style: TextStyle(
@@ -61,7 +61,9 @@ class DonationButton extends ConsumerWidget {
           vertical: ResponsiveUtils.getResponsiveSpacing(context, 12),
         ),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(ResponsiveUtils.getResponsiveBorderRadiusValue(context, 8)),
+          borderRadius: BorderRadius.circular(
+            ResponsiveUtils.getResponsiveBorderRadiusValue(context, 8),
+          ),
         ),
       ),
     );
@@ -85,16 +87,10 @@ class DonationFab extends ConsumerWidget {
 class CompactDonationButton extends ConsumerWidget {
   final VoidCallback? onPressed;
 
-  const CompactDonationButton({
-    super.key,
-    this.onPressed,
-  });
+  const CompactDonationButton({super.key, this.onPressed});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return DonationButton(
-      isCompact: true,
-      onPressed: onPressed,
-    );
+    return DonationButton(isCompact: true, onPressed: onPressed);
   }
 }

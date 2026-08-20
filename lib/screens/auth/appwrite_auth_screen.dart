@@ -112,7 +112,8 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: const Text(
-                  'Biometric authentication is not set up. Please sign in normally first.'),
+                'Biometric authentication is not set up. Please sign in normally first.',
+              ),
               backgroundColor: Theme.of(context).colorScheme.error,
             ),
           );
@@ -208,77 +209,87 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
             return SingleChildScrollView(
               padding: context.responsivePadding,
               child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight,
-                ),
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
                 child: IntrinsicHeight(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       SizedBox(
-                          height: ResponsiveUtils.getResponsiveValue(
-                        context: context,
-                        mobile: 20.0,
-                        tablet: 30.0,
-                        desktop: 40.0,
-                      )),
+                        height: ResponsiveUtils.getResponsiveValue(
+                          context: context,
+                          mobile: 20.0,
+                          tablet: 30.0,
+                          desktop: 40.0,
+                        ),
+                      ),
 
                       // App Logo and Title
                       _buildHeader(context, translate),
 
                       SizedBox(
-                          height: ResponsiveUtils.getResponsiveValue(
-                        context: context,
-                        mobile: 32.0,
-                        tablet: 40.0,
-                        desktop: 48.0,
-                      )),
+                        height: ResponsiveUtils.getResponsiveValue(
+                          context: context,
+                          mobile: 32.0,
+                          tablet: 40.0,
+                          desktop: 48.0,
+                        ),
+                      ),
 
-                      // Auth Buttons Row (Sign In / Sign Up)
-                      _buildAuthButtonsRow(context, translate),
+                      // Keep the selected registration form focused on one action.
+                      if (!_isSignUp)
+                        _buildAuthButtonsRow(context, translate)
+                      else
+                        _buildSignUpHeader(context, translate),
 
                       SizedBox(
-                          height: ResponsiveUtils.getResponsiveValue(
-                        context: context,
-                        mobile: 24.0,
-                        tablet: 32.0,
-                        desktop: 40.0,
-                      )),
+                        height: ResponsiveUtils.getResponsiveValue(
+                          context: context,
+                          mobile: 24.0,
+                          tablet: 32.0,
+                          desktop: 40.0,
+                        ),
+                      ),
 
                       // Auth Form
                       _buildAuthForm(context, translate, signInState),
 
                       SizedBox(
-                          height: ResponsiveUtils.getResponsiveValue(
-                        context: context,
-                        mobile: 16.0,
-                        tablet: 20.0,
-                        desktop: 24.0,
-                      )),
+                        height: ResponsiveUtils.getResponsiveValue(
+                          context: context,
+                          mobile: 16.0,
+                          tablet: 20.0,
+                          desktop: 24.0,
+                        ),
+                      ),
 
                       // Forgot Password (smaller, only for sign in)
                       if (!_isSignUp)
                         _buildForgotPasswordButton(context, translate),
 
                       SizedBox(
-                          height: ResponsiveUtils.getResponsiveValue(
-                        context: context,
-                        mobile: 24.0,
-                        tablet: 32.0,
-                        desktop: 40.0,
-                      )),
+                        height: ResponsiveUtils.getResponsiveValue(
+                          context: context,
+                          mobile: 24.0,
+                          tablet: 32.0,
+                          desktop: 40.0,
+                        ),
+                      ),
 
                       // Social Sign In Options
                       _buildSocialSignInOptions(
-                          context, translate, signInState),
+                        context,
+                        translate,
+                        signInState,
+                      ),
 
                       SizedBox(
-                          height: ResponsiveUtils.getResponsiveValue(
-                        context: context,
-                        mobile: 16.0,
-                        tablet: 20.0,
-                        desktop: 24.0,
-                      )),
+                        height: ResponsiveUtils.getResponsiveValue(
+                          context: context,
+                          mobile: 16.0,
+                          tablet: 20.0,
+                          desktop: 24.0,
+                        ),
+                      ),
 
                       // Biometric Authentication (if available and enabled)
                       if (_isBiometricAvailable && _isBiometricEnabled)
@@ -290,12 +301,13 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
                       _buildGuestAccessButton(context, translate, signInState),
 
                       SizedBox(
-                          height: ResponsiveUtils.getResponsiveValue(
-                        context: context,
-                        mobile: 16.0,
-                        tablet: 20.0,
-                        desktop: 24.0,
-                      )),
+                        height: ResponsiveUtils.getResponsiveValue(
+                          context: context,
+                          mobile: 16.0,
+                          tablet: 20.0,
+                          desktop: 24.0,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -332,52 +344,53 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
         ),
 
         SizedBox(
-            height: ResponsiveUtils.getResponsiveValue(
-          context: context,
-          mobile: 16.0,
-          tablet: 18.0,
-          desktop: 20.0,
-        )),
+          height: ResponsiveUtils.getResponsiveValue(
+            context: context,
+            mobile: 16.0,
+            tablet: 18.0,
+            desktop: 20.0,
+          ),
+        ),
 
         // App Name
         Text(
           AppConstants.appName,
           style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.bold,
-                fontSize: ResponsiveUtils.getResponsiveValue(
-                  context: context,
-                  mobile: 28.0,
-                  tablet: 32.0,
-                  desktop: 36.0,
-                ),
-              ),
+            color: Theme.of(context).colorScheme.primary,
+            fontWeight: FontWeight.bold,
+            fontSize: ResponsiveUtils.getResponsiveValue(
+              context: context,
+              mobile: 28.0,
+              tablet: 32.0,
+              desktop: 36.0,
+            ),
+          ),
         ),
 
         SizedBox(
-            height: ResponsiveUtils.getResponsiveValue(
-          context: context,
-          mobile: 8.0,
-          tablet: 10.0,
-          desktop: 12.0,
-        )),
+          height: ResponsiveUtils.getResponsiveValue(
+            context: context,
+            mobile: 8.0,
+            tablet: 10.0,
+            desktop: 12.0,
+          ),
+        ),
 
         // Welcome Message
         Text(
           translate('welcome'),
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                fontSize: ResponsiveUtils.getResponsiveValue(
-                  context: context,
-                  mobile: 16.0,
-                  tablet: 18.0,
-                  desktop: 20.0,
-                ),
-                height: 1.4,
-                color: Theme.of(context)
-                    .colorScheme
-                    .onSurface
-                    .withValues(alpha: 0.7),
-              ),
+            fontSize: ResponsiveUtils.getResponsiveValue(
+              context: context,
+              mobile: 16.0,
+              tablet: 18.0,
+              desktop: 20.0,
+            ),
+            height: 1.4,
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.7),
+          ),
           textAlign: TextAlign.center,
           softWrap: true,
         ),
@@ -386,7 +399,9 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
   }
 
   Widget _buildAuthButtonsRow(
-      BuildContext context, String Function(String) translate) {
+    BuildContext context,
+    String Function(String) translate,
+  ) {
     return Row(
       children: [
         Expanded(
@@ -432,12 +447,13 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
           ),
         ),
         SizedBox(
-            width: ResponsiveUtils.getResponsiveValue(
-          context: context,
-          mobile: 12.0,
-          tablet: 16.0,
-          desktop: 20.0,
-        )),
+          width: ResponsiveUtils.getResponsiveValue(
+            context: context,
+            mobile: 12.0,
+            tablet: 16.0,
+            desktop: 20.0,
+          ),
+        ),
         Expanded(
           child: ElevatedButton.icon(
             onPressed: _isLoading ? null : () => _handleDirectSignUp(),
@@ -484,8 +500,35 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
     );
   }
 
-  Widget _buildAuthForm(BuildContext context, String Function(String) translate,
-      AsyncValue<void> signInState) {
+  Widget _buildSignUpHeader(
+    BuildContext context,
+    String Function(String) translate,
+  ) {
+    return Row(
+      children: [
+        IconButton(
+          onPressed: _isLoading
+              ? null
+              : () => setState(() => _isSignUp = false),
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'Back to sign in',
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            translate('sign_up'),
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAuthForm(
+    BuildContext context,
+    String Function(String) translate,
+    AsyncValue<void> signInState,
+  ) {
     return Form(
       key: _formKey,
       child: Column(
@@ -501,8 +544,9 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 filled: true,
-                fillColor:
-                    Theme.of(context).colorScheme.surfaceContainerHighest,
+                fillColor: Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHighest,
               ),
               validator: (value) {
                 if (_isSignUp && (value == null || value.trim().isEmpty)) {
@@ -512,20 +556,22 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
               },
             ),
             SizedBox(
-                height: ResponsiveUtils.getResponsiveValue(
-              context: context,
-              mobile: 16.0,
-              tablet: 18.0,
-              desktop: 20.0,
-            )),
+              height: ResponsiveUtils.getResponsiveValue(
+                context: context,
+                mobile: 16.0,
+                tablet: 18.0,
+                desktop: 20.0,
+              ),
+            ),
             _buildSignUpProfileFields(context),
             SizedBox(
-                height: ResponsiveUtils.getResponsiveValue(
-              context: context,
-              mobile: 16.0,
-              tablet: 18.0,
-              desktop: 20.0,
-            )),
+              height: ResponsiveUtils.getResponsiveValue(
+                context: context,
+                mobile: 16.0,
+                tablet: 18.0,
+                desktop: 20.0,
+              ),
+            ),
           ],
 
           // Email field
@@ -545,8 +591,9 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
               if (value == null || value.trim().isEmpty) {
                 return translate('email_required');
               }
-              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                  .hasMatch(value)) {
+              if (!RegExp(
+                r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+              ).hasMatch(value)) {
                 return translate('invalid_email');
               }
               return null;
@@ -554,12 +601,13 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
           ),
 
           SizedBox(
-              height: ResponsiveUtils.getResponsiveValue(
-            context: context,
-            mobile: 16.0,
-            tablet: 18.0,
-            desktop: 20.0,
-          )),
+            height: ResponsiveUtils.getResponsiveValue(
+              context: context,
+              mobile: 16.0,
+              tablet: 18.0,
+              desktop: 20.0,
+            ),
+          ),
 
           // Password field
           TextFormField(
@@ -570,7 +618,8 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
               prefixIcon: const Icon(Icons.lock_outline),
               suffixIcon: IconButton(
                 icon: Icon(
-                    _obscurePassword ? Icons.visibility : Icons.visibility_off),
+                  _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                ),
                 onPressed: () =>
                     setState(() => _obscurePassword = !_obscurePassword),
               ),
@@ -594,12 +643,13 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
           // Confirm password field (only for sign up)
           if (_isSignUp) ...[
             SizedBox(
-                height: ResponsiveUtils.getResponsiveValue(
-              context: context,
-              mobile: 16.0,
-              tablet: 18.0,
-              desktop: 20.0,
-            )),
+              height: ResponsiveUtils.getResponsiveValue(
+                context: context,
+                mobile: 16.0,
+                tablet: 18.0,
+                desktop: 20.0,
+              ),
+            ),
             TextFormField(
               controller: _confirmPasswordController,
               obscureText: _obscureConfirmPassword,
@@ -607,18 +657,22 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
                 labelText: translate('confirm_password'),
                 prefixIcon: const Icon(Icons.lock_outline),
                 suffixIcon: IconButton(
-                  icon: Icon(_obscureConfirmPassword
-                      ? Icons.visibility
-                      : Icons.visibility_off),
+                  icon: Icon(
+                    _obscureConfirmPassword
+                        ? Icons.visibility
+                        : Icons.visibility_off,
+                  ),
                   onPressed: () => setState(
-                      () => _obscureConfirmPassword = !_obscureConfirmPassword),
+                    () => _obscureConfirmPassword = !_obscureConfirmPassword,
+                  ),
                 ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
                 filled: true,
-                fillColor:
-                    Theme.of(context).colorScheme.surfaceContainerHighest,
+                fillColor: Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHighest,
               ),
               validator: (value) {
                 if (_isSignUp && value != _passwordController.text) {
@@ -630,21 +684,40 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
           ],
 
           SizedBox(
-              height: ResponsiveUtils.getResponsiveValue(
-            context: context,
-            mobile: 24.0,
-            tablet: 28.0,
-            desktop: 32.0,
-          )),
+            height: ResponsiveUtils.getResponsiveValue(
+              context: context,
+              mobile: 24.0,
+              tablet: 28.0,
+              desktop: 32.0,
+            ),
+          ),
 
-          // Submit button removed - authentication now happens directly from sign-in/sign-up buttons
+          if (_isSignUp)
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _isLoading || signInState.isLoading
+                    ? null
+                    : _handleDirectSignUp,
+                icon: _isLoading || signInState.isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.person_add),
+                label: Text(translate('sign_up')),
+              ),
+            ),
         ],
       ),
     );
   }
 
   Widget _buildForgotPasswordButton(
-      BuildContext context, String Function(String) translate) {
+    BuildContext context,
+    String Function(String) translate,
+  ) {
     return Align(
       alignment: Alignment.centerRight,
       child: TextButton(
@@ -674,164 +747,255 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
         TextFormField(
           controller: _phoneController,
           keyboardType: TextInputType.phone,
-          decoration:
-              _signupDecoration(context, 'Phone Number', Icons.phone_outlined),
+          decoration: _signupDecoration(
+            context,
+            'Phone Number',
+            Icons.phone_outlined,
+          ),
         ),
         SizedBox(
-            height: ResponsiveUtils.getResponsiveValue(
-                context: context, mobile: 12.0, tablet: 14.0, desktop: 16.0)),
+          height: ResponsiveUtils.getResponsiveValue(
+            context: context,
+            mobile: 12.0,
+            tablet: 14.0,
+            desktop: 16.0,
+          ),
+        ),
         TextFormField(
           controller: _locationController,
           decoration: _signupDecoration(
-              context, 'Location', Icons.location_on_outlined),
+            context,
+            'Location',
+            Icons.location_on_outlined,
+          ),
         ),
         SizedBox(
-            height: ResponsiveUtils.getResponsiveValue(
-                context: context, mobile: 12.0, tablet: 14.0, desktop: 16.0)),
+          height: ResponsiveUtils.getResponsiveValue(
+            context: context,
+            mobile: 12.0,
+            tablet: 14.0,
+            desktop: 16.0,
+          ),
+        ),
         TextFormField(
           controller: _localChurchController,
-          decoration:
-              _signupDecoration(context, 'Local Church', Icons.church_outlined),
+          decoration: _signupDecoration(
+            context,
+            'Local Church',
+            Icons.church_outlined,
+          ),
         ),
         SizedBox(
-            height: ResponsiveUtils.getResponsiveValue(
-                context: context, mobile: 12.0, tablet: 14.0, desktop: 16.0)),
+          height: ResponsiveUtils.getResponsiveValue(
+            context: context,
+            mobile: 12.0,
+            tablet: 14.0,
+            desktop: 16.0,
+          ),
+        ),
         TextFormField(
           controller: _occupationController,
-          decoration:
-              _signupDecoration(context, 'Occupation', Icons.work_outline),
+          decoration: _signupDecoration(
+            context,
+            'Occupation',
+            Icons.work_outline,
+          ),
         ),
         SizedBox(
-            height: ResponsiveUtils.getResponsiveValue(
-                context: context, mobile: 12.0, tablet: 14.0, desktop: 16.0)),
+          height: ResponsiveUtils.getResponsiveValue(
+            context: context,
+            mobile: 12.0,
+            tablet: 14.0,
+            desktop: 16.0,
+          ),
+        ),
         TextFormField(
           controller: _skillsController,
-          decoration:
-              _signupDecoration(context, 'Skills', Icons.handyman_outlined),
+          decoration: _signupDecoration(
+            context,
+            'Skills',
+            Icons.handyman_outlined,
+          ),
         ),
         SizedBox(
-            height: ResponsiveUtils.getResponsiveValue(
-                context: context, mobile: 12.0, tablet: 14.0, desktop: 16.0)),
+          height: ResponsiveUtils.getResponsiveValue(
+            context: context,
+            mobile: 12.0,
+            tablet: 14.0,
+            desktop: 16.0,
+          ),
+        ),
         TextFormField(
           controller: _localChapterController,
           decoration: _signupDecoration(
-              context, 'Local Chapter', Icons.groups_outlined),
+            context,
+            'Local Chapter',
+            Icons.groups_outlined,
+          ),
         ),
         SizedBox(
-            height: ResponsiveUtils.getResponsiveValue(
-                context: context, mobile: 12.0, tablet: 14.0, desktop: 16.0)),
+          height: ResponsiveUtils.getResponsiveValue(
+            context: context,
+            mobile: 12.0,
+            tablet: 14.0,
+            desktop: 16.0,
+          ),
+        ),
         TextFormField(
           controller: _conferenceController,
-          decoration:
-              _signupDecoration(context, 'Conference', Icons.event_outlined),
+          decoration: _signupDecoration(
+            context,
+            'Conference',
+            Icons.event_outlined,
+          ),
         ),
         SizedBox(
-            height: ResponsiveUtils.getResponsiveValue(
-                context: context, mobile: 12.0, tablet: 14.0, desktop: 16.0)),
+          height: ResponsiveUtils.getResponsiveValue(
+            context: context,
+            mobile: 12.0,
+            tablet: 14.0,
+            desktop: 16.0,
+          ),
+        ),
         DropdownButtonFormField<String>(
           initialValue: _commitmentType,
           decoration: _signupDecoration(
-              context, 'Commitment Type', Icons.volunteer_activism_outlined),
+            context,
+            'Commitment Type',
+            Icons.volunteer_activism_outlined,
+          ),
           items: [
             DropdownMenuItem(
-                value: 'financial',
-                child: Text('Financial',
-                    style: Theme.of(context).textTheme.bodyMedium)),
+              value: 'financial',
+              child: Text(
+                'Financial',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ),
             DropdownMenuItem(
-                value: 'active_availability',
-                child: Text('Active Availability',
-                    style: Theme.of(context).textTheme.bodyMedium)),
+              value: 'active_availability',
+              child: Text(
+                'Active Availability',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ),
             DropdownMenuItem(
-                value: 'both',
-                child: Text('Both',
-                    style: Theme.of(context).textTheme.bodyMedium)),
+              value: 'both',
+              child: Text(
+                'Both',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ),
           ],
           onChanged: (value) =>
               setState(() => _commitmentType = value ?? 'both'),
         ),
         SizedBox(
-            height: ResponsiveUtils.getResponsiveValue(
-                context: context, mobile: 12.0, tablet: 14.0, desktop: 16.0)),
+          height: ResponsiveUtils.getResponsiveValue(
+            context: context,
+            mobile: 12.0,
+            tablet: 14.0,
+            desktop: 16.0,
+          ),
+        ),
         if (_commitmentType == 'financial' || _commitmentType == 'both') ...[
           TextFormField(
             controller: _financialCommitmentController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: _signupDecoration(context,
-                'Financial Commitment (Optional)', Icons.payments_outlined),
+            decoration: _signupDecoration(
+              context,
+              'Financial Commitment (Optional)',
+              Icons.payments_outlined,
+            ),
           ),
           SizedBox(
-              height: ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 12.0, tablet: 14.0, desktop: 16.0)),
+            height: ResponsiveUtils.getResponsiveValue(
+              context: context,
+              mobile: 12.0,
+              tablet: 14.0,
+              desktop: 16.0,
+            ),
+          ),
         ],
         if (_commitmentType == 'active_availability' ||
             _commitmentType == 'both')
           TextFormField(
             controller: _availabilityController,
-            decoration: _signupDecoration(context,
-                'Availability Commitment (Optional)', Icons.schedule_outlined),
+            decoration: _signupDecoration(
+              context,
+              'Availability Commitment (Optional)',
+              Icons.schedule_outlined,
+            ),
           ),
       ],
     );
   }
 
   InputDecoration _signupDecoration(
-      BuildContext context, String label, IconData icon) {
+    BuildContext context,
+    String label,
+    IconData icon,
+  ) {
     return InputDecoration(
       labelText: label,
       prefixIcon: Icon(icon),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       filled: true,
       fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
     );
   }
 
-  Widget _buildSocialSignInOptions(BuildContext context,
-      String Function(String) translate, AsyncValue<void> signInState) {
+  Widget _buildSocialSignInOptions(
+    BuildContext context,
+    String Function(String) translate,
+    AsyncValue<void> signInState,
+  ) {
     return Column(
       children: [
         // Divider with "OR" text
         Row(
           children: [
             Expanded(
-                child: Divider(color: Theme.of(context).colorScheme.outline)),
+              child: Divider(color: Theme.of(context).colorScheme.outline),
+            ),
             Padding(
               padding: EdgeInsets.symmetric(
-                  horizontal: ResponsiveUtils.getResponsiveValue(
-                context: context,
-                mobile: 16.0,
-                tablet: 20.0,
-                desktop: 24.0,
-              )),
+                horizontal: ResponsiveUtils.getResponsiveValue(
+                  context: context,
+                  mobile: 16.0,
+                  tablet: 20.0,
+                  desktop: 24.0,
+                ),
+              ),
               child: LayoutFixUtils.safeText(
                 translate('or'),
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withValues(alpha: 0.6),
-                      fontSize: ResponsiveUtils.getResponsiveValue(
-                        context: context,
-                        mobile: 14.0,
-                        tablet: 16.0,
-                        desktop: 18.0,
-                      ),
-                    ),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.6),
+                  fontSize: ResponsiveUtils.getResponsiveValue(
+                    context: context,
+                    mobile: 14.0,
+                    tablet: 16.0,
+                    desktop: 18.0,
+                  ),
+                ),
               ),
             ),
             Expanded(
-                child: Divider(color: Theme.of(context).colorScheme.outline)),
+              child: Divider(color: Theme.of(context).colorScheme.outline),
+            ),
           ],
         ),
 
         SizedBox(
-            height: ResponsiveUtils.getResponsiveValue(
-          context: context,
-          mobile: 20.0,
-          tablet: 24.0,
-          desktop: 28.0,
-        )),
+          height: ResponsiveUtils.getResponsiveValue(
+            context: context,
+            mobile: 20.0,
+            tablet: 24.0,
+            desktop: 28.0,
+          ),
+        ),
 
         // Google Sign In Button
         SizedBox(
@@ -883,7 +1047,9 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
   }
 
   Widget _buildBiometricButton(
-      BuildContext context, String Function(String) translate) {
+    BuildContext context,
+    String Function(String) translate,
+  ) {
     return Container(
       width: double.infinity,
       margin: EdgeInsets.only(
@@ -933,8 +1099,11 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
     );
   }
 
-  Widget _buildGuestAccessButton(BuildContext context,
-      String Function(String) translate, AsyncValue<void> signInState) {
+  Widget _buildGuestAccessButton(
+    BuildContext context,
+    String Function(String) translate,
+    AsyncValue<void> signInState,
+  ) {
     return TextButton(
       onPressed: signInState.isLoading ? null : _handleGuestAccess,
       child: Text(
@@ -1006,39 +1175,41 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
       await ref
           .read(signInControllerProvider.notifier)
           .signUpWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-        fullName: _nameController.text.trim().isNotEmpty
-            ? _nameController.text.trim()
-            : null,
-        profileData: {
-          if (_phoneController.text.trim().isNotEmpty)
-            'phone_number': _phoneController.text.trim(),
-          if (_locationController.text.trim().isNotEmpty)
-            'location': _locationController.text.trim(),
-          if (_localChurchController.text.trim().isNotEmpty)
-            'local_church': _localChurchController.text.trim(),
-          if (_occupationController.text.trim().isNotEmpty)
-            'occupation': _occupationController.text.trim(),
-          if (_skillsController.text.trim().isNotEmpty)
-            'skills': _skillsController.text.trim(),
-          if (_localChapterController.text.trim().isNotEmpty)
-            'local_chapter': _localChapterController.text.trim(),
-          if (_conferenceController.text.trim().isNotEmpty)
-            'conference': _conferenceController.text.trim(),
-          'commitment_type': _commitmentType,
-          if ((_commitmentType == 'financial' || _commitmentType == 'both') &&
-              _financialCommitmentController.text.trim().isNotEmpty)
-            'financial_commitment':
-                double.tryParse(_financialCommitmentController.text.trim()),
-          if ((_commitmentType == 'active_availability' ||
-                  _commitmentType == 'both') &&
-              _availabilityController.text.trim().isNotEmpty)
-            'availability_commitment': _availabilityController.text.trim(),
-          'is_approved': false,
-          'approval_status': 'pending',
-        },
-      );
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+            fullName: _nameController.text.trim().isNotEmpty
+                ? _nameController.text.trim()
+                : null,
+            profileData: {
+              if (_phoneController.text.trim().isNotEmpty)
+                'phone_number': _phoneController.text.trim(),
+              if (_locationController.text.trim().isNotEmpty)
+                'location': _locationController.text.trim(),
+              if (_localChurchController.text.trim().isNotEmpty)
+                'local_church': _localChurchController.text.trim(),
+              if (_occupationController.text.trim().isNotEmpty)
+                'occupation': _occupationController.text.trim(),
+              if (_skillsController.text.trim().isNotEmpty)
+                'skills': _skillsController.text.trim(),
+              if (_localChapterController.text.trim().isNotEmpty)
+                'local_chapter': _localChapterController.text.trim(),
+              if (_conferenceController.text.trim().isNotEmpty)
+                'conference': _conferenceController.text.trim(),
+              'commitment_type': _commitmentType,
+              if ((_commitmentType == 'financial' ||
+                      _commitmentType == 'both') &&
+                  _financialCommitmentController.text.trim().isNotEmpty)
+                'financial_commitment': double.tryParse(
+                  _financialCommitmentController.text.trim(),
+                ),
+              if ((_commitmentType == 'active_availability' ||
+                      _commitmentType == 'both') &&
+                  _availabilityController.text.trim().isNotEmpty)
+                'availability_commitment': _availabilityController.text.trim(),
+              'is_approved': false,
+              'approval_status': 'pending',
+            },
+          );
 
       // Notify admin of new signup (best-effort, don't block UI)
       try {
@@ -1086,7 +1257,9 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
   }
 
   void _showForgotPasswordDialog(
-      BuildContext context, String Function(String) translate) {
+    BuildContext context,
+    String Function(String) translate,
+  ) {
     final emailController = TextEditingController();
     final rootCtx = context;
 
@@ -1120,14 +1293,12 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
             onPressed: () async {
               if (emailController.text.trim().isNotEmpty) {
                 Navigator.of(dialogCtx).pop();
-                await ref.read(signInControllerProvider.notifier).resetPassword(
-                      emailController.text.trim(),
-                    );
+                await ref
+                    .read(signInControllerProvider.notifier)
+                    .resetPassword(emailController.text.trim());
                 if (rootCtx.mounted) {
                   ScaffoldMessenger.of(rootCtx).showSnackBar(
-                    SnackBar(
-                      content: Text(translate('reset_email_sent')),
-                    ),
+                    SnackBar(content: Text(translate('reset_email_sent'))),
                   );
                 }
               }
@@ -1217,4 +1388,3 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
     }
   }
 }
-

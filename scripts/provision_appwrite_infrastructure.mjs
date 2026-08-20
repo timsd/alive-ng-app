@@ -1,4 +1,6 @@
-import {
+import * as appwriteSdk from 'node-appwrite';
+
+const {
   Client,
   Databases,
   Messaging,
@@ -6,7 +8,7 @@ import {
   TablesDB,
   Teams,
   Webhooks,
-} from 'node-appwrite';
+} = appwriteSdk;
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -485,6 +487,11 @@ async function ensureMessagingProviders(messaging) {
 }
 
 async function ensureWebhooks(webhooksService) {
+  if (!webhooksService) {
+    log('[skip] webhooks: unsupported by this Appwrite server/SDK version.');
+    return;
+  }
+
   for (const webhook of webhooks) {
     const url = process.env[webhook.urlEnv];
     if (!url) {
@@ -522,12 +529,12 @@ async function ensureWebhooks(webhooksService) {
 
 async function main() {
   const client = clientFromEnv();
-  const tablesDB = new TablesDB(client);
+  const tablesDB = TablesDB ? new TablesDB(client) : null;
   const databases = new Databases(client);
   const storage = new Storage(client);
   const teamsService = new Teams(client);
   const messaging = new Messaging(client);
-  const webhooksService = new Webhooks(client);
+  const webhooksService = Webhooks ? new Webhooks(client) : null;
 
   log(`Provisioning Appwrite project ${appwriteProject.projectId}`);
   log(`Endpoint: ${appwriteProject.endpoint}`);
