@@ -332,7 +332,7 @@ class ChapterService {
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _activitiesCollection,
         queries: [
-          Query.containsAny('assigned_member_ids', [userId]),
+          Query.contains('assigned_member_ids', [userId]),
           Query.orderDesc('scheduled_at'),
           Query.limit(500),
         ],

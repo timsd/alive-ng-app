@@ -4,46 +4,16 @@ FROM ghcr.io/cirruslabs/flutter:stable AS build
 
 WORKDIR /app
 
-ARG ANDROID_APK_URL=""
-ARG PLAY_STORE_URL=""
-ARG APPWRITE_ENDPOINT=""
-ARG APPWRITE_PROJECT_ID=""
-ARG APPWRITE_DATABASE_ID=""
-ARG APPWRITE_FCM_PROVIDER_ID=""
-ARG LIVEKIT_URL=""
-ARG PAYSTACK_PUBLIC_KEY=""
-ARG PAYSTACK_CALLBACK_URL=""
-ARG GOOGLE_WEB_CLIENT_ID=""
-ARG WEB_PUSH_CERT_KEY=""
-ARG GLITCHTIP_DSN=""
-ARG GLITCHTIP_ENVIRONMENT="production"
-ARG GLITCHTIP_RELEASE=""
-ARG GLITCHTIP_TRACES_SAMPLE_RATE="0"
-ARG APPWRITE_RESOURCES_BASE_URL=""
+# Public Flutter web configuration only. Do not put server/API secrets here.
+ARG FLUTTER_BUILD_ARGS=""
+
 COPY pubspec.yaml pubspec.lock ./
 RUN flutter pub get
 
 COPY . .
 RUN flutter config --enable-web \
     && dart scripts/configure_web.dart \
-    && flutter build web --release --no-wasm-dry-run \
-      --dart-define=APPWRITE_ENDPOINT="${APPWRITE_ENDPOINT}" \
-      --dart-define=APPWRITE_PROJECT_ID="${APPWRITE_PROJECT_ID}" \
-      --dart-define=APPWRITE_DATABASE_ID="${APPWRITE_DATABASE_ID}" \
-      --dart-define=APPWRITE_FCM_PROVIDER_ID="${APPWRITE_FCM_PROVIDER_ID}" \
-      --dart-define=LIVEKIT_URL="${LIVEKIT_URL}" \
-      --dart-define=PAYSTACK_PUBLIC_KEY="${PAYSTACK_PUBLIC_KEY}" \
-      --dart-define=PAYSTACK_CALLBACK_URL="${PAYSTACK_CALLBACK_URL}" \
-      --dart-define=GOOGLE_WEB_CLIENT_ID="${GOOGLE_WEB_CLIENT_ID}" \
-      --dart-define=WEB_PUSH_CERT_KEY="${WEB_PUSH_CERT_KEY}" \
-      --dart-define=GLITCHTIP_DSN="${GLITCHTIP_DSN}" \
-      --dart-define=GLITCHTIP_ENVIRONMENT="${GLITCHTIP_ENVIRONMENT}" \
-      --dart-define=GLITCHTIP_RELEASE="${GLITCHTIP_RELEASE}" \
-      --dart-define=GLITCHTIP_TRACES_SAMPLE_RATE="${GLITCHTIP_TRACES_SAMPLE_RATE}" \
-      --dart-define=APPWRITE_RESOURCES_BASE_URL="${APPWRITE_RESOURCES_BASE_URL}" \
-      --dart-define=ANDROID_APK_URL="${ANDROID_APK_URL}" \
-      --dart-define=PLAY_STORE_URL="${PLAY_STORE_URL}"
-
+    && flutter build web --release --no-wasm-dry-run ${FLUTTER_BUILD_ARGS}
 FROM nginx:1.27-alpine
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf

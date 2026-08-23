@@ -39,7 +39,7 @@ class AppwriteChatService extends ChangeNotifier {
         databaseId: databaseId,
         tableId: channelsCollectionId,
         queries: [
-          Query.containsAny('members', [userId]),
+          Query.contains('members', [userId]),
           Query.equal('is_archived', false),
           Query.orderDesc('last_message_at'),
           Query.limit(100),
@@ -189,9 +189,8 @@ class AppwriteChatService extends ChangeNotifier {
           'roomId': channelId,
           'sender_id': user.$id,
           'senderId': user.$id,
-          'sender_name': user.name.isNotEmpty
-              ? user.name
-              : user.email.split('@').first,
+          'sender_name':
+              user.name.isNotEmpty ? user.name : user.email.split('@').first,
           'sender_avatar': '',
           'content': content,
           'messageText': content,
@@ -279,8 +278,7 @@ class AppwriteChatService extends ChangeNotifier {
         databaseId: databaseId,
         tableId: AppwriteBackendConfig.usersCollectionId,
         queries: [
-          if (query.trim().isNotEmpty)
-            Query.search('fullName', query.trim()),
+          if (query.trim().isNotEmpty) Query.search('fullName', query.trim()),
           Query.limit(20),
         ],
       );
@@ -318,7 +316,9 @@ class AppwriteChatService extends ChangeNotifier {
       databaseId: databaseId,
       tableId: channelsCollectionId,
       rowId: channelId,
-      data: {'members': [...channel.members, user.$id]},
+      data: {
+        'members': [...channel.members, user.$id]
+      },
     );
   }
 
@@ -375,9 +375,8 @@ class AppwriteChatService extends ChangeNotifier {
       final data = row.data;
       return ChatUser(
         id: row.$id,
-        name:
-            (data['fullName'] ?? data['full_name'] ?? data['email'] ?? 'User')
-                .toString(),
+        name: (data['fullName'] ?? data['full_name'] ?? data['email'] ?? 'User')
+            .toString(),
         email: (data['email'] ?? '').toString(),
         avatar: data['avatar_url'] as String?,
         role: UserRole.values.firstWhere(
