@@ -169,19 +169,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       // Profile-completion checks will be restored against Appwrite profiles.
-      // Pending users may use the public Bible, learning, and donation routes,
-      // but cannot bypass approval by navigating directly to protected routes.
-      if (isAuthenticated && !isAuthRoute && !isGuestAccessibleRoute) {
-        final profile =
-            await RoleAccessService.instance.getCurrentUserProfile();
-        if (profile == null || !profile.isApproved || profile.isArchived) {
-          debugPrint(
-              'Pending or archived user blocked from: ${state.uri.path}');
-          return AppConstants.homeRoute;
-        }
-      }
 
-      // Authenticated users can access public routes and approved protected routes.
+      // Authenticated users can access all non-auth routes.
       if (isAuthenticated && !isAuthRoute) {
         debugPrint('Authenticated; allow route: ${state.uri.path}');
         return null;

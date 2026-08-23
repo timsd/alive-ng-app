@@ -1184,8 +1184,8 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
                   _commitmentType == 'both') &&
               _availabilityController.text.trim().isNotEmpty)
             'availability_commitment': _availabilityController.text.trim(),
-          'is_approved': false,
-          'approval_status': 'pending',
+          'is_approved': true,
+          'approval_status': 'approved',
         },
       );
 

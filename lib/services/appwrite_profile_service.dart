@@ -211,10 +211,10 @@ class AppwriteProfileService {
       isArchived: _boolValue(data, 'is_archived') ?? false,
       isNewConvert: _boolValue(data, 'is_new_convert') ?? false,
       convertDate: _dateValue(data, 'convert_date'),
-      isApproved: _boolValue(data, 'is_approved') ?? false,
+      isApproved: _boolValue(data, 'is_approved') ?? true,
       approvedBy: _stringValue(data, 'approved_by'),
       approvedAt: _dateValue(data, 'approved_at'),
-      approvalStatus: _stringValue(data, 'approval_status') ?? 'pending',
+      approvalStatus: _stringValue(data, 'approval_status') ?? 'approved',
       rejectionReason: _stringValue(data, 'rejection_reason'),
       location: _stringValue(data, 'location'),
       localChurch: _stringValue(data, 'local_church'),
@@ -265,8 +265,8 @@ class AppwriteProfileService {
     if (includeDefaults) {
       data['role'] = role ?? 'member';
       data['provider'] = 'appwrite';
-      data['is_approved'] = false;
-      data['approval_status'] = 'pending';
+      data['is_approved'] = true;
+      data['approval_status'] = 'approved';
       data['created_at'] = DateTime.now().toIso8601String();
       data['updated_at'] = DateTime.now().toIso8601String();
     }

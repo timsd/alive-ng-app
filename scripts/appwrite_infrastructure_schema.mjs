@@ -101,7 +101,7 @@ export const tables = [
     columns: [
       s('email', 320, true), s('fullName'), s('full_name'), s('avatar_url', 1024), s('photo_url', 1024), b('is_email_verified'), b('is_anonymous'),
       s('provider', 64), dt('date_of_birth'), s('phone_number', 64), text('address'), text('bio'), s('chapter_id', 128), s('role', 64, true),
-      b('is_archived', false, false), b('is_new_convert', false, false), dt('convert_date'), b('is_approved', false, false), s('approved_by', 128),
+      b('is_archived', false, false), b('is_new_convert', false, false), dt('convert_date'), b('is_approved', false, true), s('approved_by', 128),
       dt('approved_at'), s('approval_status', 64), text('rejection_reason'), s('location'), s('local_church'), s('occupation'), text('skills'),
       s('work_contact'), s('home_contact'), text('general_info'), s('local_chapter'), b('is_chapter_verified', false, false),
       b('is_church_verified', false, false), s('commitment_type', 64), f('financial_commitment'),
