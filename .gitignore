@@ -101,3 +101,4 @@ docs/oracle-free-tier-deployment-roadmap.md
 .claude/
 
 /android/key.properties.*
+android/.kotlin/
