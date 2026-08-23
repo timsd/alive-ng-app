@@ -22,11 +22,11 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
   final AppwriteProfileService _profileService = AppwriteProfileService();
   final AuthService _authService = AuthService.instance;
   late TabController _tabController;
-  
+
   List<UserProfile> _pendingUsers = [];
   List<UserProfile> _approvedUsers = [];
   List<UserProfile> _rejectedUsers = [];
-  
+
   bool _isLoading = true;
   String? _currentUserId;
 
@@ -48,15 +48,21 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
   Future<void> _loadUsers() async {
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _isLoading = true);
-    
+
     try {
       final users = await _listUsers();
       final userProfiles = users.map(_profileFromDocument).toList();
 
       setState(() {
-        _pendingUsers = userProfiles.where((user) => user.approvalStatus == 'pending').toList();
-        _approvedUsers = userProfiles.where((user) => user.approvalStatus == 'approved').toList();
-        _rejectedUsers = userProfiles.where((user) => user.approvalStatus == 'rejected').toList();
+        _pendingUsers = userProfiles
+            .where((user) => user.approvalStatus == 'pending')
+            .toList();
+        _approvedUsers = userProfiles
+            .where((user) => user.approvalStatus == 'approved')
+            .toList();
+        _rejectedUsers = userProfiles
+            .where((user) => user.approvalStatus == 'rejected')
+            .toList();
         _isLoading = false;
       });
     } catch (e) {
@@ -121,7 +127,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
       );
 
       await _loadUsers();
-      
+
       if (mounted) {
         messenger.showSnackBar(
           SnackBar(
@@ -160,7 +166,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
       );
 
       await _loadUsers();
-      
+
       if (mounted) {
         messenger.showSnackBar(
           SnackBar(
@@ -185,7 +191,8 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(user.fullName ?? 'User Details', style: Theme.of(context).textTheme.titleLarge),
+        title: Text(user.fullName ?? 'User Details',
+            style: Theme.of(context).textTheme.titleLarge),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -196,21 +203,35 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
               _buildDetailRow('Address', user.address ?? 'Not provided'),
               _buildDetailRow('Bio', user.bio ?? 'Not provided'),
               const SizedBox(height: 16),
-              Text('Verification Details:', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+              Text('Verification Details:',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleSmall
+                      ?.copyWith(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              _buildDetailRow('Local Chapter', user.localChapter ?? 'Not provided'),
-              _buildDetailRow('Local Church', user.localChurch ?? 'Not provided'),
-              _buildDetailRow('Conference', user.conference ?? 'Not provided'),
+              _buildDetailRow(
+                  'Local Chapter', user.localChapter ?? 'Not provided'),
+              _buildDetailRow(
+                  'Local Church', user.localChurch ?? 'Not provided'),
               const SizedBox(height: 16),
-              Text('Commitment Details:', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+              Text('Commitment Details:',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleSmall
+                      ?.copyWith(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              _buildDetailRow('Commitment Type', user.commitmentType ?? 'Not specified'),
+              _buildDetailRow(
+                  'Commitment Type', user.commitmentType ?? 'Not specified'),
               if (user.financialCommitment != null)
-                _buildDetailRow('Financial Commitment', '\$${user.financialCommitment!.toStringAsFixed(2)}'),
-              _buildDetailRow('Availability', user.availabilityCommitment ?? 'Not specified'),
+                _buildDetailRow('Financial Commitment',
+                    '\$${user.financialCommitment!.toStringAsFixed(2)}'),
+              _buildDetailRow('Availability',
+                  user.availabilityCommitment ?? 'Not specified'),
               const SizedBox(height: 16),
-              _buildDetailRow('Registration Date', user.createdAt.toString().split(' ')[0]),
-              if (user.approvalStatus == 'rejected' && user.rejectionReason != null)
+              _buildDetailRow(
+                  'Registration Date', user.createdAt.toString().split(' ')[0]),
+              if (user.approvalStatus == 'rejected' &&
+                  user.rejectionReason != null)
                 _buildDetailRow('Rejection Reason', user.rejectionReason!),
             ],
           ),
@@ -226,7 +247,8 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
                 Navigator.of(context).pop();
                 _showRejectDialog(user);
               },
-              child: Text('Reject', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              child: Text('Reject',
+                  style: TextStyle(color: Theme.of(context).colorScheme.error)),
             ),
             ElevatedButton(
               onPressed: () {
@@ -243,7 +265,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
 
   void _showRejectDialog(UserProfile user) {
     final reasonController = TextEditingController();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -296,7 +318,10 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
             width: 120,
             child: Text(
               '$label:',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(fontWeight: FontWeight.w500),
             ),
           ),
           Expanded(
@@ -310,7 +335,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
   Widget _buildUserCard(UserProfile user) {
     Color statusColor;
     IconData statusIcon;
-    
+
     switch (user.approvalStatus) {
       case 'approved':
         statusColor = Theme.of(context).colorScheme.tertiary;
@@ -329,10 +354,10 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundImage: user.avatarUrl != null 
-              ? CustomImage.provider(user.avatarUrl!) 
+          backgroundImage: user.avatarUrl != null
+              ? CustomImage.provider(user.avatarUrl!)
               : null,
-          child: user.avatarUrl == null 
+          child: user.avatarUrl == null
               ? Text(user.fullName?.substring(0, 1).toUpperCase() ?? 'U')
               : null,
         ),
@@ -359,7 +384,10 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
             if (user.localChapter != null || user.localChurch != null)
               Text(
                 '${user.localChapter ?? ''} ${user.localChurch != null ? '• ${user.localChurch}' : ''}',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.outline),
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: Theme.of(context).colorScheme.outline),
               ),
           ],
         ),
@@ -368,11 +396,13 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
-                    icon: Icon(Icons.close, color: Theme.of(context).colorScheme.error),
+                    icon: Icon(Icons.close,
+                        color: Theme.of(context).colorScheme.error),
                     onPressed: () => _showRejectDialog(user),
                   ),
                   IconButton(
-                    icon: Icon(Icons.check, color: Theme.of(context).colorScheme.tertiary),
+                    icon: Icon(Icons.check,
+                        color: Theme.of(context).colorScheme.tertiary),
                     onPressed: () => _approveUser(user),
                   ),
                 ],
@@ -392,12 +422,16 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
             Icon(
               Icons.people_outline,
               size: 64,
-              color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+              color:
+                  Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 16),
             Text(
               emptyMessage,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.outline),
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: Theme.of(context).colorScheme.outline),
             ),
           ],
         ),
@@ -453,6 +487,3 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
     );
   }
 }
-
-
-

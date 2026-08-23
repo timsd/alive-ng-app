@@ -97,9 +97,6 @@ class AdminNotificationService {
     if (userProfile.localChurch != null) {
       buffer.writeln('Local Church: ${userProfile.localChurch}');
     }
-    if (userProfile.conference != null) {
-      buffer.writeln('Conference: ${userProfile.conference}');
-    }
 
     buffer.writeln('');
     buffer.writeln('Commitment Information:');

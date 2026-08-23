@@ -40,7 +40,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   // Commitment controllers
   late final TextEditingController _localChapterController;
-  late final TextEditingController _conferenceController;
 
   late String _commitmentType;
   bool _isLoading = false;
@@ -76,8 +75,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         TextEditingController(text: widget.userProfile.generalInfo ?? '');
     _localChapterController =
         TextEditingController(text: widget.userProfile.localChapter ?? '');
-    _conferenceController =
-        TextEditingController(text: widget.userProfile.conference ?? '');
 
     _commitmentType = widget.userProfile.commitmentType ?? 'both';
 
@@ -100,7 +97,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       _homeContactController,
       _generalInfoController,
       _localChapterController,
-      _conferenceController,
     ];
 
     for (final controller in controllers) {
@@ -126,7 +122,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _homeContactController.dispose();
     _generalInfoController.dispose();
     _localChapterController.dispose();
-    _conferenceController.dispose();
     _pageController.dispose();
     super.dispose();
   }
@@ -166,9 +161,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             : null,
         localChapter: _localChapterController.text.trim().isNotEmpty
             ? _localChapterController.text.trim()
-            : null,
-        conference: _conferenceController.text.trim().isNotEmpty
-            ? _conferenceController.text.trim()
             : null,
         commitmentType: _commitmentType,
         avatarUrl: _profilePictureUrl, // Add profile picture URL
@@ -601,7 +593,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           TextFormField(
             controller: _localChapterController,
             decoration: InputDecoration(
-              labelText: 'Local Chapter/Conference',
+              labelText: 'Local Chapter',
               border: const OutlineInputBorder(),
               prefixIcon: const Icon(Icons.group),
               filled: true,
@@ -609,17 +601,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-          TextFormField(
-            controller: _conferenceController,
-            decoration: InputDecoration(
-              labelText: 'Conference/Union',
-              border: const OutlineInputBorder(),
-              prefixIcon: const Icon(Icons.account_balance),
-              filled: true,
-              fillColor: Theme.of(context).colorScheme.surfaceContainer,
-            ),
-          ),
-          SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
           Text(
             'How do you plan to contribute?',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -794,7 +775,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             _ => 'image/jpeg',
           };
 
-          final publicUrl = await AppwriteStorageService.instance.uploadProfileFile(
+          final publicUrl =
+              await AppwriteStorageService.instance.uploadProfileFile(
             bytes: file.bytes!,
             fileName: 'profile-pictures/$fileName',
             contentType: contentType,

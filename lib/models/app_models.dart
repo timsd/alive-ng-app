@@ -36,10 +36,8 @@ class UserProfile {
 
   // Verification fields
   final String? localChapter;
-  final String? conference;
   final bool isChapterVerified;
   final bool isChurchVerified;
-  final bool isConferenceVerified;
 
   // Commitment tracking
   final String? commitmentType; // financial, active_availability, both
@@ -95,10 +93,8 @@ class UserProfile {
 
     // Verification fields
     this.localChapter,
-    this.conference,
     this.isChapterVerified = false,
     this.isChurchVerified = false,
-    this.isConferenceVerified = false,
 
     // Commitment tracking
     this.commitmentType,
@@ -161,10 +157,8 @@ class UserProfile {
 
       // Verification fields
       localChapter: json['local_chapter'] as String?,
-      conference: json['conference'] as String?,
       isChapterVerified: json['is_chapter_verified'] as bool? ?? false,
       isChurchVerified: json['is_church_verified'] as bool? ?? false,
-      isConferenceVerified: json['is_conference_verified'] as bool? ?? false,
 
       // Commitment tracking
       commitmentType: json['commitment_type'] as String?,
@@ -223,10 +217,8 @@ class UserProfile {
 
       // Verification fields
       'local_chapter': localChapter,
-      'conference': conference,
       'is_chapter_verified': isChapterVerified,
       'is_church_verified': isChurchVerified,
-      'is_conference_verified': isConferenceVerified,
 
       // Commitment tracking
       'commitment_type': commitmentType,
@@ -279,10 +271,8 @@ class UserProfile {
     String? homeContact,
     String? generalInfo,
     String? localChapter,
-    String? conference,
     bool? isChapterVerified,
     bool? isChurchVerified,
-    bool? isConferenceVerified,
     String? commitmentType,
     double? financialCommitment,
     String? availabilityCommitment,
@@ -327,10 +317,8 @@ class UserProfile {
       homeContact: homeContact ?? this.homeContact,
       generalInfo: generalInfo ?? this.generalInfo,
       localChapter: localChapter ?? this.localChapter,
-      conference: conference ?? this.conference,
       isChapterVerified: isChapterVerified ?? this.isChapterVerified,
       isChurchVerified: isChurchVerified ?? this.isChurchVerified,
-      isConferenceVerified: isConferenceVerified ?? this.isConferenceVerified,
       commitmentType: commitmentType ?? this.commitmentType,
       financialCommitment: financialCommitment ?? this.financialCommitment,
       availabilityCommitment:

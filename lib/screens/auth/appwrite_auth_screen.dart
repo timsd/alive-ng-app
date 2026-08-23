@@ -34,7 +34,6 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
   final _occupationController = TextEditingController();
   final _skillsController = TextEditingController();
   final _localChapterController = TextEditingController();
-  final _conferenceController = TextEditingController();
   final _financialCommitmentController = TextEditingController();
   final _availabilityController = TextEditingController();
 
@@ -67,7 +66,6 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
     _occupationController.dispose();
     _skillsController.dispose();
     _localChapterController.dispose();
-    _conferenceController.dispose();
     _financialCommitmentController.dispose();
     _availabilityController.dispose();
     super.dispose();
@@ -356,15 +354,15 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
         Text(
           AppConstants.appName,
           style: Theme.of(context).textTheme.displayMedium?.copyWith(
-            color: Theme.of(context).colorScheme.primary,
-            fontWeight: FontWeight.bold,
-            fontSize: ResponsiveUtils.getResponsiveValue(
-              context: context,
-              mobile: 28.0,
-              tablet: 32.0,
-              desktop: 36.0,
-            ),
-          ),
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.bold,
+                fontSize: ResponsiveUtils.getResponsiveValue(
+                  context: context,
+                  mobile: 28.0,
+                  tablet: 32.0,
+                  desktop: 36.0,
+                ),
+              ),
         ),
 
         SizedBox(
@@ -380,17 +378,17 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
         Text(
           translate('welcome'),
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-            fontSize: ResponsiveUtils.getResponsiveValue(
-              context: context,
-              mobile: 16.0,
-              tablet: 18.0,
-              desktop: 20.0,
-            ),
-            height: 1.4,
-            color: Theme.of(
-              context,
-            ).colorScheme.onSurface.withValues(alpha: 0.7),
-          ),
+                fontSize: ResponsiveUtils.getResponsiveValue(
+                  context: context,
+                  mobile: 16.0,
+                  tablet: 18.0,
+                  desktop: 20.0,
+                ),
+                height: 1.4,
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
           textAlign: TextAlign.center,
           softWrap: true,
         ),
@@ -507,9 +505,8 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
     return Row(
       children: [
         IconButton(
-          onPressed: _isLoading
-              ? null
-              : () => setState(() => _isSignUp = false),
+          onPressed:
+              _isLoading ? null : () => setState(() => _isSignUp = false),
           icon: const Icon(Icons.arrow_back),
           tooltip: 'Back to sign in',
         ),
@@ -841,22 +838,6 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
             desktop: 16.0,
           ),
         ),
-        TextFormField(
-          controller: _conferenceController,
-          decoration: _signupDecoration(
-            context,
-            'Conference',
-            Icons.event_outlined,
-          ),
-        ),
-        SizedBox(
-          height: ResponsiveUtils.getResponsiveValue(
-            context: context,
-            mobile: 12.0,
-            tablet: 14.0,
-            desktop: 16.0,
-          ),
-        ),
         DropdownButtonFormField<String>(
           initialValue: _commitmentType,
           decoration: _signupDecoration(
@@ -970,16 +951,16 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
               child: LayoutFixUtils.safeText(
                 translate('or'),
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.6),
-                  fontSize: ResponsiveUtils.getResponsiveValue(
-                    context: context,
-                    mobile: 14.0,
-                    tablet: 16.0,
-                    desktop: 18.0,
-                  ),
-                ),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.6),
+                      fontSize: ResponsiveUtils.getResponsiveValue(
+                        context: context,
+                        mobile: 14.0,
+                        tablet: 16.0,
+                        desktop: 18.0,
+                      ),
+                    ),
               ),
             ),
             Expanded(
@@ -1175,41 +1156,38 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
       await ref
           .read(signInControllerProvider.notifier)
           .signUpWithEmailAndPassword(
-            email: _emailController.text.trim(),
-            password: _passwordController.text,
-            fullName: _nameController.text.trim().isNotEmpty
-                ? _nameController.text.trim()
-                : null,
-            profileData: {
-              if (_phoneController.text.trim().isNotEmpty)
-                'phone_number': _phoneController.text.trim(),
-              if (_locationController.text.trim().isNotEmpty)
-                'location': _locationController.text.trim(),
-              if (_localChurchController.text.trim().isNotEmpty)
-                'local_church': _localChurchController.text.trim(),
-              if (_occupationController.text.trim().isNotEmpty)
-                'occupation': _occupationController.text.trim(),
-              if (_skillsController.text.trim().isNotEmpty)
-                'skills': _skillsController.text.trim(),
-              if (_localChapterController.text.trim().isNotEmpty)
-                'local_chapter': _localChapterController.text.trim(),
-              if (_conferenceController.text.trim().isNotEmpty)
-                'conference': _conferenceController.text.trim(),
-              'commitment_type': _commitmentType,
-              if ((_commitmentType == 'financial' ||
-                      _commitmentType == 'both') &&
-                  _financialCommitmentController.text.trim().isNotEmpty)
-                'financial_commitment': double.tryParse(
-                  _financialCommitmentController.text.trim(),
-                ),
-              if ((_commitmentType == 'active_availability' ||
-                      _commitmentType == 'both') &&
-                  _availabilityController.text.trim().isNotEmpty)
-                'availability_commitment': _availabilityController.text.trim(),
-              'is_approved': false,
-              'approval_status': 'pending',
-            },
-          );
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        fullName: _nameController.text.trim().isNotEmpty
+            ? _nameController.text.trim()
+            : null,
+        profileData: {
+          if (_phoneController.text.trim().isNotEmpty)
+            'phone_number': _phoneController.text.trim(),
+          if (_locationController.text.trim().isNotEmpty)
+            'location': _locationController.text.trim(),
+          if (_localChurchController.text.trim().isNotEmpty)
+            'local_church': _localChurchController.text.trim(),
+          if (_occupationController.text.trim().isNotEmpty)
+            'occupation': _occupationController.text.trim(),
+          if (_skillsController.text.trim().isNotEmpty)
+            'skills': _skillsController.text.trim(),
+          if (_localChapterController.text.trim().isNotEmpty)
+            'local_chapter': _localChapterController.text.trim(),
+          'commitment_type': _commitmentType,
+          if ((_commitmentType == 'financial' || _commitmentType == 'both') &&
+              _financialCommitmentController.text.trim().isNotEmpty)
+            'financial_commitment': double.tryParse(
+              _financialCommitmentController.text.trim(),
+            ),
+          if ((_commitmentType == 'active_availability' ||
+                  _commitmentType == 'both') &&
+              _availabilityController.text.trim().isNotEmpty)
+            'availability_commitment': _availabilityController.text.trim(),
+          'is_approved': false,
+          'approval_status': 'pending',
+        },
+      );
 
       // Notify admin of new signup (best-effort, don't block UI)
       try {
