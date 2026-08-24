@@ -80,7 +80,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       });
     } catch (e) {
       setState(() {
-        _error = e.toString();
+        _error =
+            'We could not load conversations. Check your connection and try again.';
         _isLoading = false;
       });
     }
@@ -134,7 +135,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       setState(() {
         _isLoadingMessages = false;
       });
-      _showError('Failed to load messages: $e');
+      _showError('Messages could not be loaded. Please try again.');
     }
   }
 
@@ -173,7 +174,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         }
       });
     } catch (e) {
-      _showError('Failed to send message: $e');
+      _showError('Your message could not be sent. Please try again.');
     }
   }
 
@@ -213,7 +214,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         }
       });
     } catch (e) {
-      _showError('Failed to send attachment: $e');
+      _showError('Your attachment could not be sent. Please try again.');
     }
   }
 
@@ -637,4 +638,3 @@ class _CreateChannelDialogState extends State<_CreateChannelDialog> {
     );
   }
 }
-

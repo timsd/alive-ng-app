@@ -10,6 +10,7 @@ import '../../providers/auth_provider.dart';
 import '../../utils/i18n_service.dart';
 import '../../utils/responsive_utils.dart';
 import '../../widgets/guest_access_indicator.dart';
+import '../../widgets/error_widget.dart';
 
 /// Screen for authenticated users to submit meal and natural remedy recipes
 class RecipeSubmissionScreen extends ConsumerStatefulWidget {
@@ -90,9 +91,13 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
       loading: () => const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       ),
-      error: (error, _) => Scaffold(
-        body: Center(
-          child: Text('Error: $error'),
+      error: (_, __) => Scaffold(
+        body: AppErrorWidget(
+          title: 'Recipe submission is unavailable',
+          message:
+              'We could not verify your account. Check your connection and try again.',
+          actionText: 'Retry',
+          onAction: () => ref.invalidate(authStateProvider),
         ),
       ),
     );

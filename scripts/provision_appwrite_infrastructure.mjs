@@ -54,6 +54,7 @@ const {
 const dryRun = process.argv.includes('--dry-run');
 const useLegacyDatabases = process.argv.includes('--legacy-databases');
 const onlyProviders = process.argv.includes('--only-providers');
+const skipMessaging = process.argv.includes('--skip-messaging');
 const onlyTableArg = process.argv.find((arg) => arg.startsWith('--only-table='));
 const onlyTableId = onlyTableArg?.split('=').slice(1).join('=');
 const apiKey = process.env.APPWRITE_API_KEY;
@@ -544,8 +545,12 @@ async function main() {
   await ensureDatabase(tablesDB, databases);
   await ensureBuckets(storage);
   await ensureTeams(teamsService);
-  await ensureTopics(messaging);
-  await ensureMessagingProviders(messaging);
+  if (skipMessaging) {
+    log('[skip] messaging: requested --skip-messaging');
+  } else {
+    await ensureTopics(messaging);
+    await ensureMessagingProviders(messaging);
+  }
 
   if (onlyProviders) {
     log('Appwrite messaging provider verification complete.');

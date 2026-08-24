@@ -1,6 +1,4 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/guest_provider.dart';
@@ -10,9 +8,9 @@ import '../../widgets/quick_actions_grid.dart';
 import '../../widgets/daily_verse_card.dart';
 import '../../widgets/role_guard.dart';
 import '../../utils/responsive_utils.dart';
-import '../../utils/layout_fix_utils.dart';
 import '../../screens/daily/daily_screen.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../widgets/error_widget.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -45,30 +43,12 @@ class HomeScreen extends ConsumerWidget {
           data: (user) =>
               _buildHomeContent(context, ref, user, isGuest, translate),
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, stack) => Center(
-            child: Padding(
-              padding: ResponsiveUtils.getResponsivePadding(context),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  LayoutFixUtils.responsiveIcon(
-                    Icons.error,
-                    context: context,
-                    baseSize: 64,
-                    color: theme.colorScheme.error,
-                  ),
-                  SizedBox(height: context.isMobile ? 12 : 16),
-                  Text(
-                    'Error: $error',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontSize:
-                          ResponsiveUtils.getResponsiveFontSize(context, 16),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
+          error: (_, __) => AppErrorWidget(
+            title: 'Home is unavailable',
+            message:
+                'We could not load your home screen. Check your connection and try again.',
+            actionText: 'Retry',
+            onAction: () => ref.invalidate(authStateProvider),
           ),
         ),
       ),
@@ -85,10 +65,6 @@ class HomeScreen extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const GreetingHeader(),
-          if (kIsWeb && _WebAndroidDownloadActions.isConfigured) ...[
-            SizedBox(height: context.isMobile ? 16 : 20),
-            const _WebAndroidDownloadActions(),
-          ],
           SizedBox(height: context.isMobile ? 16 : 24),
           Text(
             translate('daily_verse'),
@@ -126,52 +102,6 @@ class HomeScreen extends ConsumerWidget {
             ),
             SizedBox(height: context.isMobile ? 16 : 24),
           ],
-        ],
-      ),
-    );
-  }
-}
-
-class _WebAndroidDownloadActions extends StatelessWidget {
-  const _WebAndroidDownloadActions();
-
-  static const _apkUrl = String.fromEnvironment(
-    'ANDROID_APK_URL',
-    defaultValue: '',
-  );
-  static const _playStoreUrl = String.fromEnvironment('PLAY_STORE_URL');
-
-  static bool get isConfigured =>
-      _apkUrl.isNotEmpty || _playStoreUrl.isNotEmpty;
-
-  Future<void> _open(String value) async {
-    final uri = Uri.base.resolve(value);
-    if (!await launchUrl(uri, webOnlyWindowName: '_blank')) {
-      throw StateError('Could not open $uri');
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      container: true,
-      label: 'Download ALIVE Nigeria for Android',
-      child: Wrap(
-        spacing: 12,
-        runSpacing: 10,
-        children: [
-          if (_apkUrl.isNotEmpty)
-            FilledButton.icon(
-              onPressed: () => _open(_apkUrl),
-              icon: const Icon(Icons.android),
-              label: const Text('Download Android app'),
-            ),
-          if (_playStoreUrl.isNotEmpty)
-            OutlinedButton.icon(
-              onPressed: () => _open(_playStoreUrl),
-              icon: const Icon(Icons.shop_outlined),
-              label: const Text('Get it on Google Play'),
-            ),
         ],
       ),
     );
