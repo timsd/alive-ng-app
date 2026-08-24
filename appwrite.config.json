@@ -57,7 +57,7 @@
             "timeout": 15,
             "commands": "npm install",
             "scopes": [
-                "users.read"
+                "rows.read"
             ]
         },
         {

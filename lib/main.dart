@@ -7,7 +7,6 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'providers/theme_provider.dart';
 import 'utils/app_router.dart';
 import 'utils/app_theme.dart';
-import 'config/google_signin_config.dart';
 import 'package:go_router/go_router.dart';
 import 'constants/app_constants.dart';
 import 'providers/auth_provider.dart';

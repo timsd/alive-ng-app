@@ -1052,16 +1052,17 @@ Download it from ALIVE-NG App www.app.alivenigeria.org
     required String title,
     required String description,
   }) {
+    final colors = Theme.of(context).colorScheme;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            color: Colors.green[100],
+            color: colors.tertiaryContainer,
             shape: BoxShape.circle,
           ),
-          child: Icon(icon, color: Colors.green[700], size: 16),
+          child: Icon(icon, color: colors.onTertiaryContainer, size: 16),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -1072,14 +1073,14 @@ Download it from ALIVE-NG App www.app.alivenigeria.org
                 title,
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
-                  color: Colors.grey[800],
+                  color: colors.onSurface,
                 ),
               ),
               const SizedBox(height: 2),
               Text(
                 description,
                 style: TextStyle(
-                  color: Colors.grey[600],
+                  color: colors.onSurfaceVariant,
                   fontSize: 12,
                 ),
               ),
@@ -1235,7 +1236,7 @@ Download it from ALIVE-NG App www.app.alivenigeria.org
                 borderRadius: BorderRadius.circular(8),
               ),
               filled: true,
-              fillColor: Colors.white,
+              fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
             ),
             maxLines: 3,
             onChanged: (value) {
@@ -1368,7 +1369,7 @@ Download it from ALIVE-NG App www.app.alivenigeria.org
             Text(
               'Tap "Read More" to explore this passage in context.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey[600],
+                    color: colors.onSurfaceVariant,
                   ),
             ),
           ],

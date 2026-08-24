@@ -147,12 +147,11 @@ const functionConfigs = [
       literalVariable('APPWRITE_PROJECT_ID', projectId),
       literalVariable('APPWRITE_DATABASE_ID', databaseId),
       literalVariable('APPWRITE_USERS_TABLE_ID', '6a08943100226f5b4963'),
-      envVariable('APPWRITE_FUNCTION_API_KEY', { secret: true }),
     ],
     create: {
       runtime: 'node-20.0',
       execute: ['users'],
-      scopes: ['users.read'],
+      scopes: ['rows.read'],
     },
   },
   {
@@ -165,7 +164,6 @@ const functionConfigs = [
       literalVariable('APPWRITE_PROJECT_ID', projectId),
       literalVariable('APPWRITE_DATABASE_ID', databaseId),
       envVariable('APPWRITE_API_KEY', { required: true, secret: true }),
-      envVariable('APPWRITE_FUNCTION_API_KEY', { secret: true }),
       envVariable('APPWRITE_FUNCTION_API_ENDPOINT', { secret: false }),
       envVariable('APPWRITE_FUNCTION_PROJECT_ID', { secret: false }),
       literalVariable('APPWRITE_PAYMENT_LOGS_COLLECTION_ID', 'payment_logs'),
@@ -186,7 +184,6 @@ const functionConfigs = [
       literalVariable('APPWRITE_PROJECT_ID', projectId),
       literalVariable('APPWRITE_DATABASE_ID', databaseId),
       envVariable('APPWRITE_API_KEY', { required: true, secret: true }),
-      envVariable('APPWRITE_FUNCTION_API_KEY', { secret: true }),
       envVariable('APPWRITE_FUNCTION_API_ENDPOINT', { secret: false }),
       envVariable('APPWRITE_FUNCTION_PROJECT_ID', { secret: false }),
       literalVariable('APPWRITE_DONATION_RECORDS_COLLECTION_ID', 'donation_records'),
@@ -225,7 +222,26 @@ const functions = new Functions(client);
 
 async function ensureFunction(config) {
   try {
-    return await functions.get({ functionId: config.id });
+    const existing = await functions.get({ functionId: config.id });
+    const expectedScopes = config.create.scopes;
+    if (JSON.stringify([...existing.scopes].sort()) !== JSON.stringify([...expectedScopes].sort())) {
+      await functions.update({
+        functionId: config.id,
+        name: existing.name,
+        runtime: existing.runtime,
+        execute: existing.execute,
+        events: existing.events,
+        schedule: existing.schedule,
+        timeout: existing.timeout,
+        enabled: existing.enabled,
+        logging: existing.logging,
+        entrypoint: existing.entrypoint,
+        commands: existing.commands,
+        scopes: expectedScopes,
+      });
+      console.log(`Updated ${config.id} dynamic API-key scopes.`);
+    }
+    return existing;
   } catch (error) {
     if (error?.code !== 404 && error?.response?.code !== 404) {
       throw error;

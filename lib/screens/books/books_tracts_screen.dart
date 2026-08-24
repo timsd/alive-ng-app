@@ -1085,7 +1085,7 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
             Text(
               'Downloaded on ${DateTime.now().subtract(Duration(days: index + 1)).day}/${DateTime.now().month}/${DateTime.now().year}',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey[600],
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
             ),
           ],
@@ -1175,7 +1175,7 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
             Text(
               'On ${download.downloadedAt.day}/${download.downloadedAt.month}/${download.downloadedAt.year}',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey[600],
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
             ),
           ],

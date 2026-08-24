@@ -459,17 +459,17 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.analytics, size: 64, color: Colors.grey),
+          const Icon(Icons.analytics, size: 64),
           const SizedBox(height: 16),
           const Text(
             'Discipleship Reports',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'View and generate detailed reports on discipleship progress.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey),
+            style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
