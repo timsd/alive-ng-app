@@ -51,7 +51,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
         type: BottomNavigationBarType.fixed,
         currentIndex: _getCurrentIndex(currentLocation),
         onTap: (index) => _onItemTapped(context, index),
-        selectedItemColor: Theme.of(context).colorScheme.primary,
+        selectedItemColor: Theme.of(context).colorScheme.secondary,
         unselectedItemColor: Theme.of(context)
             .colorScheme
             .onSurface
@@ -78,8 +78,8 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
             label: 'Chapters',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.more_horiz),
-            activeIcon: Icon(Icons.more_horiz),
+            icon: Icon(Icons.grid_view_rounded),
+            activeIcon: Icon(Icons.grid_view_rounded),
             label: 'More',
           ),
         ],
@@ -144,7 +144,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
       const _MoreItem(
           'Kids Stories', Icons.auto_stories, AppConstants.kidsStoriesRoute),
       const _MoreItem(
-          'Conference', Icons.video_call, AppConstants.conferenceRoute),
+          'ALIVE Meet', Icons.video_call, AppConstants.conferenceRoute),
       const _MoreItem(
           'Donation', Icons.volunteer_activism, AppConstants.donationRoute),
       const _MoreItem(

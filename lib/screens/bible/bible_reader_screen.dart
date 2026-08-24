@@ -245,7 +245,8 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error loading chapter: $e'),
+            content: const Text(
+                'This chapter is not available in the selected Bible version. Try another version or language.'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );

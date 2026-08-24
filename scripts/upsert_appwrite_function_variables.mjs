@@ -143,6 +143,11 @@ const functionConfigs = [
       envVariable('LIVEKIT_API_KEY', { required: true, secret: true }),
       envVariable('LIVEKIT_API_SECRET', { required: true, secret: true }),
       envVariable('LIVEKIT_SECRET', { secret: true }),
+      literalVariable('APPWRITE_ENDPOINT', endpoint),
+      literalVariable('APPWRITE_PROJECT_ID', projectId),
+      literalVariable('APPWRITE_DATABASE_ID', databaseId),
+      literalVariable('APPWRITE_USERS_TABLE_ID', '6a08943100226f5b4963'),
+      envVariable('APPWRITE_FUNCTION_API_KEY', { secret: true }),
     ],
     create: {
       runtime: 'node-20.0',

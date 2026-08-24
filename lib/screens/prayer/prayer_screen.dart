@@ -2,14 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:alive_flutter_app/widgets/custom_app_bar.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flutter/foundation.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../providers/language_provider.dart';
 import '../../models/app_models.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/responsive_utils.dart';
 import '../../constants/app_constants.dart';
 import '../../config/meeting_links_config.dart';
+import '../conference/livekit_meeting_screen.dart';
 import '../../widgets/add_prayer_request_dialog.dart';
 import '../../services/prayer_requests_service.dart';
 import '../../utils/app_exception.dart';
@@ -247,15 +246,13 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
                                   context, 8)),
                           Text(
                             _humanizeLabel(translate('pray_together')),
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyLarge
-                                ?.copyWith(
-                                  color: onPrimary.withValues(alpha: 0.9),
-                                  fontSize:
-                                      ResponsiveUtils.getResponsiveFontSize(
-                                          context, 16),
-                                ),
+                            style:
+                                Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                      color: onPrimary.withValues(alpha: 0.9),
+                                      fontSize:
+                                          ResponsiveUtils.getResponsiveFontSize(
+                                              context, 16),
+                                    ),
                           ),
                           SizedBox(
                               height: ResponsiveUtils.getResponsiveSpacing(
@@ -273,9 +270,12 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
                               icon: const Icon(Icons.self_improvement),
                               label: Text(
                                 translate('join_prayer_meeting'),
-                                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelLarge
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
                               ),
                             ),
                           ),
@@ -425,13 +425,13 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
   }
 
   Future<void> _openPrayerMeeting() async {
-    if (!kIsWeb) {
-      context.go(AppConstants.conferenceRoute);
-      return;
-    }
-
-    final uri = Uri.parse(MeetingLinksConfig.prayerMeetingUrl);
-    await launchUrl(uri, mode: LaunchMode.platformDefault);
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const LiveKitMeetingScreen(
+          meetingType: MeetingType.prayer,
+        ),
+      ),
+    );
   }
 
   Widget _buildPrayerRequests(BuildContext context,
@@ -449,7 +449,8 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
             Icon(
               Icons.favorite_outline,
               size: ResponsiveUtils.getResponsiveIconSize(context, 48),
-              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
+              color:
+                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
             ),
             SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
             Text(
@@ -630,7 +631,8 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AddPrayerRequestDialog(onSubmit: _submitPrayerRequest),
+      builder: (context) =>
+          AddPrayerRequestDialog(onSubmit: _submitPrayerRequest),
     );
   }
 }
@@ -662,8 +664,10 @@ class PrayerRequestCard extends StatelessWidget {
             Row(
               children: [
                 CircleAvatar(
-                  backgroundColor:
-                      Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                  backgroundColor: Theme.of(context)
+                      .colorScheme
+                      .primary
+                      .withValues(alpha: 0.2),
                   child: Text(
                     request.isAnonymous
                         ? 'M'
@@ -673,9 +677,9 @@ class PrayerRequestCard extends StatelessWidget {
                                 ? request.title[0].toUpperCase()
                                 : 'P'),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
                   ),
                 ),
                 SizedBox(
@@ -712,7 +716,10 @@ class PrayerRequestCard extends StatelessWidget {
                                       ResponsiveUtils.getResponsiveSpacing(
                                           context, 2)),
                               decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .outline
+                                    .withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
@@ -721,7 +728,9 @@ class PrayerRequestCard extends StatelessWidget {
                                     .textTheme
                                     .bodySmall
                                     ?.copyWith(
-                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
                                       fontSize:
                                           ResponsiveUtils.getResponsiveFontSize(
                                               context, 10),

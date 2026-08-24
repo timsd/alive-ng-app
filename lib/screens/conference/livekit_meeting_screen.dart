@@ -38,7 +38,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   String _initialRoomName() {
     if (widget.customRoomName != null) return widget.customRoomName!;
     if (widget.meetingType != null) {
-      final url = MeetingLinksConfig.getMeetingUrl(widget.meetingType!);
+      final url = AliveMeetConfig.roomFor(widget.meetingType!);
       final uri = Uri.tryParse(url);
       return uri?.pathSegments.isNotEmpty == true
           ? uri!.pathSegments.last
@@ -70,9 +70,11 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
         roomName: roomName,
         userId: user.$id,
         userName: user.name.isNotEmpty ? user.name : user.email,
+        meetingType: widget.meetingType?.name ?? 'general',
       );
     } catch (e) {
-      _showMessage('Failed to join LiveKit room: $e');
+      _showMessage(
+          'ALIVE Meet could not be joined. Please check your connection and try again.');
     } finally {
       if (mounted) setState(() => _isJoining = false);
     }
@@ -91,7 +93,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
 
     return Scaffold(
       appBar: CustomAppBar(
-        title: widget.meetingType?.displayName ?? 'LiveKit Meeting',
+        title: widget.meetingType?.displayName ?? 'ALIVE Meet',
         showBackButton: true,
       ),
       body: Padding(
@@ -102,10 +104,11 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
             TextField(
               controller: _roomController,
               decoration: const InputDecoration(
-                labelText: 'Room',
+                labelText: 'ALIVE Meet room',
                 border: OutlineInputBorder(),
               ),
-              readOnly: widget.meetingType != null || widget.customRoomName != null,
+              readOnly:
+                  widget.meetingType != null || widget.customRoomName != null,
             ),
             const SizedBox(height: 12),
             ElevatedButton.icon(
@@ -117,7 +120,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.video_call),
-              label: Text(connected ? 'Connected' : 'Join Meeting'),
+              label: Text(connected ? 'Connected' : 'Join ALIVE Meet'),
             ),
             const SizedBox(height: 16),
             if (connected)
@@ -130,9 +133,8 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                     icon: Icon(_meetingService.isAudioMuted
                         ? Icons.mic_off
                         : Icons.mic),
-                    label: Text(_meetingService.isAudioMuted
-                        ? 'Unmute'
-                        : 'Mute'),
+                    label:
+                        Text(_meetingService.isAudioMuted ? 'Unmute' : 'Mute'),
                   ),
                   FilledButton.icon(
                     onPressed: _meetingService.toggleVideo,

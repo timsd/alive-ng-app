@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../widgets/custom_app_bar.dart';
+import '../../config/meeting_links_config.dart';
 import 'livekit_meeting_screen.dart';
 
 class ConferencePlatformScreen extends StatelessWidget {
@@ -8,11 +9,11 @@ class ConferencePlatformScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final roomController = TextEditingController();
+    const roomName = AliveMeetConfig.communityRoom;
 
     return Scaffold(
       appBar: const CustomAppBar(
-        title: 'LiveKit Conference',
+        title: 'ALIVE Meet',
         showBackButton: true,
       ),
       body: Padding(
@@ -21,23 +22,22 @@ class ConferencePlatformScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TextField(
-              controller: roomController,
               decoration: const InputDecoration(
-                labelText: 'Room name',
+                labelText: 'ALIVE Meet room',
+                hintText: roomName,
                 border: OutlineInputBorder(),
+                enabled: false,
               ),
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               icon: const Icon(Icons.video_call),
-              label: const Text('Continue to LiveKit'),
+              label: const Text('Continue to ALIVE Meet'),
               onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) => LiveKitMeetingScreen(
-                      customRoomName: roomController.text.trim().isEmpty
-                          ? null
-                          : roomController.text.trim(),
+                      customRoomName: roomName,
                     ),
                   ),
                 );

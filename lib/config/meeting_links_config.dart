@@ -1,33 +1,25 @@
-/// Configuration class for meeting URLs
-class MeetingLinksConfig {
-  /// Board of Directors meeting URL
-  static const String bodMeetingUrl = 'https://meet.jit.si/alive-ng-board-meeting';
+/// Stable room definitions for the ALIVE Meet LiveKit experience.
+/// These are room identifiers, never external meeting URLs.
+class AliveMeetConfig {
+  static const String boardRoom = 'alive-meet-board';
+  static const String leadershipRoom = 'alive-meet-leadership';
+  static const String prayerRoom = 'alive-meet-prayer';
+  static const String communityRoom = 'alive-meet-community';
 
-  /// Leadership meeting URL
-  static const String leadershipMeetingUrl = 'https://meet.jit.si/alive-ng-leadership-meeting';
-
-  /// Prayer meeting URL
-  static const String prayerMeetingUrl = 'https://meet.jit.si/alive-ng-prayer-meeting';
-
-  /// General meeting URL
-  static const String generalMeetingUrl = 'https://meet.jit.si/alive-ng-general-meeting';
-
-  /// Get meeting URL by type
-  static String getMeetingUrl(MeetingType type) {
+  static String roomFor(MeetingType type) {
     switch (type) {
       case MeetingType.board:
-        return bodMeetingUrl;
+        return boardRoom;
       case MeetingType.leadership:
-        return leadershipMeetingUrl;
+        return leadershipRoom;
       case MeetingType.prayer:
-        return prayerMeetingUrl;
+        return prayerRoom;
       case MeetingType.general:
-        return generalMeetingUrl;
+        return communityRoom;
     }
   }
 }
 
-/// Enum for different meeting types
 enum MeetingType {
   board,
   leadership,
@@ -35,18 +27,17 @@ enum MeetingType {
   general,
 }
 
-/// Extension to get display names for meeting types
 extension MeetingTypeExtension on MeetingType {
   String get displayName {
     switch (this) {
       case MeetingType.board:
-        return 'Board of Directors';
+        return 'ALIVE Meet: Board';
       case MeetingType.leadership:
-        return 'Leadership Meeting';
+        return 'ALIVE Meet: Leadership';
       case MeetingType.prayer:
-        return 'Prayer Meeting';
+        return 'ALIVE Meet: Prayer';
       case MeetingType.general:
-        return 'General Meeting';
+        return 'ALIVE Meet';
     }
   }
 }

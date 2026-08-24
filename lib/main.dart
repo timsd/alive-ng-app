@@ -190,7 +190,7 @@ class MainNavigationScreen extends ConsumerWidget {
         type: BottomNavigationBarType.fixed,
         currentIndex: _getCurrentIndex(currentLocation),
         onTap: (index) => _onItemTapped(context, ref, index),
-        selectedItemColor: Theme.of(context).colorScheme.primary,
+        selectedItemColor: Theme.of(context).colorScheme.secondary,
         unselectedItemColor: Theme.of(context)
             .colorScheme
             .onSurface
@@ -220,8 +220,8 @@ class MainNavigationScreen extends ConsumerWidget {
             label: translator('health'),
           ),
           BottomNavigationBarItem(
-            icon: const Icon(Icons.more_horiz),
-            activeIcon: const Icon(Icons.more_horiz),
+            icon: const Icon(Icons.grid_view_rounded),
+            activeIcon: const Icon(Icons.grid_view_rounded),
             label: translator('more'),
           ),
         ],
@@ -419,7 +419,7 @@ class MainNavigationScreen extends ConsumerWidget {
                   },
                   {
                     'icon': Icons.video_call,
-                    'label': 'Conference',
+                    'label': 'ALIVE Meet',
                     'route': AppConstants.conferenceRoute
                   },
                   {
@@ -781,7 +781,7 @@ class MainNavigationScreen extends ConsumerWidget {
                       context, Icons.chat, 'Chat', AppConstants.chatRoute),
                   _buildDrawerItem(context, Icons.groups, 'Chapters',
                       AppConstants.chaptersRoute),
-                  _buildDrawerItem(context, Icons.video_call, 'Conference',
+                  _buildDrawerItem(context, Icons.video_call, 'ALIVE Meet',
                       AppConstants.conferenceRoute),
                 ]),
                 const Divider(),

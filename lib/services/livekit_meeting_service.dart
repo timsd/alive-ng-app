@@ -27,6 +27,7 @@ class LiveKitMeetingService extends ChangeNotifier {
     required String roomName,
     required String userId,
     required String userName,
+    required String meetingType,
   }) async {
     try {
       final functions = Functions(appwriteClient);
@@ -36,6 +37,7 @@ class LiveKitMeetingService extends ChangeNotifier {
           'roomName': roomName,
           'identity': userId,
           'participantName': userName,
+          'meetingType': meetingType,
         }),
         xasync: false,
         method: appwrite_enums.ExecutionMethod.pOST,

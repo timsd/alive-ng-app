@@ -12,123 +12,123 @@ class AppTheme {
   static const Color errorColor = lightDestructive;
   static const Color warningColor = Color(0xFFF59E0B);
   static const Color successColor = lightEmerald;
-  
+
   // Dark Theme Colors
   static const Color darkBackgroundColor = darkBackground;
   static const Color darkSurfaceColor = darkCard;
   static const Color darkOnSurfaceColor = darkCardForeground;
-  
+
   // Text Colors
   static const Color textPrimary = lightForeground;
   static const Color textSecondary = lightMutedForeground;
   static const Color textTertiary = Color(0xFF94A3B8);
-  
+
   // Dark Text Colors
   static const Color darkTextPrimary = darkForeground;
   static const Color darkTextSecondary = darkMutedForeground;
   static const Color darkTextTertiary = Color(0xFF94A3B8);
-  
+
   // Border Colors
   static const Color borderColor = lightBorder;
   static const Color darkBorderColor = darkBorder;
-  
+
   // Core spiritual palette - Light Theme
-  static const Color lightBackground = Color(0xFFF1F5F9); // Lighter background (Slate 50/100)
-  static const Color lightForeground = Color(0xFF0F172A); // Deep slate black
-  
-  static const Color lightCard = Color(0xFFFFFFFF); // Pure white
-  static const Color lightCardForeground = Color(0xFF0F172A); 
-  
+  static const Color lightBackground = Color(0xFFFCFAF5); // Lighter background (Slate 50/100)
+  static const Color lightForeground = Color(0xFF17263B); // Deep slate black
+
+  static const Color lightCard = Color(0xFFFDFCF9); // Pure white
+  static const Color lightCardForeground = Color(0xFF17263B);
+
   // Primary - Deep spiritual slate
-  static const Color lightPrimary = Color(0xFF1E293B); // Slate 800 (Rich, professional)
-  static const Color lightPrimaryForeground = Color(0xFFFFFFFF); 
-  static const Color lightPrimaryGlow = Color(0xFF334155); 
-  
+  static const Color lightPrimary = Color(0xFF233E5F); // Slate 800 (Rich, professional)
+  static const Color lightPrimaryForeground = Color(0xFFF7F4EC);
+  static const Color lightPrimaryGlow = Color(0xFF2E5B93);
+
   // Secondary - Warm divine gold
-  static const Color lightSecondary = Color(0xFFFEF08A); 
-  static const Color lightSecondaryForeground = Color(0xFF1E3A8A); 
-  static const Color lightGold = Color(0xFFD4AF37); // Classic ALIVE Gold
-  static const Color lightGoldForeground = Color(0xFFFFFFFF); 
-  
+  static const Color lightSecondary = Color(0xFFF4E1B8);
+  static const Color lightSecondaryForeground = Color(0xFF233E5F);
+  static const Color lightGold = Color(0xFFE5B94D); // Classic ALIVE Gold
+  static const Color lightGoldForeground = Color(0xFF17263B);
+
   // Accent - Life/growth green
-  static const Color lightAccent = Color(0xFFDCFCE7); 
-  static const Color lightAccentForeground = Color(0xFF14532D); 
-  static const Color lightEmerald = Color(0xFF059669); // Professional emerald
-  static const Color lightEmeraldForeground = Color(0xFFFFFFFF); 
-  
-  static const Color lightMuted = Color(0xFFF8FAFC); 
-  static const Color lightMutedForeground = Color(0xFF64748B); // Slate 500
-  
-  static const Color lightDestructive = Color(0xFFEF4444); 
-  static const Color lightDestructiveForeground = Color(0xFFFFFFFF); 
-  
-  static const Color lightBorder = Color(0xFFE2E8F0); 
-  static const Color lightInput = Color(0xFFE2E8F0); 
-  static const Color lightRing = Color(0xFF1E3A8A); 
-  
+  static const Color lightAccent = Color(0xFFDCEBD9);
+  static const Color lightAccentForeground = Color(0xFF1F4C35);
+  static const Color lightEmerald = Color(0xFF2FAD72); // Professional emerald
+  static const Color lightEmeraldForeground = Color(0xFFF7F4EC);
+
+  static const Color lightMuted = Color(0xFFF6F2E9);
+  static const Color lightMutedForeground = Color(0xFF687586); // Slate 500
+
+  static const Color lightDestructive = Color(0xFFEF4444);
+  static const Color lightDestructiveForeground = Color(0xFFFFFFFF);
+
+  static const Color lightBorder = Color(0xFFE7E0D1);
+  static const Color lightInput = Color(0xFFE7E0D1);
+  static const Color lightRing = Color(0xFF233E5F);
+
   // Dark mode - peaceful night theme (High contrast, OLED friendly)
-  static const Color darkBackground = Color(0xFF0B0F19); // Rich, deep OLED blue-black
-  static const Color darkForeground = Color(0xFFF8FAFC); // Brilliant white
-  
-  static const Color darkCard = Color(0xFF151D2F); // Elevated dark surface
-  static const Color darkCardForeground = Color(0xFFF8FAFC); 
-  
-  static const Color darkPrimary = Color(0xFFE4C56A); // Warm gold for stronger contrast
-  static const Color darkPrimaryForeground = Color(0xFF0B0F19); // Deep background for contrast
-  static const Color darkPrimaryGlow = Color(0xFFF3DD97); 
-  
-  static const Color darkSecondary = Color(0xFF1E293B); 
-  static const Color darkSecondaryForeground = Color(0xFFF1F5F9); 
-  static const Color darkGold = Color(0xFFFDE047); // Brilliant gold
-  static const Color darkGoldForeground = Color(0xFF0B0F19); 
-  
-  static const Color darkAccent = Color(0xFF1E293B); 
-  static const Color darkAccentForeground = Color(0xFFF8FAFC); 
-  static const Color darkEmerald = Color(0xFF10B981); 
-  static const Color darkEmeraldForeground = Color(0xFFFFFFFF); 
-  
-  static const Color darkMuted = Color(0xFF1E293B); // Slate 800
-  static const Color darkMutedForeground = Color(0xFF94A3B8); // Brilliant slate 400
-  
-  static const Color darkDestructive = Color(0xFFEF4444); 
-  static const Color darkDestructiveForeground = Color(0xFFFFFFFF); 
-  
-  static const Color darkBorder = Color(0xFF334155); // Sharper borders
-  static const Color darkInput = Color(0xFF1E293B); 
-  static const Color darkRing = Color(0xFFFDE047); 
-  
+  static const Color darkBackground = Color(0xFF0D1520); // Rich, deep OLED blue-black
+  static const Color darkForeground = Color(0xFFEAE5D9); // Brilliant white
+
+  static const Color darkCard = Color(0xFF141F2D); // Elevated dark surface
+  static const Color darkCardForeground = Color(0xFFEAE5D9);
+
+  static const Color darkPrimary = Color(0xFFE7D39B); // Warm gold for stronger contrast
+  static const Color darkPrimaryForeground = Color(0xFF0D1520); // Deep background for contrast
+  static const Color darkPrimaryGlow = Color(0xFFF2DFAC);
+
+  static const Color darkSecondary = Color(0xFF1B2A3D);
+  static const Color darkSecondaryForeground = Color(0xFFEAE5D9);
+  static const Color darkGold = Color(0xFFF0C969); // Brilliant gold
+  static const Color darkGoldForeground = Color(0xFF0D1520);
+
+  static const Color darkAccent = Color(0xFF1B2A3D);
+  static const Color darkAccentForeground = Color(0xFFEAE5D9);
+  static const Color darkEmerald = Color(0xFF52C38B);
+  static const Color darkEmeraldForeground = Color(0xFF0D1520);
+
+  static const Color darkMuted = Color(0xFF1B2A3D); // Slate 800
+  static const Color darkMutedForeground = Color(0xFFAAB4C0); // Brilliant slate 400
+
+  static const Color darkDestructive = Color(0xFFEF4444);
+  static const Color darkDestructiveForeground = Color(0xFFFFFFFF);
+
+  static const Color darkBorder = Color(0xFF33445A); // Sharper borders
+  static const Color darkInput = Color(0xFF1B2A3D);
+  static const Color darkRing = Color(0xFFF0C969);
+
   // Spiritual gradients
   static const LinearGradient gradientPrimary = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [lightPrimary, lightPrimaryGlow],
   );
-  
+
   static const LinearGradient gradientDivine = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [lightGold, Color(0xFFF0C814)], // Enhanced gold
   );
-  
+
   static const LinearGradient gradientPeaceful = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
     colors: [lightBackground, Color(0xFFF5F1E8)],
   );
-  
+
   static const LinearGradient gradientGrowth = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [lightEmerald, Color(0xFF4FD1C7)],
   );
-  
+
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
       scaffoldBackgroundColor: lightBackground,
       canvasColor: lightBackground,
-      
+
       // Color Scheme
       colorScheme: const ColorScheme.light(
         brightness: Brightness.light,
@@ -161,7 +161,7 @@ class AppTheme {
         inversePrimary: darkPrimary,
         surfaceTint: lightPrimary,
       ),
-      
+
       // App Bar Theme
       appBarTheme: const AppBarTheme(
         backgroundColor: lightCard,
@@ -173,7 +173,7 @@ class AppTheme {
           fontSize: 18,
           fontWeight: FontWeight.w600,
           color: lightCardForeground,
-          letterSpacing: 0.5,
+          letterSpacing: 0,
         ),
         iconTheme: IconThemeData(
           color: lightCardForeground,
@@ -185,7 +185,7 @@ class AppTheme {
       primaryIconTheme: const IconThemeData(
         color: lightPrimaryForeground,
       ),
-      
+
       // Bottom Navigation Bar Theme
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: lightCard,
@@ -202,14 +202,14 @@ class AppTheme {
           fontSize: 12,
         ),
       ),
-      
+
       // Card Theme
       cardTheme: CardThemeData(
         color: lightCard,
         elevation: 2,
         shadowColor: lightPrimary.withValues(alpha: 0.15),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           side: const BorderSide(
             color: lightBorder,
             width: 1,
@@ -217,7 +217,7 @@ class AppTheme {
         ),
         margin: const EdgeInsets.all(8),
       ),
-      
+
       // Elevated Button Theme
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -242,7 +242,7 @@ class AppTheme {
           ),
         ),
       ),
-      
+
       // Text Button Theme
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
@@ -260,7 +260,7 @@ class AppTheme {
           ),
         ),
       ),
-      
+
       // Outlined Button Theme
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
@@ -279,7 +279,7 @@ class AppTheme {
           ),
         ),
       ),
-      
+
       // Input Decoration Theme
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -314,8 +314,8 @@ class AppTheme {
           fontWeight: FontWeight.w500,
         ),
       ),
-      
-      
+
+
       // Chip Theme
       chipTheme: ChipThemeData(
         backgroundColor: lightSecondary,
@@ -328,7 +328,7 @@ class AppTheme {
           borderRadius: BorderRadius.circular(20),
         ),
       ),
-      
+
       // Divider Theme
       dividerTheme: const DividerThemeData(
         color: lightBorder,
@@ -379,7 +379,7 @@ class AppTheme {
           ),
         ),
       ),
-      
+
       fontFamily: 'Inter',
 
       // Standard Text Hierarchy — visible in light mode (dark text on light bg)
@@ -414,7 +414,7 @@ class AppTheme {
       brightness: Brightness.dark,
       scaffoldBackgroundColor: darkBackground,
       canvasColor: darkBackground,
-      
+
       // Color Scheme
       colorScheme: const ColorScheme.dark(
         brightness: Brightness.dark,
@@ -447,7 +447,7 @@ class AppTheme {
         inversePrimary: lightPrimary,
         surfaceTint: darkPrimary,
       ),
-      
+
       // App Bar Theme
       appBarTheme: const AppBarTheme(
         backgroundColor: darkCard,
@@ -459,7 +459,7 @@ class AppTheme {
           fontSize: 18,
           fontWeight: FontWeight.w600,
           color: darkCardForeground,
-          letterSpacing: 0.5,
+          letterSpacing: 0,
         ),
         iconTheme: IconThemeData(
           color: darkCardForeground,
@@ -471,7 +471,7 @@ class AppTheme {
       primaryIconTheme: const IconThemeData(
         color: darkPrimaryForeground,
       ),
-      
+
       // Bottom Navigation Bar Theme
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: darkCard,
@@ -488,14 +488,14 @@ class AppTheme {
           fontSize: 12,
         ),
       ),
-      
+
       // Card Theme
       cardTheme: CardThemeData(
         color: darkCard,
         elevation: 8,
         shadowColor: Colors.black.withValues(alpha: 0.3),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           side: const BorderSide(
             color: darkBorder,
             width: 1,
@@ -503,7 +503,7 @@ class AppTheme {
         ),
         margin: const EdgeInsets.all(8),
       ),
-      
+
       // Elevated Button Theme
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -528,7 +528,7 @@ class AppTheme {
           ),
         ),
       ),
-      
+
       // Text Button Theme
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
@@ -546,7 +546,7 @@ class AppTheme {
           ),
         ),
       ),
-      
+
       // Outlined Button Theme
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
@@ -565,7 +565,7 @@ class AppTheme {
           ),
         ),
       ),
-      
+
       // Input Decoration Theme
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -600,8 +600,8 @@ class AppTheme {
           fontWeight: FontWeight.w500,
         ),
       ),
-      
-      
+
+
       // Chip Theme
       chipTheme: ChipThemeData(
         backgroundColor: darkSecondary,
@@ -614,7 +614,7 @@ class AppTheme {
           borderRadius: BorderRadius.circular(20),
         ),
       ),
-      
+
       // Divider Theme
       dividerTheme: const DividerThemeData(
         color: darkBorder,
@@ -665,7 +665,7 @@ class AppTheme {
           ),
         ),
       ),
-      
+
       fontFamily: 'Inter',
 
       // Standard Text Hierarchy — visible in dark mode (light text on dark bg)
@@ -693,52 +693,52 @@ class AppTheme {
   static Color getPrimaryColor(BuildContext context) {
     return Theme.of(context).colorScheme.primary;
   }
-  
+
   static Color getSecondaryColor(BuildContext context) {
     return Theme.of(context).colorScheme.secondary;
   }
-  
+
   static Color getSurfaceColor(BuildContext context) {
     return Theme.of(context).colorScheme.surface;
   }
-  
+
   static Color getOnSurfaceColor(BuildContext context) {
     return Theme.of(context).colorScheme.onSurface;
   }
-  
+
   static bool isDarkMode(BuildContext context) {
     return Theme.of(context).brightness == Brightness.dark;
   }
-  
+
   // Spiritual gradient utilities
   static LinearGradient getDivineGradient(BuildContext context) {
     final isDark = isDarkMode(context);
     return LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
-      colors: isDark 
+      colors: isDark
         ? [darkGold, const Color(0xFFF0C814)]
         : [lightGold, const Color(0xFFF0C814)],
     );
   }
-  
+
   static LinearGradient getPrimaryGradient(BuildContext context) {
     final isDark = isDarkMode(context);
     return LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
-      colors: isDark 
+      colors: isDark
         ? [darkPrimary, darkPrimaryGlow]
         : [lightPrimary, lightPrimaryGlow],
     );
   }
-  
+
   static LinearGradient getGrowthGradient(BuildContext context) {
     final isDark = isDarkMode(context);
     return LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
-      colors: isDark 
+      colors: isDark
         ? [darkEmerald, const Color(0xFF4FD1C7)]
         : [lightEmerald, const Color(0xFF4FD1C7)],
     );

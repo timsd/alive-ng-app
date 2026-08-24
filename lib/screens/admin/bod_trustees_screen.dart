@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../services/appwrite_profile_service.dart';
 import '../../services/auth_service.dart';
 import '../../models/app_models.dart';
 import 'board_reports_screen.dart';
 import 'board_decisions_screen.dart';
 import 'board_documents_screen.dart';
+import '../conference/livekit_meeting_screen.dart';
+import '../../config/meeting_links_config.dart';
 
 class BodTrusteesScreen extends StatefulWidget {
   const BodTrusteesScreen({super.key});
@@ -572,35 +573,13 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
     );
   }
 
-  Future<void> _joinMeeting(String meetingId) async {
-    try {
-      // Launch LiveKit meeting URL
-      final meetingUrl = 'https://meet.jit.si/$meetingId';
-
-      if (await canLaunchUrl(Uri.parse(meetingUrl))) {
-        await launchUrl(
-          Uri.parse(meetingUrl),
-          mode: LaunchMode.externalApplication,
-        );
-
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Joining meeting: $meetingId'),
-            backgroundColor: Colors.blue,
-          ),
-        );
-      } else {
-        throw 'Could not launch meeting URL';
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error joining meeting: $e'),
-          backgroundColor: Colors.red,
+  Future<void> _joinMeeting(String _) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const LiveKitMeetingScreen(
+          meetingType: MeetingType.board,
         ),
-      );
-    }
+      ),
+    );
   }
 }
