@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:appwrite/appwrite.dart' hide Locale;
 import 'config/development_config.dart';
-import 'services/kids_content_service.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'providers/theme_provider.dart';
@@ -81,12 +81,6 @@ void main() {
           await NotificationService.instance.initialize();
         } catch (e) {
           debugPrint('Notification initialization failed: $e');
-        }
-
-        try {
-          await KidsContentService.initializeKidsContent();
-        } catch (e) {
-          debugPrint('Failed to initialize Kids Content Service: $e');
         }
       } else {
         debugPrint(

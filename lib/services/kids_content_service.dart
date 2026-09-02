@@ -83,6 +83,17 @@ class KidsContentService {
     return mapped;
   }
 
+  static List<Map<String, dynamic>> _offlineItemsFor(String collection) {
+    return switch (collection) {
+      _memoryVersesCollection => _offlineMemoryVerses,
+      _prayerActivitiesCollection => _offlinePrayerActivities,
+      _serviceProjectsCollection => _offlineServiceProjects,
+      _kidsStoriesCollection => _offlineKidsStories,
+      _learningResourcesCollection => _offlineLearningResources,
+      _ => const <Map<String, dynamic>>[],
+    };
+  }
+
   static Future<List<Map<String, dynamic>>> _listAppwrite(
     String collection, {
     String? category,
@@ -95,8 +106,10 @@ class KidsContentService {
       tableId: _collectionId(collection),
       queries: [aw.Query.limit(200)],
     );
-    return snapshot.rows
-        .map(_documentData)
+    final remoteItems = snapshot.rows.map(_documentData).toList();
+    final items =
+        remoteItems.isEmpty ? _offlineItemsFor(collection) : remoteItems;
+    return items
         .where((item) => _matchesFilters(
               item,
               category: category,
