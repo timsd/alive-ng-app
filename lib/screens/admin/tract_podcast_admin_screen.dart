@@ -60,6 +60,27 @@ Map<String, dynamic> _categoryPayload({
 bool _activeFlag(Map<String, dynamic> data) =>
     (data['is_active'] as bool?) ?? (data['isActive'] as bool?) ?? true;
 
+const int _maxPodcastAudioBytes = 200000000;
+
+String _formatFileSize(int bytes) {
+  const mb = 1024 * 1024;
+  if (bytes >= mb) return '${(bytes / mb).toStringAsFixed(1)} MB';
+  const kb = 1024;
+  if (bytes >= kb) return '${(bytes / kb).toStringAsFixed(1)} KB';
+  return '$bytes B';
+}
+
+String _audioContentType(String fileName) {
+  final extension = fileName.split('.').last.toLowerCase();
+  return switch (extension) {
+    'm4a' => 'audio/mp4',
+    'wav' => 'audio/wav',
+    'aac' => 'audio/aac',
+    'ogg' => 'audio/ogg',
+    _ => 'audio/mpeg',
+  };
+}
+
 class TractPodcastAdminScreen extends StatefulWidget {
   const TractPodcastAdminScreen({super.key});
 
@@ -412,10 +433,29 @@ class _EpisodeFormDialogState extends State<_EpisodeFormDialog> {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.audio,
         allowMultiple: false,
+        withData: true,
       );
 
       if (result != null && result.files.isNotEmpty) {
         final file = result.files.first;
+        if (file.size > _maxPodcastAudioBytes) {
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(
+                'Audio file is ${_formatFileSize(file.size)}. Please choose a file below ${_formatFileSize(_maxPodcastAudioBytes)}.',
+              ),
+            ),
+          );
+          return;
+        }
+        if (file.bytes == null) {
+          messenger.showSnackBar(
+            const SnackBar(
+              content: Text('Unable to read the selected audio file.'),
+            ),
+          );
+          return;
+        }
         if (!mounted) return;
         setState(() {
           _selectedAudioBytes = file.bytes;
@@ -457,7 +497,7 @@ class _EpisodeFormDialogState extends State<_EpisodeFormDialog> {
           audioUrl = await storageService.uploadFile(
             'audio-files/${widget.podcast.id}/$fileName',
             _selectedAudioBytes!,
-            contentType: 'audio/mpeg',
+            contentType: _audioContentType(_selectedAudioName!),
           );
         }
 

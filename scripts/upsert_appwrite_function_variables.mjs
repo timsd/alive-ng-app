@@ -110,6 +110,10 @@ const projectId = requireEnv('APPWRITE_PROJECT_ID', '6a3bef53002f5090dedf');
 const databaseId = requireEnv('APPWRITE_DATABASE_ID', '6a089307002e54291a32');
 const apiKey = requireEnv('APPWRITE_API_KEY');
 const shouldDeploy = process.argv.includes('--deploy');
+const onlyFunctionArg = process.argv.find((arg) =>
+  arg.startsWith('--only-function='),
+);
+const onlyFunctionId = onlyFunctionArg?.split('=').slice(1).join('=');
 
 function envVariable(key, options = {}) {
   const value = options.required ? requireEnv(key) : optionalEnv(key);
@@ -147,6 +151,7 @@ const functionConfigs = [
       literalVariable('APPWRITE_PROJECT_ID', projectId),
       literalVariable('APPWRITE_DATABASE_ID', databaseId),
       literalVariable('APPWRITE_USERS_TABLE_ID', '6a08943100226f5b4963'),
+      envVariable('APPWRITE_FUNCTION_API_KEY', { secret: true }),
     ],
     create: {
       runtime: 'node-20.0',
@@ -304,6 +309,14 @@ async function deployFunction(config) {
 }
 
 for (const config of functionConfigs) {
+  if (
+    onlyFunctionId &&
+    config.id !== onlyFunctionId &&
+    config.name !== onlyFunctionId
+  ) {
+    continue;
+  }
+
   await ensureFunction(config);
 
   const variables = config.variables.filter(Boolean);

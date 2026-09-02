@@ -372,8 +372,7 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
                   imageUrl: widget.tract.primaryCover,
                   fit: BoxFit.cover,
                   borderRadius: BorderRadius.circular(10),
-                  placeholder:
-                      _buildPassportAvatar(""),
+                  placeholder: _buildPassportAvatar(""),
                 ),
               ),
 
@@ -466,7 +465,8 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+            border:
+                Border.all(color: Theme.of(context).colorScheme.outlineVariant),
           ),
           child: Text(
             widget.tract.description,
@@ -1080,7 +1080,7 @@ Download it from ALIVE-NG App www.app.alivenigeria.org
               Text(
                 description,
                 style: TextStyle(
-                  color: colors.onSurfaceVariant,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontSize: 12,
                 ),
               ),
@@ -1093,14 +1093,15 @@ Download it from ALIVE-NG App www.app.alivenigeria.org
 
   Widget _buildContentPage(int pageIndex) {
     final contentIndex = pageIndex - 1;
-    final hasDynamicContent =
-        _contentPages.isNotEmpty && contentIndex >= 0 && contentIndex < _contentPages.length;
+    final hasDynamicContent = _contentPages.isNotEmpty &&
+        contentIndex >= 0 &&
+        contentIndex < _contentPages.length;
     final dynamicText = hasDynamicContent ? _contentPages[contentIndex] : null;
-    final hasDynamicQuestion =
-        _reflectionQuestions.isNotEmpty &&
-            contentIndex >= 0 &&
-            contentIndex < _reflectionQuestions.length;
-    final question = hasDynamicQuestion ? _reflectionQuestions[contentIndex] : null;
+    final hasDynamicQuestion = _reflectionQuestions.isNotEmpty &&
+        contentIndex >= 0 &&
+        contentIndex < _reflectionQuestions.length;
+    final question =
+        hasDynamicQuestion ? _reflectionQuestions[contentIndex] : null;
 
     if (_loadingDynamicContent && _contentPages.isEmpty) {
       return const Center(child: CircularProgressIndicator());
@@ -1186,7 +1187,8 @@ Download it from ALIVE-NG App www.app.alivenigeria.org
     );
   }
 
-  Widget _buildQuestionSection(int pageIndex, {Map<String, dynamic>? question}) {
+  Widget _buildQuestionSection(int pageIndex,
+      {Map<String, dynamic>? question}) {
     final prompt = (question?['question'] ??
             question?['prompt'] ??
             question?['text'] ??
@@ -1369,7 +1371,7 @@ Download it from ALIVE-NG App www.app.alivenigeria.org
             Text(
               'Tap "Read More" to explore this passage in context.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colors.onSurfaceVariant,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
             ),
           ],
@@ -1445,7 +1447,8 @@ Download it from ALIVE-NG App www.app.alivenigeria.org
           ),
         );
         if (answers.isNotEmpty) {
-          await _tractService.saveUserAnswers(user.uid, widget.tract.id, answers);
+          await _tractService.saveUserAnswers(
+              user.uid, widget.tract.id, answers);
         }
 
         if (!rootCtx.mounted) return;

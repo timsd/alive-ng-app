@@ -7,6 +7,7 @@ export const appwriteProject = {
 };
 
 const appwrite17MaxFileSize = 30000000;
+const podcastMaxFileSize = 200000000;
 
 export const buckets = [
   {
@@ -36,7 +37,7 @@ export const buckets = [
   {
     id: 'podcast_media',
     name: 'Podcasts and Audio',
-    maximumFileSize: appwrite17MaxFileSize,
+    maximumFileSize: podcastMaxFileSize,
     allowedFileExtensions: ['mp3', 'm4a', 'wav', 'aac', 'jpg', 'jpeg', 'png', 'webp'],
   },
   {
@@ -94,6 +95,26 @@ const f = (key, required = false) => ({ type: 'float', key, required });
 const b = (key, required = false, defaultValue = undefined) => ({ type: 'boolean', key, required, default: defaultValue });
 const dt = (key, required = false) => ({ type: 'datetime', key, required });
 
+export const publicReadTableIds = new Set([
+  'app_settings',
+  'content_pages',
+  'projects',
+  'downloadable_materials',
+  'tracts',
+  'tract_contents',
+  'podcasts',
+  'podcast_episodes',
+  'study_guides',
+  'study_lessons',
+  'study_questions',
+  'daily_verses',
+  'memory_verses',
+  'prayer_activities',
+  'service_projects',
+  'kids_stories',
+  'kids_missions',
+  'learning_resources',
+]);
 export const tables = [
   {
     id: '6a08943100226f5b4963',

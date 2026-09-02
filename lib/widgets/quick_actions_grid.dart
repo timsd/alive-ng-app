@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../constants/app_constants.dart';
 import '../providers/language_provider.dart';
 import '../utils/text_formatter.dart';
 import '../utils/layout_fix_utils.dart';
@@ -31,10 +32,10 @@ class QuickActionsGrid extends ConsumerWidget {
       ),
       const QuickAction(
         icon: Icons.quiz,
-        title: 'Bible Quizzes',
+        title: 'Bible Game',
         subtitle: 'Test knowledge',
         color: Color(0xFF3B82F6), // Blue 500
-        route: '/bible-quizzes',
+        route: AppConstants.bibleGameRoute,
       ),
       const QuickAction(
         icon: Icons.restaurant,
@@ -107,7 +108,7 @@ class QuickActionsGrid extends ConsumerWidget {
             int crossAxisCount;
             double childAspectRatio;
             double horizontalPadding;
-            
+
             if (constraints.maxWidth < 400) {
               // Small mobile screens
               crossAxisCount = 2;
@@ -129,15 +130,17 @@ class QuickActionsGrid extends ConsumerWidget {
               childAspectRatio = 1.0;
               horizontalPadding = 32;
             }
-            
+
             return GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: crossAxisCount,
-                crossAxisSpacing: ResponsiveUtils.getResponsiveSpacing(context, 12),
-                mainAxisSpacing: ResponsiveUtils.getResponsiveSpacing(context, 12),
+                crossAxisSpacing:
+                    ResponsiveUtils.getResponsiveSpacing(context, 12),
+                mainAxisSpacing:
+                    ResponsiveUtils.getResponsiveSpacing(context, 12),
                 childAspectRatio: childAspectRatio,
               ),
               itemCount: actions.length,
@@ -193,76 +196,72 @@ class QuickActionCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: Container(
-            padding: const EdgeInsets.all(8), // Further reduced padding
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              color: Theme.of(context).colorScheme.surface,
-              border: Border.all(
-                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1),
-                width: 1,
-              ),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Icon container with fixed size
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: action.color.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    action.icon,
-                    color: action.color,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                // Title with flexible constraints
-                Flexible(
-                  child: LayoutFixUtils.responsiveText(
-                    action.title,
-                    context: context,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: Theme.of(context).colorScheme.onSurface,
-                          fontSize: 13,
-                        ),
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                // Subtitle with flexible constraints
-                Flexible(
-                  child: LayoutFixUtils.responsiveText(
-                    action.subtitle,
-                    context: context,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurface
-                              .withValues(alpha: 0.5),
-                          fontSize: 10,
-                        ),
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
+          padding: const EdgeInsets.all(8), // Further reduced padding
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            color: Theme.of(context).colorScheme.surface,
+            border: Border.all(
+              color:
+                  Theme.of(context).colorScheme.outline.withValues(alpha: 0.1),
+              width: 1,
             ),
           ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Icon container with fixed size
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: action.color.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  action.icon,
+                  color: action.color,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(height: 10),
+              // Title with flexible constraints
+              Flexible(
+                child: LayoutFixUtils.responsiveText(
+                  action.title,
+                  context: context,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontSize: 13,
+                      ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(height: 2),
+              // Subtitle with flexible constraints
+              Flexible(
+                child: LayoutFixUtils.responsiveText(
+                  action.subtitle,
+                  context: context,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.5),
+                        fontSize: 10,
+                      ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 }
-
-
-
-
-

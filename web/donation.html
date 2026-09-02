@@ -19,6 +19,7 @@
       --gold-soft: #f5e7b8;
       --white: #ffffff;
       --green: #10b981;
+      --red: #ef4444;
     }
 
     * {
@@ -206,6 +207,56 @@
       margin-top: 26px;
     }
 
+    .donation-form {
+      display: grid;
+      gap: 14px;
+      margin-top: 24px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .field label {
+      color: var(--slate-600);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .field input {
+      background: var(--white);
+      border: 1px solid var(--slate-200);
+      border-radius: 12px;
+      color: var(--slate-900);
+      font: inherit;
+      min-height: 48px;
+      padding: 12px 14px;
+      width: 100%;
+    }
+
+    .field input:focus {
+      border-color: var(--gold);
+      outline: 2px solid rgba(212, 175, 55, 0.25);
+    }
+
+    .status-message {
+      color: var(--slate-600);
+      font-size: 13px;
+      min-height: 20px;
+      text-align: center;
+    }
+
+    .status-message.error {
+      color: var(--red);
+      font-weight: 700;
+    }
+
+    .status-message.success {
+      color: var(--green);
+      font-weight: 700;
+    }
+
     .primary-button,
     .secondary-button {
       align-items: center;
@@ -218,12 +269,20 @@
       padding: 14px 18px;
       text-decoration: none;
       transition: transform 0.18s ease, box-shadow 0.18s ease;
+      cursor: pointer;
     }
 
     .primary-button {
       background: var(--gold);
       box-shadow: 0 12px 24px rgba(212, 175, 55, 0.26);
       color: var(--slate-900);
+      border: none;
+    }
+
+    .primary-button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
     }
 
     .secondary-button {
@@ -232,7 +291,7 @@
       color: var(--slate-800);
     }
 
-    .primary-button:hover,
+    .primary-button:hover:not(:disabled),
     .secondary-button:hover {
       transform: translateY(-1px);
     }
@@ -299,8 +358,8 @@
       <div class="eyebrow">Secure Giving</div>
       <h1>Support missions, discipleship, and community care.</h1>
       <p>
-        Donations now open inside the ALIVE app so Paystack, Appwrite records,
-        receipts, and downloadable materials stay connected in one secure flow.
+        Give securely through Paystack. Your donation is recorded in ALIVE's
+        Appwrite backend, and a receipt is tracked against the project you choose.
       </p>
       <div class="stats">
         <div class="stat"><strong>100%</strong><span>Paystack checkout</span></div>
@@ -314,20 +373,35 @@
         <div class="project-label">Selected project</div>
         <div id="project-title" class="project-title">General Mission Fund</div>
         <p id="project-copy" class="project-copy">
-          Open the donation page inside the app to choose an amount, receive a
-          tracked reference, and complete payment through Paystack.
+          Choose an amount, receive a tracked reference, and complete payment
+          through Paystack's secure checkout.
         </p>
         <div class="progress-track">
           <div id="progress-fill" class="progress-fill"></div>
         </div>
         <div class="amounts">
-          <span id="raised-label">Raised: tracked in app</span>
+          <span id="raised-label">Raised: tracked securely</span>
           <span id="goal-label">Goal: active project</span>
         </div>
-        <div class="actions">
-          <a id="open-app-donation" class="primary-button" href="/#/donation">Open secure donation</a>
-          <a class="secondary-button" href="/">Back to ALIVE app</a>
-        </div>
+        <form id="donation-form" class="donation-form">
+          <div class="field">
+            <label for="donor-name">Name</label>
+            <input id="donor-name" name="name" autocomplete="name" required>
+          </div>
+          <div class="field">
+            <label for="donor-email">Email</label>
+            <input id="donor-email" name="email" type="email" autocomplete="email" required>
+          </div>
+          <div class="field">
+            <label for="donation-amount">Amount (NGN)</label>
+            <input id="donation-amount" name="amount" type="number" min="100" step="100" inputmode="numeric" placeholder="Minimum 100" required>
+          </div>
+          <div class="actions">
+            <button id="donate-now" class="primary-button" type="submit">Continue securely with Paystack</button>
+            <a class="secondary-button" href="/">Back to ALIVE Nigeria</a>
+          </div>
+          <div id="donation-status" class="status-message" role="status" aria-live="polite"></div>
+        </form>
         <div class="trust"><span class="dot"></span> Card details are handled by Paystack, not by this server.</div>
       </div>
     </section>
@@ -335,6 +409,11 @@
 
   <script>
     (function () {
+      var APPWRITE_ENDPOINT = 'https://api.alivenigeria.org/v1';
+      var APPWRITE_PROJECT_ID = '6a3bef53002f5090dedf';
+      var PAYSTACK_FUNCTION_ID = 'paystack_payments';
+      var CALLBACK_URL = window.location.origin + '/donation.html?status=callback';
+
       var projects = {
         impact_hub_center: {
           title: 'Impact Hub Center',
@@ -362,9 +441,8 @@
       var query = new URLSearchParams(window.location.search);
       var projectId = query.get('projectId') || sessionStorage.getItem('selected_project_id') || '';
       var project = projects[projectId];
-      var target = '/#/donation' + (projectId ? '?projectId=' + encodeURIComponent(projectId) : '');
-
-      document.getElementById('open-app-donation').setAttribute('href', target);
+      var statusEl = document.getElementById('donation-status');
+      var donateBtn = document.getElementById('donate-now');
 
       if (project) {
         document.getElementById('project-title').textContent = project.title;
@@ -374,11 +452,93 @@
         document.getElementById('progress-fill').style.width = Math.max(0, Math.min(project.progress, 100)) + '%';
       }
 
-      try {
-        setTimeout(function () {
-          window.location.replace(target);
-        }, 1800);
-      } catch (_) { }
+      // Handle return from Paystack checkout.
+      if (query.get('status') === 'callback') {
+        statusEl.textContent = 'Payment complete or pending confirmation. A receipt is emailed once Paystack confirms your transaction.';
+        statusEl.className = 'status-message success';
+      }
+
+      function makeReference() {
+        var rand = Math.random().toString(36).slice(2, 8).toUpperCase();
+        return 'ALIVE-WEB-' + Date.now() + '-' + rand;
+      }
+
+      function setStatus(message, className) {
+        statusEl.textContent = message;
+        statusEl.className = 'status-message' + (className ? ' ' + className : '');
+      }
+
+      document.getElementById('donation-form').addEventListener('submit', async function (event) {
+        event.preventDefault();
+
+        var name = document.getElementById('donor-name').value.trim();
+        var email = document.getElementById('donor-email').value.trim();
+        var amountInput = document.getElementById('donation-amount').value;
+        var amountNaira = Number(amountInput);
+
+        if (!name || !email || !Number.isFinite(amountNaira) || amountNaira < 100) {
+          setStatus('Please enter a valid name, email, and amount of at least NGN 100.', 'error');
+          return;
+        }
+
+        var reference = makeReference();
+        var amountKobo = Math.round(amountNaira * 100);
+
+        donateBtn.disabled = true;
+        setStatus('Initializing secure checkout...', '');
+
+        try {
+          var response = await fetch(
+            APPWRITE_ENDPOINT + '/functions/' + PAYSTACK_FUNCTION_ID + '/executions',
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Appwrite-Project': APPWRITE_PROJECT_ID
+              },
+              body: JSON.stringify({
+                email: email,
+                reference: reference,
+                amount: amountKobo,
+                currency: 'NGN',
+                callback_url: CALLBACK_URL,
+                metadata: {
+                  donor_name: name,
+                  donor_email: email,
+                  project_id: projectId || 'general_mission_fund',
+                  donation_type: 'generalSupport',
+                  source: 'web_donation_page',
+                  amount_ngn: amountNaira
+                }
+              })
+            }
+          );
+
+          var result = await response.json().catch(function () { return {}; });
+
+          if (!response.ok) {
+            throw new Error(result.message || result.error || 'Checkout initialization failed (' + response.status + ').');
+          }
+
+          // Appwrite returns the execution wrapper; the function payload is in responseBody.
+          var payload = result.responseBody;
+          if (typeof payload === 'string') {
+            try { payload = JSON.parse(payload); } catch (_) { payload = {}; }
+          }
+
+          var authorizationUrl = payload && payload.authorization_url;
+          if (!authorizationUrl) {
+            throw new Error((payload && payload.error) || 'Paystack did not return a checkout URL. Please try again.');
+          }
+
+          try { sessionStorage.setItem('selected_project_id', projectId || ''); } catch (_) { }
+          setStatus('Redirecting to Paystack secure checkout...', 'success');
+          window.location.href = authorizationUrl;
+        } catch (err) {
+          setStatus(err.message || 'Something went wrong. Please try again.', 'error');
+          donateBtn.disabled = false;
+        }
+      });
     })();
   </script>
 </body>

@@ -70,12 +70,6 @@ void main() {
       } catch (e) {
         debugPrint('Dev config init failed: $e');
       }
-      try {
-        await GoogleSignInConfig.initialize();
-      } catch (e) {
-        debugPrint('Google Sign-In initialization failed, continuing: $e');
-      }
-
       if (backendReady) {
         try {
           await AnalyticsService.instance.initialize();

@@ -122,8 +122,10 @@ class TranslationService {
       'password': 'Password',
       'full_name': 'Full Name',
       'confirm_password': 'Confirm Password',
-      'create_account_message': 'Create your account to start your spiritual journey',
-      'welcome_back_message': 'Welcome back! Sign in to continue your spiritual growth',
+      'create_account_message':
+          'Create your account to start your spiritual journey',
+      'welcome_back_message':
+          'Welcome back! Sign in to continue your spiritual growth',
       'please_enter_full_name': 'Please enter your full name',
       'please_enter_email': 'Please enter your email',
       'please_enter_valid_email': 'Please enter a valid email address',
@@ -171,12 +173,19 @@ class TranslationService {
       'failed_to_load_verse': 'Failed to load verse',
       'featured_today': 'Featured Today',
       'health_message': 'Health Message: Natural Remedies',
-      'health_message_desc': 'Discover God\'s design for healthy living through the 8 natural doctors',
+      'health_message_desc':
+          'Discover God\'s design for healthy living through the 8 natural doctors',
       'mission_spotlight': 'Mission Spotlight: Northern Nigeria',
-      'mission_spotlight_desc': 'Read inspiring stories from our mission work across Nigeria',
+      'mission_spotlight_desc':
+          'Read inspiring stories from our mission work across Nigeria',
       'join_us_spiritual_growth': 'Join us in spiritual growth',
       'about_app': 'About App',
       'about_alive': 'About ALIVE',
+      'app_tagline': 'Bible study, prayer, and service in one community',
+      'resources': 'Resources',
+      'resources_title': 'Ministry Resources',
+      'resources_subtitle':
+          'Study, prayer, health, music, and outreach materials',
       'error_loading_reports': 'Error loading reports',
       'board_reports': 'Board Reports',
       'status': 'Status',
@@ -201,7 +210,8 @@ class TranslationService {
       'user_approved_successfully': 'User approved successfully',
       'user_rejected_successfully': 'User rejected successfully',
       'account_pending_approval': 'Account Pending Approval',
-      'account_under_review': 'Your account is currently under review. You\'ll have full access once approved.',
+      'account_under_review':
+          'Your account is currently under review. You\'ll have full access once approved.',
       'pending_admin_approval': 'Pending admin approval',
       'no_pending_users': 'No pending users found',
       'local_chapter': 'Local Chapter',
@@ -221,7 +231,8 @@ class TranslationService {
       'search_topic_or_reference': 'Search topic or Bible reference...',
       'searching_for': 'Searching for',
       'authentication_required': 'Authentication Required',
-      'prayer_auth_message': 'Please sign in to access prayer requests and share your prayer needs.',
+      'prayer_auth_message':
+          'Please sign in to access prayer requests and share your prayer needs.',
       'add_prayer_request': 'Add Prayer Request',
       'reply': 'Reply',
       'message_copied_to_clipboard': 'Message copied to clipboard',
@@ -242,7 +253,8 @@ class TranslationService {
       'dismiss': 'Dismiss',
       'gift_in_kind': 'Gift in Kind',
       'donate_specific_items': 'Donate Specific Items',
-      'gik_intro': 'Fill this form to donate specific items like ministry bus, land, etc.',
+      'gik_intro':
+          'Fill this form to donate specific items like ministry bus, land, etc.',
       'item_type': 'Item Type',
       'quantity': 'Quantity',
       'estimated_value_optional': 'Estimated Value (Optional)',
@@ -298,33 +310,45 @@ class TranslationService {
       'join': 'Join',
       'board_meeting_available': 'Board of Directors Meeting is available',
       'how_to_join_chapter': 'How do I join a local chapter?',
-      'join_chapter_answer': 'You can join a local chapter by navigating to the "Chapters" section on the Home screen, selecting a chapter near you, and clicking the "Join" button.',
+      'join_chapter_answer':
+          'You can join a local chapter by navigating to the "Chapters" section on the Home screen, selecting a chapter near you, and clicking the "Join" button.',
       'how_to_submit_prayer_request': 'How can I submit a prayer request?',
-      'prayer_request_answer': 'Go to the "Prayer" tab, click the "Add Request" button, fill in your details, and select "Public" or "Private".',
+      'prayer_request_answer':
+          'Go to the "Prayer" tab, click the "Add Request" button, fill in your details, and select "Public" or "Private".',
       'how_to_access_study_materials': 'How do I access study materials?',
-      'study_materials_answer': 'Navigate to the "Study" tab to see all available Bible study programs and lessons.',
+      'study_materials_answer':
+          'Navigate to the "Study" tab to see all available Bible study programs and lessons.',
       'how_to_track_health': 'How do I track my health activities?',
-      'health_tracking_answer': 'Use the "Health Tracking" quick action on the Home screen or navigate to the Health tab to log your activities.',
+      'health_tracking_answer':
+          'Use the "Health Tracking" quick action on the Home screen or navigate to the Health tab to log your activities.',
       'how_to_reset_password': 'How do I reset my password?',
-      'reset_password_answer': 'On the Sign In screen, click "Forgot Password". We will send you a link to reset your password via email.',
+      'reset_password_answer':
+          'On the Sign In screen, click "Forgot Password". We will send you a link to reset your password via email.',
       'how_to_change_language': 'How can I change the app language?',
-      'change_language_answer': 'Go to Profile > Settings > Language and select your preferred language or use the language icon on the AppBar for Quick Access.',
+      'change_language_answer':
+          'Go to Profile > Settings > Language and select your preferred language or use the language icon on the AppBar for Quick Access.',
       'search_faq': 'Search FAQ...',
       'getting_started': 'Getting Started',
-      'getting_started_desc': 'Learn the basics of using the ALIVE Nigeria app.',
+      'getting_started_desc':
+          'Learn the basics of using the ALIVE Nigeria app.',
       'using_prayer_wall': 'Using the Prayer Wall',
-      'prayer_wall_guide_desc': 'Discover how to share requests and pray for others.',
+      'prayer_wall_guide_desc':
+          'Discover how to share requests and pray for others.',
       'study_guides_tutorial': 'Study Guides Tutorial',
       'study_guides_desc': 'A step-by-step guide to completing study lessons.',
       'health_tracking_guide': 'Health Tracking Guide',
-      'health_tracking_desc': 'How to use the health tracker for better living.',
+      'health_tracking_desc':
+          'How to use the health tracker for better living.',
       'chapter_management': 'Chapter Management',
-      'chapter_management_desc': 'For chapter leaders on how to manage members.',
+      'chapter_management_desc':
+          'For chapter leaders on how to manage members.',
       'notification_settings_guide': 'Notification Settings',
-      'notification_settings_desc': 'Configure alerts for missions and prayers.',
+      'notification_settings_desc':
+          'Configure alerts for missions and prayers.',
       'user_guides': 'User Guides',
       'need_help': 'Need Help?',
-      'contact_us_message': 'Our support team is available to assist you with any questions or issues.',
+      'contact_us_message':
+          'Our support team is available to assist you with any questions or issues.',
       'office_hours': 'Office Hours',
       'send_feedback': 'Send Feedback',
       'feedback_type': 'Feedback Type',
@@ -376,7 +400,8 @@ class TranslationService {
       'full_name': 'Orukọ Kikun',
       'confirm_password': 'Jẹrisi Ọrọ Igbaniwọle',
       'create_account_message': 'Ṣẹda akọọlẹ rẹ lati bẹrẹ irin-ajo ẹmi rẹ',
-      'welcome_back_message': 'Káàbọ̀ pada! Wọle lati tẹsiwaju idagbasoke ẹmi rẹ',
+      'welcome_back_message':
+          'Káàbọ̀ pada! Wọle lati tẹsiwaju idagbasoke ẹmi rẹ',
       'please_enter_full_name': 'Jọwọ tẹ orukọ kikun rẹ sinu',
       'please_enter_email': 'Jọwọ tẹ imeeli rẹ sinu',
       'please_enter_valid_email': 'Jọwọ tẹ adirẹsi imeeli to tọ sinu',
@@ -424,12 +449,19 @@ class TranslationService {
       'failed_to_load_verse': 'Kuna lati gbe ọrọ',
       'featured_today': 'Pataki Loni',
       'health_message': 'Ifiranṣẹ Ilera: Awọn Egboogi Adayeba',
-      'health_message_desc': 'Ṣawari eto Ọlọrun fun igbesi aye ilera nipasẹ awọn dokita mẹjọ adayeba',
+      'health_message_desc':
+          'Ṣawari eto Ọlọrun fun igbesi aye ilera nipasẹ awọn dokita mẹjọ adayeba',
       'mission_spotlight': 'Ifojusi Iṣẹ: Ariwa Naijiria',
-      'mission_spotlight_desc': 'Ka awọn itan atilẹyin lati iṣẹ wa ni gbogbo Naijiria',
+      'mission_spotlight_desc':
+          'Ka awọn itan atilẹyin lati iṣẹ wa ni gbogbo Naijiria',
       'join_us_spiritual_growth': 'Darapọ mọ wa ni idagbasoke ẹmi',
       'about_app': 'Nipa Iṣafihan',
       'about_alive': 'Nipa ALIVE',
+      'app_tagline': 'Iwadi Bibeli, adura, ati ise ninu agbegbe kan',
+      'resources': 'Awon Ohun Elo',
+      'resources_title': 'Awon Ohun Elo Ise-Iranso',
+      'resources_subtitle':
+          'Iwadi, adura, ilera, orin, ati awon ohun elo ihinrere',
       'error_loading_reports': 'Aṣiṣe ninu gbigbe awọn ijabọ',
       'board_reports': 'Awọn Ijabọ Igbimọ',
       'status': 'Ipò',
@@ -454,7 +486,8 @@ class TranslationService {
       'user_approved_successfully': 'A ti fọwọsi olumulo ni aṣeyọri',
       'user_rejected_successfully': 'A ti kọ olumulo ni aṣeyọri',
       'account_pending_approval': 'Akọọlẹ N Duro Fun Ifọwọsi',
-      'account_under_review': 'Akọọlẹ rẹ wa labẹ ayẹwo. Iwọ yoo ni wiwọle kikun nigbati a ba fọwọsi.',
+      'account_under_review':
+          'Akọọlẹ rẹ wa labẹ ayẹwo. Iwọ yoo ni wiwọle kikun nigbati a ba fọwọsi.',
       'pending_admin_approval': 'N duro fun ifọwọsi alabojuto',
       'no_pending_users': 'Ko si awọn olumulo ti n duro',
       'local_chapter': 'Ẹka Agbegbe',
@@ -474,7 +507,8 @@ class TranslationService {
       'search_topic_or_reference': 'Wa koko tabi itọkasi Bibeli...',
       'searching_for': 'Ṣíṣe àwárí',
       'authentication_required': 'Ifọwọsi Nilo',
-      'prayer_auth_message': 'Jọwọ wọle lati wọle si awọn ibeere adura ati pin awọn iwulo adura rẹ.',
+      'prayer_auth_message':
+          'Jọwọ wọle lati wọle si awọn ibeere adura ati pin awọn iwulo adura rẹ.',
       'add_prayer_request': 'Fi Ibeere Adura kun',
       'reply': 'Dáhùn',
       'message_copied_to_clipboard': 'Ìrànṣẹ́ ti ṣẹda si clipboard',
@@ -495,7 +529,8 @@ class TranslationService {
       'dismiss': 'Kọ̀ Sílẹ̀',
       'gift_in_kind': 'Ẹbun ni Irisi',
       'donate_specific_items': 'Ṣebun awọn ohun kan pato',
-      'gik_intro': 'Kun fọọmu yii lati ṣebun awọn ohun kan pato bi ọkọ iṣẹ, ilẹ, ati bẹbẹ lọ.',
+      'gik_intro':
+          'Kun fọọmu yii lati ṣebun awọn ohun kan pato bi ọkọ iṣẹ, ilẹ, ati bẹbẹ lọ.',
       'item_type': 'Iru Ohun',
       'quantity': 'Opooye',
       'estimated_value_optional': 'Iye To Ṣeeṣe (Aṣayan)',
@@ -533,7 +568,8 @@ class TranslationService {
       'category_sabbath': 'Isinmi',
       'no_tracts_found': 'Ko si tirakti ti a ri',
       'no_downloads_yet': 'Ko si nkan ti a gba silẹ sibẹsibẹ',
-      'materials_download_message': 'Awọn ohun elo ti o ba gba silẹ yoo han nibi',
+      'materials_download_message':
+          'Awọn ohun elo ti o ba gba silẹ yoo han nibi',
       'view_pdf': 'Wo PDF',
       'administrative': 'Iṣakoso',
       'management': 'Itoju',
@@ -592,12 +628,14 @@ class TranslationService {
       'full_name': 'Aha Zuru Ezu',
       'confirm_password': 'Kwenye Okwu Nzuzo',
       'create_account_message': 'Mepụta akaụntụ gị iji malite njem ime mmụọ gị',
-      'welcome_back_message': 'Nnọọ azụ! Banye ka ị gaa n\'ihu na uto ime mmụọ gị',
+      'welcome_back_message':
+          'Nnọọ azụ! Banye ka ị gaa n\'ihu na uto ime mmụọ gị',
       'please_enter_full_name': 'Biko tinye aha zuru ezu gị',
       'please_enter_email': 'Biko tinye ozi eletrọnịkị gị',
       'please_enter_valid_email': 'Biko tinye adreesị ozi eletrọnịkị ziri ezi',
       'please_enter_password': 'Biko tinye okwu nzuzo gị',
-      'password_min_length': 'Okwu nzuzo ga-abụrịrị opekata mpe mkpụrụedemede 6',
+      'password_min_length':
+          'Okwu nzuzo ga-abụrịrị opekata mpe mkpụrụedemede 6',
       'passwords_do_not_match': 'Okwu nzuzo ahụ adabaghị',
       'submit': 'Ziga',
       'cancel': 'Kagbuo',
@@ -640,12 +678,19 @@ class TranslationService {
       'failed_to_load_verse': 'Enweghị ike ibu okwu',
       'featured_today': 'Ihe Pụtara Taa',
       'health_message': 'Ozi Ahụ Ike: Ọgwụ Okike',
-      'health_message_desc': 'Chọpụta atụmatụ Chineke maka ndụ ahụ ike site na ndị dọkịta asatọ okike',
+      'health_message_desc':
+          'Chọpụta atụmatụ Chineke maka ndụ ahụ ike site na ndị dọkịta asatọ okike',
       'mission_spotlight': 'Nleba Anya Ozi: Ugwu Naịjirịa',
-      'mission_spotlight_desc': 'Gụọ akụkọ na-akpali mmụọ site na ọrụ ozi anyị n\'ofe Naịjirịa',
+      'mission_spotlight_desc':
+          'Gụọ akụkọ na-akpali mmụọ site na ọrụ ozi anyị n\'ofe Naịjirịa',
       'join_us_spiritual_growth': 'Sonyere anyị na uto ime mmụọ',
       'about_app': 'Banyere Ngwa',
       'about_alive': 'Banyere ALIVE',
+      'app_tagline': 'Omumu Baibul, ekpere, na ije-ozi n’otu obodo',
+      'resources': 'Akụrụngwa',
+      'resources_title': 'Akụrụngwa Ozi',
+      'resources_subtitle':
+          'Ihe omumu, ekpere, ahuike, egwu, na ihe mgbasa ozi',
       'error_loading_reports': 'Njehie na-ebu akụkụkwụ',
       'board_reports': 'Akụkụkwụ Bọọdụ',
       'status': 'Ọnọdụ',
@@ -674,7 +719,8 @@ class TranslationService {
       'search_topic_or_reference': 'Chọọ isiokwu ma ọ bụ ntụaka Akwụkwọ Nsọ...',
       'searching_for': 'Na-achọ',
       'authentication_required': 'Ifọwọsi Nilo',
-      'prayer_auth_message': 'Biko banye iji nweta arịrịọ ekpere na kesaa ekpere gị.',
+      'prayer_auth_message':
+          'Biko banye iji nweta arịrịọ ekpere na kesaa ekpere gị.',
       'add_prayer_request': 'Tinye Arịrịọ Ekpere',
       'reply': 'Zaghachi',
       'message_copied_to_clipboard': 'Edepụtara ozi na clipboard',
@@ -695,7 +741,8 @@ class TranslationService {
       'dismiss': 'Wepụ',
       'gift_in_kind': 'Onyinye Ụdị',
       'donate_specific_items': 'Nyefe ihe pụrụ iche',
-      'gik_intro': 'Jupụta fọm a ka i nyefe ihe pụrụ iche dịka bọs ọrụ, ala, wdg.',
+      'gik_intro':
+          'Jupụta fọm a ka i nyefe ihe pụrụ iche dịka bọs ọrụ, ala, wdg.',
       'item_type': 'Ụdị Ihe',
       'quantity': 'Ọnụọgụ',
       'estimated_value_optional': 'Ọnụ Ahịa A Tụlere (Nhọrọ)',
@@ -791,11 +838,14 @@ class TranslationService {
       'password': 'Kalmar Sirri',
       'full_name': 'Cikakken Suna',
       'confirm_password': 'Tabbatar da Kalmar Sirri',
-      'create_account_message': 'Ƙirƙiri asusun ku don fara tafiyar ruhaniyar ku',
-      'welcome_back_message': 'Maraba da dawowa! Shiga don ci gaba da haɓaka ruhaniyar ku',
+      'create_account_message':
+          'Ƙirƙiri asusun ku don fara tafiyar ruhaniyar ku',
+      'welcome_back_message':
+          'Maraba da dawowa! Shiga don ci gaba da haɓaka ruhaniyar ku',
       'please_enter_full_name': 'Da fatan za a shigar da cikakken sunan ku',
       'please_enter_email': 'Da fatan za a shigar da imel ɗin ku',
-      'please_enter_valid_email': 'Da fatan za a shigar da ingantaccen adireshin imel',
+      'please_enter_valid_email':
+          'Da fatan za a shigar da ingantaccen adireshin imel',
       'please_enter_password': 'Da fatan za a shigar da kalmar sirrin ku',
       'password_min_length': 'Kalmar sirri dole ta kasance a ƙalla haruffa 6',
       'passwords_do_not_match': 'Kalmomin sirri ba su dace ba',
@@ -840,12 +890,19 @@ class TranslationService {
       'failed_to_load_verse': 'An kasa loda aya',
       'featured_today': 'Abin da ya Fito Yau',
       'health_message': 'Saƙon Lafiya: Magungunan Halitta',
-      'health_message_desc': 'Gano tsarin Allah don rayuwa mai lafiya ta hanyar likitoci takwas na halitta',
+      'health_message_desc':
+          'Gano tsarin Allah don rayuwa mai lafiya ta hanyar likitoci takwas na halitta',
       'mission_spotlight': 'Haskaka Aiki: Arewacin Najeriya',
-      'mission_spotlight_desc': 'Karanta labarai masu ban sha\'awa daga aikin mu a duk fadin Najeriya',
+      'mission_spotlight_desc':
+          'Karanta labarai masu ban sha\'awa daga aikin mu a duk fadin Najeriya',
       'join_us_spiritual_growth': 'Ku haɗu da mu wajen haɓaka ruhaniya',
       'about_app': 'Game da App',
       'about_alive': 'Game da ALIVE',
+      'app_tagline':
+          'Nazarin Littafi Mai Tsarki, addu’a, da hidima a al’umma daya',
+      'resources': 'Albarkatu',
+      'resources_title': 'Albarkatun Hidima',
+      'resources_subtitle': 'Nazari, addu’a, lafiya, waka, da kayan wa’azi',
       'error_loading_reports': 'Kuskure wajen loda rahotanni',
       'board_reports': 'Rahotannin Hukuma',
       'status': 'Matsayi',
@@ -865,16 +922,19 @@ class TranslationService {
       'password_reset_email_sent': 'An aika imel sake saita kalmar sirri!',
       'send_reset_link': 'Aika Hanyar Sake Saita',
       'bible_reader': 'Mai Karanta Littafi Mai Tsarki',
-      'enter_bible_reference': 'Shigar da Nassoshi Littafi Mai Tsarki (misali, Yahaya 3:16)',
+      'enter_bible_reference':
+          'Shigar da Nassoshi Littafi Mai Tsarki (misali, Yahaya 3:16)',
       'go': 'Tafi',
       'verse_copied_to_clipboard': 'An kwafi aya zuwa clipboard',
       'copy': 'Kwafi',
       'search_verses': 'Nemo ayoyi...',
       'opening_book': 'Ana buɗewa',
-      'search_topic_or_reference': 'Nemo jigo ko nassoshi Littafi Mai Tsarki...',
+      'search_topic_or_reference':
+          'Nemo jigo ko nassoshi Littafi Mai Tsarki...',
       'searching_for': 'Neman',
       'authentication_required': 'Ana Bukatar Tabbatarwa',
-      'prayer_auth_message': 'Da fatan za a shiga don samun damar yin bukatun addu\'a da raba bukatun addu\'ar ku.',
+      'prayer_auth_message':
+          'Da fatan za a shiga don samun damar yin bukatun addu\'a da raba bukatun addu\'ar ku.',
       'add_prayer_request': 'Kara Bukatar Addu\'a',
       'reply': 'Amsa',
       'message_copied_to_clipboard': 'An kwafi saƙo zuwa clipboard',
@@ -895,7 +955,8 @@ class TranslationService {
       'dismiss': 'Watsar',
       'gift_in_kind': 'Kyauta ta Musamman',
       'donate_specific_items': 'Ba da gudummawar abubuwa na musamman',
-      'gik_intro': 'Cika wannan fom don bayar da abubuwa na musamman kamar bas ɗin hidima, ƙasa, wdg.',
+      'gik_intro':
+          'Cika wannan fom don bayar da abubuwa na musamman kamar bas ɗin hidima, ƙasa, wdg.',
       'item_type': 'Nau\'in Abu',
       'quantity': 'Yawan Abu',
       'estimated_value_optional': 'Kimanta Kudi (Zabi)',
@@ -944,9 +1005,12 @@ class TranslationService {
       'christian_community': 'Al\'ummar Kirista',
       'community': 'Al\'umma',
       'page_not_found': 'Ba a sami wannan shafin ba',
-      'admin_role_claimed': 'An sami nasarar neman matsayin gudanarwa. Fita sannan ka sake shigowa.',
-      'claim_failed': 'Neman matsayin ya gaza. Tabbatar cewa an tura Cloud Function.',
-      'could_not_claim_admin': 'Ba za a iya neman matsayin gudanarwa a yanzu ba.',
+      'admin_role_claimed':
+          'An sami nasarar neman matsayin gudanarwa. Fita sannan ka sake shigowa.',
+      'claim_failed':
+          'Neman matsayin ya gaza. Tabbatar cewa an tura Cloud Function.',
+      'could_not_claim_admin':
+          'Ba za a iya neman matsayin gudanarwa a yanzu ba.',
       'join': 'Kasance tare da mu',
       'board_meeting_available': 'Taron Hukumar Gudanarwa yana samuwa',
     },

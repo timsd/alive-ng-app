@@ -21,8 +21,8 @@ class ConferencePlatformScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TextField(
-              decoration: const InputDecoration(
+            const TextField(
+              decoration: InputDecoration(
                 labelText: 'ALIVE Meet room',
                 hintText: roomName,
                 border: OutlineInputBorder(),
@@ -36,7 +36,7 @@ class ConferencePlatformScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (context) => LiveKitMeetingScreen(
+                    builder: (context) => const LiveKitMeetingScreen(
                       customRoomName: roomName,
                     ),
                   ),

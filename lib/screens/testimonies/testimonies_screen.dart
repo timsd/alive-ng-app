@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../models/testimony_model.dart';
 import '../../providers/testimony_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/language_provider.dart';
 import '../../utils/responsive_utils.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -28,9 +30,15 @@ class _TestimoniesScreenState extends ConsumerState<TestimoniesScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    final testimonyService = ref.read(testimonyServiceProvider);
-    _publicTestimoniesFuture = testimonyService.fetchTestimonies();
-    _myTestimoniesFuture = testimonyService.fetchMyTestimonies();
+    final currentUser = ref.read(currentUserProvider);
+    if (currentUser == null) {
+      _publicTestimoniesFuture = Future.value(const <Testimony>[]);
+      _myTestimoniesFuture = Future.value(const <Testimony>[]);
+    } else {
+      final testimonyService = ref.read(testimonyServiceProvider);
+      _publicTestimoniesFuture = testimonyService.fetchTestimonies();
+      _myTestimoniesFuture = testimonyService.fetchMyTestimonies();
+    }
   }
 
   @override
@@ -40,6 +48,7 @@ class _TestimoniesScreenState extends ConsumerState<TestimoniesScreen>
   }
 
   void _refreshTestimonies() {
+    if (ref.read(currentUserProvider) == null) return;
     final testimonyService = ref.read(testimonyServiceProvider);
     setState(() {
       _publicTestimoniesFuture = testimonyService.fetchTestimonies();
@@ -171,6 +180,17 @@ class _TestimoniesScreenState extends ConsumerState<TestimoniesScreen>
   Widget build(BuildContext context) {
     final translate = ref.watch(translationProvider);
     final theme = Theme.of(context);
+    final currentUser = ref.watch(currentUserProvider);
+
+    if (currentUser == null) {
+      return Scaffold(
+        appBar: CustomAppBar(
+          title: translate('testimonies'),
+          showBackButton: true,
+        ),
+        body: _buildGuestState(context),
+      );
+    }
     return Scaffold(
       appBar: CustomAppBar(
         title: translate('testimonies'),
@@ -196,6 +216,60 @@ class _TestimoniesScreenState extends ConsumerState<TestimoniesScreen>
         child: Icon(
           Icons.add,
           size: ResponsiveUtils.getResponsiveIconSize(context, 24),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGuestState(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: CustomCard(
+          borderRadius: BorderRadius.circular(22),
+          child: Padding(
+            padding: ResponsiveUtils.getResponsivePadding(context),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.forum_outlined,
+                  size: ResponsiveUtils.getResponsiveIconSize(context, 48),
+                  color: theme.colorScheme.primary,
+                ),
+                SizedBox(
+                  height: ResponsiveUtils.getResponsiveSpacing(context, 16),
+                ),
+                Text(
+                  'Community testimonies',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(
+                  height: ResponsiveUtils.getResponsiveSpacing(context, 8),
+                ),
+                Text(
+                  'Sign in to read approved testimonies and share what God has done.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    height: 1.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(
+                  height: ResponsiveUtils.getResponsiveSpacing(context, 18),
+                ),
+                FilledButton.icon(
+                  onPressed: () => context.go('/auth'),
+                  icon: const Icon(Icons.login_rounded),
+                  label: const Text('Sign in'),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

@@ -1,6 +1,6 @@
 name: alive_flutter_app
 description: A Flutter version of the ALIVE-NG Ministry app
-version: 1.1.2+4
+version: 2.0.0+6
 environment:
   sdk: '>=3.0.0 <4.0.0'
   flutter: ">=3.10.0"
@@ -130,4 +130,8 @@ flutter:
     - assets/icons/
     - assets/data/
     - assets/bible/
+    - assets/bible_bundles/en/
+    - assets/bible_bundles/ha/
+    - assets/bible_bundles/ig/
+    - assets/bible_bundles/yo/
 

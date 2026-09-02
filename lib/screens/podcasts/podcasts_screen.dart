@@ -170,13 +170,46 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
     }).toList();
   }
 
+  Widget _buildEmptyPodcastState(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.podcasts_outlined,
+              size: 48,
+              color: colors.onSurfaceVariant,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No podcast episodes yet',
+              style: Theme.of(context).textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'New ALIVE messages will appear here when they are published.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildAllShowsTab() {
     return Consumer(
       builder: (context, ref, child) {
         final podcasts = ref.watch(podcastProvider);
 
         if (podcasts.isEmpty) {
-          return const Center(child: CircularProgressIndicator());
+          return _buildEmptyPodcastState(context);
         }
 
         return Builder(
@@ -419,7 +452,10 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
                       vertical:
                           ResponsiveUtils.getResponsiveSpacing(context, 8)),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(
                         ResponsiveUtils.getResponsiveSpacing(context, 2)),
                   ),
@@ -448,7 +484,8 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
                         borderRadius: BorderRadius.circular(
                             ResponsiveUtils.getResponsiveSpacing(context, 12)),
                         backgroundColor: Theme.of(context)
-                            .colorScheme.primary
+                            .colorScheme
+                            .primary
                             .withValues(alpha: 0.1),
                         placeholder: Icon(
                           Icons.headset,
@@ -527,44 +564,45 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
                           ref.watch(podcastEpisodesProvider(podcast.id));
                       return episodesAsync.when(
                         data: (episodes) => ListView.builder(
-                    controller: scrollController,
-                    padding: EdgeInsets.symmetric(
-                        horizontal:
-                            ResponsiveUtils.getResponsiveSpacing(context, 16)),
-                    itemCount: episodes.length,
-                    itemBuilder: (context, episodeIndex) {
-                      final episodeModel = episodes[episodeIndex];
-                      final episode = _episodeToMap(episodeModel);
-                      return ListTile(
-                        leading: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: Theme.of(context)
-                                .colorScheme.primary
-                                .withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            Icons.play_arrow,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                        ),
-                        title: Text(episodeModel.title),
-                        subtitle: Text(
-                            '${episodeModel.duration} • ${episodeModel.publishDate.toIso8601String().split('T').first}'),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.more_vert),
-                          onPressed: () {
-                            _showEpisodeOptions(context, episode);
+                          controller: scrollController,
+                          padding: EdgeInsets.symmetric(
+                              horizontal: ResponsiveUtils.getResponsiveSpacing(
+                                  context, 16)),
+                          itemCount: episodes.length,
+                          itemBuilder: (context, episodeIndex) {
+                            final episodeModel = episodes[episodeIndex];
+                            final episode = _episodeToMap(episodeModel);
+                            return ListTile(
+                              leading: Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .primary
+                                      .withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  Icons.play_arrow,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                              ),
+                              title: Text(episodeModel.title),
+                              subtitle: Text(
+                                  '${episodeModel.duration} • ${episodeModel.publishDate.toIso8601String().split('T').first}'),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.more_vert),
+                                onPressed: () {
+                                  _showEpisodeOptions(context, episode);
+                                },
+                              ),
+                              onTap: () {
+                                _playEpisode(context, episode);
+                              },
+                            );
                           },
                         ),
-                        onTap: () {
-                          _playEpisode(context, episode);
-                        },
-                      );
-                    },
-                  ),
                         loading: () =>
                             const Center(child: CircularProgressIndicator()),
                         error: (error, stack) => Center(

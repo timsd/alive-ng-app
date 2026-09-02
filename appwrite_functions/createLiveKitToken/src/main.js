@@ -17,7 +17,9 @@ async function getRole(userId, req) {
   const endpoint = process.env.APPWRITE_ENDPOINT?.replace(/\/$/, '');
   const projectId = process.env.APPWRITE_PROJECT_ID;
   const databaseId = process.env.APPWRITE_DATABASE_ID;
-  const apiKey = req.headers['x-appwrite-key'];
+  const apiKey =
+    req.headers['x-appwrite-key'] ||
+    process.env.APPWRITE_FUNCTION_API_KEY;
   const usersTableId = process.env.APPWRITE_USERS_TABLE_ID;
   if (!endpoint || !projectId || !databaseId || !apiKey || !usersTableId) {
     throw new Error('Private ALIVE Meet rooms are not configured for role verification.');

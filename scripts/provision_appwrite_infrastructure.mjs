@@ -45,6 +45,7 @@ console.warn = (...args) => {
 const {
   appwriteProject,
   buckets,
+  publicReadTableIds,
   tables,
   teams,
   topics,
@@ -55,8 +56,13 @@ const dryRun = process.argv.includes('--dry-run');
 const useLegacyDatabases = process.argv.includes('--legacy-databases');
 const onlyProviders = process.argv.includes('--only-providers');
 const skipMessaging = process.argv.includes('--skip-messaging');
+const permissionsOnly = process.argv.includes('--permissions-only');
 const onlyTableArg = process.argv.find((arg) => arg.startsWith('--only-table='));
 const onlyTableId = onlyTableArg?.split('=').slice(1).join('=');
+const onlyBucketArg = process.argv.find((arg) =>
+  arg.startsWith('--only-bucket='),
+);
+const onlyBucketId = onlyBucketArg?.split('=').slice(1).join('=');
 const apiKey = process.env.APPWRITE_API_KEY;
 const provisionDelayMs = Number(process.env.APPWRITE_PROVISION_DELAY_MS || 250);
 
@@ -214,6 +220,33 @@ async function ensureTable(tablesDB, databases, table) {
     }
   }
 
+  if (publicReadTableIds.has(table.id)) {
+    const desiredPermission = 'read("any")';
+    if (dryRun) {
+      log(`  [dry-run] ensure permission ${desiredPermission}`);
+    } else {
+      const resource = await get({
+        databaseId: appwriteProject.databaseId,
+        [useLegacyDatabases ? 'collectionId' : 'tableId']: table.id,
+      });
+      const currentPermissions = resource?.$permissions || [];
+      if (!currentPermissions.includes(desiredPermission)) {
+        const update = useLegacyDatabases
+          ? service.updateCollection.bind(service)
+          : service.updateTable.bind(service);
+        await update({
+          databaseId: appwriteProject.databaseId,
+          [useLegacyDatabases ? 'collectionId' : 'tableId']: table.id,
+          name: resource.name || table.name,
+          permissions: [...currentPermissions, desiredPermission],
+        });
+        log(`  Added public read permission ${table.id}`);
+      }
+    }
+  }
+
+  if (permissionsOnly) return;
+
   for (const column of table.columns) {
     await ensureColumn(tablesDB, databases, table.id, column);
   }
@@ -365,6 +398,7 @@ async function ensureIndex(tablesDB, databases, tableId, index) {
 
 async function ensureBuckets(storage) {
   for (const bucket of buckets) {
+    if (onlyBucketId && bucket.id !== onlyBucketId) continue;
     const params = {
       bucketId: bucket.id,
       name: bucket.name,
@@ -543,7 +577,23 @@ async function main() {
 
   await assertTablesDBAvailable();
   await ensureDatabase(tablesDB, databases);
+
+  if (permissionsOnly) {
+    for (const table of tables) {
+      if (!publicReadTableIds.has(table.id)) continue;
+      await withRetry(`permissions ${table.id}`, () =>
+        ensureTable(tablesDB, databases, table),
+      );
+    }
+    log('Appwrite public read permissions complete.');
+    return;
+  }
+
   await ensureBuckets(storage);
+  if (onlyBucketId) {
+    log('Appwrite bucket provisioning complete.');
+    return;
+  }
   await ensureTeams(teamsService);
   if (skipMessaging) {
     log('[skip] messaging: requested --skip-messaging');

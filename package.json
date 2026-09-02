@@ -1,10 +1,14 @@
 {
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "dev": "node scripts/flutter_web.mjs run",
     "build:web": "node scripts/flutter_web.mjs build",
     "appwrite:ping": "node scripts/appwrite_platform_ping.mjs",
     "appwrite:dry-run": "node scripts/provision_appwrite_infrastructure.mjs --dry-run",
     "appwrite:provision": "node scripts/provision_appwrite_infrastructure.mjs",
+    "appwrite:permissions": "node scripts/provision_appwrite_infrastructure.mjs --permissions-only",
     "appwrite:provision:legacy": "node scripts/provision_appwrite_infrastructure.mjs --legacy-databases",
     "appwrite:providers": "node scripts/provision_appwrite_infrastructure.mjs --legacy-databases --only-providers",
     "appwrite:provision:admin-notifications": "node scripts/provision_appwrite_infrastructure.mjs --only-table=admin_notifications",
@@ -15,6 +19,7 @@
     "appwrite:app-version": "node scripts/upsert_appwrite_app_version.mjs",
     "appwrite:function-vars": "node scripts/upsert_appwrite_function_variables.mjs",
     "appwrite:deploy-functions": "node scripts/upsert_appwrite_function_variables.mjs --deploy",
+    "appwrite:deploy-livekit": "node scripts/upsert_appwrite_function_variables.mjs --deploy --only-function=createLiveKitToken",
     "appwrite:deploy-send-email": "node scripts/upsert_appwrite_function_variables.mjs --deploy",
     "appwrite:verify-interrupted-cleanup": "node scripts/verify_interrupted_legacy_cleanup.mjs",
     "smoke:web-routes": "node test/integration/web_route_smoke_test.js",
@@ -25,3 +30,4 @@
     "puppeteer": "^24.39.0"
   }
 }
+

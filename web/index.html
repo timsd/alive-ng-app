@@ -274,6 +274,9 @@
       display: grid;
       grid-template-columns: 1fr 1.2fr;
       gap: 0;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
     }
 
     .modal-controls {
@@ -285,8 +288,8 @@
 
     .projects-list {
       border-right: 1px solid #E2E8F0;
-      max-height: calc(92vh - 60px);
-      overflow: auto;
+      overflow-y: auto;
+      min-height: 0;
     }
 
     .projects-item {
@@ -311,8 +314,11 @@
 
     .project-detail {
       padding: 16px 20px;
-      max-height: calc(92vh - 60px);
-      overflow: auto;
+      overflow-y: auto;
+      min-height: 0;
+      /* Reserve room so the action buttons are never clipped at the bottom */
+      padding-bottom: 28px;
+      scroll-padding-bottom: 28px;
     }
 
     .project-actions {
@@ -320,6 +326,11 @@
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
+      position: sticky;
+      bottom: 0;
+      background: #ffffff;
+      padding: 12px 0 4px;
+      border-top: 1px solid #EDF2F7;
     }
 
     .btn {
@@ -407,11 +418,27 @@
       .projects-list {
         border-right: none;
         border-bottom: 1px solid #E2E8F0;
-        max-height: 44vh;
+        max-height: 34vh;
+        overflow-y: auto;
       }
 
       .project-detail {
-        max-height: 44vh;
+        max-height: none;
+        min-height: 0;
+        overflow-y: auto;
+        flex: 1;
+      }
+
+      .modal {
+        display: flex;
+        flex-direction: column;
+        height: min(92dvh, 760px);
+      }
+
+      .modal-body {
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
       }
 
       .btn {
@@ -973,7 +1000,8 @@
       `;
       document.getElementById(`donate-${p.id}`)?.addEventListener('click', () => {
         try { sessionStorage.setItem('selected_project_id', p.id); } catch (_) { }
-        loadFlutterApp(`/donation?projectId=${encodeURIComponent(p.id)}`);
+        window.location.href =
+          `/donation.html?projectId=${encodeURIComponent(p.id)}`;
       });
       document.getElementById(`admin-note-${p.id}`)?.addEventListener('click', () => {
         alert('Admins can update project details inside the ALIVE-NG app. Open the app and use the Admin section.');

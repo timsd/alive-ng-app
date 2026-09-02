@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:archive/archive.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -14,6 +15,7 @@ class OfflineBibleService {
   final BibleDatabaseHelper _dbHelper;
 
   static final Logger _logger = Logger('OfflineBibleService');
+  final Map<String, Archive> _bundleCache = {};
 
   OfflineBibleService._internal({
     BibleDatabaseHelper? dbHelper,
@@ -38,7 +40,7 @@ class OfflineBibleService {
     'en': [
       {'code': 'KJV', 'name': 'King James Version'},
       {'code': 'NIV', 'name': 'New International Version'},
-      {'code': 'ESV', 'name': 'English Standard Version'},
+      {'code': 'ASV', 'name': 'American Standard Version'},
       {'code': 'NASB', 'name': 'New American Standard Bible'},
       {'code': 'NKJV', 'name': 'New King James Version'},
       {'code': 'NLT', 'name': 'New Living Translation'},
@@ -58,7 +60,7 @@ class OfflineBibleService {
   static const Map<String, String> supportedVersions = {
     'KJV': 'King James Version (English)',
     'NIV': 'New International Version (English)',
-    'ESV': 'English Standard Version (English)',
+    'ASV': 'American Standard Version (English)',
     'NLT': 'New Living Translation (English)',
     'NASB': 'New American Standard Bible (English)',
     'NKJV': 'New King James Version (English)',
@@ -154,8 +156,8 @@ class OfflineBibleService {
       final languageCode = language ?? _defaultLanguage;
 
       if (!kIsWeb) {
-        final cachedChapter =
-            await _dbHelper.getChapter(book, chapter, versionCode, languageCode);
+        final cachedChapter = await _dbHelper.getChapter(
+            book, chapter, versionCode, languageCode);
         if (cachedChapter != null && cachedChapter.verses.isNotEmpty) {
           return cachedChapter;
         }
@@ -502,11 +504,18 @@ class OfflineBibleService {
     final candidates =
         _buildChapterAssetCandidates(book, chapter, version, language);
     Object? lastError;
-    for (final assetPath in candidates) {
-      try {
-        final String chapterJson = await rootBundle.loadString(assetPath);
-        final Map<String, dynamic> chapterData = json.decode(chapterJson);
 
+    try {
+      final archive = await _loadVersionBundle(language, version);
+      for (final assetPath in candidates) {
+        final fileName = assetPath.split('/').last;
+        final file = archive.findFile(fileName);
+        if (file == null || !file.isFile || file.content is! List<int>) {
+          continue;
+        }
+
+        final chapterJson = utf8.decode(file.content as List<int>);
+        final Map<String, dynamic> chapterData = json.decode(chapterJson);
         final verses = (chapterData['verses'] as List<dynamic>)
             .map((v) => BibleVerse(
                   number: v['verse'],
@@ -525,16 +534,34 @@ class OfflineBibleService {
           metadata: chapterData['metadata'],
           lastUpdated: DateTime.now(),
         );
-      } catch (e) {
-        lastError = e;
       }
+    } catch (error) {
+      lastError = error;
     }
+
     _logger.error(
-      'Error loading chapter from assets. Tried ${candidates.length} candidates',
+      'Error loading chapter from bundle. Tried ${candidates.length} candidates',
       lastError,
     );
-    throw NotFoundException('Failed to load chapter from assets',
-        originalError: lastError);
+    throw NotFoundException(
+      'Failed to load chapter from Bible bundle',
+      originalError: lastError,
+    );
+  }
+
+  Future<Archive> _loadVersionBundle(String language, String version) async {
+    final cacheKey = '$language/$version';
+    final cached = _bundleCache[cacheKey];
+    if (cached != null) return cached;
+
+    final data = await rootBundle.load(
+      'assets/bible_bundles/$language/$version.zip',
+    );
+    final bytes =
+        data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+    final archive = ZipDecoder().decodeBytes(bytes, verify: true);
+    _bundleCache[cacheKey] = archive;
+    return archive;
   }
 
   List<String> _buildChapterAssetCandidates(
@@ -666,33 +693,11 @@ class OfflineBibleService {
   // Discover version codes from AssetManifest for a language
   Future<List<String>> _discoverAvailableVersionCodesFromAssets(
       String language) async {
-    try {
-      final manifestJson = await rootBundle.loadString('AssetManifest.json');
-      final Map<String, dynamic> manifest = json.decode(manifestJson);
-      final Set<String> codes = {};
-      final prefix = 'assets/bible/$language/';
-
-      for (final key in manifest.keys) {
-        if (key.startsWith(prefix)) {
-          final remainder = key.substring(prefix.length);
-          final slashIndex = remainder.indexOf('/');
-          if (slashIndex > 0) {
-            final code = remainder.substring(0, slashIndex);
-            // Basic sanity: ensure it looks like a folder name (no dot)
-            if (!code.contains('.')) {
-              codes.add(code);
-            }
-          }
-        }
-      }
-
-      return codes.toList()..sort();
-    } catch (e) {
-      // If manifest unavailable, return empty to fall back to defaults
-      return [];
-    }
+    return (_supportedLanguages[language] ?? const <Map<String, String>>[])
+        .map((version) => version['code'])
+        .whereType<String>()
+        .toList();
   }
-
   // ---- BibleReadingPlan / BibleReadingDay integration ----
 
   /// Create a new [BibleReadingPlan] for a user.
