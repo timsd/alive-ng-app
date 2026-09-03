@@ -761,7 +761,7 @@ class DonationService {
         };
       }
       // Use PaymentService to process the payment
-      final donorName = donation.metadata?['donor_name'] as String? ?? donation.guestName ?? donation.userEmail;
+      final donorName = donation.metadata?['donor_name'] as String? ?? (donation.userName.isNotEmpty ? donation.userName : null) ?? donation.userEmail;
       final baseMetadata = {
         'donation_id': donationId,
         'appwrite_user_id': donation.userId,

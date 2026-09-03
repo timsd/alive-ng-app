@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/app_theme.dart';
 import 'custom_button.dart';
 
 class CustomDialog extends StatelessWidget {
@@ -77,7 +78,7 @@ class CustomDialog extends StatelessWidget {
           backgroundColor: backgroundColor,
           elevation: elevation,
           shape: shape ?? RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(AppTheme.radiusXl),
           ),
           scrollable: scrollable,
           insetPadding: theme.dialogTheme.insetPadding,

@@ -1,7 +1,38 @@
 import 'package:flutter/material.dart';
 
 /// ALIVE-NG Design System - Spiritual, warm colors reflecting faith and Nigerian culture
+///
+/// Design tokens derived from the Lovable reference design system (shadcn/ui).
+/// These tokens are the single source of truth for visual consistency
+/// across both web and Flutter implementations.
 class AppTheme {
+  // ─── Spacing tokens ───
+  static const double spacingXs = 4.0;
+  static const double spacingSm = 8.0;
+  static const double spacingMd = 12.0;
+  static const double spacingLg = 16.0;
+  static const double spacingXl = 24.0;
+  static const double spacingXxl = 32.0;
+
+  // ─── Radius tokens (matching shadcn --radius: 0.75rem) ───
+  static const double radiusSm = 8.0;   // calc(var(--radius) - 4px)
+  static const double radiusMd = 10.0;  // calc(var(--radius) - 2px)  — buttons, inputs
+  static const double radiusLg = 12.0;  // var(--radius)              — cards
+  static const double radiusXl = 16.0;  // dialogs
+  static const double radiusFull = 9999.0; // badges, chips
+
+  // ─── Component height tokens ───
+  static const double buttonHeightSm = 36.0;   // h-9
+  static const double buttonHeightMd = 44.0;   // h-11
+  static const double buttonHeightLg = 48.0;   // h-12
+  static const double buttonHeightXl = 56.0;   // h-14
+  static const double inputHeight = 40.0;       // h-10
+  static const double iconButtonSize = 40.0;    // h-10 w-10
+
+  // ─── Container width tokens ───
+  static const double containerMaxMobile = 448.0; // max-w-md
+  static const double containerMax2xl = 1400.0;   // 2xl container
+
   // Legacy color getters for backward compatibility
   static const Color primaryColor = lightPrimary;
   static const Color primaryVariant = lightPrimaryGlow;
@@ -225,11 +256,11 @@ class AppTheme {
           foregroundColor: lightPrimaryForeground,
           elevation: 2,
           shadowColor: lightPrimary.withValues(alpha: 0.3),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          minimumSize: const Size(48, 48),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          minimumSize: const Size(48, buttonHeightMd),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(radiusMd),
           ),
           side: const BorderSide(
             color: lightBorder,
@@ -251,7 +282,7 @@ class AppTheme {
           minimumSize: const Size(48, 44),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(radiusSm),
           ),
           textStyle: const TextStyle(
             fontSize: 14,
@@ -266,11 +297,11 @@ class AppTheme {
         style: OutlinedButton.styleFrom(
           foregroundColor: lightPrimary,
           side: const BorderSide(color: lightBorder, width: 1.5),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          minimumSize: const Size(48, 48),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          minimumSize: const Size(48, buttonHeightMd),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(radiusMd),
           ),
           textStyle: const TextStyle(
             fontSize: 14,
@@ -285,26 +316,26 @@ class AppTheme {
         filled: true,
         fillColor: lightBackground,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: lightBorder, width: 1.5),
+          borderRadius: BorderRadius.circular(radiusMd),
+          borderSide: const BorderSide(color: lightBorder, width: 1),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: lightBorder, width: 1.5),
+          borderRadius: BorderRadius.circular(radiusMd),
+          borderSide: const BorderSide(color: lightBorder, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(radiusMd),
           borderSide: const BorderSide(color: lightPrimary, width: 2),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(radiusMd),
           borderSide: const BorderSide(color: lightDestructive, width: 1.5),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(radiusMd),
           borderSide: const BorderSide(color: lightDestructive, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         hintStyle: const TextStyle(
           color: lightMutedForeground,
           fontWeight: FontWeight.w400,
@@ -345,7 +376,7 @@ class AppTheme {
         elevation: 12,
         insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(radiusXl),
           side: const BorderSide(
             color: lightBorder,
             width: 1,
@@ -511,11 +542,11 @@ class AppTheme {
           foregroundColor: darkPrimaryForeground,
           elevation: 3,
           shadowColor: darkPrimary.withValues(alpha: 0.3),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          minimumSize: const Size(48, 48),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          minimumSize: const Size(48, buttonHeightMd),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(radiusMd),
           ),
           side: const BorderSide(
             color: darkBorder,
@@ -537,7 +568,7 @@ class AppTheme {
           minimumSize: const Size(48, 44),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(radiusSm),
           ),
           textStyle: const TextStyle(
             fontSize: 14,
@@ -552,11 +583,11 @@ class AppTheme {
         style: OutlinedButton.styleFrom(
           foregroundColor: darkPrimary,
           side: const BorderSide(color: darkPrimary, width: 1.5),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          minimumSize: const Size(48, 48),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          minimumSize: const Size(48, buttonHeightMd),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(radiusMd),
           ),
           textStyle: const TextStyle(
             fontSize: 14,
@@ -571,26 +602,26 @@ class AppTheme {
         filled: true,
         fillColor: darkBackground,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: darkBorder, width: 1.5),
+          borderRadius: BorderRadius.circular(radiusMd),
+          borderSide: const BorderSide(color: darkBorder, width: 1),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: darkBorder, width: 1.5),
+          borderRadius: BorderRadius.circular(radiusMd),
+          borderSide: const BorderSide(color: darkBorder, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(radiusMd),
           borderSide: const BorderSide(color: darkPrimary, width: 2),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(radiusMd),
           borderSide: const BorderSide(color: darkDestructive, width: 1.5),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(radiusMd),
           borderSide: const BorderSide(color: darkDestructive, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         hintStyle: const TextStyle(
           color: darkMutedForeground,
           fontWeight: FontWeight.w400,
@@ -631,7 +662,7 @@ class AppTheme {
         elevation: 16,
         insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(radiusXl),
           side: const BorderSide(
             color: darkBorder,
             width: 1,

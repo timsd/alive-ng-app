@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/app_theme.dart';
 
 enum SnackBarType {
   info,
@@ -88,7 +89,7 @@ class CustomSnackBar {
       width: width,
       shape: shape ??
           RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppTheme.radiusSm),
           ),
       elevation: elevation,
       backgroundColor: effectiveBackgroundColor,
@@ -292,12 +293,12 @@ class CustomBanner {
     switch (type) {
       case SnackBarType.success:
         effectiveBackgroundColor =
-    backgroundColor ?? Colors.green.withValues(alpha: 0.1);
+    backgroundColor ?? colorScheme.tertiary.withValues(alpha: 0.15);
         icon = Icons.check_circle;
         break;
       case SnackBarType.warning:
         effectiveBackgroundColor =
-    backgroundColor ?? Colors.orange.withValues(alpha: 0.1);
+    backgroundColor ?? colorScheme.secondary.withValues(alpha: 0.15);
         icon = Icons.warning;
         break;
       case SnackBarType.error:
@@ -317,10 +318,10 @@ class CustomBanner {
       Color iconColor;
       switch (type) {
         case SnackBarType.success:
-          iconColor = Colors.green;
+          iconColor = colorScheme.tertiary;
           break;
         case SnackBarType.warning:
-          iconColor = Colors.orange;
+          iconColor = colorScheme.secondary;
           break;
         case SnackBarType.error:
           iconColor = colorScheme.error;
@@ -740,7 +741,7 @@ class _ToastWidgetState extends State<_ToastWidget>
                   decoration: BoxDecoration(
                     color: widget.backgroundColor,
                     borderRadius:
-                        widget.borderRadius ?? BorderRadius.circular(8),
+                        widget.borderRadius ?? BorderRadius.circular(AppTheme.radiusSm),
                     boxShadow: widget.elevation != null
                         ? [
                             BoxShadow(

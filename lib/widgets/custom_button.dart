@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/app_theme.dart';
 import '../utils/layout_fix_utils.dart';
 import '../utils/text_formatter.dart';
 
@@ -79,8 +80,8 @@ class CustomButton extends StatelessWidget {
         foregroundColor = colorScheme.onError;
         break;
       case ButtonVariant.success:
-        backgroundColor = customColor ?? Colors.green;
-        foregroundColor = Colors.white;
+        backgroundColor = customColor ?? colorScheme.tertiary;
+        foregroundColor = colorScheme.onTertiary;
         break;
     }
 
@@ -92,20 +93,20 @@ class CustomButton extends StatelessWidget {
     switch (size) {
       case ButtonSize.small:
         buttonPadding =
-            padding ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 8);
-        fontSize = 14;
+            padding ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 6);
+        fontSize = 13;
         iconSize = 16;
         break;
       case ButtonSize.medium:
         buttonPadding =
-            padding ?? const EdgeInsets.symmetric(horizontal: 24, vertical: 12);
-        fontSize = 16;
+            padding ?? const EdgeInsets.symmetric(horizontal: 24, vertical: 8);
+        fontSize = 14;
         iconSize = 18;
         break;
       case ButtonSize.large:
         buttonPadding =
-            padding ?? const EdgeInsets.symmetric(horizontal: 32, vertical: 16);
-        fontSize = 18;
+            padding ?? const EdgeInsets.symmetric(horizontal: 32, vertical: 12);
+        fontSize = 16;
         iconSize = 20;
         break;
     }
@@ -158,7 +159,7 @@ class CustomButton extends StatelessWidget {
           foregroundColor: foregroundColor,
           padding: buttonPadding,
           shape: RoundedRectangleBorder(
-            borderRadius: borderRadius ?? BorderRadius.circular(8),
+            borderRadius: borderRadius ?? BorderRadius.circular(AppTheme.radiusSm),
           ),
         ),
         child: buttonChild,
@@ -172,10 +173,10 @@ class CustomButton extends StatelessWidget {
           padding: buttonPadding,
           side: BorderSide(
             color: borderColor ?? foregroundColor,
-            width: 1.6,
+            width: 1.5,
           ),
           shape: RoundedRectangleBorder(
-            borderRadius: borderRadius ?? BorderRadius.circular(12),
+            borderRadius: borderRadius ?? BorderRadius.circular(AppTheme.radiusMd),
           ),
         ),
         child: buttonChild,
@@ -198,7 +199,7 @@ class CustomButton extends StatelessWidget {
             width: 1,
           ),
           shape: RoundedRectangleBorder(
-            borderRadius: borderRadius ?? BorderRadius.circular(12),
+            borderRadius: borderRadius ?? BorderRadius.circular(AppTheme.radiusMd),
           ),
         ),
         child: buttonChild,
@@ -265,10 +266,10 @@ class CustomIconButton extends StatelessWidget {
 
     Widget button = Material(
       color: backgroundColor ?? Colors.transparent,
-      borderRadius: borderRadius ?? BorderRadius.circular(8),
+      borderRadius: borderRadius ?? BorderRadius.circular(AppTheme.radiusSm),
       child: InkWell(
         onTap: isLoading ? null : onPressed,
-        borderRadius: borderRadius ?? BorderRadius.circular(8),
+        borderRadius: borderRadius ?? BorderRadius.circular(AppTheme.radiusSm),
         child: Padding(
           padding: padding ?? const EdgeInsets.all(8),
           child: iconWidget,
@@ -368,7 +369,7 @@ class ButtonGroup extends StatelessWidget {
     required this.children,
     this.mainAxisAlignment = MainAxisAlignment.start,
     this.crossAxisAlignment = CrossAxisAlignment.center,
-    this.spacing = 8,
+    this.spacing = AppTheme.spacingSm,
     this.isVertical = false,
   });
 
@@ -438,7 +439,3 @@ class _ToggleButtonState extends State<ToggleButton> {
     );
   }
 }
-
-
-
-

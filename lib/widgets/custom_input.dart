@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../utils/app_theme.dart';
 import '../utils/layout_fix_utils.dart';
 
 enum InputVariant {
@@ -135,21 +136,21 @@ class _CustomInputState extends State<CustomInput> {
     switch (widget.variant) {
       case InputVariant.outlined:
         border = OutlineInputBorder(
-          borderRadius: widget.borderRadius ?? BorderRadius.circular(8),
+          borderRadius: widget.borderRadius ?? BorderRadius.circular(AppTheme.radiusMd),
           borderSide: BorderSide(
             color: widget.borderColor ?? colorScheme.outline,
             width: widget.borderWidth ?? 1,
           ),
         );
         focusedBorder = OutlineInputBorder(
-          borderRadius: widget.borderRadius ?? BorderRadius.circular(8),
+          borderRadius: widget.borderRadius ?? BorderRadius.circular(AppTheme.radiusMd),
           borderSide: BorderSide(
             color: colorScheme.primary,
             width: 2,
           ),
         );
         errorBorder = OutlineInputBorder(
-          borderRadius: widget.borderRadius ?? BorderRadius.circular(8),
+          borderRadius: widget.borderRadius ?? BorderRadius.circular(AppTheme.radiusMd),
           borderSide: BorderSide(
             color: colorScheme.error,
             width: 2,
@@ -160,18 +161,18 @@ class _CustomInputState extends State<CustomInput> {
         fillColorResolved =
             widget.fillColor ?? colorScheme.surfaceContainerHighest;
         border = OutlineInputBorder(
-          borderRadius: widget.borderRadius ?? BorderRadius.circular(8),
+          borderRadius: widget.borderRadius ?? BorderRadius.circular(AppTheme.radiusMd),
           borderSide: BorderSide.none,
         );
         focusedBorder = OutlineInputBorder(
-          borderRadius: widget.borderRadius ?? BorderRadius.circular(8),
+          borderRadius: widget.borderRadius ?? BorderRadius.circular(AppTheme.radiusMd),
           borderSide: BorderSide(
             color: colorScheme.primary,
             width: 2,
           ),
         );
         errorBorder = OutlineInputBorder(
-          borderRadius: widget.borderRadius ?? BorderRadius.circular(8),
+          borderRadius: widget.borderRadius ?? BorderRadius.circular(AppTheme.radiusMd),
           borderSide: BorderSide(
             color: colorScheme.error,
             width: 2,

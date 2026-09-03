@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/app_theme.dart';
 import '../utils/layout_fix_utils.dart';
 import 'custom_image.dart';
 
@@ -85,7 +86,7 @@ class CustomCard extends StatelessWidget {
       margin: margin,
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: borderRadius ?? BorderRadius.circular(12),
+        borderRadius: borderRadius ?? BorderRadius.circular(AppTheme.radiusLg),
         border: cardBorder,
         boxShadow: cardElevation > 0 ? [
           BoxShadow(
@@ -100,7 +101,7 @@ class CustomCard extends StatelessWidget {
         ] : null,
       ),
       child: ClipRRect(
-        borderRadius: borderRadius ?? BorderRadius.circular(12),
+        borderRadius: borderRadius ?? BorderRadius.circular(AppTheme.radiusLg),
         clipBehavior: clipBehavior,
         child: Padding(
           padding: padding ?? const EdgeInsets.all(16),
@@ -115,7 +116,7 @@ class CustomCard extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           onLongPress: onLongPress,
-          borderRadius: borderRadius ?? BorderRadius.circular(12),
+          borderRadius: borderRadius ?? BorderRadius.circular(AppTheme.radiusLg),
           child: cardWidget,
         ),
       );
