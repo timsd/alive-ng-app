@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -109,10 +111,12 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
 
   final Map<String, DateTime> _taskStartTimes = {};
   Timer? _timer;
+  int _currentStreak = 1;
 
   @override
   void initState() {
     super.initState();
+    _loadStreak();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       _autoCompleteElapsedTasks();
       if (mounted) setState(() {});
@@ -262,7 +266,7 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
                           Row(
                             children: [
                               Text(
-                                '3 Day Devotional Streak!',
+                                '$_currentStreak Day Devotional Streak!',
                                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                       fontWeight: FontWeight.bold,
                                       color: Theme.of(context).colorScheme.onSurface,
@@ -274,7 +278,9 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Complete activities daily to level up your spiritual habit. Automated tracking ensures real execution.',
+                            _currentStreak > 1
+                                ? 'Praise God! You have maintained $_currentStreak consecutive days in your devotional habit.'
+                                : 'Complete daily activities to build and grow your spiritual habit with automatic tracking.',
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                   color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                                 ),
@@ -480,6 +486,61 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
     );
   }
 
+  Future<void> _loadStreak() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final lastDateStr = prefs.getString('daily_last_active_date');
+      final savedStreak = prefs.getInt('daily_streak_count') ?? 1;
+
+      if (lastDateStr != null) {
+        final lastDate = DateTime.tryParse(lastDateStr);
+        if (lastDate != null) {
+          final now = DateTime.now();
+          final diff = DateTime(now.year, now.month, now.day)
+              .difference(DateTime(lastDate.year, lastDate.month, lastDate.day))
+              .inDays;
+          if (diff <= 1) {
+            _currentStreak = savedStreak;
+          } else {
+            _currentStreak = 1;
+            await prefs.setInt('daily_streak_count', 1);
+          }
+        }
+      }
+      if (mounted) setState(() {});
+    } catch (_) {}
+  }
+
+  Future<void> _recordStreakActivity() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final now = DateTime.now();
+      final todayStr =
+          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      final lastDateStr = prefs.getString('daily_last_active_date');
+
+      if (lastDateStr != todayStr) {
+        int newStreak = _currentStreak;
+        if (lastDateStr != null) {
+          final lastDate = DateTime.tryParse(lastDateStr);
+          if (lastDate != null) {
+            final diff = DateTime(now.year, now.month, now.day)
+                .difference(
+                    DateTime(lastDate.year, lastDate.month, lastDate.day))
+                .inDays;
+            newStreak = (diff == 1) ? (_currentStreak + 1) : 1;
+          }
+        } else {
+          newStreak = 1;
+        }
+        _currentStreak = newStreak;
+        await prefs.setInt('daily_streak_count', newStreak);
+        await prefs.setString('daily_last_active_date', todayStr);
+        if (mounted) setState(() {});
+      }
+    } catch (_) {}
+  }
+
   void _autoCompleteElapsedTasks() {
     final tasks = ref.read(dailyTasksProvider);
     if (_taskStartTimes.isEmpty || tasks.isEmpty) return;
@@ -498,6 +559,7 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
         updated[i] = task.copyWith(completed: true);
         _taskStartTimes.remove(task.id);
         changed = true;
+        _recordStreakActivity();
       }
     }
 

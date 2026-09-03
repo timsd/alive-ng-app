@@ -30,6 +30,10 @@ class AppwriteAdminExportService {
         AppwriteBackendConfig.notificationSettingsCollectionId,
     'notification_history':
         AppwriteBackendConfig.adminNotificationsCollectionId,
+    'donations': AppwriteBackendConfig.donationRecordsCollectionId,
+    'donation_records': AppwriteBackendConfig.donationRecordsCollectionId,
+    'projects': AppwriteBackendConfig.projectsCollectionId,
+    'payment_logs': AppwriteBackendConfig.paymentLogsCollectionId,
   };
 
   Future<Map<String, dynamic>> exportDataBackup({
@@ -88,6 +92,168 @@ class AppwriteAdminExportService {
           originalError: e, stackTrace: stackTrace);
     }
   }
+
+  /// Retrieve donations for in-app viewing and summary analysis
+  Future<List<Map<String, dynamic>>> listDonations({
+    DateTime? startDate,
+    DateTime? endDate,
+    String? status,
+    int limit = 100,
+  }) async {
+    try {
+      final queries = <String>[
+        Query.orderDesc('\$createdAt'),
+        Query.limit(limit),
+      ];
+
+      if (status != null && status.isNotEmpty && status.toLowerCase() != 'all') {
+        queries.add(Query.equal('status', status.toLowerCase()));
+      }
+
+      final response = await _tables.listRows(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: AppwriteBackendConfig.donationRecordsCollectionId,
+        queries: queries,
+      );
+
+      return response.rows.map(_rowData).toList();
+    } catch (e, stackTrace) {
+      _logger.error('Error listing donations', e, stackTrace);
+      return [];
+    }
+  }
+
+  /// Generate a detailed donation report (CSV or JSON) and upload to Storage
+  Future<Map<String, dynamic>> exportDonationsReport({
+    String format = 'csv',
+    DateTime? startDate,
+    DateTime? endDate,
+    String? status,
+  }) async {
+    final prefix = _exportPrefix('appwrite-donations-report');
+    final normalizedFormat = _normalizeFormat(format);
+
+    try {
+      final queries = <String>[
+        Query.orderDesc('\$createdAt'),
+      ];
+      if (status != null && status.isNotEmpty && status.toLowerCase() != 'all') {
+        queries.add(Query.equal('status', status.toLowerCase()));
+      }
+
+      final rawRows = await _listAllDocuments(
+        AppwriteBackendConfig.donationRecordsCollectionId,
+        baseQueries: queries,
+      );
+
+      // Filter by date client-side to ensure robustness across timestamp schema variations
+      final rows = rawRows.where((r) {
+        final dateStr = r['created_at'] ?? r['\$createdAt'];
+        if (dateStr == null) return true;
+        final dt = DateTime.tryParse(dateStr.toString());
+        if (dt == null) return true;
+        if (startDate != null && dt.isBefore(startDate)) return false;
+        if (endDate != null && dt.isAfter(endDate)) return false;
+        return true;
+      }).toList();
+
+      double totalAmountNgn = 0;
+      double totalAmountUsd = 0;
+      int successfulCount = 0;
+      int pendingCount = 0;
+      int failedCount = 0;
+      final Map<String, int> purposeBreakdown = {};
+
+      final formattedRows = rows.map((r) {
+        final amountNum = (r['amount'] is num)
+            ? (r['amount'] as num).toDouble()
+            : (double.tryParse(r['amount']?.toString() ?? '0') ?? 0.0);
+        final currency = (r['currency']?.toString().toUpperCase()) ?? 'NGN';
+        final rowStatus = (r['status']?.toString().toLowerCase()) ?? 'completed';
+        final purpose = r['mission_purpose']?.toString() ??
+            r['purpose']?.toString() ??
+            r['project_title']?.toString() ??
+            r['project_id']?.toString() ??
+            'General Donation';
+
+        if (rowStatus == 'success' || rowStatus == 'completed') {
+          successfulCount++;
+          if (currency == 'USD') {
+            totalAmountUsd += amountNum;
+          } else {
+            totalAmountNgn += amountNum;
+          }
+        } else if (rowStatus == 'failed') {
+          failedCount++;
+        } else {
+          pendingCount++;
+        }
+
+        purposeBreakdown[purpose] = (purposeBreakdown[purpose] ?? 0) + 1;
+
+        return {
+          'Reference': r['reference'] ?? r['transaction_id'] ?? r['id'] ?? '',
+          'Donor Name': r['donor_name'] ?? r['name'] ?? 'Anonymous Donor',
+          'Donor Email': r['donor_email'] ?? r['email'] ?? 'N/A',
+          'Donor Phone': r['donor_phone'] ?? r['phone'] ?? 'N/A',
+          'Amount': amountNum.toStringAsFixed(2),
+          'Currency': currency,
+          'Purpose / Category': purpose,
+          'Payment Gateway': r['gateway'] ?? r['channel'] ?? 'Paystack',
+          'Status': rowStatus.toUpperCase(),
+          'Transaction Date': r['created_at'] ?? r['\$createdAt'] ?? '',
+          'Completed At': r['completed_at'] ?? '',
+          'Custom Purpose Notes': r['notes'] ?? r['custom_purpose'] ?? '',
+        };
+      }).toList();
+
+      final String content;
+      if (normalizedFormat == 'json') {
+        content = _prettyJson({
+          'report_metadata': {
+            'organization': 'ALIVE Nigeria',
+            'generated_at': DateTime.now().toUtc().toIso8601String(),
+            'total_records': rows.length,
+            'successful_count': successfulCount,
+            'pending_count': pendingCount,
+            'failed_count': failedCount,
+            'total_amount_ngn': totalAmountNgn,
+            'total_amount_usd': totalAmountUsd,
+            'purpose_breakdown': purposeBreakdown,
+          },
+          'donations': formattedRows,
+        });
+      } else {
+        content = _toCsv(formattedRows);
+      }
+
+      final file = await _uploadExport(
+        prefix: prefix,
+        fileName: 'alive_donations_report.$normalizedFormat',
+        contentType: _contentType(normalizedFormat),
+        content: content,
+      );
+
+      return {
+        'prefix': prefix,
+        'count': rows.length,
+        'summary': {
+          'total_ngn': totalAmountNgn,
+          'total_usd': totalAmountUsd,
+          'successful': successfulCount,
+          'pending': pendingCount,
+          'failed': failedCount,
+        },
+        'file': file,
+        'content': content,
+      };
+    } catch (e, stackTrace) {
+      _logger.error('Error exporting donations report', e, stackTrace);
+      throw DatabaseException('Failed to export donations report',
+          originalError: e, stackTrace: stackTrace);
+    }
+  }
+
 
   Future<Map<String, dynamic>> exportChatBackup({
     String type = 'messaging',

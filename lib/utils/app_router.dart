@@ -46,6 +46,7 @@ import '../screens/kids/kids_stories_screen.dart';
 import '../screens/discipleship/discipleship_screen.dart';
 import '../screens/events/events_screen.dart';
 import '../screens/admin/admin_approval_screen.dart';
+import '../screens/admin/admin_donations_report_screen.dart';
 import '../screens/admin/admin_approval_link_handler_screen.dart';
 import '../screens/legal/privacy_policy_screen.dart';
 import '../screens/legal/terms_conditions_screen.dart';
@@ -408,6 +409,19 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppConstants.adminApprovalRoute,
             builder: (context, state) => const AdminApprovalScreen(),
+            redirect: (context, state) {
+              final roleService = RoleAccessService.instance;
+              if (!roleService.canAccessAdmin()) {
+                return '/home';
+              }
+              return null;
+            },
+          ),
+
+          // Admin Donations Report Route
+          GoRoute(
+            path: AppConstants.adminDonationsReportRoute,
+            builder: (context, state) => const AdminDonationsReportScreen(),
             redirect: (context, state) {
               final roleService = RoleAccessService.instance;
               if (!roleService.canAccessAdmin()) {

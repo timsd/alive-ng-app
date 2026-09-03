@@ -14,6 +14,7 @@ import 'content_management_screen.dart';
 import '../../models/podcast_models.dart';
 import 'storage_admin_screen.dart';
 import 'admin_claims_preview_screen.dart';
+import 'admin_donations_report_screen.dart';
 import 'role_management_screen.dart';
 import 'board_reports_screen.dart';
 import '../../services/appwrite_admin_export_service.dart';
@@ -254,6 +255,15 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadDashboardStats,
+          ),
+          IconButton(
+            icon: const Icon(Icons.receipt_long),
+            tooltip: 'Donations & Financial Report',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (ctx) => const AdminDonationsReportScreen(),
+              ),
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.download),
@@ -673,6 +683,36 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                     fontWeight: FontWeight.bold,
                   ),
             ),
+            const SizedBox(height: 16),
+
+            // Finance & Donation Management
+            _buildManagementSection(
+              'Finance & Donation Management',
+              Icons.monetization_on_outlined,
+              [
+                _buildActionTile(
+                  'Donation Reports & Analytics',
+                  'View all incoming donations, track fund usage, and export detailed reports',
+                  Icons.receipt_long_outlined,
+                  () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (ctx) => const AdminDonationsReportScreen(),
+                    ),
+                  ),
+                ),
+                _buildActionTile(
+                  'Quick Export Donations (CSV)',
+                  'Export complete spreadsheet of all processed donations with donor details',
+                  Icons.file_download_outlined,
+                  () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (ctx) => const AdminDonationsReportScreen(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
             const SizedBox(height: 16),
 
             // User Management
