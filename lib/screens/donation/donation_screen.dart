@@ -19,6 +19,20 @@ class DonationScreen extends ConsumerStatefulWidget {
 
 class _DonationScreenState extends ConsumerState<DonationScreen>
     with TickerProviderStateMixin {
+  int get _ministryYears {
+    final start = DateTime(2011, 3, 20);
+    final now = DateTime.now();
+    int years = now.year - start.year;
+    if (now.month < start.month ||
+        (now.month == start.month && now.day < start.day)) {
+      years--;
+    }
+    return years;
+  }
+
+  String? _selectedFundDesignation;
+  final TextEditingController _customDesignationController =
+      TextEditingController();
   static const List<Map<String, dynamic>> _fallbackProjects = [
     {
       'id': 'impact_hub_center',
@@ -220,6 +234,50 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                             TextButton(
                               onPressed: _clearSelectedProject,
                               child: const Text('Change'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (_selectedFundDesignation != null)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: EdgeInsets.all(
+                            ResponsiveUtils.getResponsiveValue(
+                                context: context,
+                                mobile: 12,
+                                tablet: 14,
+                                desktop: 16)),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.secondaryContainer,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .secondary
+                                  .withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.check_circle_outline,
+                                color: Theme.of(context).colorScheme.secondary),
+                            SizedBox(
+                                width: ResponsiveUtils.getResponsiveSpacing(
+                                    context, 8)),
+                            Expanded(
+                              child: Text(
+                                'Designated for: $_selectedFundDesignation',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleSmall
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: context.responsiveFontSize(14),
+                                    ),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () => setState(() => _selectedFundDesignation = null),
+                              child: const Text('Clear'),
                             ),
                           ],
                         ),
@@ -440,12 +498,14 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
             'You Can Be a Part of Something Bigger.',
             style: theme.textTheme.headlineMedium?.copyWith(
               fontWeight: FontWeight.bold,
+              fontSize: ResponsiveUtils.getResponsiveValue(
+                  context: context, mobile: 22, tablet: 26, desktop: 30),
             ),
             textAlign: TextAlign.center,
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
           Text(
-            'For more than 14 years, ALIVE Nigeria Ministries has helped connect thousands of people with God\'s word and established churches around Nigeria. We can help connect new generations to the life-changing wisdom of the Bible.',
+            'For more than $_ministryYears years, ALIVE Nigeria Ministries has helped connect thousands of people with God\'s word and established churches around Nigeria. We can help connect new generations to the life-changing wisdom of the Bible.',
             style: theme.textTheme.bodyLarge?.copyWith(
               color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
             ),
@@ -940,28 +1000,58 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       BuildContext context, ThemeData theme, bool isDark) {
     final impactItems = [
       {
-        'icon': Icons.public,
-        'title': 'Reach the World',
+        'icon': Icons.terrain,
+        'title': 'Rural Missions',
         'description':
-            'Provide devotionals, books, and courses to believers across the globe who cannot afford a subscription.',
+            'Send teams to remote communities with the Gospel and compassionate care.',
       },
       {
-        'icon': Icons.lightbulb,
-        'title': 'Be a Light to the World',
+        'icon': Icons.location_city,
+        'title': 'Campus/City Missions',
         'description':
-            'Share God globally with outreach programs like The Untold Truth, which involves a year mission activities in an unentered area and biblical materials to remote villages and cities.',
+            'Send teams to Campus/City communities with the Gospel and compassionate care.',
       },
       {
-        'icon': Icons.favorite,
-        'title': 'Provide Hope to the Lost',
+        'icon': Icons.school,
+        'title': '🎓 Missionary Training',
         'description':
-            'Help put tract resources in correction centers in Nigeria',
+            'Equip and train the next generation of Groundbreakers and Missionaries for effective witness.',
       },
       {
-        'icon': Icons.translate,
-        'title': 'Break Language Barriers',
+        'icon': Icons.local_hospital,
+        'title': '🏥 Health Evangelism',
         'description':
-            'Create, translate, and offer biblically based courses in various languages',
+            'Provide medical care that opens hearts to the transforming power of the Gospel.',
+      },
+      {
+        'icon': Icons.phonelink,
+        'title': '📱 Digital Ministry',
+        'description':
+            'Leverage technology to share the Good News through tracts, podcasts, online events and discipleship.',
+      },
+      {
+        'icon': Icons.people_outline,
+        'title': 'LTMs Stipends',
+        'description':
+            'Support the monthly upkeep of long-term field workers.',
+      },
+      {
+        'icon': Icons.groups_outlined,
+        'title': 'STMs Stipends',
+        'description':
+            'Support the monthly upkeep of short-term field workers.',
+      },
+      {
+        'icon': Icons.volunteer_activism,
+        'title': 'Volunteers',
+        'description':
+            'Support the monthly upkeep of the volunteers at the mission field.',
+      },
+      {
+        'icon': Icons.edit_note,
+        'title': 'Custom Purpose',
+        'description':
+            'Specify your own custom ministry designation or special project.',
       },
     ];
 
@@ -981,69 +1071,181 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
     );
   }
 
+  void _selectDesignation(String title) {
+    if (title == 'Custom Purpose') {
+      _showCustomDesignationDialog();
+    } else {
+      setState(() {
+        _selectedFundDesignation = title;
+        _selectedProjectId = null;
+        _selectedProjectTitle = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Selected designation: $title'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  void _showCustomDesignationDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Custom Gift Purpose'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Please specify how you would like your donation used:',
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _customDesignationController,
+              decoration: const InputDecoration(
+                hintText: 'e.g. Ondo Medical Outreach, Tract printing',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 2,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final text = _customDesignationController.text.trim();
+              if (text.isNotEmpty) {
+                setState(() {
+                  _selectedFundDesignation = text;
+                  _selectedProjectId = null;
+                  _selectedProjectTitle = null;
+                });
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Custom designation saved: $text'),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              }
+            },
+            child: const Text('Save Designation'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildImpactCard(
       BuildContext context, ThemeData theme, Map<String, dynamic> item) {
+    final title = item['title'] as String;
+    final isSelected = _selectedFundDesignation == title;
+
     return Container(
       margin: EdgeInsets.only(
           bottom: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-      padding: ResponsiveUtils.getResponsivePadding(context),
       decoration: BoxDecoration(
-        color: theme.cardColor,
+        color: isSelected
+            ? theme.colorScheme.primaryContainer.withValues(alpha: 0.25)
+            : theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.2)),
+        border: Border.all(
+          color: isSelected
+              ? theme.colorScheme.primary
+              : theme.dividerColor.withValues(alpha: 0.2),
+          width: isSelected ? 2.0 : 1.0,
+        ),
         boxShadow: [
           BoxShadow(
-            color: theme.shadowColor.withValues(alpha: 0.1),
+            color: theme.shadowColor.withValues(alpha: 0.08),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              item['icon'] as IconData,
-              color: theme.colorScheme.primary,
-              size: ResponsiveUtils.getResponsiveValue(
-                context: context,
-                mobile: 24,
-                tablet: 28,
-                desktop: 32,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => _selectDesignation(title),
+        child: Padding(
+          padding: ResponsiveUtils.getResponsivePadding(context),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  item['icon'] as IconData,
+                  color: isSelected
+                      ? theme.colorScheme.onPrimary
+                      : theme.colorScheme.primary,
+                  size: ResponsiveUtils.getResponsiveValue(
+                    context: context,
+                    mobile: 24,
+                    tablet: 28,
+                    desktop: 32,
+                  ),
+                ),
               ),
-            ),
-          ),
-          SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item['title'] as String,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.onSurface,
-                  ),
+              SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 16)),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+                        ),
+                        if (isSelected)
+                          Icon(Icons.check_circle,
+                              color: theme.colorScheme.primary, size: 20),
+                      ],
+                    ),
+                    SizedBox(
+                        height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
+                    Text(
+                      item['description'] as String,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      isSelected ? '✓ Selected for this Gift' : 'Tap to direct your gift here',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: isSelected
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.secondary,
+                      ),
+                    ),
+                  ],
                 ),
-                SizedBox(
-                    height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
-                Text(
-                  item['description'] as String,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -1216,8 +1418,10 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
         amount: totalAmount,
         currency: currency,
         paymentMethod: PaymentMethod.paystack,
-        materialTitle: _selectedProjectTitle,
-        notes: isMonthly ? 'Monthly giving' : 'One-time donation',
+        materialTitle: _selectedProjectTitle ?? _selectedFundDesignation,
+        notes: isMonthly
+            ? 'Monthly giving${_selectedFundDesignation != null ? ' - $_selectedFundDesignation' : ''}'
+            : 'One-time donation${_selectedFundDesignation != null ? ' - $_selectedFundDesignation' : ''}',
         metadata: {
           'recurring': isMonthly,
           'currency': currency,
@@ -1225,6 +1429,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
           if (_selectedProjectId != null) 'project_id': _selectedProjectId,
           if (_selectedProjectTitle != null)
             'project_title': _selectedProjectTitle,
+          if (_selectedFundDesignation != null)
+            'fund_designation': _selectedFundDesignation,
         },
         guestName: isAuthenticated ? null : _guestNameController.text.trim(),
         guestEmail: isAuthenticated ? null : _guestEmailController.text.trim(),

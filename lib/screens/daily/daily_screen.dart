@@ -217,6 +217,77 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
               SizedBox(
                   height: ResponsiveUtils.getResponsiveValue(
                       context: context, mobile: 20, tablet: 24, desktop: 28)),
+              // Duolingo-style Streak & Gamification Banner
+              Container(
+                margin: EdgeInsets.symmetric(
+                    horizontal: ResponsiveUtils.getResponsiveValue(
+                        context: context, mobile: 16, tablet: 20, desktop: 24)),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Theme.of(context).colorScheme.primaryContainer,
+                      Theme.of(context).colorScheme.surface,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Text('🔥', style: TextStyle(fontSize: 26)),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                '3 Day Devotional Streak!',
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: Theme.of(context).colorScheme.onSurface,
+                                    ),
+                              ),
+                              const SizedBox(width: 6),
+                              const Icon(Icons.verified, color: Colors.orange, size: 16),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Complete activities daily to level up your spiritual habit. Automated tracking ensures real execution.',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(
+                  height: ResponsiveUtils.getResponsiveValue(
+                      context: context, mobile: 16, tablet: 20, desktop: 24)),
               Padding(
                 padding: EdgeInsets.symmetric(
                     horizontal: ResponsiveUtils.getResponsiveValue(
@@ -637,10 +708,37 @@ class DailyTaskCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Checkbox(
-                value: task.completed,
-                onChanged: (value) => onToggle(value ?? false),
-                activeColor: Theme.of(context).colorScheme.secondary,
+              InkWell(
+                onTap: task.completed
+                    ? null
+                    : () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Please open and complete this activity to automatically verify progress!',
+                            ),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                        onStart();
+                      },
+                child: Checkbox(
+                  value: task.completed,
+                  onChanged: task.completed
+                      ? null
+                      : (value) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Please open and complete this activity to automatically verify progress!',
+                              ),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                          onStart();
+                        },
+                  activeColor: Theme.of(context).colorScheme.secondary,
+                ),
               ),
             ],
           ),

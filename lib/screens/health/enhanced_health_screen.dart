@@ -319,7 +319,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
             children: [
               Icon(Icons.add_circle_outline,
                   size: context.responsiveIconSize(48),
-                  color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4)),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.75)),
               SizedBox(
                   height: ResponsiveUtils.getResponsiveValue(
                       context: context,
@@ -905,7 +905,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                     Icon(
                       Icons.insights,
                       size: context.responsiveIconSize(48),
-                      color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.75),
                     ),
                     SizedBox(
                         height: ResponsiveUtils.getResponsiveValue(

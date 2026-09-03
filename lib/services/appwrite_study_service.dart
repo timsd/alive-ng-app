@@ -44,9 +44,8 @@ class AppwriteStudyService {
         );
       }).toList();
     } catch (e) {
-      _logger.error('Failed to fetch study programs', e);
-      throw DatabaseException('Failed to fetch study programs',
-          originalError: e);
+      _logger.error('Failed to fetch study programs from Appwrite', e);
+      return const <StudyProgram>[];
     }
   }
 

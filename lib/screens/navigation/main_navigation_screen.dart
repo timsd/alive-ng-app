@@ -41,7 +41,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
             children: [
               _buildMoreHeader(context),
               const SizedBox(height: 16),
-              ..._buildMoreItems(context),
+              _buildMoreGrid(context),
             ],
           ),
         ),
@@ -58,16 +58,6 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
             .withValues(alpha: 153 / 255.0),
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.volunteer_activism_outlined),
-            activeIcon: Icon(Icons.volunteer_activism),
-            label: 'Prayer',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.games_outlined),
-            activeIcon: Icon(Icons.games),
-            label: 'Bible Game',
-          ),
-          BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
             activeIcon: Icon(Icons.home),
             label: 'Home',
@@ -75,7 +65,17 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.menu_book_outlined),
             activeIcon: Icon(Icons.menu_book),
-            label: 'Chapters',
+            label: 'Study',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.volunteer_activism_outlined),
+            activeIcon: Icon(Icons.volunteer_activism),
+            label: 'Prayer',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.health_and_safety_outlined),
+            activeIcon: Icon(Icons.health_and_safety),
+            label: 'Health',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.grid_view_rounded),
@@ -113,7 +113,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
     }
   }
 
-  List<Widget> _buildMoreItems(BuildContext context) {
+  Widget _buildMoreGrid(BuildContext context) {
     final roleService = RoleAccessService.instance;
     final role = roleService.getCurrentUserRole() ?? 'member';
     final signedIn = _authService.currentUser != null;
@@ -126,141 +126,119 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
 
     final items = <_MoreItem>[
       const _MoreItem('Daily Verse', Icons.today, AppConstants.dailyRoute),
-      const _MoreItem(
-          'Update Profile', Icons.person, AppConstants.profileRoute),
-      const _MoreItem('Study', Icons.school, AppConstants.studyRoute),
-      const _MoreItem('Home Remedies & Food', Icons.health_and_safety,
-          AppConstants.enhancedHealthRoute),
-      const _MoreItem(
-          'Prayer Wall', Icons.favorite, AppConstants.prayerWallRoute),
-      const _MoreItem(
-          'Testimonies', Icons.campaign, AppConstants.testimoniesRoute),
+      const _MoreItem('Profile', Icons.person, AppConstants.profileRoute),
+      const _MoreItem('Study Guides', Icons.school, AppConstants.studyRoute),
+      const _MoreItem('Health & Wellness', Icons.health_and_safety, AppConstants.enhancedHealthRoute),
+      const _MoreItem('Prayer Wall', Icons.favorite, AppConstants.prayerWallRoute),
+      const _MoreItem('Testimonies', Icons.campaign, AppConstants.testimoniesRoute),
       const _MoreItem('Resources', Icons.folder, AppConstants.resourcesRoute),
-      const _MoreItem(
-          'Library', Icons.local_library, AppConstants.libraryRoute),
+      const _MoreItem('Library', Icons.local_library, AppConstants.libraryRoute),
       const _MoreItem('Podcasts', Icons.podcasts, AppConstants.podcastsRoute),
-      const _MoreItem(
-          'Books & Tracts', Icons.menu_book, AppConstants.booksTractsRoute),
-      const _MoreItem(
-          'Kids Stories', Icons.auto_stories, AppConstants.kidsStoriesRoute),
-      const _MoreItem(
-          'ALIVE Meet', Icons.video_call, AppConstants.conferenceRoute),
-      const _MoreItem(
-          'Donation', Icons.volunteer_activism, AppConstants.donationRoute),
-      const _MoreItem(
-          'Help & Support', Icons.help, AppConstants.helpSupportRoute),
-      const _MoreItem('Notification Settings', Icons.notifications,
-          AppConstants.notificationSettingsRoute),
-      const _MoreItem(
-          'Privacy Policy', Icons.privacy_tip, AppConstants.privacyPolicyRoute),
-      const _MoreItem(
-          'Terms & Conditions', Icons.gavel, AppConstants.termsConditionsRoute),
-      const _MoreItem(
-          'About App', Icons.info_outline, AppConstants.aboutAppRoute),
+      const _MoreItem('Books & Tracts', Icons.menu_book, AppConstants.booksTractsRoute),
+      const _MoreItem('Kids Stories', Icons.auto_stories, AppConstants.kidsStoriesRoute),
+      const _MoreItem('ALIVE Meet', Icons.video_call, AppConstants.conferenceRoute),
+      const _MoreItem('Donation', Icons.volunteer_activism, AppConstants.donationRoute),
+      const _MoreItem('Help & Support', Icons.help, AppConstants.helpSupportRoute),
+      const _MoreItem('Notifications', Icons.notifications, AppConstants.notificationSettingsRoute),
+      const _MoreItem('About App', Icons.info_outline, AppConstants.aboutAppRoute),
       const _MoreItem('About ALIVE', Icons.info, AppConstants.aboutAliveRoute),
-      const _MoreItem('Sign Out', Icons.logout, null),
-      _MoreItem('Delete Account', Icons.delete_forever, null,
-          action: () => _handleDeleteAccount(context)),
+      const _MoreItem('Privacy Policy', Icons.privacy_tip, AppConstants.privacyPolicyRoute),
+      const _MoreItem('Terms & Conditions', Icons.gavel, AppConstants.termsConditionsRoute),
     ];
 
     if (canSeeAdmin) {
-      items.add(const _MoreItem(
-          'Admin', Icons.admin_panel_settings, AppConstants.adminRoute));
+      items.insert(0, const _MoreItem('Admin Portal', Icons.admin_panel_settings, AppConstants.adminRoute));
     }
     if (canClaimAdmin) {
-      items.add(
-        _MoreItem(
-          'Claim Admin Role (Temp)',
-          Icons.verified_user,
-          null,
-          action: () => _handleClaimAdminRole(context),
-        ),
-      );
+      items.insert(0, _MoreItem('Claim Admin Role', Icons.verified_user, null, action: () => _handleClaimAdminRole(context)));
     }
     if (canSeeBod) {
-      items.add(
-          const _MoreItem('BOD', Icons.groups, AppConstants.bodTrusteesRoute));
+      items.insert(0, const _MoreItem('BOD Trustees', Icons.groups, AppConstants.bodTrusteesRoute));
     }
 
-    return items
-        .map(
-          (item) => Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: Material(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(18),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(18),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  if (item.route != null) {
-                    context.go(item.route!);
-                    return;
-                  }
-                  if (item.action != null) {
-                    item.action!.call();
-                    return;
-                  }
-                  if (item.label == 'Sign Out') {
-                    _handleSignOut(context);
-                  }
-                },
-                child: Ink(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surface,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .outlineVariant
-                          .withValues(alpha: 0.9),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .shadow
-                            .withValues(alpha: 0.06),
-                        blurRadius: 18,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 10,
+        crossAxisSpacing: 10,
+        childAspectRatio: 1.38,
+      ),
+      itemCount: items.length,
+      itemBuilder: (context, index) {
+        final item = items[index];
+        final colorScheme = Theme.of(context).colorScheme;
+
+        return Material(
+          color: colorScheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () {
+              Navigator.of(context).pop();
+              if (item.route != null) {
+                context.go(item.route!);
+                return;
+              }
+              if (item.action != null) {
+                item.action!.call();
+                return;
+              }
+            },
+            child: Ink(
+              decoration: BoxDecoration(
+                color: colorScheme.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.6),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: colorScheme.shadow.withValues(alpha: 0.04),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
                   ),
-                  child: ListTile(
-                    leading: Container(
-                      width: 42,
-                      height: 42,
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
                       decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .primaryContainer
-                            .withValues(alpha: 0.8),
-                        borderRadius: BorderRadius.circular(12),
+                        color: colorScheme.primaryContainer.withValues(alpha: 0.6),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
                         item.icon,
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                        size: 18,
+                        color: colorScheme.primary,
                       ),
                     ),
-                    title: Text(
+                    const SizedBox(height: 6),
+                    Text(
                       item.label,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             fontWeight: FontWeight.w600,
+                            fontSize: 12.5,
+                            color: colorScheme.onSurface,
                           ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    trailing: Icon(
-                      item.label == 'Sign Out' || item.label == 'Delete Account'
-                          ? Icons.arrow_forward
-                          : Icons.chevron_right,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
+                  ],
                 ),
               ),
             ),
           ),
-        )
-        .toList();
+        );
+      },
+    );
   }
 
   Widget _buildMoreHeader(BuildContext context) {
@@ -310,33 +288,36 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
 
   int _getCurrentIndex(String location) {
     switch (location) {
+      case AppConstants.homeRoute:
+        return 0;
+      case AppConstants.studyRoute:
+      case AppConstants.studyGuideRoute:
+      case AppConstants.chaptersRoute:
+        return 1;
       case AppConstants.prayerRoute:
       case AppConstants.prayerWallRoute:
-        return 0;
-      case AppConstants.bibleGameRoute:
-        return 1;
-      case AppConstants.homeRoute:
         return 2;
-      case AppConstants.chaptersRoute:
+      case AppConstants.healthRoute:
+      case AppConstants.enhancedHealthRoute:
         return 3;
       default:
-        return 2;
+        return 0;
     }
   }
 
   void _onItemTapped(BuildContext context, int index) {
     switch (index) {
       case 0:
-        context.go(AppConstants.prayerRoute);
-        break;
-      case 1:
-        context.go(AppConstants.bibleGameRoute);
-        break;
-      case 2:
         context.go(AppConstants.homeRoute);
         break;
+      case 1:
+        context.go(AppConstants.studyRoute);
+        break;
+      case 2:
+        context.go(AppConstants.prayerRoute);
+        break;
       case 3:
-        context.go(AppConstants.chaptersRoute);
+        context.go(AppConstants.healthRoute);
         break;
       case 4:
         _scaffoldKey.currentState?.openDrawer();
@@ -344,53 +325,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
     }
   }
 
-  Future<void> _handleSignOut(BuildContext context) async {
-    await _authService.signOut();
-    if (context.mounted) {
-      context.go(AppConstants.authRoute);
-    }
-  }
 
-  Future<void> _handleDeleteAccount(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Account'),
-        content: const Text(
-          'This will permanently delete your account. Continue?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.error),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
-
-    try {
-      await _authService.deleteAccount();
-      if (context.mounted) {
-        context.go(AppConstants.authRoute);
-      }
-    } catch (_) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Delete failed. Re-login and try again.'),
-          ),
-        );
-      }
-    }
-  }
 
   Future<void> _handleClaimAdminRole(BuildContext context) async {
     try {

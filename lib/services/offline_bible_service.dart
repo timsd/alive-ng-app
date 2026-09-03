@@ -16,6 +16,22 @@ class OfflineBibleService {
 
   static final Logger _logger = Logger('OfflineBibleService');
   final Map<String, Archive> _bundleCache = {};
+  final Map<String, Map<String, ArchiveFile>> _bundleFileIndex = {};
+
+  /// Strips USFM/XML tags like <pb/>, <pb>, <t>, </t>, <f>...</f>, <x>...</x>, etc.
+  static String cleanVerseText(String? raw) {
+    if (raw == null || raw.isEmpty) return '';
+    String text = raw
+        .replaceAll(RegExp(r'<f[\s\S]*?<\/f>', caseSensitive: false), '')
+        .replaceAll(RegExp(r'<x[\s\S]*?<\/x>', caseSensitive: false), '')
+        .replaceAll(RegExp(r'<[^>]+>'), ' ')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&apos;', "'")
+        .replaceAll('&amp;', '&')
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>');
+    return text.replaceAll(RegExp(r'\s+'), ' ').trim();
+  }
 
   OfflineBibleService._internal({
     BibleDatabaseHelper? dbHelper,
@@ -506,10 +522,11 @@ class OfflineBibleService {
     Object? lastError;
 
     try {
-      final archive = await _loadVersionBundle(language, version);
+      await _loadVersionBundle(language, version);
+      final fileMap = _bundleFileIndex['$language/$version'] ?? const <String, ArchiveFile>{};
       for (final assetPath in candidates) {
-        final fileName = assetPath.split('/').last;
-        final file = archive.findFile(fileName);
+        final fileName = assetPath.split('/').last.toLowerCase();
+        final file = fileMap[fileName];
         if (file == null || !file.isFile || file.content is! List<int>) {
           continue;
         }
@@ -519,7 +536,7 @@ class OfflineBibleService {
         final verses = (chapterData['verses'] as List<dynamic>)
             .map((v) => BibleVerse(
                   number: v['verse'],
-                  text: v['text'],
+                  text: cleanVerseText(v['text']?.toString()),
                   footnotes: v['footnotes']?.cast<String, String>(),
                   crossReferences: v['crossReferences']?.cast<String>(),
                 ))
@@ -559,8 +576,19 @@ class OfflineBibleService {
     );
     final bytes =
         data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
-    final archive = ZipDecoder().decodeBytes(bytes, verify: true);
+    // verify: false saves significant CPU time decoding large bundles on mobile
+    final archive = ZipDecoder().decodeBytes(bytes, verify: false);
     _bundleCache[cacheKey] = archive;
+
+    final fileMap = <String, ArchiveFile>{};
+    for (final file in archive.files) {
+      if (file.isFile) {
+        fileMap[file.name.toLowerCase()] = file;
+        final base = file.name.split('/').last.toLowerCase();
+        fileMap[base] = file;
+      }
+    }
+    _bundleFileIndex[cacheKey] = fileMap;
     return archive;
   }
 

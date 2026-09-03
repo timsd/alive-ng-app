@@ -124,13 +124,7 @@ class ProfileScreen extends ConsumerWidget {
         actions: [
           IconButton(
             onPressed: () {
-              // Navigate to settings (placeholder implementation)
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(translate('settings_coming_soon')),
-                  duration: const Duration(seconds: 2),
-                ),
-              );
+              context.push(AppConstants.notificationSettingsRoute);
             },
             icon: const Icon(Icons.settings),
             tooltip: translate('settings'),
