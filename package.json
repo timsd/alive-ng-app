@@ -28,6 +28,8 @@
   "dependencies": {
     "node-appwrite": "22.1.3",
     "puppeteer": "^24.39.0"
+  },
+  "devDependencies": {
+    "appwrite-cli": "^27.3.0"
   }
 }
-
