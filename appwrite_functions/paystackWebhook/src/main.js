@@ -29,9 +29,9 @@ async function sendDonationReceipt(paymentData) {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          from: 'ALIVE NG Ministries <alivenigeria2011@gmail.com>',
+          from: 'ALIVE Nigeria <alivenigeria2011@gmail.com>',
           to: email,
-          subject: 'Your ALIVE NG Donation Receipt - ' + reference,
+          subject: 'Your ALIVE-NG Donation Receipt - ' + reference,
           html: receiptHtml
         })
       });
