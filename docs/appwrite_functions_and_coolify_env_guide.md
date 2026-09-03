@@ -11,10 +11,14 @@ The repository includes 4 serverless Node.js 20 functions under `appwrite_functi
 
 | Function Name | Function ID | Runtime | Required Environment Variables | Scopes Needed |
 |---|---|---|---|---|
-| **createLiveKitToken** | `6a08e9010035dc8c1e51` | `node-20.0` | `LIVEKIT_API_KEY`<br>`LIVEKIT_API_SECRET`<br>`APPWRITE_ENDPOINT`<br>`APPWRITE_PROJECT_ID`<br>`APPWRITE_DATABASE_ID`<br>`APPWRITE_USERS_TABLE_ID`<br>`APPWRITE_FUNCTION_API_KEY` | `rows.read` |
+| **createLiveKitToken** | `6a08e9010035dc8c1e51` | `node-20.0` | `LIVEKIT_API_KEY`<br>`LIVEKIT_API_SECRET`<br>`APPWRITE_ENDPOINT`<br>`APPWRITE_PROJECT_ID`<br>`APPWRITE_DATABASE_ID`<br>`APPWRITE_USERS_TABLE_ID`<br>`APPWRITE_FUNCTION_API_KEY` | `databases.read`<br>`documents.read` |
 | **paystackPayments** | `paystack_payments` | `node-20.0` | `PAYSTACK_SECRET_KEY`<br>`APPWRITE_ENDPOINT`<br>`APPWRITE_PROJECT_ID`<br>`APPWRITE_DATABASE_ID`<br>`APPWRITE_FUNCTION_API_KEY`<br>`APPWRITE_PAYMENT_LOGS_COLLECTION_ID` | `databases.read`<br>`databases.write` |
 | **paystackWebhook** | `paystack_webhook` | `node-20.0` | `PAYSTACK_SECRET_KEY`<br>`APPWRITE_ENDPOINT`<br>`APPWRITE_PROJECT_ID`<br>`APPWRITE_DATABASE_ID`<br>`APPWRITE_FUNCTION_API_KEY`<br>`APPWRITE_DONATION_RECORDS_COLLECTION_ID`<br>`APPWRITE_PROJECTS_COLLECTION_ID`<br>`APPWRITE_PAYMENT_LOGS_COLLECTION_ID`<br>`RESEND_API_KEY` (for receipts) | `databases.read`<br>`databases.write` |
 | **sendEmail** | `send_email` | `node-20.0` | `RESEND_API_KEY`<br>`RECEIPT_SENDER_EMAIL`<br>`SENDER_EMAIL` | None (external API) |
+
+> [!NOTE]
+> **Why `databases.read` / `documents.read` instead of `rows.read`?**
+> Appwrite Console uses document/collection terminology rather than SQL row terminology. When configuring API keys or function scopes in the Appwrite Console, select **`databases.read`** and/or **`documents.read`** (under the Databases section). `createLiveKitToken` reads the user's role from the users collection/document (`APPWRITE_USERS_TABLE_ID`).
 
 ### Automated Sync Script:
 All variables above can be updated and synchronized in bulk directly from your local `.env` file by running:
@@ -100,3 +104,106 @@ node scripts/appwrite_platform_ping.mjs
    - Tap any task &rarr; verify it opens the feature directly and records completion.
 5. **Help & Support**:
    - Open `/help-support`. Tap any guide item &rarr; expands inline directly with no redundant modal popups.
+
+---
+
+## 5. Google Sign-In Setup & Unblocking Guide
+
+If users or testers encounter a blockage with **"Continue with Google"**, verify the following 3 configuration checkpoints:
+
+### Checkpoint 1: Google Cloud Console (Credentials &rarr; OAuth 2.0 Client IDs)
+Under your Web application Client ID:
+- **Authorized JavaScript origins**:
+  - `https://api.alivenigeria.org`
+  - `https://app.alivenigeria.org`
+  - `http://localhost` (for local development)
+- **Authorized redirect URIs**:
+  - `https://api.alivenigeria.org/v1/account/sessions/oauth2/callback/google`
+  *(CRITICAL: Must point to the Appwrite API server `api.alivenigeria.org`, NOT the web app).*
+
+### Checkpoint 2: Appwrite Console (Auth &rarr; Settings &rarr; OAuth2 Providers)
+- Locate **Google** and ensure it is **Enabled**.
+- Paste the **Client ID** (App ID) and **Client Secret** (App Secret) from Google Cloud Console.
+
+### Checkpoint 3: Appwrite Console &rarr; Overview / Settings &rarr; Platforms
+Appwrite blocks any OAuth redirect if the calling platform is not explicitly registered:
+1. **Web Platform**:
+   - **Name**: `ALIVE Web App`
+   - **Hostname**: `app.alivenigeria.org` (and `localhost` for local dev)
+2. **Android Platform**:
+   - **Name**: `ALIVE NG`
+   - **Package Name**: `com.alive.alivengandroidapp`
+   *(This matches `android/app/build.gradle.kts` and the callback scheme `appwrite-callback-6a3bef53002f5090dedf` configured in `AndroidManifest.xml`).*
+3. **Apple Platform** (for iOS):
+   - **Name**: `ALIVE NG`
+   - **Bundle ID**: `com.alive.alivengandroidapp`
+
+### Checkpoint 4: Coolify Appwrite Server `.env`
+In Coolify, check your Appwrite service Environment Variables:
+```env
+_APP_DOMAIN=api.alivenigeria.org
+_APP_DOMAIN_TARGET=api.alivenigeria.org
+_APP_ENV=production
+```
+If `_APP_DOMAIN` was left as default `localhost`, Appwrite generates an invalid redirect URI to Google. Updating it to `api.alivenigeria.org` and redeploying the Appwrite container in Coolify resolves this immediately.
+
+---
+
+## 6. Coolify Appwrite Environment Automation
+
+If you have multiple Appwrite (or other) services in Coolify and cannot easily locate the right one, use the automation script below to **automatically find the Appwrite service** and update critical env vars like `_APP_DOMAIN`.
+
+### Step 1: Create a Coolify API Token
+
+1. Log into your Coolify dashboard (e.g. `https://coolify.yourdomain.com`).
+2. Click your **profile icon** (top-right) → **Settings** → **API Tokens** (or navigate to **Security → API Tokens**).
+3. Click **"Create Token"**.
+4. Give it a descriptive name, e.g. `alive-deploy`.
+5. Ensure it has **read + write** permissions.
+6. Copy the generated token immediately — it will not be shown again.
+
+### Step 2: Add Coolify credentials to `.env`
+
+Add the following to your project root `.env` file:
+
+```env
+# Coolify API Configuration
+COOLIFY_API_URL=https://coolify.yourdomain.com
+COOLIFY_API_TOKEN=your-api-token-here
+
+# Optional: If you have multiple Appwrite services and want to target a specific one
+# COOLIFY_SERVICE_UUID=abc123-uuid-here
+```
+
+### Step 3: Run the automation script
+
+```bash
+# Preview changes without applying (recommended first run):
+node scripts/coolify_update_appwrite_env.mjs --dry-run
+
+# Apply changes:
+node scripts/coolify_update_appwrite_env.mjs
+
+# Apply changes AND redeploy the Appwrite service immediately:
+node scripts/coolify_update_appwrite_env.mjs --redeploy
+```
+
+### What the script does:
+
+1. **Lists all services** in your Coolify instance via the API.
+2. **Auto-identifies** the Appwrite service by scanning names, descriptions, and Docker Compose content.
+3. **Checks** `_APP_DOMAIN`, `_APP_DOMAIN_TARGET`, and `_APP_ENV` against expected values.
+4. **Reports** which variables are correct and which need updating.
+5. **Applies** changes via the Coolify API (unless `--dry-run` is used).
+6. **Optionally redeploys** the service (if `--redeploy` flag is passed).
+
+### Manual fallback
+
+If the API approach doesn't work for your Coolify version, update manually:
+
+1. Coolify Dashboard → **Services** → find your Appwrite stack.
+2. Click the Appwrite service → **Environment Variables** tab.
+3. Find or add: `_APP_DOMAIN=api.alivenigeria.org`
+4. Find or add: `_APP_DOMAIN_TARGET=api.alivenigeria.org`
+5. Click **Save** → **Redeploy**.
+

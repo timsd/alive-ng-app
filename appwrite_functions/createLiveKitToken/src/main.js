@@ -25,10 +25,28 @@ async function getRole(userId, req) {
     throw new Error('Private ALIVE Meet rooms are not configured for role verification.');
   }
 
-  const response = await fetch(
-    `${endpoint}/tablesdb/${databaseId}/tables/${usersTableId}/rows/${encodeURIComponent(userId)}`,
-    { headers: { 'X-Appwrite-Project': projectId, 'X-Appwrite-Key': apiKey } },
+  const headers = {
+    'X-Appwrite-Project': projectId,
+    'X-Appwrite-Key': apiKey,
+  };
+
+  // Try standard Appwrite Databases endpoint (collections/documents) first
+  let response = await fetch(
+    `${endpoint}/databases/${databaseId}/collections/${usersTableId}/documents/${encodeURIComponent(userId)}`,
+    { headers },
   );
+
+  // Fallback to TablesDB route if standard collections route returns 404
+  if (response.status === 404) {
+    const tableResponse = await fetch(
+      `${endpoint}/tablesdb/${databaseId}/tables/${usersTableId}/rows/${encodeURIComponent(userId)}`,
+      { headers },
+    );
+    if (tableResponse.ok) {
+      response = tableResponse;
+    }
+  }
+
   if (!response.ok) {
     throw new Error(`Unable to verify ALIVE Meet role (${response.status}).`);
   }

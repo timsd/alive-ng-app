@@ -575,8 +575,8 @@ class _AdminDonationsReportScreenState
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: DataTable(
-          headingRowColor: MaterialStateProperty.all(
-            theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
+          headingRowColor: WidgetStateProperty.all(
+            theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
           ),
           columns: const [
             DataColumn(label: Text('Date & Time')),

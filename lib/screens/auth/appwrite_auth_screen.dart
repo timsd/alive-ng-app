@@ -233,36 +233,20 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
                         ),
                       ),
 
-                      // Keep the selected registration form focused on one action.
-                      if (!_isSignUp)
-                        _buildAuthButtonsRow(context, translate)
-                      else
-                        _buildSignUpHeader(context, translate),
+                      // Segmented Mode Selector (Sign In | Sign Up)
+                      _buildModeSelector(context, translate),
 
                       SizedBox(
                         height: ResponsiveUtils.getResponsiveValue(
                           context: context,
-                          mobile: 24.0,
-                          tablet: 32.0,
-                          desktop: 40.0,
+                          mobile: 20.0,
+                          tablet: 24.0,
+                          desktop: 28.0,
                         ),
                       ),
 
-                      // Auth Form
+                      // Auth Form (Inputs + Submit Button immediately below!)
                       _buildAuthForm(context, translate, signInState),
-
-                      SizedBox(
-                        height: ResponsiveUtils.getResponsiveValue(
-                          context: context,
-                          mobile: 16.0,
-                          tablet: 20.0,
-                          desktop: 24.0,
-                        ),
-                      ),
-
-                      // Forgot Password (smaller, only for sign in)
-                      if (!_isSignUp)
-                        _buildForgotPasswordButton(context, translate),
 
                       SizedBox(
                         height: ResponsiveUtils.getResponsiveValue(
@@ -396,128 +380,171 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
     );
   }
 
-  Widget _buildAuthButtonsRow(
+  Widget _buildModeSelector(
     BuildContext context,
     String Function(String) translate,
   ) {
-    return Row(
-      children: [
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: _isLoading ? null : () => _handleDirectSignIn(),
-            icon: Icon(
-              Icons.login,
-              size: ResponsiveUtils.getResponsiveValue(
-                context: context,
-                mobile: 20.0,
-                tablet: 22.0,
-                desktop: 24.0,
-              ),
-            ),
-            label: Text(
-              translate('sign_in'),
-              style: TextStyle(
-                fontSize: ResponsiveUtils.getResponsiveValue(
-                  context: context,
-                  mobile: 16.0,
-                  tablet: 18.0,
-                  desktop: 20.0,
+    final theme = Theme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+      ),
+      padding: const EdgeInsets.all(4),
+      child: Row(
+        children: [
+          Expanded(
+            child: InkWell(
+              onTap: _isLoading
+                  ? null
+                  : () {
+                      if (_isSignUp) setState(() => _isSignUp = false);
+                    },
+              borderRadius: BorderRadius.circular(10),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: !_isSignUp
+                      ? theme.colorScheme.primary
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: !_isSignUp
+                      ? [
+                          BoxShadow(
+                            color:
+                                theme.colorScheme.primary.withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : null,
                 ),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              foregroundColor: Theme.of(context).colorScheme.onPrimary,
-              padding: EdgeInsets.symmetric(
-                vertical: ResponsiveUtils.getResponsiveValue(
-                  context: context,
-                  mobile: 16.0,
-                  tablet: 18.0,
-                  desktop: 20.0,
+                child: Center(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.login,
+                        size: 18,
+                        color: !_isSignUp
+                            ? theme.colorScheme.onPrimary
+                            : theme.colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        translate('sign_in'),
+                        style: TextStyle(
+                          color: !_isSignUp
+                              ? theme.colorScheme.onPrimary
+                              : theme.colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 2,
             ),
           ),
-        ),
-        SizedBox(
-          width: ResponsiveUtils.getResponsiveValue(
-            context: context,
-            mobile: 12.0,
-            tablet: 16.0,
-            desktop: 20.0,
-          ),
-        ),
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: _isLoading ? null : () => _handleDirectSignUp(),
-            icon: Icon(
-              Icons.person_add,
-              size: ResponsiveUtils.getResponsiveValue(
-                context: context,
-                mobile: 20.0,
-                tablet: 22.0,
-                desktop: 24.0,
-              ),
-            ),
-            label: Text(
-              translate('sign_up'),
-              style: TextStyle(
-                fontSize: ResponsiveUtils.getResponsiveValue(
-                  context: context,
-                  mobile: 16.0,
-                  tablet: 18.0,
-                  desktop: 20.0,
+          Expanded(
+            child: InkWell(
+              onTap: _isLoading
+                  ? null
+                  : () {
+                      if (!_isSignUp) setState(() => _isSignUp = true);
+                    },
+              borderRadius: BorderRadius.circular(10),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: _isSignUp
+                      ? theme.colorScheme.primary
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: _isSignUp
+                      ? [
+                          BoxShadow(
+                            color:
+                                theme.colorScheme.primary.withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : null,
                 ),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.secondary,
-              foregroundColor: Theme.of(context).colorScheme.onSecondary,
-              padding: EdgeInsets.symmetric(
-                vertical: ResponsiveUtils.getResponsiveValue(
-                  context: context,
-                  mobile: 16.0,
-                  tablet: 18.0,
-                  desktop: 20.0,
+                child: Center(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.person_add,
+                        size: 18,
+                        color: _isSignUp
+                            ? theme.colorScheme.onPrimary
+                            : theme.colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        translate('sign_up'),
+                        style: TextStyle(
+                          color: _isSignUp
+                              ? theme.colorScheme.onPrimary
+                              : theme.colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 2,
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget _buildSignUpHeader(
+  Widget _buildModeTogglePrompt(
     BuildContext context,
     String Function(String) translate,
   ) {
-    return Row(
-      children: [
-        IconButton(
-          onPressed:
-              _isLoading ? null : () => setState(() => _isSignUp = false),
-          icon: const Icon(Icons.arrow_back),
-          tooltip: 'Back to sign in',
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            translate('sign_up'),
-            style: Theme.of(context).textTheme.titleLarge,
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            _isSignUp
+                ? 'Already have an account? '
+                : 'Don\'t have an account? ',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.7),
+                ),
           ),
-        ),
-      ],
+          GestureDetector(
+            onTap: _isLoading
+                ? null
+                : () => setState(() => _isSignUp = !_isSignUp),
+            child: Text(
+              _isSignUp ? translate('sign_in') : translate('sign_up'),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -680,32 +707,70 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
             ),
           ],
 
+          if (!_isSignUp) ...[
+            const SizedBox(height: 6),
+            _buildForgotPasswordButton(context, translate),
+          ],
+
           SizedBox(
             height: ResponsiveUtils.getResponsiveValue(
               context: context,
-              mobile: 24.0,
-              tablet: 28.0,
-              desktop: 32.0,
+              mobile: 20.0,
+              tablet: 24.0,
+              desktop: 28.0,
             ),
           ),
 
-          if (_isSignUp)
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _isLoading || signInState.isLoading
-                    ? null
-                    : _handleDirectSignUp,
-                icon: _isLoading || signInState.isLoading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.person_add),
-                label: Text(translate('sign_up')),
+          // Primary Submit Button (Sign In or Sign Up directly below inputs)
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _isLoading || signInState.isLoading
+                  ? null
+                  : (_isSignUp ? _handleDirectSignUp : _handleDirectSignIn),
+              icon: _isLoading || signInState.isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Icon(_isSignUp ? Icons.person_add : Icons.login),
+              label: Text(
+                _isSignUp ? translate('sign_up') : translate('sign_in'),
+                style: TextStyle(
+                  fontSize: ResponsiveUtils.getResponsiveValue(
+                    context: context,
+                    mobile: 16.0,
+                    tablet: 18.0,
+                    desktop: 20.0,
+                  ),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                padding: EdgeInsets.symmetric(
+                  vertical: ResponsiveUtils.getResponsiveValue(
+                    context: context,
+                    mobile: 16.0,
+                    tablet: 18.0,
+                    desktop: 20.0,
+                  ),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 2,
               ),
             ),
+          ),
+
+          // Mode toggle prompt (Don't have an account? Sign Up)
+          _buildModeTogglePrompt(context, translate),
         ],
       ),
     );

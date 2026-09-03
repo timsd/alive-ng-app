@@ -399,13 +399,18 @@
           <div class="field">
             <label for="donation-currency">Currency</label>
             <div style="display:flex;gap:8px;margin-bottom:4px;">
-              <button type="button" id="btn-cur-ngn" class="currency-btn active" data-currency="NGN" style="flex:1;padding:10px;border:2px solid #d4af37;border-radius:8px;background:#d4af37;color:#0f172a;font-weight:700;cursor:pointer;">₦ Naira</button>
-              <button type="button" id="btn-cur-usd" class="currency-btn" data-currency="USD" style="flex:1;padding:10px;border:2px solid #e2e8f0;border-radius:8px;background:#fff;color:#0f172a;font-weight:700;cursor:pointer;">$ Dollar</button>
+              <button type="button" id="btn-cur-ngn" class="currency-btn active" data-currency="NGN"
+                style="flex:1;padding:10px;border:2px solid #d4af37;border-radius:8px;background:#d4af37;color:#0f172a;font-weight:700;cursor:pointer;">₦
+                Naira</button>
+              <button type="button" id="btn-cur-usd" class="currency-btn" data-currency="USD"
+                style="flex:1;padding:10px;border:2px solid #e2e8f0;border-radius:8px;background:#fff;color:#0f172a;font-weight:700;cursor:pointer;">$
+                Dollar</button>
             </div>
           </div>
           <div class="field">
             <label for="donation-amount">Amount</label>
-            <input id="donation-amount" name="amount" type="number" min="100" step="100" inputmode="numeric" placeholder="Minimum 100" required>
+            <input id="donation-amount" name="amount" type="number" min="100" step="100" inputmode="numeric"
+              placeholder="Minimum 100" required>
           </div>
           <div class="actions">
             <button id="donate-now" class="primary-button" type="submit">Continue securely with Paystack</button>
@@ -475,8 +480,8 @@
         amountInputEl.placeholder = 'Minimum ' + min;
       }
 
-      if (btnNGN) btnNGN.addEventListener('click', function() { setCurrency('NGN'); });
-      if (btnUSD) btnUSD.addEventListener('click', function() { setCurrency('USD'); });
+      if (btnNGN) btnNGN.addEventListener('click', function () { setCurrency('NGN'); });
+      if (btnUSD) btnUSD.addEventListener('click', function () { setCurrency('USD'); });
 
       if (project) {
         document.getElementById('project-title').textContent = project.title;

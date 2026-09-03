@@ -173,10 +173,12 @@ class AppwriteAuthService {
   }
 
   Future<void> signInWithGoogle() async {
+    final callbackScheme =
+        'appwrite-callback-${AppwriteBackendConfig.projectId}://';
     await _account.createOAuth2Session(
       provider: appwrite_enums.OAuthProvider.google,
-      success: AppwriteBackendConfig.oauthSuccessUrl,
-      failure: AppwriteBackendConfig.oauthFailureUrl,
+      success: kIsWeb ? AppwriteBackendConfig.oauthSuccessUrl : callbackScheme,
+      failure: kIsWeb ? AppwriteBackendConfig.oauthFailureUrl : callbackScheme,
       scopes: const ['email', 'profile'],
     );
     await getCurrentUser();

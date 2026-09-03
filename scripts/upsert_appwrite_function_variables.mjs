@@ -156,7 +156,7 @@ const functionConfigs = [
     create: {
       runtime: 'node-20.0',
       execute: ['users'],
-      scopes: ['rows.read'],
+      scopes: ['databases.read', 'documents.read'],
     },
   },
   {

@@ -57,7 +57,8 @@
             "timeout": 15,
             "commands": "npm install",
             "scopes": [
-                "rows.read"
+                "databases.read",
+                "documents.read"
             ]
         },
         {
