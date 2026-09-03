@@ -104,7 +104,6 @@ dependencies:
   # Data models
   equatable: ^2.0.5
   timezone: ^0.10.1
-  # supabase_flutter: removed (phasing out Supabase SDK)
   just_audio: ^0.9.46
   crypto: ^3.0.3
   syncfusion_flutter_pdf: ^32.2.9

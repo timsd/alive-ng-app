@@ -393,7 +393,14 @@
             <input id="donor-email" name="email" type="email" autocomplete="email" required>
           </div>
           <div class="field">
-            <label for="donation-amount">Amount (NGN)</label>
+            <label for="donation-currency">Currency</label>
+            <div style="display:flex;gap:8px;margin-bottom:4px;">
+              <button type="button" id="btn-cur-ngn" class="currency-btn active" data-currency="NGN" style="flex:1;padding:10px;border:2px solid #d4af37;border-radius:8px;background:#d4af37;color:#0f172a;font-weight:700;cursor:pointer;">₦ Naira</button>
+              <button type="button" id="btn-cur-usd" class="currency-btn" data-currency="USD" style="flex:1;padding:10px;border:2px solid #e2e8f0;border-radius:8px;background:#fff;color:#0f172a;font-weight:700;cursor:pointer;">$ Dollar</button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="donation-amount">Amount</label>
             <input id="donation-amount" name="amount" type="number" min="100" step="100" inputmode="numeric" placeholder="Minimum 100" required>
           </div>
           <div class="actions">
@@ -443,6 +450,29 @@
       var project = projects[projectId];
       var statusEl = document.getElementById('donation-status');
       var donateBtn = document.getElementById('donate-now');
+      var selectedCurrency = 'NGN';
+      var minAmounts = { NGN: 100, USD: 1 };
+      var currencySymbols = { NGN: '₦', USD: '$' };
+
+      // Currency toggle handlers
+      var btnNGN = document.getElementById('btn-cur-ngn');
+      var btnUSD = document.getElementById('btn-cur-usd');
+      var amountInputEl = document.getElementById('donation-amount');
+
+      function setCurrency(cur) {
+        selectedCurrency = cur;
+        var isNGN = cur === 'NGN';
+        btnNGN.style.background = isNGN ? '#d4af37' : '#fff';
+        btnNGN.style.borderColor = isNGN ? '#d4af37' : '#e2e8f0';
+        btnUSD.style.background = isNGN ? '#fff' : '#d4af37';
+        btnUSD.style.borderColor = isNGN ? '#e2e8f0' : '#d4af37';
+        var min = minAmounts[cur] || 1;
+        amountInputEl.min = min;
+        amountInputEl.placeholder = 'Minimum ' + min;
+      }
+
+      if (btnNGN) btnNGN.addEventListener('click', function() { setCurrency('NGN'); });
+      if (btnUSD) btnUSD.addEventListener('click', function() { setCurrency('USD'); });
 
       if (project) {
         document.getElementById('project-title').textContent = project.title;
@@ -474,15 +504,17 @@
         var name = document.getElementById('donor-name').value.trim();
         var email = document.getElementById('donor-email').value.trim();
         var amountInput = document.getElementById('donation-amount').value;
-        var amountNaira = Number(amountInput);
+        var amountValue = Number(amountInput);
+        var minForCurrency = minAmounts[selectedCurrency] || 1;
 
-        if (!name || !email || !Number.isFinite(amountNaira) || amountNaira < 100) {
-          setStatus('Please enter a valid name, email, and amount of at least NGN 100.', 'error');
+        if (!name || !email || !Number.isFinite(amountValue) || amountValue < minForCurrency) {
+          var curSymbol = currencySymbols[selectedCurrency] || '';
+          setStatus('Please enter a valid name, email, and amount of at least ' + curSymbol + minForCurrency + ' ' + selectedCurrency + '.', 'error');
           return;
         }
 
         var reference = makeReference();
-        var amountKobo = Math.round(amountNaira * 100);
+        var amountMinor = Math.round(amountValue * 100);
 
         donateBtn.disabled = true;
         setStatus('Initializing secure checkout...', '');
@@ -499,8 +531,8 @@
               body: JSON.stringify({
                 email: email,
                 reference: reference,
-                amount: amountKobo,
-                currency: 'NGN',
+                amount: amountMinor,
+                currency: selectedCurrency,
                 callback_url: CALLBACK_URL,
                 metadata: {
                   donor_name: name,
@@ -508,7 +540,9 @@
                   project_id: projectId || 'general_mission_fund',
                   donation_type: 'generalSupport',
                   source: 'web_donation_page',
-                  amount_ngn: amountNaira
+                  amount: amountValue,
+                  currency: selectedCurrency,
+                  amount_minor: amountMinor
                 }
               })
             }

@@ -1,3 +1,48 @@
+
+async function sendDonationReceipt(paymentData) {
+  const email = paymentData.customer && paymentData.customer.email;
+  if (!email) return;
+  
+  const amount = (paymentData.amount / 100).toLocaleString();
+  const currency = paymentData.currency || 'NGN';
+  const reference = paymentData.reference;
+  const date = new Date().toLocaleDateString('en-NG', { year: 'numeric', month: 'long', day: 'numeric' });
+  
+  const donorName = (paymentData.metadata && paymentData.metadata.donor_name)
+    ? paymentData.metadata.donor_name
+    : (paymentData.customer && paymentData.customer.first_name
+        ? paymentData.customer.first_name
+        : 'Donor');
+  const paymentMethod = paymentData.channel || 'card';
+  const projectName = (paymentData.metadata && paymentData.metadata.project_id)
+    ? paymentData.metadata.project_id.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+    : 'General Mission Fund';
+
+  const receiptHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Donation Receipt - ALIVE NG Ministries</title></head><body style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1a202c;"><div style="text-align: center; border-bottom: 3px solid #1a365d; padding-bottom: 20px; margin-bottom: 20px;"><h1 style="color: #1a365d; margin: 0;">ALIVE NG Ministries</h1><p style="color: #666; margin: 4px 0;">Official Donation Receipt</p><p style="color: #999; font-size: 12px; margin: 4px 0;">Valid for tax filing purposes</p></div><div style="padding: 10px 0;"><p>Dear ' + donorName + ',</p><p>Thank you for your generous donation to ALIVE NG Ministries. Your contribution is making a difference. Below are the details of your donation:</p><table style="width: 100%; border-collapse: collapse; margin: 20px 0;"><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Donor Name</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + donorName + '</td></tr><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Amount</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + currency + ' ' + amount + '</td></tr><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Reference</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + reference + '</td></tr><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Date</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + date + '</td></tr><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Payment Method</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + paymentMethod + '</td></tr><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Project</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + projectName + '</td></tr></table><p style="color: #4a5568; font-size: 14px;">This receipt confirms your donation to ALIVE NG Ministries. Please retain this for your tax records. If you have any questions, contact us at <a href="mailto:hello@alive.ng">hello@alive.ng</a>.</p></div><div style="text-align: center; border-top: 1px solid #e2e8f0; padding-top: 20px; color: #999; font-size: 12px;"><p>ALIVE NG Ministries &mdash; Thank you for your generosity.</p></div></body></html>';
+  
+  try {
+    if (process.env.RESEND_API_KEY) {
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + process.env.RESEND_API_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: 'ALIVE NG Ministries <alivenigeria2011@gmail.com>',
+          to: email,
+          subject: 'Your ALIVE NG Donation Receipt - ' + reference,
+          html: receiptHtml
+        })
+      });
+      console.log('Receipt emailed to', email, 'for', currency, amount);
+    } else {
+      console.log('Receipt generated (no email service configured):', email, reference);
+    }
+  } catch (err) {
+    console.error('Failed to send receipt:', err);
+  }
+}
 import crypto from 'node:crypto';
 import { Client, Databases } from 'node-appwrite';
 
@@ -54,6 +99,7 @@ export default async ({ req, res, log, error }) => {
         metadata: JSON.stringify(metadata),
       }, data);
       await incrementProjectRaised(databases, metadata, log);
+      await sendDonationReceipt(data);
     } else if (type === 'charge.failed' || type === 'charge.abandoned') {
       await updateDonation(databases, reference, {
         status: 'failed',

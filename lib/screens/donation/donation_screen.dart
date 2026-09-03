@@ -1297,6 +1297,17 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                     ),
                     textAlign: TextAlign.center,
                   ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'A receipt will be emailed to you for your records.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: dialogTheme.colorScheme.onSurface
+                          .withValues(alpha: 0.5),
+                      fontStyle: FontStyle.italic,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                 ],
               ),
               actions: [

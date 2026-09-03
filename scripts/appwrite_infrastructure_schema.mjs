@@ -7,6 +7,9 @@ export const appwriteProject = {
 };
 
 const appwrite17MaxFileSize = 30000000;
+// Appwrite can hold many audio files in this bucket. Total storage is limited
+// by the server's disk and `_APP_STORAGE_LIMIT` environment setting, not by code.
+// Increase that server-side limit if you plan to store a large library (e.g. 20 GB).
 const podcastMaxFileSize = 200000000;
 
 export const buckets = [

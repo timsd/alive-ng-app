@@ -30,7 +30,7 @@ class SyncService {
       DailyVerseGenerationService.instance;
   final Logger _logger = Logger('SyncService');
 
-  // Supabase removed; stub eliminated
+  // Legacy backend sync removed; Appwrite is the single backend.
 
   Timer? _syncTimer;
   StreamSubscription? _connectivitySubscription;

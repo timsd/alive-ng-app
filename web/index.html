@@ -240,6 +240,8 @@
       max-width: 960px;
       height: auto;
       max-height: 92vh;
+      display: flex;
+      flex-direction: column;
       background: #fff;
       border-radius: 12px;
       box-shadow: 0 24px 48px rgba(0, 0, 0, 0.25);
@@ -275,6 +277,7 @@
       grid-template-columns: 1fr 1.2fr;
       gap: 0;
       flex: 1;
+      height: 1fr;
       min-height: 0;
       overflow: hidden;
     }
@@ -316,6 +319,7 @@
       padding: 16px 20px;
       overflow-y: auto;
       min-height: 0;
+      max-height: 100%;
       /* Reserve room so the action buttons are never clipped at the bottom */
       padding-bottom: 28px;
       scroll-padding-bottom: 28px;
@@ -352,6 +356,18 @@
       background: #D4AF37;
       color: #1A1F2E;
       border-color: #D4AF37;
+    }
+
+    /* Scrollable panels without the native "side" scrollbar */
+    .projects-list::-webkit-scrollbar,
+    .project-detail::-webkit-scrollbar {
+      display: none;
+    }
+
+    .projects-list,
+    .project-detail {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
     }
 
     /* Mobile adjustments */

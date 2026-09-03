@@ -10,6 +10,7 @@ import '../../services/appwrite_admin_content_service.dart';
 import '../../services/appwrite_storage_compat_service.dart';
 import '../../services/pdf_extractor_service.dart';
 import '../../widgets/custom_image.dart';
+import 'podcast_episode_form_dialog.dart';
 
 Map<String, dynamic> _podcastPayload(Podcast podcast, {String? category}) {
   final now = DateTime.now().toUtc().toIso8601String();
@@ -29,20 +30,6 @@ Map<String, dynamic> _podcastPayload(Podcast podcast, {String? category}) {
   };
 }
 
-Map<String, dynamic> _episodePayload(PodcastEpisode episode) {
-  return {
-    'title': episode.title,
-    'podcast_id': episode.podcastId,
-    'podcast_title': episode.podcastTitle,
-    'description': episode.description,
-    'duration': episode.duration,
-    'audio_url': episode.audioUrl,
-    'publish_date': episode.publishDate.toUtc().toIso8601String(),
-    'is_downloaded': episode.isDownloaded,
-    'local_path': episode.localPath,
-  };
-}
-
 Map<String, dynamic> _categoryPayload({
   required String name,
   required int order,
@@ -59,27 +46,6 @@ Map<String, dynamic> _categoryPayload({
 
 bool _activeFlag(Map<String, dynamic> data) =>
     (data['is_active'] as bool?) ?? (data['isActive'] as bool?) ?? true;
-
-const int _maxPodcastAudioBytes = 200000000;
-
-String _formatFileSize(int bytes) {
-  const mb = 1024 * 1024;
-  if (bytes >= mb) return '${(bytes / mb).toStringAsFixed(1)} MB';
-  const kb = 1024;
-  if (bytes >= kb) return '${(bytes / kb).toStringAsFixed(1)} KB';
-  return '$bytes B';
-}
-
-String _audioContentType(String fileName) {
-  final extension = fileName.split('.').last.toLowerCase();
-  return switch (extension) {
-    'm4a' => 'audio/mp4',
-    'wav' => 'audio/wav',
-    'aac' => 'audio/aac',
-    'ogg' => 'audio/ogg',
-    _ => 'audio/mpeg',
-  };
-}
 
 class TractPodcastAdminScreen extends StatefulWidget {
   const TractPodcastAdminScreen({super.key});
@@ -144,426 +110,6 @@ class _TractPodcastAdminScreenState extends State<TractPodcastAdminScreen>
         ),
       ),
     );
-  }
-}
-
-class _EpisodeFormDialog extends StatefulWidget {
-  final Podcast podcast;
-  final PodcastEpisode? episode;
-
-  const _EpisodeFormDialog({
-    required this.podcast,
-    this.episode,
-  });
-
-  @override
-  State<_EpisodeFormDialog> createState() => _EpisodeFormDialogState();
-}
-
-class _EpisodeFormDialogState extends State<_EpisodeFormDialog> {
-  final _formKey = GlobalKey<FormState>();
-  final _titleController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  final _durationController = TextEditingController();
-
-  DateTime _publishDate = DateTime.now();
-  Uint8List? _selectedAudioBytes;
-  String? _selectedAudioName;
-  bool _isUploading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.episode != null) {
-      _titleController.text = widget.episode!.title;
-      _descriptionController.text = widget.episode!.description;
-      _durationController.text = widget.episode!.duration;
-      _publishDate = widget.episode!.publishDate;
-    }
-  }
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _descriptionController.dispose();
-    _durationController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      child: Container(
-        width: ResponsiveUtils.getResponsiveValue(
-          context: context,
-          mobile: MediaQuery.of(context).size.width * 0.95,
-          tablet: 600,
-          desktop: 700,
-        ),
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.8,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Header
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: const BoxDecoration(
-                color: Colors.blue,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(4)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.podcasts, color: Colors.white),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      widget.episode == null
-                          ? 'Add New Episode'
-                          : 'Edit Episode',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close, color: Colors.white),
-                  ),
-                ],
-              ),
-            ),
-
-            // Form
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Podcast Title (non-editable)
-                      Text(
-                        'Podcast: ${widget.podcast.title}',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Episode Title
-                      TextFormField(
-                        controller: _titleController,
-                        decoration: const InputDecoration(
-                          labelText: 'Episode Title',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter an episode title';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Episode Description
-                      TextFormField(
-                        controller: _descriptionController,
-                        decoration: const InputDecoration(
-                          labelText: 'Episode Description',
-                          border: OutlineInputBorder(),
-                        ),
-                        maxLines: 3,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter an episode description';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Duration
-                      TextFormField(
-                        controller: _durationController,
-                        decoration: const InputDecoration(
-                          labelText: 'Duration (e.g. 25:30)',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter the episode duration';
-                          }
-                          // Optional: Add regex validation for duration format
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Publish Date
-                      Row(
-                        children: [
-                          const Text('Publish Date: '),
-                          TextButton(
-                            onPressed: () async {
-                              final DateTime? picked = await showDatePicker(
-                                context: context,
-                                initialDate: _publishDate,
-                                firstDate: DateTime(2020),
-                                lastDate: DateTime(2030),
-                              );
-                              if (picked != null && picked != _publishDate) {
-                                setState(() {
-                                  _publishDate = picked;
-                                });
-                              }
-                            },
-                            child: Text(
-                              '${_publishDate.year}-${_publishDate.month.toString().padLeft(2, '0')}-${_publishDate.day.toString().padLeft(2, '0')}',
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Audio File Upload
-                      const Text(
-                        'Audio File',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.grey),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                _selectedAudioName ??
-                                    (widget.episode?.audioUrl != null &&
-                                            widget.episode!.audioUrl.isNotEmpty
-                                        ? 'Current audio file'
-                                        : 'No audio file selected'),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          ElevatedButton.icon(
-                            onPressed: _pickAudioFile,
-                            icon: const Icon(Icons.upload_file),
-                            label: const Text('Choose File'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue,
-                              foregroundColor: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (_selectedAudioName != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: Text(
-                            'Selected: $_selectedAudioName',
-                            style: const TextStyle(color: Colors.green),
-                          ),
-                        ),
-                      const SizedBox(height: 24),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            // Actions
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius:
-                    const BorderRadius.vertical(bottom: Radius.circular(4)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancel'),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: _isUploading ? null : _saveEpisode,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: _isUploading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child:
-                                CircularProgressIndicator(color: Colors.white),
-                          )
-                        : const Text('Save Episode'),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _pickAudioFile() async {
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.audio,
-        allowMultiple: false,
-        withData: true,
-      );
-
-      if (result != null && result.files.isNotEmpty) {
-        final file = result.files.first;
-        if (file.size > _maxPodcastAudioBytes) {
-          messenger.showSnackBar(
-            SnackBar(
-              content: Text(
-                'Audio file is ${_formatFileSize(file.size)}. Please choose a file below ${_formatFileSize(_maxPodcastAudioBytes)}.',
-              ),
-            ),
-          );
-          return;
-        }
-        if (file.bytes == null) {
-          messenger.showSnackBar(
-            const SnackBar(
-              content: Text('Unable to read the selected audio file.'),
-            ),
-          );
-          return;
-        }
-        if (!mounted) return;
-        setState(() {
-          _selectedAudioBytes = file.bytes;
-          _selectedAudioName = file.name;
-        });
-      }
-    } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('Error selecting audio file: $e')),
-      );
-    }
-  }
-
-  Future<void> _saveEpisode() async {
-    if (_formKey.currentState!.validate()) {
-      if ((widget.episode == null || widget.episode!.audioUrl.isEmpty) &&
-          _selectedAudioBytes == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select an audio file')),
-        );
-        return;
-      }
-
-      setState(() {
-        _isUploading = true;
-      });
-
-      final navigator = Navigator.of(context);
-      final messenger = ScaffoldMessenger.of(context);
-      try {
-        final contentService = AppwriteAdminContentService.instance;
-        final storageService = AppwriteStorageCompatService();
-
-        // Upload audio file
-        String? audioUrl;
-        if (_selectedAudioBytes != null && _selectedAudioName != null) {
-          final timestamp = DateTime.now().millisecondsSinceEpoch;
-          final fileName = '${timestamp}_${_selectedAudioName!}';
-          audioUrl = await storageService.uploadFile(
-            'audio-files/${widget.podcast.id}/$fileName',
-            _selectedAudioBytes!,
-            contentType: _audioContentType(_selectedAudioName!),
-          );
-        }
-
-        // Create episode object
-        final episode = PodcastEpisode(
-          id: widget.episode?.id ??
-              DateTime.now().millisecondsSinceEpoch.toString(),
-          title: _titleController.text,
-          podcastId: widget.podcast.id,
-          podcastTitle: widget.podcast.title,
-          description: _descriptionController.text,
-          duration: _durationController.text,
-          audioUrl: audioUrl ?? widget.episode?.audioUrl ?? '',
-          publishDate: _publishDate,
-          isDownloaded: false,
-        );
-
-        await contentService.upsertDocument(
-          'podcast_episodes',
-          episode.id,
-          _episodePayload(episode),
-        );
-
-        // Update podcast episode count if new episode
-        if (widget.episode == null) {
-          final updatedPodcast = widget.podcast.copyWith(
-            episodes: widget.podcast.episodes + 1,
-          );
-
-          await contentService.upsertDocument(
-            'podcasts',
-            updatedPodcast.id,
-            _podcastPayload(updatedPodcast),
-          );
-        }
-
-        if (mounted) {
-          navigator.pop(episode);
-          messenger.showSnackBar(
-            SnackBar(
-              content: Text(
-                widget.episode == null
-                    ? 'Episode added successfully!'
-                    : 'Episode updated successfully!',
-              ),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          messenger.showSnackBar(
-            SnackBar(
-              content: Text('Error saving episode: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      } finally {
-        if (mounted) {
-          setState(() {
-            _isUploading = false;
-          });
-        }
-      }
-    }
   }
 }
 
@@ -649,7 +195,7 @@ class _TractManagementTabState extends State<_TractManagementTab> {
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('${tract.author} • ${tract.pages} pages'),
+                          Text('${tract.author} â€¢ ${tract.pages} pages'),
                           Text(
                             tract.category.tractDisplayName,
                             style: const TextStyle(
@@ -1647,7 +1193,7 @@ class _PodcastManagementTabState extends State<_PodcastManagementTab> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                              '${podcast.host} • ${podcast.episodes} episodes'),
+                              '${podcast.host} â€¢ ${podcast.episodes} episodes'),
                           Text(
                             podcast.category.displayName,
                             style: const TextStyle(
@@ -2755,6 +2301,33 @@ class _EpisodeManagementDialog extends StatefulWidget {
 }
 
 class _EpisodeManagementDialogState extends State<_EpisodeManagementDialog> {
+  Future<List<PodcastEpisode>>? _episodesFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _episodesFuture = _loadEpisodes();
+  }
+
+  Future<List<PodcastEpisode>> _loadEpisodes() async {
+    final docs = await AppwriteAdminContentService.instance.listWhere(
+      'podcast_episodes',
+      'podcast_id',
+      widget.podcast.id,
+    );
+    final episodes =
+        docs.map((doc) => PodcastEpisode.fromJson(doc)).toList();
+    episodes.sort((a, b) => b.publishDate.compareTo(a.publishDate));
+    return episodes;
+  }
+
+  void _refresh() {
+    if (!mounted) return;
+    setState(() {
+      _episodesFuture = _loadEpisodes();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -2819,8 +2392,27 @@ class _EpisodeManagementDialogState extends State<_EpisodeManagementDialog> {
 
             // Episodes list
             Expanded(
-              child: (widget.podcast.episodes == 0)
-                  ? Center(
+              child: FutureBuilder<List<PodcastEpisode>>(
+                future: _episodesFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text(
+                          'Unable to load episodes right now. Pull to retry.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.grey[600]),
+                        ),
+                      ),
+                    );
+                  }
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  final episodes = snapshot.data ?? const <PodcastEpisode>[];
+                  if (episodes.isEmpty) {
+                    return Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -2846,18 +2438,64 @@ class _EpisodeManagementDialogState extends State<_EpisodeManagementDialog> {
                           ),
                         ],
                       ),
-                    )
-                  : Container(
+                    );
+                  }
+                  return RefreshIndicator(
+                    onRefresh: () async => _refresh(),
+                    child: ListView.builder(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'Episodes: ${widget.podcast.episodes}',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      itemCount: episodes.length,
+                      itemBuilder: (context, index) {
+                        final episode = episodes[index];
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          child: ListTile(
+                            leading: Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(Icons.audiotrack,
+                                  color: Colors.blue),
+                            ),
+                            title: Text(
+                              episode.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            subtitle: Text(
+                              [
+                                if (episode.duration.isNotEmpty)
+                                  episode.duration,
+                                '${episode.publishDate.day}/${episode.publishDate.month}/${episode.publishDate.year}',
+                              ].join(' • '),
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.edit,
+                                      color: Colors.blue),
+                                  onPressed: () =>
+                                      _showEditEpisodeDialog(episode),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete,
+                                      color: Colors.red),
+                                  onPressed: () =>
+                                      _showDeleteEpisodeDialog(episode),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
                     ),
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -2868,22 +2506,24 @@ class _EpisodeManagementDialogState extends State<_EpisodeManagementDialog> {
   void _showAddEpisodeDialog() {
     showDialog(
       context: context,
-      builder: (context) => _EpisodeFormDialog(podcast: widget.podcast),
-    );
-  }
-
-  // ignore: unused_element
-  void _showEditEpisodeDialog(PodcastEpisode episode) {
-    showDialog(
-      context: context,
-      builder: (context) => _EpisodeFormDialog(
+      builder: (context) => PodcastEpisodeFormDialog(
         podcast: widget.podcast,
-        episode: episode,
+        onEpisodeSaved: _refresh,
       ),
     );
   }
 
-  // ignore: unused_element
+  void _showEditEpisodeDialog(PodcastEpisode episode) {
+    showDialog(
+      context: context,
+      builder: (context) => PodcastEpisodeFormDialog(
+        podcast: widget.podcast,
+        episode: episode,
+        onEpisodeSaved: _refresh,
+      ),
+    );
+  }
+
   void _showDeleteEpisodeDialog(PodcastEpisode episode) {
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
@@ -2925,6 +2565,7 @@ class _EpisodeManagementDialogState extends State<_EpisodeManagementDialog> {
 
                 if (!mounted) return;
                 navigator.pop();
+                _refresh();
                 messenger.showSnackBar(
                   SnackBar(
                     content:

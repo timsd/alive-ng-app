@@ -761,12 +761,16 @@ class DonationService {
         };
       }
       // Use PaymentService to process the payment
+      final donorName = donation.metadata?['donor_name'] as String? ?? donation.guestName ?? donation.userEmail;
       final baseMetadata = {
         'donation_id': donationId,
         'appwrite_user_id': donation.userId,
         'donation_type': donation.type.name,
         'material_title': donation.materialTitle,
+        'donor_name': donorName,
+        'donor_email': donation.userEmail,
         'amount': amount,
+        'amount_minor': (amount * 100).round(),
         if (currency.toUpperCase() == 'NGN') 'amount_ngn': amount,
         if (donation.metadata?['project_title'] != null)
           'project_title': donation.metadata!['project_title'],
