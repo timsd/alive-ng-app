@@ -341,7 +341,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                       child: OutlinedButton.icon(
                         onPressed: _showProjectsPicker,
                         icon: const Icon(Icons.folder_special),
-                        label: const Text('View Projects & Donate to a Cause'),
+                        label: const Text('View Active Projects & Donate'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: theme.colorScheme.secondary,
                           side: BorderSide(
@@ -445,7 +445,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
           Text(
-            'For more than 14 years, ALIVE NG Ministries has helped connect thousands of people with God\'s word and established churches around Nigeria. We can help connect new generations to the life-changing wisdom of the Bible.',
+            'For more than 14 years, ALIVE Nigeria Ministries has helped connect thousands of people with God\'s word and established churches around Nigeria. We can help connect new generations to the life-changing wisdom of the Bible.',
             style: theme.textTheme.bodyLarge?.copyWith(
               color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
             ),
@@ -1087,7 +1087,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
             context,
             theme,
             'Non-Monetary Gifts',
-            'Share your skills and time with our ministry',
+            'Share your skills and time with the ministry',
             Icons.volunteer_activism,
             onTap: () => context.go(AppConstants.nonMonetaryGiftRoute),
           ),
@@ -1096,7 +1096,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
             context,
             theme,
             'Gift in Kind',
-            'We have a list of items on our website (ALIVENIGERIA.ORG) that as the Lord lay it in your heart you can give',
+            'Do you observe the ministry need an item that the Lord has lay in your heart to give?',
             Icons.card_giftcard,
             onTap: () => context.go(AppConstants.giftInKindRoute),
           ),
