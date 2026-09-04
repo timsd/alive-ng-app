@@ -20,7 +20,7 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
   String _selectedCategory = 'All';
   String _selectedLevel = 'All';
   String _searchQuery = '';
-  bool _showDemoContent = true;
+  bool _showDemoContent = false;
   bool _isAdmin = false;
 
   // Define lesson lists
@@ -138,15 +138,6 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
       ).toList();
     }
     return lessons;
-  }
-    return _allLessons.where((lesson) {
-      final matchesCategory = _selectedCategory == 'All' || lesson['category'] == _selectedCategory;
-      final matchesLevel = _selectedLevel == 'All' || lesson['level'] == _selectedLevel;
-      final matchesSearch = _searchQuery.isEmpty || 
-          lesson['title'].toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          lesson['description'].toLowerCase().contains(_searchQuery.toLowerCase());
-      return matchesCategory && matchesLevel && matchesSearch;
-    }).toList();
   }
 
   @override
@@ -637,39 +628,6 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
   void _applyLevelFilter(String level) {
     setState(() {
       _selectedLevel = level;
-    });
-  }
-
-  void _toggleDemoContent() {
-    setState(() {
-      _showDemoContent = !_showDemoContent;
-    });
-  }
-
-  void _updateFilteredLessons() {
-    _progressLessons = _allLessons.where((lesson) => lesson['progress'] > 0 && lesson['progress'] < 1.0).toList();
-    _favoriteLessons = _allLessons.where((lesson) => lesson['isFavorite'] == true).toList();
-    _completedLessons = _allLessons.where((lesson) => lesson['isCompleted'] == true).toList();
-  }
-
-  List<Map<String, dynamic>> get _filteredLessons {
-    var lessons = _showDemoContent 
-        ? _allLessons 
-        : _allLessons.where((lesson) => lesson['isDemo'] != true).toList();
-    
-    if (_selectedCategory != 'All') {
-      lessons = lessons.where((lesson) => lesson['category'] == _selectedCategory).toList();
-    }
-    if (_selectedLevel != 'All') {
-      lessons = lessons.where((lesson) => lesson['level'] == _selectedLevel).toList();
-    }
-    if (_searchQuery.isNotEmpty) {
-      lessons = lessons.where((lesson) => 
-        lesson['title'].toLowerCase().contains(_searchQuery.toLowerCase()) ||
-        lesson['description'].toLowerCase().contains(_searchQuery.toLowerCase())
-      ).toList();
-    }
-    return lessons;
   }
 }
 

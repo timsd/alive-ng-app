@@ -112,7 +112,7 @@ class StudyScreen extends ConsumerWidget {
               SizedBox(
                   height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
 
-              // Bible Game Card
+              // Instant Word Card
               _buildBibleGameCard(context, translate),
 
               SizedBox(
@@ -265,7 +265,7 @@ class StudyScreen extends ConsumerWidget {
                             context, 12)),
                   ),
                   child: Icon(
-                    Icons.games,
+                    Icons.menu_book_rounded,
                     color: Theme.of(context).colorScheme.onPrimary,
                     size: ResponsiveUtils.getResponsiveIconSize(context, 32),
                   ),
@@ -277,7 +277,7 @@ class StudyScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Bible Memorization Game',
+                        'Instant Word',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           color: Theme.of(context).colorScheme.onPrimary,
                           fontSize: ResponsiveUtils.getResponsiveFontSize(
@@ -289,7 +289,7 @@ class StudyScreen extends ConsumerWidget {
                           height:
                               ResponsiveUtils.getResponsiveSpacing(context, 4)),
                       Text(
-                        'Learn verses with voice recitation and fill-in-the-gap exercises',
+                        'Memorize, Recall, Overcome',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.9),
                           fontSize: ResponsiveUtils.getResponsiveFontSize(

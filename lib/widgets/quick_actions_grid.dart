@@ -33,7 +33,7 @@ class QuickActionsGrid extends ConsumerWidget {
       const QuickAction(
         icon: Icons.sports_esports_rounded,
         title: 'Bible Game',
-        subtitle: 'Test knowledge',
+        subtitle: 'Faith on demand',
         color: Color(0xFF2563EB), // Blue 600
         route: AppConstants.bibleGameRoute,
       ),
