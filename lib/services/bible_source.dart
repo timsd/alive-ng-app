@@ -316,6 +316,217 @@ class BibleSource {
     return list;
   }
 
+  static final Map<String, List<String>> _topicalThemes = {
+    'love': [
+      'john 3:16',
+      '1 corinthians 13:4-8',
+      '1 corinthians 13:13',
+      '1 john 4:7-8',
+      'romans 5:8',
+      '1 john 4:19',
+    ],
+    'faith': [
+      'hebrews 11:1',
+      'hebrews 11:6',
+      'romans 10:17',
+      '2 corinthians 5:7',
+      'ephesians 2:8-9',
+      'proverbs 3:5-6',
+    ],
+    'hope': [
+      'jeremiah 29:11',
+      'romans 15:13',
+      'isaiah 40:31',
+      'psalm 42:11',
+      '1 peter 1:3',
+    ],
+    'peace': [
+      'john 14:27',
+      'philippians 4:6-7',
+      'isaiah 26:3',
+      'psalm 29:11',
+      'matthew 11:28-30',
+    ],
+    'prayer': [
+      'philippians 4:6',
+      '1 thessalonians 5:17',
+      'matthew 6:9-13',
+      'james 5:16',
+      'mark 11:24',
+    ],
+    'strength': [
+      'philippians 4:13',
+      'isaiah 40:29',
+      'psalm 46:1',
+      'psalm 28:7',
+      'ephesians 6:10',
+    ],
+    'comfort': [
+      'psalm 23:4',
+      '2 corinthians 1:3-4',
+      'matthew 5:4',
+      'psalm 34:18',
+      'revelation 21:4',
+    ],
+    'forgiveness': [
+      '1 john 1:9',
+      'ephesians 4:32',
+      'colossians 3:13',
+      'psalm 103:12',
+      'matthew 6:14-15',
+    ],
+    'salvation': [
+      'john 3:16',
+      'romans 10:9',
+      'acts 4:12',
+      'ephesians 2:8-9',
+      'titus 3:5',
+    ],
+    'grace': [
+      'ephesians 2:8-9',
+      '2 corinthians 12:9',
+      'hebrews 4:16',
+      'romans 6:14',
+      'john 1:16',
+    ],
+    'wisdom': [
+      'james 1:5',
+      'proverbs 9:10',
+      'proverbs 3:13',
+      'colossians 3:16',
+      'ecclesiastes 7:12',
+    ],
+    'healing': [
+      'jeremiah 17:14',
+      'james 5:14-15',
+      'isaiah 53:5',
+      'psalm 103:2-3',
+      '1 peter 2:24',
+    ],
+    'trust': [
+      'proverbs 3:5-6',
+      'psalm 56:3',
+      'psalm 37:5',
+      'psalm 62:8',
+      'nahum 1:7',
+    ],
+    'light': [
+      'psalm 119:105',
+      'john 8:12',
+      'matthew 5:14-16',
+      'genesis 1:3',
+      '1 john 1:5',
+    ],
+    'courage': [
+      'joshua 1:9',
+      'psalm 27:1',
+      'deuteronomy 31:6',
+      '1 corinthians 16:13',
+      'isaiah 41:10',
+    ],
+    'fear': [
+      'psalm 23:4',
+      'psalm 27:1',
+      'isaiah 41:10',
+      '2 timothy 1:7',
+      'psalm 56:3',
+    ],
+    'joy': [
+      'psalm 16:11',
+      'nehemiah 8:10',
+      'romans 15:13',
+      'galatians 5:22-23',
+      'james 1:2-3',
+    ],
+  };
+
+  /// Returns true if the verse or reference belongs to a genealogical passage.
+  static bool isGenealogy({
+    String? reference,
+    String? text,
+  }) {
+    final ref = (reference ?? '').toLowerCase();
+
+    // Prominent biblical genealogy chapters & passages across the 66 books:
+    if (ref.startsWith('genesis 5')) return true;
+    if (ref.startsWith('genesis 10')) return true;
+    if (ref.startsWith('genesis 11') && !ref.startsWith('genesis 11:1-9')) {
+      return true;
+    }
+    if (ref.startsWith('genesis 36')) return true;
+    if (ref.startsWith('numbers 1:') || ref == 'numbers 1') return true;
+    if (ref.startsWith('numbers 26')) return true;
+    for (var i = 1; i <= 9; i++) {
+      if (ref.startsWith('1 chronicles $i:') ||
+          ref == '1 chronicles $i' ||
+          ref.startsWith('1 chron $i')) {
+        return true;
+      }
+    }
+    if (ref.startsWith('ezra 2') || ref.startsWith('nehemiah 7')) return true;
+    if (ref.startsWith('matthew 1') &&
+        (ref.contains(':1') ||
+            ref.contains(':2') ||
+            ref.contains(':3') ||
+            ref.contains(':4') ||
+            ref.contains(':5') ||
+            ref.contains(':6') ||
+            ref.contains(':7') ||
+            ref.contains(':8') ||
+            ref.contains(':9') ||
+            ref.contains(':10') ||
+            ref.contains(':11') ||
+            ref.contains(':12') ||
+            ref.contains(':13') ||
+            ref.contains(':14') ||
+            ref.contains(':15') ||
+            ref.contains(':16') ||
+            ref.contains(':17'))) {
+      return true;
+    }
+    if (ref.startsWith('luke 3') &&
+        (ref.contains(':23') ||
+            ref.contains(':24') ||
+            ref.contains(':25') ||
+            ref.contains(':26') ||
+            ref.contains(':27') ||
+            ref.contains(':28') ||
+            ref.contains(':29') ||
+            ref.contains(':30') ||
+            ref.contains(':31') ||
+            ref.contains(':32') ||
+            ref.contains(':33') ||
+            ref.contains(':34') ||
+            ref.contains(':35') ||
+            ref.contains(':36') ||
+            ref.contains(':37') ||
+            ref.contains(':38'))) {
+      return true;
+    }
+
+    // Textual genealogy patterns:
+    if (text != null && text.isNotEmpty) {
+      final t = text.toLowerCase();
+      if (t.contains('begat') ||
+          t.contains('which was the son of') ||
+          t.contains('these are the generations of')) {
+        return true;
+      }
+      final sonOfCount = t.split('the son of').length - 1;
+      if (sonOfCount >= 2) return true;
+    }
+
+    return false;
+  }
+
+  /// Corpus excluding genealogies for games and quizzes
+  List<BibleVerse> get nonGenealogyCorpus => dailyCorpus
+      .where((v) => !isGenealogy(
+            reference: v.reference,
+            text: v.text.values.first,
+          ))
+      .toList();
+
   /// Find a verse by reference in the bundled corpus
   BibleVerse? findByReference(String reference) {
     final clean = reference.trim().toLowerCase();
@@ -327,56 +538,98 @@ class BibleSource {
     return null;
   }
 
-  /// Comprehensive search across Bible verses by reference, words, or phrases
+  /// Comprehensive search across Bible verses by reference, words, phrases, or themes
   List<BibleVerse> search(String query) {
     final q = query.trim().toLowerCase();
     if (q.isEmpty) return [];
 
-    final words = q.split(RegExp(r'\s+')).where((w) => w.length > 1).toList();
+    final words = q
+        .split(RegExp(r'\s+'))
+        .map((w) => w.replaceAll(RegExp(r'[^\w]'), ''))
+        .where((w) => w.length > 1)
+        .toList();
 
-    final exactRefMatches = <BibleVerse>[];
-    final partialRefMatches = <BibleVerse>[];
-    final fullPhraseMatches = <BibleVerse>[];
-    final wordMatches = <BibleVerse>[];
+    final seenRefs = <String>{};
+    final results = <BibleVerse>[];
 
-    for (final verse in dailyCorpus) {
-      final refLower = verse.reference.toLowerCase();
-      final allTextsLower = verse.text.values.map((t) => t.toLowerCase()).toList();
-
-      if (refLower == q) {
-        exactRefMatches.add(verse);
-        continue;
-      }
-
-      if (refLower.contains(q)) {
-        partialRefMatches.add(verse);
-        continue;
-      }
-
-      if (allTextsLower.any((t) => t.contains(q))) {
-        fullPhraseMatches.add(verse);
-        continue;
-      }
-
-      if (words.isNotEmpty &&
-          words.every((w) =>
-              refLower.contains(w) || allTextsLower.any((t) => t.contains(w)))) {
-        wordMatches.add(verse);
+    void addVerse(BibleVerse verse) {
+      final key = verse.reference.toLowerCase();
+      if (seenRefs.add(key)) {
+        results.add(verse);
       }
     }
 
-    return [
-      ...exactRefMatches,
-      ...partialRefMatches,
-      ...fullPhraseMatches,
-      ...wordMatches,
-    ];
+    // 1. Exact Reference Match
+    for (final verse in dailyCorpus) {
+      if (verse.reference.toLowerCase() == q) {
+        addVerse(verse);
+      }
+    }
+
+    // 2. Partial Reference Match (e.g. "John 3", "Psalm 23")
+    for (final verse in dailyCorpus) {
+      if (verse.reference.toLowerCase().contains(q)) {
+        addVerse(verse);
+      }
+    }
+
+    // 3. Full Phrase in Verse Text
+    for (final verse in dailyCorpus) {
+      final allTexts = verse.text.values.map((t) => t.toLowerCase()).toList();
+      if (allTexts.any((t) => t.contains(q))) {
+        addVerse(verse);
+      }
+    }
+
+    // 4. Thematic / Topical Matches (e.g., search "faith", "love", "peace", "hope")
+    for (final entry in _topicalThemes.entries) {
+      final topic = entry.key;
+      if (q.contains(topic) || topic.contains(q) || words.contains(topic)) {
+        for (final ref in entry.value) {
+          final matchedVerse = findByReference(ref);
+          if (matchedVerse != null) {
+            addVerse(matchedVerse);
+          }
+        }
+      }
+    }
+
+    // 5. Multi-Word and Keyword Matches
+    if (words.isNotEmpty) {
+      final scoredMatches = <MapEntry<BibleVerse, int>>[];
+
+      for (final verse in dailyCorpus) {
+        if (seenRefs.contains(verse.reference.toLowerCase())) continue;
+
+        final refLower = verse.reference.toLowerCase();
+        final textCombined =
+            verse.text.values.join(' ').toLowerCase();
+
+        var score = 0;
+        for (final word in words) {
+          if (refLower.contains(word)) score += 3;
+          if (textCombined.contains(word)) score += 1;
+        }
+
+        if (score > 0) {
+          scoredMatches.add(MapEntry(verse, score));
+        }
+      }
+
+      scoredMatches.sort((a, b) => b.value.compareTo(a.value));
+      for (final entry in scoredMatches) {
+        addVerse(entry.key);
+      }
+    }
+
+    return results;
   }
 
-  /// Get a random verse from the daily corpus
-  BibleVerse? randomVerse() {
-    if (dailyCorpus.isEmpty) return null;
-    final verses = List<BibleVerse>.of(dailyCorpus)..shuffle();
+  /// Get a random verse from the corpus (excluding genealogies by default)
+  BibleVerse? randomVerse({bool excludeGenealogy = true}) {
+    final pool = excludeGenealogy ? nonGenealogyCorpus : dailyCorpus;
+    if (pool.isEmpty) return null;
+    final verses = List<BibleVerse>.of(pool)..shuffle();
     return verses.first;
   }
 }

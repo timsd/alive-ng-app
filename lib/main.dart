@@ -177,7 +177,9 @@ class MainNavigationScreen extends ConsumerWidget {
         type: BottomNavigationBarType.fixed,
         currentIndex: _getCurrentIndex(currentLocation),
         onTap: (index) => _onItemTapped(context, ref, index),
-        selectedItemColor: Theme.of(context).colorScheme.secondary,
+        selectedItemColor: Theme.of(context).brightness == Brightness.dark
+            ? Theme.of(context).colorScheme.primary
+            : Theme.of(context).colorScheme.primary,
         unselectedItemColor: Theme.of(context)
             .colorScheme
             .onSurface
@@ -474,6 +476,31 @@ class MainNavigationScreen extends ConsumerWidget {
                   'guestOnly': true,
                 },
               ];
+              final authState = ref.watch(authStateProvider);
+              final isAuthenticated = authState.maybeWhen(
+                data: (user) => user != null,
+                orElse: () => false,
+              );
+              final userRole = RoleAccessService.instance.getCurrentUserRole();
+
+              final visibleItems = items.where((item) {
+                if (item['guestOnly'] == true && isAuthenticated) {
+                  return false;
+                }
+                if (item['roleOnly'] == true && userRole != 'admin') {
+                  return false;
+                }
+                if (item['allowedRoles'] is List) {
+                  final allowed = (item['allowedRoles'] as List)
+                      .map((e) => e.toString())
+                      .toList();
+                  if (userRole == null || !allowed.contains(userRole)) {
+                    return false;
+                  }
+                }
+                return true;
+              }).toList();
+
               return GridView.builder(
                   padding: context.responsivePadding,
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -482,63 +509,20 @@ class MainNavigationScreen extends ConsumerWidget {
                     crossAxisSpacing: context.responsivePadding.left,
                     childAspectRatio: ResponsiveUtils.getResponsiveValue(
                       context: context,
-                      mobile: 1.1,
+                      mobile: 0.95,
                       tablet: 1.0,
-                      desktop: 0.95,
+                      desktop: 1.05,
                     ),
                   ),
-                  itemCount: items.length,
+                  itemCount: visibleItems.length,
                   itemBuilder: (context, index) {
-                    final item = items[index];
-                    if (item['guestOnly'] == true) {
-                      return Consumer(builder: (context, ref, _) {
-                        final authState = ref.watch(authStateProvider);
-                        final isAuthenticated = authState.maybeWhen(
-                          data: (user) => user != null,
-                          orElse: () => false,
-                        );
-                        if (isAuthenticated) {
-                          return const SizedBox.shrink();
-                        }
-                        return _buildMoreItem(
-                          context,
-                          item['icon'] as IconData,
-                          item['label'] as String,
-                          item['route'] as String?,
-                        );
-                      });
-                    }
-                    if (item['roleOnly'] == true) {
-                      return RoleVisibility(
-                        allowedRoles: const ['admin'],
-                        child: _buildMoreItem(
-                          context,
-                          item['icon'] as IconData,
-                          item['label'] as String,
-                          item['route'] as String?,
-                          roleOnly: true,
-                        ),
-                      );
-                    }
-                    if (item['allowedRoles'] is List) {
-                      final allowedRoles = (item['allowedRoles'] as List)
-                          .map((e) => e.toString())
-                          .toList();
-                      return RoleVisibility(
-                        allowedRoles: allowedRoles,
-                        child: _buildMoreItem(
-                          context,
-                          item['icon'] as IconData,
-                          item['label'] as String,
-                          item['route'] as String?,
-                        ),
-                      );
-                    }
+                    final item = visibleItems[index];
                     return _buildMoreItem(
                       context,
                       item['icon'] as IconData,
                       item['label'] as String,
                       item['route'] as String?,
+                      roleOnly: item['roleOnly'] == true,
                     );
                   });
             }),
@@ -571,6 +555,7 @@ class MainNavigationScreen extends ConsumerWidget {
       child: Stack(
         children: [
           Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
             decoration: BoxDecoration(
               color: Theme.of(context).brightness == Brightness.dark
                   ? Theme.of(context).colorScheme.surface
@@ -585,39 +570,44 @@ class MainNavigationScreen extends ConsumerWidget {
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.18)
-                        : Theme.of(context).colorScheme.primary.withValues(alpha: 0.10),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    icon,
-                    size: context.responsiveIconSize(24),
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Theme.of(context).colorScheme.primary
-                        : Theme.of(context).colorScheme.primary,
+                SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.18)
+                          : Theme.of(context).colorScheme.primary.withValues(alpha: 0.10),
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: Icon(
+                      icon,
+                      size: 22,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.primary,
+                    ),
                   ),
                 ),
                 SizedBox(
                     height: context.getResponsiveValue(
-                            mobile: 6.0, tablet: 8.0, desktop: 10.0)),
-                Flexible(
+                            mobile: 8.0, tablet: 10.0, desktop: 12.0)),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
                   child: Text(
                     label,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           fontWeight: FontWeight.w600,
                           fontSize: context.responsiveFontSize(12),
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? Theme.of(context).colorScheme.onSurface
-                              : Theme.of(context).colorScheme.onSurface,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                     textAlign: TextAlign.center,
                     maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                    softWrap: true,
+                    overflow: TextOverflow.visible,
                   ),
                 ),
               ],

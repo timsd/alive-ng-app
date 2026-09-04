@@ -116,7 +116,7 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
   List<String> _remainingVerseReferences = <String>[];
 
   void _rebuildVersePool({String? avoidReference}) {
-    final references = BibleSource.instance.dailyCorpus
+    final references = BibleSource.instance.nonGenealogyCorpus
         .map((verse) => verse.reference)
         .where((reference) => reference != avoidReference)
         .toList();
@@ -145,7 +145,7 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
         : null;
     final verse = nextReference != null
         ? BibleSource.instance.findByReference(nextReference)
-        : BibleSource.instance.randomVerse();
+        : BibleSource.instance.randomVerse(excludeGenealogy: true);
     if (verse == null) return;
 
     // Pick the version based on current selection (or fallback to KJV if not found)
@@ -196,7 +196,7 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
     final correctAnswer = verse.text[selectedVersion] ?? verse.text.values.first;
     final normalizedCorrect = _normalizeText(correctAnswer);
 
-    final wrongAnswers = BibleSource.instance.dailyCorpus
+    final wrongAnswers = BibleSource.instance.nonGenealogyCorpus
         .where((candidate) => candidate.reference != verse.reference)
         .map((candidate) =>
             candidate.text[selectedVersion] ?? candidate.text.values.first)
@@ -756,6 +756,7 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
               children: [
                 BibleReferenceWidget(
                   text: gameState.currentVerse!.reference,
+                  preferredVersion: gameState.selectedVersion,
                   textStyle: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: Theme.of(context).colorScheme.primary,

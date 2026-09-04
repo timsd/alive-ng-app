@@ -63,7 +63,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _ttsService.initialize();
     _statisticsService.startReadingSession();
     _loadHighlights(); // Now implemented
@@ -470,7 +470,6 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
           tabs: const [
             Tab(text: 'Reader'),
             Tab(text: 'Search'),
-            Tab(text: 'E.G. White'),
           ],
         ),
       ),
@@ -479,7 +478,6 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
         children: [
           _buildReaderTab(),
           _buildSearchTab(),
-          _buildEGWhiteTab(),
         ],
       ),
     );
@@ -1405,196 +1403,6 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
     );
   }
 
-  Widget _buildEGWhiteTab() {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Ellen G. White Library',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: colorScheme.primary,
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Access to Ellen G. White writings and commentary on Bible passages.',
-            style: TextStyle(fontSize: 16),
-          ),
-          const SizedBox(height: 24),
-
-          // Popular Books
-          const Text(
-            'Popular Books:',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          ..._getEGWhiteBooks().map((book) => Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: ListTile(
-                  leading: Icon(
-                    Icons.library_books,
-                    color: colorScheme.primary,
-                  ),
-                  title: Text(
-                    book['title']!,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text(book['description']!),
-                  trailing: const Icon(Icons.arrow_forward_ios),
-                  onTap: () {
-                    showDialog(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: Text(book['title']!),
-                        content: SingleChildScrollView(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                book['description']!,
-                                style: const TextStyle(fontSize: 16),
-                              ),
-                              const SizedBox(height: 16),
-                              const Text(
-                                'This book contains inspiring spiritual content to strengthen your faith and understanding.',
-                                style: TextStyle(fontStyle: FontStyle.italic),
-                              ),
-                            ],
-                          ),
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            child: const Text('Close'),
-                          ),
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                      'Opening ${book['title']} reader...'),
-                                  backgroundColor: colorScheme.secondary,
-                                ),
-                              );
-                            },
-                            child: const Text('Read Book'),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              )),
-
-          const SizedBox(height: 24),
-
-          // Search E.G. White
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Search E.G. White Writings',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    decoration: InputDecoration(
-                      labelText: 'Search topic or Bible reference...',
-                      filled: true,
-                      fillColor: colorScheme.surfaceContainerHighest,
-                      border: const OutlineInputBorder(),
-                      enabledBorder: OutlineInputBorder(
-                        borderSide:
-                            BorderSide(color: colorScheme.outlineVariant),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide:
-                            BorderSide(color: colorScheme.primary, width: 1.4),
-                      ),
-                      prefixIcon: Icon(
-                        Icons.search,
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    onSubmitted: (query) {
-                      if (query.trim().isEmpty) return;
-
-                      showDialog(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          title: Text('Search Results for "$query"'),
-                          content: const SizedBox(
-                            width: double.maxFinite,
-                            height: 200,
-                            child: Center(
-                              child: Text(
-                                'E.G. White search functionality will be implemented with API integration.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(fontSize: 16),
-                              ),
-                            ),
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pop(),
-                              child: const Text('Close'),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  List<Map<String, String>> _getEGWhiteBooks() {
-    return [
-      {
-        'title': 'Steps to Christ',
-        'description': 'A guide to finding peace and joy in Jesus Christ.',
-      },
-      {
-        'title': 'The Desire of Ages',
-        'description': 'The life and ministry of Jesus Christ.',
-      },
-      {
-        'title': 'The Great Controversy',
-        'description': 'The cosmic conflict between good and evil.',
-      },
-      {
-        'title': 'Patriarchs and Prophets',
-        'description': 'Stories from the Old Testament.',
-      },
-      {
-        'title': 'The Acts of the Apostles',
-        'description': 'The early Christian church and its mission.',
-      },
-    ];
-  }
 
   // TTS functionality
 

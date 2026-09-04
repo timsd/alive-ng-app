@@ -75,31 +75,49 @@ class DailyVerseGenerationService {
         final String booksJson =
             await rootBundle.loadString('assets/bible/books_en.json');
         final List<dynamic> booksList = json.decode(booksJson);
-        final book = booksList[random.nextInt(booksList.length)];
-        final chapterNum = random.nextInt(book['chapters']) + 1;
 
-        final chapterData = await OfflineBibleService().getBibleChapter(
-          book: book['name'],
-          chapter: chapterNum,
-          version: 'KJV',
-          language: 'en',
-        );
+        // Attempt up to 10 times to pick a non-genealogical verse across the 66 books
+        for (var attempt = 0; attempt < 10; attempt++) {
+          final book = booksList[random.nextInt(booksList.length)];
+          final chapterNum = random.nextInt(book['chapters']) + 1;
 
-        if (chapterData != null && chapterData.verses.isNotEmpty) {
-          final verseObj =
-              chapterData.verses[random.nextInt(chapterData.verses.length)];
-          final dynamicVerse = verse_data.BibleVerse(
-            reference: '${book['name']} $chapterNum:${verseObj.number}',
-            text: {'KJV': verseObj.text, 'BM': verseObj.text},
+          if (BibleSource.isGenealogy(
+              reference: '${book['name']} $chapterNum')) {
+            continue;
+          }
+
+          final chapterData = await OfflineBibleService().getBibleChapter(
+            book: book['name'],
+            chapter: chapterNum,
+            version: 'KJV',
+            language: 'en',
           );
-          return await _createDailyVerseFromBibleVerse(dynamicVerse, date);
+
+          if (chapterData != null && chapterData.verses.isNotEmpty) {
+            final nonGenealogyVerses = chapterData.verses
+                .where((v) => !BibleSource.isGenealogy(
+                      reference: '${book['name']} $chapterNum:${v.number}',
+                      text: v.text,
+                    ))
+                .toList();
+
+            if (nonGenealogyVerses.isNotEmpty) {
+              final verseObj =
+                  nonGenealogyVerses[random.nextInt(nonGenealogyVerses.length)];
+              final dynamicVerse = verse_data.BibleVerse(
+                reference: '${book['name']} $chapterNum:${verseObj.number}',
+                text: {'KJV': verseObj.text, 'BM': verseObj.text},
+              );
+              return await _createDailyVerseFromBibleVerse(dynamicVerse, date);
+            }
+          }
         }
       } catch (e) {
         _logger.error('Failed dynamic pick, falling back to static corpus: $e');
       }
 
-      // Fallback to static corpus if dynamic selection fails
-      final staticCorpus = BibleSource.instance.dailyCorpus;
+      // Fallback to static non-genealogy corpus if dynamic selection fails
+      final staticCorpus = BibleSource.instance.nonGenealogyCorpus;
       final fallback = staticCorpus[random.nextInt(staticCorpus.length)];
       return await _createDailyVerseFromBibleVerse(fallback, date);
     } catch (e) {

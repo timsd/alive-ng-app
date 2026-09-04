@@ -18,7 +18,7 @@ class OfflineBibleService {
   final Map<String, Archive> _bundleCache = {};
   final Map<String, Map<String, ArchiveFile>> _bundleFileIndex = {};
 
-  /// Strips USFM/XML tags like <pb/>, <pb>, <t>, </t>, <f>...</f>, <x>...</x>, etc.
+  /// Strips USFM/XML tags like `<pb/>`, `<pb>`, `<t>`, `</t>`, `<f>...</f>`, `<x>...</x>`, etc.
   static String cleanVerseText(String? raw) {
     if (raw == null || raw.isEmpty) return '';
     String text = raw

@@ -7,12 +7,14 @@ class BibleReferenceWidget extends StatelessWidget {
   final String text;
   final TextStyle? textStyle;
   final TextAlign? textAlign;
+  final String? preferredVersion;
 
   const BibleReferenceWidget({
     super.key,
     required this.text,
     this.textStyle,
     this.textAlign,
+    this.preferredVersion,
   });
 
   @override
@@ -102,6 +104,18 @@ class BibleReferenceWidget extends StatelessWidget {
   }
 
   void _showVerseDialog(BuildContext context, BibleVerse verse) {
+    final activeVersion = (preferredVersion != null && verse.text.containsKey(preferredVersion))
+        ? preferredVersion!
+        : (verse.text.containsKey('KJV') ? 'KJV' : verse.text.keys.first);
+    final verseText = verse.text[activeVersion] ?? verse.text.values.first;
+
+    final versionNameMap = {
+      'KJV': 'King James Version (KJV)',
+      'NKJV': 'New King James Version (NKJV)',
+      'NIV': 'New International Version (NIV)',
+    };
+    final versionName = versionNameMap[activeVersion] ?? activeVersion;
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -117,59 +131,22 @@ class BibleReferenceWidget extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (verse.text.containsKey('KJV')) ...[
-                const Text(
-                  'King James Version (KJV):',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
+              Text(
+                versionName,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  verse.text['KJV']!,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontStyle: FontStyle.italic,
-                  ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                verseText,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontStyle: FontStyle.italic,
+                  height: 1.4,
                 ),
-                const SizedBox(height: 16),
-              ],
-              if (verse.text.containsKey('NKJV')) ...[
-                const Text(
-                  'New King James Version (NKJV):',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  verse.text['NKJV']!,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
-              if (verse.text.containsKey('NIV')) ...[
-                const Text(
-                  'New International Version (NIV):',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  verse.text['NIV']!,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ],
+              ),
             ],
           ),
         ),

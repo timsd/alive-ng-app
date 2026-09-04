@@ -227,6 +227,7 @@ class _DailyVerseCardState extends ConsumerState<DailyVerseCard> {
                           children: [
                             BibleReferenceWidget(
                               text: '- ${widget.verse!.reference}',
+                              preferredVersion: widget.verse?.translation,
                               textStyle: Theme.of(context)
                                   .textTheme
                                   .titleMedium
@@ -248,6 +249,7 @@ class _DailyVerseCardState extends ConsumerState<DailyVerseCard> {
                           Expanded(
                             child: BibleReferenceWidget(
                               text: '- ${widget.verse!.reference}',
+                              preferredVersion: widget.verse?.translation,
                               textStyle: Theme.of(context)
                                   .textTheme
                                   .titleMedium

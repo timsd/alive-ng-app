@@ -628,8 +628,6 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
   void _applyLevelFilter(String level) {
     setState(() {
       _selectedLevel = level;
+    });
   }
 }
-
-
-
