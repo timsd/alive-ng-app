@@ -97,7 +97,7 @@ class QuickActionsGrid extends ConsumerWidget {
             TextFormatter.formatText('quick_actions'),
             context: context,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
                 ),
           ),
         ),
@@ -231,9 +231,8 @@ class QuickActionCard extends StatelessWidget {
                   action.title,
                   context: context,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w600,
                         color: Theme.of(context).colorScheme.onSurface,
-                        fontSize: 13,
                       ),
                   textAlign: TextAlign.center,
                   maxLines: 1,
@@ -246,12 +245,8 @@ class QuickActionCard extends StatelessWidget {
                 child: LayoutFixUtils.responsiveText(
                   action.subtitle,
                   context: context,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withValues(alpha: 0.5),
-                        fontSize: 10,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                   textAlign: TextAlign.center,
                   maxLines: 1,

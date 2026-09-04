@@ -63,7 +63,7 @@ Current production provisioning status:
 - Current required shape:
 
 ```bash
---dart-define=APPWRITE_ENDPOINT=https://api.alivenigeria.org/v1 --dart-define=APPWRITE_PROJECT_ID=6a3bef53002f5090dedf --dart-define=APPWRITE_DATABASE_ID=6a089307002e54291a32 --dart-define=APPWRITE_FCM_PROVIDER_ID=6a0cbd1600215f960c03 --dart-define=LIVEKIT_URL=wss://livekit.alivenigeria.org --dart-define=PAYSTACK_PUBLIC_KEY=pk_live_xxx --dart-define=PAYSTACK_CALLBACK_URL=https://app.alivenigeria.org/payment/callback --dart-define=GOOGLE_WEB_CLIENT_ID=xxx --dart-define=WEB_PUSH_CERT_KEY=xxx --dart-define=GLITCHTIP_DSN=https://example@glitchtip.example/1 --dart-define=GLITCHTIP_ENVIRONMENT=production --dart-define=GLITCHTIP_RELEASE=alive-ng-app@1.1.0+2 --dart-define=GLITCHTIP_TRACES_SAMPLE_RATE=0 --dart-define=APPWRITE_RESOURCES_BASE_URL=https://app.alivenigeria.org/resources
+--dart-define=APPWRITE_ENDPOINT=https://api.alivenigeria.org/v1 --dart-define=APPWRITE_PROJECT_ID=6a3bef53002f5090dedf --dart-define=APPWRITE_DATABASE_ID=6a089307002e54291a32 --dart-define=APPWRITE_FCM_PROVIDER_ID=6a0cbd1600215f960c03 --dart-define=LIVEKIT_URL=wss://meet.alivenigeria.org --dart-define=PAYSTACK_PUBLIC_KEY=pk_live_xxx --dart-define=PAYSTACK_CALLBACK_URL=https://app.alivenigeria.org/payment/callback --dart-define=GOOGLE_WEB_CLIENT_ID=xxx --dart-define=WEB_PUSH_CERT_KEY=xxx --dart-define=GLITCHTIP_DSN=https://example@glitchtip.example/1 --dart-define=GLITCHTIP_ENVIRONMENT=production --dart-define=GLITCHTIP_RELEASE=alive-ng-app@1.1.0+2 --dart-define=GLITCHTIP_TRACES_SAMPLE_RATE=0 --dart-define=APPWRITE_RESOURCES_BASE_URL=https://app.alivenigeria.org/resources
 ```
 
 - If `https://app.alivenigeria.org` returns `503`, check Coolify in this order:
@@ -169,7 +169,7 @@ If `1.9.5` fails to deploy in Coolify, check the Appwrite upgrade logs rather th
 ## LiveKit
 
 - LiveKit is not a built-in Coolify service in this setup. Add it as a custom Docker Compose resource.
-- Create DNS `A livekit.alivenigeria.org YOUR_PUBLIC_IP`, then in Coolify add a Docker Compose / Empty Compose resource with domain `https://livekit.alivenigeria.org` and HTTP port `7880`.
+- Create DNS `A livekit.alivenigeria.org YOUR_PUBLIC_IP`, then in Coolify add a Docker Compose / Empty Compose resource with domain `https://meet.alivenigeria.org` and HTTP port `7880`.
 - Use this compose. It embeds the config into the compose resource so Coolify does not fail because `./livekit.yaml` is missing from the deployment directory:
 
 ```yaml

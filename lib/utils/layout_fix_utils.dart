@@ -459,7 +459,7 @@ class LayoutFixUtils {
   static Widget responsiveText(
     String text, {
     required BuildContext context,
-    double baseFontSize = 14.0,
+    double? baseFontSize,
     TextStyle? style,
     int? maxLines,
     TextOverflow overflow = TextOverflow.ellipsis,
@@ -467,7 +467,8 @@ class LayoutFixUtils {
     FontWeight? fontWeight,
     Color? color,
   }) {
-    final responsiveFontSize = getResponsiveFontSize(context, baseSize: baseFontSize);
+    final effectiveBase = baseFontSize ?? style?.fontSize ?? 14.0;
+    final responsiveFontSize = getResponsiveFontSize(context, baseSize: effectiveBase);
     
     return Text(
       text,

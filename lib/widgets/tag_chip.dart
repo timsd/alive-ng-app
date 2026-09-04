@@ -133,8 +133,7 @@ class _TagChipState extends State<TagChip> with SingleTickerProviderStateMixin {
                       ),
                       child: Text(
                         _getSpecialTagCount(),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontSize: 10,
+                        style: theme.textTheme.labelSmall?.copyWith(
                           fontWeight: FontWeight.w600,
                           color: chipData.iconColor,
                         ),
@@ -299,8 +298,8 @@ class _TagChipState extends State<TagChip> with SingleTickerProviderStateMixin {
       fontWeight: FontWeight.w500,
       fontSize: switch (widget.size) {
         TagChipSize.small => 11,
-        TagChipSize.medium => 13,
-        TagChipSize.large => 15,
+        TagChipSize.medium => 12,
+        TagChipSize.large => 14,
       },
     );
   }

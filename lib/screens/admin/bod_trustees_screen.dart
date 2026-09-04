@@ -95,16 +95,16 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
                 'You do not have permission to access this page.',
                 style: TextStyle(
                   fontSize: 16,
-                  color: Colors.grey,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
                 textAlign: TextAlign.center,
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               Text(
                 'This page is restricted to Board of Directors,\nTrustees, Leaders, and Administrators only.',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.grey,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -386,9 +386,9 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
             const SizedBox(height: 4),
             Text(
               description,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: Colors.grey,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ],
@@ -425,9 +425,9 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
               const SizedBox(height: 4),
               Text(
                 subtitle,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
-                  color: Colors.grey,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -516,9 +516,12 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'Share this room name with other board members to join the meeting.',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),
@@ -533,9 +536,11 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
               // Launch LiveKit meeting with the room name
               await _joinMeeting(roomName);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-            child: const Text('Join Meeting',
-                style: TextStyle(color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.tertiary,
+              foregroundColor: Theme.of(context).colorScheme.onTertiary,
+            ),
+            child: const Text('Join Meeting'),
           ),
         ],
       ),

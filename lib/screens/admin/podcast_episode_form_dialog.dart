@@ -404,16 +404,22 @@ class _PodcastEpisodeFormDialogState extends State<PodcastEpisodeFormDialog> {
                         const SizedBox(height: 8),
                         Text(
                           'Selected: $_audioFileName',
-                          style: const TextStyle(fontSize: 13),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
                         ),
                       ],
                       if (_isUploading) ...[
                         const SizedBox(height: 16),
                         const LinearProgressIndicator(),
                         const SizedBox(height: 8),
-                        const Text(
+                        Text(
                           'Uploading audio... please keep this dialog open.',
-                          style: TextStyle(fontSize: 13),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
                         ),
                       ],
                     ],
@@ -424,8 +430,12 @@ class _PodcastEpisodeFormDialogState extends State<PodcastEpisodeFormDialog> {
               // Footer actions
               Container(
                 padding: const EdgeInsets.all(20),
-                decoration: const BoxDecoration(
-                  border: Border(top: BorderSide(color: Colors.black12)),
+                decoration: BoxDecoration(
+                  border: Border(
+                    top: BorderSide(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
+                  ),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,

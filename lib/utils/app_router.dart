@@ -13,7 +13,7 @@ import '../screens/health/health_screen.dart';
 import '../screens/missions/missions_screen.dart';
 import '../screens/auth/appwrite_auth_screen.dart';
 import '../screens/auth/reset_password_screen.dart';
-import '../screens/navigation/main_navigation_screen.dart';
+import '../main.dart';
 import '../screens/about/about_app_screen.dart';
 import '../screens/about/about_alive_screen.dart';
 import '../screens/admin/admin_dashboard_screen.dart';

@@ -505,12 +505,15 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
           // Chapter Title - Responsive
           Container(
             width: double.infinity,
-            padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
+            padding: EdgeInsets.symmetric(
+              horizontal: isSmallScreen ? 12 : 16,
+              vertical: isSmallScreen ? 6 : 10,
+            ),
             child: Text(
               _selectedBook.isEmpty ? 'Bible Reader' : _selectedBook,
               style: TextStyle(
                 color: headerTextColor,
-                fontSize: isSmallScreen ? 24 : (isMediumScreen ? 26 : 28),
+                fontSize: isSmallScreen ? 20 : (isMediumScreen ? 22 : 24),
                 fontWeight: FontWeight.bold,
                 fontStyle: FontStyle.italic,
                 shadows: [
@@ -528,8 +531,8 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
           // Bible Content - Responsive
           Expanded(
             child: Container(
-              margin: EdgeInsets.symmetric(horizontal: isSmallScreen ? 12 : 20),
-              padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
+              margin: EdgeInsets.symmetric(horizontal: isSmallScreen ? 6 : 12),
+              padding: EdgeInsets.all(isSmallScreen ? 10 : 16),
               decoration: BoxDecoration(
                 color: colorScheme.surface,
                 borderRadius: const BorderRadius.only(
@@ -668,11 +671,11 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
 
           // Bottom Navigation Bar - Responsive
           Container(
-            padding: EdgeInsets.all(isSmallScreen ? 8 : 16),
+            padding: EdgeInsets.all(isSmallScreen ? 4 : 8),
             child: Container(
               padding: EdgeInsets.symmetric(
-                  horizontal: isSmallScreen ? 8 : 16,
-                  vertical: isSmallScreen ? 8 : 12),
+                  horizontal: isSmallScreen ? 8 : 14,
+                  vertical: isSmallScreen ? 6 : 8),
               decoration: BoxDecoration(
                 color: colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(50),

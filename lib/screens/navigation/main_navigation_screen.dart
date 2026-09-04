@@ -51,11 +51,14 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
         type: BottomNavigationBarType.fixed,
         currentIndex: _getCurrentIndex(currentLocation),
         onTap: (index) => _onItemTapped(context, index),
-        selectedItemColor: Theme.of(context).colorScheme.secondary,
+        selectedItemColor: Theme.of(context)
+            .bottomNavigationBarTheme
+            .selectedItemColor ??
+            Theme.of(context).colorScheme.primary,
         unselectedItemColor: Theme.of(context)
-            .colorScheme
-            .onSurface
-            .withValues(alpha: 153 / 255.0),
+            .bottomNavigationBarTheme
+            .unselectedItemColor ??
+            Theme.of(context).colorScheme.onSurfaceVariant,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
@@ -223,9 +226,8 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
                     const SizedBox(height: 6),
                     Text(
                       item.label,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
                             fontWeight: FontWeight.w600,
-                            fontSize: 12.5,
                             color: colorScheme.onSurface,
                           ),
                       maxLines: 1,

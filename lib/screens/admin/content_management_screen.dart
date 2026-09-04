@@ -305,9 +305,9 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
           bottom: TabBar(
             controller: _tabController,
             labelStyle:
-                const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
             unselectedLabelStyle:
-                const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+                const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
             indicatorColor: Theme.of(context).colorScheme.onPrimary,
             labelColor: Theme.of(context).colorScheme.onPrimary,
             unselectedLabelColor:
@@ -570,7 +570,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                     priority.toUpperCase(),
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 10,
+                      fontSize: 11,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -578,7 +578,10 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                 const SizedBox(width: 8),
                 Text(
                   'Target: ${TextFormatter.formatRole(targetAudience).toUpperCase()}',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -921,7 +924,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                   child: Text(
                     chapter.type.name.toUpperCase(),
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 11,
                       color: Theme.of(context).colorScheme.primary,
                       fontWeight: FontWeight.bold,
                     ),
@@ -930,7 +933,10 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                 const SizedBox(width: 8),
                 Text(
                   '${chapter.memberIds.length} members',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -1827,7 +1833,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
       child: Text(
         status.toUpperCase(),
         style:
-            TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
+            TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
       ),
     );
   }

@@ -327,8 +327,7 @@ class _TagInputWidgetState extends State<TagInputWidget> {
               ),
               child: Text(
                 suggestion.type.name.toUpperCase(),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  fontSize: 10,
+                style: theme.textTheme.labelSmall?.copyWith(
                   fontWeight: FontWeight.w600,
                   color: _getTagColor(suggestion.type),
                 ),

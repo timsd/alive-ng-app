@@ -85,7 +85,7 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
           ),
         ),
         elevation: 2,
-        shadowColor: Colors.black26,
+        shadowColor: colorScheme.shadow.withValues(alpha: 0.26),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 8.0),
@@ -347,7 +347,7 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                         child: Text(
                           decision.proposedBy[0].toUpperCase(),
                           style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 11,
                               fontWeight: FontWeight.bold,
                               color: colorScheme.onPrimaryContainer),
                         ),
@@ -391,10 +391,10 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
         Text(
           label.toUpperCase(),
           style: TextStyle(
-              fontSize: 9,
-              fontWeight: FontWeight.w900,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
               color: colorScheme.onSurfaceVariant,
-              letterSpacing: 0),
+              letterSpacing: 0.5),
         ),
         const SizedBox(height: 2),
         Text(
@@ -436,9 +436,9 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
         status.toUpperCase(),
         style: TextStyle(
           color: color,
-          fontSize: 10,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 0,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.5,
         ),
       ),
     );

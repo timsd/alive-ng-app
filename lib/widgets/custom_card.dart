@@ -417,15 +417,16 @@ class ActionCard extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: badgeColor ?? Colors.red,
+                  color: badgeColor ?? theme.colorScheme.error,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
                   badge!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: badgeColor != null
+                        ? Colors.white
+                        : theme.colorScheme.onError,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),

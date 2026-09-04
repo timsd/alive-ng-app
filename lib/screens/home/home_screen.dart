@@ -69,8 +69,7 @@ class HomeScreen extends ConsumerWidget {
           Text(
             translate('daily_verse'),
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  fontSize: ResponsiveUtils.getResponsiveFontSize(context, 20),
+                  fontWeight: FontWeight.w600,
                 ),
           ),
           SizedBox(height: context.isMobile ? 12 : 16),

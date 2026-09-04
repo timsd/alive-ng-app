@@ -406,7 +406,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
                   child: Text(
                     user.role.toUpperCase(),
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 11,
                       fontWeight: FontWeight.bold,
                       color: _getRoleColor(context, user.role),
                     ),

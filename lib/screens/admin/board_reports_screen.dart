@@ -237,7 +237,12 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
                                     Text(
                                       DateFormat('MMM dd, yyyy')
                                           .format(report.createdAt),
-                                      style: const TextStyle(fontSize: 10),
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -309,7 +314,7 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
       child: Text(
         status.toUpperCase(),
         style:
-            TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
+            TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
       ),
     );
   }
