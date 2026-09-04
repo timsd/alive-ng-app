@@ -109,6 +109,12 @@ const endpoint = requireEnv(
 const projectId = requireEnv('APPWRITE_PROJECT_ID', '6a3bef53002f5090dedf');
 const databaseId = requireEnv('APPWRITE_DATABASE_ID', '6a089307002e54291a32');
 const apiKey = requireEnv('APPWRITE_API_KEY');
+process.env.APPWRITE_FUNCTION_API_KEY =
+  process.env.APPWRITE_FUNCTION_API_KEY || apiKey;
+process.env.APPWRITE_FUNCTION_API_ENDPOINT =
+  process.env.APPWRITE_FUNCTION_API_ENDPOINT || endpoint;
+process.env.APPWRITE_FUNCTION_PROJECT_ID =
+  process.env.APPWRITE_FUNCTION_PROJECT_ID || projectId;
 const shouldDeploy = process.argv.includes('--deploy');
 const onlyFunctionArg = process.argv.find((arg) =>
   arg.startsWith('--only-function='),

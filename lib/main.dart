@@ -370,105 +370,105 @@ class MainNavigationScreen extends ConsumerWidget {
               final items = <Map<String, dynamic>>[
                 if (canAccessRoleGated) ...[
                   {
-                    'icon': Icons.health_and_safety,
+                    'icon': Icons.health_and_safety_rounded,
                     'label': 'Health',
                     'route': AppConstants.enhancedHealthRoute
                   },
                   {
-                    'icon': Icons.calendar_today,
+                    'icon': Icons.wb_sunny_rounded,
                     'label': 'Daily',
                     'route': AppConstants.dailyRoute
                   },
                   {
-                    'icon': Icons.volunteer_activism,
+                    'icon': Icons.volunteer_activism_rounded,
                     'label': 'Missions',
                     'route': AppConstants.missionsRoute
                   },
                   {
-                    'icon': Icons.event,
+                    'icon': Icons.event_available_rounded,
                     'label': 'Events',
                     'route': AppConstants.eventsRoute
                   },
                   {
-                    'icon': Icons.games,
+                    'icon': Icons.sports_esports_rounded,
                     'label': 'Bible Game',
                     'route': AppConstants.bibleGameRoute
                   },
                   {
-                    'icon': Icons.chat,
+                    'icon': Icons.forum_rounded,
                     'label': 'Chat',
                     'route': AppConstants.chatRoute
                   },
                   {
-                    'icon': Icons.groups,
+                    'icon': Icons.diversity_3_rounded,
                     'label': 'Chapters',
                     'route': AppConstants.chaptersRoute
                   },
                   {
-                    'icon': Icons.video_call,
+                    'icon': Icons.video_call_rounded,
                     'label': 'ALIVE Meet',
                     'route': AppConstants.conferenceRoute
                   },
                   {
-                    'icon': Icons.restaurant,
+                    'icon': Icons.restaurant_menu_rounded,
                     'label': 'Recipes',
                     'route': AppConstants.recipesRoute
                   },
                   {
-                    'icon': Icons.people,
+                    'icon': Icons.shield_rounded,
                     'label': 'BOD Trustees',
                     'route': AppConstants.bodTrusteesRoute,
                     'allowedRoles': ['admin', 'bod', 'trustee']
                   },
                 ],
                 {
-                  'icon': Icons.person,
+                  'icon': Icons.account_circle_rounded,
                   'label': 'Profile',
                   'route': AppConstants.profileRoute
                 },
                 {
-                  'icon': Icons.admin_panel_settings,
+                  'icon': Icons.admin_panel_settings_rounded,
                   'label': 'Admin',
                   'route': AppConstants.adminRoute,
                   'roleOnly': true
                 },
                 {
-                  'icon': Icons.auto_stories,
+                  'icon': Icons.auto_stories_rounded,
                   'label': 'Kids Stories',
                   'route': AppConstants.kidsStoriesRoute
                 },
                 {
-                  'icon': Icons.library_books,
+                  'icon': Icons.local_library_rounded,
                   'label': 'Library',
                   'route': AppConstants.libraryRoute
                 },
                 {
-                  'icon': Icons.headset,
+                  'icon': Icons.podcasts_rounded,
                   'label': 'Podcasts',
                   'route': AppConstants.podcastsRoute
                 },
                 {
-                  'icon': Icons.school,
+                  'icon': Icons.school_rounded,
                   'label': 'Lessons',
                   'route': AppConstants.interactiveLessonsRoute
                 },
                 {
-                  'icon': Icons.menu_book,
+                  'icon': Icons.menu_book_rounded,
                   'label': 'Tracts',
                   'route': AppConstants.booksTractsRoute
                 },
                 {
-                  'icon': Icons.record_voice_over,
+                  'icon': Icons.record_voice_over_rounded,
                   'label': 'Testimonies',
                   'route': AppConstants.testimoniesRoute
                 },
                 {
-                  'icon': Icons.child_care,
+                  'icon': Icons.child_care_rounded,
                   'label': 'Kids Mission',
                   'route': AppConstants.kidsMissionRoute
                 },
                 {
-                  'icon': Icons.login,
+                  'icon': Icons.login_rounded,
                   'label': 'Sign In',
                   'route': AppConstants.authRoute,
                   'guestOnly': true,
@@ -586,17 +586,25 @@ class MainNavigationScreen extends ConsumerWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  icon,
-                  size: context.responsiveIconSize(28),
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Theme.of(context).colorScheme.onSurface
-                      : Theme.of(context).colorScheme.primary,
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.18)
+                        : Theme.of(context).colorScheme.primary.withValues(alpha: 0.10),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    icon,
+                    size: context.responsiveIconSize(24),
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.primary,
+                  ),
                 ),
                 SizedBox(
                     height: context.getResponsiveValue(
-                            mobile: 8.0, tablet: 12.0, desktop: 16.0) *
-                        0.5),
+                            mobile: 6.0, tablet: 8.0, desktop: 10.0)),
                 Flexible(
                   child: Text(
                     label,

@@ -72,17 +72,17 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
           backgroundColor: Colors.red,
           foregroundColor: Colors.white,
         ),
-        body: const Center(
+        body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
+              const Icon(
                 Icons.lock,
                 size: 80,
                 color: Colors.red,
               ),
-              SizedBox(height: 16),
-              Text(
+              const SizedBox(height: 16),
+              const Text(
                 'Access Denied',
                 style: TextStyle(
                   fontSize: 24,
@@ -90,7 +90,7 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
                   color: Colors.red,
                 ),
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               Text(
                 'You do not have permission to access this page.',
                 style: TextStyle(
