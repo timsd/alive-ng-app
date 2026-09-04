@@ -119,6 +119,11 @@ class AppwriteAuthService {
     Map<String, dynamic>? profileData,
   }) async {
     try {
+      try {
+        await _account.deleteSession(sessionId: 'current');
+      } catch (_) {
+        // Safe ignore if no existing session
+      }
       final session = await _account.createEmailPasswordSession(
         email: email,
         password: password,

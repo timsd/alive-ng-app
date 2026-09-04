@@ -461,6 +461,12 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
   bool _speechReady = false;
   bool _ttsReady = false;
 
+  /// The best available STT locale resolved at init (en-NG → en-GB → en-US).
+  String _resolvedSttLocale = 'en-NG';
+
+  /// Ordered locale fallback chain: Nigerian English → British English → US English.
+  static const _localeFallbackChain = ['en-NG', 'en_NG', 'en-GB', 'en_GB', 'en-US', 'en_US'];
+
   @override
   void initState() {
     super.initState();
@@ -476,6 +482,30 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
         onStatus: (status) => debugPrint('Speech recognition status: $status'),
       );
       _speechReady = true;
+
+      // Resolve the best available STT locale from the fallback chain
+      if (_speechEnabled) {
+        final locales = await _speech.locales();
+        final availableIds = locales.map((l) => l.localeId).toSet();
+        for (final candidate in _localeFallbackChain) {
+          if (availableIds.contains(candidate)) {
+            _resolvedSttLocale = candidate;
+            debugPrint('STT locale resolved: $candidate');
+            break;
+          }
+        }
+        // If none of the preferred locales are available, try any 'en' locale
+        if (!_localeFallbackChain.contains(_resolvedSttLocale) ||
+            !availableIds.contains(_resolvedSttLocale)) {
+          final fallback = availableIds.firstWhere(
+            (id) => id.startsWith('en'),
+            orElse: () => 'en-US',
+          );
+          _resolvedSttLocale = fallback;
+          debugPrint('STT locale fallback to: $fallback');
+        }
+      }
+
       if (mounted) {
         setState(() {});
       }
@@ -487,7 +517,33 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
   void _initializeTts() async {
     try {
       _tts = FlutterTts();
-      await _tts.setLanguage('en-NG'); // Nigerian English
+
+      // Try locale fallback chain for TTS: en-NG → en-GB → en-US
+      final languages = await _tts.getLanguages;
+      final availableLangs = (languages as List?)
+              ?.map((l) => l.toString())
+              .toSet() ??
+          <String>{};
+
+      String resolvedTtsLang = 'en-US'; // ultimate fallback
+      for (final candidate in _localeFallbackChain) {
+        if (availableLangs.contains(candidate)) {
+          resolvedTtsLang = candidate;
+          break;
+        }
+      }
+      // Also check with dash-to-underscore variants
+      if (resolvedTtsLang == 'en-US' && !availableLangs.contains('en-US')) {
+        final fallback = availableLangs.firstWhere(
+          (l) => l.startsWith('en'),
+          orElse: () => 'en-US',
+        );
+        resolvedTtsLang = fallback;
+      }
+
+      await _tts.setLanguage(resolvedTtsLang);
+      debugPrint('TTS locale resolved: $resolvedTtsLang');
+
       await _tts.setSpeechRate(0.58);
       await _tts.setQueueMode(0);
       await _tts.awaitSpeakCompletion(true);
@@ -523,7 +579,7 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
             ref.read(bibleGameProvider.notifier).setListening(false);
           }
         },
-        localeId: 'en-NG', // Restored Nigerian English locale
+        localeId: _resolvedSttLocale, // Uses best available: en-NG → en-GB → en-US
         listenFor: const Duration(seconds: 30),
         pauseFor: const Duration(seconds: 3),
         listenOptions: stt.SpeechListenOptions(

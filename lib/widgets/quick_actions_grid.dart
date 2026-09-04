@@ -110,23 +110,23 @@ class QuickActionsGrid extends ConsumerWidget {
             double horizontalPadding;
 
             if (constraints.maxWidth < 400) {
-              // Small mobile screens
-              crossAxisCount = 2;
-              childAspectRatio = 1.1;
-              horizontalPadding = 16;
-            } else if (constraints.maxWidth < 600) {
-              // Medium mobile screens
-              crossAxisCount = 2;
-              childAspectRatio = 1.2;
-              horizontalPadding = 20;
-            } else if (constraints.maxWidth < 900) {
-              // Tablet screens
+              // Small mobile screens — 3 compact columns
               crossAxisCount = 3;
-              childAspectRatio = 1.0;
+              childAspectRatio = 0.85;
+              horizontalPadding = 12;
+            } else if (constraints.maxWidth < 600) {
+              // Medium mobile screens — 3 columns with breathing room
+              crossAxisCount = 3;
+              childAspectRatio = 0.9;
+              horizontalPadding = 16;
+            } else if (constraints.maxWidth < 900) {
+              // Tablet screens — 4 columns
+              crossAxisCount = 4;
+              childAspectRatio = 0.95;
               horizontalPadding = 24;
             } else {
-              // Desktop screens
-              crossAxisCount = 4;
+              // Desktop screens — 5 columns
+              crossAxisCount = 5;
               childAspectRatio = 1.0;
               horizontalPadding = 32;
             }

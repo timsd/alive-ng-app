@@ -223,6 +223,22 @@ class AppTheme {
         color: lightPrimaryForeground,
       ),
 
+      // Tab Bar Theme
+      tabBarTheme: const TabBarThemeData(
+        labelColor: lightPrimary,
+        unselectedLabelColor: lightMutedForeground,
+        indicatorColor: lightPrimary,
+        indicatorSize: TabBarIndicatorSize.tab,
+        labelStyle: TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+        ),
+        unselectedLabelStyle: TextStyle(
+          fontWeight: FontWeight.w500,
+          fontSize: 14,
+        ),
+      ),
+
       // Bottom Navigation Bar Theme
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: lightCard,
@@ -512,7 +528,48 @@ class AppTheme {
         color: darkCardForeground,
       ),
       primaryIconTheme: const IconThemeData(
-        color: darkPrimaryForeground,
+        color: darkPrimary,
+      ),
+
+      // Tab Bar Theme
+      tabBarTheme: const TabBarThemeData(
+        labelColor: darkPrimary,
+        unselectedLabelColor: darkMutedForeground,
+        indicatorColor: darkPrimary,
+        indicatorSize: TabBarIndicatorSize.tab,
+        labelStyle: TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+        ),
+        unselectedLabelStyle: TextStyle(
+          fontWeight: FontWeight.w500,
+          fontSize: 14,
+        ),
+      ),
+
+      // Navigation Bar Theme
+      navigationBarTheme: NavigationBarThemeData(
+        indicatorColor: const Color(0xFF423617),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const IconThemeData(color: darkPrimary);
+          }
+          return const IconThemeData(color: darkMutedForeground);
+        }),
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const TextStyle(
+              color: darkPrimary,
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            );
+          }
+          return const TextStyle(
+            color: darkMutedForeground,
+            fontWeight: FontWeight.w500,
+            fontSize: 12,
+          );
+        }),
       ),
 
       // Bottom Navigation Bar Theme

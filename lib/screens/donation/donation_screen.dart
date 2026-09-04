@@ -1396,13 +1396,15 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
 
     // Validate minimums
     final donationService = DonationService();
-    final isValid = donationService.validateDonationAmount(type, amount);
+    final isValid = donationService.validateDonationAmount(type, amount,
+        currency: currency);
     if (!isValid) {
-      final min = donationService.getMinimumDonationAmount(type);
+      final min =
+          donationService.getMinimumDonationAmount(type, currency: currency);
       ScaffoldMessenger.of(rootCtx).showSnackBar(
         SnackBar(
             content: Text(
-                'Minimum donation is ${currency == 'USD' ? '\$' : '₦'}${min.toStringAsFixed(2)}')),
+                'Minimum donation is ${currency == 'USD' ? '\$' : '₦'}${min.toStringAsFixed(0)}')),
       );
       return;
     }

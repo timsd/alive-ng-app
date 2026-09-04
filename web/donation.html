@@ -360,10 +360,10 @@
         <span>ALIVE Nigeria</span>
       </div>
       <div class="eyebrow">Secure Giving</div>
-      <h1>Support missions, discipleship, and community care.</h1>
+      <h1>Your donation supports ALIVE-NG's missions across Nigeria.</h1>
       <p>
-        Give securely through Paystack. Your donation is recorded in ALIVE's
-        Appwrite backend, and a receipt is tracked against the project you choose.
+        Your donation supports ALIVE-NG's missions, projects, discipleship,
+        training, and community outreach across Nigeria. Give securely through Paystack.
       </p>
       <div class="stats">
         <div class="stat"><strong>100%</strong><span>Paystack checkout</span></div>
@@ -388,6 +388,17 @@
           <span id="goal-label">Goal: active project</span>
         </div>
         <form id="donation-form" class="donation-form">
+          <div class="field">
+            <label for="project-select">Project / Purpose</label>
+            <select id="project-select" name="project" style="width:100%;padding:12px;border:1.5px solid var(--slate-200);border-radius:10px;font-size:15px;background:#fff;color:var(--slate-900);font-family:inherit;">
+              <option value="general_mission_fund">General Mission Fund</option>
+              <option value="impact_hub_center">Impact Hub Center</option>
+              <option value="vehicle_purchase">Mission Vehicle Purchase</option>
+              <option value="media_studio_setup">Media Studio Setup</option>
+              <option value="youth_discipleship">Youth Discipleship & Campus Ministry</option>
+              <option value="tract_printing">Bibles, Books & Tract Printing</option>
+            </select>
+          </div>
           <div class="field">
             <label for="donor-name">Name</label>
             <input id="donor-name" name="name" autocomplete="name" required>
@@ -491,6 +502,44 @@
         document.getElementById('progress-fill').style.width = Math.max(0, Math.min(project.progress, 100)) + '%';
       }
 
+      var projectSelectEl = document.getElementById('project-select');
+      if (projectSelectEl) {
+        if (projectId && projects[projectId]) {
+          projectSelectEl.value = projectId;
+        }
+        projectSelectEl.addEventListener('change', function () {
+          var selId = this.value;
+          var selProj = projects[selId];
+          if (selProj) {
+            document.getElementById('project-title').textContent = selProj.title;
+            document.getElementById('project-copy').textContent = selProj.copy;
+            document.getElementById('raised-label').textContent = selProj.raised;
+            document.getElementById('goal-label').textContent = selProj.goal;
+            document.getElementById('progress-fill').style.width = Math.max(0, Math.min(selProj.progress, 100)) + '%';
+          } else {
+            document.getElementById('project-title').textContent = 'General Mission Fund';
+            document.getElementById('project-copy').textContent = 'Choose an amount, receive a tracked reference, and complete payment through Paystack\'s secure checkout.';
+            document.getElementById('raised-label').textContent = 'Raised: tracked securely';
+            document.getElementById('goal-label').textContent = 'Goal: active project';
+            document.getElementById('progress-fill').style.width = '15%';
+          }
+          if (window.innerWidth <= 820) {
+            document.querySelector('.project-card')?.scrollIntoView({ behavior: 'smooth' });
+          }
+        });
+      }
+
+      // Auto-scroll on mobile when focusing fields
+      [amountInputEl, document.getElementById('donor-name'), document.getElementById('donor-email')].forEach(function(el) {
+        if (el) {
+          el.addEventListener('focus', function() {
+            if (window.innerWidth <= 820) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          });
+        }
+      });
+
       // Handle return from Paystack checkout.
       if (query.get('status') === 'callback') {
         statusEl.textContent = 'Payment complete or pending confirmation. A receipt is emailed once Paystack confirms your transaction.';
@@ -546,7 +595,7 @@
                 metadata: {
                   donor_name: name,
                   donor_email: email,
-                  project_id: projectId || 'general_mission_fund',
+                  project_id: (projectSelectEl ? projectSelectEl.value : projectId) || 'general_mission_fund',
                   donation_type: 'generalSupport',
                   source: 'web_donation_page',
                   amount: amountValue,

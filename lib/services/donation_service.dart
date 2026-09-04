@@ -694,42 +694,19 @@ class DonationService {
 
     switch (type) {
       case DonationType.tractReprint:
-        // Use region-specific tract donation amount if available
         return DonationConstants.tractDonationByRegion[regionCode] ??
             DonationConstants.minimumTractDonation;
       case DonationType.materialDownload:
-        // For material downloads, we could add a similar map in the future
-        // For now, use the default with a currency conversion factor for non-USD
-        if (currency != 'USD') {
-          // Apply a simple conversion factor based on region
-          switch (currency) {
-            case 'NGN':
-              return DonationConstants.minimumMaterialDonation *
-                  1500; // Approx conversion
-            case 'GBP':
-              return DonationConstants.minimumMaterialDonation *
-                  0.8; // Approx conversion
-            case 'CAD':
-              return DonationConstants.minimumMaterialDonation *
-                  1.3; // Approx conversion
-            default:
-              return DonationConstants.minimumMaterialDonation;
-          }
-        }
-        return DonationConstants.minimumMaterialDonation;
+        return currency.toUpperCase() == 'NGN' ? 7500.0 : 5.0;
       case DonationType.generalSupport:
       case DonationType.ministrySupport:
       case DonationType.appMaintenance:
-        // Apply currency-specific minimum for general support
-        switch (currency) {
+        switch (currency.toUpperCase()) {
           case 'NGN':
-            return 7500.0; // Approx $5 equivalent
-          case 'GBP':
-            return 4.0; // Approx $5 equivalent
-          case 'CAD':
-            return 7.0; // Approx $5 equivalent
+            return 7500.0;
+          case 'USD':
           default:
-            return 5.0; // Default $5 for USD
+            return 5.0;
         }
     }
   }

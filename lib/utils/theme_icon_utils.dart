@@ -195,6 +195,29 @@ class ThemeIconUtils {
       padding: padding,
       margin: margin,
       decoration: BoxDecoration(
+  }
+
+  /// Create theme-aware container
+  static Widget createThemeContainer({
+    required BuildContext context,
+    required Widget child,
+    Color? lightBackgroundColor,
+    Color? darkBackgroundColor,
+    double? elevation,
+    BorderRadius? borderRadius,
+    EdgeInsets? padding,
+    EdgeInsets? margin,
+    Border? border,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDark
+        ? (darkBackgroundColor ?? Theme.of(context).colorScheme.surface)
+        : (lightBackgroundColor ?? Colors.white);
+
+    return Container(
+      padding: padding,
+      margin: margin,
+      decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: borderRadius ?? BorderRadius.circular(ResponsiveUtils.getResponsiveBorderRadiusValue(context, 8)),
         border: border,
@@ -261,31 +284,30 @@ class ThemeIconUtils {
   }) {
     final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final selectedFg = isDark ? const Color(0xFF0D1520) : Colors.white;
+    final activeBg = selectedColor ?? (isDark ? const Color(0xFFE5B94D) : colorScheme.primary);
     
     return FilterChip(
       label: Text(
         label,
         style: TextStyle(
-          color: selected
-              ? (isDark ? colorScheme.onPrimary : colorScheme.onPrimary)
-              : getTextColor(context),
+          color: selected ? selectedFg : getTextColor(context),
           fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14.0),
+          fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
         ),
       ),
       avatar: icon != null
           ? Icon(
               icon,
               size: ResponsiveUtils.getResponsiveIconSize(context, 18.0),
-              color: selected
-                  ? (isDark ? colorScheme.onPrimary : colorScheme.onPrimary)
-                  : getIconColor(context),
+              color: selected ? selectedFg : getIconColor(context),
             )
           : null,
       selected: selected,
       onSelected: onTap != null ? (_) => onTap() : null,
-      backgroundColor: isDark ? colorScheme.surfaceContainerHighest : colorScheme.surfaceContainerHighest,
-      selectedColor: selectedColor ?? colorScheme.primary,
-      checkmarkColor: colorScheme.onPrimary,
+      backgroundColor: colorScheme.surfaceContainerHighest,
+      selectedColor: activeBg,
+      checkmarkColor: selectedFg,
       side: BorderSide(
         color: getBorderColor(context),
         width: 1.0,

@@ -177,42 +177,65 @@ class PaymentService {
         (data['data'] != null ? (data['data']['reference']) : null)) as String?;
     final useRef = returnedRef ?? fallbackReference;
 
-    if (accessCode != null && accessCode.isNotEmpty) {
+    // Flutter Web: ALWAYS redirect to Paystack authorization_url.
+    // paystack_flutter_sdk does not support Web.
+    if (kIsWeb) {
+      if (authUrl != null && authUrl.isNotEmpty) {
+        try {
+          final uri = Uri.parse(authUrl);
+          final launched = await launchUrl(uri, webOnlyWindowName: '_self');
+          if (launched) {
+            return PaymentResult(
+              success: false,
+              reference: useRef,
+              message: 'Redirecting to Paystack checkout...',
+              initialized: true,
+            );
+          }
+        } catch (e) {
+          _logger.error('Failed to launch payment URL on web: $e');
+        }
+      }
+      _logger.error('Web payment init failed: missing authorization_url');
+      return PaymentResult(
+        success: false,
+        reference: useRef,
+        message: 'Unable to open Paystack checkout on web',
+      );
+    }
+
+    // Native Mobile (Android / iOS): Use paystack_flutter_sdk if access_code is available
+    final isMobile = defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS;
+
+    if (isMobile && accessCode != null && accessCode.isNotEmpty) {
       try {
         final paystack = Paystack();
         final ok =
             await paystack.initialize(PaymentConfig.paystackPublicKey, true);
-        if (!ok) {
-          _logger.error('Paystack SDK initialization failed');
+        if (ok) {
+          final response = await paystack.launch(accessCode);
+          if (response.status == 'success') {
+            return PaymentResult(
+              success: true,
+              reference: response.reference,
+              message: response.message,
+            );
+          }
           return PaymentResult(
             success: false,
             reference: useRef,
-            message: 'Failed to initialize Paystack SDK',
-          );
-        }
-        final response = await paystack.launch(accessCode);
-        if (response.status == 'success') {
-          return PaymentResult(
-            success: true,
-            reference: response.reference,
             message: response.message,
           );
+        } else {
+          _logger.warning('Paystack SDK init failed, falling back to authUrl');
         }
-        return PaymentResult(
-          success: false,
-          reference: useRef,
-          message: response.message,
-        );
       } catch (e) {
-        _logger.error('Paystack SDK launch error: $e');
-        return PaymentResult(
-          success: false,
-          reference: useRef,
-          message: 'Unable to open checkout',
-        );
+        _logger.warning('Paystack SDK launch error ($e), falling back to authUrl');
       }
     }
 
+    // Mobile fallback or desktop: Launch external browser with authorization_url
     if (authUrl != null && authUrl.isNotEmpty) {
       try {
         final uri = Uri.parse(authUrl);
@@ -241,10 +264,12 @@ class PaymentService {
     );
   }
 
-  /// Generate a unique payment reference
+  /// Generate a unique payment reference adhering to Paystack requirements
   String _getReference() {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-    return 'ALIVE-NG-DONATION-$timestamp';
+    final rand = DateTime.now().microsecondsSinceEpoch % 1000000;
+    final randStr = rand.toString().padLeft(6, '0');
+    return kIsWeb ? 'ALIVE-WEB-$timestamp-$randStr' : 'ALIVE-APP-$timestamp-$randStr';
   }
 }
 

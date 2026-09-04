@@ -166,7 +166,7 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
         error: (error, _) {
           if (!mounted) return;
           // Show a user-facing message instead of raw exception text
-          final rawError = error.toString();
+          final rawError = error.toString().toLowerCase();
           String displayMsg;
           if (rawError.contains('popup-blocked') ||
               rawError.contains('popup_blocked_by_browser')) {
@@ -177,16 +177,37 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
               rawError.contains('auth/unauthorized')) {
             displayMsg =
                 'This domain is not authorized for Google Sign-In. Please contact the app admin.';
+          } else if (rawError.contains('rate_limit_exceeded') ||
+              rawError.contains('rate limit') ||
+              rawError.contains('429')) {
+            displayMsg =
+                'Too many attempts. Rate limit reached — please wait a few minutes before trying again.';
+          } else if (rawError.contains('user_already_exists') ||
+              rawError.contains('user already exists') ||
+              rawError.contains('409')) {
+            displayMsg =
+                'An account with this email already exists. Please switch to Sign In.';
+          } else if (rawError.contains('invalid_credentials') ||
+              rawError.contains('user_invalid_credentials') ||
+              rawError.contains('invalid credentials')) {
+            displayMsg =
+                'Incorrect email or password. Please check your credentials and try again.';
+          } else if (rawError.contains('smtp') ||
+              rawError.contains('failed to send email')) {
+            displayMsg =
+                'Email server connection issue. Please try again later or contact app@alivenigeria.org.';
           } else if (rawError.contains('network-request-failed') ||
               rawError.contains('network')) {
             displayMsg =
                 'No internet connection. Please check your network and try again.';
           } else {
             // Strip Dart exception type prefix if present
-            displayMsg = rawError
+            displayMsg = error
+                .toString()
                 .replaceAll('Exception: ', '')
                 .replaceAll('AppException: ', '')
-                .replaceAll('AuthException: ', '');
+                .replaceAll('AuthException: ', '')
+                .replaceAll('AppwriteException: ', '');
           }
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

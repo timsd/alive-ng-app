@@ -112,7 +112,9 @@
             ],
             "enabled": true,
             "logging": true,
-            "events": [],
+            "events": [
+                "users.*.create"
+            ],
             "schedule": "",
             "timeout": 15,
             "commands": "npm install",

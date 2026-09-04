@@ -11,14 +11,14 @@ import 'package:intl/intl.dart';
 import '../../constants/app_constants.dart';
 import 'package:go_router/go_router.dart';
 
-class ChapterScreen extends StatefulWidget {
+class ChapterScreen extends ConsumerStatefulWidget {
   const ChapterScreen({super.key});
 
   @override
-  State<ChapterScreen> createState() => _ChapterScreenState();
+  ConsumerState<ChapterScreen> createState() => _ChapterScreenState();
 }
 
-class _ChapterScreenState extends State<ChapterScreen>
+class _ChapterScreenState extends ConsumerState<ChapterScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final ChapterService _chapterService = ChapterService();
@@ -53,29 +53,38 @@ class _ChapterScreenState extends State<ChapterScreen>
 
     try {
       _currentUserId = _authService.currentUser?.uid;
-      if (_currentUserId == null) {
-        setState(() => _isLoading = false);
-        return;
+
+      // Always load public chapters so guests and unauthenticated users can explore
+      final chapters = await _chapterService.getChapters(
+        type: _selectedType,
+        isActive: true,
+        searchQuery: _searchQuery.isEmpty ? null : _searchQuery,
+      );
+
+      List<ChapterMember> memberships = [];
+      List<ChapterActivity> activities = [];
+      List<ChapterTask> tasks = [];
+      Map<String, dynamic> statistics = {};
+
+      if (_currentUserId != null) {
+        final results = await Future.wait([
+          _chapterService.getUserMemberships(_currentUserId!),
+          _chapterService.getUserActivities(_currentUserId!),
+          _chapterService.getUserTasks(_currentUserId!),
+          _chapterService.getUserChapterStatistics(_currentUserId!),
+        ]);
+        memberships = results[0] as List<ChapterMember>;
+        activities = results[1] as List<ChapterActivity>;
+        tasks = results[2] as List<ChapterTask>;
+        statistics = results[3] as Map<String, dynamic>;
       }
 
-      final results = await Future.wait([
-        _chapterService.getChapters(
-          type: _selectedType,
-          isActive: true,
-          searchQuery: _searchQuery.isEmpty ? null : _searchQuery,
-        ),
-        _chapterService.getUserMemberships(_currentUserId!),
-        _chapterService.getUserActivities(_currentUserId!),
-        _chapterService.getUserTasks(_currentUserId!),
-        _chapterService.getUserChapterStatistics(_currentUserId!),
-      ]);
-
       setState(() {
-        _chapters = results[0] as List<Chapter>;
-        _userMemberships = results[1] as List<ChapterMember>;
-        _userActivities = results[2] as List<ChapterActivity>;
-        _userTasks = results[3] as List<ChapterTask>;
-        _userStatistics = results[4] as Map<String, dynamic>;
+        _chapters = chapters;
+        _userMemberships = memberships;
+        _userActivities = activities;
+        _userTasks = tasks;
+        _userStatistics = statistics;
         _isLoading = false;
       });
     } catch (e) {
@@ -90,19 +99,22 @@ class _ChapterScreenState extends State<ChapterScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Listen for auth state changes and auto-reload
+    ref.listen(appwriteUserStreamProvider, (previous, next) {
+      final oldId = previous?.value?.uid;
+      final newId = next.value?.uid;
+      if (oldId != newId) {
+        _loadData();
+      }
+    });
+
     final theme = Theme.of(context);
     return Scaffold(
       appBar: CustomAppBar(
         title: 'Chapters',
         showBackButton: true,
-        backgroundColor: theme.colorScheme.primary,
-        foregroundColor: theme.colorScheme.onPrimary,
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: theme.colorScheme.onPrimary,
-          labelColor: theme.colorScheme.onPrimary,
-          unselectedLabelColor:
-              theme.colorScheme.onPrimary.withValues(alpha: 0.7),
           isScrollable: true,
           tabAlignment: TabAlignment.start,
           tabs: const [
@@ -116,23 +128,36 @@ class _ChapterScreenState extends State<ChapterScreen>
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _currentUserId == null
-              ? _buildSignedOutState()
-              : TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildOverviewTab(),
-                    _buildBrowseTab(),
-                    _buildMyChaptersTab(),
-                    _buildActivitiesTab(),
-                    _buildTasksTab(),
-                  ],
-                ),
+          : TabBarView(
+              controller: _tabController,
+              children: [
+                _buildOverviewTab(),
+                _buildBrowseTab(),
+                _currentUserId == null
+                    ? _buildSignedOutState(
+                        customMessage:
+                            'Sign in to view your chapter memberships, leadership roles, and connect with your team.',
+                      )
+                    : _buildMyChaptersTab(),
+                _currentUserId == null
+                    ? _buildSignedOutState(
+                        customMessage:
+                            'Sign in to view and register for chapter events and mission outreach activities.',
+                      )
+                    : _buildActivitiesTab(),
+                _currentUserId == null
+                    ? _buildSignedOutState(
+                        customMessage:
+                            'Sign in to view, update, and manage your assigned chapter tasks and responsibilities.',
+                      )
+                    : _buildTasksTab(),
+              ],
+            ),
       floatingActionButton: _buildFloatingActionButton(),
     );
   }
 
-  Widget _buildSignedOutState() {
+  Widget _buildSignedOutState({String? customMessage}) {
     final theme = Theme.of(context);
     return Center(
       child: Padding(
@@ -154,7 +179,7 @@ class _ChapterScreenState extends State<ChapterScreen>
                       size: 52, color: theme.colorScheme.primary),
                   const SizedBox(height: 16),
                   Text(
-                    'Sign in to access chapters',
+                    'Sign in to access',
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
@@ -162,7 +187,8 @@ class _ChapterScreenState extends State<ChapterScreen>
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Chapter activities, reports, and tasks are available after sign-in so we can load your membership and assignments correctly.',
+                    customMessage ??
+                        'Chapter activities, reports, and tasks are available after sign-in so we can load your membership and assignments correctly.',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                       height: 1.5,
