@@ -4,6 +4,7 @@ import '../../providers/language_provider.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../utils/responsive_utils.dart';
 import '../../utils/text_formatter.dart';
+import '../../services/role_access_service.dart';
 
 class InteractiveLessonsScreen extends ConsumerStatefulWidget {
   const InteractiveLessonsScreen({super.key});
@@ -19,7 +20,9 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
   String _selectedCategory = 'All';
   String _selectedLevel = 'All';
   String _searchQuery = '';
-  
+  bool _showDemoContent = true;
+  bool _isAdmin = false;
+
   // Define lesson lists
   List<Map<String, dynamic>> _allLessons = [];
   List<Map<String, dynamic>> _progressLessons = [];
@@ -30,6 +33,7 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _checkAdminStatus();
     
     // Initialize sample lesson data
     _allLessons = [
@@ -42,6 +46,7 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
         'isFavorite': false,
         'progress': 0.0,
         'isCompleted': false,
+        'isDemo': true,
       },
       {
         'title': 'Daniel and Revelation',
@@ -52,6 +57,7 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
         'isFavorite': true,
         'progress': 0.7,
         'isCompleted': false,
+        'isDemo': true,
       },
       {
         'title': 'Steps to Christ',
@@ -62,6 +68,7 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
         'isFavorite': false,
         'progress': 1.0,
         'isCompleted': true,
+        'isDemo': true,
       },
       {
         'title': 'Healthy Living Principles',
@@ -72,6 +79,7 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
         'isFavorite': true,
         'progress': 0.3,
         'isCompleted': false,
+        'isDemo': true,
       },
       {
         'title': 'Prayer and Meditation',
@@ -82,6 +90,7 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
         'isFavorite': true,
         'progress': 1.0,
         'isCompleted': true,
+        'isDemo': true,
       },
     ];
     
@@ -101,7 +110,35 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
     _completedLessons = _allLessons.where((lesson) => lesson['isCompleted'] == true).toList();
   }
 
+  void _checkAdminStatus() {
+    _isAdmin = RoleAccessService.instance.canAccessAdmin();
+  }
+
+  void _toggleDemoContent() {
+    setState(() {
+      _showDemoContent = !_showDemoContent;
+    });
+  }
+
   List<Map<String, dynamic>> get _filteredLessons {
+    var lessons = _showDemoContent 
+        ? _allLessons 
+        : _allLessons.where((lesson) => lesson['isDemo'] != true).toList();
+    
+    if (_selectedCategory != 'All') {
+      lessons = lessons.where((lesson) => lesson['category'] == _selectedCategory).toList();
+    }
+    if (_selectedLevel != 'All') {
+      lessons = lessons.where((lesson) => lesson['level'] == _selectedLevel).toList();
+    }
+    if (_searchQuery.isNotEmpty) {
+      lessons = lessons.where((lesson) => 
+        lesson['title'].toLowerCase().contains(_searchQuery.toLowerCase()) ||
+        lesson['description'].toLowerCase().contains(_searchQuery.toLowerCase())
+      ).toList();
+    }
+    return lessons;
+  }
     return _allLessons.where((lesson) {
       final matchesCategory = _selectedCategory == 'All' || lesson['category'] == _selectedCategory;
       final matchesLevel = _selectedLevel == 'All' || lesson['level'] == _selectedLevel;
@@ -120,6 +157,15 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
       appBar: CustomAppBar(
         title: translate('interactive_lessons'),
         showBackButton: true,
+        actions: _isAdmin
+            ? [
+                IconButton(
+                  icon: Icon(_showDemoContent ? Icons.visibility_off : Icons.visibility),
+                  onPressed: _toggleDemoContent,
+                  tooltip: _showDemoContent ? 'Hide Demo Content' : 'Show Demo Content',
+                ),
+              ]
+            : null,
       ),
       body: Column(
         children: [
@@ -592,6 +638,38 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
     setState(() {
       _selectedLevel = level;
     });
+  }
+
+  void _toggleDemoContent() {
+    setState(() {
+      _showDemoContent = !_showDemoContent;
+    });
+  }
+
+  void _updateFilteredLessons() {
+    _progressLessons = _allLessons.where((lesson) => lesson['progress'] > 0 && lesson['progress'] < 1.0).toList();
+    _favoriteLessons = _allLessons.where((lesson) => lesson['isFavorite'] == true).toList();
+    _completedLessons = _allLessons.where((lesson) => lesson['isCompleted'] == true).toList();
+  }
+
+  List<Map<String, dynamic>> get _filteredLessons {
+    var lessons = _showDemoContent 
+        ? _allLessons 
+        : _allLessons.where((lesson) => lesson['isDemo'] != true).toList();
+    
+    if (_selectedCategory != 'All') {
+      lessons = lessons.where((lesson) => lesson['category'] == _selectedCategory).toList();
+    }
+    if (_selectedLevel != 'All') {
+      lessons = lessons.where((lesson) => lesson['level'] == _selectedLevel).toList();
+    }
+    if (_searchQuery.isNotEmpty) {
+      lessons = lessons.where((lesson) => 
+        lesson['title'].toLowerCase().contains(_searchQuery.toLowerCase()) ||
+        lesson['description'].toLowerCase().contains(_searchQuery.toLowerCase())
+      ).toList();
+    }
+    return lessons;
   }
 }
 

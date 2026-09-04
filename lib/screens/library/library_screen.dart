@@ -28,49 +28,49 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     {
       'title': 'The Great Controversy',
       'author': 'Ellen G. White',
-      'category': 'bible',
+      'category': 'Bible',
       'language': 'en'
     },
     {
       'title': 'Steps to Christ',
       'author': 'Ellen G. White',
-      'category': 'devotional',
+      'category': 'Devotional',
       'language': 'en'
     },
     {
       'title': 'The Desire of Ages',
       'author': 'Ellen G. White',
-      'category': 'bible',
+      'category': 'Bible',
       'language': 'en'
     },
     {
       'title': 'Patriarchs and Prophets',
       'author': 'Ellen G. White',
-      'category': 'bible',
+      'category': 'Bible',
       'language': 'en'
     },
     {
       'title': 'The Acts of the Apostles',
       'author': 'Ellen G. White',
-      'category': 'bible',
+      'category': 'Bible',
       'language': 'en'
     },
     {
       'title': 'Prophets and Kings',
       'author': 'Ellen G. White',
-      'category': 'bible',
+      'category': 'Bible',
       'language': 'en'
     },
     {
       'title': 'Education',
       'author': 'Ellen G. White',
-      'category': 'youth',
+      'category': 'Youth',
       'language': 'en'
     },
     {
       'title': 'Ministry of Healing',
       'author': 'Ellen G. White',
-      'category': 'health',
+      'category': 'Health',
       'language': 'en'
     },
   ];
@@ -79,19 +79,19 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     {
       'title': 'Understanding Bible Prophecy',
       'author': 'John Doe',
-      'category': 'bible',
+      'category': 'Bible',
       'language': 'en'
     },
     {
       'title': 'Health and Wellness Tips',
       'author': 'Jane Smith',
-      'category': 'health',
+      'category': 'Health',
       'language': 'en'
     },
     {
       'title': 'Youth Ministry Guidelines',
       'author': 'David Johnson',
-      'category': 'youth',
+      'category': 'Youth',
       'language': 'en'
     },
   ];
@@ -100,13 +100,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     {
       'title': 'Daily Devotional Podcast',
       'author': 'Speaker One',
-      'category': 'devotional',
+      'category': 'Devotional',
       'language': 'en'
     },
     {
       'title': 'Bible Study Series',
       'author': 'Speaker Two',
-      'category': 'bible',
+      'category': 'Bible',
       'language': 'en'
     },
   ];

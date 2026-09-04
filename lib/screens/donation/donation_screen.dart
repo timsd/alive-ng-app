@@ -1700,9 +1700,15 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                       );
                     }
                     final projects = snapshot.data!;
-                    return ListView.builder(
+                    return GridView.builder(
                       controller: scrollController,
                       padding: const EdgeInsets.all(16),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: MediaQuery.of(ctx).size.width > 600 ? 3 : 2,
+                        childAspectRatio: 0.72,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                      ),
                       itemCount: projects.length,
                       itemBuilder: (ctx4, i) {
                         final project = projects[i];

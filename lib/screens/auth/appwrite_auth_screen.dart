@@ -233,18 +233,6 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
                         ),
                       ),
 
-                      // Segmented Mode Selector (Sign In | Sign Up)
-                      _buildModeSelector(context, translate),
-
-                      SizedBox(
-                        height: ResponsiveUtils.getResponsiveValue(
-                          context: context,
-                          mobile: 20.0,
-                          tablet: 24.0,
-                          desktop: 28.0,
-                        ),
-                      ),
-
                       // Auth Form (Inputs + Submit Button immediately below!)
                       _buildAuthForm(context, translate, signInState),
 

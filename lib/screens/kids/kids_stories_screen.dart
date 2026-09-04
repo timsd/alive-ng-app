@@ -425,8 +425,14 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
                 size: 56,
                 color: Theme.of(context).colorScheme.onSurfaceVariant),
             const SizedBox(height: 16),
-            Text('No stories found in CMS',
+            Text('No Stories Available',
                 style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Text('Check back later for new stories',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+                textAlign: TextAlign.center),
           ],
         ),
       );

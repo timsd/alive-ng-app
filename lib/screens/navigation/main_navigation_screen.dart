@@ -58,7 +58,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
         unselectedItemColor: Theme.of(context)
             .bottomNavigationBarTheme
             .unselectedItemColor ??
-            Theme.of(context).colorScheme.onSurfaceVariant,
+            Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),

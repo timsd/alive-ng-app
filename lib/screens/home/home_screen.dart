@@ -88,19 +88,6 @@ class HomeScreen extends ConsumerWidget {
             ),
           ),
           SizedBox(height: context.isMobile ? 20 : 28),
-          if (user != null && !isGuest) ...[
-            const RoleVisibility(
-              allowedRoles: ['member', 'admin', 'leader'],
-              child: QuickActionsGrid(),
-            ),
-          ] else ...[
-            Consumer(
-              builder: (context, ref, _) {
-                return const QuickActionsGrid();
-              },
-            ),
-            SizedBox(height: context.isMobile ? 16 : 24),
-          ],
         ],
       ),
     );

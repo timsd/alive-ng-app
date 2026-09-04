@@ -510,7 +510,9 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
               vertical: isSmallScreen ? 6 : 10,
             ),
             child: Text(
-              _selectedBook.isEmpty ? 'Bible Reader' : _selectedBook,
+              _selectedBook.isEmpty 
+                  ? 'Bible Reader' 
+                  : '$_selectedBook $_selectedChapter',
               style: TextStyle(
                 color: headerTextColor,
                 fontSize: isSmallScreen ? 20 : (isMediumScreen ? 22 : 24),
