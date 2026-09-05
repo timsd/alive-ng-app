@@ -28,7 +28,7 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
   List<ChapterMember> _userMemberships = [];
   List<ChapterActivity> _userActivities = [];
   List<ChapterTask> _userTasks = [];
-  Map<String, dynamic> _userStatistics = {};
+  ChapterUserStatistics _userStatistics = ChapterUserStatistics.empty;
 
   bool _isLoading = true;
   String _searchQuery = '';
@@ -64,7 +64,7 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
       List<ChapterMember> memberships = [];
       List<ChapterActivity> activities = [];
       List<ChapterTask> tasks = [];
-      Map<String, dynamic> statistics = {};
+      var statistics = ChapterUserStatistics.empty;
 
       if (_currentUserId != null) {
         final results = await Future.wait([
@@ -76,7 +76,7 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
         memberships = results[0] as List<ChapterMember>;
         activities = results[1] as List<ChapterActivity>;
         tasks = results[2] as List<ChapterTask>;
-        statistics = results[3] as Map<String, dynamic>;
+        statistics = results[3] as ChapterUserStatistics;
       }
 
       setState(() {
@@ -322,25 +322,25 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
             children: [
               _buildStatCard(
                 'Chapters',
-                '${_userStatistics['totalChapters'] ?? 0}',
+                '${_userStatistics.totalChapters}',
                 Icons.group,
                 Theme.of(context).colorScheme.primary,
               ),
               _buildStatCard(
                 'Activities',
-                '${_userStatistics['totalActivities'] ?? 0}',
+                '${_userStatistics.totalActivities}',
                 Icons.event,
                 Theme.of(context).colorScheme.tertiary,
               ),
               _buildStatCard(
                 'Tasks',
-                '${_userStatistics['totalTasks'] ?? 0}',
+                '${_userStatistics.totalTasks}',
                 Icons.task,
                 Theme.of(context).colorScheme.secondary,
               ),
               _buildStatCard(
                 'Completion Rate',
-                '${_userStatistics['activityCompletionRate'] ?? 0}%',
+                '${_userStatistics.activityCompletionRate}%',
                 Icons.check_circle,
                 Theme.of(context).colorScheme.primary,
               ),

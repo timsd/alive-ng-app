@@ -24,7 +24,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
   List<ContactInteraction> _recentInteractions = [];
   List<StudySession> _recentStudySessions = [];
   List<PrayerRequest> _activePrayerRequests = [];
-  Map<String, dynamic> _statistics = {};
+  DiscipleshipStatistics _statistics = DiscipleshipStatistics.empty;
 
   bool _isLoading = true;
   String _searchQuery = '';
@@ -153,7 +153,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
               Expanded(
                 child: _buildStatCard(
                   'Total Contacts',
-                  _statistics['totalContacts']?.toString() ?? '0',
+                  _statistics.totalContacts.toString(),
                   Icons.people,
                   Theme.of(context).colorScheme.primary,
                 ),
@@ -167,7 +167,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
               Expanded(
                 child: _buildStatCard(
                   'Active Contacts',
-                  _statistics['activeContacts']?.toString() ?? '0',
+                  _statistics.activeContacts.toString(),
                   Icons.person_add,
                   Theme.of(context).colorScheme.tertiary,
                 ),
@@ -185,7 +185,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
               Expanded(
                 child: _buildStatCard(
                   'Baptisms',
-                  _statistics['totalBaptisms']?.toString() ?? '0',
+                  _statistics.totalBaptisms.toString(),
                   Icons.water_drop,
                   Theme.of(context).colorScheme.secondary,
                 ),
@@ -199,7 +199,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
               Expanded(
                 child: _buildStatCard(
                   'Study Sessions',
-                  _statistics['totalStudySessions']?.toString() ?? '0',
+                  _statistics.totalStudySessions.toString(),
                   Icons.book,
                   Theme.of(context).colorScheme.primary,
                 ),
@@ -269,9 +269,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                         child: Column(
                           children: [
                             Text(
-                              _statistics['recentActivity']?['interactions']
-                                      ?.toString() ??
-                                  '0',
+                              _statistics.recentInteractions.toString(),
                               style: TextStyle(
                                 fontSize: context.responsiveFontSize(24),
                                 fontWeight: FontWeight.bold,

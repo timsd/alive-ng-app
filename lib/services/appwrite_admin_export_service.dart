@@ -5,6 +5,7 @@ import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/models.dart' as models;
 
 import '../config/appwrite_backend_config.dart';
+import '../models/donation_report_models.dart';
 import '../main.dart';
 import '../utils/app_exception.dart';
 import '../utils/logger.dart';
@@ -94,6 +95,25 @@ class AppwriteAdminExportService {
   }
 
   /// Retrieve donations for in-app viewing and summary analysis
+  Future<List<DonationReportEntry>> listDonationEntries({
+    String? status,
+    int limit = 250,
+  }) async {
+    final response = await _tables.listRows(
+      databaseId: AppwriteBackendConfig.databaseId,
+      tableId: AppwriteBackendConfig.donationRecordsCollectionId,
+      queries: [
+        Query.orderDesc('\$createdAt'),
+        Query.limit(limit),
+        if (status != null && status.isNotEmpty && status != 'all')
+          Query.equal('status', status.toLowerCase()),
+      ],
+    );
+    return response.rows
+        .map((row) => DonationReportEntry.fromJson(_rowData(row)))
+        .toList();
+  }
+
   Future<List<Map<String, dynamic>>> listDonations({
     DateTime? startDate,
     DateTime? endDate,

@@ -618,4 +618,62 @@ class DiscipleshipConstants {
 
 
 
+/// Strongly-typed discipleship statistics.
+///
+/// Replaces the previous untyped `Map<String, dynamic>` returned by
+/// `DiscipleshipService.getDiscipleshipStatistics`. SDK-agnostic domain object.
+class DiscipleshipStatistics {
+  final int totalContacts;
+  final int activeContacts;
+  final int totalBaptisms;
+  final int totalInteractions;
+  final int totalStudySessions;
+  final int totalPrayerRequests;
+  final int answeredPrayers;
+  final int recentInteractions;
+  final int recentStudySessions;
+  final double averageStudyRating;
+  final Map<String, int> levelDistribution;
+
+  const DiscipleshipStatistics({
+    this.totalContacts = 0,
+    this.activeContacts = 0,
+    this.totalBaptisms = 0,
+    this.totalInteractions = 0,
+    this.totalStudySessions = 0,
+    this.totalPrayerRequests = 0,
+    this.answeredPrayers = 0,
+    this.recentInteractions = 0,
+    this.recentStudySessions = 0,
+    this.averageStudyRating = 0,
+    this.levelDistribution = const {},
+  });
+
+  factory DiscipleshipStatistics.fromMap(Map<String, dynamic> json) {
+    final levelJson =
+        json['levelDistribution'] as Map<String, dynamic>? ?? const {};
+    final levelDistribution = <String, int>{};
+    levelJson.forEach((k, v) {
+      levelDistribution[k] = (v as num?)?.toInt() ?? 0;
+    });
+
+    final recent = json['recentActivity'] as Map<String, dynamic>? ?? const {};
+    return DiscipleshipStatistics(
+      totalContacts: (json['totalContacts'] as num?)?.toInt() ?? 0,
+      activeContacts: (json['activeContacts'] as num?)?.toInt() ?? 0,
+      totalBaptisms: (json['totalBaptisms'] as num?)?.toInt() ?? 0,
+      totalInteractions: (json['totalInteractions'] as num?)?.toInt() ?? 0,
+      totalStudySessions: (json['totalStudySessions'] as num?)?.toInt() ?? 0,
+      totalPrayerRequests: (json['totalPrayerRequests'] as num?)?.toInt() ?? 0,
+      answeredPrayers: (json['answeredPrayers'] as num?)?.toInt() ?? 0,
+      recentInteractions: (recent['interactions'] as num?)?.toInt() ?? 0,
+      recentStudySessions: (recent['studySessions'] as num?)?.toInt() ?? 0,
+      averageStudyRating:
+          (json['averageStudyRating'] as num?)?.toDouble() ?? 0,
+      levelDistribution: levelDistribution,
+    );
+  }
+
+  static const DiscipleshipStatistics empty = DiscipleshipStatistics();
+}
 

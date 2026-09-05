@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';
 import 'payment_service.dart';
+import 'ports/payment_gateway.dart';
 import '../models/donation_models.dart';
 import '../models/project_model.dart';
 import 'package:uuid/uuid.dart';
@@ -17,7 +18,12 @@ import 'auth_service.dart';
 class DonationService {
   static final DonationService _instance = DonationService._internal();
   factory DonationService() => _instance;
-  DonationService._internal();
+  DonationService._internal() : _paymentService = PaymentService();
+
+  DonationService.withPaymentGateway(PaymentGateway gateway)
+      : _paymentService = PaymentService(gateway);
+
+  final PaymentService _paymentService;
 
   late final TablesDB _tables = TablesDB(appwriteClient);
   final Uuid _uuid = const Uuid();
@@ -759,13 +765,13 @@ class DonationService {
         if (donation.materialId != null) 'material_id': donation.materialId,
       };
       final paymentResult = isRecurringMonthly
-          ? await PaymentService().processMonthlyDonation(
+          ? await _paymentService.processMonthlyDonation(
               email: email,
               currency: currency,
               reference: donationId,
               metadata: baseMetadata,
             )
-          : await PaymentService().processDonation(
+          : await _paymentService.processDonation(
               amount: amount,
               email: email,
               reference: donationId,

@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../services/appwrite_admin_export_service.dart';
+import '../../models/donation_report_models.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../utils/responsive_utils.dart';
 
@@ -22,8 +23,8 @@ class _AdminDonationsReportScreenState
 
   bool _isLoading = true;
   bool _isExporting = false;
-  List<Map<String, dynamic>> _allDonations = [];
-  List<Map<String, dynamic>> _filteredDonations = [];
+  List<DonationReportEntry> _allDonations = [];
+  List<DonationReportEntry> _filteredDonations = [];
 
   String _statusFilter = 'all';
   String _datePreset = 'all';
@@ -46,7 +47,7 @@ class _AdminDonationsReportScreenState
   Future<void> _loadDonations() async {
     setState(() => _isLoading = true);
     try {
-      final rows = await AppwriteAdminExportService.instance.listDonations(
+      final rows = await AppwriteAdminExportService.instance.listDonationEntries(
         status: _statusFilter == 'all' ? null : _statusFilter,
         limit: 250,
       );
@@ -99,33 +100,26 @@ class _AdminDonationsReportScreenState
 
     _filteredDonations = _allDonations.where((d) {
       // Status filter
-      final status = (d['status']?.toString().toLowerCase()) ?? 'completed';
+      final status = d.status;
       if (_statusFilter != 'all' && status != _statusFilter.toLowerCase()) {
         return false;
       }
 
       // Date filter
-      final dateStr = d['created_at'] ?? d['\$createdAt'];
-      if (dateStr != null) {
-        final dt = DateTime.tryParse(dateStr.toString());
-        if (dt != null) {
-          if (filterStart != null && dt.isBefore(filterStart)) return false;
-          if (filterEnd != null && dt.isAfter(filterEnd)) return false;
-        }
+      final dt = d.createdAt;
+      if (dt != null) {
+        if (filterStart != null && dt.isBefore(filterStart)) return false;
+        if (filterEnd != null && dt.isAfter(filterEnd)) return false;
       }
 
       // Search query filter
       if (query.isNotEmpty) {
-        final ref = (d['reference'] ?? d['id'] ?? '').toString().toLowerCase();
+        final ref = d.reference.toLowerCase();
         final name =
-            (d['donor_name'] ?? d['name'] ?? '').toString().toLowerCase();
+            d.donorName.toLowerCase();
         final email =
-            (d['donor_email'] ?? d['email'] ?? '').toString().toLowerCase();
-        final purpose = (d['mission_purpose'] ??
-                d['purpose'] ??
-                d['project_title'] ??
-                '')
-            .toString()
+            d.donorEmail.toLowerCase();
+        final purpose = d.purpose
             .toLowerCase();
 
         if (!ref.contains(query) &&
@@ -147,11 +141,9 @@ class _AdminDonationsReportScreenState
     _failedCount = 0;
 
     for (final d in _filteredDonations) {
-      final amount = (d['amount'] is num)
-          ? (d['amount'] as num).toDouble()
-          : (double.tryParse(d['amount']?.toString() ?? '0') ?? 0.0);
-      final currency = (d['currency']?.toString().toUpperCase()) ?? 'NGN';
-      final status = (d['status']?.toString().toLowerCase()) ?? 'completed';
+      final amount = d.amount;
+      final currency = d.currency;
+      final status = d.status;
 
       if (status == 'success' || status == 'completed') {
         _successCount++;
@@ -587,15 +579,11 @@ class _AdminDonationsReportScreenState
             DataColumn(label: Text('Reference')),
           ],
           rows: _filteredDonations.map((d) {
-            final amount = (d['amount'] is num)
-                ? (d['amount'] as num).toDouble()
-                : (double.tryParse(d['amount']?.toString() ?? '0') ?? 0.0);
-            final currency = (d['currency']?.toString().toUpperCase()) ?? 'NGN';
+            final amount = d.amount;
+            final currency = d.currency;
             final status =
-                (d['status']?.toString().toLowerCase()) ?? 'completed';
-            final dateStr = d['created_at'] ?? d['\$createdAt'];
-            DateTime? dt;
-            if (dateStr != null) dt = DateTime.tryParse(dateStr.toString());
+                d.status;
+            final dt = d.createdAt;
 
             return DataRow(cells: [
               DataCell(Text(dt != null ? _dateFormat.format(dt) : 'N/A')),
@@ -603,9 +591,9 @@ class _AdminDonationsReportScreenState
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(d['donor_name'] ?? d['name'] ?? 'Anonymous Donor',
+                  Text(d.donorName,
                       style: const TextStyle(fontWeight: FontWeight.bold)),
-                  Text(d['donor_email'] ?? d['email'] ?? '',
+                  Text(d.donorEmail,
                       style: theme.textTheme.bodySmall),
                 ],
               )),
@@ -615,13 +603,10 @@ class _AdminDonationsReportScreenState
                     : _currencyFormat.format(amount),
                 style: const TextStyle(fontWeight: FontWeight.bold),
               )),
-              DataCell(Text(d['mission_purpose'] ??
-                  d['purpose'] ??
-                  d['project_title'] ??
-                  'General Donation')),
+              DataCell(Text(d.purpose)),
               DataCell(_buildStatusBadge(status)),
               DataCell(Text(
-                (d['reference'] ?? d['id'] ?? '').toString(),
+                d.reference,
                 style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
               )),
             ]);
@@ -639,14 +624,10 @@ class _AdminDonationsReportScreenState
       separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (ctx, i) {
         final d = _filteredDonations[i];
-        final amount = (d['amount'] is num)
-            ? (d['amount'] as num).toDouble()
-            : (double.tryParse(d['amount']?.toString() ?? '0') ?? 0.0);
-        final currency = (d['currency']?.toString().toUpperCase()) ?? 'NGN';
-        final status = (d['status']?.toString().toLowerCase()) ?? 'completed';
-        final dateStr = d['created_at'] ?? d['\$createdAt'];
-        DateTime? dt;
-        if (dateStr != null) dt = DateTime.tryParse(dateStr.toString());
+        final amount = d.amount;
+        final currency = d.currency;
+        final status = d.status;
+        final dt = d.createdAt;
 
         return Container(
           padding: const EdgeInsets.all(14),
@@ -662,7 +643,7 @@ class _AdminDonationsReportScreenState
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    d['donor_name'] ?? d['name'] ?? 'Anonymous Donor',
+                    d.donorName,
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   Text(
@@ -678,7 +659,7 @@ class _AdminDonationsReportScreenState
               ),
               const SizedBox(height: 4),
               Text(
-                d['donor_email'] ?? d['email'] ?? 'No email provided',
+                d.donorEmail.isEmpty ? 'No email provided' : d.donorEmail,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -688,7 +669,7 @@ class _AdminDonationsReportScreenState
                 children: [
                   Expanded(
                     child: Text(
-                      'Purpose: ${d['mission_purpose'] ?? d['purpose'] ?? 'General'}',
+                      'Purpose: ${d.purpose}',
                       style: theme.textTheme.bodySmall,
                       overflow: TextOverflow.ellipsis,
                     ),

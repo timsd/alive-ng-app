@@ -103,7 +103,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
           AppwriteBackendConfig.usersCollectionId,
           queries: [Query.equal('is_archived', true)],
         ),
-        _countDocuments(AppwriteBackendConfig.boardDocumentsBucketId),
+        _countDocuments(AppwriteBackendConfig.boardReportsCollectionId),
         _listDocuments(
           AppwriteBackendConfig.podcastsCollectionId,
           queries: [Query.limit(500)],
@@ -113,14 +113,15 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
       final activeUsers = results[0] as int;
       final archivedUsers = results[1] as int;
       final activeReports = results[2] as int;
-      final podcasts = results[3] as List<Map<String, dynamic>>;
+      final podcasts = results[3] as List<Podcast>;
 
       final Map<String, int> categoryCounts = {};
       for (final data in podcasts) {
-        final category = (data['category'] as String?) ?? 'uncategorized';
+        final category = data.category.name;
         categoryCounts[category] = (categoryCounts[category] ?? 0) + 1;
       }
 
+      if (!mounted) return;
       setState(() {
         _totalUsers = activeUsers;
         _archivedUsers = archivedUsers;
@@ -130,15 +131,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
         _podcastCategoryCounts = categoryCounts;
       });
     } catch (e) {
-      // Handle error - fallback to placeholder data
-      setState(() {
-        _totalUsers = 150;
-        _totalChapters = ChapterConstants.availableChapters.length;
-        _activeReports = 25;
-        _archivedUsers = 12;
-        _totalPodcasts = 0;
-        _podcastCategoryCounts = {};
-      });
+      rethrow;
     }
   }
 
@@ -154,7 +147,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
     return response.total;
   }
 
-  Future<List<Map<String, dynamic>>> _listDocuments(
+  Future<List<Podcast>> _listDocuments(
     String collectionId, {
     List<String> queries = const [],
   }) async {
@@ -164,7 +157,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
       queries: queries,
     );
     return response.rows
-        .map((row) => {...Map<String, dynamic>.from(row.data), 'id': row.$id})
+        .map((row) => Podcast.fromJson({...row.data, 'id': row.$id}))
         .toList();
   }
 

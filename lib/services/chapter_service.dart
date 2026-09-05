@@ -686,7 +686,7 @@ class ChapterService {
     }
   }
 
-  Future<Map<String, dynamic>> getUserChapterStatistics(String userId) async {
+  Future<ChapterUserStatistics> getUserChapterStatistics(String userId) async {
     try {
       final results = await Future.wait([
         getUserMemberships(userId),
@@ -701,20 +701,22 @@ class ChapterService {
           activities.where((a) => a.status == ActivityStatus.completed).length;
       final completedTasks =
           tasks.where((t) => t.status == ActivityStatus.completed).length;
+      final activityRate = activities.isEmpty
+          ? 0
+          : (completedActivities / activities.length * 100).round();
+      final taskRate =
+          tasks.isEmpty ? 0 : (completedTasks / tasks.length * 100).round();
 
-      return {
-        'totalChapters': memberships.length,
-        'totalActivities': activities.length,
-        'completedActivities': completedActivities,
-        'totalTasks': tasks.length,
-        'completedTasks': completedTasks,
-        'pendingTasks': tasks.length - completedTasks,
-        'activityCompletionRate': activities.isEmpty
-            ? 0
-            : (completedActivities / activities.length * 100).round(),
-        'taskCompletionRate':
-            tasks.isEmpty ? 0 : (completedTasks / tasks.length * 100).round(),
-      };
+      return ChapterUserStatistics(
+        totalChapters: memberships.length,
+        totalActivities: activities.length,
+        completedActivities: completedActivities,
+        totalTasks: tasks.length,
+        completedTasks: completedTasks,
+        pendingTasks: tasks.length - completedTasks,
+        activityCompletionRate: activityRate,
+        taskCompletionRate: taskRate,
+      );
     } catch (e) {
       throw DatabaseException('Failed to get user chapter statistics',
           originalError: e);

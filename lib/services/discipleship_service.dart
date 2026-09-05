@@ -566,7 +566,7 @@ class DiscipleshipService {
     }
   }
 
-  Future<Map<String, dynamic>> getDiscipleshipStatistics(
+  Future<DiscipleshipStatistics> getDiscipleshipStatistics(
       String discipleMakerId) async {
     try {
       final contacts = await getContacts(discipleMakerId: discipleMakerId);
@@ -577,9 +577,9 @@ class DiscipleshipService {
       final prayerRequests =
           await getPrayerRequests(discipleMakerId: discipleMakerId);
 
-      final levelCounts = <DiscipleshipLevel, int>{};
+      final levelCounts = <String, int>{};
       for (final level in DiscipleshipLevel.values) {
-        levelCounts[level] =
+        levelCounts[level.name] =
             contacts.where((c) => c.currentLevel == level).length;
       }
 
@@ -590,31 +590,29 @@ class DiscipleshipService {
           studySessions.where((s) => s.date.isAfter(thirtyDaysAgo)).length;
       final ratedSessions = studySessions.where((s) => s.rating != null);
 
-      return {
-        'totalContacts': contacts.length,
-        'activeContacts': contacts.where((c) => c.isActive).length,
-        'totalBaptisms': contacts
+      return DiscipleshipStatistics(
+        totalContacts: contacts.length,
+        activeContacts: contacts.where((c) => c.isActive).length,
+        totalBaptisms: contacts
             .where((c) =>
                 c.currentLevel == DiscipleshipLevel.baptized ||
                 c.currentLevel == DiscipleshipLevel.disciple ||
                 c.currentLevel == DiscipleshipLevel.leader)
             .length,
-        'levelDistribution': levelCounts.map((k, v) => MapEntry(k.name, v)),
-        'totalInteractions': interactions.length,
-        'totalStudySessions': studySessions.length,
-        'totalPrayerRequests': prayerRequests.length,
-        'answeredPrayers': prayerRequests
+        levelDistribution: levelCounts,
+        totalInteractions: interactions.length,
+        totalStudySessions: studySessions.length,
+        totalPrayerRequests: prayerRequests.length,
+        answeredPrayers: prayerRequests
             .where((p) => p.status == PrayerRequestStatus.answered)
             .length,
-        'recentActivity': {
-          'interactions': recentInteractions,
-          'studySessions': recentStudySessions,
-        },
-        'averageStudyRating': ratedSessions.isEmpty
+        recentInteractions: recentInteractions,
+        recentStudySessions: recentStudySessions,
+        averageStudyRating: ratedSessions.isEmpty
             ? 0.0
             : ratedSessions.map((s) => s.rating!).reduce((a, b) => a + b) /
                 ratedSessions.length,
-      };
+      );
     } catch (e) {
       _logger.error('Failed to get discipleship statistics', e);
       throw DatabaseException('Failed to get discipleship statistics',

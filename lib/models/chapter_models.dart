@@ -690,3 +690,44 @@ class ChapterTypeConstants {
     'Philippians 2:3-4 - Do nothing from selfish ambition or conceit',
   ];
 }
+/// Strongly-typed user chapter statistics.
+///
+/// Replaces the previous untyped `Map<String, dynamic>` returned by
+/// `ChapterService.getUserChapterStatistics`. SDK-agnostic domain object.
+class ChapterUserStatistics {
+  final int totalChapters;
+  final int totalActivities;
+  final int completedActivities;
+  final int totalTasks;
+  final int completedTasks;
+  final int pendingTasks;
+  final int activityCompletionRate;
+  final int taskCompletionRate;
+
+  const ChapterUserStatistics({
+    this.totalChapters = 0,
+    this.totalActivities = 0,
+    this.completedActivities = 0,
+    this.totalTasks = 0,
+    this.completedTasks = 0,
+    this.pendingTasks = 0,
+    this.activityCompletionRate = 0,
+    this.taskCompletionRate = 0,
+  });
+
+  factory ChapterUserStatistics.fromMap(Map<String, dynamic> json) {
+    return ChapterUserStatistics(
+      totalChapters: (json['totalChapters'] as num?)?.toInt() ?? 0,
+      totalActivities: (json['totalActivities'] as num?)?.toInt() ?? 0,
+      completedActivities: (json['completedActivities'] as num?)?.toInt() ?? 0,
+      totalTasks: (json['totalTasks'] as num?)?.toInt() ?? 0,
+      completedTasks: (json['completedTasks'] as num?)?.toInt() ?? 0,
+      pendingTasks: (json['pendingTasks'] as num?)?.toInt() ?? 0,
+      activityCompletionRate:
+          (json['activityCompletionRate'] as num?)?.toInt() ?? 0,
+      taskCompletionRate: (json['taskCompletionRate'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  static const ChapterUserStatistics empty = ChapterUserStatistics();
+}

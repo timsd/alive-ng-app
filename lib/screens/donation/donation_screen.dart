@@ -4,7 +4,13 @@ import 'package:go_router/go_router.dart';
 import 'package:alive_flutter_app/constants/app_constants.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../utils/responsive_utils.dart';
-import '../../services/donation_service.dart';
+import '../../providers/payment_provider.dart';
+import '../../models/donation_presentation_models.dart';
+import 'widgets/donation_type_card.dart';
+import 'widgets/impact_card.dart';
+import 'widgets/giving_method_row.dart';
+import 'widgets/project_card.dart';
+import 'widgets/project_fund_update.dart';
 import '../../models/donation_models.dart';
 import '../../models/project_model.dart';
 import '../../utils/web_launch_params.dart';
@@ -144,7 +150,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
   Future<void> _fetchExchangeRate() async {
     try {
       final value =
-          await DonationService().getAppSettingValue('usd_to_ngn_rate');
+          await ref.read(donationServiceProvider).getAppSettingValue('usd_to_ngn_rate');
       final rate = double.tryParse(value ?? '');
       if (rate != null && rate > 0) {
         setState(() => _exchangeRate = rate);
@@ -286,7 +292,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                     if (_selectedProjectId != null)
                       FutureBuilder<Project?>(
                         future:
-                            DonationService().getProject(_selectedProjectId!),
+                            ref.read(donationServiceProvider).getProject(_selectedProjectId!),
                         builder: (context, snapshot) {
                           if (!snapshot.hasData || snapshot.data == null) {
                             return const SizedBox.shrink();
@@ -383,7 +389,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                                     ),
                                   ],
                                 ),
-                                _buildFundUpdateSection(context, data),
+                                ProjectFundUpdate(project: data),
                               ],
                             ),
                           );
@@ -505,24 +511,20 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
         Row(
           children: [
             Expanded(
-              child: _buildTypeCard(
-                context,
-                theme,
-                'Monthly',
-                Icons.refresh,
-                _isMonthlySelected,
-                () => setState(() => _isMonthlySelected = true),
+              child: DonationTypeCard(
+                title: 'Monthly',
+                icon: Icons.refresh,
+                isSelected: _isMonthlySelected,
+                onTap: () => setState(() => _isMonthlySelected = true),
               ),
             ),
             SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 8)),
             Expanded(
-              child: _buildTypeCard(
-                context,
-                theme,
-                'One-Time',
-                Icons.favorite,
-                !_isMonthlySelected,
-                () => setState(() => _isMonthlySelected = false),
+              child: DonationTypeCard(
+                title: 'One-Time',
+                icon: Icons.favorite,
+                isSelected: !_isMonthlySelected,
+                onTap: () => setState(() => _isMonthlySelected = false),
               ),
             ),
           ],
@@ -531,73 +533,6 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
     );
   }
 
-  Widget _buildTypeCard(BuildContext context, ThemeData theme, String title,
-      IconData icon, bool isSelected, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-        decoration: BoxDecoration(
-          color: isSelected ? theme.colorScheme.primary : theme.cardColor,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected
-                ? theme.colorScheme.primary
-                : theme.dividerColor.withValues(alpha: 0.3),
-            width: isSelected ? 2 : 1,
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : null,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: isSelected
-                  ? theme.colorScheme.onPrimary
-                  : theme.iconTheme.color,
-              size: ResponsiveUtils.getResponsiveValue(
-                context: context,
-                mobile: 20,
-                tablet: 24,
-                desktop: 28,
-              ),
-            ),
-            const SizedBox(height: 6),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                title,
-                style: TextStyle(
-                  fontSize: ResponsiveUtils.getResponsiveValue(
-                    context: context,
-                    mobile: 11,
-                    tablet: 12,
-                    desktop: 13,
-                  ),
-                  fontWeight: FontWeight.w600,
-                  color: isSelected
-                      ? theme.colorScheme.onPrimary
-                      : theme.colorScheme.onSurface,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildAmountSelector(BuildContext context, ThemeData theme) {
     return Column(
@@ -933,61 +868,61 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
 
   Widget _buildImpactSection(
       BuildContext context, ThemeData theme, bool isDark) {
-    final impactItems = [
-      {
-        'icon': Icons.terrain,
-        'title': 'Rural Missions',
-        'description':
+    const impactItems = [
+      DonationImpact(
+        icon: Icons.terrain,
+        title: 'Rural Missions',
+        description:
             'Send teams to remote communities with the Gospel and compassionate care.',
-      },
-      {
-        'icon': Icons.location_city,
-        'title': 'Campus/City Missions',
-        'description':
+      ),
+      DonationImpact(
+        icon: Icons.location_city,
+        title: 'Campus/City Missions',
+        description:
             'Send teams to Campus/City communities with the Gospel and compassionate care.',
-      },
-      {
-        'icon': Icons.school,
-        'title': 'Missionary Training',
-        'description':
+      ),
+      DonationImpact(
+        icon: Icons.school,
+        title: 'Missionary Training',
+        description:
             'Equip and train the next generation of Groundbreakers and Missionaries for effective witness.',
-      },
-      {
-        'icon': Icons.local_hospital,
-        'title': 'Health Evangelism',
-        'description':
+      ),
+      DonationImpact(
+        icon: Icons.local_hospital,
+        title: 'Health Evangelism',
+        description:
             'Provide medical care that opens hearts to the transforming power of the Gospel.',
-      },
-      {
-        'icon': Icons.phonelink,
-        'title': 'Digital Ministry',
-        'description':
+      ),
+      DonationImpact(
+        icon: Icons.phonelink,
+        title: 'Digital Ministry',
+        description:
             'Leverage technology to share the Good News through tracts, podcasts, online events and discipleship.',
-      },
-      {
-        'icon': Icons.people_outline,
-        'title': 'LTMs Stipends',
-        'description':
+      ),
+      DonationImpact(
+        icon: Icons.people_outline,
+        title: 'LTMs Stipends',
+        description:
             'Support the monthly upkeep of long-term field workers.',
-      },
-      {
-        'icon': Icons.groups_outlined,
-        'title': 'STMs Stipends',
-        'description':
+      ),
+      DonationImpact(
+        icon: Icons.groups_outlined,
+        title: 'STMs Stipends',
+        description:
             'Support the monthly upkeep of short-term field workers.',
-      },
-      {
-        'icon': Icons.volunteer_activism,
-        'title': 'Volunteers',
-        'description':
+      ),
+      DonationImpact(
+        icon: Icons.volunteer_activism,
+        title: 'Volunteers',
+        description:
             'Support the monthly upkeep of the volunteers at the mission field.',
-      },
-      {
-        'icon': Icons.edit_note,
-        'title': 'Custom Purpose',
-        'description':
+      ),
+      DonationImpact(
+        icon: Icons.edit_note,
+        title: 'Custom Purpose',
+        description:
             'Specify your own custom ministry designation or special project.',
-      },
+      ),
     ];
 
     return Column(
@@ -1001,7 +936,11 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
           ),
         ),
         SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 20)),
-        ...impactItems.map((item) => _buildImpactCard(context, theme, item)),
+        ...impactItems.map((item) => ImpactCard(
+          impact: item,
+          isSelected: _selectedFundDesignation == item.title,
+          onTap: () => _selectDesignation(item.title),
+        )),
       ],
     );
   }
@@ -1078,112 +1017,6 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
     );
   }
 
-  Widget _buildImpactCard(
-      BuildContext context, ThemeData theme, Map<String, dynamic> item) {
-    final title = item['title'] as String;
-    final isSelected = _selectedFundDesignation == title;
-
-    return Container(
-      margin: EdgeInsets.only(
-          bottom: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-      decoration: BoxDecoration(
-        color: isSelected
-            ? theme.colorScheme.primaryContainer.withValues(alpha: 0.25)
-            : theme.cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isSelected
-              ? theme.colorScheme.primary
-              : theme.dividerColor.withValues(alpha: 0.2),
-          width: isSelected ? 2.0 : 1.0,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: theme.shadowColor.withValues(alpha: 0.08),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () => _selectDesignation(title),
-        child: Padding(
-          padding: ResponsiveUtils.getResponsivePadding(context),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  item['icon'] as IconData,
-                  color: isSelected
-                      ? theme.colorScheme.onPrimary
-                      : theme.colorScheme.primary,
-                  size: ResponsiveUtils.getResponsiveValue(
-                    context: context,
-                    mobile: 24,
-                    tablet: 28,
-                    desktop: 32,
-                  ),
-                ),
-              ),
-              SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            title,
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.onSurface,
-                            ),
-                          ),
-                        ),
-                        if (isSelected)
-                          Icon(Icons.check_circle,
-                              color: theme.colorScheme.primary, size: 20),
-                      ],
-                    ),
-                    SizedBox(
-                        height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
-                    Text(
-                      item['description'] as String,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      isSelected ? '✓ Selected for this Gift' : 'Tap to direct your gift here',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: isSelected
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.secondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildOtherWaysToGive(
       BuildContext context, ThemeData theme, bool isDark) {
@@ -1220,95 +1053,16 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
             ),
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
-          // 3-button horizontal row
-          Row(
-            children: [
-              Expanded(
-                child: _buildGivingOptionButton(
-                  context,
-                  theme,
-                  'Non-Monetary',
-                  Icons.volunteer_activism,
-                  onTap: () => context.go(AppConstants.nonMonetaryGiftRoute),
-                ),
-              ),
-              SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 8)),
-              Expanded(
-                child: _buildGivingOptionButton(
-                  context,
-                  theme,
-                  'Gift in Kind',
-                  Icons.card_giftcard,
-                  onTap: () => context.go(AppConstants.giftInKindRoute),
-                ),
-              ),
-              SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 8)),
-              Expanded(
-                child: _buildGivingOptionButton(
-                  context,
-                  theme,
-                  'Active Projects',
-                  Icons.folder_special,
-                  onTap: _showProjectsPicker,
-                ),
-              ),
-            ],
+          GivingMethodRow(
+            onNonMonetary: () => context.go(AppConstants.nonMonetaryGiftRoute),
+            onGiftInKind: () => context.go(AppConstants.giftInKindRoute),
+            onProjects: _showProjectsPicker,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildGivingOptionButton(BuildContext context, ThemeData theme,
-      String title, IconData icon,
-      {VoidCallback? onTap}) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-        decoration: BoxDecoration(
-          color: theme.cardColor.withValues(alpha: 0.7),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: theme.dividerColor.withValues(alpha: 0.2)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: theme.colorScheme.primary,
-              size: ResponsiveUtils.getResponsiveValue(
-                context: context,
-                mobile: 20,
-                tablet: 24,
-                desktop: 28,
-              ),
-            ),
-            const SizedBox(height: 6),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                title,
-                style: TextStyle(
-                  fontSize: ResponsiveUtils.getResponsiveValue(
-                    context: context,
-                    mobile: 11,
-                    tablet: 12,
-                    desktop: 13,
-                  ),
-                  fontWeight: FontWeight.w600,
-                  color: theme.colorScheme.onSurface,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   void _processDonation() async {
     final rootCtx = context;
@@ -1332,7 +1086,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
         : DonationType.generalSupport;
 
     // Validate minimums
-    final donationService = DonationService();
+    final donationService = ref.read(donationServiceProvider);
     final isValid = donationService.validateDonationAmount(type, amount,
         currency: currency);
     if (!isValid) {
@@ -1529,7 +1283,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       if (projectId == null || projectId == 'general_mission') return;
       _selectedProjectId = projectId;
       try {
-        final data = await DonationService().getProject(projectId);
+        final data = await ref.read(donationServiceProvider).getProject(projectId);
         if (data != null) {
           _selectedProjectTitle = data.title;
         } else {
@@ -1637,172 +1391,23 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                       );
                     }
                     final projects = snapshot.data!;
-                    return GridView.builder(
+                    return ListView.separated(
                       controller: scrollController,
                       padding: const EdgeInsets.all(16),
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: MediaQuery.of(ctx).size.width > 600 ? 3 : 2,
-                        childAspectRatio: 0.72,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                      ),
                       itemCount: projects.length,
-                                            itemBuilder: (ctx4, i) {
-                        final project = projects[i];
-                        final id = project.id;
-                        final title = project.title;
-                        final description = project.description;
-                        final goal = project.targetAmount;
-                        final raised = project.raisedAmount;
-                        final status = project.status;
-                        final imageUrl = project.imageUrl;
-
-                        // Badge color per status (mirrors web badges)
-                        Color statusColor;
-                        switch (status.toLowerCase()) {
-                          case 'active':
-                            statusColor = theme.colorScheme.tertiary;
-                            break;
-                          case 'planning':
-                            statusColor = theme.colorScheme.secondary;
-                            break;
-                          case 'completed':
-                            statusColor = theme.colorScheme.primary;
-                            break;
-                          default:
-                            statusColor = theme.colorScheme.outline;
-                        }
-
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          clipBehavior: Clip.antiAlias,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Project image — matches web modal's image display
-                              if (imageUrl != null && imageUrl.isNotEmpty)
-                                Image.network(
-                                  imageUrl,
-                                  height: 160,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Container(
-                                    height: 80,
-                                    color: theme
-                                        .colorScheme.surfaceContainerHighest,
-                                  ),
-                                ),
-                              Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // Title + status badge row
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: Text(title,
-                                              style: theme.textTheme.titleMedium
-                                                  ?.copyWith(
-                                                      fontWeight:
-                                                          FontWeight.bold)),
-                                        ),
-                                        if (status.isNotEmpty)
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 8, vertical: 3),
-                                            decoration: BoxDecoration(
-                                              color: statusColor.withValues(
-                                                  alpha: 0.12),
-                                              borderRadius:
-                                                  BorderRadius.circular(999),
-                                              border: Border.all(
-                                                  color: statusColor.withValues(
-                                                      alpha: 0.4)),
-                                            ),
-                                            child: Text(
-                                              status,
-                                              style: TextStyle(
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: statusColor),
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                                                        // Summary (short caption)
-                                    if (description.isNotEmpty) ...[
-                                      const SizedBox(height: 6),
-                                      Text(description,
-                                          style: theme.textTheme.bodyMedium,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis),
-                                    ],
-                                    // Full description
-                                    if (description.isNotEmpty) ...[
-                                      const SizedBox(height: 4),
-                                      Text(description,
-                                          style: theme.textTheme.bodySmall,
-                                          maxLines: 3,
-                                          overflow: TextOverflow.ellipsis),
-                                    ],
-                                    // Goal / raised progress bar (NGN currency — same as web modal)
-                                    if (goal > 0) ...[
-                                      const SizedBox(height: 12),
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(4),
-                                        child: LinearProgressIndicator(
-                                          value: (raised / goal)
-                                              .clamp(0.0, 1.0)
-                                              .toDouble(),
-                                          minHeight: 6,
-                                          backgroundColor: theme
-                                              .colorScheme.onSurface
-                                              .withValues(alpha: 0.15),
-                                          color: theme.colorScheme.secondary,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        // Goal and raised are stored in NGN — matching web formatCurrency()
-                                        '₦${_formatCompact(raised.toDouble())} raised of ₦${_formatCompact(goal.toDouble())}',
-                                        style: theme.textTheme.labelMedium,
-                                      ),
-                                    ],
-                                    _buildFundUpdateSection(context, project),
-                                    const SizedBox(height: 12),
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: ElevatedButton.icon(
-                                        onPressed: () {
-                                          Navigator.of(ctx).pop();
-                                          setState(() {
-                                            _selectedProjectId = id;
-                                            _selectedProjectTitle = title;
-                                          });
-                                          setSelectedProjectId(id);
-                                        },
-                                        icon: const Icon(
-                                            Icons.volunteer_activism),
-                                                                               label: Text('Donate'),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor:
-                                              theme.colorScheme.secondary,
-                                          foregroundColor:
-                                              theme.colorScheme.onSecondary,
-                                          minimumSize:
-                                              const Size(double.infinity, 48),
-                                          shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(10)),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final project = projects[index];
+                        return ProjectCard(
+                          project: project,
+                          onDonate: () {
+                            Navigator.of(ctx).pop();
+                            setState(() {
+                              _selectedProjectId = project.id;
+                              _selectedProjectTitle = project.title;
+                            });
+                            setSelectedProjectId(project.id);
+                          },
                         );
                       },
                     );
@@ -1817,110 +1422,21 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
   }
 
   /// Fetches projects ordered by 'priority' ascending.
-  /// Shows all statuses so users can see active, planning, and completed projects.
-  Future<List<Project>> _fetchProjects() async {
-    final projects = await DonationService().getDonationProjects();
-    if (projects.isNotEmpty) return projects;
-    return _fallbackProjects.map((e) => Project.fromJson(e)).toList();
-  }
-
-  Widget _buildFundUpdateSection(BuildContext context, Project project) {
-    final theme = Theme.of(context);
-    final title = project.fundUpdateTitle.trim();
-    final text = project.fundUpdateText.trim();
-    final imageUrls = project.fundUpdateImages;
-
-    if (title.isEmpty && text.isEmpty && imageUrls.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 14),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest.withValues(
-            alpha: theme.brightness == Brightness.dark ? 0.34 : 0.56,
-          ),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.task_alt,
-                    size: 18,
-                    color: theme.colorScheme.primary,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      title.isNotEmpty ? title : 'What your giving has done',
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              if (text.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(
-                  text,
-                  style: theme.textTheme.bodySmall?.copyWith(height: 1.45),
-                ),
-              ],
-              if (imageUrls.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 88,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: imageUrls.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 8),
-                    itemBuilder: (context, index) {
-                      return ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: Image.network(
-                          imageUrls[index],
-                          width: 112,
-                          height: 88,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                            width: 112,
-                            height: 88,
-                            color: theme.colorScheme.surfaceContainerHighest,
-                            child: Icon(
-                              Icons.image_not_supported_outlined,
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Formats a number with compact suffix
   String _formatCompact(double value) {
     if (value >= 1000000) {
       return '${(value / 1000000).toStringAsFixed(value % 1000000 == 0 ? 0 : 1)}M';
-    } else if (value >= 1000) {
+    }
+    if (value >= 1000) {
       return '${(value / 1000).toStringAsFixed(value % 1000 == 0 ? 0 : 1)}K';
     }
     return value.toStringAsFixed(0);
   }
+
+  /// Shows all statuses so users can see active, planning, and completed projects.
+  Future<List<Project>> _fetchProjects() async {
+    final projects = await ref.read(donationServiceProvider).getDonationProjects();
+    if (projects.isNotEmpty) return projects;
+    return _fallbackProjects.map((e) => Project.fromJson(e)).toList();
+  }
+
 }
