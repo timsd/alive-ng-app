@@ -1,144 +1,82 @@
-import 'dart:convert';
+/// Legacy compatibility service for LiveKit video meetings.
+///
+/// Refactored to delegate to [LiveKitMeetingGateway] and [MeetingGateway].
+/// This file NO LONGER imports `package:livekit_client`. All third-party SDK
+/// code is confined to `lib/services/adapters/livekit_meeting_gateway.dart`.
+library;
 
-import 'package:appwrite/appwrite.dart';
-import 'package:appwrite/enums.dart' as appwrite_enums;
 import 'package:flutter/material.dart';
-import 'package:livekit_client/livekit_client.dart';
 
-import '../config/appwrite_backend_config.dart';
-import '../main.dart';
+import '../models/meeting_models.dart';
+import 'adapters/livekit_meeting_gateway.dart';
+import 'ports/meeting_gateway.dart';
 
-class LiveKitMeetingService extends ChangeNotifier {
-  static const String livekitUrl = String.fromEnvironment(
-    'LIVEKIT_URL',
-    defaultValue: 'wss://livekit.alivenigeria.org',
-  );
+/// Compatibility wrapper delegating to [LiveKitMeetingGateway].
+class LiveKitMeetingService extends ChangeNotifier implements MeetingGateway {
+  final LiveKitMeetingGateway _gateway;
 
-  Room? _room;
-  bool _isAudioMuted = false;
-  bool _isVideoMuted = false;
+  LiveKitMeetingService([LiveKitMeetingGateway? gateway])
+      : _gateway = gateway ?? LiveKitMeetingGateway() {
+    _gateway.addListener(notifyListeners);
+  }
 
-  Room? get room => _room;
-  bool get isAudioMuted => _isAudioMuted;
-  bool get isVideoMuted => _isVideoMuted;
-  bool get isConnected => _room != null;
+  @override
+  MeetingSession get currentSession => _gateway.currentSession;
 
+  @override
+  Stream<MeetingSession> get sessionStream => _gateway.sessionStream;
+
+  @override
+  Stream<RoomStatus> get roomStatus => _gateway.roomStatus;
+
+  @override
+  bool get isConnected => _gateway.isConnected;
+
+  @override
+  bool get isAudioMuted => _gateway.isAudioMuted;
+
+  @override
+  bool get isVideoMuted => _gateway.isVideoMuted;
+
+  @override
   Future<void> executionAndJoin({
     required String roomName,
     required String userId,
     required String userName,
     required String meetingType,
-  }) async {
-    try {
-      final functions = Functions(appwriteClient);
-      final execution = await functions.createExecution(
-        functionId: AppwriteBackendConfig.createLiveKitTokenFunctionId,
-        body: jsonEncode({
-          'roomName': roomName,
-          'identity': userId,
-          'participantName': userName,
-          'meetingType': meetingType,
-        }),
-        xasync: false,
-        method: appwrite_enums.ExecutionMethod.pOST,
-      );
-
-      final responseData =
-          jsonDecode(execution.responseBody) as Map<String, dynamic>;
-      final token = responseData['token'] as String?;
-      if (token == null || token.isEmpty) {
-        throw Exception(
-          'Token not found in Appwrite Function response: '
-          '${execution.responseBody}',
-        );
-      }
-
-      await joinMeeting(roomToken: token);
-    } catch (e) {
-      debugPrint('Failed executing LiveKit token function: $e');
-      rethrow;
-    }
-  }
-
-  Future<void> joinMeeting({
-    required String roomToken,
-  }) async {
-    try {
-      await leaveMeeting();
-
-      final room = Room(
-        roomOptions: const RoomOptions(
-          defaultAudioPublishOptions: AudioPublishOptions(),
-          defaultVideoPublishOptions: VideoPublishOptions(
-            videoEncoding: VideoEncoding(
-              maxFramerate: 30,
-              maxBitrate: 1500000,
-            ),
-          ),
-        ),
-      );
-      await room.connect(
-        livekitUrl,
-        roomToken,
-      );
-
-      _room = room;
-      await _room!.localParticipant?.setMicrophoneEnabled(true);
-      await _room!.localParticipant?.setCameraEnabled(true);
-
-      _isAudioMuted = false;
-      _isVideoMuted = false;
-      notifyListeners();
-
-      debugPrint('Successfully connected to LiveKit room: ${_room!.name}');
-    } catch (e) {
-      debugPrint('Failed to connect to LiveKit Room: $e');
-      await _room?.disconnect();
-      _room = null;
-      notifyListeners();
-      rethrow;
-    }
-  }
-
-  Future<void> toggleAudio() async {
-    final participant = _room?.localParticipant;
-    if (participant == null) return;
-
-    _isAudioMuted = !_isAudioMuted;
-    await participant.setMicrophoneEnabled(!_isAudioMuted);
-    notifyListeners();
-  }
-
-  Future<void> toggleVideo() async {
-    final participant = _room?.localParticipant;
-    if (participant == null) return;
-
-    _isVideoMuted = !_isVideoMuted;
-    await participant.setCameraEnabled(!_isVideoMuted);
-    notifyListeners();
-  }
-
-  Future<void> leaveMeeting() async {
-    final room = _room;
-    if (room == null) return;
-
-    try {
-      await room.disconnect();
-      debugPrint('Disconnected from LiveKit meeting room safely.');
-    } catch (e) {
-      debugPrint('Error leaving meeting: $e');
-    } finally {
-      _room = null;
-      _isAudioMuted = false;
-      _isVideoMuted = false;
-      notifyListeners();
-    }
+  }) {
+    return _gateway.executionAndJoin(
+      roomName: roomName,
+      userId: userId,
+      userName: userName,
+      meetingType: meetingType,
+    );
   }
 
   @override
+  Future<void> joinMeeting({
+    required String roomToken,
+    String? roomName,
+  }) {
+    return _gateway.joinMeeting(
+      roomToken: roomToken,
+      roomName: roomName,
+    );
+  }
+
+  @override
+  Future<void> toggleAudio() => _gateway.toggleAudio();
+
+  @override
+  Future<void> toggleVideo() => _gateway.toggleVideo();
+
+  @override
+  Future<void> leaveMeeting() => _gateway.leaveMeeting();
+
+  @override
   void dispose() {
-    _room?.disconnect();
-    _room = null;
+    _gateway.removeListener(notifyListeners);
+    _gateway.dispose();
     super.dispose();
   }
 }

@@ -14,6 +14,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   font_awesome_flutter: ^11.0.0
   flutter_svg: ^2.2.4
+  path_parsing: ^1.1.0
   cached_network_image: ^3.4.1
   
   # State Management (using flutter_riverpod as primary)
@@ -37,7 +38,7 @@ dependencies:
   sqlite3: ^2.9.4
   
   # Appwrite backend
-  appwrite: 21.3.0
+  appwrite: ^26.1.0
 
   # Firebase compatibility for FCM web/Android bridge only
   firebase_core: ^4.9.0

@@ -1,5 +1,4 @@
 import 'package:appwrite/appwrite.dart';
-import 'package:appwrite/models.dart' as appwrite_models;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/appwrite_backend_config.dart';
@@ -52,7 +51,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
   final TablesDB _tables = TablesDB(appwriteClient);
   bool _isLoading = true;
   bool _hasAccess = false;
-  appwrite_models.User? _currentUser;
+  AppUser? _currentUser;
 
   // Dashboard stats
   int _totalUsers = 0;

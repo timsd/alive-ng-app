@@ -1,5 +1,4 @@
 import 'package:appwrite/appwrite.dart';
-import 'package:appwrite/models.dart' as appwrite_models;
 import 'package:flutter/material.dart';
 import '../../config/appwrite_backend_config.dart';
 import '../../main.dart';
@@ -22,7 +21,7 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
   final Logger _logger = Logger('UserArchiveScreen');
   bool _isLoading = true;
   bool _hasAccess = false;
-  appwrite_models.User? _currentUser;
+  AppUser? _currentUser;
   List<UserProfile> _archivedUsers = [];
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();

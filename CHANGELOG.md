@@ -7,6 +7,21 @@ Format: [Semantic Versioning](https://semver.org) - `MAJOR.MINOR.PATCH+BUILD`
 
 ## Unreleased
 
+---
+
+## [1.2.0] - 2026-09-04
+
+### Added
+- **Hexagonal Architecture (Ports & Adapters)** across all third-party integrations:
+  - **Authentication**: Isolated behind `AuthGateway` port (`lib/services/ports/auth_gateway.dart`) and `AppwriteAuthGateway` adapter (`lib/services/adapters/appwrite_auth_gateway.dart`). Created owned `AppUser` and `AppAuthResult` models (`lib/models/auth_models.dart`). Decoupled all screens, widgets, and Riverpod providers from `package:appwrite/models.dart`.
+  - **Video Meetings (LiveKit)**: Isolated behind `MeetingGateway` port (`lib/services/ports/meeting_gateway.dart`) and `LiveKitMeetingGateway` adapter (`lib/services/adapters/livekit_meeting_gateway.dart`). Created owned `MeetingSession`, `ParticipantInfo`, and `RoomStatus` models (`lib/models/meeting_models.dart`). Confined `package:livekit_client` strictly to the adapter.
+  - **Payment Processing (Paystack)**: Isolated behind `PaymentGateway` port (`lib/services/ports/payment_gateway.dart`) and `PaystackPaymentGateway` adapter (`lib/services/adapters/paystack_payment_gateway.dart`). Created owned `PaymentRequest`, `PaymentResponse`, and `PaymentStatus` models (`lib/models/payment_models.dart`). Standardized reference generation (`ALIVE-WEB-APP-` for web and `ALIVE-FLUTTER-` for mobile) and clean browser redirect vs. native SDK execution.
+  - **Bible Storage & SQLite**: Created `BibleUserProgress` domain model in `lib/models/bible_models.dart`. Refactored `BibleDatabaseHelper` and `OfflineBibleService` to return typed domain models instead of raw `Map<String, dynamic>`. Refactored `bible_reader_screen.dart` to consume `models.BibleVerse` instead of raw maps. Confined `sqflite` imports strictly to `*_database_helper.dart`.
+- **Architecture Documentation & Freeze Policy**: Added `docs/architecture.md` defining the Ports & Adapters rules, verification grep commands, upgrade protocol, and framework freeze policy (`flutter_riverpod: ^2.6.1`, `go_router: ^14.0.0`).
+
+### Changed
+- **Appwrite Dart SDK**: Upgraded from `^21.3.0` to `^26.1.0` in `pubspec.yaml`. All breaking changes resolved strictly within the adapter layer (`lib/services/adapters/appwrite_auth_gateway.dart`) without leaking to any UI screens.
+
 ### Changed
 - Continued Firebase-to-Appwrite migration; project status is about 99.5% migrated.
 - Stabilized Bible game state handling, multiple-choice answer checking, fill-gap blank selection, speech/TTS cleanup, and daily verse randomization.

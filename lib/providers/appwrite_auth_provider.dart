@@ -1,20 +1,17 @@
-import 'package:appwrite/models.dart' as models;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/app_models.dart';
-import '../services/appwrite_auth_service.dart';
 import '../services/appwrite_profile_service.dart';
-import '../utils/appwrite_user_extensions.dart';
-import 'auth_provider.dart' hide authStateProvider;
-import 'auth_provider.dart' as core_auth;
+import '../services/ports/auth_gateway.dart';
+import 'auth_provider.dart';
 
-export '../utils/appwrite_user_extensions.dart';
-
-final appwriteAuthControllerProvider = Provider<AppwriteAuthService>((ref) {
-  return ref.watch(appwriteAuthServiceProvider);
+/// Alias kept for backward-compat; consumers should migrate to
+/// [authGatewayProvider] from `auth_provider.dart`.
+final appwriteAuthControllerProvider = Provider<AuthGateway>((ref) {
+  return ref.watch(authGatewayProvider);
 });
 
-final appwriteUserStreamProvider = core_auth.authStateProvider;
+final appwriteUserStreamProvider = authStateProvider;
 
 // Current User Profile Provider
 final currentUserProfileProvider = FutureProvider<UserProfile?>((ref) async {
@@ -32,9 +29,9 @@ final currentUserProfileProvider = FutureProvider<UserProfile?>((ref) async {
     document,
     fallbackEmail: user.email,
     fallbackFullName: user.displayName,
-    isEmailVerified: user.emailVerified,
+    isEmailVerified: user.isEmailVerified,
     isAnonymous: user.isAnonymous,
-    photoUrl: user.photoURL,
+    photoUrl: user.photoUrl,
   );
 });
 
@@ -55,7 +52,7 @@ class AuthState {
   final bool isAuthenticated;
   final bool isLoading;
   final String? error;
-  final models.User? user;
+  final AppUser? user;
 
   const AuthState._({
     required this.isAuthenticated,
@@ -64,7 +61,7 @@ class AuthState {
     this.user,
   });
 
-  factory AuthState.authenticated(models.User user) {
+  factory AuthState.authenticated(AppUser user) {
     return AuthState._(
       isAuthenticated: true,
       isLoading: false,
@@ -97,23 +94,26 @@ class AuthState {
 
 final signInControllerProvider =
     StateNotifierProvider<SignInController, AsyncValue<void>>((ref) {
-  final authService = ref.read(appwriteAuthControllerProvider);
-  final userNotifier = ref.read(appwriteUserProvider.notifier);
-  return SignInController(authService, userNotifier);
+  final gateway = ref.read(authGatewayProvider);
+  return SignInController(gateway);
 });
 
 class SignInController extends StateNotifier<AsyncValue<void>> {
-  final AppwriteAuthService _authService;
-  final AppwriteUserNotifier _userNotifier;
+  final AuthGateway _gateway;
 
-  SignInController(this._authService, this._userNotifier)
-      : super(const AsyncValue.data(null));
+  SignInController(this._gateway) : super(const AsyncValue.data(null));
 
   Future<void> signInWithEmailAndPassword(String email, String password) async {
     state = const AsyncValue.loading();
 
     try {
-      await _userNotifier.login(email, password);
+      final result = await _gateway.signInWithEmail(
+        email: email,
+        password: password,
+      );
+      if (!result.isSuccess) {
+        throw Exception(result.error ?? 'Sign in failed');
+      }
       state = const AsyncValue.data(null);
     } catch (e, stack) {
       state = AsyncValue.error(e, stack);
@@ -129,13 +129,15 @@ class SignInController extends StateNotifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
 
     try {
-      await _authService.signUpWithEmail(
+      final result = await _gateway.signUpWithEmail(
         email: email,
         password: password,
-        name: fullName ?? email.split('@').first,
+        displayName: fullName ?? email.split('@').first,
         profileData: profileData,
       );
-      await _userNotifier.refresh();
+      if (!result.isSuccess) {
+        throw Exception(result.error ?? 'Sign up failed');
+      }
       state = const AsyncValue.data(null);
     } catch (e, stack) {
       state = AsyncValue.error(e, stack);
@@ -146,7 +148,10 @@ class SignInController extends StateNotifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
 
     try {
-      await _userNotifier.signInWithGoogle();
+      final result = await _gateway.signInWithGoogle();
+      if (!result.isSuccess) {
+        throw Exception(result.error ?? 'Google sign-in failed');
+      }
       state = const AsyncValue.data(null);
     } catch (e, stack) {
       state = AsyncValue.error(e, stack);
@@ -157,7 +162,8 @@ class SignInController extends StateNotifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
 
     try {
-      await _authService.sendPasswordRecovery(email);
+      final ok = await _gateway.sendPasswordRecovery(email);
+      if (!ok) throw Exception('Password recovery request failed');
       state = const AsyncValue.data(null);
     } catch (e, stack) {
       state = AsyncValue.error(e, stack);
@@ -168,7 +174,7 @@ class SignInController extends StateNotifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
 
     try {
-      await _userNotifier.logout();
+      await _gateway.signOut();
       state = const AsyncValue.data(null);
     } catch (e, stack) {
       state = AsyncValue.error(e, stack);

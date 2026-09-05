@@ -27,9 +27,9 @@ final userProfileProvider = FutureProvider<UserProfile?>((ref) async {
     document,
     fallbackEmail: user.email,
     fallbackFullName: user.displayName,
-    isEmailVerified: user.emailVerified,
+    isEmailVerified: user.isEmailVerified,
     isAnonymous: user.isAnonymous,
-    photoUrl: user.photoURL,
+    photoUrl: user.photoUrl,
   );
 });
 

@@ -1,44 +1,41 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
-import 'dart:convert';
-import 'package:appwrite/appwrite.dart';
-import 'package:appwrite/enums.dart' as appwrite_enums;
-import 'package:paystack_flutter_sdk/paystack_flutter_sdk.dart';
-import 'package:url_launcher/url_launcher.dart';
-import '../config/appwrite_backend_config.dart';
-import '../config/payment_config.dart';
-import '../main.dart';
-import '../utils/logger.dart';
 
-/// Unified PaymentService for all platforms (mobile and web)
-/// - Simulates payments in development for end-to-end testing
-/// - In release, requires server-side initialization with Paystack access codes
+import '../config/payment_config.dart';
+import '../models/payment_models.dart';
+import 'adapters/paystack_payment_gateway.dart';
+import 'ports/payment_gateway.dart';
+
+/// Unified PaymentService delegating to [PaymentGateway].
+///
+/// This service acts as an application-level facade. It NO LONGER imports
+/// `package:paystack_flutter_sdk`. All third-party SDK dependencies are
+/// strictly confined to `lib/services/adapters/paystack_payment_gateway.dart`.
 class PaymentService {
   static final PaymentService _instance = PaymentService._internal();
-  final Logger _logger = Logger('PaymentService');
-  bool _initialized = false;
+  final PaymentGateway _gateway;
 
-  // Singleton pattern
-  factory PaymentService() {
+  factory PaymentService([PaymentGateway? gateway]) {
+    if (gateway != null) {
+      return PaymentService._withGateway(gateway);
+    }
     return _instance;
   }
 
-  PaymentService._internal();
+  PaymentService._internal() : _gateway = PaystackPaymentGateway();
+
+  PaymentService._withGateway(this._gateway);
+
+  /// Underlying payment gateway port.
+  PaymentGateway get gateway => _gateway;
 
   /// Initialize the payment service
-  Future<void> initialize() async {
-    if (!_initialized) {
-      // If integrating a client SDK (e.g., flutter_paystack), initialize here.
-      _initialized = true;
-      _logger.info('Payment service initialized');
-    }
-  }
+  Future<void> initialize() => _gateway.initialize();
 
   /// Process a donation payment
   ///
-  /// [amount] - Amount in Naira (display currency: ${PaymentConfig.currencyCode})
+  /// [amount] - Amount in display currency units
   /// [email] - Customer email
-  /// [context] - BuildContext for showing UI components
+  /// [currency] - ISO currency code
   /// [reference] - Optional payment reference
   /// [metadata] - Optional additional data
   Future<PaymentResult> processDonation({
@@ -48,232 +45,40 @@ class PaymentService {
     String? reference,
     Map<String, dynamic>? metadata,
   }) async {
-    try {
-      if (!_initialized) {
-        await initialize();
-      }
-
-      final ref = reference ?? _getReference();
-
-      // In development/test, simulate a successful payment to allow end-to-end testing
-      if (!kReleaseMode) {
-        _logger.info(
-            'Simulating payment success in development for reference: $ref');
-        return PaymentResult(
-          success: true,
-          reference: ref,
-          message: 'Simulated payment successful (development mode)',
-        );
-      }
-
-      final amountKobo = (amount * 100).round();
-      final payload = {
-        'action': 'initialize_transaction',
-        'amount': amountKobo,
-        'currency': (metadata != null && metadata['currency'] is String)
-            ? metadata['currency']
-            : currency,
-        'email': email,
-        'reference': ref,
-        if (metadata?['appwrite_user_id'] is String)
-          'appwrite_user_id': metadata!['appwrite_user_id'],
-        'callback_url': PaymentConfig.paystackCallbackUrl,
-        'channels': PaymentConfig.paystackChannels,
-        if (metadata != null) 'metadata': metadata,
-      };
-      final data = await _executePaystackFunction(payload);
-      return _handlePaystackInitResponse(data: data, fallbackReference: ref);
-    } catch (e) {
-      _logger.error('Error processing payment: $e');
-      return PaymentResult(
-        success: false,
-        message: 'Error processing payment: $e',
-      );
-    }
+    final response = await _gateway.processDonation(
+      PaymentRequest(
+        amount: amount,
+        email: email,
+        currency: currency,
+        reference: reference,
+        metadata: metadata,
+      ),
+    );
+    return PaymentResult.fromResponse(response);
   }
 
+  /// Process recurring monthly donation
   Future<PaymentResult> processMonthlyDonation({
     required String email,
     required String currency,
     String? reference,
     Map<String, dynamic>? metadata,
   }) async {
-    try {
-      if (!_initialized) {
-        await initialize();
-      }
-
-      final ref = reference ?? _getReference();
-      final planCode = PaymentConfig.monthlyPlanCodeForCurrency(currency);
-      if (planCode.trim().isEmpty) {
-        return PaymentResult(
-          success: false,
-          reference: ref,
-          message:
-              'Monthly plan code is not configured. Set PAYSTACK_MONTHLY_PLAN_CODE_${currency.toUpperCase()}.',
-        );
-      }
-
-      if (!kReleaseMode) {
-        _logger.info(
-            'Simulating recurring monthly payment in development for reference: $ref');
-        return PaymentResult(
-          success: true,
-          reference: ref,
-          message: 'Simulated monthly donation successful (development mode)',
-        );
-      }
-
-      final payload = {
-        'action': 'initialize_subscription',
-        'currency': currency,
-        'email': email,
-        'reference': ref,
-        if (metadata?['appwrite_user_id'] is String)
-          'appwrite_user_id': metadata!['appwrite_user_id'],
-        'planCode': planCode,
-        'callback_url': PaymentConfig.paystackCallbackUrl,
-        'channels': PaymentConfig.paystackChannels,
-        if (metadata != null) 'metadata': metadata,
-      };
-      final data = await _executePaystackFunction(payload);
-      return _handlePaystackInitResponse(data: data, fallbackReference: ref);
-    } catch (e) {
-      _logger.error('Error processing monthly donation: $e');
-      return PaymentResult(
-        success: false,
-        message: 'Error processing monthly donation: $e',
-      );
-    }
-  }
-
-  Future<Map<String, dynamic>> _executePaystackFunction(
-    Map<String, dynamic> payload,
-  ) async {
-    final functions = Functions(appwriteClient);
-    final execution = await functions.createExecution(
-      functionId: AppwriteBackendConfig.paystackPaymentsFunctionId,
-      body: jsonEncode(payload),
-      xasync: false,
-      method: appwrite_enums.ExecutionMethod.pOST,
+    final response = await _gateway.processMonthlyDonation(
+      PaymentRequest(
+        amount: 0,
+        email: email,
+        currency: currency,
+        reference: reference,
+        isRecurringMonthly: true,
+        metadata: metadata,
+      ),
     );
-
-    final data = jsonDecode(execution.responseBody) as Map<String, dynamic>;
-    if (data['error'] != null) {
-      throw Exception(data['error']);
-    }
-    return data;
-  }
-
-  Future<PaymentResult> _handlePaystackInitResponse({
-    required Map data,
-    required String fallbackReference,
-  }) async {
-    final authUrl = (data['authorization_url'] ??
-        (data['data'] != null ? (data['data']['authorization_url']) : null)) as String?;
-    final accessCode = (data['access_code'] ??
-        (data['data'] != null ? (data['data']['access_code']) : null)) as String?;
-    final returnedRef = (data['reference'] ??
-        (data['data'] != null ? (data['data']['reference']) : null)) as String?;
-    final useRef = returnedRef ?? fallbackReference;
-
-    // Flutter Web: ALWAYS redirect to Paystack authorization_url.
-    // paystack_flutter_sdk does not support Web.
-    if (kIsWeb) {
-      if (authUrl != null && authUrl.isNotEmpty) {
-        try {
-          final uri = Uri.parse(authUrl);
-          final launched = await launchUrl(uri, webOnlyWindowName: '_self');
-          if (launched) {
-            return PaymentResult(
-              success: false,
-              reference: useRef,
-              message: 'Redirecting to Paystack checkout...',
-              initialized: true,
-            );
-          }
-        } catch (e) {
-          _logger.error('Failed to launch payment URL on web: $e');
-        }
-      }
-      _logger.error('Web payment init failed: missing authorization_url');
-      return PaymentResult(
-        success: false,
-        reference: useRef,
-        message: 'Unable to open Paystack checkout on web',
-      );
-    }
-
-    // Native Mobile (Android / iOS): Use paystack_flutter_sdk if access_code is available
-    final isMobile = defaultTargetPlatform == TargetPlatform.android ||
-        defaultTargetPlatform == TargetPlatform.iOS;
-
-    if (isMobile && accessCode != null && accessCode.isNotEmpty) {
-      try {
-        final paystack = Paystack();
-        final ok =
-            await paystack.initialize(PaymentConfig.paystackPublicKey, true);
-        if (ok) {
-          final response = await paystack.launch(accessCode);
-          if (response.status == 'success') {
-            return PaymentResult(
-              success: true,
-              reference: response.reference,
-              message: response.message,
-            );
-          }
-          return PaymentResult(
-            success: false,
-            reference: useRef,
-            message: response.message,
-          );
-        } else {
-          _logger.warning('Paystack SDK init failed, falling back to authUrl');
-        }
-      } catch (e) {
-        _logger.warning('Paystack SDK launch error ($e), falling back to authUrl');
-      }
-    }
-
-    // Mobile fallback or desktop: Launch external browser with authorization_url
-    if (authUrl != null && authUrl.isNotEmpty) {
-      try {
-        final uri = Uri.parse(authUrl);
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-        return PaymentResult(
-          success: false,
-          reference: useRef,
-          message: 'Payment initialized, complete checkout',
-          initialized: true,
-        );
-      } catch (e) {
-        _logger.error('Failed to launch payment URL: $e');
-        return PaymentResult(
-          success: false,
-          reference: useRef,
-          message: 'Failed to open payment page',
-        );
-      }
-    }
-
-    _logger.error('Missing access_code and authorization_url from backend response');
-    return PaymentResult(
-      success: false,
-      reference: useRef,
-      message: 'Failed to initialize payment',
-    );
-  }
-
-  /// Generate a unique payment reference adhering to Paystack requirements
-  String _getReference() {
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final rand = DateTime.now().microsecondsSinceEpoch % 1000000;
-    final randStr = rand.toString().padLeft(6, '0');
-    return kIsWeb ? 'ALIVE-WEB-$timestamp-$randStr' : 'ALIVE-APP-$timestamp-$randStr';
+    return PaymentResult.fromResponse(response);
   }
 }
 
-/// Result of a payment operation
+/// Result of a payment operation (legacy compatibility model).
 class PaymentResult {
   final bool success;
   final String? reference;
@@ -286,4 +91,14 @@ class PaymentResult {
     required this.message,
     this.initialized = false,
   });
+
+  /// Translates domain [PaymentResponse] to [PaymentResult].
+  factory PaymentResult.fromResponse(PaymentResponse response) {
+    return PaymentResult(
+      success: response.isSuccess,
+      reference: response.reference,
+      message: response.message,
+      initialized: response.isRedirectInitialized,
+    );
+  }
 }

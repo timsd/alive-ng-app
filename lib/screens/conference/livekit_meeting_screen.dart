@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../config/meeting_links_config.dart';
-import '../../services/appwrite_auth_service.dart';
-import '../../services/livekit_meeting_service.dart';
+import '../../models/meeting_models.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/meeting_provider.dart';
+import '../../services/ports/meeting_gateway.dart';
 import '../../widgets/custom_app_bar.dart';
 
 class LiveKitMeetingScreen extends ConsumerStatefulWidget {
@@ -24,7 +26,6 @@ class LiveKitMeetingScreen extends ConsumerStatefulWidget {
 }
 
 class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
-  final LiveKitMeetingService _meetingService = LiveKitMeetingService();
   late final TextEditingController _roomController;
   bool _isJoining = false;
 
@@ -32,7 +33,6 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   void initState() {
     super.initState();
     _roomController = TextEditingController(text: _initialRoomName());
-    _meetingService.addListener(_onMeetingChanged);
   }
 
   String _initialRoomName() {
@@ -47,18 +47,14 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     return '';
   }
 
-  void _onMeetingChanged() {
-    if (mounted) setState(() {});
-  }
-
-  Future<void> _joinMeeting() async {
+  Future<void> _joinMeeting(MeetingGateway gateway) async {
     final roomName = _roomController.text.trim();
     if (roomName.isEmpty) {
       _showMessage('Enter a room name before joining.');
       return;
     }
 
-    final user = ref.read(appwriteUserProvider);
+    final user = ref.read(currentUserProvider);
     if (user == null) {
       _showMessage('Please sign in before joining a meeting.');
       return;
@@ -66,10 +62,10 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
 
     setState(() => _isJoining = true);
     try {
-      await _meetingService.executionAndJoin(
+      await gateway.executionAndJoin(
         roomName: roomName,
-        userId: user.$id,
-        userName: user.name.isNotEmpty ? user.name : user.email,
+        userId: user.uid,
+        userName: user.displayNameOrFallback,
         meetingType: widget.meetingType?.name ?? 'general',
       );
     } catch (e) {
@@ -89,7 +85,13 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final connected = _meetingService.isConnected;
+    final gateway = ref.watch(meetingGatewayProvider);
+    final sessionAsync = ref.watch(meetingSessionStreamProvider);
+    final MeetingSession session =
+        sessionAsync.value ?? gateway.currentSession;
+    final connected = session.isConnected;
+    final isAudioMuted = session.isAudioMuted;
+    final isVideoMuted = session.isVideoMuted;
 
     return Scaffold(
       appBar: CustomAppBar(
@@ -112,7 +114,9 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
             ),
             const SizedBox(height: 12),
             ElevatedButton.icon(
-              onPressed: _isJoining || connected ? null : _joinMeeting,
+              onPressed: _isJoining || connected
+                  ? null
+                  : () => _joinMeeting(gateway),
               icon: _isJoining
                   ? const SizedBox(
                       width: 18,
@@ -123,35 +127,83 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
               label: Text(connected ? 'Connected' : 'Join ALIVE Meet'),
             ),
             const SizedBox(height: 16),
-            if (connected)
+            if (connected) ...[
               Wrap(
                 spacing: 12,
                 runSpacing: 12,
                 children: [
                   FilledButton.icon(
-                    onPressed: _meetingService.toggleAudio,
-                    icon: Icon(_meetingService.isAudioMuted
-                        ? Icons.mic_off
-                        : Icons.mic),
-                    label:
-                        Text(_meetingService.isAudioMuted ? 'Unmute' : 'Mute'),
+                    onPressed: gateway.toggleAudio,
+                    icon: Icon(isAudioMuted ? Icons.mic_off : Icons.mic),
+                    label: Text(isAudioMuted ? 'Unmute' : 'Mute'),
                   ),
                   FilledButton.icon(
-                    onPressed: _meetingService.toggleVideo,
-                    icon: Icon(_meetingService.isVideoMuted
-                        ? Icons.videocam_off
-                        : Icons.videocam),
-                    label: Text(_meetingService.isVideoMuted
-                        ? 'Camera On'
-                        : 'Camera Off'),
+                    onPressed: gateway.toggleVideo,
+                    icon: Icon(isVideoMuted ? Icons.videocam_off : Icons.videocam),
+                    label: Text(isVideoMuted ? 'Camera On' : 'Camera Off'),
                   ),
                   OutlinedButton.icon(
-                    onPressed: _meetingService.leaveMeeting,
+                    onPressed: gateway.leaveMeeting,
                     icon: const Icon(Icons.call_end),
                     label: const Text('Leave'),
                   ),
                 ],
               ),
+              if (session.participants.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Text(
+                  'Participants (${session.participants.length}):',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: session.participants.length,
+                    itemBuilder: (context, index) {
+                      final participant = session.participants[index];
+                      return ListTile(
+                        leading: CircleAvatar(
+                          child: Text(
+                            participant.name.isNotEmpty
+                                ? participant.name[0].toUpperCase()
+                                : '?',
+                          ),
+                        ),
+                        title: Text(
+                          participant.isLocal
+                              ? '${participant.name} (You)'
+                              : participant.name,
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              participant.isAudioMuted
+                                  ? Icons.mic_off
+                                  : Icons.mic,
+                              size: 18,
+                              color: participant.isAudioMuted
+                                  ? Colors.red
+                                  : Colors.green,
+                            ),
+                            const SizedBox(width: 8),
+                            Icon(
+                              participant.isVideoMuted
+                                  ? Icons.videocam_off
+                                  : Icons.videocam,
+                              size: 18,
+                              color: participant.isVideoMuted
+                                  ? Colors.red
+                                  : Colors.green,
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ],
           ],
         ),
       ),
@@ -160,8 +212,6 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
 
   @override
   void dispose() {
-    _meetingService.removeListener(_onMeetingChanged);
-    _meetingService.dispose();
     _roomController.dispose();
     super.dispose();
   }

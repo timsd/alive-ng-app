@@ -36,7 +36,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
   int _selectedChapter = 1;
   final int _selectedVerse = 1;
   models.BibleVerse? _currentVerse;
-  List<Map<String, dynamic>> _chapterVerses = [];
+  List<models.BibleVerse> _chapterVerses = [];
   bool _isLoading = false;
   bool _isSpeaking = false;
   List<data_bible.BibleVerse> _searchResults = [];
@@ -229,9 +229,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
 
       if (chapter != null) {
         setState(() {
-          _chapterVerses = chapter.verses
-              .map((v) => {'verse': v.number, 'text': v.text})
-              .toList();
+          _chapterVerses = chapter.verses;
         });
         _statisticsService.recordChapterRead(_selectedBook, _selectedChapter);
         _statisticsService.recordVersesRead(
@@ -298,7 +296,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
     });
     try {
       final chapterText = _chapterVerses
-          .map((v) => 'Verse ${v['verse']}. ${v['text']}')
+          .map((v) => 'Verse ${v.number}. ${v.text}')
           .join(' ');
 
       await _ttsService.speak(chapterText);
@@ -584,10 +582,8 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                                 final index = entry.key;
                                 final verse = entry.value;
                                 final isSelected = _selectedVerseIndex == index;
-                                final verseChapter =
-                                    verse['chapter'] ?? _selectedChapter;
                                 final verseKey =
-                                    '$_selectedBook:$verseChapter:${verse['verse']}';
+                                    '$_selectedBook:$_selectedChapter:${verse.number}';
                                 final highlightColor =
                                     _verseHighlightColors[verseKey];
 
@@ -607,10 +603,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                                     onLongPress: () {
                                       setState(() {
                                         _selectedVerseIndex = index;
-                                        _currentVerse = models.BibleVerse(
-                                          number: verse['verse'],
-                                          text: verse['text'],
-                                        );
+                                        _currentVerse = verse;
                                       });
                                       _showVerseActionSheet(verse, verseKey);
                                     },
@@ -644,7 +637,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                                           ),
                                           children: [
                                             TextSpan(
-                                              text: '${verse['verse']} ',
+                                              text: '${verse.number} ',
                                               style: TextStyle(
                                                 fontWeight: FontWeight.bold,
                                                 fontSize: isSmallScreen
@@ -655,7 +648,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                                                 color: colorScheme.secondary,
                                               ),
                                             ),
-                                            TextSpan(text: verse['text']),
+                                            TextSpan(text: verse.text),
                                           ],
                                         ),
                                       ),
@@ -1425,11 +1418,10 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
   }
 
   /// Show a bottom sheet with verse actions: highlight colors, copy, bookmark, read aloud, notes
-  void _showVerseActionSheet(Map<String, dynamic> verse, String verseKey) {
+  void _showVerseActionSheet(models.BibleVerse verse, String verseKey) {
     final colorScheme = Theme.of(context).colorScheme;
-    final verseChapter = verse['chapter'] ?? _selectedChapter;
-    final reference = '$_selectedBook $verseChapter:${verse['verse']}';
-    final verseText = verse['text'] ?? '';
+    final reference = '$_selectedBook $_selectedChapter:${verse.number}';
+    final verseText = verse.text;
 
     final highlightColors = [
       const Color(0xFFFDE68A), // yellow
@@ -1597,10 +1589,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                     label: 'Read',
                     onTap: () {
                       setState(() {
-                        _currentVerse = models.BibleVerse(
-                          number: verse['verse'],
-                          text: verseText,
-                        );
+                        _currentVerse = verse;
                       });
                       Navigator.pop(ctx);
                       _speakVerse();

@@ -574,7 +574,7 @@ class BibleDatabaseHelper {
     );
   }
 
-  Future<List<Map<String, dynamic>>> getUserProgress(String userId, {String? progressType}) async {
+  Future<List<BibleUserProgress>> getUserProgress(String userId, {String? progressType}) async {
     final db = await database;
     
     String whereClause = 'user_id = ?';
@@ -592,11 +592,14 @@ class BibleDatabaseHelper {
       orderBy: 'updated_at DESC',
     );
 
-    return maps.map((map) => {
-      ...map,
-      'progress_data': map['progress_data'] != null 
-          ? jsonDecode(map['progress_data'])
-          : null,
+    return maps.map((map) {
+      final parsed = {
+        ...map,
+        'progress_data': map['progress_data'] != null 
+            ? jsonDecode(map['progress_data'])
+            : null,
+      };
+      return BibleUserProgress.fromMap(parsed);
     }).toList();
   }
 

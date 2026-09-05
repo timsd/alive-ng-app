@@ -1,7 +1,6 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'dart:async';
-import '../../utils/responsive_utils.dart';
+import 'alive_mark_data.dart';
 
 class AnimatedSplashScreen extends StatefulWidget {
   final VoidCallback onAnimationComplete;
@@ -16,314 +15,235 @@ class AnimatedSplashScreen extends StatefulWidget {
 }
 
 class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
-    with TickerProviderStateMixin {
-  late AnimationController _glowController;
-  late AnimationController _zoomController;
-  late AnimationController _fadeController;
-  late AnimationController _progressController;
-
-  late Animation<double> _glowAnimation;
-  late Animation<double> _zoomAnimation;
-  late Animation<double> _fadeAnimation;
-  late Animation<double> _progressAnimation;
-
-  Timer? _animationTimer;
-  Timer? _fadeStartTimer;
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  bool _completed = false;
 
   @override
   void initState() {
     super.initState();
-    _initializeAnimations();
-    _startAnimationSequence();
-  }
+    // Warm up the parsed paths & centers
+    AliveMarkData.prewarm();
 
-  void _initializeAnimations() {
-    _progressController = AnimationController(
-      duration: const Duration(milliseconds: 1600),
-      vsync: this,
+    // Total animation time plus a short 350ms hold
+    const totalDuration = Duration(
+      milliseconds: AliveMarkConstants.totalAnimMs + 350,
     );
 
-    // Glow animation controller
-    _glowController = AnimationController(
-      duration: const Duration(milliseconds: 1200),
+    _controller = AnimationController(
       vsync: this,
+      duration: totalDuration,
     );
 
-    _zoomController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
+    _controller.forward();
 
-    // Fade animation controller
-    _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 420),
-      vsync: this,
-    );
-
-    // Glow animation (pulsing effect)
-    _glowAnimation = Tween<double>(
-      begin: 0.3,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _glowController,
-      curve: Curves.easeInOut,
-    ));
-
-    _zoomAnimation = Tween<double>(
-      begin: 0.9,
-      end: 1.1,
-    ).animate(CurvedAnimation(
-      parent: _zoomController,
-      curve: Curves.easeInOut,
-    ));
-
-    // Fade animation
-    _fadeAnimation = Tween<double>(
-      begin: 1.0,
-      end: 0.0,
-    ).animate(CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeOut,
-    ));
-
-    _progressAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _progressController,
-      curve: Curves.easeInOut,
-    ));
-  }
-
-  void _startAnimationSequence() {
-    // Start glow animation immediately
-    _glowController.repeat(reverse: true);
-    _progressController.forward();
-
-    _animationTimer = Timer(const Duration(milliseconds: 180), () {
-      _zoomController.forward();
-
-      // Start fade animation when zoom is almost complete
-      _fadeStartTimer = Timer(const Duration(milliseconds: 520), () {
-        _fadeController.forward().then((_) {
-          if (mounted) {
-            widget.onAnimationComplete();
-          }
-        });
-      });
+    _controller.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        _finish();
+      }
     });
+  }
+
+  void _finish() {
+    if (_completed) return;
+    _completed = true;
+    if (mounted) {
+      widget.onAnimationComplete();
+    }
   }
 
   @override
   void dispose() {
-    _glowController.dispose();
-    _zoomController.dispose();
-    _fadeController.dispose();
-    _progressController.dispose();
-    _animationTimer?.cancel();
-    _fadeStartTimer?.cancel();
+    _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF111827) : const Color(0xFFF7F8F4);
+
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      body: AnimatedBuilder(
-        animation: Listenable.merge([
-          _glowAnimation,
-          _zoomAnimation,
-          _fadeAnimation,
-          _progressAnimation,
-        ]),
-        builder: (context, child) {
-          return Opacity(
-            opacity: _fadeAnimation.value,
-            child: Center(
-              child: Transform.scale(
-                scale: _zoomAnimation.value,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: ResponsiveUtils.getResponsiveValue(
-                        context: context,
-                        mobile: 180.0,
-                        tablet: 200.0,
-                        desktop: 220.0,
-                      ),
-                      height: ResponsiveUtils.getResponsiveValue(
-                        context: context,
-                        mobile: 180.0,
-                        tablet: 200.0,
-                        desktop: 220.0,
-                      ),
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          CustomPaint(
-                            size: const Size(double.infinity, double.infinity),
-                            painter: _GreenProgressRingPainter(
-                                progress: _progressAnimation.value),
-                          ),
-                          SvgPicture.asset(
-                            'assets/images/alive_logo.svg',
-                            width: ResponsiveUtils.getResponsiveValue(
-                              context: context,
-                              mobile: 90.0,
-                              tablet: 110.0,
-                              desktop: 130.0,
-                            ),
-                            height: ResponsiveUtils.getResponsiveValue(
-                              context: context,
-                              mobile: 90.0,
-                              tablet: 110.0,
-                              desktop: 130.0,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+      backgroundColor: bgColor,
+      body: SafeArea(
+        child: Center(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final stageSize = min(
+                constraints.maxWidth * 0.88,
+                min(constraints.maxHeight * 0.82, 460.0),
+              );
 
-                    SizedBox(
-                        height: ResponsiveUtils.getResponsiveValue(
-                      context: context,
-                      mobile: 24.0,
-                      tablet: 30.0,
-                      desktop: 36.0,
-                    )),
-
-                    // App Title
-                    Text(
-                      'ALIVE NG',
-                      style: TextStyle(
-                        fontSize: context.responsiveFontSize(36),
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF22C55E)
-                            .withValues(alpha: _glowAnimation.value),
-                        letterSpacing: 4,
-                        shadows: [
-                          Shadow(
-                            color: const Color(0xFF22C55E)
-                                .withValues(alpha: _glowAnimation.value * 0.5),
-                            blurRadius: 10 * _glowAnimation.value,
-                          ),
-                        ],
+              return SizedBox(
+                width: stageSize,
+                height: stageSize,
+                child: AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, _) {
+                    return CustomPaint(
+                      size: Size(stageSize, stageSize),
+                      painter: _AliveMarkPainter(
+                        animationValue: _controller.value,
+                        isDark: isDark,
                       ),
-                    ),
-
-                    SizedBox(
-                        height: ResponsiveUtils.getResponsiveValue(
-                      context: context,
-                      mobile: 8.0,
-                      tablet: 10.0,
-                      desktop: 12.0,
-                    )),
-
-                    Builder(builder: (context) {
-                      const totalMs = 1600;
-                      final remainingMs =
-                          (totalMs - (_progressAnimation.value * totalMs))
-                              .clamp(0, totalMs)
-                              .toInt();
-                      final remainingSec = (remainingMs / 1000).ceil();
-                      return Text(
-                        'Opening app in ${remainingSec}s...',
-                        style: TextStyle(
-                          fontSize: context.responsiveFontSize(14),
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurface
-                              .withValues(alpha: _glowAnimation.value * 0.7),
-                          letterSpacing: 1,
-                        ),
-                        textAlign: TextAlign.center,
-                      );
-                    }),
-
-                    SizedBox(
-                        height: ResponsiveUtils.getResponsiveValue(
-                      context: context,
-                      mobile: 32.0,
-                      tablet: 40.0,
-                      desktop: 48.0,
-                    )),
-
-                    SizedBox(
-                      width: ResponsiveUtils.getResponsiveValue(
-                        context: context,
-                        mobile: 24.0,
-                        tablet: 30.0,
-                        desktop: 36.0,
-                      ),
-                      height: ResponsiveUtils.getResponsiveValue(
-                        context: context,
-                        mobile: 24.0,
-                        tablet: 30.0,
-                        desktop: 36.0,
-                      ),
-                      child: CircularProgressIndicator(
-                        strokeWidth: ResponsiveUtils.getResponsiveValue(
-                          context: context,
-                          mobile: 2.5,
-                          tablet: 3.0,
-                          desktop: 3.5,
-                        ),
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          const Color(0xFF22C55E)
-                              .withValues(alpha: _glowAnimation.value),
-                        ),
-                      ),
-                    ),
-                  ],
+                    );
+                  },
                 ),
-              ),
-            ),
-          );
-        },
+              );
+            },
+          ),
+        ),
       ),
     );
   }
 }
 
-class _GreenProgressRingPainter extends CustomPainter {
-  final double progress; // 0.0 to 1.0
-  _GreenProgressRingPainter({required this.progress});
+class _AliveMarkPainter extends CustomPainter {
+  final double animationValue;
+  final bool isDark;
+
+  final Paint _fillPaint = Paint()..style = PaintingStyle.fill;
+  final Paint _glowPaint = Paint()
+    ..style = PaintingStyle.fill
+    ..maskFilter = const MaskFilter.blur(BlurStyle.solid, 8.0);
+
+  _AliveMarkPainter({
+    required this.animationValue,
+    required this.isDark,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.shortestSide / 2 - 10;
+    // Stage coordinates in SVG are 3600 x 3600
+    const svgSize = 3600.0;
+    final scale = size.width / svgSize;
 
-    final track = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 10
-      ..color = const Color(0xFFE5F9EF);
+    canvas.save();
+    canvas.scale(scale, scale);
 
-    final ring = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 10
-      ..strokeCap = StrokeCap.round
-      ..shader = const SweepGradient(
-        colors: [Color(0xFF22C55E), Color(0xFF10B981), Color(0xFF22C55E)],
-      ).createShader(Rect.fromCircle(center: center, radius: radius));
+    // Current time in ms relative to AliveMarkConstants.totalAnimMs
+    final currentMs = animationValue * AliveMarkConstants.totalAnimMs;
 
-    // Background track
-    canvas.drawCircle(center, radius, track);
+    // 1. Draw Map Squares
+    for (final sq in AliveMarkData.squares) {
+      final elapsed = currentMs - sq.delayMs;
+      if (elapsed < 0) continue;
 
-    // Progress arc from -90 degrees (top)
-    final sweep = (progress.clamp(0.0, 1.0)) * 2 * 3.1415926535;
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      -3.1415926535 / 2,
-      sweep,
-      false,
-      ring,
-    );
+      final progressRatio = (elapsed / sq.durationMs).clamp(0.0, 1.0);
+
+      // Keyframes:
+      // 0% -> opacity:0, scale:0.4
+      // 12% -> opacity:1.0
+      // 38% -> scale:1.12 with bright glow
+      // 68% -> scale:0.97
+      // 100% -> opacity:1.0, scale:1.0
+      double opacity;
+      if (progressRatio < 0.12) {
+        opacity = progressRatio / 0.12;
+      } else {
+        opacity = 1.0;
+      }
+
+      double scaleFactor;
+      if (progressRatio <= 0.38) {
+        final t = progressRatio / 0.38;
+        scaleFactor = 0.4 + (1.12 - 0.4) * Curves.easeOutCubic.transform(t);
+      } else if (progressRatio <= 0.68) {
+        final t = (progressRatio - 0.38) / 0.30;
+        scaleFactor = 1.12 - (1.12 - 0.97) * Curves.easeInOut.transform(t);
+      } else {
+        final t = (progressRatio - 0.68) / 0.32;
+        scaleFactor = 0.97 + (1.0 - 0.97) * Curves.easeOut.transform(t);
+      }
+
+      final center = sq.center;
+      canvas.save();
+      canvas.translate(center.dx, center.dy);
+      canvas.scale(scaleFactor, scaleFactor);
+      canvas.translate(-center.dx, -center.dy);
+
+      _fillPaint.color = sq.color.withValues(alpha: opacity);
+      canvas.drawPath(sq.path, _fillPaint);
+
+      // Peak glow effect
+      if (progressRatio > 0.15 && progressRatio < 0.65) {
+        final glowT =
+            1.0 - ((progressRatio - 0.38).abs() / 0.25).clamp(0.0, 1.0);
+        if (glowT > 0.05) {
+          _glowPaint.color = const Color(0xFF8CFF3C)
+              .withValues(alpha: (0.45 * glowT * opacity).clamp(0.0, 1.0));
+          canvas.drawPath(sq.path, _glowPaint);
+        }
+      }
+
+      canvas.restore();
+    }
+
+    // 2. Draw ALIVE wordmark glyphs
+    for (final glyph in AliveMarkData.aliveGlyphs) {
+      final elapsed = currentMs - glyph.delayMs;
+      if (elapsed < 0) continue;
+
+      final progressRatio = (elapsed / glyph.durationMs).clamp(0.0, 1.0);
+
+      double opacity;
+      double translateY;
+      double scaleFactor;
+
+      if (progressRatio <= 0.55) {
+        final t = progressRatio / 0.55;
+        final curveT = Curves.easeOutCubic.transform(t);
+        opacity = curveT;
+        translateY = 14.0 - (16.0 * curveT); // 14 -> -2
+        scaleFactor = 0.94 + (0.075 * curveT); // 0.94 -> 1.015
+      } else {
+        final t = (progressRatio - 0.55) / 0.45;
+        final curveT = Curves.easeInOut.transform(t);
+        opacity = 1.0;
+        translateY = -2.0 + (2.0 * curveT); // -2 -> 0
+        scaleFactor = 1.015 - (0.015 * curveT); // 1.015 -> 1.0
+      }
+
+      final center = glyph.center;
+      canvas.save();
+      canvas.translate(center.dx, center.dy);
+      canvas.scale(scaleFactor, scaleFactor);
+      canvas.translate(0, translateY);
+      canvas.translate(-center.dx, -center.dy);
+
+      _fillPaint.color = glyph.color.withValues(alpha: opacity);
+      canvas.drawPath(glyph.path, _fillPaint);
+      canvas.restore();
+    }
+
+    // 3. Draw Nigeria wordmark glyphs
+    for (final glyph in AliveMarkData.nigeriaGlyphs) {
+      final elapsed = currentMs - glyph.delayMs;
+      if (elapsed < 0) continue;
+
+      final progressRatio = (elapsed / glyph.durationMs).clamp(0.0, 1.0);
+      final curveT = Curves.easeOutCubic.transform(progressRatio);
+      final opacity = curveT;
+      final translateY = 10.0 * (1.0 - curveT);
+
+      final center = glyph.center;
+      canvas.save();
+      canvas.translate(center.dx, center.dy);
+      canvas.translate(0, translateY);
+      canvas.translate(-center.dx, -center.dy);
+
+      final color = isDark ? Colors.white : glyph.color;
+      _fillPaint.color = color.withValues(alpha: opacity);
+      canvas.drawPath(glyph.path, _fillPaint);
+      canvas.restore();
+    }
+
+    canvas.restore();
   }
 
   @override
-  bool shouldRepaint(covariant _GreenProgressRingPainter oldDelegate) {
-    return oldDelegate.progress != progress;
+  bool shouldRepaint(covariant _AliveMarkPainter oldDelegate) {
+    return oldDelegate.animationValue != animationValue ||
+        oldDelegate.isDark != isDark;
   }
 }

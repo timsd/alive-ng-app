@@ -1,14 +1,12 @@
 import 'dart:async';
 
-import 'package:appwrite/models.dart' as models;
-
 import '../models/app_models.dart';
+import '../models/auth_models.dart';
 import '../utils/app_exception.dart';
-import '../utils/appwrite_user_extensions.dart';
 import 'appwrite_auth_service.dart';
 import 'appwrite_profile_service.dart';
 
-export '../utils/appwrite_user_extensions.dart';
+export '../models/auth_models.dart' show AppUser;
 
 /// Appwrite-backed authentication service.
 ///
@@ -19,8 +17,8 @@ class AuthService {
 
   final AppwriteAuthService _appwriteAuth;
   final AppwriteProfileService _profileService;
-  final StreamController<models.User?> _authStateController =
-      StreamController<models.User?>.broadcast();
+  final StreamController<AppUser?> _authStateController =
+      StreamController<AppUser?>.broadcast();
 
   AuthService._({
     AppwriteAuthService? appwriteAuth,
@@ -28,10 +26,21 @@ class AuthService {
   })  : _appwriteAuth = appwriteAuth ?? AppwriteAuthService(),
         _profileService = profileService ?? AppwriteProfileService();
 
-  models.User? get currentUser => _appwriteAuth.currentUser;
+  AppUser? _mapUser(dynamic user) {
+    if (user == null) return null;
+    return AppUser(
+      uid: user.$id as String,
+      email: user.email as String,
+      displayName: (user.name as String).isEmpty ? null : user.name as String,
+      isEmailVerified: user.emailVerification as bool,
+      isAnonymous: false,
+    );
+  }
+
+  AppUser? get currentUser => _mapUser(_appwriteAuth.currentUser);
   bool get isAuthenticated => currentUser != null;
-  bool get isEmailVerified => currentUser?.emailVerified ?? false;
-  Stream<models.User?> get authStateChanges => _authStateController.stream;
+  bool get isEmailVerified => currentUser?.isEmailVerified ?? false;
+  Stream<AppUser?> get authStateChanges => _authStateController.stream;
 
   Future<AuthResult> signInWithEmailAndPassword(
     String email,
@@ -43,7 +52,8 @@ class AuthService {
   Future<AuthResult> signInWithEmail(String email, String password) async {
     try {
       await _appwriteAuth.loginWithEmail(email: email, password: password);
-      final user = await _appwriteAuth.getCurrentUser();
+      final sdkUser = await _appwriteAuth.getCurrentUser();
+      final user = _mapUser(sdkUser);
       _authStateController.add(user);
 
       if (user == null) {
@@ -77,14 +87,18 @@ class AuthService {
     Map<String, dynamic>? profileData,
   }) async {
     try {
-      final user = await _appwriteAuth.signUpWithEmail(
+      final sdkUser = await _appwriteAuth.signUpWithEmail(
         email: email,
         password: password,
         name: fullName ?? email.split('@').first,
         profileData: profileData,
       );
-      await _appwriteAuth.getCurrentUser();
+      final user = _mapUser(sdkUser);
       _authStateController.add(user);
+
+      if (user == null) {
+        return AuthResult.error('Sign up failed');
+      }
 
       return AuthResult.success(user, await _profileForUser(user));
     } catch (e) {
@@ -95,7 +109,8 @@ class AuthService {
   Future<AuthResult> signInWithGoogle() async {
     try {
       await _appwriteAuth.signInWithGoogle();
-      final user = await _appwriteAuth.getCurrentUser();
+      final sdkUser = await _appwriteAuth.getCurrentUser();
+      final user = _mapUser(sdkUser);
       _authStateController.add(user);
 
       if (user == null) {
@@ -160,12 +175,12 @@ class AuthService {
   }
 
   Future<UserProfile?> getCurrentUserProfile() async {
-    final user = currentUser ?? await _appwriteAuth.getCurrentUser();
+    final user = currentUser;
     if (user == null) return null;
     return _profileForUser(user);
   }
 
-  Future<UserProfile> _profileForUser(models.User user) async {
+  Future<UserProfile> _profileForUser(AppUser user) async {
     final document = await _profileService.ensureUserProfile(
       userId: user.uid,
       email: user.email,
@@ -175,9 +190,9 @@ class AuthService {
       document,
       fallbackEmail: user.email,
       fallbackFullName: user.displayName,
-      isEmailVerified: user.emailVerified,
+      isEmailVerified: user.isEmailVerified,
       isAnonymous: user.isAnonymous,
-      photoUrl: user.photoURL,
+      photoUrl: user.photoUrl,
     );
   }
 
@@ -193,7 +208,7 @@ class AuthService {
 class AuthResult {
   final bool isSuccess;
   final String? error;
-  final models.User? user;
+  final AppUser? user;
   final UserProfile? userProfile;
 
   AuthResult._({
@@ -203,7 +218,7 @@ class AuthResult {
     this.userProfile,
   });
 
-  factory AuthResult.success(models.User user, UserProfile userProfile) {
+  factory AuthResult.success(AppUser user, UserProfile userProfile) {
     return AuthResult._(
       isSuccess: true,
       user: user,

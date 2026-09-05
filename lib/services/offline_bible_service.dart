@@ -477,7 +477,7 @@ class OfflineBibleService {
   }
 
   // Get user reading progress
-  Future<List<Map<String, dynamic>>> getUserReadingProgress(
+  Future<List<BibleUserProgress>> getUserReadingProgress(
       String userId) async {
     try {
       if (kIsWeb) return [];

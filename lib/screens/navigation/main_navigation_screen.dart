@@ -332,7 +332,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
 
   Future<void> _handleClaimAdminRole(BuildContext context) async {
     try {
-      final user = await ref.read(authServiceProvider).getCurrentUser();
+      final user = await ref.read(authGatewayProvider).getCurrentUser();
       if (!context.mounted) return;
       if (user == null) {
         ScaffoldMessenger.of(context).showSnackBar(

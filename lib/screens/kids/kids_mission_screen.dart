@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:appwrite/appwrite.dart';
-import 'package:appwrite/models.dart' as appwrite_models;
 import '../../config/appwrite_backend_config.dart';
 import '../../main.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -33,7 +32,7 @@ class KidsMissionScreen extends ConsumerWidget {
     }));
   }
 
-  Map<String, dynamic> _mapMissionDocument(appwrite_models.Row row) {
+  Map<String, dynamic> _mapMissionDocument(dynamic row) {
     final data = Map<String, dynamic>.from(row.data);
 
     return {

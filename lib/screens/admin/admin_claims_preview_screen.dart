@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:appwrite/models.dart' as appwrite_models;
 import '../../config/development_config.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/role_access_service.dart';
@@ -78,7 +77,7 @@ class AdminClaimsPreviewScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeaderCard(BuildContext context, appwrite_models.User? user) {
+  Widget _buildHeaderCard(BuildContext context, AppUser? user) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -94,7 +93,7 @@ class AdminClaimsPreviewScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'UID: ${user?.$id ?? 'Not signed in'}',
+              'UID: ${user?.uid ?? 'Not signed in'}',
               style: Theme.of(context).textTheme.bodySmall,
             ),
             Text(

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:appwrite/appwrite.dart';
-import 'package:appwrite/models.dart' as appwrite_models;
 
 import '../../config/appwrite_backend_config.dart';
 import '../../main.dart';
@@ -32,7 +31,7 @@ final missionsProvider = FutureProvider<List<Mission>>((ref) async {
       .toList();
 });
 
-Map<String, dynamic> _mapMissionDocument(appwrite_models.Row row) {
+Map<String, dynamic> _mapMissionDocument(dynamic row) {
   final data = Map<String, dynamic>.from(row.data);
   final now = DateTime.now().toIso8601String();
 

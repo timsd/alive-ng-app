@@ -195,29 +195,6 @@ class ThemeIconUtils {
       padding: padding,
       margin: margin,
       decoration: BoxDecoration(
-  }
-
-  /// Create theme-aware container
-  static Widget createThemeContainer({
-    required BuildContext context,
-    required Widget child,
-    Color? lightBackgroundColor,
-    Color? darkBackgroundColor,
-    double? elevation,
-    BorderRadius? borderRadius,
-    EdgeInsets? padding,
-    EdgeInsets? margin,
-    Border? border,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark
-        ? (darkBackgroundColor ?? Theme.of(context).colorScheme.surface)
-        : (lightBackgroundColor ?? Colors.white);
-
-    return Container(
-      padding: padding,
-      margin: margin,
-      decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: borderRadius ?? BorderRadius.circular(ResponsiveUtils.getResponsiveBorderRadiusValue(context, 8)),
         border: border,

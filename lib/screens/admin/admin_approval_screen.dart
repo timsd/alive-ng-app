@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:appwrite/appwrite.dart';
-import 'package:appwrite/models.dart' as models;
 
 import '../../config/appwrite_backend_config.dart';
 import '../../main.dart';
@@ -78,7 +77,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
     }
   }
 
-  Future<List<models.Row>> _listUsers() async {
+  Future<List<dynamic>> _listUsers() async {
     try {
       final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
@@ -101,7 +100,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
     }
   }
 
-  UserProfile _profileFromDocument(models.Row document) {
+  UserProfile _profileFromDocument(dynamic document) {
     return _profileService.userProfileFromDocument(
       document,
       fallbackEmail: document.data['email']?.toString() ?? '',

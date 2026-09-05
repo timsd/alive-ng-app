@@ -108,7 +108,6 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
       }
     });
 
-    final theme = Theme.of(context);
     return Scaffold(
       appBar: CustomAppBar(
         title: 'Chapters',

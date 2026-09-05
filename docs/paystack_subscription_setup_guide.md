@@ -105,3 +105,24 @@ When a donor submits a gift in either the Flutter app or Web app:
    - If `project_id` is present: Automatically increments `raised` and `amount_raised` in the `projects` table!
    - If `fund_designation` is present: Logs the designated mission fund for internal allocation without requiring project goal limits.
    - Dispatches an automated HTML tax-deductible receipt to the donor's email via Resend (`sendDonationReceipt`).
+
+---
+
+## 5. Frontend Architecture & Ports/Adapters Integration
+
+In accordance with our Hexagonal Architecture ADR (`docs/architecture.md`):
+
+### A. Port & Adapter Isolation
+- **Domain Models**: [`lib/models/payment_models.dart`](../lib/models/payment_models.dart) defines `PaymentRequest`, `PaymentResponse`, and `PaymentStatus` (zero third-party imports).
+- **Port Interface**: [`lib/services/ports/payment_gateway.dart`](../lib/services/ports/payment_gateway.dart) defines `abstract class PaymentGateway`.
+- **Adapter**: [`lib/services/adapters/paystack_payment_gateway.dart`](../lib/services/adapters/paystack_payment_gateway.dart) implements `PaymentGateway` and is the **only** file importing `paystack_flutter_sdk`.
+- **UI & Providers**: Screens and `PaymentService` interact exclusively with `PaymentGateway` or Riverpod `paymentGatewayProvider`.
+
+### B. Web vs. Mobile Execution Strategy
+- **Flutter Web (`kIsWeb`)**: Paystack native mobile SDKs cannot run in the browser. The adapter directly initiates an in-tab redirect using `launchUrl(uri, webOnlyWindowName: '_self')` to the Paystack checkout authorization URL.
+- **Native Mobile**: Uses `paystack_flutter_sdk` when an access code is provided, and gracefully falls back to browser URL launch if SDK initialization fails.
+
+### C. Standardized Reference Generation
+Payment references are standardized across platforms to ensure distinct tracing in webhook logs and accounting:
+- **Web App**: `ALIVE-WEB-APP-<timestamp>-<rand>`
+- **Native Mobile**: `ALIVE-FLUTTER-<timestamp>-<rand>`

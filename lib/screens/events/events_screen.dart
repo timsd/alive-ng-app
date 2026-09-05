@@ -534,7 +534,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                 }
 
                 try {
-                  final user = await ref.read(authServiceProvider).getCurrentUser();
+                  final user = await ref.read(authGatewayProvider).getCurrentUser();
                   if (user == null) {
                     ToastUtils.showError('User not authenticated');
                     return;
@@ -544,7 +544,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                     title: titleController.text.trim(),
                     description: descriptionController.text.trim(),
                     location: locationController.text.trim(),
-                    authorId: user.$id,
+                    authorId: user.uid,
                     scheduledDate: scheduledDate,
                   );
 
@@ -630,7 +630,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                 }
 
                 try {
-                  final user = await ref.read(authServiceProvider).getCurrentUser();
+                  final user = await ref.read(authGatewayProvider).getCurrentUser();
                   if (user == null) {
                     ToastUtils.showError('User not authenticated');
                     return;
@@ -639,7 +639,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                   await AppwriteEventsService.instance.createAnnouncement(
                     title: titleController.text.trim(),
                     content: messageController.text.trim(),
-                    authorId: user.$id,
+                    authorId: user.uid,
                     audience: 'all:$priority',
                   );
 

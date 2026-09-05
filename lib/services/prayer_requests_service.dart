@@ -113,21 +113,31 @@ class PrayerRequestsService {
 
   Future<PrayerRequest> createPrayerRequest(PrayerRequest request) async {
     try {
-      final user = _authService.currentUser ?? await appwriteAccount.get();
+      final currentAppUser = _authService.currentUser;
+      final String uid;
+      final String? displayName;
+      if (currentAppUser != null) {
+        uid = currentAppUser.uid;
+        displayName = currentAppUser.displayName;
+      } else {
+        final account = await appwriteAccount.get();
+        uid = account.$id;
+        displayName = account.name.isEmpty ? null : account.name;
+      }
       final now = DateTime.now().toIso8601String();
       final document = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.prayerRequestsCollectionId,
         rowId: ID.unique(),
         data: {
-          'user_id': user.uid,
-          'userId': user.uid,
+          'user_id': uid,
+          'userId': uid,
           'requested_by': request.isAnonymous
               ? 'Anonymous'
-              : (user.displayName?.trim().isNotEmpty == true
-                  ? user.displayName
+              : (displayName?.trim().isNotEmpty == true
+                  ? displayName
                   : 'ALIVE Member'),
-          'requestedById': user.uid,
+          'requestedById': uid,
           'title': request.title,
           'description': request.description,
           'category': request.category,

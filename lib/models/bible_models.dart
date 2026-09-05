@@ -500,3 +500,75 @@ class BibleReadingDay {
     return 'BibleReadingDay(day: $day, readings: $formattedReadings, isCompleted: $isCompleted)';
   }
 }
+
+/// Domain model representing user reading progress or interaction in the Bible.
+class BibleUserProgress {
+  final int? id;
+  final String userId;
+  final String book;
+  final int chapter;
+  final int? verse;
+  final String version;
+  final String progressType;
+  final Map<String, dynamic>? progressData;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+
+  const BibleUserProgress({
+    this.id,
+    required this.userId,
+    required this.book,
+    required this.chapter,
+    this.verse,
+    required this.version,
+    required this.progressType,
+    this.progressData,
+    this.createdAt,
+    this.updatedAt,
+  });
+
+  factory BibleUserProgress.fromMap(Map<String, dynamic> map) {
+    return BibleUserProgress(
+      id: map['id'] as int?,
+      userId: map['user_id'] as String? ?? '',
+      book: map['book'] as String? ?? '',
+      chapter: map['chapter'] as int? ?? 1,
+      verse: map['verse'] as int?,
+      version: map['version'] as String? ?? '',
+      progressType: map['progress_type'] as String? ?? '',
+      progressData: map['progress_data'] != null
+          ? (map['progress_data'] is Map<String, dynamic>
+              ? map['progress_data'] as Map<String, dynamic>
+              : (map['progress_data'] is Map
+                  ? Map<String, dynamic>.from(map['progress_data'] as Map)
+                  : null))
+          : null,
+      createdAt: map['created_at'] != null
+          ? DateTime.tryParse(map['created_at'].toString())
+          : null,
+      updatedAt: map['updated_at'] != null
+          ? DateTime.tryParse(map['updated_at'].toString())
+          : null,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      if (id != null) 'id': id,
+      'user_id': userId,
+      'book': book,
+      'chapter': chapter,
+      'verse': verse,
+      'version': version,
+      'progress_type': progressType,
+      'progress_data': progressData,
+      'created_at': createdAt?.toIso8601String(),
+      'updated_at': updatedAt?.toIso8601String(),
+    };
+  }
+
+  @override
+  String toString() {
+    return 'BibleUserProgress(userId: $userId, $book $chapter:$verse, type: $progressType)';
+  }
+}

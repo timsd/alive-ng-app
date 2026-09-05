@@ -26,14 +26,15 @@ for payments, and Resend-backed Appwrite Functions for email.
 
 ## Current Stack
 
-- **Frontend:** Flutter, Riverpod, GoRouter, Material theming
-- **Backend:** Appwrite Auth, Databases/TablesDB, Storage, Functions, Teams,
+- **Architecture:** Ports & Adapters (Hexagonal Architecture) — all 3rd-party SDKs (Appwrite, LiveKit, Paystack, SQLite) are strictly isolated behind abstract ports in `lib/services/ports/` and implemented via concrete adapters in `lib/services/adapters/`. Full details in [Architecture ADR](docs/architecture.md).
+- **Frontend:** Flutter, Riverpod (pinned `^2.6.1`), GoRouter (pinned `^14.0.0`), Material 3 theming
+- **Backend:** Appwrite Dart SDK (`^26.1.0`), Auth, Databases/TablesDB, Storage, Functions, Teams,
   Messaging topics, and Webhooks
 - **Web hosting:** Coolify Docker build serving Flutter web through Nginx
-- **Meetings:** LiveKit
-- **Payments:** Paystack, handled server-side through Appwrite Functions
+- **Meetings:** LiveKit (isolated behind `MeetingGateway` port)
+- **Payments:** Paystack (isolated behind `PaymentGateway` port; server-side functions for verification/webhooks)
 - **Email:** Resend via the `send_email` Appwrite Function
-- **Local data:** SQLite/Sqflite, SharedPreferences, Secure Storage
+- **Local data:** SQLite/Sqflite (confined to `*_database_helper.dart`), SharedPreferences, Secure Storage
 - **Remaining compatibility:** Firebase remains only for the FCM web/Android
   bridge used by Appwrite Messaging push delivery.
 - **Crash reporting:** GlitchTip using the Sentry-compatible Flutter SDK
@@ -45,17 +46,20 @@ for payments, and Resend-backed Appwrite Functions for email.
 lib/
   config/          Build-time config and backend IDs
   constants/       App constants
-  models/          Shared data models
-  providers/       Riverpod providers
-  screens/         User and admin UI
-  services/        Appwrite, local, payment, messaging, and feature services
+  models/          Owned domain models (AppUser, MeetingSession, PaymentRequest, BibleVerse)
+  providers/       Riverpod state providers (consume ports, zero SDK imports)
+  screens/         User and admin UI (consume providers and domain models)
+  services/
+    ports/         Abstract gateway contracts (AuthGateway, MeetingGateway, PaymentGateway)
+    adapters/      Concrete SDK implementations (AppwriteAuthGateway, LiveKitMeetingGateway, PaystackPaymentGateway)
+    ...            Feature services and database helpers
   utils/           Routing, theming, helpers, validation, responsiveness
   widgets/         Reusable UI components
 
+docs/              Architecture ADR, setup guides, and operational notes
 scripts/           Appwrite provisioning, build config, and content tooling
 appwrite_functions/ Appwrite Functions source
 assets/            Bundled images, fonts, Bible/content assets
-docs/              Operational setup and migration notes
 ```
 
 ## Required Local Setup

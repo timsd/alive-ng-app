@@ -68,6 +68,8 @@ Express/Firebase Admin sidecar have been removed from the active repository.
 ## Current Appwrite Client Migration
 
 - Appwrite auth/profile, chat, LiveKit token creation, testimonies, notification settings storage, donation records/material downloads, gift submissions, Paystack initialization/webhook code, kids content CRUD/seeding, tract/podcast admin flows, enhanced health service, chapter management, leadership records/transitions, discipleship tracking, and meeting file storage/metadata are now wired.
+- **Hexagonal Architecture Decoupling**: All direct Appwrite SDK model types (`models.User`, etc.) have been completely removed from UI screens and controllers. Auth is encapsulated behind `AuthGateway` (`lib/services/ports/auth_gateway.dart`) and implemented via `AppwriteAuthGateway` (`lib/services/adapters/appwrite_auth_gateway.dart`), returning owned `AppUser` domain models.
+- **SDK Upgrade**: The Appwrite Dart SDK has been upgraded to `^26.1.0` in `pubspec.yaml`, with breaking API changes resolved exclusively inside the adapter layer without touching UI screens.
 - Bible game flow has been stabilized locally: nullable state reset works, multiple-choice options are stable per verse, blank generation avoids fragile words, and the daily verse corpus is no longer shuffled globally.
 - Push notification delivery still uses Firebase Messaging compatibility while Appwrite Messaging provider/target QA is completed.
 - `DonationService` no longer imports Firebase; downloadable material URLs should now be Appwrite/external URLs, not Firebase Storage URLs.

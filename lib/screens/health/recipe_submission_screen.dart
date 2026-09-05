@@ -125,7 +125,7 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
   }
 
   Widget _buildAuthenticatedView(
-      BuildContext context, String Function(String) translate, user) {
+      BuildContext context, String Function(String) translate, AppUser user) {
     return Scaffold(
       appBar: AppBar(
         title: Text(translate('submit_recipe')),
@@ -588,8 +588,7 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
 
     try {
       final formData = _formKey.currentState!.value;
-      final authService = ref.read(authServiceProvider);
-      final currentUser = authService.currentUser;
+      final currentUser = ref.read(currentUserProvider);
 
       if (currentUser == null) {
         throw Exception('User not authenticated');
@@ -664,8 +663,7 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
 
     try {
       final formData = _formKey.currentState!.value;
-      final authService = ref.read(authServiceProvider);
-      final currentUser = authService.currentUser;
+      final currentUser = ref.read(currentUserProvider);
 
       if (currentUser == null) {
         throw Exception('User not authenticated');

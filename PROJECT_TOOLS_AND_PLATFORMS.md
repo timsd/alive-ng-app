@@ -2,32 +2,28 @@
 
 This file lists the major tools, platforms, SDKs, and external services currently used in this project.
 
-Last updated from codebase review: 2026-05-26
+Last updated from codebase review: 2026-09-04
 
-## Migration Snapshot
+## Architecture & Migration Snapshot
 
-The app has migrated its active database, storage, auth, analytics/event tracking, crash reporting, and function-backed workflows from Firebase/Jitsi/GetStream to Appwrite, GlitchTip, LiveKit, and Coolify. Treat Firebase as a narrow FCM compatibility layer until push delivery is fully validated through Appwrite Messaging.
+The app follows the **Ports & Adapters (Hexagonal Architecture)** design pattern across all external integrations:
+- **Zero SDK Leaks**: No third-party SDK type (Appwrite, LiveKit, Paystack, SQLite) may cross into `lib/providers/` or `lib/screens/`.
+- **Abstract Ports**: Defined under `lib/services/ports/` (`AuthGateway`, `MeetingGateway`, `PaymentGateway`).
+- **Concrete Adapters**: Confined under `lib/services/adapters/` (`AppwriteAuthGateway`, `LiveKitMeetingGateway`, `PaystackPaymentGateway`).
+- **Owned Domain Models**: `AppUser`, `MeetingSession`, `ParticipantInfo`, `RoomStatus`, `PaymentRequest`, `PaymentResponse`, `PaymentStatus`, and `BibleUserProgress` in `lib/models/`.
+- **Database Isolation**: `sqflite` is strictly confined to `lib/services/*_database_helper.dart`. UI layers consume typed domain models (`models.BibleVerse`) rather than raw database maps.
+- **SDK Upgrade & Freezes**: Appwrite Dart SDK upgraded to `^26.1.0`. `flutter_riverpod` is pinned to `^2.6.1` and `go_router` is pinned to `^14.0.0` (see `docs/architecture.md`).
 
 Estimated code-side migration progress: 100% for active Firebase database/storage/auth/function replacement and Appwrite TablesDB SDK usage. Deployment-side validation still depends on reachable Appwrite/Coolify/LiveKit services.
-
-- Appwrite-backed and validated with `flutter analyze`: auth/profile bootstrap, chat, LiveKit token flow, Paystack payment functions, Resend email function wiring/deployment variables, Appwrite push target registration, prayer, testimonies, notification settings/reminder records, admin notification records, admin user archive, profile file cleanup, tag visibility checks, analytics event persistence, user Bible/prayer/study statistics, study screen/progress, lesson-level study progress, health screen, enhanced health service, health tracking helper, health recipe/remedy submissions, daily verse records/generation settings, onboarding content, admin dashboard stats, admin app settings, admin content management, admin tract/podcast management, chapter management, leadership records/transitions, discipleship tracking, kids content CRUD, admin kids story/mission publishing, events, announcement editing, public missions, podcast listing/episode provider and audio actions, tract remote sync/progress, tract PDF text extraction, tract reader progress, app update settings, approval link tokens, donation project/settings reads, kids stories/missions public screens, meeting file sharing storage/metadata, Bible game flow fixes, and the tract/board storage compatibility bridge.
-- Appwrite infrastructure schema is maintained in `scripts/appwrite_infrastructure_schema.mjs`.
-- Provision safely against the current Appwrite 1.7.4 server with `npm run appwrite:dry-run` and then `npm run appwrite:provision:legacy`.
-  If provisioning returns `fetch failed`, the local schema/dry-run can still be valid; rerun once the Appwrite endpoint is reachable.
-- The current schema includes analytics/statistics tables: `analytics_events`, `user_activities`, `reading_sessions`, and `chapter_readings`.
-- Coolify web hosting is supported by the root `Dockerfile`; pass Flutter values through the `FLUTTER_BUILD_ARGS` build argument and pass public FCM web push bridge values as Docker build args so the service worker is configured during image build.
-- Firebase rules, indexes, Hosting config, legacy Firebase Functions, and the
-  old Express/Firebase Admin sidecar have been removed from the active tree
-  after Appwrite replacements were added. Firebase remains only for FCM push
-  delivery.
 
 ## Core App Stack
 
 - Flutter and Dart: main app framework and language.
-- Flutter Riverpod: primary state management.
-- Go Router: app navigation.
-- Appwrite Dart SDK: primary backend SDK for migrated app flows.
-- Local storage: Shared Preferences, Flutter Secure Storage, SQLite/Sqflite, and bundled assets.
+- Architecture: Ports & Adapters (Hexagonal Architecture) isolating third-party SDKs behind abstract contracts.
+- Flutter Riverpod: primary state management (pinned `^2.6.1`).
+- Go Router: app navigation (pinned `^14.0.0`).
+- Appwrite Dart SDK: primary backend SDK (`^26.1.0`), isolated behind `AuthGateway` adapter.
+- Local storage: Shared Preferences, Flutter Secure Storage, SQLite/Sqflite (confined to `*_database_helper.dart`), and bundled assets.
 
 ## Primary Backend: Appwrite
 
