@@ -39,9 +39,9 @@ To enable recurring monthly support under **"Your Gift Will:"**, create correspo
 |---|---|---|---|---|
 | **Rural Missions** | ALIVE Rural Missions Support | ₦10,000 / ₦25,000 / ₦50,000 | Monthly | `PLN_rural_xxxx` |
 | **Campus/City Missions** | ALIVE Campus & City Missions | ₦10,000 / ₦25,000 / ₦50,000 | Monthly | `PLN_campus_xxxx` |
-| **Missionary Training 🎓** | Missionary & Groundbreakers Training | ₦20,000 / ₦50,000 / ₦100,000 | Monthly | `PLN_training_xxxx` |
-| **Health Evangelism 🏥** | Health Evangelism & Medical Outreach | ₦15,000 / ₦30,000 / ₦75,000 | Monthly | `PLN_health_xxxx` |
-| **Digital Ministry 📱** | Digital Ministry & Content Outreach | ₦5,000 / ₦15,000 / ₦30,000 | Monthly | `PLN_digital_xxxx` |
+| **Missionary Training ** | Missionary & Groundbreakers Training | ₦20,000 / ₦50,000 / ₦100,000 | Monthly | `PLN_training_xxxx` |
+| **Health Evangelism ** | Health Evangelism & Medical Outreach | ₦15,000 / ₦30,000 / ₦75,000 | Monthly | `PLN_health_xxxx` |
+| **Digital Ministry ** | Digital Ministry & Content Outreach | ₦5,000 / ₦15,000 / ₦30,000 | Monthly | `PLN_digital_xxxx` |
 | **LTMs Stipends** | Long-Term Missionaries Monthly Upkeep | ₦25,000 / ₦50,000 / ₦100,000 | Monthly | `PLN_ltm_xxxx` |
 | **STMs Stipends** | Short-Term Missionaries Monthly Upkeep | ₦15,000 / ₦30,000 / ₦60,000 | Monthly | `PLN_stm_xxxx` |
 | **Volunteers** | Mission Field Volunteers Support | ₦10,000 / ₦20,000 / ₦40,000 | Monthly | `PLN_volunteers_xxxx` |
