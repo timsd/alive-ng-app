@@ -3,6 +3,7 @@ import 'package:appwrite/models.dart' as models;
 
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';
+import '../models/event_models.dart';
 import '../utils/app_exception.dart';
 import '../utils/logger.dart';
 
@@ -14,7 +15,7 @@ class AppwriteEventsService {
   late final TablesDB _tables = TablesDB(appwriteClient);
   final Logger _logger = Logger('AppwriteEventsService');
 
-  Future<List<Map<String, dynamic>>> listEvents() async {
+  Future<List<Event>> listEvents() async {
     try {
       final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
@@ -22,11 +23,8 @@ class AppwriteEventsService {
         queries: [Query.limit(100)],
       );
 
-      final events = response.rows.map(_rowToMap).toList();
-      events.sort(
-        (a, b) =>
-            _sortDate(b, 'created_at').compareTo(_sortDate(a, 'created_at')),
-      );
+      final events = response.rows.map(_rowToEvent).toList();
+      events.sort((a, b) => b.sortDate.compareTo(a.sortDate));
       return events;
     } catch (e) {
       _logger.error('Failed to load events', e);
@@ -34,7 +32,7 @@ class AppwriteEventsService {
     }
   }
 
-  Future<List<Map<String, dynamic>>> listAnnouncements() async {
+  Future<List<Announcement>> listAnnouncements() async {
     try {
       final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
@@ -42,11 +40,8 @@ class AppwriteEventsService {
         queries: [Query.limit(100)],
       );
 
-      final announcements = response.rows.map(_rowToMap).toList();
-      announcements.sort(
-        (a, b) =>
-            _sortDate(b, 'created_at').compareTo(_sortDate(a, 'created_at')),
-      );
+      final announcements = response.rows.map(_rowToAnnouncement).toList();
+      announcements.sort((a, b) => b.sortDate.compareTo(a.sortDate));
       return announcements;
     } catch (e) {
       _logger.error('Failed to load announcements', e);
@@ -117,15 +112,17 @@ class AppwriteEventsService {
     }
   }
 
-  Map<String, dynamic> _rowToMap(models.Row row) {
-    return {
+  Event _rowToEvent(models.Row row) {
+    return Event.fromJson({
       ...Map<String, dynamic>.from(row.data),
       'id': row.$id,
-    };
+    });
   }
 
-  DateTime _sortDate(Map<String, dynamic> data, String key) {
-    return DateTime.tryParse(data[key]?.toString() ?? '') ??
-        DateTime.fromMillisecondsSinceEpoch(0);
+  Announcement _rowToAnnouncement(models.Row row) {
+    return Announcement.fromJson({
+      ...Map<String, dynamic>.from(row.data),
+      'id': row.$id,
+    });
   }
 }

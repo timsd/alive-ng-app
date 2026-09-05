@@ -47,7 +47,7 @@ abstract class AuthGateway {
     required String email,
     required String password,
     String? displayName,
-    Map<String, dynamic>? profileData,
+    SignupProfile? profile,
   });
 
   /// Signs in with existing email + password credentials.

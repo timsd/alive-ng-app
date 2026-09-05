@@ -579,13 +579,14 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
             ref.read(bibleGameProvider.notifier).setListening(false);
           }
         },
-        localeId: _resolvedSttLocale, // Uses best available: en-NG → en-GB → en-US
-        listenFor: const Duration(seconds: 30),
-        pauseFor: const Duration(seconds: 3),
+                        // Uses best available: en-NG → en-GB → en-US
         listenOptions: stt.SpeechListenOptions(
           partialResults: true,
           cancelOnError: false,
           listenMode: stt.ListenMode.dictation,
+          listenFor: const Duration(seconds: 30),
+          pauseFor: const Duration(seconds: 3),
+          localeId: _resolvedSttLocale,
         ),
       );
     }

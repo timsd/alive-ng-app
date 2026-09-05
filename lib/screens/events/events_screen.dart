@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../models/event_models.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/language_provider.dart';
 import '../../services/appwrite_events_service.dart';
@@ -19,8 +20,8 @@ class EventsScreen extends ConsumerStatefulWidget {
 }
 
 class _EventsScreenState extends ConsumerState<EventsScreen> {
-  List<Map<String, dynamic>> _events = [];
-  List<Map<String, dynamic>> _announcements = [];
+  List<Event> _events = [];
+  List<Announcement> _announcements = [];
   bool _isLoading = true;
   String? _error;
   String _selectedTab = 'events';
@@ -43,8 +44,8 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
       final announcementsResponse = await service.listAnnouncements();
 
       setState(() {
-        _events = List<Map<String, dynamic>>.from(eventsResponse);
-        _announcements = List<Map<String, dynamic>>.from(announcementsResponse);
+        _events = eventsResponse;
+        _announcements = announcementsResponse;
         _isLoading = false;
       });
     } catch (e) {
@@ -233,12 +234,8 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
     );
   }
 
-  Widget _buildEventCard(BuildContext context, Map<String, dynamic> event, String Function(String) translate) {
-    final scheduledFor = DateTime.tryParse(
-      event['scheduled_time']?.toString() ??
-          event['scheduled_for']?.toString() ??
-          '',
-    );
+  Widget _buildEventCard(BuildContext context, Event event, String Function(String) translate) {
+    final scheduledFor = event.scheduledTime;
     
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -275,21 +272,21 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              event['title'] ?? translate('untitled_event'),
+              event.title.isNotEmpty ? event.title : translate('untitled_event'),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
             ),
-            if (event['description'] != null) ...[
+            if (event.description.isNotEmpty) ...[
               const SizedBox(height: 8),
               Text(
-                event['description'],
+                event.description,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
                 ),
               ),
             ],
-            if (event['location'] != null) ...[
+            if (event.location != null && event.location!.isNotEmpty) ...[
               const SizedBox(height: 8),
               Row(
                 children: [
@@ -300,7 +297,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    event['location'],
+                    event.location!,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
@@ -314,14 +311,10 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
     );
   }
 
-  Widget _buildAnnouncementCard(BuildContext context, Map<String, dynamic> announcement, String Function(String) translate) {
-    final createdAt = DateTime.tryParse(announcement['created_at'] ?? '');
-    final audience = announcement['audience']?.toString();
-    final priority = announcement['priority'] ??
-        (audience?.startsWith('all:') == true
-            ? audience!.substring('all:'.length)
-            : 'medium');
-    final message = announcement['content'] ?? announcement['message'];
+  Widget _buildAnnouncementCard(BuildContext context, Announcement announcement, String Function(String) translate) {
+    final createdAt = announcement.createdAt;
+    final priority = announcement.priority;
+    final message = announcement.content;
     
     Color priorityColor = Theme.of(context).colorScheme.primary;
     switch (priority) {
@@ -371,28 +364,28 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              announcement['title'] ?? translate('untitled_announcement'),
+              announcement.title.isNotEmpty ? announcement.title : translate('untitled_announcement'),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
             ),
-            if (message != null) ...[
+            if (message.isNotEmpty) ...[
               const SizedBox(height: 8),
               Text(
-                message.toString(),
+                message,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
                 ),
               ),
             ],
-            if (announcement['action_text'] != null && announcement['action_url'] != null) ...[
+            if (announcement.actionText != null && announcement.actionUrl != null) ...[
               const SizedBox(height: 12),
               ElevatedButton(
                 onPressed: () {
                   // Handle action URL
-                  ToastUtils.showInfo('Opening: ${announcement['action_url']}');
+                  ToastUtils.showInfo('Opening: ${announcement.actionUrl}');
                 },
-                child: Text(announcement['action_text']),
+                child: Text(announcement.actionText!),
               ),
             ],
           ],

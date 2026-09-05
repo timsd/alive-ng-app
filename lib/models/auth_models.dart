@@ -133,3 +133,82 @@ class AppAuthResult {
   factory AppAuthResult.failure(String error) =>
       AppAuthResult._(isSuccess: false, error: error);
 }
+
+/// Strongly-typed profile data collected during email sign-up.
+///
+/// This replaces the previous untyped `Map<String, dynamic>? profileData`
+/// that leaked raw key/value payloads through the gateway port. The adapter
+/// layer is responsible for converting this domain object into whatever
+/// wire format the backend expects (via [toMap]).
+class SignupProfile {
+  /// The user's phone number (e.g. `+2348012345678`).
+  final String? phoneNumber;
+
+  /// City / State / Country of the member.
+  final String? location;
+
+  /// Name of the member's local church.
+  final String? localChurch;
+
+  /// The member's business or occupation.
+  final String? occupation;
+
+  /// Skills the member can contribute.
+  final String? skills;
+
+  /// The local ALIVE chapter the member belongs to.
+  final String? localChapter;
+
+  /// Commitment type: `financial`, `active_availability`, or `both`.
+  final String commitmentType;
+
+  /// Monthly financial commitment amount (when [commitmentType]
+  /// includes `financial`).
+  final double? financialCommitment;
+
+  /// Availability commitment description (when [commitmentType]
+  /// includes `active_availability`).
+  final String? availabilityCommitment;
+
+  const SignupProfile({
+    this.phoneNumber,
+    this.location,
+    this.localChurch,
+    this.occupation,
+    this.skills,
+    this.localChapter,
+    this.commitmentType = 'active_availability',
+    this.financialCommitment,
+    this.availabilityCommitment,
+  });
+
+  /// Converts this domain object into the wire-format map consumed by the
+  /// backend profile service. Only non-empty values are included.
+  Map<String, dynamic> toMap() {
+    return {
+      if (phoneNumber != null && phoneNumber!.trim().isNotEmpty)
+        'phone_number': phoneNumber!.trim(),
+      if (location != null && location!.trim().isNotEmpty)
+        'location': location!.trim(),
+      if (localChurch != null && localChurch!.trim().isNotEmpty)
+        'local_church': localChurch!.trim(),
+      if (occupation != null && occupation!.trim().isNotEmpty)
+        'occupation': occupation!.trim(),
+      if (skills != null && skills!.trim().isNotEmpty)
+        'skills': skills!.trim(),
+      if (localChapter != null && localChapter!.trim().isNotEmpty)
+        'local_chapter': localChapter!.trim(),
+      'commitment_type': commitmentType,
+      if ((commitmentType == 'financial' || commitmentType == 'both') &&
+          financialCommitment != null)
+        'financial_commitment': financialCommitment,
+      if ((commitmentType == 'active_availability' ||
+              commitmentType == 'both') &&
+          availabilityCommitment != null &&
+          availabilityCommitment!.trim().isNotEmpty)
+        'availability_commitment': availabilityCommitment!.trim(),
+      'is_approved': true,
+      'approval_status': 'approved',
+    };
+  }
+}

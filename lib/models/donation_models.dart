@@ -3,8 +3,7 @@ import 'dart:convert';
 import 'package:equatable/equatable.dart';
 
 enum DonationType {
-  materialDownload,
-  tractReprint,
+  tractProduction,
   generalSupport,
   ministrySupport,
   appMaintenance,
@@ -71,7 +70,12 @@ class DonationRecord extends Equatable {
       userEmail: json['user_email'] as String,
       type: DonationType.values.firstWhere(
         (e) => e.name == json['type'],
-        orElse: () => DonationType.generalSupport,
+        // Legacy types ('tractReprint', 'materialDownload') were merged
+        // into 'tractProduction' — map old persisted records accordingly.
+        orElse: () =>
+            json['type'] == 'tractReprint' || json['type'] == 'materialDownload'
+                ? DonationType.tractProduction
+                : DonationType.generalSupport,
       ),
       amount: (json['amount'] as num).toDouble(),
       currency: json['currency'] as String,
@@ -164,10 +168,8 @@ class DonationRecord extends Equatable {
 
   String get typeDisplayName {
     switch (type) {
-      case DonationType.materialDownload:
-        return 'Material Download';
-      case DonationType.tractReprint:
-        return 'Tract Reprint';
+      case DonationType.tractProduction:
+        return 'Tract Production';
       case DonationType.generalSupport:
         return 'General Support';
       case DonationType.ministrySupport:

@@ -48,8 +48,6 @@ import '../screens/events/events_screen.dart';
 import '../screens/admin/admin_approval_screen.dart';
 import '../screens/admin/admin_donations_report_screen.dart';
 import '../screens/admin/admin_approval_link_handler_screen.dart';
-import '../screens/legal/privacy_policy_screen.dart';
-import '../screens/legal/terms_conditions_screen.dart';
 import '../screens/help/help_support_screen.dart';
 import '../screens/settings/notification_settings_screen.dart';
 import '../screens/testimonies/testimonies_screen.dart';
@@ -533,18 +531,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppConstants.eventsRoute,
             builder: (context, state) => const EventsScreen(),
-          ),
-
-          // Privacy Policy Route
-          GoRoute(
-            path: AppConstants.privacyPolicyRoute,
-            builder: (context, state) => const PrivacyPolicyScreen(),
-          ),
-
-          // Terms & Conditions Route
-          GoRoute(
-            path: AppConstants.termsConditionsRoute,
-            builder: (context, state) => const TermsConditionsScreen(),
           ),
 
           // Help & Support Route

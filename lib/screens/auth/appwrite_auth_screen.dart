@@ -12,6 +12,7 @@ import '../../services/biometric_auth_service.dart';
 import '../../services/admin_notification_service.dart';
 import '../../utils/responsive_utils.dart';
 import '../../models/app_models.dart';
+import '../../models/auth_models.dart';
 import '../../utils/layout_fix_utils.dart';
 import 'package:flutter/foundation.dart';
 
@@ -1116,32 +1117,40 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
         fullName: _nameController.text.trim().isNotEmpty
             ? _nameController.text.trim()
             : null,
-        profileData: {
-          if (_phoneController.text.trim().isNotEmpty)
-            'phone_number': _phoneController.text.trim(),
-          if (_locationController.text.trim().isNotEmpty)
-            'location': _locationController.text.trim(),
-          if (_localChurchController.text.trim().isNotEmpty)
-            'local_church': _localChurchController.text.trim(),
-          if (_occupationController.text.trim().isNotEmpty)
-            'occupation': _occupationController.text.trim(),
-          if (_skillsController.text.trim().isNotEmpty)
-            'skills': _skillsController.text.trim(),
-          if (_localChapterController.text.trim().isNotEmpty)
-            'local_chapter': _localChapterController.text.trim(),
-          'commitment_type': _commitmentType,
-          if ((_commitmentType == 'financial' || _commitmentType == 'both') &&
-              _financialCommitmentController.text.trim().isNotEmpty)
-            'financial_commitment': double.tryParse(
-              _financialCommitmentController.text.trim(),
-            ),
-          if ((_commitmentType == 'active_availability' ||
-                  _commitmentType == 'both') &&
-              _availabilityController.text.trim().isNotEmpty)
-            'availability_commitment': _availabilityController.text.trim(),
-          'is_approved': true,
-          'approval_status': 'approved',
-        },
+        profile: SignupProfile(
+          phoneNumber: _phoneController.text.trim().isNotEmpty
+              ? _phoneController.text.trim()
+              : null,
+          location: _locationController.text.trim().isNotEmpty
+              ? _locationController.text.trim()
+              : null,
+          localChurch: _localChurchController.text.trim().isNotEmpty
+              ? _localChurchController.text.trim()
+              : null,
+          occupation: _occupationController.text.trim().isNotEmpty
+              ? _occupationController.text.trim()
+              : null,
+          skills: _skillsController.text.trim().isNotEmpty
+              ? _skillsController.text.trim()
+              : null,
+          localChapter: _localChapterController.text.trim().isNotEmpty
+              ? _localChapterController.text.trim()
+              : null,
+          commitmentType: _commitmentType,
+          financialCommitment:
+              (_commitmentType == 'financial' || _commitmentType == 'both') &&
+                      _financialCommitmentController.text.trim().isNotEmpty
+                  ? double.tryParse(
+                      _financialCommitmentController.text.trim(),
+                    )
+                  : null,
+          availabilityCommitment:
+              (_commitmentType == 'active_availability' ||
+                          _commitmentType == 'both') &&
+                      _availabilityController.text.trim().isNotEmpty
+                  ? _availabilityController.text.trim()
+                  : null,
+        ),
       );
 
       // Notify admin of new signup (best-effort, don't block UI)

@@ -6,6 +6,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../utils/responsive_utils.dart';
 import '../../services/donation_service.dart';
 import '../../models/donation_models.dart';
+import '../../models/project_model.dart';
 import '../../utils/web_launch_params.dart';
 import '../../providers/appwrite_auth_provider.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -283,7 +284,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                         ),
                       ),
                     if (_selectedProjectId != null)
-                      FutureBuilder<Map<String, dynamic>?>(
+                      FutureBuilder<Project?>(
                         future:
                             DonationService().getProject(_selectedProjectId!),
                         builder: (context, snapshot) {
@@ -291,9 +292,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                             return const SizedBox.shrink();
                           }
                           final data = snapshot.data!;
-                          final goal = (data['goal'] as num?)?.toDouble() ?? 0;
-                          final raised =
-                              (data['raised'] as num?)?.toDouble() ?? 0;
+                          final goal = data.targetAmount;
+                          final raised = data.raisedAmount;
                           if (goal <= 0) {
                             return const SizedBox.shrink();
                           }
@@ -473,17 +473,15 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
           Text(
             'You Can Be a Part of Something Bigger.',
-            style: theme.textTheme.headlineMedium?.copyWith(
+            style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.bold,
-              fontSize: ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 22, tablet: 26, desktop: 30),
             ),
             textAlign: TextAlign.center,
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
           Text(
             'For more than $_ministryYears years, ALIVE Nigeria Ministries has helped connect thousands of people with God\'s word and established churches around Nigeria. We can help connect new generations to the life-changing wisdom of the Bible.',
-            style: theme.textTheme.bodyLarge?.copyWith(
+            style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
             ),
             textAlign: TextAlign.center,
@@ -612,7 +610,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
               _isMonthlySelected
                   ? 'Enter an amount to give monthly'
                   : 'Enter an amount to give one time',
-              style: theme.textTheme.titleLarge?.copyWith(
+              style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -723,13 +721,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
             ),
             child: Text(
               label,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontSize: ResponsiveUtils.getResponsiveValue(
-                      context: context,
-                      mobile: 18,
-                      tablet: 20,
-                      desktop: 22,
-                    ),
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: isSelected
                         ? theme.colorScheme.onPrimary
@@ -748,13 +740,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       children: [
         Text(
           'Other Amount',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontSize: ResponsiveUtils.getResponsiveValue(
-                  context: context,
-                  mobile: 16,
-                  tablet: 18,
-                  desktop: 20,
-                ),
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.w600,
                 color: theme.colorScheme.onSurface,
               ),
@@ -763,24 +749,12 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
         TextField(
           controller: _customAmountController,
           keyboardType: TextInputType.number,
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontSize: ResponsiveUtils.getResponsiveValue(
-                  context: context,
-                  mobile: 18,
-                  tablet: 20,
-                  desktop: 22,
-                ),
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
           decoration: InputDecoration(
             prefixText: _selectedCurrency == 'USD' ? '\$ ' : '₦ ',
-            prefixStyle: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontSize: ResponsiveUtils.getResponsiveValue(
-                    context: context,
-                    mobile: 18,
-                    tablet: 20,
-                    desktop: 22,
-                  ),
+            prefixStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: theme.colorScheme.primary,
                 ),
@@ -974,19 +948,19 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       },
       {
         'icon': Icons.school,
-        'title': '🎓 Missionary Training',
+        'title': 'Missionary Training',
         'description':
             'Equip and train the next generation of Groundbreakers and Missionaries for effective witness.',
       },
       {
         'icon': Icons.local_hospital,
-        'title': '🏥 Health Evangelism',
+        'title': 'Health Evangelism',
         'description':
             'Provide medical care that opens hearts to the transforming power of the Gospel.',
       },
       {
         'icon': Icons.phonelink,
-        'title': '📱 Digital Ministry',
+        'title': 'Digital Ministry',
         'description':
             'Leverage technology to share the Good News through tracts, podcasts, online events and discipleship.',
       },
@@ -1557,23 +1531,20 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       try {
         final data = await DonationService().getProject(projectId);
         if (data != null) {
-          _selectedProjectTitle =
-              (data['title'] as String?) ?? (data['name'] as String?);
+          _selectedProjectTitle = data.title;
         } else {
-          final fallback =
-              _fallbackProjects.cast<Map<String, dynamic>?>().firstWhere(
-                    (project) => project?['id'] == projectId,
-                    orElse: () => null,
-                  );
-          _selectedProjectTitle = fallback?['title'] as String?;
+          final fallback = _fallbackProjects.firstWhere(
+                (project) => project['id'] == projectId,
+                orElse: () => {},
+              );
+          _selectedProjectTitle = fallback['title'] as String?;
         }
       } catch (_) {
-        final fallback =
-            _fallbackProjects.cast<Map<String, dynamic>?>().firstWhere(
-                  (project) => project?['id'] == projectId,
-                  orElse: () => null,
-                );
-        _selectedProjectTitle = fallback?['title'] as String?;
+        final fallback = _fallbackProjects.firstWhere(
+                (project) => project['id'] == projectId,
+                orElse: () => {},
+              );
+        _selectedProjectTitle = fallback['title'] as String?;
       }
       setState(() {});
       clearSelectedProjectId();
@@ -1604,6 +1575,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
         minChildSize: 0.4,
         expand: false,
         builder: (ctx2, scrollController) => Container(
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: theme.scaffoldBackgroundColor,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
@@ -1640,7 +1612,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
               ),
               const Divider(height: 1),
               Expanded(
-                child: FutureBuilder<List<Map<String, dynamic>>>(
+                child: FutureBuilder<List<Project>>(
                   future: _fetchProjects(),
                   builder: (ctx3, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
@@ -1675,21 +1647,15 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                         mainAxisSpacing: 12,
                       ),
                       itemCount: projects.length,
-                      itemBuilder: (ctx4, i) {
+                                            itemBuilder: (ctx4, i) {
                         final project = projects[i];
-                        final id = project['id'] as String? ?? '';
-                        final title =
-                            (project['title'] as String?) ?? 'Unnamed Project';
-                        // 'summary' is short caption, 'description' is full text — matching web modal
-                        final summary = (project['summary'] as String?) ?? '';
-                        final description =
-                            (project['description'] as String?) ?? '';
-                        final goal = project['goal'] as num?;
-                        final raised = (project['raised'] as num?) ?? 0;
-                        final status = (project['status'] as String?) ?? '';
-                        final imageUrl = project['image_url'] as String?;
-                        final ctaLabel = (project['cta_label'] as String?) ??
-                            'Donate for this item';
+                        final id = project.id;
+                        final title = project.title;
+                        final description = project.description;
+                        final goal = project.targetAmount;
+                        final raised = project.raisedAmount;
+                        final status = project.status;
+                        final imageUrl = project.imageUrl;
 
                         // Badge color per status (mirrors web badges)
                         Color statusColor;
@@ -1764,10 +1730,10 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                                           ),
                                       ],
                                     ),
-                                    // Summary (short caption)
-                                    if (summary.isNotEmpty) ...[
+                                                                        // Summary (short caption)
+                                    if (description.isNotEmpty) ...[
                                       const SizedBox(height: 6),
-                                      Text(summary,
+                                      Text(description,
                                           style: theme.textTheme.bodyMedium,
                                           maxLines: 2,
                                           overflow: TextOverflow.ellipsis),
@@ -1781,7 +1747,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                                           overflow: TextOverflow.ellipsis),
                                     ],
                                     // Goal / raised progress bar (NGN currency — same as web modal)
-                                    if (goal != null && goal > 0) ...[
+                                    if (goal > 0) ...[
                                       const SizedBox(height: 12),
                                       ClipRRect(
                                         borderRadius: BorderRadius.circular(4),
@@ -1818,7 +1784,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                                         },
                                         icon: const Icon(
                                             Icons.volunteer_activism),
-                                        label: Text(ctaLabel),
+                                                                               label: Text('Donate'),
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor:
                                               theme.colorScheme.secondary,
@@ -1852,18 +1818,17 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
 
   /// Fetches projects ordered by 'priority' ascending.
   /// Shows all statuses so users can see active, planning, and completed projects.
-  Future<List<Map<String, dynamic>>> _fetchProjects() async {
+  Future<List<Project>> _fetchProjects() async {
     final projects = await DonationService().getDonationProjects();
     if (projects.isNotEmpty) return projects;
-    return _fallbackProjects;
+    return _fallbackProjects.map((e) => Project.fromJson(e)).toList();
   }
 
-  Widget _buildFundUpdateSection(
-      BuildContext context, Map<String, dynamic> project) {
+  Widget _buildFundUpdateSection(BuildContext context, Project project) {
     final theme = Theme.of(context);
-    final title = (project['fund_update_title'] ?? '').toString().trim();
-    final text = (project['fund_update_text'] ?? '').toString().trim();
-    final imageUrls = _fundUpdateImages(project['fund_update_images']);
+    final title = project.fundUpdateTitle.trim();
+    final text = project.fundUpdateText.trim();
+    final imageUrls = project.fundUpdateImages;
 
     if (title.isEmpty && text.isEmpty && imageUrls.isEmpty) {
       return const SizedBox.shrink();
@@ -1947,24 +1912,6 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
         ),
       ),
     );
-  }
-
-  List<String> _fundUpdateImages(dynamic value) {
-    if (value == null) return const [];
-    if (value is List) {
-      return value
-          .map((item) => item.toString().trim())
-          .where((item) => item.isNotEmpty)
-          .take(10)
-          .toList();
-    }
-    return value
-        .toString()
-        .split(RegExp(r'[\r\n,]+'))
-        .map((item) => item.trim())
-        .where((item) => item.isNotEmpty)
-        .take(10)
-        .toList();
   }
 
   /// Formats a number with compact suffix

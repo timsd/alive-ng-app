@@ -57,10 +57,7 @@ class AppConstants {
   static const String testimoniesRoute = '/testimonies';
   static const String resourcesRoute = '/resources';
   
-  // Legal Routes
-  static const String privacyPolicyRoute = '/privacy-policy';
-  static const String termsConditionsRoute = '/terms-conditions';
-  
+
   // Support Routes
   static const String helpSupportRoute = '/help-support';
   static const String donationRoute = '/donation';

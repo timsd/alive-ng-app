@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/app_models.dart';
+import '../models/auth_models.dart';
 import '../services/appwrite_profile_service.dart';
 import '../services/ports/auth_gateway.dart';
 import 'auth_provider.dart';
@@ -124,7 +125,7 @@ class SignInController extends StateNotifier<AsyncValue<void>> {
     required String email,
     required String password,
     String? fullName,
-    Map<String, dynamic>? profileData,
+    SignupProfile? profile,
   }) async {
     state = const AsyncValue.loading();
 
@@ -133,7 +134,7 @@ class SignInController extends StateNotifier<AsyncValue<void>> {
         email: email,
         password: password,
         displayName: fullName ?? email.split('@').first,
-        profileData: profileData,
+        profile: profile,
       );
       if (!result.isSuccess) {
         throw Exception(result.error ?? 'Sign up failed');

@@ -758,7 +758,7 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
             context: context,
             builder: (context) => DonationDialog(
               material: material!,
-              donationType: DonationType.tractReprint,
+              donationType: DonationType.tractProduction,
             ),
           );
           if (donated != true) return;
@@ -822,7 +822,7 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
             context: context,
             builder: (context) => DonationDialog(
               material: material!,
-              donationType: DonationType.tractReprint,
+              donationType: DonationType.tractProduction,
             ),
           );
           if (donated != true) return;

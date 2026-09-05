@@ -95,14 +95,14 @@ class AppwriteAuthGateway implements AuthGateway {
     required String email,
     required String password,
     String? displayName,
-    Map<String, dynamic>? profileData,
+    SignupProfile? profile,
   }) async {
     try {
       final sdkUser = await _service.signUpWithEmail(
         email: email,
         password: password,
         name: displayName ?? email.split('@').first,
-        profileData: profileData,
+        profileData: profile?.toMap(),
       );
       _cachedUser = _mapSdkUserToAppUser(sdkUser);
       _authStateController.add(_cachedUser);

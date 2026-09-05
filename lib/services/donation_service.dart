@@ -8,6 +8,7 @@ import '../config/appwrite_backend_config.dart';
 import '../main.dart';
 import 'payment_service.dart';
 import '../models/donation_models.dart';
+import '../models/project_model.dart';
 import 'package:uuid/uuid.dart';
 import '../utils/logger.dart';
 import '../utils/app_exception.dart';
@@ -105,20 +106,20 @@ class DonationService {
     }
   }
 
-  Future<Map<String, dynamic>?> getProject(String projectId) async {
+    Future<Project?> getProject(String projectId) async {
     try {
       final row = await _tables.getRow(
         databaseId: _databaseId,
         tableId: _projectsCollectionId,
         rowId: projectId,
       );
-      return _rowData(row);
+      return Project.fromJson(_rowData(row));
     } catch (_) {
       return null;
     }
   }
 
-  Future<List<Map<String, dynamic>>> getDonationProjects() async {
+  Future<List<Project>> getDonationProjects() async {
     try {
       final snapshot = await _tables.listRows(
         databaseId: _databaseId,
@@ -128,7 +129,7 @@ class DonationService {
           Query.limit(100),
         ],
       );
-      return snapshot.rows.map(_rowData).toList();
+      return snapshot.rows.map((row) => Project.fromJson(_rowData(row))).toList();
     } catch (e) {
       _logger.error('Failed to fetch donation projects', e);
       return [];
@@ -595,7 +596,7 @@ class DonationService {
           downloads.where((d) => d.donationAmount != null).length;
 
       final tractsReprinted = completedDonations
-          .where((d) => d.type == DonationType.tractReprint)
+          .where((d) => d.type == DonationType.tractProduction)
           .length;
 
       final lastDonation = completedDonations.isNotEmpty
@@ -693,11 +694,11 @@ class DonationService {
     regionCode ??= 'US';
 
     switch (type) {
-      case DonationType.tractReprint:
+      case DonationType.tractProduction:
+        // Tract download / share donations use the configured
+        // regional tract production minimum.
         return DonationConstants.tractDonationByRegion[regionCode] ??
             DonationConstants.minimumTractDonation;
-      case DonationType.materialDownload:
-        return currency.toUpperCase() == 'NGN' ? 7500.0 : 5.0;
       case DonationType.generalSupport:
       case DonationType.ministrySupport:
       case DonationType.appMaintenance:

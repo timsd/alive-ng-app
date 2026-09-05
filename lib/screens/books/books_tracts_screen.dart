@@ -668,7 +668,7 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
             context: context,
             builder: (context) => DonationDialog(
               material: material!,
-              donationType: DonationType.tractReprint,
+              donationType: DonationType.tractProduction,
             ),
           );
           if (donated != true) return;
@@ -729,7 +729,7 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
             context: context,
             builder: (context) => DonationDialog(
               material: material!,
-              donationType: DonationType.tractReprint,
+              donationType: DonationType.tractProduction,
             ),
           );
           if (donated != true) return;

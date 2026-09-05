@@ -267,7 +267,7 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
                                 backgroundColor: theme.colorScheme.surface,
                                 foregroundColor: primary,
                               ),
-                              icon: const Icon(Icons.self_improvement),
+                              icon: const Icon(Icons.video_call_rounded),
                               label: Text(
                                 translate('join_prayer_meeting'),
                                 style: Theme.of(context)

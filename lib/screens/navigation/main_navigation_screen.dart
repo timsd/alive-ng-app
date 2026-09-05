@@ -146,8 +146,6 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
       const _MoreItem('Notifications', Icons.notifications_rounded, AppConstants.notificationSettingsRoute),
       const _MoreItem('About App', Icons.info_rounded, AppConstants.aboutAppRoute),
       const _MoreItem('About ALIVE', Icons.info_rounded, AppConstants.aboutAliveRoute),
-      const _MoreItem('Privacy Policy', Icons.privacy_tip_rounded, AppConstants.privacyPolicyRoute),
-      const _MoreItem('Terms & Conditions', Icons.gavel_rounded, AppConstants.termsConditionsRoute),
     ];
 
     if (canSeeAdmin) {
@@ -167,7 +165,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
         crossAxisCount: 2,
         mainAxisSpacing: 10,
         crossAxisSpacing: 10,
-        childAspectRatio: 1.38,
+        childAspectRatio: 1.5,
       ),
       itemCount: items.length,
       itemBuilder: (context, index) {
@@ -197,41 +195,26 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
                 border: Border.all(
                   color: colorScheme.outlineVariant.withValues(alpha: 0.6),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: colorScheme.shadow.withValues(alpha: 0.04),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                padding: const EdgeInsets.all(12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: colorScheme.primaryContainer.withValues(alpha: 0.6),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        item.icon,
-                        size: 18,
-                        color: colorScheme.primary,
-                      ),
+                    Icon(
+                      item.icon,
+                      size: 24,
+                      color: colorScheme.primary,
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     Text(
                       item.label,
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
                             fontWeight: FontWeight.w600,
                             color: colorScheme.onSurface,
                           ),
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
