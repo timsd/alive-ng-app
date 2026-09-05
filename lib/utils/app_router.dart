@@ -86,8 +86,6 @@ bool _isGuestAccessibleRoute(String path) {
     '/kids-stories',
     '/testimonies',
     '/resources',
-    '/privacy-policy',
-    '/terms-conditions',
     '/help-support',
     '/donation',
     '/gift-in-kind',
