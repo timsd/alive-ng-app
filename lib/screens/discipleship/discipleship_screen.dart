@@ -284,9 +284,8 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                         child: Column(
                           children: [
                             Text(
-                                _statistics['recentActivity']?['studySessions']
-                                        ?.toString() ??
-                                    '0',
+                                _statistics.recentStudySessions
+                                        .toString(),
                                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                                       fontWeight: FontWeight.bold,
                                       color: Theme.of(context).colorScheme.tertiary,
@@ -521,13 +520,12 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
   }
 
   List<Widget> _buildLevelDistribution() {
-    final levelDistribution =
-        _statistics['levelDistribution'] as Map<String, dynamic>? ?? {};
+    final levelDistribution = _statistics.levelDistribution;
 
     return DiscipleshipLevel.values.map((level) {
       final count = levelDistribution[level.name] ?? 0;
-      final percentage = _statistics['totalContacts'] > 0
-          ? (count / _statistics['totalContacts'] * 100).round()
+      final percentage = _statistics.totalContacts > 0
+          ? (count / _statistics.totalContacts * 100).round()
           : 0;
 
       return Padding(
@@ -541,8 +539,8 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
             Expanded(
               flex: 2,
               child: LinearProgressIndicator(
-                value: _statistics['totalContacts'] > 0
-                    ? count / _statistics['totalContacts']
+                value: _statistics.totalContacts > 0
+                    ? count / _statistics.totalContacts
                     : 0,
                 backgroundColor: Colors.grey[300],
                 valueColor: AlwaysStoppedAnimation(_getLevelColor(level)),

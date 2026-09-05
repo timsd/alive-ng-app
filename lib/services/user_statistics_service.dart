@@ -666,4 +666,171 @@ class UserStatisticsService {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-'
         '${date.day.toString().padLeft(2, '0')}';
   }
+
+  /// Record discipleship study session completion.
+  Future<void> recordDiscipleshipSession(String contactId, Duration duration) async {
+    if (!_isTrackingEnabled || _currentUserId == null) return;
+    try {
+      final now = DateTime.now().toUtc().toIso8601String();
+      await _updateUserStats({'discipleship_sessions': 1});
+      await AnalyticsService.instance.trackEvent('discipleship_session', parameters: {
+        'user_id': _currentUserId!,
+        'contact_id': contactId,
+        'duration_minutes': duration.inMinutes,
+        'session_date': now,
+      });
+      await _recordUserActivity('discipleship');
+    } catch (e) {
+      _logger.error('Error recording discipleship session', e);
+    }
+  }
+
+  /// Record testimony submission.
+  Future<void> recordTestimonySubmitted() async {
+    if (!_isTrackingEnabled || _currentUserId == null) return;
+    try {
+      final now = DateTime.now().toUtc().toIso8601String();
+      await _updateUserStats({'testimonies_submitted': 1});
+      await AnalyticsService.instance.trackEvent('testimony_submitted', parameters: {
+        'user_id': _currentUserId!,
+        'submitted_at': now,
+      });
+      await _recordUserActivity('testimony');
+    } catch (e) {
+      _logger.error('Error recording testimony submission', e);
+    }
+  }
+
+  /// Record tract download or share.
+  Future<void> recordTractInteraction(String tractId, {bool isShare = false}) async {
+    if (!_isTrackingEnabled || _currentUserId == null) return;
+    try {
+      final now = DateTime.now().toUtc().toIso8601String();
+      await _updateUserStats({'tracts_read': 1});
+      if (isShare) {
+        await _updateUserStats({'shares_count': 1});
+      }
+      await AnalyticsService.instance.trackEvent('tract_interaction', parameters: {
+        'user_id': _currentUserId!,
+        'tract_id': tractId,
+        'is_share': isShare,
+        'interaction_date': now,
+      });
+      await _recordUserActivity(isShare ? 'share' : 'reading');
+    } catch (e) {
+      _logger.error('Error recording tract interaction', e);
+    }
+  }
+
+  /// Record audio/podcast listening session.
+  Future<void> recordAudioListened(String audioId, Duration duration) async {
+    if (!_isTrackingEnabled || _currentUserId == null) return;
+    try {
+      final now = DateTime.now().toUtc().toIso8601String();
+      await _updateUserStats({'audio_listened': 1});
+      await AnalyticsService.instance.trackEvent('audio_listened', parameters: {
+        'user_id': _currentUserId!,
+        'audio_id': audioId,
+        'duration_minutes': duration.inMinutes,
+        'listened_at': now,
+      });
+      await _recordUserActivity('media');
+    } catch (e) {
+      _logger.error('Error recording audio listen', e);
+    }
+  }
+
+  /// Record donation made.
+  Future<void> recordDonationMade(double amount, String currency) async {
+    if (!_isTrackingEnabled || _currentUserId == null) return;
+    try {
+      final now = DateTime.now().toUtc().toIso8601String();
+      await _updateUserStats({'donations_count': 1});
+      await AnalyticsService.instance.trackEvent('donation_made', parameters: {
+        'user_id': _currentUserId!,
+        'amount': amount,
+        'currency': currency,
+        'donation_date': now,
+      });
+      await _recordUserActivity('giving');
+    } catch (e) {
+      _logger.error('Error recording donation', e);
+    }
+  }
+
+  /// Record content share.
+  Future<void> recordContentShared(String contentType, String contentId) async {
+    if (!_isTrackingEnabled || _currentUserId == null) return;
+    try {
+      final now = DateTime.now().toUtc().toIso8601String();
+      await _updateUserStats({'shares_count': 1});
+      await AnalyticsService.instance.trackEvent('content_shared', parameters: {
+        'user_id': _currentUserId!,
+        'content_type': contentType,
+        'content_id': contentId,
+        'shared_at': now,
+      });
+      await _recordUserActivity('share');
+    } catch (e) {
+      _logger.error('Error recording content share', e);
+    }
+  }
+
+  /// Record quiz completion.
+  Future<void> recordQuizCompleted(String quizId, int score, int totalQuestions) async {
+    if (!_isTrackingEnabled || _currentUserId == null) return;
+    try {
+      final now = DateTime.now().toUtc().toIso8601String();
+      await _updateUserStats({'quizzes_completed': 1});
+      await AnalyticsService.instance.trackEvent('quiz_completed', parameters: {
+        'user_id': _currentUserId!,
+        'quiz_id': quizId,
+        'score': score,
+        'total_questions': totalQuestions,
+        'completed_at': now,
+      });
+      await _recordUserActivity('game');
+    } catch (e) {
+      _logger.error('Error recording quiz completion', e);
+    }
+  }
+
+  /// Get current activity streak in days.
+  Future<int> getCurrentStreak(String userId) async {
+    try {
+      final activities = await _listDocuments(
+        AppwriteBackendConfig.userActivitiesCollectionId,
+        [
+          Query.equal('user_id', userId),
+          Query.orderDesc('created_at'),
+          Query.limit(365),
+        ],
+      );
+      if (activities.isEmpty) return 0;
+
+      final dates = activities.map((a) {
+        final dateStr = a['created_at'] as String?;
+        return dateStr != null ? DateTime.tryParse(dateStr)?.toLocal() : null;
+      }).whereType<DateTime>().toSet();
+
+      int streak = 0;
+      var checkDate = DateTime.now().toLocal();
+      for (int i = 0; i < 365; i++) {
+        final dateKey = _dateKey(checkDate);
+        final hasActivity = dates.any((d) => _dateKey(d) == dateKey);
+        if (hasActivity) {
+          streak++;
+          checkDate = checkDate.subtract(const Duration(days: 1));
+        } else if (i == 0) {
+          checkDate = checkDate.subtract(const Duration(days: 1));
+        } else {
+          break;
+        }
+      }
+      return streak;
+    } catch (e) {
+      _logger.error('Error calculating streak', e);
+      return 0;
+    }
+  }
 }

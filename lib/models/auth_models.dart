@@ -156,8 +156,11 @@ class SignupProfile {
   /// Skills the member can contribute.
   final String? skills;
 
-  /// The local ALIVE chapter the member belongs to.
-  final String? localChapter;
+  /// The local ALIVE chapter the member previously belonged to.
+  final String? previouslocalChapter;
+
+  /// The local ALIVE chapter the member wants to join.
+  final String? tojoinChapter;
 
   /// Commitment type: `financial`, `active_availability`, or `both`.
   final String commitmentType;
@@ -176,7 +179,8 @@ class SignupProfile {
     this.localChurch,
     this.occupation,
     this.skills,
-    this.localChapter,
+    this.previouslocalChapter,
+    this.tojoinChapter,
     this.commitmentType = 'active_availability',
     this.financialCommitment,
     this.availabilityCommitment,
@@ -196,8 +200,10 @@ class SignupProfile {
         'occupation': occupation!.trim(),
       if (skills != null && skills!.trim().isNotEmpty)
         'skills': skills!.trim(),
-      if (localChapter != null && localChapter!.trim().isNotEmpty)
-        'local_chapter': localChapter!.trim(),
+      if (previouslocalChapter != null && previouslocalChapter!.trim().isNotEmpty)
+        'previous_local_chapter': previouslocalChapter!.trim(),
+      if (tojoinChapter != null && tojoinChapter!.trim().isNotEmpty)
+        'to_join_chapter': tojoinChapter!.trim(),
       'commitment_type': commitmentType,
       if ((commitmentType == 'financial' || commitmentType == 'both') &&
           financialCommitment != null)

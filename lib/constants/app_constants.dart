@@ -124,6 +124,7 @@ class AppConstants {
   static const String bibleVersionKey = 'bible_version';
   static const String onboardingKey = 'onboarding_completed';
   static const String notificationTokenKey = 'notification_token';
+  static const String showAchievementBadgeKey = 'show_achievement_badge';
 }
 
 

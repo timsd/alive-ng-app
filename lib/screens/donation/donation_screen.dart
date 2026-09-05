@@ -323,7 +323,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                                       .withValues(alpha: 0.1)),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.05),
+                                  color: theme.shadowColor.withValues(alpha: 0.05),
                                   blurRadius: 10,
                                   offset: const Offset(0, 4),
                                 ),
@@ -338,8 +338,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                                   children: [
                                     Text(
                                       'Project Goal',
-                                      style: TextStyle(
-                                        fontSize: 12,
+                                      style: theme.textTheme.labelSmall?.copyWith(
                                         fontWeight: FontWeight.w800,
                                         letterSpacing: 0.5,
                                         color: theme.colorScheme.primary,
@@ -347,8 +346,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                                     ),
                                     Text(
                                       '${((raised / goal) * 100).toInt()}%',
-                                      style: TextStyle(
-                                        fontSize: 14,
+                                      style: theme.textTheme.bodyMedium?.copyWith(
                                         fontWeight: FontWeight.w900,
                                         color: theme.colorScheme.secondary,
                                       ),
@@ -376,14 +374,12 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                                   children: [
                                     Text(
                                       'Raised: ${_selectedCurrency == 'USD' ? '\$' : '₦'}${_formatCompact(displayRaised)}',
-                                      style: const TextStyle(
-                                          fontSize: 12,
+                                      style: theme.textTheme.labelSmall?.copyWith(
                                           fontWeight: FontWeight.bold),
                                     ),
                                     Text(
                                       'Goal: ${_selectedCurrency == 'USD' ? '\$' : '₦'}${_formatCompact(displayGoal)}',
-                                      style: TextStyle(
-                                          fontSize: 12,
+                                      style: theme.textTheme.labelSmall?.copyWith(
                                           color: theme.colorScheme.onSurface
                                               .withValues(alpha: 0.6)),
                                     ),
@@ -1181,16 +1177,14 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                         ? 'Your donation for $_selectedProjectTitle was successful.'
                         : 'Your donation was successful.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: dialogTheme.textTheme.bodyLarge?.copyWith(
                       color: dialogTheme.colorScheme.onSurface,
-                      fontSize: 16,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Reference: ${paymentResult['transaction_id'] ?? donation.id}',
-                    style: TextStyle(
-                      fontSize: 12,
+                    style: dialogTheme.textTheme.labelSmall?.copyWith(
                       color: dialogTheme.colorScheme.onSurface
                           .withValues(alpha: 0.6),
                     ),
@@ -1199,8 +1193,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                   const SizedBox(height: 8),
                   Text(
                     'A receipt will be emailed to you for your records.',
-                    style: TextStyle(
-                      fontSize: 12,
+                    style: dialogTheme.textTheme.labelSmall?.copyWith(
                       color: dialogTheme.colorScheme.onSurface
                           .withValues(alpha: 0.5),
                       fontStyle: FontStyle.italic,

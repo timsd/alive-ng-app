@@ -34,7 +34,8 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
   final _localChurchController = TextEditingController();
   final _occupationController = TextEditingController();
   final _skillsController = TextEditingController();
-  final _localChapterController = TextEditingController();
+  final _previouslocalChapterController = TextEditingController();
+  final _tojoinChapterController = TextEditingController();
   final _financialCommitmentController = TextEditingController();
   final _availabilityController = TextEditingController();
 
@@ -66,7 +67,8 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
     _localChurchController.dispose();
     _occupationController.dispose();
     _skillsController.dispose();
-    _localChapterController.dispose();
+    _previouslocalChapterController.dispose();
+    _tojoinChapterController.dispose();
     _financialCommitmentController.dispose();
     _availabilityController.dispose();
     super.dispose();
@@ -769,11 +771,27 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
           ),
         ),
         TextFormField(
-          controller: _localChapterController,
+          controller: _previouslocalChapterController,
           decoration: _signupDecoration(
             context,
-            'Local Chapter',
+            'Previous Local Chapter',
             Icons.groups_outlined,
+          ),
+        ),
+        SizedBox(
+          height: ResponsiveUtils.getResponsiveValue(
+            context: context,
+            mobile: 12.0,
+            tablet: 14.0,
+            desktop: 16.0,
+          ),
+        ),
+        TextFormField(
+          controller: _tojoinChapterController,
+          decoration: _signupDecoration(
+            context,
+            'To Join Chapter',
+            Icons.group_add_outlined,
           ),
         ),
         SizedBox(
@@ -1133,8 +1151,11 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
           skills: _skillsController.text.trim().isNotEmpty
               ? _skillsController.text.trim()
               : null,
-          localChapter: _localChapterController.text.trim().isNotEmpty
-              ? _localChapterController.text.trim()
+          previouslocalChapter: _previouslocalChapterController.text.trim().isNotEmpty
+              ? _previouslocalChapterController.text.trim()
+              : null,
+          tojoinChapter: _tojoinChapterController.text.trim().isNotEmpty
+              ? _tojoinChapterController.text.trim()
               : null,
           commitmentType: _commitmentType,
           financialCommitment:

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/notification_settings.dart';
+import '../../providers/achievement_provider.dart';
 import '../../services/notification_settings_service.dart';
 import '../../services/reminder_service.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -337,6 +338,46 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
                         ),
                       ),
                       
+                      const SizedBox(height: 16),
+                      
+                      // Display Settings Section
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Display Settings',
+                                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Consumer(
+                                builder: (context, ref, _) {
+                                  final showBadge = ref.watch(showAchievementBadgeProvider);
+                                  return SwitchListTile(
+                                    secondary: const Icon(Icons.emoji_events),
+                                    title: const Text('Show Achievement Badge'),
+                                    subtitle: const Text('Display achievement progress on Home screen'),
+                                    value: showBadge,
+                                    onChanged: (value) async {
+                                      await ref.read(showAchievementBadgeProvider.notifier).setShowBadge(value);
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text(value ? 'Achievement badge enabled' : 'Achievement badge disabled')),
+                                        );
+                                      }
+                                    },
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
                       const SizedBox(height: 16),
                       
                       // Test Notification Button (Hidden for standard users; debug only)

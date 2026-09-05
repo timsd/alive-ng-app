@@ -249,7 +249,6 @@ class QuickActionCard extends StatelessWidget {
                     action.subtitle,
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          fontSize: 10,
                         ),
                     textAlign: TextAlign.center,
                     maxLines: 1,
