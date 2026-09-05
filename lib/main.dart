@@ -17,8 +17,6 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'services/in_app_update_service.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-// DEV ONLY - delete this import + the file below when done testing admin features:
-import 'debug/dev_admin_override.dart';
 import 'providers/language_provider.dart';
 import 'config/appwrite_backend_config.dart';
 import 'services/analytics_service.dart';
@@ -168,8 +166,6 @@ class MainNavigationScreen extends ConsumerWidget {
       body: Stack(
         children: [
           child,
-          // DEV ONLY overlay - invisible in release builds; delete dev_admin_override.dart + this import to clean up
-          if (kDebugMode) const DevAdminOverlayButton(),
         ],
       ),
       drawer: _buildNavigationDrawer(context, isAuthenticated),

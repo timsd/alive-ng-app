@@ -19,3 +19,9 @@ String? getPostAuthRedirect() {
 }
 
 void clearPostAuthRedirect() {}
+
+/// Clears Appwrite's `cookieFallback` key from localStorage.
+/// No-op on non-web platforms.
+void clearAppwriteCookieFallback() {
+  // no-op on non-web
+}

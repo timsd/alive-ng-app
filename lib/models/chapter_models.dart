@@ -589,7 +589,7 @@ class ChapterTask {
   }
 }
 
-class ChapterConstants {
+class ChapterTypeConstants {
   static const Map<WorkersType, String> typeDescriptions = {
     WorkersType.main: 'Main Chapter - General organizational activities',
     WorkersType.campus: 'Campus Chapter - University and college outreach',

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';
+import '../utils/web_launch_params.dart';
 import 'appwrite_profile_service.dart';
 
 /// Provider to access the Appwrite authentication service instance.
@@ -46,6 +47,17 @@ class AppwriteAuthService {
         await verifyAndSyncAdminRights(_currentUser!.$id);
       }
       return _currentUser;
+    } on AppwriteException catch (e) {
+      // A 401 / session error means a stale session is poisoning requests.
+      // Clean it up so the next auth attempt starts fresh.
+      if (e.code == 401 ||
+          e.type == 'user_unauthorized' ||
+          (e.type?.contains('session') ?? false)) {
+        await _clearStaleSessions();
+      }
+      debugPrint('No active Appwrite session found: $e');
+      _currentUser = null;
+      return null;
     } catch (e) {
       debugPrint('No active Appwrite session found: $e');
       _currentUser = null;
@@ -55,6 +67,21 @@ class AppwriteAuthService {
 
   models.User? get currentUser => _currentUser;
   bool get isAuthenticated => _currentUser != null;
+
+  /// Kills ALL active sessions (not just the current one) and clears the web
+  /// fallback cookie so a stale browser session can never block a fresh login
+  /// with `appwrite_user_session_already_exists`.
+  Future<void> _clearStaleSessions() async {
+    try {
+      await _account.deleteSessions();
+    } catch (e) {
+      // No active session (e.g. user_unauthorized) is fine — log for diagnosis.
+      debugPrint('Pre-auth session cleanup (non-fatal): $e');
+    }
+    if (kIsWeb) {
+      clearAppwriteCookieFallback();
+    }
+  }
 
   Future<void> verifyAndSyncAdminRights(String userId) async {
     try {
@@ -119,11 +146,10 @@ class AppwriteAuthService {
     Map<String, dynamic>? profileData,
   }) async {
     try {
-      try {
-        await _account.deleteSession(sessionId: 'current');
-      } catch (_) {
-        // Safe ignore if no existing session
-      }
+      // Session-proof: remove every leftover session + the web fallback cookie
+      // before creating a new one, so a stale session can never trigger
+      // `appwrite_user_session_already_exists`.
+      await _clearStaleSessions();
       final session = await _account.createEmailPasswordSession(
         email: email,
         password: password,
@@ -150,6 +176,9 @@ class AppwriteAuthService {
     try {
       await _account.deleteSession(sessionId: 'current');
       _currentUser = null;
+      if (kIsWeb) {
+        clearAppwriteCookieFallback();
+      }
     } catch (e) {
       debugPrint('Appwrite Logout Error: $e');
       rethrow;

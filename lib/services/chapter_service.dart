@@ -728,24 +728,24 @@ class ChapterService {
   }
 
   String getTypeDescription(WorkersType type) =>
-      ChapterConstants.typeDescriptions[type] ?? 'Chapter';
+      ChapterTypeConstants.typeDescriptions[type] ?? 'Chapter';
 
   String getRoleDescription(MemberRole role) =>
-      ChapterConstants.roleDescriptions[role] ?? 'Member';
+      ChapterTypeConstants.roleDescriptions[role] ?? 'Member';
 
   String getActivityDescription(ActivityType type) =>
-      ChapterConstants.activityDescriptions[type] ?? 'Activity';
+      ChapterTypeConstants.activityDescriptions[type] ?? 'Activity';
 
-  List<String> getDefaultTags() => ChapterConstants.defaultTags;
+  List<String> getDefaultTags() => ChapterTypeConstants.defaultTags;
 
   String getReportTemplate(String templateType) =>
-      ChapterConstants.reportTemplates[templateType] ?? 'Report Template';
+      ChapterTypeConstants.reportTemplates[templateType] ?? 'Report Template';
 
   String getBibleVerse(int index) {
-    if (index >= 0 && index < ChapterConstants.bibleVerses.length) {
-      return ChapterConstants.bibleVerses[index];
+    if (index >= 0 && index < ChapterTypeConstants.bibleVerses.length) {
+      return ChapterTypeConstants.bibleVerses[index];
     }
-    return ChapterConstants.bibleVerses[0];
+    return ChapterTypeConstants.bibleVerses[0];
   }
 
   Future<ChapterReport> generateMonthlyReport(
@@ -985,7 +985,7 @@ class ChapterService {
   Map<String, dynamic> _rolePermissions(MemberRole role) {
     return {
       'permissions': List<String>.from(
-          ChapterConstants.rolePermissions[role.name] ?? const []),
+          ChapterTypeConstants.rolePermissions[role.name] ?? const []),
     };
   }
 
