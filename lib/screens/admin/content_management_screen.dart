@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:appwrite/appwrite.dart';
+import '../../services/appwrite_facade.dart';
 import 'package:intl/intl.dart';
 import '../../config/appwrite_backend_config.dart';
 import '../../main.dart';
