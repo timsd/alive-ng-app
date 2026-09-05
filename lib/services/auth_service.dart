@@ -57,13 +57,73 @@ class AuthService {
       _authStateController.add(user);
 
       if (user == null) {
-        return AuthResult.error('Sign in failed');
+        return AuthResult.error('Unable to sign in. Please try again.');
       }
 
       return AuthResult.success(user, await _profileForUser(user));
     } catch (e) {
-      return AuthResult.error('Sign in failed: $e');
+      final errorMsg = _getFriendlyErrorMessage(e);
+      return AuthResult.error(errorMsg);
     }
+  }
+
+  /// Converts technical error messages into user-friendly messages
+  String _getFriendlyErrorMessage(dynamic error) {
+    final errorStr = error.toString().toLowerCase();
+
+    // Invalid credentials
+    if (errorStr.contains('invalid credentials') ||
+        errorStr.contains('invalid email or password') ||
+        errorStr.contains('user_unauthorized')) {
+      return 'Incorrect email or password. Please check and try again.';
+    }
+
+    // User not found
+    if (errorStr.contains('user not found') ||
+        errorStr.contains('user_not_found')) {
+      return 'No account found with this email. Please sign up first.';
+    }
+
+    // Email already exists
+    if (errorStr.contains('already exists') ||
+        errorStr.contains('duplicate') ||
+        errorStr.contains('user_already_exists')) {
+      return 'An account with this email already exists. Please sign in instead.';
+    }
+
+    // Password too weak
+    if (errorStr.contains('password') &&
+        (errorStr.contains('weak') || errorStr.contains('short') || errorStr.contains('minimum'))) {
+      return 'Your password is too weak. Please use at least 8 characters with letters and numbers.';
+    }
+
+    // Invalid email format
+    if (errorStr.contains('invalid email') || errorStr.contains('email format')) {
+      return 'Please enter a valid email address.';
+    }
+
+    // Network/connection issues
+    if (errorStr.contains('network') ||
+        errorStr.contains('connection') ||
+        errorStr.contains('timeout') ||
+        errorStr.contains('unreachable')) {
+      return 'Unable to connect. Please check your internet connection and try again.';
+    }
+
+    // Too many requests
+    if (errorStr.contains('too many requests') ||
+        errorStr.contains('rate limit') ||
+        errorStr.contains('429')) {
+      return 'Too many attempts. Please wait a moment and try again.';
+    }
+
+    // Session already exists
+    if (errorStr.contains('session') && errorStr.contains('already')) {
+      return 'You are already signed in on another device. Please try again.';
+    }
+
+    // Generic fallback
+    return 'Something went wrong. Please try again.';
   }
 
   Future<AuthResult> signUpWithEmailAndPassword({
@@ -97,12 +157,13 @@ class AuthService {
       _authStateController.add(user);
 
       if (user == null) {
-        return AuthResult.error('Sign up failed');
+        return AuthResult.error('Unable to create your account. Please try again.');
       }
 
       return AuthResult.success(user, await _profileForUser(user));
     } catch (e) {
-      return AuthResult.error('Sign up failed: $e');
+      final errorMsg = _getFriendlyErrorMessage(e);
+      return AuthResult.error(errorMsg);
     }
   }
 
@@ -114,12 +175,13 @@ class AuthService {
       _authStateController.add(user);
 
       if (user == null) {
-        return AuthResult.error('Google sign-in did not return a user.');
+        return AuthResult.error('Google sign-in was unsuccessful. Please try again.');
       }
 
       return AuthResult.success(user, await _profileForUser(user));
     } catch (e) {
-      return AuthResult.error('Google sign-in failed: $e');
+      final errorMsg = _getFriendlyErrorMessage(e);
+      return AuthResult.error(errorMsg);
     }
   }
 
@@ -128,7 +190,7 @@ class AuthService {
       await _appwriteAuth.logout();
       _authStateController.add(null);
     } catch (e) {
-      throw AuthException('Sign out failed', originalError: e);
+      throw AuthException('Unable to sign out. Please try again.', originalError: e);
     }
   }
 
@@ -137,7 +199,7 @@ class AuthService {
       await _appwriteAuth.sendPasswordRecovery(email);
       return true;
     } catch (e) {
-      throw AuthException('Password reset failed', originalError: e);
+      throw AuthException('Unable to send password reset. Please check your email and try again.', originalError: e);
     }
   }
 
@@ -154,7 +216,7 @@ class AuthService {
       );
       return true;
     } catch (e) {
-      throw AuthException('Password recovery failed', originalError: e);
+      throw AuthException('Unable to reset password. The link may have expired. Please try again.', originalError: e);
     }
   }
 

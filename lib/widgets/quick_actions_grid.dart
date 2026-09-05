@@ -196,7 +196,7 @@ class QuickActionCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: Container(
-          padding: const EdgeInsets.all(8), // Further reduced padding
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             color: Theme.of(context).colorScheme.surface,
@@ -211,9 +211,9 @@ class QuickActionCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Icon container with fixed size
+              // Icon container with responsive size
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: action.color.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
@@ -221,36 +221,39 @@ class QuickActionCard extends StatelessWidget {
                 child: Icon(
                   action.icon,
                   color: action.color,
-                  size: 24,
+                  size: 20,
                 ),
               ),
-              const SizedBox(height: 10),
-              // Title with flexible constraints
+              const SizedBox(height: 6),
+              // Title - auto-scaling with FittedBox
               Flexible(
-                child: LayoutFixUtils.responsiveText(
-                  action.title,
-                  context: context,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    action.title,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                  ),
                 ),
               ),
               const SizedBox(height: 2),
-              // Subtitle with flexible constraints
+              // Subtitle - auto-scaling with FittedBox
               Flexible(
-                child: LayoutFixUtils.responsiveText(
-                  action.subtitle,
-                  context: context,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    action.subtitle,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 10,
+                        ),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                  ),
                 ),
               ),
             ],

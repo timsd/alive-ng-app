@@ -392,29 +392,6 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                     _buildHeader(context, theme, isDark),
                     SizedBox(
                         height:
-                            ResponsiveUtils.getResponsiveSpacing(context, 16)),
-                    // View Projects button — lets users donate to a specific project
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: _showProjectsPicker,
-                        icon: const Icon(Icons.folder_special),
-                        label: const Text('View Active Projects & Donate'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: theme.colorScheme.secondary,
-                          side: BorderSide(
-                              color: theme.colorScheme.secondary, width: 1.5),
-                          padding: EdgeInsets.symmetric(
-                            vertical: ResponsiveUtils.getResponsiveSpacing(
-                                context, 14),
-                          ),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                        height:
                             ResponsiveUtils.getResponsiveSpacing(context, 32)),
                     _buildDonationTypeSelector(context, theme),
                     SizedBox(
@@ -521,32 +498,30 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Choose Your Giving Method',
-          style: theme.textTheme.headlineSmall?.copyWith(
+          'Giving Method',
+          style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.bold,
           ),
         ),
-        SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
+        SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
         Row(
           children: [
             Expanded(
               child: _buildTypeCard(
                 context,
                 theme,
-                'Give Monthly',
-                'Sustain our mission',
+                'Monthly',
                 Icons.refresh,
                 _isMonthlySelected,
                 () => setState(() => _isMonthlySelected = true),
               ),
             ),
-            SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 12)),
+            SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 8)),
             Expanded(
               child: _buildTypeCard(
                 context,
                 theme,
-                'One-Time Donation',
-                'Make an impact today',
+                'One-Time',
                 Icons.favorite,
                 !_isMonthlySelected,
                 () => setState(() => _isMonthlySelected = false),
@@ -559,13 +534,12 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
   }
 
   Widget _buildTypeCard(BuildContext context, ThemeData theme, String title,
-      String subtitle, IconData icon, bool isSelected, VoidCallback onTap) {
+      IconData icon, bool isSelected, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
-        constraints: const BoxConstraints(minHeight: 176),
-        padding: ResponsiveUtils.getResponsivePadding(context),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
         decoration: BoxDecoration(
           color: isSelected ? theme.colorScheme.primary : theme.cardColor,
           borderRadius: BorderRadius.circular(12),
@@ -586,7 +560,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
               : null,
         ),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               icon,
@@ -595,44 +569,31 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                   : theme.iconTheme.color,
               size: ResponsiveUtils.getResponsiveValue(
                 context: context,
-                mobile: 32,
-                tablet: 36,
-                desktop: 40,
+                mobile: 20,
+                tablet: 24,
+                desktop: 28,
               ),
             ),
-            SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontSize: ResponsiveUtils.getResponsiveValue(
-                      context: context,
-                      mobile: 15,
-                      tablet: 16,
-                      desktop: 18,
-                    ),
-                    fontWeight: FontWeight.w700,
-                    color: isSelected
-                        ? theme.colorScheme.onPrimary
-                        : theme.colorScheme.onSurface,
+            const SizedBox(height: 6),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: ResponsiveUtils.getResponsiveValue(
+                    context: context,
+                    mobile: 11,
+                    tablet: 12,
+                    desktop: 13,
                   ),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 4)),
-            Text(
-              subtitle,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontSize: ResponsiveUtils.getResponsiveValue(
-                      context: context,
-                      mobile: 12,
-                      tablet: 13,
-                      desktop: 14,
-                    ),
-                    color: isSelected
-                        ? theme.colorScheme.onPrimary.withValues(alpha: 0.84)
-                        : theme.colorScheme.onSurfaceVariant,
-                    height: 1.35,
-                  ),
-              textAlign: TextAlign.center,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected
+                      ? theme.colorScheme.onPrimary
+                      : theme.colorScheme.onSurface,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+              ),
             ),
           ],
         ),
@@ -1279,92 +1240,94 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
         children: [
           Text(
             'Other Ways to Give',
-            style: theme.textTheme.headlineSmall?.copyWith(
+            style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
               color: theme.colorScheme.onSurface,
             ),
           ),
-          SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-          _buildOtherGivingOption(
-            context,
-            theme,
-            'Non-Monetary Gifts',
-            'Share your skills and time with the ministry',
-            Icons.volunteer_activism,
-            onTap: () => context.go(AppConstants.nonMonetaryGiftRoute),
-          ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
-          _buildOtherGivingOption(
-            context,
-            theme,
-            'Gift in Kind',
-            'Do you observe the ministry need an item that the Lord has lay in your heart to give?',
-            Icons.card_giftcard,
-            onTap: () => context.go(AppConstants.giftInKindRoute),
+          // 3-button horizontal row
+          Row(
+            children: [
+              Expanded(
+                child: _buildGivingOptionButton(
+                  context,
+                  theme,
+                  'Non-Monetary',
+                  Icons.volunteer_activism,
+                  onTap: () => context.go(AppConstants.nonMonetaryGiftRoute),
+                ),
+              ),
+              SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 8)),
+              Expanded(
+                child: _buildGivingOptionButton(
+                  context,
+                  theme,
+                  'Gift in Kind',
+                  Icons.card_giftcard,
+                  onTap: () => context.go(AppConstants.giftInKindRoute),
+                ),
+              ),
+              SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 8)),
+              Expanded(
+                child: _buildGivingOptionButton(
+                  context,
+                  theme,
+                  'Active Projects',
+                  Icons.folder_special,
+                  onTap: _showProjectsPicker,
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildOtherGivingOption(BuildContext context, ThemeData theme,
-      String title, String description, IconData icon,
+  Widget _buildGivingOptionButton(BuildContext context, ThemeData theme,
+      String title, IconData icon,
       {VoidCallback? onTap}) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: ResponsiveUtils.getResponsivePadding(context),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
         decoration: BoxDecoration(
           color: theme.cardColor.withValues(alpha: 0.7),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: theme.dividerColor.withValues(alpha: 0.2)),
         ),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               icon,
               color: theme.colorScheme.primary,
               size: ResponsiveUtils.getResponsiveValue(
                 context: context,
-                mobile: 24,
-                tablet: 28,
-                desktop: 32,
+                mobile: 20,
+                tablet: 24,
+                desktop: 28,
               ),
             ),
-            SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: ResponsiveUtils.getResponsiveValue(
-                        context: context,
-                        mobile: 16,
-                        tablet: 18,
-                        desktop: 20,
-                      ),
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.onSurface,
-                    ),
+            const SizedBox(height: 6),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: ResponsiveUtils.getResponsiveValue(
+                    context: context,
+                    mobile: 11,
+                    tablet: 12,
+                    desktop: 13,
                   ),
-                  SizedBox(
-                      height: ResponsiveUtils.getResponsiveSpacing(context, 4)),
-                  Text(
-                    description,
-                    style: TextStyle(
-                      fontSize: ResponsiveUtils.getResponsiveValue(
-                        context: context,
-                        mobile: 14,
-                        tablet: 16,
-                        desktop: 18,
-                      ),
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                    ),
-                  ),
-                ],
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
               ),
             ),
           ],

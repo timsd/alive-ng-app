@@ -13,22 +13,27 @@ class MinimalHome extends StatefulWidget {
 }
 
 class _MinimalHomeState extends State<MinimalHome> {
+  bool _shouldHide = false;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      debugPrint('MinimalHome first frame');
+    // Auto-hide the loading overlay after a short delay
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (mounted) {
+        setState(() {
+          _shouldHide = true;
+        });
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    scheduleMicrotask(() {
-      debugPrint('MinimalHome build microtask');
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      debugPrint('MinimalHome first frame');
-    });
+    if (_shouldHide) {
+      return const SizedBox.shrink();
+    }
+
     final bg = Theme.of(context).brightness == Brightness.dark
         ? const LinearGradient(
             colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
@@ -40,23 +45,23 @@ class _MinimalHomeState extends State<MinimalHome> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           );
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(gradient: bg),
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 300),
+      opacity: _shouldHide ? 0.0 : 1.0,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(gradient: bg),
+            ),
           ),
-        ),
-        Center(
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0.85, end: 1.0),
-            duration: const Duration(milliseconds: 700),
-            curve: Curves.easeOutBack,
-            builder: (context, scale, child) {
-              return AnimatedOpacity(
-                duration: const Duration(milliseconds: 250),
-                opacity: 1.0,
-                child: Transform.scale(
+          Center(
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.85, end: 1.0),
+              duration: const Duration(milliseconds: 700),
+              curve: Curves.easeOutBack,
+              builder: (context, scale, child) {
+                return Transform.scale(
                   scale: scale,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -72,7 +77,7 @@ class _MinimalHomeState extends State<MinimalHome> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Preparing your web experience…',
+                        'Loading...',
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: Theme.of(context)
@@ -83,19 +88,19 @@ class _MinimalHomeState extends State<MinimalHome> {
                       ),
                       const SizedBox(height: 18),
                       CustomPaint(
-                        size: const Size(180, 180),
+                        size: const Size(120, 120),
                         painter: _GreenCirclePainter(),
                       ),
                       const SizedBox(height: 22),
                       const _LoadingDots(),
                     ],
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

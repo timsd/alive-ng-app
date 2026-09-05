@@ -617,7 +617,9 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
                     )
                   : Icon(_isSignUp ? Icons.person_add : Icons.login),
               label: Text(
-                _isSignUp ? translate('sign_up') : translate('sign_in'),
+                _isLoading || signInState.isLoading
+                    ? 'Please wait...'
+                    : (_isSignUp ? translate('sign_up') : translate('sign_in')),
                 style: TextStyle(
                   fontSize: ResponsiveUtils.getResponsiveValue(
                     context: context,
@@ -925,24 +927,34 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
-            onPressed: signInState.isLoading ? null : _handleGoogleSignIn,
-            icon: SvgPicture.asset(
-              'assets/images/google_logo.svg',
-              width: ResponsiveUtils.getResponsiveValue(
-                context: context,
-                mobile: 20.0,
-                tablet: 22.0,
-                desktop: 24.0,
-              ),
-              height: ResponsiveUtils.getResponsiveValue(
-                context: context,
-                mobile: 20.0,
-                tablet: 22.0,
-                desktop: 24.0,
-              ),
-            ),
+            onPressed: _isGoogleSigningIn || signInState.isLoading ? null : _handleGoogleSignIn,
+            icon: _isGoogleSigningIn
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                    ),
+                  )
+                : SvgPicture.asset(
+                    'assets/images/google_logo.svg',
+                    width: ResponsiveUtils.getResponsiveValue(
+                      context: context,
+                      mobile: 20.0,
+                      tablet: 22.0,
+                      desktop: 24.0,
+                    ),
+                    height: ResponsiveUtils.getResponsiveValue(
+                      context: context,
+                      mobile: 20.0,
+                      tablet: 22.0,
+                      desktop: 24.0,
+                    ),
+                  ),
             label: Text(
-              TextFormatter.formatAction(translate('continue_with_google')),
+              _isGoogleSigningIn
+                  ? 'Signing in...'
+                  : TextFormatter.formatAction(translate('continue_with_google')),
               style: TextStyle(
                 fontSize: ResponsiveUtils.getResponsiveValue(
                   context: context,

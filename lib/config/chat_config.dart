@@ -6,7 +6,7 @@ class ChatConfig {
     'typing_events': true,
     'read_events': true,
     'connect_user_details_timeout': 5000,
-    'message_retention': '30d', // 30 days message retention
+    // Messages persist indefinitely unless explicitly deleted by user/admin
     'max_message_length': 5000,
     'file_upload_config': {
       'allowed_file_extensions': [

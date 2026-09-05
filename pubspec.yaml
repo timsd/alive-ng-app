@@ -100,7 +100,7 @@ dependencies:
 
   # Email & Web Services
   mailer: ^6.6.0
-  webview_flutter: ^4.13.1
+  webview_flutter: ^4.14.1
 
   # Data models
   equatable: ^2.0.8
