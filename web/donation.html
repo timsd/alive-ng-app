@@ -420,8 +420,8 @@
           </div>
           <div class="field">
             <label for="donation-amount">Amount</label>
-            <input id="donation-amount" name="amount" type="number" min="100" step="100" inputmode="numeric"
-              placeholder="Minimum 100" required>
+            <input id="donation-amount" name="amount" type="number" min="100" step="any" inputmode="decimal"
+              placeholder="e.g. 5,000 (Min. ₦100)" required>
           </div>
           <div class="actions">
             <button id="donate-now" class="primary-button" type="submit">Continue securely with Paystack</button>
@@ -488,7 +488,8 @@
         btnUSD.style.borderColor = isNGN ? '#e2e8f0' : '#d4af37';
         var min = minAmounts[cur] || 1;
         amountInputEl.min = min;
-        amountInputEl.placeholder = 'Minimum ' + min;
+        amountInputEl.step = 'any';
+        amountInputEl.placeholder = isNGN ? 'e.g. 5,000 (Min. ₦100)' : 'e.g. 25 (Min. $1)';
       }
 
       if (btnNGN) btnNGN.addEventListener('click', function () { setCurrency('NGN'); });

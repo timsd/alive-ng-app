@@ -653,38 +653,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "11.3.0"
-  geocoding:
-    dependency: "direct main"
-    description:
-      name: geocoding
-      sha256: "790eea732b22a08dd36fc3761bcd29040461ac20ece4d165264a6c0b5338f115"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.2.2"
-  geocoding_android:
-    dependency: transitive
-    description:
-      name: geocoding_android
-      sha256: "1b13eca79b11c497c434678fed109c2be020b158cec7512c848c102bc7232603"
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.3.1"
-  geocoding_ios:
-    dependency: transitive
-    description:
-      name: geocoding_ios
-      sha256: "8a39bfb650af55209c42e564036a550b32d029e0733af01dc66c5afea50388d3"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.3.0"
-  geocoding_platform_interface:
-    dependency: transitive
-    description:
-      name: geocoding_platform_interface
-      sha256: "8c2c8226e5c276594c2e18bfe88b19110ed770aeb7c1ab50ede570be8b92229b"
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.2.0"
   geolocator:
     dependency: "direct main"
     description:
@@ -797,14 +765,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.3.0"
-  image_gallery_saver_plus:
-    dependency: "direct main"
-    description:
-      name: image_gallery_saver_plus
-      sha256: "199b9e24f8d85e98f11e3d35571ab68ae50626ad40e2bb85c84383f69a6950ad"
-      url: "https://pub.dev"
-    source: hosted
-    version: "4.0.1"
   image_picker:
     dependency: "direct main"
     description:
@@ -1045,14 +1005,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.3.0"
-  mailer:
-    dependency: "direct main"
-    description:
-      name: mailer
-      sha256: c3b934c0e800ddc946167c0123a900eba5acd009abb73648d0191a742542f2b4
-      url: "https://pub.dev"
-    source: hosted
-    version: "6.6.0"
   matcher:
     dependency: transitive
     description:
@@ -1642,14 +1594,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.5.8"
-  sqflite_common_ffi:
-    dependency: "direct main"
-    description:
-      name: sqflite_common_ffi
-      sha256: "8d7b8749a516cbf6e9057f9b480b716ad14fc4f3d3873ca6938919cc626d9025"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.3.7+1"
   sqflite_darwin:
     dependency: transitive
     description:
@@ -1666,14 +1610,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.4.0"
-  sqlite3:
-    dependency: "direct main"
-    description:
-      name: sqlite3
-      sha256: "3145bd74dcdb4fd6f5c6dda4d4e4490a8087d7f286a14dee5d37087290f0f8a2"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.9.4"
   stack_trace:
     dependency: transitive
     description:
