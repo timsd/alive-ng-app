@@ -232,7 +232,7 @@
       color: var(--foreground);
       text-decoration: none;
       font-weight: 700;
-      cursor: default;
+      cursor: pointer;
       white-space: nowrap;
       font-size: 13px;
     }
@@ -661,7 +661,7 @@
     <div class="available-label">Available on the following</div>
     <div class="store-buttons">
       <a class="btn-cta"
-        href="https://cloud.appwrite.io/v1/storage/buckets/YOUR_BUCKET_ID/files/YOUR_APK_FILE_ID/download?project=YOUR_PROJECT_ID"
+        href="https://api.alivenigeria.org/v1/storage/buckets/app_releases/files/alive_ng_android_release/download?project=6a3bef53002f5090dedf"
         target="_blank" rel="noopener" aria-label="Download APK">
         <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20" aria-hidden="true">
           <path
@@ -951,7 +951,8 @@
       // expose a small API so this can drive a real app's boot sequence
       window.AliveLoader = { start: start, reset: reset };
 
-      start();
+      // Don't auto-start the splash - wait for user to click the button
+      // start();
     })();
 
     function loadFlutterApp(startRoute) {
