@@ -1,8 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import * as appwriteSdk from 'node-appwrite';
+import { InputFile } from 'node-appwrite/file';
 
-const { Client, Storage, ID, InputFile, Permission, Role } = appwriteSdk;
+const { Client, Storage, ID, Permission, Role } = appwriteSdk;
 const bucketId = 'app_releases';
 const fileId = 'alive_ng_android_release';
 const localArtifact = path.resolve('build/app/outputs/flutter-apk/app-release.apk');
