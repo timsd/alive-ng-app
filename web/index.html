@@ -88,6 +88,14 @@
       overflow-x: hidden;
     }
 
+    body.flutter-active .header,
+    body.flutter-active .hero,
+    body.flutter-active #featured-grid,
+    body.flutter-active .store-buttons,
+    body.flutter-active > section {
+      display: none !important;
+    }
+
     .header {
       display: flex;
       align-items: center;
@@ -97,7 +105,7 @@
       background: #ffffff;
       position: sticky;
       top: 0;
-      z-index: 1001;
+      z-index: 1000;
     }
 
     .brand {
@@ -346,24 +354,23 @@
     }
 
     .project-detail {
-      padding: 16px 20px;
+      padding: 16px 18px;
       overflow-y: auto;
       min-height: 0;
       max-height: 100%;
-      /* Reserve room so the action buttons are never clipped at the bottom */
-      padding-bottom: 28px;
-      scroll-padding-bottom: 28px;
+      padding-bottom: 12px;
+      scroll-padding-bottom: 12px;
     }
 
     .project-actions {
-      margin-top: 16px;
+      margin-top: 10px;
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
       position: sticky;
       bottom: 0;
       background: #ffffff;
-      padding: 12px 0 4px;
+      padding: 8px 0 2px;
       border-top: 1px solid #EDF2F7;
     }
 
@@ -445,12 +452,25 @@
       }
 
       .modal-header {
+        position: relative;
         flex-direction: column;
         align-items: flex-start;
+        padding: 14px 48px 12px 14px;
+      }
+
+      .modal-close {
+        position: absolute;
+        top: 10px;
+        right: 12px;
+        font-size: 26px;
+        line-height: 1;
+        cursor: pointer;
+        padding: 4px 8px;
       }
 
       .modal-title {
         margin-bottom: 8px;
+        font-size: 16px;
       }
 
       .modal-body {
@@ -464,7 +484,7 @@
       .projects-list {
         border-right: none;
         border-bottom: 1px solid #E2E8F0;
-        max-height: 34vh;
+        max-height: 32vh;
         overflow-y: auto;
       }
 
@@ -473,6 +493,8 @@
         min-height: 0;
         overflow-y: auto;
         flex: 1;
+        padding: 12px 14px;
+        padding-bottom: 8px;
       }
 
       .modal {
@@ -1112,6 +1134,7 @@
 
     function loadFlutterApp(startRoute) {
       try {
+        document.body.classList.add('flutter-active');
         document.getElementById('app-loading-overlay').style.display = 'flex';
         if (window.AliveLoader) { window.AliveLoader.start(); }
         setLoadingProgress(20, 'Preparing app');
@@ -1230,6 +1253,7 @@
     })();
     document.getElementById('loading-close')?.addEventListener('click', function () {
       try {
+        document.body.classList.remove('flutter-active');
         document.getElementById('app-loading-overlay').style.display = 'none';
         setLoadingProgress(0, 'Cancelled');
       } catch (_) { }

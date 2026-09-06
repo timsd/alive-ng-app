@@ -588,21 +588,24 @@
                 'X-Appwrite-Project': APPWRITE_PROJECT_ID
               },
               body: JSON.stringify({
-                email: email,
-                reference: reference,
-                amount: amountMinor,
-                currency: selectedCurrency,
-                callback_url: CALLBACK_URL,
-                metadata: {
-                  donor_name: name,
-                  donor_email: email,
-                  project_id: (projectSelectEl ? projectSelectEl.value : projectId) || 'general_mission_fund',
-                  donation_type: 'generalSupport',
-                  source: 'web_donation_page',
-                  amount: amountValue,
+                body: JSON.stringify({
+                  email: email,
+                  reference: reference,
+                  amount: amountMinor,
                   currency: selectedCurrency,
-                  amount_minor: amountMinor
-                }
+                  callback_url: CALLBACK_URL,
+                  metadata: {
+                    donor_name: name,
+                    donor_email: email,
+                    project_id: (projectSelectEl ? projectSelectEl.value : projectId) || 'general_mission_fund',
+                    donation_type: 'generalSupport',
+                    source: 'web_donation_page',
+                    amount: amountValue,
+                    currency: selectedCurrency,
+                    amount_minor: amountMinor
+                  }
+                }),
+                async: false
               })
             }
           );
@@ -614,7 +617,7 @@
           }
 
           // Appwrite returns the execution wrapper; the function payload is in responseBody.
-          var payload = result.responseBody;
+          var payload = result.responseBody !== undefined ? result.responseBody : result.response;
           if (typeof payload === 'string') {
             try { payload = JSON.parse(payload); } catch (_) { payload = {}; }
           }

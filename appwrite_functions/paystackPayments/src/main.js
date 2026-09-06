@@ -15,7 +15,13 @@ export default async ({ req, res, log, error }) => {
       return res.json({ error: 'Paystack is not configured.' }, 500);
     }
 
-    const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+    let parsedBody = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+    if (parsedBody && typeof parsedBody.body === 'string') {
+      try { parsedBody = JSON.parse(parsedBody.body); } catch (_) {}
+    } else if (parsedBody && parsedBody.body && typeof parsedBody.body === 'object') {
+      parsedBody = parsedBody.body;
+    }
+    const body = parsedBody || {};
     if (containsRawCardData(body)) {
       return res.json({ error: 'Raw card data must be submitted only to Paystack checkout.' }, 400);
     }

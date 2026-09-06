@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';
 import '../utils/web_launch_params.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'appwrite_profile_service.dart';
 
 /// Provider to access the Appwrite authentication service instance.
@@ -207,12 +208,25 @@ class AppwriteAuthService {
   }
 
   Future<void> signInWithGoogle() async {
+    if (kIsWeb) {
+      final successUrl = AppwriteBackendConfig.oauthSuccessUrl;
+      final failureUrl = AppwriteBackendConfig.oauthFailureUrl;
+      final oauthUrl =
+          '${AppwriteBackendConfig.endpoint}/account/sessions/oauth2/google'
+          '?project=${Uri.encodeComponent(AppwriteBackendConfig.projectId)}'
+          '&success=${Uri.encodeComponent(successUrl)}'
+          '&failure=${Uri.encodeComponent(failureUrl)}'
+          '&scopes%5B%5D=email&scopes%5B%5D=profile';
+      await launchUrl(Uri.parse(oauthUrl), webOnlyWindowName: '_self');
+      return;
+    }
+
     const callbackScheme =
         'appwrite-callback-${AppwriteBackendConfig.projectId}://';
     await _account.createOAuth2Session(
       provider: appwrite_enums.OAuthProvider.google,
-      success: kIsWeb ? AppwriteBackendConfig.oauthSuccessUrl : callbackScheme,
-      failure: kIsWeb ? AppwriteBackendConfig.oauthFailureUrl : callbackScheme,
+      success: callbackScheme,
+      failure: callbackScheme,
       scopes: const ['email', 'profile'],
     );
     await getCurrentUser();
@@ -251,7 +265,9 @@ class AppwriteUserNotifier extends StateNotifier<models.User?> {
 
   Future<void> signInWithGoogle() async {
     await _authService.signInWithGoogle();
-    state = await _authService.getCurrentUser();
+    if (!kIsWeb) {
+      state = await _authService.getCurrentUser();
+    }
   }
 
   Future<void> logout() async {

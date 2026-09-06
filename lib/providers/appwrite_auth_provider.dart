@@ -151,10 +151,20 @@ class SignInController extends StateNotifier<AsyncValue<void>> {
     try {
       final result = await _gateway.signInWithGoogle();
       if (!result.isSuccess) {
+        if (result.error == 'canceled') {
+          // User canceled or closed the flow; reset cleanly
+          state = const AsyncValue.data(null);
+          return;
+        }
         throw Exception(result.error ?? 'Google sign-in failed');
       }
       state = const AsyncValue.data(null);
     } catch (e, stack) {
+      final err = e.toString().toLowerCase();
+      if (err.contains('canceled') || err.contains('cancelled')) {
+        state = const AsyncValue.data(null);
+        return;
+      }
       state = AsyncValue.error(e, stack);
     }
   }

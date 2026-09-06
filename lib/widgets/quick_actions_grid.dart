@@ -112,22 +112,22 @@ class QuickActionsGrid extends ConsumerWidget {
             if (constraints.maxWidth < 400) {
               // Small mobile screens — 3 compact columns
               crossAxisCount = 3;
-              childAspectRatio = 0.85;
+              childAspectRatio = 1.05;
               horizontalPadding = 12;
             } else if (constraints.maxWidth < 600) {
               // Medium mobile screens — 3 columns with breathing room
               crossAxisCount = 3;
-              childAspectRatio = 0.9;
+              childAspectRatio = 1.1;
               horizontalPadding = 16;
             } else if (constraints.maxWidth < 900) {
               // Tablet screens — 4 columns
               crossAxisCount = 4;
-              childAspectRatio = 0.95;
+              childAspectRatio = 1.15;
               horizontalPadding = 24;
             } else {
               // Desktop screens — 5 columns
               crossAxisCount = 5;
-              childAspectRatio = 1.0;
+              childAspectRatio = 1.2;
               horizontalPadding = 32;
             }
 
@@ -213,18 +213,18 @@ class QuickActionCard extends StatelessWidget {
             children: [
               // Icon container with responsive size
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: action.color.withValues(alpha: 0.1),
+                  color: action.color.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   action.icon,
                   color: action.color,
-                  size: 20,
+                  size: 22,
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               // Title - auto-scaling with FittedBox
               Flexible(
                 child: FittedBox(
@@ -234,21 +234,6 @@ class QuickActionCard extends StatelessWidget {
                     style: Theme.of(context).textTheme.labelMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                           color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 2),
-              // Subtitle - auto-scaling with FittedBox
-              Flexible(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    action.subtitle,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                     textAlign: TextAlign.center,
                     maxLines: 1,

@@ -1,6 +1,6 @@
 {
   "engines": {
-    "node": "20.x"
+    "node": "^20.0.0 || ^22.0.0"
   },
   "scripts": {
     "dev": "node scripts/flutter_web.mjs run",

@@ -141,6 +141,14 @@ class AppwriteAuthGateway implements AuthGateway {
   Future<AppAuthResult> signInWithGoogle() async {
     try {
       await _service.signInWithGoogle();
+      if (kIsWeb) {
+        // On web, launchUrl in _self navigates the current tab directly to Google OAuth.
+        return AppAuthResult.success(const AppUser(
+          uid: 'pending_web_oauth',
+          email: '',
+          displayName: 'Redirecting...',
+        ));
+      }
       final sdkUser = await _service.getCurrentUser();
       if (sdkUser == null) {
         return AppAuthResult.failure(
@@ -151,6 +159,12 @@ class AppwriteAuthGateway implements AuthGateway {
       return AppAuthResult.success(_cachedUser!);
     } catch (e) {
       debugPrint('AppwriteAuthGateway.signInWithGoogle error: $e');
+      final errorStr = e.toString().toLowerCase();
+      if (errorStr.contains('canceled') ||
+          errorStr.contains('cancelled') ||
+          errorStr.contains('user_canceled')) {
+        return AppAuthResult.failure('canceled');
+      }
       return AppAuthResult.failure('Google sign-in failed: $e');
     }
   }

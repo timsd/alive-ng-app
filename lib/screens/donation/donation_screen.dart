@@ -38,7 +38,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
     return years;
   }
 
-  String? _selectedFundDesignation;
+  final Set<String> _selectedFundDesignations = <String>{};
   final TextEditingController _customDesignationController =
       TextEditingController();
   final List<Project> _fallbackProjects = donationFallbackProjects;
@@ -191,7 +191,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                           ],
                         ),
                       ),
-                    if (_selectedFundDesignation != null)
+                    if (_selectedFundDesignations.isNotEmpty)
                       Container(
                         margin: const EdgeInsets.only(bottom: 12),
                         padding: EdgeInsets.all(
@@ -219,7 +219,9 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                                     context, 8)),
                             Expanded(
                               child: Text(
-                                'Designated for: $_selectedFundDesignation',
+                                _selectedFundDesignations.length == 1
+                                    ? 'Designated for: ${_selectedFundDesignations.first} (100%)'
+                                    : 'Split across ${_selectedFundDesignations.length} areas: ${_selectedFundDesignations.join(', ')} (${(100.0 / _selectedFundDesignations.length).toStringAsFixed(0)}% each)',
                                 style: Theme.of(context)
                                     .textTheme
                                     .titleSmall
@@ -231,7 +233,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                             ),
                             TextButton(
                               onPressed: () => setState(
-                                  () => _selectedFundDesignation = null),
+                                  () => _selectedFundDesignations.clear()),
                               child: const Text('Clear'),
                             ),
                           ],
@@ -349,6 +351,17 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                     SizedBox(
                         height:
                             ResponsiveUtils.getResponsiveSpacing(context, 32)),
+                    // 1. Where Your Support Goes (Impact Section) FIRST
+                    _buildImpactSection(context, theme, isDark),
+                    SizedBox(
+                        height:
+                            ResponsiveUtils.getResponsiveSpacing(context, 32)),
+                    // 2. Other Ways to Give SECOND
+                    _buildOtherWaysToGive(context, theme, isDark),
+                    SizedBox(
+                        height:
+                            ResponsiveUtils.getResponsiveSpacing(context, 36)),
+                    // 3. Giving Method & Amount Checkout THIRD
                     _buildDonationTypeSelector(context, theme),
                     SizedBox(
                         height:
@@ -367,14 +380,6 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                         height:
                             ResponsiveUtils.getResponsiveSpacing(context, 32)),
                     _buildDonateButton(context, theme),
-                    SizedBox(
-                        height:
-                            ResponsiveUtils.getResponsiveSpacing(context, 40)),
-                    _buildImpactSection(context, theme, isDark),
-                    SizedBox(
-                        height:
-                            ResponsiveUtils.getResponsiveSpacing(context, 32)),
-                    _buildOtherWaysToGive(context, theme, isDark),
                   ],
                 ),
               ),
@@ -505,6 +510,35 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
         _buildPresetAmounts(context, theme),
         SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
         _buildCustomAmountInput(context, theme),
+        if (_selectedAmount > 0 && _selectedFundDesignations.length > 1) ...[
+          SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: theme.colorScheme.primary.withValues(alpha: 0.2),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.call_split_rounded,
+                    size: 18, color: theme.colorScheme.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Split: ${_selectedCurrency == 'USD' ? '\$' : '₦'}${(_selectedAmount / _selectedFundDesignations.length).toStringAsFixed(2)} each across ${_selectedFundDesignations.length} designated areas (${(100.0 / _selectedFundDesignations.length).toStringAsFixed(0)}% each)',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -872,22 +906,92 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       ),
     ];
 
+    final splitCount = _selectedFundDesignations.length;
+    final splitPercent = splitCount > 1
+        ? (100.0 / splitCount)
+        : (splitCount == 1 ? 100.0 : null);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Your Gift Will:',
-          style: theme.textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: theme.colorScheme.onSurface,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Where Your Support Goes',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Tap one or multiple areas to direct or split your donation ratio',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (_selectedFundDesignations.isNotEmpty)
+              TextButton.icon(
+                onPressed: () =>
+                    setState(() => _selectedFundDesignations.clear()),
+                icon: const Icon(Icons.clear_all, size: 18),
+                label: const Text('Reset'),
+              ),
+          ],
         ),
-        SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 20)),
-        ...impactItems.map((item) => ImpactCard(
-              impact: item,
-              isSelected: _selectedFundDesignation == item.title,
-              onTap: () => _selectDesignation(item.title),
-            )),
+        if (splitCount > 1) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: theme.colorScheme.primary.withValues(alpha: 0.25),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.pie_chart_rounded,
+                    color: theme.colorScheme.primary, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Split Donation: Allocated equally ($splitCount areas @ ${splitPercent!.toStringAsFixed(0)}% each)',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+        SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
+        ...impactItems.map((item) {
+          final isSelected = _selectedFundDesignations.contains(item.title);
+          return ImpactCard(
+            impact: item,
+            isSelected: isSelected,
+            splitPercent: isSelected ? splitPercent : null,
+            selectionLabel: isSelected
+                ? (splitCount > 1
+                    ? 'Included in split (${splitPercent!.toStringAsFixed(0)}%)'
+                    : 'Selected for this Gift (100%)')
+                : null,
+            onTap: () => _selectDesignation(item.title),
+          );
+        }),
       ],
     );
   }
@@ -897,13 +1001,23 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       _showCustomDesignationDialog();
     } else {
       setState(() {
-        _selectedFundDesignation = title;
+        if (_selectedFundDesignations.contains(title)) {
+          _selectedFundDesignations.remove(title);
+        } else {
+          _selectedFundDesignations.add(title);
+        }
         _selectedProjectId = null;
         _selectedProjectTitle = null;
       });
+      final count = _selectedFundDesignations.length;
+      final msg = count == 0
+          ? 'Cleared designation (Will go where most needed)'
+          : (count == 1
+              ? 'Selected: ${_selectedFundDesignations.first} (100%)'
+              : 'Selected $count areas (${(100.0 / count).toStringAsFixed(0)}% split each)');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Selected designation: $title'),
+          content: Text(msg),
           duration: const Duration(seconds: 2),
         ),
       );
@@ -944,7 +1058,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
               final text = _customDesignationController.text.trim();
               if (text.isNotEmpty) {
                 setState(() {
-                  _selectedFundDesignation = text;
+                  _selectedFundDesignations.add(text);
                   _selectedProjectId = null;
                   _selectedProjectTitle = null;
                 });
@@ -1050,16 +1164,23 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
 
     // Create donation record
     try {
+      final designations = _selectedFundDesignations.toList();
+      final designationSummary = designations.isEmpty
+          ? null
+          : (designations.length == 1
+              ? designations.first
+              : 'Split: ${designations.join(', ')} (${(100.0 / designations.length).toStringAsFixed(0)}% each)');
+
       // For general support, we use Paystack
       final donation = await donationService.createDonation(
         type: type,
         amount: totalAmount,
         currency: currency,
         paymentMethod: PaymentMethod.paystack,
-        materialTitle: _selectedProjectTitle ?? _selectedFundDesignation,
+        materialTitle: _selectedProjectTitle ?? designationSummary,
         notes: isMonthly
-            ? 'Monthly giving${_selectedFundDesignation != null ? ' - $_selectedFundDesignation' : ''}'
-            : 'One-time donation${_selectedFundDesignation != null ? ' - $_selectedFundDesignation' : ''}',
+            ? 'Monthly giving${designationSummary != null ? ' - $designationSummary' : ''}'
+            : 'One-time donation${designationSummary != null ? ' - $designationSummary' : ''}',
         metadata: {
           'recurring': isMonthly,
           'currency': currency,
@@ -1067,8 +1188,14 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
           if (_selectedProjectId != null) 'project_id': _selectedProjectId,
           if (_selectedProjectTitle != null)
             'project_title': _selectedProjectTitle,
-          if (_selectedFundDesignation != null)
-            'fund_designation': _selectedFundDesignation,
+          if (designations.isNotEmpty) ...{
+            'fund_designation': designationSummary,
+            'fund_designations': designations,
+            'split_count': designations.length,
+            'split_percent': designations.length > 1
+                ? (100.0 / designations.length).round()
+                : 100,
+          },
         },
         guestName: isAuthenticated ? null : _guestNameController.text.trim(),
         guestEmail: isAuthenticated ? null : _guestEmailController.text.trim(),

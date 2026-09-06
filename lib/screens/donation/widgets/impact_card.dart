@@ -3,14 +3,19 @@ import '../../../models/donation_presentation_models.dart';
 import '../../../utils/responsive_utils.dart';
 
 class ImpactCard extends StatelessWidget {
-  const ImpactCard(
-      {super.key,
-      required this.impact,
-      required this.isSelected,
-      required this.onTap});
+  const ImpactCard({
+    super.key,
+    required this.impact,
+    required this.isSelected,
+    required this.onTap,
+    this.selectionLabel,
+    this.splitPercent,
+  });
   final DonationImpact impact;
   final bool isSelected;
   final VoidCallback onTap;
+  final String? selectionLabel;
+  final double? splitPercent;
 
   @override
   Widget build(BuildContext context) {
@@ -83,6 +88,25 @@ class ImpactCard extends StatelessWidget {
                             ),
                           ),
                         ),
+                        if (isSelected && splitPercent != null)
+                          Container(
+                            margin: const EdgeInsets.only(right: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '${splitPercent!.toStringAsFixed(0)}% split',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: theme.colorScheme.primary,
+                              ),
+                            ),
+                          ),
                         if (isSelected)
                           Icon(Icons.check_circle,
                               color: theme.colorScheme.primary, size: 20),
@@ -102,8 +126,8 @@ class ImpactCard extends StatelessWidget {
                     const SizedBox(height: 10),
                     Text(
                       isSelected
-                          ? 'Selected for this Gift'
-                          : 'Tap to direct your gift here',
+                          ? (selectionLabel ?? 'Selected for this Gift')
+                          : 'Tap to add to gift allocation',
                       style: theme.textTheme.labelMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: isSelected
