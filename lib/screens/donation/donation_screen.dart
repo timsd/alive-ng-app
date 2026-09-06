@@ -13,6 +13,7 @@ import 'widgets/project_card.dart';
 import 'widgets/project_fund_update.dart';
 import '../../models/donation_models.dart';
 import '../../models/project_model.dart';
+import '../../config/donation_defaults.dart';
 import '../../utils/web_launch_params.dart';
 import '../../providers/appwrite_auth_provider.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -40,63 +41,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
   String? _selectedFundDesignation;
   final TextEditingController _customDesignationController =
       TextEditingController();
-  static const List<Map<String, dynamic>> _fallbackProjects = [
-    {
-      'id': 'impact_hub_center',
-      'title': 'Impact Hub Center',
-      'summary': 'Community discipleship and outreach facility',
-      'description':
-          'A central hub for training, discipleship, and community engagement.',
-      'goal': 35000000.0,
-      'raised': 8000000.0,
-      'currency': 'NGN',
-      'status': 'active',
-      'priority': 1,
-      'cta_label': 'Donate for this item',
-      'image_url':
-          'https://images.unsplash.com/photo-1593914370442-49d414beca24?q=80&w=1031&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-      'fund_update_title': 'Progress so far',
-      'fund_update_text':
-          'Seed funding has helped prepare the project scope, early planning, and ministry coordination for the hub.',
-      'fund_update_images': <String>[],
-    },
-    {
-      'id': 'vehicle_purchase',
-      'title': 'Vehicle Purchase',
-      'summary': 'Mission vehicle for outreach logistics',
-      'description':
-          'Reliable transportation for mission trips and logistics across Nigeria.',
-      'goal': 18000000.0,
-      'raised': 0.0,
-      'currency': 'NGN',
-      'status': 'active',
-      'priority': 2,
-      'cta_label': 'Donate for this item',
-      'image_url':
-          'https://images.unsplash.com/photo-1597685204565-110abf469a1e?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-      'fund_update_title': '',
-      'fund_update_text': '',
-      'fund_update_images': <String>[],
-    },
-    {
-      'id': 'media_studio_setup',
-      'title': 'Media Studio Setup',
-      'summary': 'Podcast and content production equipment',
-      'description':
-          'Equipping the ministry with high-quality media production capabilities.',
-      'goal': 9000000.0,
-      'raised': 0.0,
-      'currency': 'NGN',
-      'status': 'planning',
-      'priority': 3,
-      'cta_label': 'Donate for this item',
-      'image_url':
-          'https://images.unsplash.com/photo-1769699167906-a44d5ae50abb?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-      'fund_update_title': '',
-      'fund_update_text': '',
-      'fund_update_images': <String>[],
-    },
-  ];
+  final List<Project> _fallbackProjects = donationFallbackProjects;
 
   bool _isMonthlySelected = true;
   String _selectedCurrency = 'USD';
@@ -109,16 +54,16 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
-  final Map<String, List<Map<String, dynamic>>> _donationAmounts = {
+  static const Map<String, List<DonationAmountOption>> _donationAmounts = {
     'USD': [
-      {'amount': 25, 'label': '\$25'},
-      {'amount': 50, 'label': '\$50'},
-      {'amount': 100, 'label': '\$100'},
+      DonationAmountOption(amount: 25, label: '\$25'),
+      DonationAmountOption(amount: 50, label: '\$50'),
+      DonationAmountOption(amount: 100, label: '\$100'),
     ],
     'NGN': [
-      {'amount': 20000, 'label': '\u20A620K'},
-      {'amount': 50000, 'label': '\u20A650K'},
-      {'amount': 100000, 'label': '\u20A6100K'},
+      DonationAmountOption(amount: 20000, label: '\u20A620K'),
+      DonationAmountOption(amount: 50000, label: '\u20A650K'),
+      DonationAmountOption(amount: 100000, label: '\u20A6100K'),
     ],
   };
 
@@ -149,8 +94,9 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
   double _exchangeRate = 1650.0; // Default fallback
   Future<void> _fetchExchangeRate() async {
     try {
-      final value =
-          await ref.read(donationServiceProvider).getAppSettingValue('usd_to_ngn_rate');
+      final value = await ref
+          .read(donationServiceProvider)
+          .getAppSettingValue('usd_to_ngn_rate');
       final rate = double.tryParse(value ?? '');
       if (rate != null && rate > 0) {
         setState(() => _exchangeRate = rate);
@@ -255,7 +201,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                                 tablet: 14,
                                 desktop: 16)),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.secondaryContainer,
+                          color:
+                              Theme.of(context).colorScheme.secondaryContainer,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                               color: Theme.of(context)
@@ -283,7 +230,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                               ),
                             ),
                             TextButton(
-                              onPressed: () => setState(() => _selectedFundDesignation = null),
+                              onPressed: () => setState(
+                                  () => _selectedFundDesignation = null),
                               child: const Text('Clear'),
                             ),
                           ],
@@ -291,8 +239,9 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                       ),
                     if (_selectedProjectId != null)
                       FutureBuilder<Project?>(
-                        future:
-                            ref.read(donationServiceProvider).getProject(_selectedProjectId!),
+                        future: ref
+                            .read(donationServiceProvider)
+                            .getProject(_selectedProjectId!),
                         builder: (context, snapshot) {
                           if (!snapshot.hasData || snapshot.data == null) {
                             return const SizedBox.shrink();
@@ -323,7 +272,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                                       .withValues(alpha: 0.1)),
                               boxShadow: [
                                 BoxShadow(
-                                  color: theme.shadowColor.withValues(alpha: 0.05),
+                                  color:
+                                      theme.shadowColor.withValues(alpha: 0.05),
                                   blurRadius: 10,
                                   offset: const Offset(0, 4),
                                 ),
@@ -338,7 +288,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                                   children: [
                                     Text(
                                       'Project Goal',
-                                      style: theme.textTheme.labelSmall?.copyWith(
+                                      style:
+                                          theme.textTheme.labelSmall?.copyWith(
                                         fontWeight: FontWeight.w800,
                                         letterSpacing: 0.5,
                                         color: theme.colorScheme.primary,
@@ -346,7 +297,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                                     ),
                                     Text(
                                       '${((raised / goal) * 100).toInt()}%',
-                                      style: theme.textTheme.bodyMedium?.copyWith(
+                                      style:
+                                          theme.textTheme.bodyMedium?.copyWith(
                                         fontWeight: FontWeight.w900,
                                         color: theme.colorScheme.secondary,
                                       ),
@@ -374,14 +326,16 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                                   children: [
                                     Text(
                                       'Raised: ${_selectedCurrency == 'USD' ? '\$' : '₦'}${_formatCompact(displayRaised)}',
-                                      style: theme.textTheme.labelSmall?.copyWith(
-                                          fontWeight: FontWeight.bold),
+                                      style: theme.textTheme.labelSmall
+                                          ?.copyWith(
+                                              fontWeight: FontWeight.bold),
                                     ),
                                     Text(
                                       'Goal: ${_selectedCurrency == 'USD' ? '\$' : '₦'}${_formatCompact(displayGoal)}',
-                                      style: theme.textTheme.labelSmall?.copyWith(
-                                          color: theme.colorScheme.onSurface
-                                              .withValues(alpha: 0.6)),
+                                      style: theme.textTheme.labelSmall
+                                          ?.copyWith(
+                                              color: theme.colorScheme.onSurface
+                                                  .withValues(alpha: 0.6)),
                                     ),
                                   ],
                                 ),
@@ -529,7 +483,6 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
     );
   }
 
-
   Widget _buildAmountSelector(BuildContext context, ThemeData theme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -604,8 +557,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       spacing: ResponsiveUtils.getResponsiveSpacing(context, 12),
       runSpacing: ResponsiveUtils.getResponsiveSpacing(context, 12),
       children: amounts.map((amountData) {
-        final amount = (amountData['amount'] as num).toDouble();
-        final label = amountData['label'] as String;
+        final amount = amountData.amount;
+        final label = amountData.label;
         final isSelected = _selectedAmount == amount;
 
         return GestureDetector(
@@ -898,14 +851,12 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       DonationImpact(
         icon: Icons.people_outline,
         title: 'LTMs Stipends',
-        description:
-            'Support the monthly upkeep of long-term field workers.',
+        description: 'Support the monthly upkeep of long-term field workers.',
       ),
       DonationImpact(
         icon: Icons.groups_outlined,
         title: 'STMs Stipends',
-        description:
-            'Support the monthly upkeep of short-term field workers.',
+        description: 'Support the monthly upkeep of short-term field workers.',
       ),
       DonationImpact(
         icon: Icons.volunteer_activism,
@@ -933,10 +884,10 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
         ),
         SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 20)),
         ...impactItems.map((item) => ImpactCard(
-          impact: item,
-          isSelected: _selectedFundDesignation == item.title,
-          onTap: () => _selectDesignation(item.title),
-        )),
+              impact: item,
+              isSelected: _selectedFundDesignation == item.title,
+              onTap: () => _selectDesignation(item.title),
+            )),
       ],
     );
   }
@@ -968,9 +919,9 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Please specify how you would like your donation used:',
-              style: TextStyle(fontSize: 14),
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 12),
             TextField(
@@ -1012,7 +963,6 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       ),
     );
   }
-
 
   Widget _buildOtherWaysToGive(
       BuildContext context, ThemeData theme, bool isDark) {
@@ -1058,7 +1008,6 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       ),
     );
   }
-
 
   void _processDonation() async {
     final rootCtx = context;
@@ -1276,22 +1225,15 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       if (projectId == null || projectId == 'general_mission') return;
       _selectedProjectId = projectId;
       try {
-        final data = await ref.read(donationServiceProvider).getProject(projectId);
+        final data =
+            await ref.read(donationServiceProvider).getProject(projectId);
         if (data != null) {
           _selectedProjectTitle = data.title;
         } else {
-          final fallback = _fallbackProjects.firstWhere(
-                (project) => project['id'] == projectId,
-                orElse: () => {},
-              );
-          _selectedProjectTitle = fallback['title'] as String?;
+          _selectedProjectTitle = _fallbackProject(projectId)?.title;
         }
       } catch (_) {
-        final fallback = _fallbackProjects.firstWhere(
-                (project) => project['id'] == projectId,
-                orElse: () => {},
-              );
-        _selectedProjectTitle = fallback['title'] as String?;
+        _selectedProjectTitle = _fallbackProject(projectId)?.title;
       }
       setState(() {});
       clearSelectedProjectId();
@@ -1427,9 +1369,16 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
 
   /// Shows all statuses so users can see active, planning, and completed projects.
   Future<List<Project>> _fetchProjects() async {
-    final projects = await ref.read(donationServiceProvider).getDonationProjects();
+    final projects =
+        await ref.read(donationServiceProvider).getDonationProjects();
     if (projects.isNotEmpty) return projects;
-    return _fallbackProjects.map((e) => Project.fromJson(e)).toList();
+    return _fallbackProjects;
   }
 
+  Project? _fallbackProject(String id) {
+    for (final project in _fallbackProjects) {
+      if (project.id == id) return project;
+    }
+    return null;
+  }
 }

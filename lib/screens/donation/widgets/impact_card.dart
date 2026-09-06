@@ -3,7 +3,11 @@ import '../../../models/donation_presentation_models.dart';
 import '../../../utils/responsive_utils.dart';
 
 class ImpactCard extends StatelessWidget {
-  const ImpactCard({super.key, required this.impact, required this.isSelected, required this.onTap});
+  const ImpactCard(
+      {super.key,
+      required this.impact,
+      required this.isSelected,
+      required this.onTap});
   final DonationImpact impact;
   final bool isSelected;
   final VoidCallback onTap;
@@ -62,7 +66,8 @@ class ImpactCard extends StatelessWidget {
                   ),
                 ),
               ),
-              SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 16)),
+              SizedBox(
+                  width: ResponsiveUtils.getResponsiveSpacing(context, 16)),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -84,19 +89,22 @@ class ImpactCard extends StatelessWidget {
                       ],
                     ),
                     SizedBox(
-                        height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
+                        height:
+                            ResponsiveUtils.getResponsiveSpacing(context, 8)),
                     Text(
                       impact.description,
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        color:
+                            theme.colorScheme.onSurface.withValues(alpha: 0.7),
                         height: 1.4,
                       ),
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      isSelected ? 'Selected for this Gift' : 'Tap to direct your gift here',
-                      style: TextStyle(
-                        fontSize: 12,
+                      isSelected
+                          ? 'Selected for this Gift'
+                          : 'Tap to direct your gift here',
+                      style: theme.textTheme.labelMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: isSelected
                             ? theme.colorScheme.primary
@@ -113,4 +121,3 @@ class ImpactCard extends StatelessWidget {
     );
   }
 }
-

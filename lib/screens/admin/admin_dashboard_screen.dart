@@ -994,7 +994,6 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                   title,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
-                        fontSize: 20,
                       ),
                 ),
               ],
@@ -1030,14 +1029,12 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
         title,
         style: Theme.of(context).textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w600,
-              fontSize: 16,
             ),
       ),
       subtitle: Text(
         subtitle,
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
-              fontSize: 13,
             ),
       ),
       trailing: Icon(

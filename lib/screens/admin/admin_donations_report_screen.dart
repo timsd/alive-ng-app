@@ -47,7 +47,8 @@ class _AdminDonationsReportScreenState
   Future<void> _loadDonations() async {
     setState(() => _isLoading = true);
     try {
-      final rows = await AppwriteAdminExportService.instance.listDonationEntries(
+      final rows =
+          await AppwriteAdminExportService.instance.listDonationEntries(
         status: _statusFilter == 'all' ? null : _statusFilter,
         limit: 250,
       );
@@ -115,12 +116,9 @@ class _AdminDonationsReportScreenState
       // Search query filter
       if (query.isNotEmpty) {
         final ref = d.reference.toLowerCase();
-        final name =
-            d.donorName.toLowerCase();
-        final email =
-            d.donorEmail.toLowerCase();
-        final purpose = d.purpose
-            .toLowerCase();
+        final name = d.donorName.toLowerCase();
+        final email = d.donorEmail.toLowerCase();
+        final purpose = d.purpose.toLowerCase();
 
         if (!ref.contains(query) &&
             !name.contains(query) &&
@@ -202,9 +200,11 @@ class _AdminDonationsReportScreenState
                 'Records included: ${result['count'] ?? _filteredDonations.length}',
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
-              Text('Total NGN: ${_currencyFormat.format(result['summary']?['total_ngn'] ?? _totalNgn)}'),
+              Text(
+                  'Total NGN: ${_currencyFormat.format(result['summary']?['total_ngn'] ?? _totalNgn)}'),
               if ((result['summary']?['total_usd'] ?? _totalUsd) > 0)
-                Text('Total USD: ${_usdFormat.format(result['summary']?['total_usd'] ?? _totalUsd)}'),
+                Text(
+                    'Total USD: ${_usdFormat.format(result['summary']?['total_usd'] ?? _totalUsd)}'),
               const SizedBox(height: 16),
               if (downloadUrl != null)
                 Text(
@@ -498,8 +498,12 @@ class _AdminDonationsReportScreenState
             runSpacing: 8,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              const Text('Status:',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              Text(
+                'Status:',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               _buildFilterChip('All', 'all', _statusFilter, (val) {
                 _statusFilter = val;
                 setState(() => _applyFilters());
@@ -517,8 +521,12 @@ class _AdminDonationsReportScreenState
                 setState(() => _applyFilters());
               }),
               const SizedBox(width: 12),
-              const Text('Timeframe:',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              Text(
+                'Timeframe:',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               _buildFilterChip('All Time', 'all', _datePreset, (val) {
                 _datePreset = val;
                 setState(() => _applyFilters());
@@ -550,7 +558,7 @@ class _AdminDonationsReportScreenState
   ) {
     final isSelected = current == value;
     return ChoiceChip(
-      label: Text(label, style: const TextStyle(fontSize: 12)),
+      label: Text(label, style: Theme.of(context).textTheme.labelMedium),
       selected: isSelected,
       onSelected: (_) => onSelected(value),
     );
@@ -581,8 +589,7 @@ class _AdminDonationsReportScreenState
           rows: _filteredDonations.map((d) {
             final amount = d.amount;
             final currency = d.currency;
-            final status =
-                d.status;
+            final status = d.status;
             final dt = d.createdAt;
 
             return DataRow(cells: [
@@ -591,23 +598,30 @@ class _AdminDonationsReportScreenState
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(d.donorName,
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
-                  Text(d.donorEmail,
-                      style: theme.textTheme.bodySmall),
+                  Text(
+                    d.donorName,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(d.donorEmail, style: theme.textTheme.bodySmall),
                 ],
               )),
               DataCell(Text(
                 currency == 'USD'
                     ? _usdFormat.format(amount)
                     : _currencyFormat.format(amount),
-                style: const TextStyle(fontWeight: FontWeight.bold),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               )),
               DataCell(Text(d.purpose)),
               DataCell(_buildStatusBadge(status)),
               DataCell(Text(
                 d.reference,
-                style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
+                style: theme.textTheme.labelSmall?.copyWith(
+                  fontFamily: 'monospace',
+                ),
               )),
             ]);
           }).toList(),
@@ -644,15 +658,16 @@ class _AdminDonationsReportScreenState
                 children: [
                   Text(
                     d.donorName,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   Text(
                     currency == 'USD'
                         ? _usdFormat.format(amount)
                         : _currencyFormat.format(amount),
-                    style: const TextStyle(
+                    style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.bold,
-                      fontSize: 15,
                     ),
                   ),
                 ],
@@ -726,11 +741,10 @@ class _AdminDonationsReportScreenState
       ),
       child: Text(
         label,
-        style: TextStyle(
-          color: fg,
-          fontWeight: FontWeight.bold,
-          fontSize: 10,
-        ),
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: fg,
+              fontWeight: FontWeight.bold,
+            ),
       ),
     );
   }

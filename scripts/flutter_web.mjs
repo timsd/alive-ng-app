@@ -41,9 +41,23 @@ if (existsSync('.env')) {
   }
 }
 
-const args = mode === 'build'
-  ? ['build', 'web', '--release', '--no-wasm-dry-run', ...defines]
-  : ['run', '-d', 'chrome', ...defines];
+const args = switchBuildArgs(mode, defines);
+
+function switchBuildArgs(requestedMode, dartDefines) {
+  switch (requestedMode) {
+    case 'build':
+    case 'web':
+      return ['build', 'web', '--release', '--no-wasm-dry-run', ...dartDefines];
+    case 'apk':
+      return ['build', 'apk', '--release', ...dartDefines];
+    case 'appbundle':
+      return ['build', 'appbundle', '--release', ...dartDefines];
+    case 'run':
+      return ['run', '-d', 'chrome', ...dartDefines];
+    default:
+      throw new Error(`Unknown Flutter build mode: ${requestedMode}`);
+  }
+}
 
 const isWindowsBatch = process.platform === 'win32' && /\.bat$/i.test(flutter);
 const child = isWindowsBatch

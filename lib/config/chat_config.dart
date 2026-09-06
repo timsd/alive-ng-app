@@ -1,6 +1,31 @@
 /// Appwrite Chat Configuration
 /// Contains client-side chat options and role/channel permissions.
+class ChatFileUploadConfig {
+  const ChatFileUploadConfig({
+    required this.allowedFileExtensions,
+    required this.allowedMimeTypes,
+    required this.sizeLimit,
+  });
+
+  final List<String> allowedFileExtensions;
+  final List<String> allowedMimeTypes;
+  final int sizeLimit;
+}
+
 class ChatConfig {
+  static const fileUpload = ChatFileUploadConfig(
+    allowedFileExtensions: ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx'],
+    allowedMimeTypes: [
+      'image/jpeg',
+      'image/png',
+      'image/gif',
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ],
+    sizeLimit: 20 * 1024 * 1024,
+  );
+
   /// Chat configuration options
   static const Map<String, dynamic> chatOptions = {
     'typing_events': true,
@@ -8,26 +33,6 @@ class ChatConfig {
     'connect_user_details_timeout': 5000,
     // Messages persist indefinitely unless explicitly deleted by user/admin
     'max_message_length': 5000,
-    'file_upload_config': {
-      'allowed_file_extensions': [
-        'jpg',
-        'jpeg',
-        'png',
-        'gif',
-        'pdf',
-        'doc',
-        'docx'
-      ],
-      'allowed_mime_types': [
-        'image/jpeg',
-        'image/png',
-        'image/gif',
-        'application/pdf',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-      ],
-      'size_limit': 20 * 1024 * 1024, // 20MB
-    },
   };
 
   /// Default channel types for the app

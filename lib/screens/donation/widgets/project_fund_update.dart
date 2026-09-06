@@ -94,7 +94,4 @@ class ProjectFundUpdate extends StatelessWidget {
       ),
     );
   }
-
-
 }
-

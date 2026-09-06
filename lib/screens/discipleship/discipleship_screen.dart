@@ -103,8 +103,12 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
           controller: _tabController,
           indicatorColor: Theme.of(context).colorScheme.primary,
           labelColor: Theme.of(context).colorScheme.primary,
-          unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-          labelStyle: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold),
+          unselectedLabelColor:
+              Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+          labelStyle: Theme.of(context)
+              .textTheme
+              .labelLarge
+              ?.copyWith(fontWeight: FontWeight.bold),
           unselectedLabelStyle: Theme.of(context).textTheme.labelLarge,
           isScrollable: true,
           tabs: const [
@@ -158,7 +162,8 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                   Theme.of(context).colorScheme.primary,
                 ),
               ),
-              SizedBox(width: ResponsiveUtils.getResponsiveValue(
+              SizedBox(
+                  width: ResponsiveUtils.getResponsiveValue(
                 context: context,
                 mobile: 16.0,
                 tablet: 20.0,
@@ -174,7 +179,8 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
               ),
             ],
           ),
-          SizedBox(height: ResponsiveUtils.getResponsiveValue(
+          SizedBox(
+              height: ResponsiveUtils.getResponsiveValue(
             context: context,
             mobile: 16.0,
             tablet: 20.0,
@@ -190,7 +196,8 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                   Theme.of(context).colorScheme.secondary,
                 ),
               ),
-              SizedBox(width: ResponsiveUtils.getResponsiveValue(
+              SizedBox(
+                  width: ResponsiveUtils.getResponsiveValue(
                 context: context,
                 mobile: 16.0,
                 tablet: 20.0,
@@ -206,7 +213,8 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
               ),
             ],
           ),
-          SizedBox(height: ResponsiveUtils.getResponsiveValue(
+          SizedBox(
+              height: ResponsiveUtils.getResponsiveValue(
             context: context,
             mobile: 24.0,
             tablet: 28.0,
@@ -226,7 +234,8 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                           fontWeight: FontWeight.bold,
                         ),
                   ),
-                  SizedBox(height: ResponsiveUtils.getResponsiveValue(
+                  SizedBox(
+                      height: ResponsiveUtils.getResponsiveValue(
                     context: context,
                     mobile: 16.0,
                     tablet: 20.0,
@@ -237,7 +246,8 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
               ),
             ),
           ),
-          SizedBox(height: ResponsiveUtils.getResponsiveValue(
+          SizedBox(
+              height: ResponsiveUtils.getResponsiveValue(
             context: context,
             mobile: 16.0,
             tablet: 20.0,
@@ -257,7 +267,8 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                           fontWeight: FontWeight.bold,
                         ),
                   ),
-                  SizedBox(height: ResponsiveUtils.getResponsiveValue(
+                  SizedBox(
+                      height: ResponsiveUtils.getResponsiveValue(
                     context: context,
                     mobile: 16.0,
                     tablet: 20.0,
@@ -271,10 +282,9 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                             Text(
                               _statistics.recentInteractions.toString(),
                               style: TextStyle(
-                                fontSize: context.responsiveFontSize(24),
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue
-                              ),
+                                  fontSize: context.responsiveFontSize(24),
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue),
                             ),
                             const Text('Interactions'),
                           ],
@@ -284,14 +294,18 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                         child: Column(
                           children: [
                             Text(
-                                _statistics.recentStudySessions
-                                        .toString(),
-                                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: Theme.of(context).colorScheme.tertiary,
-                                    ),
-                              ),
-                              Text('Study Sessions', style: Theme.of(context).textTheme.labelMedium),
+                              _statistics.recentStudySessions.toString(),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color:
+                                        Theme.of(context).colorScheme.tertiary,
+                                  ),
+                            ),
+                            Text('Study Sessions',
+                                style: Theme.of(context).textTheme.labelMedium),
                           ],
                         ),
                       ),
@@ -327,7 +341,8 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                   },
                 ),
               ),
-              SizedBox(width: ResponsiveUtils.getResponsiveValue(
+              SizedBox(
+                  width: ResponsiveUtils.getResponsiveValue(
                 context: context,
                 mobile: 16.0,
                 tablet: 20.0,
@@ -416,7 +431,9 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
             children: [
               Text(
                 'Active Prayer Requests',
-                style: TextStyle(fontSize: context.responsiveFontSize(18), fontWeight: FontWeight.bold),
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
               ElevatedButton.icon(
                 onPressed: () => _showAddPrayerRequestDialog(),
@@ -458,9 +475,11 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
         children: [
           const Icon(Icons.analytics, size: 64),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'Discipleship Reports',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
           ),
           const SizedBox(height: 8),
           Text(
@@ -473,7 +492,8 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => const BoardReportsScreen(initialCategory: 'discipleship'),
+                builder: (context) =>
+                    const BoardReportsScreen(initialCategory: 'discipleship'),
               ),
             ),
             icon: const Icon(Icons.assessment),
@@ -495,7 +515,8 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
         child: Column(
           children: [
             Icon(icon, size: context.responsiveIconSize(32), color: color),
-            SizedBox(height: ResponsiveUtils.getResponsiveValue(
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveValue(
               context: context,
               mobile: 8.0,
               tablet: 10.0,
@@ -546,13 +567,17 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                 valueColor: AlwaysStoppedAnimation(_getLevelColor(level)),
               ),
             ),
-            SizedBox(width: ResponsiveUtils.getResponsiveValue(
+            SizedBox(
+                width: ResponsiveUtils.getResponsiveValue(
               context: context,
               mobile: 8.0,
               tablet: 10.0,
               desktop: 12.0,
             )),
-            Text('$count ($percentage%)', style: TextStyle(fontSize: context.responsiveFontSize(12))),
+            Text(
+              '$count ($percentage%)',
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
           ],
         ),
       );
@@ -562,19 +587,18 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
   Widget _buildContactCard(DiscipleshipContact contact) {
     return Card(
       margin: EdgeInsets.symmetric(
-        horizontal: ResponsiveUtils.getResponsiveValue(
-          context: context,
-          mobile: 16.0,
-          tablet: 20.0,
-          desktop: 24.0,
-        ), 
-        vertical: ResponsiveUtils.getResponsiveValue(
-          context: context,
-          mobile: 4.0,
-          tablet: 6.0,
-          desktop: 8.0,
-        )
-      ),
+          horizontal: ResponsiveUtils.getResponsiveValue(
+            context: context,
+            mobile: 16.0,
+            tablet: 20.0,
+            desktop: 24.0,
+          ),
+          vertical: ResponsiveUtils.getResponsiveValue(
+            context: context,
+            mobile: 4.0,
+            tablet: 6.0,
+            desktop: 8.0,
+          )),
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: _getLevelColor(contact.currentLevel),
@@ -592,7 +616,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
             if (contact.lastContact != null)
               Text(
                 'Last contact: ${DateFormat('MMM dd, yyyy').format(contact.lastContact!)}',
-                style: TextStyle(fontSize: context.responsiveFontSize(12)),
+                style: Theme.of(context).textTheme.labelMedium,
               ),
           ],
         ),
@@ -856,7 +880,3 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
     // Implementation for add prayer request dialog
   }
 }
-
-
-
-

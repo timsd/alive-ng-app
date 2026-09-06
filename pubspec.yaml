@@ -22,8 +22,6 @@ dependencies:
   
   # Navigation
   go_router: ^14.0.0
-  
-  # HTTP & API
   http: ^1.2.0
   json_annotation: ^4.9.0
   # json_serializable removed from dependencies; kept in dev_dependencies
@@ -68,7 +66,7 @@ dependencies:
   flutter_tts: ^3.8.5
   
   # Video Conferencing
-  livekit_client: ^2.7.0
+  livekit_client: ^3.8.0
   
   # Payment Integration
   pay_with_paystack: ^1.0.14

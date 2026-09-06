@@ -33,7 +33,7 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
   final Map<String, TextEditingController> _answerControllers = {};
   bool _showAnswers = false;
   List<String> _contentPages = [];
-  List<Map<String, dynamic>> _reflectionQuestions = [];
+  List<TractQuestion> _reflectionQuestions = [];
   bool _loadingDynamicContent = true;
 
   @override
@@ -77,9 +77,7 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
         pages = _chunkText(extractedText, 2200);
       }
 
-      final questions = tractContent.questions
-          .map((question) => question.toJson())
-          .toList(growable: false);
+      final questions = tractContent.questions;
 
       for (int i = 1; i <= questions.length; i++) {
         _answerControllers.putIfAbsent(
@@ -1003,22 +1001,29 @@ Download it from ALIVE-NG App www.app.alivenigeria.org
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.blue[50],
+                color: Theme.of(context).colorScheme.primaryContainer,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue[200]!),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.info, color: Colors.blue[700], size: 20),
+                  Icon(
+                    Icons.info,
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    size: 20,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'Every download helps track impact and plan future resources',
-                      style: TextStyle(
-                        color: Colors.blue[700],
-                        fontSize: 12,
-                        fontStyle: FontStyle.italic,
-                      ),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onPrimaryContainer,
+                            fontStyle: FontStyle.italic,
+                          ),
                     ),
                   ),
                 ],
@@ -1079,10 +1084,9 @@ Download it from ALIVE-NG App www.app.alivenigeria.org
               const SizedBox(height: 2),
               Text(
                 description,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontSize: 12,
-                ),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
               ),
             ],
           ),
@@ -1187,18 +1191,9 @@ Download it from ALIVE-NG App www.app.alivenigeria.org
     );
   }
 
-  Widget _buildQuestionSection(int pageIndex,
-      {Map<String, dynamic>? question}) {
-    final prompt = (question?['question'] ??
-            question?['prompt'] ??
-            question?['text'] ??
-            _getSampleQuestion(pageIndex))
-        .toString();
-    final suggested = (question?['suggested_answer'] ??
-            question?['answer'] ??
-            question?['model_answer'] ??
-            _getSampleAnswer(pageIndex))
-        .toString();
+  Widget _buildQuestionSection(int pageIndex, {TractQuestion? question}) {
+    final prompt = question?.question ?? _getSampleQuestion(pageIndex);
+    final suggested = question?.correctAnswer ?? _getSampleAnswer(pageIndex);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1263,11 +1258,11 @@ Download it from ALIVE-NG App www.app.alivenigeria.org
                       const SizedBox(width: 4),
                       Text(
                         'Suggested Answer:',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green[700],
-                          fontSize: 12,
-                        ),
+                        style:
+                            Theme.of(context).textTheme.labelMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green[700],
+                                ),
                       ),
                     ],
                   ),

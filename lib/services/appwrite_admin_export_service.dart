@@ -126,7 +126,9 @@ class AppwriteAdminExportService {
         Query.limit(limit),
       ];
 
-      if (status != null && status.isNotEmpty && status.toLowerCase() != 'all') {
+      if (status != null &&
+          status.isNotEmpty &&
+          status.toLowerCase() != 'all') {
         queries.add(Query.equal('status', status.toLowerCase()));
       }
 
@@ -157,7 +159,9 @@ class AppwriteAdminExportService {
       final queries = <String>[
         Query.orderDesc('\$createdAt'),
       ];
-      if (status != null && status.isNotEmpty && status.toLowerCase() != 'all') {
+      if (status != null &&
+          status.isNotEmpty &&
+          status.toLowerCase() != 'all') {
         queries.add(Query.equal('status', status.toLowerCase()));
       }
 
@@ -189,7 +193,8 @@ class AppwriteAdminExportService {
             ? (r['amount'] as num).toDouble()
             : (double.tryParse(r['amount']?.toString() ?? '0') ?? 0.0);
         final currency = (r['currency']?.toString().toUpperCase()) ?? 'NGN';
-        final rowStatus = (r['status']?.toString().toLowerCase()) ?? 'completed';
+        final rowStatus =
+            (r['status']?.toString().toLowerCase()) ?? 'completed';
         final purpose = r['mission_purpose']?.toString() ??
             r['purpose']?.toString() ??
             r['project_title']?.toString() ??
@@ -273,7 +278,6 @@ class AppwriteAdminExportService {
           originalError: e, stackTrace: stackTrace);
     }
   }
-
 
   Future<Map<String, dynamic>> exportChatBackup({
     String type = 'messaging',

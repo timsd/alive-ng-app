@@ -36,7 +36,8 @@ class DonationService {
       AppwriteBackendConfig.downloadableMaterialsCollectionId;
   String get _downloadsCollectionId =>
       AppwriteBackendConfig.materialDownloadsCollectionId;
-  String get _projectsCollectionId => AppwriteBackendConfig.projectsCollectionId;
+  String get _projectsCollectionId =>
+      AppwriteBackendConfig.projectsCollectionId;
   String get _settingsCollectionId =>
       AppwriteBackendConfig.appSettingsCollectionId;
 
@@ -52,7 +53,8 @@ class DonationService {
     return [...queries, Query.limit(limit)];
   }
 
-  List<String> _queriesWithOffset(List<String> queries, int? limit, int? offset) {
+  List<String> _queriesWithOffset(
+      List<String> queries, int? limit, int? offset) {
     final built = _queriesWithLimit(queries, limit);
     if (offset == null) return built;
     return [...built, Query.offset(offset)];
@@ -112,7 +114,7 @@ class DonationService {
     }
   }
 
-    Future<Project?> getProject(String projectId) async {
+  Future<Project?> getProject(String projectId) async {
     try {
       final row = await _tables.getRow(
         databaseId: _databaseId,
@@ -135,7 +137,9 @@ class DonationService {
           Query.limit(100),
         ],
       );
-      return snapshot.rows.map((row) => Project.fromJson(_rowData(row))).toList();
+      return snapshot.rows
+          .map((row) => Project.fromJson(_rowData(row)))
+          .toList();
     } catch (e) {
       _logger.error('Failed to fetch donation projects', e);
       return [];
@@ -745,7 +749,9 @@ class DonationService {
         };
       }
       // Use PaymentService to process the payment
-      final donorName = donation.metadata?['donor_name'] as String? ?? (donation.userName.isNotEmpty ? donation.userName : null) ?? donation.userEmail;
+      final donorName = donation.metadata?['donor_name'] as String? ??
+          (donation.userName.isNotEmpty ? donation.userName : null) ??
+          donation.userEmail;
       final baseMetadata = {
         'donation_id': donationId,
         'appwrite_user_id': donation.userId,
@@ -885,7 +891,8 @@ class DonationService {
             'quantity': quantity,
           if (estimatedValue != null && estimatedValue.trim().isNotEmpty)
             'estimated_value': estimatedValue,
-          if (deliveryPreference != null && deliveryPreference.trim().isNotEmpty)
+          if (deliveryPreference != null &&
+              deliveryPreference.trim().isNotEmpty)
             'delivery_preference': deliveryPreference,
           if (location != null && location.trim().isNotEmpty)
             'location': location,

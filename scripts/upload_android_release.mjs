@@ -5,8 +5,10 @@ import * as appwriteSdk from 'node-appwrite';
 const { Client, Storage, ID, InputFile, Permission, Role } = appwriteSdk;
 const bucketId = 'app_releases';
 const fileId = 'alive_ng_android_release';
+const localArtifact = path.resolve('build/app/outputs/flutter-apk/app-release.apk');
+const externalArtifact = 'E:\\alive-ng-release-artifacts\\app-release.apk';
 const artifactPath = process.env.ANDROID_RELEASE_ARTIFACT
-  ?? 'E:\\alive-ng-release-artifacts\\app-release.apk';
+  ?? (fs.existsSync(localArtifact) ? localArtifact : externalArtifact);
 
 for (const name of ['APPWRITE_ENDPOINT', 'APPWRITE_PROJECT_ID', 'APPWRITE_API_KEY']) {
   if (!process.env[name]) {
@@ -60,6 +62,12 @@ async function ensureReleaseBucket() {
 }
 
 await ensureReleaseBucket();
+try {
+  await storage.deleteFile({ bucketId, fileId });
+  console.log('Replacing existing Android release.');
+} catch (error) {
+  if (error.code !== 404) throw error;
+}
 const stat = fs.statSync(artifactPath);
 const file = await storage.createFile({
   bucketId,

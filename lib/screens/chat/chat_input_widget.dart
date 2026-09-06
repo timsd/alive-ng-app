@@ -11,7 +11,8 @@ import '../../config/chat_config.dart';
 class ChatInputWidget extends StatefulWidget {
   final TextEditingController controller;
   final Function(String) onSendMessage;
-  final Function(String, MessageType, List<String>)? onSendMessageWithAttachments;
+  final Function(String, MessageType, List<String>)?
+      onSendMessageWithAttachments;
   final Future<List<TaggedEntity>> Function(String) onTagSearch;
 
   const ChatInputWidget({
@@ -69,20 +70,20 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
           child: Wrap(
             children: [
               if (!kIsWeb) // Hide camera on web where ImageSource.camera is not supported
-              ListTile(
-                leading: const Icon(Icons.photo_camera),
-                title: const Text('Camera'),
-                onTap: () async {
-                  Navigator.pop(context);
-                  final XFile? image = await _imagePicker.pickImage(
-                    source: ImageSource.camera,
-                  );
-                  if (image != null) {
-                    // Handle image attachment
-                    _handleImageAttachment(image);
-                  }
-                },
-              ),
+                ListTile(
+                  leading: const Icon(Icons.photo_camera),
+                  title: const Text('Camera'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final XFile? image = await _imagePicker.pickImage(
+                      source: ImageSource.camera,
+                    );
+                    if (image != null) {
+                      // Handle image attachment
+                      _handleImageAttachment(image);
+                    }
+                  },
+                ),
               ListTile(
                 leading: const Icon(Icons.photo_library),
                 title: const Text('Photo Library'),
@@ -102,7 +103,8 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
                 title: const Text('File'),
                 onTap: () async {
                   Navigator.pop(context);
-                  final FilePickerResult? result = await FilePicker.platform.pickFiles(withData: true);
+                  final FilePickerResult? result =
+                      await FilePicker.platform.pickFiles(withData: true);
                   if (result != null) {
                     // Handle file attachment
                     _handleFileAttachment(result.files.first);
@@ -132,24 +134,23 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
         extension: extension,
       );
 
-      final String fileName = 'chat_images/${DateTime.now().millisecondsSinceEpoch}_${image.name}';
-      final String downloadUrl = await AppwriteStorageService.instance.uploadChatFile(
+      final String fileName =
+          'chat_images/${DateTime.now().millisecondsSinceEpoch}_${image.name}';
+      final String downloadUrl =
+          await AppwriteStorageService.instance.uploadChatFile(
         bytes: imageData,
         fileName: fileName,
         contentType: contentType,
       );
-      
+
       // Send message with image attachment
       if (widget.onSendMessageWithAttachments != null) {
         widget.onSendMessageWithAttachments!(
-          'Image shared', 
-          MessageType.image, 
-          [downloadUrl]
-        );
+            'Image shared', MessageType.image, [downloadUrl]);
       } else {
         widget.onSendMessage('Image shared: ${image.name}');
       }
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Image uploaded successfully!')),
@@ -185,24 +186,23 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
         extension: extension,
       );
 
-      final String fileName = 'chat_files/${DateTime.now().millisecondsSinceEpoch}_${file.name}';
+      final String fileName =
+          'chat_files/${DateTime.now().millisecondsSinceEpoch}_${file.name}';
       if (file.bytes == null) {
         throw Exception('Failed to read file bytes. Please try again.');
       }
 
-      final String downloadUrl = await AppwriteStorageService.instance.uploadChatFile(
+      final String downloadUrl =
+          await AppwriteStorageService.instance.uploadChatFile(
         bytes: file.bytes!,
         fileName: fileName,
         contentType: contentType,
       );
-      
+
       // Send message with file attachment
       if (widget.onSendMessageWithAttachments != null) {
         widget.onSendMessageWithAttachments!(
-          'File shared: ${file.name}', 
-          MessageType.file, 
-          [downloadUrl]
-        );
+            'File shared: ${file.name}', MessageType.file, [downloadUrl]);
       } else {
         widget.onSendMessage('File shared: ${file.name}');
       }
@@ -265,13 +265,10 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
     required String contentType,
     required String extension,
   }) {
-    final uploadConfig =
-        ChatConfig.chatOptions['file_upload_config'] as Map<String, dynamic>;
-    final sizeLimit = uploadConfig['size_limit'] as int;
-    final allowedExtensions =
-        List<String>.from(uploadConfig['allowed_file_extensions']);
-    final allowedMimeTypes =
-        List<String>.from(uploadConfig['allowed_mime_types']);
+    const uploadConfig = ChatConfig.fileUpload;
+    final sizeLimit = uploadConfig.sizeLimit;
+    final allowedExtensions = uploadConfig.allowedFileExtensions;
+    final allowedMimeTypes = uploadConfig.allowedMimeTypes;
 
     if (size > sizeLimit) {
       final sizeLimitMb = sizeLimit ~/ (1024 * 1024);
@@ -308,14 +305,24 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
               size: context.responsiveIconSize(32),
               color: Theme.of(context).disabledColor,
             ),
-            SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 8.0, tablet: 10.0, desktop: 12.0)),
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveValue(
+                    context: context,
+                    mobile: 8.0,
+                    tablet: 10.0,
+                    desktop: 12.0)),
             Text(
               'Please sign in to send messages',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).disabledColor,
-              ),
+                    color: Theme.of(context).disabledColor,
+                  ),
             ),
-            SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12.0, tablet: 14.0, desktop: 16.0)),
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveValue(
+                    context: context,
+                    mobile: 12.0,
+                    tablet: 14.0,
+                    desktop: 16.0)),
             ElevatedButton(
               onPressed: () {
                 Navigator.pushNamed(context, '/auth');
@@ -329,9 +336,10 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
 
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: ResponsiveUtils.getResponsiveValue(context: context, mobile: 8.0, tablet: 10.0, desktop: 12.0), 
-        vertical: ResponsiveUtils.getResponsiveValue(context: context, mobile: 4.0, tablet: 5.0, desktop: 6.0)
-      ),
+          horizontal: ResponsiveUtils.getResponsiveValue(
+              context: context, mobile: 8.0, tablet: 10.0, desktop: 12.0),
+          vertical: ResponsiveUtils.getResponsiveValue(
+              context: context, mobile: 4.0, tablet: 5.0, desktop: 6.0)),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         border: Border(
@@ -350,11 +358,24 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
               child: Row(
                 children: [
                   SizedBox(
-                    width: ResponsiveUtils.getResponsiveValue(context: context, mobile: 16.0, tablet: 18.0, desktop: 20.0),
-                    height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 16.0, tablet: 18.0, desktop: 20.0),
+                    width: ResponsiveUtils.getResponsiveValue(
+                        context: context,
+                        mobile: 16.0,
+                        tablet: 18.0,
+                        desktop: 20.0),
+                    height: ResponsiveUtils.getResponsiveValue(
+                        context: context,
+                        mobile: 16.0,
+                        tablet: 18.0,
+                        desktop: 20.0),
                     child: const CircularProgressIndicator(strokeWidth: 2),
                   ),
-                  SizedBox(width: ResponsiveUtils.getResponsiveValue(context: context, mobile: 8.0, tablet: 10.0, desktop: 12.0)),
+                  SizedBox(
+                      width: ResponsiveUtils.getResponsiveValue(
+                          context: context,
+                          mobile: 8.0,
+                          tablet: 10.0,
+                          desktop: 12.0)),
                   Text(
                     'Uploading...',
                     style: Theme.of(context).textTheme.bodySmall,
@@ -366,7 +387,8 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
             children: [
               // Attachment button
               IconButton(
-                icon: Icon(Icons.attach_file, size: context.responsiveIconSize(24)),
+                icon: Icon(Icons.attach_file,
+                    size: context.responsiveIconSize(24)),
                 onPressed: _isUploading ? null : _handleAttachment,
               ),
               // Text input field
@@ -376,14 +398,27 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
                   decoration: InputDecoration(
                     hintText: 'Type a message...',
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(ResponsiveUtils.getResponsiveValue(context: context, mobile: 20.0, tablet: 22.0, desktop: 24.0))),
+                      borderRadius: BorderRadius.all(Radius.circular(
+                          ResponsiveUtils.getResponsiveValue(
+                              context: context,
+                              mobile: 20.0,
+                              tablet: 22.0,
+                              desktop: 24.0))),
                       borderSide: BorderSide.none,
                     ),
                     filled: true,
                     fillColor: Theme.of(context).scaffoldBackgroundColor,
                     contentPadding: EdgeInsets.symmetric(
-                      horizontal: ResponsiveUtils.getResponsiveValue(context: context, mobile: 16.0, tablet: 18.0, desktop: 20.0),
-                      vertical: ResponsiveUtils.getResponsiveValue(context: context, mobile: 8.0, tablet: 10.0, desktop: 12.0),
+                      horizontal: ResponsiveUtils.getResponsiveValue(
+                          context: context,
+                          mobile: 16.0,
+                          tablet: 18.0,
+                          desktop: 20.0),
+                      vertical: ResponsiveUtils.getResponsiveValue(
+                          context: context,
+                          mobile: 8.0,
+                          tablet: 10.0,
+                          desktop: 12.0),
                     ),
                   ),
                   textInputAction: TextInputAction.send,
@@ -402,7 +437,8 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
                       ? Theme.of(context).primaryColor
                       : Theme.of(context).disabledColor,
                 ),
-                onPressed: (_isComposing && !_isUploading) ? _handleSubmitted : null,
+                onPressed:
+                    (_isComposing && !_isUploading) ? _handleSubmitted : null,
               ),
             ],
           ),

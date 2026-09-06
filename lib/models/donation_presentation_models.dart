@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 
 @immutable
 class DonationImpact {
-  const DonationImpact({required this.icon, required this.title, required this.description});
+  const DonationImpact(
+      {required this.icon, required this.title, required this.description});
   final IconData icon;
   final String title;
   final String description;
@@ -14,4 +15,3 @@ class DonationAmountOption {
   final double amount;
   final String label;
 }
-

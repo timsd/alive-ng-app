@@ -26,7 +26,8 @@ class DonationTypeCard extends StatelessWidget {
         color: isSelected ? colors.primary : colors.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
-          side: BorderSide(color: isSelected ? colors.primary : colors.outlineVariant),
+          side: BorderSide(
+              color: isSelected ? colors.primary : colors.outlineVariant),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -40,7 +41,8 @@ class DonationTypeCard extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(title,
                     textAlign: TextAlign.center,
-                    style: theme.textTheme.labelLarge?.copyWith(color: foreground)),
+                    style: theme.textTheme.labelLarge
+                        ?.copyWith(color: foreground)),
               ],
             ),
           ),

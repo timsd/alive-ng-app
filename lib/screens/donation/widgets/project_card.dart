@@ -13,7 +13,8 @@ class ProjectCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final currency = project.currency.trim().isEmpty ? 'NGN' : project.currency;
-    final money = NumberFormat.compactCurrency(name: currency, symbol: '$currency ');
+    final money =
+        NumberFormat.compactCurrency(name: currency, symbol: '$currency ');
     final statusColor = switch (project.status.toLowerCase()) {
       'active' => colors.tertiary,
       'planning' => colors.secondary,
@@ -35,7 +36,8 @@ class ProjectCard extends StatelessWidget {
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => ColoredBox(
                   color: colors.surfaceContainerHighest,
-                  child: Icon(Icons.image_not_supported_outlined, color: colors.onSurfaceVariant),
+                  child: Icon(Icons.image_not_supported_outlined,
+                      color: colors.onSurfaceVariant),
                 ),
               ),
             ),
@@ -44,10 +46,14 @@ class ProjectCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(project.title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                Text(project.title,
+                    style: theme.textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.bold)),
                 if (project.status.isNotEmpty) ...[
                   const SizedBox(height: 4),
-                  Text(project.status, style: theme.textTheme.labelMedium?.copyWith(color: statusColor)),
+                  Text(project.status,
+                      style: theme.textTheme.labelMedium
+                          ?.copyWith(color: statusColor)),
                 ],
                 if (project.description.isNotEmpty) ...[
                   const SizedBox(height: 8),
@@ -56,7 +62,8 @@ class ProjectCard extends StatelessWidget {
                 if (project.targetAmount > 0) ...[
                   const SizedBox(height: 12),
                   LinearProgressIndicator(
-                    value: (project.raisedAmount / project.targetAmount).clamp(0.0, 1.0),
+                    value: (project.raisedAmount / project.targetAmount)
+                        .clamp(0.0, 1.0),
                     semanticsLabel: 'Project funding progress',
                     minHeight: 6,
                   ),
@@ -82,4 +89,3 @@ class ProjectCard extends StatelessWidget {
     );
   }
 }
-

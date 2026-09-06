@@ -30,9 +30,12 @@ class DonationReportEntry {
 
     return DonationReportEntry(
       reference: firstText(['reference', 'transaction_id', 'id', '\$id']),
-      donorName: firstText(['user_name', 'donor_name', 'name'], 'Anonymous Donor'),
+      donorName:
+          firstText(['user_name', 'donor_name', 'name'], 'Anonymous Donor'),
       donorEmail: firstText(['user_email', 'donor_email', 'email']),
-      purpose: firstText(['material_title', 'mission_purpose', 'purpose', 'project_title'], 'General'),
+      purpose: firstText(
+          ['material_title', 'mission_purpose', 'purpose', 'project_title'],
+          'General'),
       amount: num.tryParse(json['amount']?.toString() ?? '')?.toDouble() ?? 0,
       currency: firstText(['currency'], 'NGN').toUpperCase(),
       status: firstText(['status'], 'pending').toLowerCase(),
@@ -40,4 +43,3 @@ class DonationReportEntry {
     );
   }
 }
-
