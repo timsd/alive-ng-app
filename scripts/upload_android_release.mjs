@@ -1,15 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import * as appwriteSdk from 'node-appwrite';
-import { InputFile } from 'node-appwrite/file';
 
-const { Client, Storage, ID, Permission, Role } = appwriteSdk;
 const bucketId = 'app_releases';
 const fileId = 'alive_ng_android_release';
 const localArtifact = path.resolve('build/app/outputs/flutter-apk/app-release.apk');
-const externalArtifact = 'E:\\alive-ng-release-artifacts\\app-release.apk';
-const artifactPath = process.env.ANDROID_RELEASE_ARTIFACT
-  ?? (fs.existsSync(localArtifact) ? localArtifact : externalArtifact);
+const artifactPath = process.env.ANDROID_RELEASE_ARTIFACT ?? localArtifact;
 
 for (const name of ['APPWRITE_ENDPOINT', 'APPWRITE_PROJECT_ID', 'APPWRITE_API_KEY']) {
   if (!process.env[name]) {
@@ -17,66 +12,126 @@ for (const name of ['APPWRITE_ENDPOINT', 'APPWRITE_PROJECT_ID', 'APPWRITE_API_KE
   }
 }
 
-if (!fs.existsSync(artifactPath)) {
-  throw new Error(`Android release artifact was not found: ${artifactPath}`);
+const endpoint = process.env.APPWRITE_ENDPOINT.replace(/\/$/, '');
+const projectId = process.env.APPWRITE_PROJECT_ID;
+const apiKey = process.env.APPWRITE_API_KEY;
+
+const headers = {
+  'X-Appwrite-Project': projectId,
+  'X-Appwrite-Key': apiKey,
+};
+
+async function appwriteRequest(urlPath, options = {}) {
+  const url = `${endpoint}${urlPath}`;
+  const res = await fetch(url, {
+    ...options,
+    headers: {
+      ...headers,
+      ...(options.headers || {}),
+    },
+  });
+  return res;
 }
 
-const client = new Client()
-  .setEndpoint(process.env.APPWRITE_ENDPOINT)
-  .setProject(process.env.APPWRITE_PROJECT_ID)
-  .setKey(process.env.APPWRITE_API_KEY);
-const storage = new Storage(client);
-const publicPermissions = [Permission.read(Role.any())];
-
 async function ensureReleaseBucket() {
-  try {
-    await storage.getBucket({ bucketId });
-    await storage.updateBucket({
-      bucketId,
-      name: 'Android releases',
-      permissions: publicPermissions,
-      fileSecurity: false,
-      enabled: true,
-      maximumFileSize: 200000000,
-      allowedFileExtensions: ['apk'],
-      compression: 'none',
-      encryption: false,
-      antivirus: true,
+  const bucketPayload = {
+    name: 'Android releases',
+    permissions: ['read("any")'],
+    fileSecurity: false,
+    enabled: true,
+    maximumFileSize: 200000000,
+    allowedFileExtensions: ['apk'],
+    compression: 'none',
+    encryption: false,
+    antivirus: true,
+  };
+
+  const getRes = await appwriteRequest(`/storage/buckets/${bucketId}`);
+  if (getRes.status === 404) {
+    const createRes = await appwriteRequest('/storage/buckets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bucketId, ...bucketPayload }),
     });
-    console.log(`Release bucket ${bucketId} is ready.`);
-  } catch (error) {
-    if (error.code !== 404) throw error;
-    await storage.createBucket({
-      bucketId,
-      name: 'Android releases',
-      permissions: publicPermissions,
-      fileSecurity: false,
-      enabled: true,
-      maximumFileSize: 200000000,
-      allowedFileExtensions: ['apk'],
-      compression: 'none',
-      encryption: false,
-      antivirus: true,
-    });
+    if (!createRes.ok) {
+      throw new Error(`Failed to create bucket: ${createRes.status} ${await createRes.text()}`);
+    }
     console.log(`Created release bucket ${bucketId}.`);
+  } else if (getRes.ok) {
+    const updateRes = await appwriteRequest(`/storage/buckets/${bucketId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(bucketPayload),
+    });
+    if (!updateRes.ok) {
+      console.warn(`Warning updating bucket: ${updateRes.status}`);
+    }
+    console.log(`Release bucket ${bucketId} is ready.`);
   }
 }
 
-await ensureReleaseBucket();
-try {
-  await storage.deleteFile({ bucketId, fileId });
-  console.log('Replacing existing Android release.');
-} catch (error) {
-  if (error.code !== 404) throw error;
+async function deleteExistingRelease() {
+  console.log(`Checking and deleting previous release ${fileId}...`);
+  const delRes = await appwriteRequest(`/storage/buckets/${bucketId}/files/${fileId}`, {
+    method: 'DELETE',
+  });
+  if (delRes.ok) {
+    console.log(`PREVIOUS_UPLOAD_DELETED: Existing release ${fileId} deleted successfully.`);
+  } else if (delRes.status === 404) {
+    console.log(`No existing release ${fileId} found (already deleted).`);
+  } else {
+    console.warn(`Delete returned status ${delRes.status}: ${await delRes.text()}`);
+  }
 }
-const stat = fs.statSync(artifactPath);
-const file = await storage.createFile({
-  bucketId,
-  fileId,
-  file: InputFile.fromPath(artifactPath, path.basename(artifactPath)),
-  permissions: publicPermissions,
+
+async function uploadRelease() {
+  if (!fs.existsSync(artifactPath)) {
+    throw new Error(`Android release artifact was not found at: ${artifactPath}. Please build the APK first.`);
+  }
+
+  const stat = fs.statSync(artifactPath);
+  console.log(`Reading APK artifact from ${artifactPath} (${stat.size} bytes)...`);
+
+  const fileBuffer = fs.readFileSync(artifactPath);
+  const blob = new Blob([fileBuffer], { type: 'application/vnd.android.package-archive' });
+
+  const formData = new FormData();
+  formData.append('fileId', fileId);
+  formData.append('file', blob, 'ALIVE-NG-App.apk');
+  formData.append('permissions[]', 'read("any")');
+
+  console.log('Uploading ALIVE-NG-App.apk to Appwrite Storage...');
+  const uploadRes = await appwriteRequest(`/storage/buckets/${bucketId}/files`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!uploadRes.ok) {
+    throw new Error(`Upload failed (${uploadRes.status}): ${await uploadRes.text()}`);
+  }
+
+  const data = await uploadRes.json();
+  const downloadUrl = `${endpoint}/storage/buckets/${bucketId}/files/${data.$id}/download?project=${encodeURIComponent(projectId)}`;
+
+  console.log(`\n========================================`);
+  console.log(`SUCCESS: Uploaded ${data.name} (${stat.size} bytes)`);
+  console.log(`ANDROID_APK_URL=${downloadUrl}`);
+  console.log(`========================================\n`);
+}
+
+async function main() {
+  await ensureReleaseBucket();
+  await deleteExistingRelease();
+
+  if (process.argv.includes('--delete-only')) {
+    console.log('Finished delete-only action.');
+    return;
+  }
+
+  await uploadRelease();
+}
+
+main().catch((err) => {
+  console.error('\nERROR:', err.message);
+  process.exit(1);
 });
-const endpoint = process.env.APPWRITE_ENDPOINT.replace(/\/$/, '');
-const url = `${endpoint}/storage/buckets/${bucketId}/files/${file.$id}/download?project=${encodeURIComponent(process.env.APPWRITE_PROJECT_ID)}`;
-console.log(`Uploaded ${file.name} (${stat.size} bytes).`);
-console.log(`ANDROID_APK_URL=${url}`);
