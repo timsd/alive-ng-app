@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/text_formatter.dart';
 
 import '../../providers/appwrite_auth_provider.dart';
@@ -47,6 +48,10 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
   String _commitmentType = 'both';
   bool _isBiometricAvailable = false;
   bool _isBiometricEnabled = false;
+  /// Tracks whether the current sign-in flow was email/password (vs Google/guest)
+  /// so the biometric setup prompt only triggers for email/password logins.
+  bool _isEmailPasswordSignIn = false;
+  static const String _biometricDismissedKey = 'biometric_setup_dismissed';
   final BiometricAuthService _biometricService = BiometricAuthService.instance;
 
   @override
@@ -138,11 +143,13 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
           context.go('/home');
         }
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Biometric authentication failed: $e'),
+            content: const Text(
+              'Biometric authentication was not successful. Please sign in with your email and password.',
+            ),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -160,13 +167,22 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
     ref.listen<AsyncValue<void>>(signInControllerProvider, (previous, next) {
       next.when(
         data: (_) {
-          // Success - navigate to home
+          // Success - offer biometric setup at the ideal, non-intrusive time:
+          // after a successful email/password sign-in, before navigating home.
           if (mounted) {
             ref.read(isGuestModeProvider.notifier).state = false;
-            context.go('/');
+            if (_isEmailPasswordSignIn &&
+                _isBiometricAvailable &&
+                !_isBiometricEnabled) {
+              _isEmailPasswordSignIn = false;
+              _maybeOfferBiometricSetup();
+            } else {
+              context.go('/');
+            }
           }
         },
         error: (error, _) {
+          _isEmailPasswordSignIn = false;
           if (!mounted) return;
           // Show a user-facing message instead of raw exception text
           final rawError = error.toString().toLowerCase();
@@ -1089,6 +1105,7 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
 
     setState(() {
       _isLoading = true;
+      _isEmailPasswordSignIn = true;
     });
 
     try {
@@ -1098,11 +1115,6 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
             _emailController.text.trim(),
             _passwordController.text,
           );
-
-      // After successful sign-in, offer biometric setup if available and not already enabled
-      if (_isBiometricAvailable && !_isBiometricEnabled) {
-        _showBiometricSetupDialog();
-      }
     } finally {
       if (mounted) {
         setState(() {
@@ -1254,16 +1266,28 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              if (emailController.text.trim().isNotEmpty) {
-                Navigator.of(dialogCtx).pop();
+              final email = emailController.text.trim();
+              if (email.isEmpty || !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+                ScaffoldMessenger.of(dialogCtx).showSnackBar(
+                  SnackBar(
+                    content: Text(translate('invalid_email')),
+                    backgroundColor: Theme.of(dialogCtx).colorScheme.error,
+                  ),
+                );
+                return;
+              }
+              Navigator.of(dialogCtx).pop();
+              try {
                 await ref
                     .read(signInControllerProvider.notifier)
-                    .resetPassword(emailController.text.trim());
-                if (rootCtx.mounted) {
-                  ScaffoldMessenger.of(rootCtx).showSnackBar(
-                    SnackBar(content: Text(translate('reset_email_sent'))),
-                  );
-                }
+                    .resetPassword(email);
+              } catch (_) {
+                // Keep neutral response to prevent user enumeration
+              }
+              if (rootCtx.mounted) {
+                ScaffoldMessenger.of(rootCtx).showSnackBar(
+                  SnackBar(content: Text(translate('reset_email_sent'))),
+                );
               }
             },
             child: Text(translate('send')),
@@ -1273,36 +1297,111 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
     );
   }
 
+  /// Checks user preference and shows biometric setup dialog if not dismissed.
+  Future<void> _maybeOfferBiometricSetup() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final dismissed = prefs.getBool(_biometricDismissedKey) ?? false;
+      if (dismissed) {
+        // User previously chose "Don't ask again" — go straight home.
+        if (mounted) context.go('/');
+        return;
+      }
+    } catch (_) {
+      // If prefs fail, just navigate.
+      if (mounted) context.go('/');
+      return;
+    }
+    if (!mounted) return;
+    _showBiometricSetupDialog();
+  }
+
   void _showBiometricSetupDialog() {
     final translate = ref.read(translationProvider);
+    final rootContext = context;
 
     showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(translate('enable_biometric_auth')),
+      context: rootContext,
+      barrierDismissible: false,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(Icons.fingerprint, color: Theme.of(dialogCtx).colorScheme.primary),
+            const SizedBox(width: 10),
+            Expanded(child: Text(translate('enable_biometric_auth'))),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.fingerprint,
-              size: 48,
-              color: Theme.of(context).colorScheme.primary,
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Theme.of(dialogCtx).colorScheme.primary.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.fingerprint,
+                size: 56,
+                color: Theme.of(dialogCtx).colorScheme.primary,
+              ),
             ),
             const SizedBox(height: 16),
-            Text(translate('biometric_setup_message')),
+            Text(
+              translate('biometric_setup_message'),
+              textAlign: TextAlign.center,
+              style: Theme.of(dialogCtx).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(dialogCtx).colorScheme.onSurface.withValues(alpha: 0.8),
+              ),
+            ),
           ],
         ),
+        actionsAlignment: MainAxisAlignment.spaceBetween,
         actions: [
+          // "Don't ask again" — persists preference
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(translate('skip')),
-          ),
-          ElevatedButton(
             onPressed: () async {
-              Navigator.of(context).pop();
-              await _setupBiometricAuth();
+              Navigator.of(dialogCtx).pop();
+              try {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setBool(_biometricDismissedKey, true);
+              } catch (_) {}
+              if (rootContext.mounted) rootContext.go('/');
             },
-            child: Text(translate('enable')),
+            child: Text(
+              translate('dont_ask_again'),
+              style: TextStyle(
+                color: Theme.of(dialogCtx).colorScheme.onSurface.withValues(alpha: 0.5),
+                fontSize: 13,
+              ),
+            ),
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(dialogCtx).pop();
+                  if (rootContext.mounted) rootContext.go('/');
+                },
+                child: Text(translate('skip')),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.fingerprint, size: 18),
+                onPressed: () async {
+                  Navigator.of(dialogCtx).pop();
+                  await _setupBiometricAuth();
+                  if (rootContext.mounted) rootContext.go('/');
+                },
+                label: Text(translate('enable')),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(dialogCtx).colorScheme.primary,
+                  foregroundColor: Theme.of(dialogCtx).colorScheme.onPrimary,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -1339,11 +1438,11 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
           );
         }
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${translate('biometric_setup_error')}: $e'),
+            content: Text(translate('biometric_setup_failed')),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );

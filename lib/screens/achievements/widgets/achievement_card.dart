@@ -22,41 +22,84 @@ class AchievementCard extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
+      elevation: isEarned ? 3 : 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: isEarned
+              ? achievement.tier.color.withValues(alpha: 0.8)
+              : theme.colorScheme.outline.withValues(alpha: 0.2),
+          width: isEarned ? 2 : 1,
+        ),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
             _buildBadgeIcon(context, theme, isEarned),
             const SizedBox(width: 16),
-            Expanded(child: _buildDetails(context, theme, isEarned, progressPercent)),
+            Expanded(
+              child: _buildDetails(
+                  context, theme, isEarned, progressPercent),
+            ),
+            if (isEarned)
+              IconButton(
+                icon: Icon(
+                  Icons.share_rounded,
+                  color: achievement.tier.color,
+                  size: 20,
+                ),
+                tooltip: 'Share Achievement',
+                onPressed: () => _shareAchievement(context),
+              ),
           ],
         ),
       ),
     );
   }
 
+  void _shareAchievement(BuildContext context) {
+    SharePlus.instance.share(
+      ShareParams(
+        text:
+            '🏆 I unlocked the "${achievement.title}" badge (${achievement.tier.displayName} Tier) in ALIVE-NG!\n\n"${achievement.description}"\n\nJoin me in study and mission on ALIVE-NG: https://app.alivenigeria.org',
+        subject: 'ALIVE-NG Achievement: ${achievement.title}',
+      ),
+    );
+  }
+
   Widget _buildBadgeIcon(BuildContext context, ThemeData theme, bool isEarned) {
     return Container(
-      width: 56,
-      height: 56,
+      width: 58,
+      height: 58,
       decoration: BoxDecoration(
         color: isEarned
-            ? achievement.tier.color.withValues(alpha: 0.2)
+            ? achievement.tier.color.withValues(alpha: 0.18)
             : theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: isEarned
               ? achievement.tier.color
               : theme.colorScheme.outline.withValues(alpha: 0.3),
-          width: 2,
+          width: isEarned ? 2.5 : 1.5,
         ),
+        boxShadow: isEarned
+            ? [
+                BoxShadow(
+                  color: achievement.tier.color.withValues(alpha: 0.3),
+                  blurRadius: 10,
+                  spreadRadius: 1,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : null,
       ),
       child: Icon(
         _getIconData(achievement.iconName),
-        size: 28,
+        size: 30,
         color: isEarned
             ? achievement.tier.color
-            : theme.colorScheme.onSurfaceVariant,
+            : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
       ),
     );
   }
@@ -120,12 +163,12 @@ class AchievementCard extends StatelessWidget {
             padding: const EdgeInsets.only(top: 4),
             child: Row(
               children: [
-                Icon(Icons.check_circle, size: 14, color: theme.colorScheme.primary),
+                Icon(Icons.verified_rounded, size: 14, color: achievement.tier.color),
                 const SizedBox(width: 4),
                 Text(
-                  'Earned!',
+                  'Earned Badge',
                   style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.primary,
+                    color: achievement.tier.color,
                     fontWeight: FontWeight.bold,
                   ),
                 ),

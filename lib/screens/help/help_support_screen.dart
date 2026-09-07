@@ -272,40 +272,79 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
       BuildContext context, String Function(String) translate) {
     final guides = [
       GuideItem(
-        title: translate('getting_started'),
-        description: translate('getting_started_desc'),
-        icon: Icons.play_circle_outline,
-        color: Theme.of(context).colorScheme.tertiary,
-      ),
-      GuideItem(
-        title: translate('using_prayer_wall'),
-        description: translate('prayer_wall_guide_desc'),
-        icon: Icons.favorite_outline,
-        color: Theme.of(context).colorScheme.secondary,
-      ),
-      GuideItem(
-        title: translate('study_guides_tutorial'),
-        description: translate('study_guides_desc'),
-        icon: Icons.book_outlined,
+        title: 'Bible Reader & Offline Translations',
+        description: 'Read the Bible offline with KJV, NIV, ASV, Yoruba, Igbo, and Hausa translations.',
+        icon: Icons.menu_book_rounded,
         color: Theme.of(context).colorScheme.primary,
+        steps: [
+          'Open the Bible Reader from the Home quick actions or the navigation bar.',
+          'Tap the language or translation selector at the top to switch between English (KJV, NIV, ASV, NASB, NKJV, NLT), Yoruba (BM), Igbo (IGBOB), or Hausa (HAU).',
+          'Swipe left or right or use the navigation buttons at the bottom to flip between chapters.',
+          'Tap any verse to open options: highlight in custom colors, bookmark, copy, or share.',
+          'Tap the Speaker icon on any chapter or verse to listen with Text-To-Speech.',
+        ],
       ),
       GuideItem(
-        title: translate('health_tracking_guide'),
-        description: translate('health_tracking_desc'),
-        icon: Icons.health_and_safety_outlined,
-        color: Theme.of(context).colorScheme.secondary,
-      ),
-      GuideItem(
-        title: translate('chapter_management'),
-        description: translate('chapter_management_desc'),
-        icon: Icons.group_outlined,
+        title: 'Instant Word Memory Game',
+        description: 'Memorize scripture verses through Voice Recitation and Fill-in-the-Gaps modes.',
+        icon: Icons.sports_esports_rounded,
         color: Theme.of(context).colorScheme.tertiary,
+        steps: [
+          'Access the Bible Game under Study Guides or the Home quick action.',
+          'Choose Fill Gaps or Voice Recitation mode.',
+          'In Fill Gaps mode, type the missing words into the input boxes and tap Submit. You have up to 3 retries.',
+          'In Voice mode, recite the verse aloud from memory using the Record button. Tap the card to flip and view the verse (-2 points deduction warning).',
+          'If you need assistance after 3 attempts, unlock the Hint button to receive guidance.',
+        ],
       ),
       GuideItem(
-        title: translate('notification_settings_guide'),
-        description: translate('notification_settings_desc'),
-        icon: Icons.notifications_outlined,
-        color: Theme.of(context).colorScheme.primary,
+        title: 'Prayer Wall & Community Support',
+        description: 'Submit prayer requests, pray for others, and share praise testimonies.',
+        icon: Icons.volunteer_activism_rounded,
+        color: Theme.of(context).colorScheme.secondary,
+        steps: [
+          'Navigate to Prayer Requests from the More menu or Home actions.',
+          'Tap the + button to create a new prayer request. You can choose to post publicly or anonymously.',
+          'Browse community requests and tap "I Prayed for This" to encourage your brothers and sisters.',
+          'When God answers your prayer, update the request with a Praise Report to testify to His goodness.',
+        ],
+      ),
+      GuideItem(
+        title: 'Books & Tracts Interactive Reader',
+        description: 'Read Christian literature, answer reflection questions, and download PDFs.',
+        icon: Icons.library_books_rounded,
+        color: Colors.deepOrange,
+        steps: [
+          'Open Books & Tracts from the More tray or study area.',
+          'Tap on any tract to launch the interactive reader.',
+          'Read page by page and type in answers to personal reflection questions.',
+          'Tap the PDF icon at the top to view the original publication.',
+          'Tap Download to save the tract offline or donate towards physical tract printing and distribution.',
+        ],
+      ),
+      GuideItem(
+        title: 'Kids Mission & Interactive Stories',
+        description: 'Exciting Bible adventures, quizzes, and mission challenges for children.',
+        icon: Icons.child_care_rounded,
+        color: Colors.teal,
+        steps: [
+          'Open Kids Mission from the More drawer.',
+          'Choose a mission category (Bible Stories, Memory Verses, Hero Quizzes, or Daily Action).',
+          'Read the colorful illustrated stories and complete the fun quiz at the end.',
+          'Earn stars and unlock achievement badges as your child completes each adventure.',
+        ],
+      ),
+      GuideItem(
+        title: 'Giving & Non-Monetary Gifts',
+        description: 'Support specific projects or donate non-monetary items like equipment or books.',
+        icon: Icons.favorite_rounded,
+        color: Colors.green,
+        steps: [
+          'Open the Donate screen from the Home screen or navigation bar.',
+          'Select your preferred fund designation (General Ministry, Tract Production, Missions, etc.) or enter custom split ratios.',
+          'If you are donating physical items (vehicles, books, computers, medical supplies), select "Non-Monetary Gifts" to submit the donation form.',
+          'Complete your payment securely via Paystack using card, bank transfer, or USSD.',
+        ],
       ),
     ];
 
@@ -330,7 +369,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
           bottom: ResponsiveUtils.getResponsiveSpacing(context, 12)),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: guide.color.withValues(alpha: 0.1),
+          backgroundColor: guide.color.withValues(alpha: 0.12),
           child: Icon(
             guide.icon,
             color: guide.color,
@@ -352,7 +391,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
           size: ResponsiveUtils.getResponsiveIconSize(context, 16),
         ),
         onTap: () {
-          _showGuideDialog(context, guide);
+          _openGuideViewer(context, guide);
         },
       ),
     );
@@ -406,34 +445,32 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
           ),
         ),
         SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
-        // Contact Methods
-        _buildContactMethod(
-          context,
-          Icons.email_outlined,
-          translate('email'),
-          'alivenigeria2011@gmail.com',
-          () => _launchEmail('alivenigeria2011@gmail.com'),
-        ),
-        _buildContactMethod(
-          context,
-          Icons.phone_outlined,
-          translate('phone'),
-          '+2347068548865',
-          () => _launchPhone('+2347068548865'),
-        ),
-        _buildContactMethod(
-          context,
-          Icons.web_outlined,
-          translate('website'),
-          'www.alivenigeria.org',
-          () => _launchWebsite('https://www.alivenigeria.org'),
-        ),
-        _buildContactMethod(
-          context,
-          Icons.location_on_outlined,
-          translate('address'),
-          'ALIVE Nigeria Headquarters',
-          () => _showAddressDialog(context),
+        // Single row of clickable contact icons
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _buildContactIconCard(
+              context,
+              icon: Icons.email_rounded,
+              title: 'Email',
+              subtitle: 'app@alivenigeria.org',
+              onTap: () => _launchEmail('app@alivenigeria.org'),
+            ),
+            _buildContactIconCard(
+              context,
+              icon: Icons.phone_rounded,
+              title: 'Phone',
+              subtitle: '+234 706 854 8865',
+              onTap: () => _launchPhone('+2347068548865'),
+            ),
+            _buildContactIconCard(
+              context,
+              icon: Icons.language_rounded,
+              title: 'Website',
+              subtitle: 'alivenigeria.org',
+              onTap: () => _launchWebsite('https://www.alivenigeria.org'),
+            ),
+          ],
         ),
         SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
         // Office Hours
@@ -465,36 +502,63 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
     );
   }
 
-  Widget _buildContactMethod(BuildContext context, IconData icon, String title,
-      String subtitle, VoidCallback onTap) {
-    return CustomCard(
-      margin: EdgeInsets.only(
-          bottom: ResponsiveUtils.getResponsiveSpacing(context, 12)),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor:
-              Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-          child: Icon(
-            icon,
-            color: Theme.of(context).colorScheme.primary,
-            size: ResponsiveUtils.getResponsiveIconSize(context, 24),
+  Widget _buildContactIconCard(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircleAvatar(
+                  radius: 22,
+                  backgroundColor: theme.colorScheme.primaryContainer,
+                  child: Icon(
+                    icon,
+                    color: theme.colorScheme.primary,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  title,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontSize: 10,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
         ),
-        title: Text(
-          title,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-        ),
-        subtitle: Text(
-          subtitle,
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        trailing: Icon(
-          Icons.launch,
-          size: ResponsiveUtils.getResponsiveIconSize(context, 20),
-        ),
-        onTap: onTap,
       ),
     );
   }
@@ -502,18 +566,16 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
   Widget _buildOfficeHour(BuildContext context, String day, String hours) {
     return Padding(
       padding: EdgeInsets.symmetric(
-          vertical: ResponsiveUtils.getResponsiveSpacing(context, 4)),
+        vertical: ResponsiveUtils.getResponsiveSpacing(context, 4),
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            day,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
+          Text(day, style: Theme.of(context).textTheme.bodyMedium),
           Text(
             hours,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w600,
                 ),
           ),
         ],
@@ -526,49 +588,75 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
     return LayoutFixUtils.safeColumn(
       padding: ResponsiveUtils.getResponsivePadding(context),
       children: [
+        // Feedback Header
+        Container(
+          width: double.infinity,
+          padding: ResponsiveUtils.getResponsivePadding(context),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Theme.of(context).colorScheme.tertiaryContainer,
+                Theme.of(context).colorScheme.surface,
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+                color: Theme.of(context).colorScheme.outlineVariant),
+          ),
+          child: Column(
+            children: [
+              Icon(
+                Icons.feedback_outlined,
+                size: ResponsiveUtils.getResponsiveIconSize(context, 48),
+                color: Theme.of(context).colorScheme.tertiary,
+              ),
+              SizedBox(
+                  height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
+              Text(
+                translate('we_value_feedback'),
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              SizedBox(
+                  height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
+              Text(
+                translate('feedback_message_desc'),
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
+        // Feedback Type Selection
         Text(
-          translate('send_feedback'),
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+          translate('feedback_type'),
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
         ),
-        SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-        // Feedback Type
-        DropdownButtonFormField<String>(
-          initialValue: _selectedFeedbackType,
-          decoration: InputDecoration(
-            labelText: translate('feedback_type'),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          items: [
-            'General',
-            'Bug Report',
-            'Feature Request',
-            'Improvement Suggestion',
-            'Complaint',
-          ]
-              .map((type) => DropdownMenuItem(
-                    value: type,
-                    child: Text(type),
-                  ))
-              .toList(),
-          onChanged: (value) {
-            if (value != null) {
-              setState(() {
-                _selectedFeedbackType = value;
-              });
-            }
-          },
+        SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
+        Wrap(
+          spacing: ResponsiveUtils.getResponsiveSpacing(context, 8),
+          children: [
+            _buildFeedbackTypeChip(context, translate('general'), 'General'),
+            _buildFeedbackTypeChip(
+                context, translate('bug_report'), 'Bug Report'),
+            _buildFeedbackTypeChip(
+                context, translate('feature_request'), 'Feature Request'),
+            _buildFeedbackTypeChip(context, translate('other'), 'Other'),
+          ],
         ),
-        SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-        // Email Field
+        SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 20)),
+        // Email Input
         TextField(
           controller: _feedbackControllers[0],
           decoration: InputDecoration(
-            labelText: translate('email_optional'),
-            hintText: translate('enter_email'),
+            labelText: translate('your_email'),
+            hintText: 'name@example.com',
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
             ),
@@ -576,7 +664,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
           keyboardType: TextInputType.emailAddress,
         ),
         SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-        // Feedback Message
+        // Message Input
         TextField(
           controller: _feedbackControllers[1],
           decoration: InputDecoration(
@@ -625,32 +713,141 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
     );
   }
 
-  void _showGuideDialog(BuildContext context, GuideItem guide) {
-    showDialog(
+  Widget _buildFeedbackTypeChip(
+      BuildContext context, String label, String value) {
+    final isSelected = _selectedFeedbackType == value;
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (selected) {
+        if (selected) {
+          setState(() {
+            _selectedFeedbackType = value;
+          });
+        }
+      },
+    );
+  }
+
+  void _openGuideViewer(BuildContext context, GuideItem guide) {
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(guide.title),
-        content: Text(guide.description),
-        actions: [
-          TextButton(
-            onPressed: () {
-              if (context.mounted) {
-                Navigator.of(context).pop();
-              }
-            },
-            child: const Text('Close'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (context.mounted) {
-                Navigator.of(context).pop();
-                // Navigate to specific guide or tutorial
-              }
-            },
-            child: const Text('View Guide'),
-          ),
-        ],
-      ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        return DraggableScrollableSheet(
+          initialChildSize: 0.75,
+          maxChildSize: 0.92,
+          minChildSize: 0.5,
+          builder: (_, scrollController) {
+            return Container(
+              decoration: BoxDecoration(
+                color: theme.scaffoldBackgroundColor,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 12),
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.outlineVariant,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: guide.color.withValues(alpha: 0.15),
+                          radius: 24,
+                          child: Icon(guide.icon, color: guide.color, size: 28),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                guide.title,
+                                style: theme.textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                guide.description,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: ListView.separated(
+                      controller: scrollController,
+                      padding: const EdgeInsets.all(20),
+                      itemCount: guide.steps.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 16),
+                      itemBuilder: (ctx, index) {
+                        return Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: theme.colorScheme.outlineVariant
+                                  .withValues(alpha: 0.5),
+                            ),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              CircleAvatar(
+                                radius: 14,
+                                backgroundColor: guide.color,
+                                child: Text(
+                                  '${index + 1}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Text(
+                                  guide.steps[index],
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    height: 1.5,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -749,11 +946,13 @@ class GuideItem {
   final String description;
   final IconData icon;
   final Color color;
+  final List<String> steps;
 
   GuideItem({
     required this.title,
     required this.description,
     required this.icon,
     required this.color,
+    this.steps = const [],
   });
 }

@@ -357,6 +357,15 @@ class TranslationService {
       'feedback_message': 'Feedback Message',
       'describe_feedback': 'Describe your feedback or report an issue...',
       'submit_feedback': 'Submit Feedback',
+      'enable_biometric_auth': 'Enable Biometric Sign-In',
+      'biometric_setup_message':
+          'Would you like to enable fingerprint or face recognition for faster and more secure access to your account next time?',
+      'dont_ask_again': "Don't ask again",
+      'biometric_enabled_success': 'Biometric authentication enabled successfully',
+      'biometric_setup_failed': 'Failed to enable biometric authentication',
+      'use_biometric_auth': 'Sign in with Biometrics',
+      'skip': 'Skip',
+      'enable': 'Enable',
     },
     'yo': {
       'home': 'Ile',
@@ -585,6 +594,15 @@ class TranslationService {
       'could_not_claim_admin': 'A ko le gba ipa alabojuto ni akoko yii.',
       'join': 'Darapọ',
       'board_meeting_available': 'Ipejọpọ Igbimọ Awọn Oludari wa',
+      'enable_biometric_auth': 'Muu Wọle pẹlu Biometric ṣiṣẹ',
+      'biometric_setup_message':
+          'Ṣe o fẹ mu ika-ọwọ tabi idanimọ oju ṣiṣẹ fun wiwọle yiyara ati aabo diẹ sii nigbamii?',
+      'dont_ask_again': 'Maṣe beere lẹẹkansi',
+      'biometric_enabled_success': 'Idanimọ biometric ti ṣiṣẹ ni aṣeyọri',
+      'biometric_setup_failed': 'Kuna lati mu idanimọ biometric ṣiṣẹ',
+      'use_biometric_auth': 'Wọle pẹlu Biometric',
+      'skip': 'Fojufo',
+      'enable': 'Muu ṣiṣẹ',
     },
     'ig': {
       'home': 'Ụlọ',
@@ -796,6 +814,15 @@ class TranslationService {
       'could_not_claim_admin': 'Enweghị ike ịzọrọ ọrụ onye nchịkwa ugbu a.',
       'join': 'Soro',
       'board_meeting_available': 'Nzukọ nke Board of Directors dị',
+      'enable_biometric_auth': 'Mee Ka Nbanye Biometric rụọ ọrụ',
+      'biometric_setup_message':
+          'Ị ga-achọ ime ka mkpịsị aka ma ọ bụ nnabata ihu rụọ ọrụ maka ịbanye ngwa ngwa na nchekwa n\'oge ọzọ?',
+      'dont_ask_again': 'Ajụla ọzọ',
+      'biometric_enabled_success': 'E nyere nkwado biometric n\'ụzọ gara nke ọma',
+      'biometric_setup_failed': 'Enweghị ike ịme ka nkwado biometric rụọ ọrụ',
+      'use_biometric_auth': 'Banye na Biometric',
+      'skip': 'Wụfee',
+      'enable': 'Mee ka ọ rụọ ọrụ',
     },
     'ha': {
       'home': 'Gida',
@@ -1013,6 +1040,15 @@ class TranslationService {
           'Ba za a iya neman matsayin gudanarwa a yanzu ba.',
       'join': 'Kasance tare da mu',
       'board_meeting_available': 'Taron Hukumar Gudanarwa yana samuwa',
+      'enable_biometric_auth': 'Kunna Shiga da Biometric',
+      'biometric_setup_message':
+          'Kuna so ku kunna sawun yatsa ko gane fuska don samun sauƙi da tsaro a gaba?',
+      'dont_ask_again': 'Kada a sake tambaya',
+      'biometric_enabled_success': 'An kunna tantancewar biometric cikin nasara',
+      'biometric_setup_failed': 'An kasa kunna tantancewar biometric',
+      'use_biometric_auth': 'Shiga tare da Biometric',
+      'skip': 'Tsallake',
+      'enable': 'Kunna',
     },
   };
 

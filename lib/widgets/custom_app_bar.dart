@@ -177,7 +177,7 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
       toggleActions.add(
         IconButton(
           icon: LayoutFixUtils.responsiveIcon(
-            Icons.language,
+            Icons.translate_rounded,
             context: context,
           ),
           onPressed: () => _showLanguageSelector(context, ref),

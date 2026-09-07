@@ -219,14 +219,14 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
           TabBar(
             controller: _tabController,
             isScrollable: true,
-            labelColor: Theme.of(context).primaryColor,
-            unselectedLabelColor: Theme.of(context).colorScheme.outline,
-            indicatorColor: Theme.of(context).primaryColor,
+            labelColor: Theme.of(context).colorScheme.primary,
+            unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
+            indicatorColor: Theme.of(context).colorScheme.primary,
             tabs: [
               Tab(text: translate('all_lessons')),
-                Tab(text: translate('in_progress')),
-                Tab(text: translate('favorites')),
-                Tab(text: translate('completed')),
+              Tab(text: translate('in_progress')),
+              Tab(text: translate('favorites')),
+              Tab(text: translate('completed')),
             ],
           ),
           // Tab Content
@@ -275,11 +275,15 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
         child: DropdownButton<String>(
           value: value,
           isExpanded: true,
-          hint: Text(label),
+          hint: Text(label, overflow: TextOverflow.ellipsis),
           items: options.map((String option) {
             return DropdownMenuItem<String>(
               value: option,
-              child: Text(option),
+              child: Text(
+                option,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
             );
           }).toList(),
           onChanged: (String? newValue) {

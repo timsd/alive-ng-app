@@ -265,7 +265,7 @@ class StudyScreen extends ConsumerWidget {
                             context, 12)),
                   ),
                   child: Icon(
-                    Icons.menu_book_rounded,
+                    Icons.sports_esports_rounded,
                     color: Theme.of(context).colorScheme.onPrimary,
                     size: ResponsiveUtils.getResponsiveIconSize(context, 32),
                   ),

@@ -92,7 +92,8 @@
     body.flutter-active .hero,
     body.flutter-active #featured-grid,
     body.flutter-active .store-buttons,
-    body.flutter-active > section {
+    body.flutter-active > section,
+    body.flutter-active footer {
       display: none !important;
     }
 
@@ -570,11 +571,12 @@
 
     /* ---- ALIVE Animated Mark Styles ---- */
     .mark-stage {
-      width: 100%;
-      max-width: 420px;
+      width: min(48vw, 260px);
+      max-width: 260px;
       aspect-ratio: 3600 / 3600;
       position: relative;
       cursor: default;
+      margin: 0 auto;
     }
 
     .mark-stage svg {
@@ -1162,6 +1164,7 @@
             setLoadingProgress(100, 'Ready');
             setTimeout(function () {
               document.getElementById('app-loading-overlay').style.display = 'none';
+              try { window.scrollTo(0, 0); } catch (_) { }
             }, 300);
             clearInterval(_readyCheckTimer);
           }

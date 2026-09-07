@@ -862,34 +862,6 @@ class ProfileScreen extends ConsumerWidget {
             children: [
               ListTile(
                 leading: Icon(
-                  Icons.help_outline,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: ResponsiveUtils.getResponsiveValue(
-                      context: context, mobile: 24, tablet: 28, desktop: 32),
-                ),
-                title: Text(
-                  translate('help_support'),
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        fontSize: ResponsiveUtils.getResponsiveValue(
-                            context: context,
-                            mobile: 16,
-                            tablet: 18,
-                            desktop: 20),
-                      ),
-                ),
-                trailing: Icon(
-                  Icons.arrow_forward_ios,
-                  size: ResponsiveUtils.getResponsiveValue(
-                      context: context, mobile: 16, tablet: 18, desktop: 20),
-                ),
-                onTap: () {
-                  // Navigate to help & support screen
-                  context.push('/help-support');
-                },
-              ),
-              const Divider(height: 1),
-              ListTile(
-                leading: Icon(
                   Icons.privacy_tip_outlined,
                   color: Theme.of(context).colorScheme.primary,
                   size: ResponsiveUtils.getResponsiveValue(
@@ -938,85 +910,6 @@ class ProfileScreen extends ConsumerWidget {
                 onTap: () {
                   // Navigate to terms & conditions
                   context.push('/terms-conditions');
-                },
-              ),
-              const Divider(height: 1),
-              ListTile(
-                leading: Icon(
-                  Icons.info_outline,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: ResponsiveUtils.getResponsiveValue(
-                      context: context, mobile: 24, tablet: 28, desktop: 32),
-                ),
-                title: Text(
-                  translate('about_app'),
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        fontSize: ResponsiveUtils.getResponsiveValue(
-                            context: context,
-                            mobile: 16,
-                            tablet: 18,
-                            desktop: 20),
-                      ),
-                ),
-                trailing: Icon(
-                  Icons.arrow_forward_ios,
-                  size: ResponsiveUtils.getResponsiveValue(
-                      context: context, mobile: 16, tablet: 18, desktop: 20),
-                ),
-                onTap: () {
-                  // Navigate to about app screen
-                  context.push('/about-app');
-                },
-              ),
-              const Divider(height: 1),
-              ListTile(
-                leading: Icon(
-                  Icons.info,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: ResponsiveUtils.getResponsiveValue(
-                      context: context, mobile: 24, tablet: 28, desktop: 32),
-                ),
-                title: Text(
-                  translate('about_alive'),
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        fontSize: ResponsiveUtils.getResponsiveValue(
-                            context: context,
-                            mobile: 16,
-                            tablet: 18,
-                            desktop: 20),
-                      ),
-                ),
-                trailing: Icon(
-                  Icons.arrow_forward_ios,
-                  size: ResponsiveUtils.getResponsiveValue(
-                      context: context, mobile: 16, tablet: 18, desktop: 20),
-                ),
-                onTap: () {
-                  // Navigate to about ALIVE screen
-                  context.push('/about-alive');
-                },
-              ),
-              const Divider(height: 1),
-              ListTile(
-                leading: Icon(
-                  Icons.logout,
-                  color: Theme.of(context).colorScheme.error,
-                  size: ResponsiveUtils.getResponsiveValue(
-                      context: context, mobile: 24, tablet: 28, desktop: 32),
-                ),
-                title: Text(
-                  translate('sign_out'),
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Theme.of(context).colorScheme.error,
-                        fontSize: ResponsiveUtils.getResponsiveValue(
-                            context: context,
-                            mobile: 16,
-                            tablet: 18,
-                            desktop: 20),
-                      ),
-                ),
-                onTap: () {
-                  _showSignOutDialog(context, ref, translate);
                 },
               ),
             ],

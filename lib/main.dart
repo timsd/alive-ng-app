@@ -266,12 +266,49 @@ class MainNavigationScreen extends ConsumerWidget {
     }
   }
 
+  void _showSignOutDialog(BuildContext context, WidgetRef ref) {
+    final translate = ref.read(languageProvider);
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: Text(translate('sign_out')),
+        content: Text(translate('sign_out_confirmation')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: Text(translate('cancel')),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            onPressed: () async {
+              Navigator.of(dialogCtx).pop();
+              try {
+                await ref.read(appwriteAuthProvider.notifier).signOut();
+                if (context.mounted) {
+                  context.go(AppConstants.authRoute);
+                }
+              } catch (_) {}
+            },
+            child: Text(translate('sign_out')),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showMoreBottomSheet(BuildContext context, WidgetRef ref) {
+    final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _buildMoreBottomSheet(context, ref),
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(top: topPadding),
+        child: _buildMoreBottomSheet(context, ref),
+      ),
     );
   }
 
@@ -279,89 +316,55 @@ class MainNavigationScreen extends ConsumerWidget {
     final translate = ref.watch(languageProvider);
     final roleService = RoleAccessService.instance;
     final canAccessRoleGated = roleService.canAccessRoleGatedFeatures();
-    // Use responsive utilities instead of hardcoded MediaQuery values
-    final bottomSheetHeight = ResponsiveUtils.getResponsiveValue(
-      context: context,
-      mobile: MediaQuery.of(context).size.height * 0.85,
-      tablet: MediaQuery.of(context).size.height * 0.7,
-      desktop: MediaQuery.of(context).size.height * 0.6,
-    );
-
-    // Responsive cross axis count
-    final crossAxisCount = ResponsiveUtils.getResponsiveGridColumns(context);
+    const crossAxisCount = 4;
 
     return Container(
-      height: bottomSheetHeight,
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
-        borderRadius: BorderRadius.vertical(
-            top: Radius.circular(context.responsiveBorderRadius.topLeft.x)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            width: ResponsiveUtils.getResponsiveValue(
-              context: context,
-              mobile: 40.0,
-              tablet: 48.0,
-              desktop: 56.0,
-            ),
-            height: 4,
-            margin: EdgeInsets.symmetric(
-                vertical: context.responsivePadding.top / 2),
-            decoration: BoxDecoration(
-              color: Theme.of(context)
-                  .colorScheme
-                  .onSurface
-                  .withValues(alpha: 77 / 255.0),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
           Padding(
-            padding: context.responsivePadding,
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
             child: Text(
               translate('more_features'),
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
-                    fontSize: context.responsiveFontSize(20),
+                    fontSize: 20,
                   ),
             ),
           ),
           if (!canAccessRoleGated) ...[
             Container(
-              margin: context.responsiveMargin,
-              padding: context.responsivePadding,
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.errorContainer,
-                borderRadius: context.responsiveBorderRadius,
+                color: Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(10),
               ),
               child: Row(
                 children: [
                   Icon(
                     Icons.pending_actions,
                     color: Theme.of(context).colorScheme.onErrorContainer,
-                    size: context.responsiveIconSize(24),
+                    size: 18,
                   ),
-                  SizedBox(
-                      width: context.getResponsiveValue(
-                              mobile: 16.0, tablet: 24.0, desktop: 32.0) /
-                          2),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       translate('account_pending_approval'),
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.onErrorContainer,
                         fontWeight: FontWeight.w500,
-                        fontSize: context.responsiveFontSize(14),
+                        fontSize: 12,
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-            SizedBox(
-                height: context.getResponsiveValue(
-                    mobile: 8.0, tablet: 12.0, desktop: 16.0)),
           ],
           Expanded(
             child: Builder(builder: (context) {
@@ -420,6 +423,11 @@ class MainNavigationScreen extends ConsumerWidget {
                   },
                 ],
                 {
+                  'icon': Icons.menu_book_rounded,
+                  'label': 'Bible',
+                  'route': AppConstants.bibleRoute,
+                },
+                {
                   'icon': Icons.account_circle_rounded,
                   'label': 'Profile',
                   'route': AppConstants.profileRoute
@@ -451,7 +459,7 @@ class MainNavigationScreen extends ConsumerWidget {
                   'route': AppConstants.interactiveLessonsRoute
                 },
                 {
-                  'icon': Icons.menu_book_rounded,
+                  'icon': Icons.library_books_rounded,
                   'label': 'Tracts',
                   'route': AppConstants.booksTractsRoute
                 },
@@ -466,10 +474,31 @@ class MainNavigationScreen extends ConsumerWidget {
                   'route': AppConstants.kidsMissionRoute
                 },
                 {
+                  'icon': Icons.help_outline_rounded,
+                  'label': 'Help & Support',
+                  'route': '/help-support',
+                },
+                {
+                  'icon': Icons.info_outline_rounded,
+                  'label': 'About App',
+                  'route': '/about-app',
+                },
+                {
+                  'icon': Icons.info_rounded,
+                  'label': 'About ALIVE',
+                  'route': '/about-alive',
+                },
+                {
                   'icon': Icons.login_rounded,
                   'label': 'Sign In',
                   'route': AppConstants.authRoute,
                   'guestOnly': true,
+                },
+                {
+                  'icon': Icons.logout_rounded,
+                  'label': 'Sign Out',
+                  'authOnly': true,
+                  'onTap': () => _showSignOutDialog(context, ref),
                 },
               ];
               final authState = ref.watch(authStateProvider);
@@ -481,6 +510,9 @@ class MainNavigationScreen extends ConsumerWidget {
 
               final visibleItems = items.where((item) {
                 if (item['guestOnly'] == true && isAuthenticated) {
+                  return false;
+                }
+                if (item['authOnly'] == true && !isAuthenticated) {
                   return false;
                 }
                 if (item['roleOnly'] == true && userRole != 'admin') {
@@ -498,17 +530,12 @@ class MainNavigationScreen extends ConsumerWidget {
               }).toList();
 
               return GridView.builder(
-                  padding: context.responsivePadding,
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: crossAxisCount,
-                    mainAxisSpacing: context.responsivePadding.top,
-                    crossAxisSpacing: context.responsivePadding.left,
-                    childAspectRatio: ResponsiveUtils.getResponsiveValue(
-                      context: context,
-                      mobile: 0.95,
-                      tablet: 1.0,
-                      desktop: 1.05,
-                    ),
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 8,
+                    childAspectRatio: 0.88,
                   ),
                   itemCount: visibleItems.length,
                   itemBuilder: (context, index) {
@@ -519,6 +546,7 @@ class MainNavigationScreen extends ConsumerWidget {
                       item['label'] as String,
                       item['route'] as String?,
                       roleOnly: item['roleOnly'] == true,
+                      onTap: item['onTap'] as VoidCallback?,
                     );
                   });
             }),
@@ -547,93 +575,58 @@ class MainNavigationScreen extends ConsumerWidget {
           context.go(route);
         }
       },
-      borderRadius: context.responsiveBorderRadius,
-      child: Stack(
+      borderRadius: BorderRadius.circular(16),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
               color: Theme.of(context).brightness == Brightness.dark
-                  ? Theme.of(context).colorScheme.surface
-                  : Theme.of(context).colorScheme.surfaceContainerHighest,
-              borderRadius: context.responsiveBorderRadius,
-              border: Border.all(
-                color: Theme.of(context)
-                    .colorScheme
-                    .outline
-                    .withValues(alpha: 51 / 255.0),
-              ),
+                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.20)
+                  : Theme.of(context).colorScheme.primary.withValues(alpha: 0.10),
+              shape: BoxShape.circle,
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
+            alignment: Alignment.center,
+            child: Stack(
               children: [
-                SizedBox(
-                  width: 44,
-                  height: 44,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.18)
-                          : Theme.of(context).colorScheme.primary.withValues(alpha: 0.10),
-                      shape: BoxShape.circle,
-                    ),
-                    alignment: Alignment.center,
+                Icon(
+                  icon,
+                  size: 24,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                if (roleOnly)
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
                     child: Icon(
-                      icon,
-                      size: 22,
+                      Icons.lock,
+                      size: 12,
                       color: Theme.of(context).brightness == Brightness.dark
-                          ? Theme.of(context).colorScheme.primary
+                          ? Theme.of(context).colorScheme.onSurface
                           : Theme.of(context).colorScheme.primary,
                     ),
                   ),
-                ),
-                SizedBox(
-                    height: context.getResponsiveValue(
-                            mobile: 8.0, tablet: 10.0, desktop: 12.0)),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2),
-                  child: Text(
-                    label,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          fontSize: context.responsiveFontSize(12),
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    softWrap: true,
-                    overflow: TextOverflow.visible,
-                  ),
-                ),
               ],
             ),
           ),
-          if (roleOnly)
-            Positioned(
-              top: context.getResponsiveValue(
-                  mobile: 6.0, tablet: 8.0, desktop: 10.0),
-              right: context.getResponsiveValue(
-                  mobile: 6.0, tablet: 8.0, desktop: 10.0),
-              child: Container(
-                padding: EdgeInsets.all(context.getResponsiveValue(
-                    mobile: 4.0, tablet: 5.0, desktop: 6.0)),
-                decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .primary
-                      .withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.lock,
-                  size: context.responsiveIconSize(14),
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Theme.of(context).colorScheme.onSurface
-                      : Theme.of(context).colorScheme.primary,
-                ),
-              ),
+          const SizedBox(height: 6),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 11,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
+          ),
         ],
       ),
     );

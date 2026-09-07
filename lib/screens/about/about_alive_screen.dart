@@ -238,7 +238,7 @@ class AboutAliveScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        'The ALIVE app extends the ministry beyond physical gatherings. It helps members access study materials, testimonies, events, prayer support, donation options, conference participation, and resources from one organized place.',
+                        'The ALIVE-NG app extends the ministry beyond physical gatherings. It helps members access study materials, testimonies, events, prayer support, donation options, conference participation, and resources from one organized place.',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                           height: 1.65,
@@ -254,35 +254,99 @@ class AboutAliveScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Contact ALIVE',
+                        'Contact ALIVE-NG',
                         style: theme.textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                       const SizedBox(height: 14),
-                      _ContactTile(
-                        icon: Icons.email_rounded,
-                        title: 'Email',
-                        value: 'alivenigeria2011@gmail.com',
-                        onTap: () => _launchEmail('alivenigeria2011@gmail.com'),
-                      ),
-                      const SizedBox(height: 10),
-                      _ContactTile(
-                        icon: Icons.phone_rounded,
-                        title: 'Phone',
-                        value: '+2347068548865',
-                        onTap: () => _launchPhone('+2347068548865'),
-                      ),
-                      const SizedBox(height: 10),
-                      _ContactTile(
-                        icon: Icons.public_rounded,
-                        title: 'Website',
-                        value: 'www.alivenigeria.org',
-                        onTap: () =>
-                            _launchWebsite('https://www.alivenigeria.org'),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _buildAliveContactIcon(
+                            context,
+                            icon: Icons.email_rounded,
+                            title: 'Email',
+                            subtitle: 'alivenigeria2011@gmail.com',
+                            onTap: () => _launchEmail('alivenigeria2011@gmail.com'),
+                          ),
+                          _buildAliveContactIcon(
+                            context,
+                            icon: Icons.phone_rounded,
+                            title: 'Phone',
+                            subtitle: '+234 706 854 8865',
+                            onTap: () => _launchPhone('+2347068548865'),
+                          ),
+                          _buildAliveContactIcon(
+                            context,
+                            icon: Icons.public_rounded,
+                            title: 'Website',
+                            subtitle: 'alivenigeria.org',
+                            onTap: () =>
+                                _launchWebsite('https://alivenigeria.org'),
+                          ),
+                        ],
                       ),
                     ],
                   ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAliveContactIcon(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest
+                  .withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: theme.colorScheme.primaryContainer,
+                  child: Icon(icon, color: theme.colorScheme.primary, size: 20),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  title,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontSize: 10,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),

@@ -525,9 +525,18 @@
             document.getElementById('progress-fill').style.width = '15%';
           }
           if (window.innerWidth <= 820) {
-            document.querySelector('.project-card')?.scrollIntoView({ behavior: 'smooth' });
+            document.querySelector('.card')?.scrollIntoView({ behavior: 'smooth' });
           }
         });
+      }
+
+      // Auto-scroll to donor form on page load if project was specified
+      if (projectId) {
+        setTimeout(function() {
+          try {
+            document.querySelector('.card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          } catch (_) { }
+        }, 150);
       }
 
       // Auto-scroll on mobile when focusing fields

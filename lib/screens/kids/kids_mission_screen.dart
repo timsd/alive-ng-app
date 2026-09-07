@@ -8,8 +8,15 @@ import '../../utils/responsive_utils.dart';
 import '../../models/kids_missions.dart';
 import '../../utils/error_handler.dart';
 
-class KidsMissionScreen extends ConsumerWidget {
+class KidsMissionScreen extends ConsumerStatefulWidget {
   const KidsMissionScreen({super.key});
+
+  @override
+  ConsumerState<KidsMissionScreen> createState() => _KidsMissionScreenState();
+}
+
+class _KidsMissionScreenState extends ConsumerState<KidsMissionScreen> {
+  String? _selectedCategory;
 
   Stream<List<Mission>> _getMissionsStream() {
     return Stream.fromFuture(TablesDB(appwriteClient).listRows(
@@ -84,186 +91,7 @@ class KidsMissionScreen extends ConsumerWidget {
     return 'witness';
   }
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
-      appBar: const CustomAppBar(
-        title: 'Kids Mission',
-        showBackButton: true,
-      ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(
-            context: context, mobile: 12, tablet: 16, desktop: 20)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header Section
-            Container(
-              width: double.infinity,
-              padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 16, tablet: 20, desktop: 24)),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Theme.of(context).primaryColor,
-                    Theme.of(context)
-                        .primaryColor
-                        .withValues(alpha: 179 / 255.0),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(
-                    ResponsiveUtils.getResponsiveValue(
-                        context: context, mobile: 12, tablet: 16, desktop: 20)),
-              ),
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.child_care,
-                    size: ResponsiveUtils.getResponsiveValue(
-                        context: context, mobile: 56, tablet: 64, desktop: 72),
-                    color: Theme.of(context).colorScheme.onPrimary,
-                  ),
-                  SizedBox(
-                      height: ResponsiveUtils.getResponsiveValue(
-                          context: context,
-                          mobile: 12,
-                          tablet: 16,
-                          desktop: 20)),
-                  Text(
-                    'Kids Mission Adventures',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onPrimary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(
-                      height: ResponsiveUtils.getResponsiveValue(
-                          context: context, mobile: 6, tablet: 8, desktop: 10)),
-                  Text(
-                    'Exciting missions and activities for young disciples',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onPrimary
-                              .withValues(alpha: 230 / 255.0),
-                        ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(
-                height: ResponsiveUtils.getResponsiveValue(
-                    context: context, mobile: 20, tablet: 24, desktop: 28)),
-
-            // Mission Categories
-            Text(
-              'Mission Categories',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            SizedBox(
-                height: ResponsiveUtils.getResponsiveValue(
-                    context: context, mobile: 12, tablet: 16, desktop: 20)),
-
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              crossAxisSpacing: ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 12, tablet: 16, desktop: 20),
-              mainAxisSpacing: ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 12, tablet: 16, desktop: 20),
-              childAspectRatio: 1.2,
-              children: [
-                _buildMissionCard(
-                  context,
-                  'Memory Verses',
-                  Icons.psychology,
-                  Theme.of(context).colorScheme.tertiary,
-                  'Learn and memorize Bible verses',
-                ),
-                _buildMissionCard(
-                  context,
-                  'Prayer Time',
-                  Icons.favorite,
-                  Theme.of(context).colorScheme.error,
-                  'Guided prayer activities',
-                ),
-                _buildMissionCard(
-                  context,
-                  'Service Projects',
-                  Icons.volunteer_activism,
-                  Theme.of(context).colorScheme.secondary,
-                  'Help others in your community',
-                ),
-              ],
-            ),
-            SizedBox(
-                height: ResponsiveUtils.getResponsiveValue(
-                    context: context, mobile: 20, tablet: 24, desktop: 28)),
-
-            Text(
-              'Available Missions',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            SizedBox(
-                height: ResponsiveUtils.getResponsiveValue(
-                    context: context, mobile: 12, tablet: 16, desktop: 20)),
-
-            StreamBuilder<List<Mission>>(
-                stream: _getMissionsStream(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(
-                        child: Padding(
-                            padding: EdgeInsets.all(20),
-                            child: CircularProgressIndicator()));
-                  }
-
-                  if (snapshot.hasError) {
-                    return _buildFeedbackCard(
-                      context,
-                      title: 'Unable to load kids missions',
-                      message: ErrorHandler.getUserFriendlyMessage(
-                        snapshot.error,
-                      ),
-                      icon: Icons.cloud_off_rounded,
-                    );
-                  }
-
-                  final missions = snapshot.data ?? [];
-
-                  if (missions.isEmpty) {
-                    return _buildFeedbackCard(
-                      context,
-                      title: 'No active missions found',
-                      message:
-                          'Mission opportunities for children will appear here when they are available.',
-                      icon: Icons.assignment_turned_in_outlined,
-                    );
-                  }
-
-                  return ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: missions.length,
-                    itemBuilder: (context, index) {
-                      return _buildMissionListItem(context, missions[index]);
-                    },
-                  );
-                }),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFeedbackCard(
+  Widget _buildStateCard(
     BuildContext context, {
     required String title,
     required String message,
@@ -314,75 +142,64 @@ class KidsMissionScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildMissionCard(
+  Widget _buildQuickActionCategory(
     BuildContext context,
-    String title,
+    String shortLabel,
+    String category,
     IconData icon,
     Color color,
-    String description,
   ) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(ResponsiveUtils.getResponsiveValue(
-            context: context, mobile: 10, tablet: 12, desktop: 14)),
-        side: BorderSide(
-            color: Theme.of(context)
-                .colorScheme
-                .outlineVariant
-                .withValues(alpha: 0.4)),
-      ),
-      color: Theme.of(context).colorScheme.surfaceContainer,
-      child: InkWell(
-        onTap: () {
-          _navigateToMissionCategory(context, title);
-        },
-        borderRadius: BorderRadius.circular(ResponsiveUtils.getResponsiveValue(
-            context: context, mobile: 10, tablet: 12, desktop: 14)),
-        child: Padding(
-          padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(
-              context: context, mobile: 12, tablet: 16, desktop: 20)),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(
-                    context: context, mobile: 10, tablet: 12, desktop: 14)),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 26 / 255.0),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  icon,
-                  color: color,
-                  size: ResponsiveUtils.getResponsiveValue(
-                      context: context, mobile: 28, tablet: 32, desktop: 36),
-                ),
-              ),
-              SizedBox(
-                  height: ResponsiveUtils.getResponsiveValue(
-                      context: context, mobile: 10, tablet: 12, desktop: 14)),
-              Text(
-                title,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              SizedBox(
-                  height: ResponsiveUtils.getResponsiveValue(
-                      context: context, mobile: 3, tablet: 4, desktop: 5)),
-              Text(
-                description,
-                style: Theme.of(context).textTheme.bodySmall,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+    final isSelected = _selectedCategory == category;
+    final theme = Theme.of(context);
+
+    return InkWell(
+      onTap: () {
+        setState(() {
+          if (_selectedCategory == category) {
+            _selectedCategory = null; // Toggle off to show all
+          } else {
+            _selectedCategory = category;
+          }
+        });
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          color: isSelected
+              ? color.withValues(alpha: 0.2)
+              : theme.colorScheme.surfaceContainer,
+          border: Border.all(
+            color: isSelected
+                ? color
+                : theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+            width: isSelected ? 2 : 1,
           ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 24),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              shortLabel,
+              style: theme.textTheme.labelMedium?.copyWith(
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                color: isSelected ? color : theme.colorScheme.onSurface,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ),
       ),
     );
@@ -393,12 +210,14 @@ class KidsMissionScreen extends ConsumerWidget {
       MissionCategory.evangelism: Icons.campaign,
       MissionCategory.service: Icons.volunteer_activism,
       MissionCategory.learning: Icons.psychology,
+      MissionCategory.sharing: Icons.share,
       MissionCategory.prayer: Icons.favorite,
     };
     final categoryColors = {
       MissionCategory.evangelism: Theme.of(context).colorScheme.primary,
       MissionCategory.service: Theme.of(context).colorScheme.secondary,
       MissionCategory.learning: Theme.of(context).colorScheme.tertiary,
+      MissionCategory.sharing: Colors.orange,
       MissionCategory.prayer: Theme.of(context).colorScheme.error,
     };
 
@@ -449,9 +268,9 @@ class KidsMissionScreen extends ConsumerWidget {
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(alpha: 0.7),
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.7),
                   ),
             ),
           ],
@@ -461,41 +280,6 @@ class KidsMissionScreen extends ConsumerWidget {
             : const Icon(Icons.arrow_forward_ios, size: 16),
         isThreeLine: true,
         onTap: () => _navigateToActivityDetails(context, mission),
-      ),
-    );
-  }
-
-  void _navigateToMissionCategory(BuildContext context, String category) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('$category Missions'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Explore missions in the $category category.'),
-            const SizedBox(height: 16),
-            Text(
-                'This will show specific missions and activities related to $category.'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Opening $category missions...'),
-                ),
-              );
-            },
-            child: const Text('Explore'),
-          ),
-        ],
       ),
     );
   }
@@ -570,6 +354,240 @@ class KidsMissionScreen extends ConsumerWidget {
             child: const Text('Start Activity'),
           ),
         ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Scaffold(
+      appBar: CustomAppBar(
+        title: 'Kids Mission',
+        showBackButton: true,
+      ),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(
+              context: context, mobile: 14, tablet: 18, desktop: 24)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header Card with high contrast in dark mode
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(
+                    context: context, mobile: 16, tablet: 20, desktop: 24)),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  gradient: LinearGradient(
+                    colors: isDark
+                        ? [
+                            const Color(0xFF1E293B),
+                            const Color(0xFF0F172A),
+                          ]
+                        : [
+                            theme.colorScheme.primaryContainer,
+                            theme.colorScheme.secondaryContainer,
+                          ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.15)
+                        : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.child_care_rounded,
+                        color: Colors.white,
+                        size: 32,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Kids Mission Adventure',
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white : theme.colorScheme.onPrimaryContainer,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Learn, play, and share God\'s love every day!',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.8)
+                                  : theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Categories in Quick-Action size
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Categories',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  if (_selectedCategory != null)
+                    TextButton(
+                      onPressed: () => setState(() => _selectedCategory = null),
+                      child: const Text('Show All'),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final itemWidth = (constraints.maxWidth - 36) / 4;
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      SizedBox(
+                        width: itemWidth,
+                        child: _buildQuickActionCategory(
+                          context,
+                          'Evangelism',
+                          'evangelism',
+                          Icons.campaign_rounded,
+                          Colors.blue,
+                        ),
+                      ),
+                      SizedBox(
+                        width: itemWidth,
+                        child: _buildQuickActionCategory(
+                          context,
+                          'Service',
+                          'service',
+                          Icons.volunteer_activism_rounded,
+                          Colors.green,
+                        ),
+                      ),
+                      SizedBox(
+                        width: itemWidth,
+                        child: _buildQuickActionCategory(
+                          context,
+                          'Learning',
+                          'learning',
+                          Icons.psychology_rounded,
+                          Colors.purple,
+                        ),
+                      ),
+                      SizedBox(
+                        width: itemWidth,
+                        child: _buildQuickActionCategory(
+                          context,
+                          'Prayer',
+                          'prayer',
+                          Icons.favorite_rounded,
+                          Colors.redAccent,
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
+
+              // Missions List with Category Filter
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    _selectedCategory != null
+                        ? '${_selectedCategory![0].toUpperCase()}${_selectedCategory!.substring(1)} Missions'
+                        : 'Active Missions',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              StreamBuilder<List<Mission>>(
+                stream: _getMissionsStream(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(32.0),
+                        child: CircularProgressIndicator(),
+                      ),
+                    );
+                  }
+
+                  if (snapshot.hasError) {
+                    return _buildStateCard(
+                      context,
+                      title: 'Unable to Load Missions',
+                      message: ErrorHandler.getFriendlyErrorMessage(snapshot.error),
+                      icon: Icons.error_outline_rounded,
+                    );
+                  }
+
+                  final allMissions = snapshot.data ?? [];
+                  final filteredMissions = _selectedCategory == null
+                      ? allMissions
+                      : allMissions
+                          .where((m) => m.category.name.toLowerCase() == _selectedCategory)
+                          .toList();
+
+                  if (filteredMissions.isEmpty) {
+                    return _buildStateCard(
+                      context,
+                      title: 'No Missions Found',
+                      message: _selectedCategory != null
+                          ? 'There are no active ${_selectedCategory} missions at the moment.'
+                          : 'Check back soon for new mission challenges!',
+                      icon: Icons.star_border_rounded,
+                    );
+                  }
+
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: filteredMissions.length,
+                    itemBuilder: (context, index) {
+                      return _buildMissionListItem(context, filteredMissions[index]);
+                    },
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

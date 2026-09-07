@@ -90,6 +90,7 @@ bool _isGuestAccessibleRoute(String path) {
     '/help-support',
     '/donation',
     '/gift-in-kind',
+    '/non-monetary-gift',
     '/admin-approve',
     '/reset-password',
   ];

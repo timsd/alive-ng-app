@@ -137,108 +137,129 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       body: AnimatedBuilder(
         animation: _animationController,
         builder: (context, child) {
+          final hasStickyProject = _selectedProjectId != null;
+          final hasStickyDesignation = _selectedFundDesignations.isNotEmpty;
+
           return FadeTransition(
             opacity: _fadeAnimation,
             child: SlideTransition(
               position: _slideAnimation,
-              child: SingleChildScrollView(
-                padding: ResponsiveUtils.getResponsivePadding(context),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (_selectedProjectId != null)
-                      Container(
-                        padding: EdgeInsets.all(
-                            ResponsiveUtils.getResponsiveValue(
-                                context: context,
-                                mobile: 12,
-                                tablet: 14,
-                                desktop: 16)),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .primary
-                                  .withValues(alpha: 0.2)),
+              child: Column(
+                children: [
+                  // Sticky Top Bar for Selected Project & Fund Split Ratio
+                  if (hasStickyProject || hasStickyDesignation)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        border: Border(
+                          bottom: BorderSide(
+                            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+                          ),
                         ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.volunteer_activism,
-                                color: Theme.of(context).colorScheme.primary),
-                            SizedBox(
-                                width: ResponsiveUtils.getResponsiveSpacing(
-                                    context, 8)),
-                            Expanded(
-                              child: Text(
-                                _selectedProjectTitle != null
-                                    ? 'You are donating to: $_selectedProjectTitle'
-                                    : 'You are donating to: Selected Project',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleSmall
-                                    ?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: context.responsiveFontSize(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (hasStickyProject)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primaryContainer,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.volunteer_activism,
+                                      size: 18, color: theme.colorScheme.primary),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      _selectedProjectTitle != null
+                                          ? 'Project: $_selectedProjectTitle'
+                                          : 'Selected Project',
+                                      style: theme.textTheme.labelMedium?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: theme.colorScheme.onPrimaryContainer,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
+                                  ),
+                                  TextButton(
+                                    onPressed: _clearSelectedProject,
+                                    style: TextButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      minimumSize: Size.zero,
+                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    child: const Text('Change', style: TextStyle(fontSize: 12)),
+                                  ),
+                                ],
                               ),
                             ),
-                            TextButton(
-                              onPressed: _clearSelectedProject,
-                              child: const Text('Change'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    if (_selectedFundDesignations.isNotEmpty)
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: EdgeInsets.all(
-                            ResponsiveUtils.getResponsiveValue(
-                                context: context,
-                                mobile: 12,
-                                tablet: 14,
-                                desktop: 16)),
-                        decoration: BoxDecoration(
-                          color:
-                              Theme.of(context).colorScheme.secondaryContainer,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .secondary
-                                  .withValues(alpha: 0.3)),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.check_circle_outline,
-                                color: Theme.of(context).colorScheme.secondary),
-                            SizedBox(
-                                width: ResponsiveUtils.getResponsiveSpacing(
-                                    context, 8)),
-                            Expanded(
-                              child: Text(
-                                _selectedFundDesignations.length == 1
-                                    ? 'Designated for: ${_selectedFundDesignations.first} (100%)'
-                                    : 'Split across ${_selectedFundDesignations.length} areas: ${_selectedFundDesignations.join(', ')} (${(100.0 / _selectedFundDesignations.length).toStringAsFixed(0)}% each)',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleSmall
-                                    ?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: context.responsiveFontSize(14),
+                          if (hasStickyProject && hasStickyDesignation)
+                            const SizedBox(height: 6),
+                          if (hasStickyDesignation)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.secondaryContainer,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: theme.colorScheme.secondary.withValues(alpha: 0.3),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.check_circle_outline,
+                                      size: 18, color: theme.colorScheme.secondary),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      _selectedFundDesignations.length == 1
+                                          ? 'Designated: ${_selectedFundDesignations.first} (100%)'
+                                          : 'Split (${_selectedFundDesignations.length} areas): ${_selectedFundDesignations.join(', ')} (${(100.0 / _selectedFundDesignations.length).toStringAsFixed(0)}% each)',
+                                      style: theme.textTheme.labelMedium?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: theme.colorScheme.onSecondaryContainer,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => setState(() => _selectedFundDesignations.clear()),
+                                    style: TextButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      minimumSize: Size.zero,
+                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    child: const Text('Reset', style: TextStyle(fontSize: 12)),
+                                  ),
+                                ],
                               ),
                             ),
-                            TextButton(
-                              onPressed: () => setState(
-                                  () => _selectedFundDesignations.clear()),
-                              child: const Text('Clear'),
-                            ),
-                          ],
-                        ),
+                        ],
                       ),
+                    ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: ResponsiveUtils.getResponsivePadding(context),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                     if (_selectedProjectId != null)
                       FutureBuilder<Project?>(
                         future: ref
@@ -384,10 +405,13 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                 ),
               ),
             ),
-          );
-        },
+          ],
+        ),
       ),
     );
+  },
+),
+);
   }
 
   Widget _buildHeader(BuildContext context, ThemeData theme, bool isDark) {
@@ -765,9 +789,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
             desktop: 64,
           ),
           child: ElevatedButton(
-            onPressed: isEnabled && (isAuthenticated || guestInfoValid)
-                ? _processDonation
-                : null,
+            onPressed: isEnabled ? _handleDonateClick : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: theme.colorScheme.primary,
               foregroundColor: theme.colorScheme.onPrimary,
@@ -1120,6 +1142,86 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
           ),
         ],
       ),
+    );
+  }
+
+  void _handleDonateClick() {
+    final userAsync = ref.read(appwriteUserStreamProvider);
+    final isAuthenticated = userAsync.value != null;
+
+    if (isAuthenticated) {
+      _processDonation();
+      return;
+    }
+
+    final hasName = _guestNameController.text.trim().isNotEmpty;
+    final hasEmail = _guestEmailController.text.trim().isNotEmpty;
+
+    if (hasName && hasEmail) {
+      _processDonation();
+      return;
+    }
+
+    // Prompt guest for their details
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        final formKey = GlobalKey<FormState>();
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Donor Details'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Please provide your name and email to proceed with your donation:'),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _guestNameController,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(
+                    labelText: 'Full Name',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Please enter your name' : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _guestEmailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    labelText: 'Email Address',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Please enter your email';
+                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v.trim())) {
+                      return 'Please enter a valid email address';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (formKey.currentState?.validate() ?? false) {
+                  Navigator.of(ctx).pop();
+                  _processDonation();
+                }
+              },
+              child: const Text('Continue to Payment'),
+            ),
+          ],
+        );
+      },
     );
   }
 

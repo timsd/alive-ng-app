@@ -94,23 +94,19 @@ class OfflineBibleService {
     try {
       final lang = language ?? _defaultLanguage;
 
-      // If explicitly non-English or the app is configured for local-only mode,
-      // prefer loading books directly from bundled assets for the requested language.
-      if (lang != 'en' || AppConfig.useLocalBibleOnly) {
-        final assetBooksData = await _loadBooksFromAssets(lang);
-        if (assetBooksData.isNotEmpty) {
-          return assetBooksData
-              .map((bookData) => BibleBook(
-                    name: bookData['name'],
-                    abbreviation: bookData['abbreviation'],
-                    chapters: bookData['chapters'],
-                    testament: bookData['testament'],
-                    order: bookData['order'],
-                    translations: bookData['translations'],
-                  ))
-              .toList();
-        }
-        // If assets are missing, continue to fall back to DB/remote below
+      // Prefer loading books directly from bundled assets for the requested language.
+      final assetBooksData = await _loadBooksFromAssets(lang);
+      if (assetBooksData.isNotEmpty) {
+        return assetBooksData
+            .map((bookData) => BibleBook(
+                  name: bookData['name'],
+                  abbreviation: bookData['abbreviation'],
+                  chapters: bookData['chapters'],
+                  testament: bookData['testament'],
+                  order: bookData['order'],
+                  translations: bookData['translations'],
+                ))
+            .toList();
       }
 
       // Try to get from local database (English defaults inserted on creation)
@@ -131,9 +127,13 @@ class OfflineBibleService {
         return [];
       }
 
-      final books = await _dbHelper.getAllBooks();
-      if (books.isNotEmpty) {
-        return books;
+      try {
+        final books = await _dbHelper.getAllBooks();
+        if (books.isNotEmpty) {
+          return books;
+        }
+      } catch (dbErr) {
+        _logger.warning('Error fetching books from SQLite DB: $dbErr');
       }
 
       // If not in database, try to get from assets (default language)
@@ -151,8 +151,7 @@ class OfflineBibleService {
             .toList();
       }
 
-      // Return books from database (default books are inserted during creation)
-      return await _dbHelper.getAllBooks();
+      return [];
     } catch (e) {
       if (e is AppException) rethrow;
       _logger.error('Error getting Bible books', e);
@@ -172,10 +171,14 @@ class OfflineBibleService {
       final languageCode = language ?? _defaultLanguage;
 
       if (!kIsWeb) {
-        final cachedChapter = await _dbHelper.getChapter(
-            book, chapter, versionCode, languageCode);
-        if (cachedChapter != null && cachedChapter.verses.isNotEmpty) {
-          return cachedChapter;
+        try {
+          final cachedChapter = await _dbHelper.getChapter(
+              book, chapter, versionCode, languageCode);
+          if (cachedChapter != null && cachedChapter.verses.isNotEmpty) {
+            return cachedChapter;
+          }
+        } catch (dbErr) {
+          _logger.warning('DB cache lookup failed, falling back to assets: $dbErr');
         }
       }
 
@@ -184,7 +187,11 @@ class OfflineBibleService {
           book, chapter, versionCode, languageCode);
       if (assetChapter != null) {
         if (!kIsWeb) {
-          await _dbHelper.insertChapter(assetChapter);
+          try {
+            await _dbHelper.insertChapter(assetChapter);
+          } catch (insertErr) {
+            _logger.warning('Failed to cache chapter in DB: $insertErr');
+          }
         }
         return assetChapter;
       }

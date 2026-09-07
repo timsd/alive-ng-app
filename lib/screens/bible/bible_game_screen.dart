@@ -228,6 +228,29 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
     );
   }
 
+  void deductPoints(int points) {
+    final newScore = max(0, state.score - points);
+    state = state.copyWith(score: newScore);
+  }
+
+  void flipCardWithDeduction() {
+    deductPoints(2);
+    state = state.copyWith(hasCheckedAnswer: true, showAnswer: true);
+  }
+
+  void flipCardBack() {
+    state = state.copyWith(hasCheckedAnswer: false, showAnswer: false);
+  }
+
+  void restartGame() {
+    state = BibleGameState(
+      selectedVersion: state.selectedVersion,
+      gameMode: state.gameMode,
+      score: 0,
+    );
+    loadNewVerse();
+  }
+
   void setListening(bool listening) {
     state = state.copyWith(isListening: listening);
   }
@@ -451,7 +474,8 @@ class BibleGameScreen extends ConsumerStatefulWidget {
   ConsumerState<BibleGameScreen> createState() => _BibleGameScreenState();
 }
 
-class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
+class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
+    with WidgetsBindingObserver {
   late stt.SpeechToText _speech;
   late FlutterTts _tts;
   final TextEditingController _textController = TextEditingController();
@@ -470,8 +494,184 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initializeSpeech();
     _initializeTts();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      // Anti-cheat: user minimized or switched app, rotate verse
+      if (mounted) {
+        ref.read(bibleGameProvider.notifier).loadNewVerse();
+      }
+    }
+  }
+
+  void _checkGameOver() {
+    final gameState = ref.read(bibleGameProvider);
+    if (gameState.score <= 0 && gameState.attemptCount > 0) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+              SizedBox(width: 8),
+              Text('Game Over'),
+            ],
+          ),
+          content: const Text(
+            'Your score reached 0 points! Would you like to restart the challenge?',
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                ref.read(bibleGameProvider.notifier).restartGame();
+              },
+              child: const Text('Restart Game'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  Future<void> _confirmFlipCard(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Flip Card?'),
+        content: const Text(
+          'Flipping this card to reveal the verse will deduct 2 points from your score.\n\nDo you want to continue?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Flip (-2 pts)'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      ref.read(bibleGameProvider.notifier).flipCardWithDeduction();
+      _checkGameOver();
+    }
+  }
+
+  Future<void> _confirmVoiceHint(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Use Hint?'),
+        content: const Text(
+          'Using a hint will deduct 1 point from your score.\n\nDo you want to continue?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Use Hint (-1 pt)'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      ref.read(bibleGameProvider.notifier).deductPoints(1);
+      ref.read(bibleGameProvider.notifier).showVoiceHint();
+      _checkGameOver();
+    }
+  }
+
+  Future<void> _confirmFillGapsHint(
+      BuildContext context, BibleGameState gameState) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Use Hint?'),
+        content: const Text(
+          'Using a hint will deduct 2 points and auto-fill the missing words.\n\nDo you want to continue?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Auto-Fill (-2 pts)'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      ref.read(bibleGameProvider.notifier).deductPoints(2);
+      ref.read(bibleGameProvider.notifier).showHint();
+      if (gameState.currentVerse != null) {
+        final text =
+            gameState.currentVerse!.text[gameState.selectedVersion] ?? '';
+        final words = text
+            .split(RegExp(r'\s+'))
+            .where((word) => word.isNotEmpty)
+            .toList();
+        for (final index in gameState.blankedWords) {
+          if (_blankControllers.containsKey(index) && index < words.length) {
+            _blankControllers[index]!.text = words[index];
+          }
+        }
+        _updateFillInTheGapInput(gameState, words);
+      }
+      _checkGameOver();
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        if (mounted) {
+          ref.read(bibleGameProvider.notifier).loadNewVerse();
+        }
+      });
+    }
+  }
+
+  void _submitFillGaps() {
+    ref.read(bibleGameProvider.notifier).checkAnswer();
+    final gs = ref.read(bibleGameProvider);
+    if (!gs.showStarAnimation) {
+      // Clear inputs for retry
+      for (final controller in _blankControllers.values) {
+        controller.clear();
+      }
+      final words = (gs.currentVerse?.text[gs.selectedVersion] ?? '')
+          .split(RegExp(r'\s+'))
+          .where((w) => w.isNotEmpty)
+          .toList();
+      _updateFillInTheGapInput(gs, words);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            gs.attemptCount < 3
+                ? 'Incorrect word(s). Try again! (Attempt ${gs.attemptCount} of 3)'
+                : '3 failed attempts. You can now use Hint (-2 pts).',
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   void _initializeSpeech() async {
@@ -619,6 +819,7 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     if (_speechReady) {
       _speech.stop();
     }
@@ -819,13 +1020,16 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
                         color: Theme.of(context).colorScheme.primary,
                       ),
                 ),
-                IconButton(
-                  onPressed: () => _speakVerse(
-                    gameState.currentVerse!.text[gameState.selectedVersion] ??
-                        '',
+                if (gameState.gameMode != GameMode.voiceRecitation ||
+                    gameState.hasCheckedAnswer)
+                  IconButton(
+                    onPressed: () => _speakVerse(
+                      gameState.currentVerse!.text[gameState.selectedVersion] ??
+                          '',
+                    ),
+                    icon: const Icon(Icons.volume_up),
+                    tooltip: 'Listen to verse',
                   ),
-                  icon: const Icon(Icons.volume_up),
-                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -902,100 +1106,105 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
   Widget _buildVersePromptCard() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
-      key: const ValueKey('prompt'),
-      width: double.infinity,
-      height: 200,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDark
-              ? [
-                  Theme.of(context).colorScheme.surfaceContainerHighest,
-                  Theme.of(context).colorScheme.surface,
-                ]
-              : [
-                  Theme.of(context)
-                      .colorScheme
-                      .primaryContainer
-                      .withValues(alpha: 0.1),
-                  Theme.of(context)
-                      .colorScheme
-                      .primaryContainer
-                      .withValues(alpha: 0.2),
-                ],
+    return InkWell(
+      onTap: () => _confirmFlipCard(context),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        key: const ValueKey('prompt'),
+        width: double.infinity,
+        height: 200,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: isDark
+                ? [
+                    Theme.of(context).colorScheme.surfaceContainerHighest,
+                    Theme.of(context).colorScheme.surface,
+                  ]
+                : [
+                    Theme.of(context)
+                        .colorScheme
+                        .primaryContainer
+                        .withValues(alpha: 0.1),
+                    Theme.of(context)
+                        .colorScheme
+                        .primaryContainer
+                        .withValues(alpha: 0.2),
+                  ],
+          ),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+              color: isDark
+                  ? Theme.of(context).colorScheme.outline
+                  : Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+              width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: isDark
+                  ? Theme.of(context).colorScheme.shadow.withValues(alpha: 0.3)
+                  : Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-            color: isDark
-                ? Theme.of(context).colorScheme.outline
-                : Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
-            width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: isDark
-                ? Theme.of(context).colorScheme.shadow.withValues(alpha: 0.3)
-                : Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.mic_rounded,
-            size: 48,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Recite the verse aloud from memory',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Tap Record, recite, then Stop to auto-check accuracy',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontStyle: FontStyle.italic,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                  color: Theme.of(context).colorScheme.outlineVariant),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.mic_rounded,
+              size: 48,
+              color: Theme.of(context).colorScheme.primary,
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.flip_to_back,
-                  size: 16,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Use Hint to reveal verse text',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                ),
-              ],
+            const SizedBox(height: 16),
+            Text(
+              'Recite the verse aloud from memory',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+              textAlign: TextAlign.center,
             ),
-          ),
-        ],
+            const SizedBox(height: 8),
+            Text(
+              'Tap Record, recite, then Stop to auto-check accuracy',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontStyle: FontStyle.italic,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                    color: Theme.of(context).colorScheme.outlineVariant),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.flip_to_back,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Tap card to flip (-2 pts)',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1080,37 +1289,22 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
                   ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                      color: Theme.of(context).colorScheme.outlineVariant),
+              OutlinedButton.icon(
+                onPressed: () =>
+                    ref.read(bibleGameProvider.notifier).flipCardBack(),
+                icon: const Icon(Icons.flip_to_front),
+                label: const Text('Flip Back & Recite'),
+              ),
+              IconButton.filledTonal(
+                onPressed: () => _speakVerse(
+                  gameState.currentVerse!.text[gameState.selectedVersion] ?? '',
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.check_circle,
-                      size: 16,
-                      color: Theme.of(context).colorScheme.tertiary,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Verse Revealed',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: Theme.of(context).colorScheme.tertiary,
-                            fontWeight: FontWeight.w500,
-                          ),
-                    ),
-                  ],
-                ),
+                icon: const Icon(Icons.volume_up),
+                tooltip: 'Listen to verse',
               ),
             ],
           ),
@@ -1353,41 +1547,20 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
               children: [
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () {
-                      ref.read(bibleGameProvider.notifier).checkAnswer();
-                    },
+                    onPressed: _submitFillGaps,
                     style: ElevatedButton.styleFrom(
                       minimumSize: const Size(120, 48),
                       backgroundColor: Theme.of(context).colorScheme.primary,
                       foregroundColor: Theme.of(context).colorScheme.onPrimary,
                     ),
-                    child: Text(ref.watch(translationProvider)('check_answer')),
+                    child: const Text('Submit'),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: ElevatedButton(
                     onPressed: gameState.showHintButton
-                        ? () {
-                            ref.read(bibleGameProvider.notifier).showHint();
-                            // Auto-fill blanks with correct answers
-                            if (gameState.currentVerse != null) {
-                              final text = gameState.currentVerse!
-                                      .text[gameState.selectedVersion] ??
-                                  '';
-                              final words = text
-                                  .split(RegExp(r'\s+'))
-                                  .where((word) => word.isNotEmpty)
-                                  .toList();
-                              for (final index in gameState.blankedWords) {
-                                if (_blankControllers.containsKey(index) &&
-                                    index < words.length) {
-                                  _blankControllers[index]!.text = words[index];
-                                }
-                              }
-                              _updateFillInTheGapInput(gameState, words);
-                            }
-                          }
+                        ? () => _confirmFillGapsHint(context, gameState)
                         : null,
                     style: ElevatedButton.styleFrom(
                       minimumSize: const Size(120, 48),
@@ -1396,7 +1569,7 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
                     ),
                     child: Text(
                       gameState.showHintButton
-                          ? ref.watch(translationProvider)('hint')
+                          ? 'Hint (-2 pts)'
                           : 'Hint (3 attempts)',
                     ),
                   ),
@@ -1487,15 +1660,16 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen> {
                 const SizedBox(width: 8),
                 ElevatedButton(
                   onPressed: gameState.showHintButton
-                      ? () =>
-                          ref.read(bibleGameProvider.notifier).showVoiceHint()
+                      ? () => _confirmVoiceHint(context)
                       : null,
                   style: ElevatedButton.styleFrom(
                     minimumSize: const Size(120, 48),
+                    backgroundColor: Theme.of(context).colorScheme.tertiary,
+                    foregroundColor: Theme.of(context).colorScheme.onTertiary,
                   ),
                   child: Text(
                     gameState.showHintButton
-                        ? ref.watch(translationProvider)('hint')
+                        ? 'Hint (-1 pt)'
                         : 'Hint (3 attempts)',
                   ),
                 ),

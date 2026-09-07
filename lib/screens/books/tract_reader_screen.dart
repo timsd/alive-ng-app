@@ -783,13 +783,14 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
       } else {
         throw 'Could not launch PDF viewer';
       }
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('Error'),
-          content: Text('Error opening PDF: $e'),
+          content: const Text(
+              'Unable to open the PDF document at this time. Please check your internet connection or try again later.'),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(context),
@@ -855,10 +856,11 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
       } else {
         throw 'Could not launch downloaded tract';
       }
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to download tract: $e')),
+        const SnackBar(
+            content: Text('Failed to download tract. Please try again later.')),
       );
     }
   }
@@ -913,7 +915,7 @@ Check out this amazing tract: "${widget.tract.title}" by ${widget.tract.author}
 
 ${widget.tract.description}
 
-Download it from ALIVE-NG App www.app.alivenigeria.org
+Download it from ALIVE-NG App: https://app.alivenigeria.org
 
 #ALIVE-NG #Gospel #ChristianTract
       '''
@@ -925,11 +927,11 @@ Download it from ALIVE-NG App www.app.alivenigeria.org
           subject: 'Check out this tract: ${widget.tract.title}',
         ),
       );
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error sharing tract: $e'),
+        const SnackBar(
+          content: Text('Unable to share tract right now. Please try again.'),
           backgroundColor: Colors.red,
         ),
       );

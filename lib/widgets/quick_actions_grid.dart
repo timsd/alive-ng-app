@@ -80,11 +80,11 @@ class QuickActionsGrid extends ConsumerWidget {
         route: '/podcasts',
       ),
       const QuickAction(
-        icon: Icons.school_rounded,
-        title: 'Lessons',
-        subtitle: 'Learn & grow',
+        icon: Icons.menu_book_rounded,
+        title: 'Bible',
+        subtitle: 'Read scripture',
         color: Color(0xFF6366F1), // Indigo 500
-        route: '/interactive-lessons',
+        route: AppConstants.bibleRoute,
       ),
     ];
 

@@ -69,10 +69,10 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
         child: Center(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              // Smaller, more centered animation (60% of width, 50% of height, max 320)
+              // Modestly scaled, perfectly centered animation (~48% width, max 260)
               final stageSize = min(
-                constraints.maxWidth * 0.60,
-                min(constraints.maxHeight * 0.50, 320.0),
+                constraints.maxWidth * 0.48,
+                min(constraints.maxHeight * 0.45, 260.0),
               );
 
               return SizedBox(
