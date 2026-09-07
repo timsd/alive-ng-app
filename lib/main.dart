@@ -286,7 +286,7 @@ class MainNavigationScreen extends ConsumerWidget {
             onPressed: () async {
               Navigator.of(dialogCtx).pop();
               try {
-                await ref.read(appwriteAuthProvider.notifier).signOut();
+                await ref.read(authGatewayProvider).signOut();
                 if (context.mounted) {
                   context.go(AppConstants.authRoute);
                 }

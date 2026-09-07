@@ -1,4 +1,3 @@
-import { Client, Databases } from 'node-appwrite';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -34,22 +33,10 @@ function requireEnv(name, fallback) {
 
 loadDotEnv();
 
-const originalWarn = console.warn.bind(console);
-console.warn = (...args) => {
-  const message = args.join(' ');
-  if (
-    process.env.APPWRITE_VERBOSE_WARNINGS !== 'true' &&
-    message.includes('current SDK is built for Appwrite')
-  ) {
-    return;
-  }
-  originalWarn(...args);
-};
-
 const endpoint = requireEnv(
   'APPWRITE_ENDPOINT',
   'https://api.alivenigeria.org/v1',
-);
+).replace(/\/$/, '');
 const projectId = requireEnv('APPWRITE_PROJECT_ID', '6a3bef53002f5090dedf');
 const databaseId = requireEnv('APPWRITE_DATABASE_ID', '6a089307002e54291a32');
 const apiKey = requireEnv('APPWRITE_API_KEY');
@@ -57,7 +44,8 @@ const apiKey = requireEnv('APPWRITE_API_KEY');
 const latestVersion = process.env.APP_VERSION_LATEST || pubspecVersion();
 const forceUpdate = (process.env.APP_VERSION_FORCE_UPDATE || 'false') === 'true';
 const updateUrl =
-  process.env.APP_VERSION_UPDATE_URL || 'https://app.alivenigeria.org';
+  process.env.APP_VERSION_UPDATE_URL ||
+  'https://api.alivenigeria.org/v1/storage/buckets/app_releases/files/alive_ng_android_release/download?project=6a3bef53002f5090dedf';
 const now = new Date().toISOString();
 
 const appVersionPayload = {
@@ -66,42 +54,50 @@ const appVersionPayload = {
   update_url: updateUrl,
 };
 
-const document = {
+const documentData = {
   key: 'app_version',
   setting_key: 'app_version',
   value: JSON.stringify(appVersionPayload),
   type: 'json',
   category: 'system',
-  description: 'Controls ALIVE-NG app update prompts on web and iOS.',
+  description: 'Controls ALIVE-NG app update prompts on Android, web and iOS.',
   is_public: true,
   updated_at: now,
 };
 
-const client = new Client()
-  .setEndpoint(endpoint)
-  .setProject(projectId)
-  .setKey(apiKey);
+const headers = {
+  'Content-Type': 'application/json',
+  'X-Appwrite-Project': projectId,
+  'X-Appwrite-Key': apiKey,
+};
 
-const databases = new Databases(client);
+const docUrl = `${endpoint}/databases/${databaseId}/collections/app_settings/documents/app_version`;
 
-try {
-  await databases.updateDocument(
-    databaseId,
-    'app_settings',
-    'app_version',
-    document,
-  );
-  console.log(`Updated app_settings/app_version to ${latestVersion}.`);
-} catch (error) {
-  if (error?.code !== 404 && error?.response?.code !== 404) {
-    throw error;
+// Try updating first
+let res = await fetch(docUrl, {
+  method: 'PATCH',
+  headers,
+  body: JSON.stringify({ data: documentData }),
+});
+
+if (res.status === 404) {
+  // Create document if it doesn't exist
+  const createUrl = `${endpoint}/databases/${databaseId}/collections/app_settings/documents`;
+  res = await fetch(createUrl, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      documentId: 'app_version',
+      data: documentData,
+      permissions: ['read("any")'],
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to create app_version document (${res.status}): ${await res.text()}`);
   }
-
-  await databases.createDocument(
-    databaseId,
-    'app_settings',
-    'app_version',
-    document,
-  );
-  console.log(`Created app_settings/app_version as ${latestVersion}.`);
+  console.log(`Created app_settings/app_version as v${latestVersion}.`);
+} else if (res.ok) {
+  console.log(`Updated app_settings/app_version to v${latestVersion}.`);
+} else {
+  throw new Error(`Failed to update app_version document (${res.status}): ${await res.text()}`);
 }

@@ -552,7 +552,7 @@ class _KidsMissionScreenState extends ConsumerState<KidsMissionScreen> {
                     return _buildStateCard(
                       context,
                       title: 'Unable to Load Missions',
-                      message: ErrorHandler.getFriendlyErrorMessage(snapshot.error),
+                      message: ErrorHandler.getUserFriendlyMessage(snapshot.error),
                       icon: Icons.error_outline_rounded,
                     );
                   }
