@@ -32,7 +32,9 @@ class ProjectFundUpdate extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              // Title row with auto-wrap
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   Icon(
                     Icons.task_alt,
@@ -40,12 +42,10 @@ class ProjectFundUpdate extends StatelessWidget {
                     color: theme.colorScheme.primary,
                   ),
                   const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      title.isNotEmpty ? title : 'What your giving has done',
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
+                  Text(
+                    title.isNotEmpty ? title : 'What your giving has done',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                 ],

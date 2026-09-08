@@ -981,19 +981,48 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                 color: theme.colorScheme.primary.withValues(alpha: 0.25),
               ),
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.pie_chart_rounded,
-                    color: theme.colorScheme.primary, size: 20),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Split Donation: Allocated equally ($splitCount areas @ ${splitPercent!.toStringAsFixed(0)}% each)',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.primary,
+                Row(
+                  children: [
+                    Icon(Icons.pie_chart_rounded,
+                        color: theme.colorScheme.primary, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Split Donation: Allocated equally ($splitCount areas @ ${splitPercent!.toStringAsFixed(0)}% each)',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                // Selected designations as wrapping chips
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: _selectedFundDesignations.map((designation) {
+                    return Chip(
+                      label: Text(
+                        designation,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                      backgroundColor:
+                          theme.colorScheme.primary.withValues(alpha: 0.1),
+                      side: BorderSide(
+                        color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.compact,
+                    );
+                  }).toList(),
                 ),
               ],
             ),
@@ -1555,25 +1584,28 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                       );
                     }
                     final projects = snapshot.data!;
-                    return ListView.separated(
+                    // Use SingleChildScrollView with Column to avoid scroll conflicts
+                    return SingleChildScrollView(
                       controller: scrollController,
                       padding: const EdgeInsets.all(16),
-                      itemCount: projects.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final project = projects[index];
-                        return ProjectCard(
-                          project: project,
-                          onDonate: () {
-                            Navigator.of(ctx).pop();
-                            setState(() {
-                              _selectedProjectId = project.id;
-                              _selectedProjectTitle = project.title;
-                            });
-                            setSelectedProjectId(project.id);
-                          },
-                        );
-                      },
+                      child: Column(
+                        children: [
+                          for (int i = 0; i < projects.length; i++) ...[
+                            if (i > 0) const SizedBox(height: 12),
+                            ProjectCard(
+                              project: projects[i],
+                              onDonate: () {
+                                Navigator.of(ctx).pop();
+                                setState(() {
+                                  _selectedProjectId = projects[i].id;
+                                  _selectedProjectTitle = projects[i].title;
+                                });
+                                setSelectedProjectId(projects[i].id);
+                              },
+                            ),
+                          ],
+                        ],
+                      ),
                     );
                   },
                 ),

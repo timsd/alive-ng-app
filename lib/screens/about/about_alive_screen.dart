@@ -267,21 +267,18 @@ class AboutAliveScreen extends ConsumerWidget {
                             context,
                             icon: Icons.email_rounded,
                             title: 'Email',
-                            subtitle: 'alivenigeria2011@gmail.com',
                             onTap: () => _launchEmail('alivenigeria2011@gmail.com'),
                           ),
                           _buildAliveContactIcon(
                             context,
                             icon: Icons.phone_rounded,
                             title: 'Phone',
-                            subtitle: '+234 706 854 8865',
                             onTap: () => _launchPhone('+2347068548865'),
                           ),
                           _buildAliveContactIcon(
                             context,
                             icon: Icons.public_rounded,
                             title: 'Website',
-                            subtitle: 'alivenigeria.org',
                             onTap: () =>
                                 _launchWebsite('https://alivenigeria.org'),
                           ),

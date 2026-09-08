@@ -82,6 +82,33 @@
       --radius-xl: 16px;
     }
 
+    /* Fix for Flutter modal bottom sheet white bar issue */
+    flutter-view {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .flt-glass-pane,
+    .flt-semantics-host {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .flt-bottom-sheet {
+      overflow: hidden;
+    }
+
+    .flt-bottom-sheet-drag-handle {
+      flex-shrink: 0;
+    }
+
+    body {
+    }
+
     body {
       font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       margin: 0;

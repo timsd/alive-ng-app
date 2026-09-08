@@ -261,16 +261,10 @@ class AboutAppScreen extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      _ContactRow(
-                        icon: Icons.email_rounded,
-                        label: 'Developer contact',
-                        value: 'dammyolodude@gmail.com',
-                        onTap: () => _launchEmail('dammyolodude@gmail.com'),
-                      ),
-                      const SizedBox(height: 16),
                       CustomButton(
                         text: 'Send Feedback',
-                        icon: Icons.send_rounded,
+                        icon: Icons.email_rounded,
+                        label: 'Developer contact',
                         isFullWidth: !isDark,
                         onPressed: () => _launchEmail('dammyolodude@gmail.com'),
                       ),

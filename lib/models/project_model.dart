@@ -13,6 +13,7 @@ class Project {
   final int priority;
   final bool isActive;
   final String? imageUrl;
+  final String ctaLabel;
   final String fundUpdateTitle;
   final String fundUpdateText;
   final List<String> fundUpdateImages;
@@ -31,6 +32,7 @@ class Project {
     required this.priority,
     required this.isActive,
     this.imageUrl,
+    this.ctaLabel = '',
     this.fundUpdateTitle = '',
     this.fundUpdateText = '',
     this.fundUpdateImages = const [],
@@ -63,6 +65,7 @@ class Project {
       priority: json['priority'] as int? ?? 0,
       isActive: active,
       imageUrl: json['image_url'] as String?,
+      ctaLabel: json['cta_label'] as String? ?? '',
       fundUpdateTitle: json['fund_update_title'] as String? ?? '',
       fundUpdateText: json['fund_update_text'] as String? ?? '',
       fundUpdateImages: _parseImageList(json['fund_update_images']),
@@ -123,6 +126,7 @@ class Project {
       'priority': priority,
       'is_active': isActive,
       'image_url': imageUrl,
+      'cta_label': ctaLabel,
       'fund_update_title': fundUpdateTitle,
       'fund_update_text': fundUpdateText,
       'fund_update_images': fundUpdateImages,

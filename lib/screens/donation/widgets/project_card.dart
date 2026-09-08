@@ -22,6 +22,11 @@ class ProjectCard extends StatelessWidget {
       _ => colors.outline,
     };
 
+    // Use dynamic CTA label if available, otherwise default to "Donate"
+    final ctaLabel = project.ctaLabel.trim().isEmpty
+        ? 'Donate'
+        : project.ctaLabel;
+
     return Card(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
@@ -78,8 +83,10 @@ class ProjectCard extends StatelessWidget {
                 FilledButton.icon(
                   onPressed: onDonate,
                   icon: const Icon(Icons.volunteer_activism),
-                  label: const Text('Donate'),
-                  style: FilledButton.styleFrom(minimumSize: const Size(0, 48)),
+                  label: Text(ctaLabel),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(0, 44),
+                  ),
                 ),
               ],
             ),
