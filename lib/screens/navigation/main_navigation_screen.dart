@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alive_flutter_app/constants/app_constants.dart';
+import 'package:alive_flutter_app/models/app_models.dart';
 import 'package:alive_flutter_app/services/role_access_service.dart';
 import 'package:alive_flutter_app/services/auth_service.dart';
 import 'package:alive_flutter_app/widgets/custom_app_bar.dart';
-import 'package:alive_flutter_app/providers/auth_provider.dart';
 
 class MainNavigationScreen extends ConsumerStatefulWidget {
   final Widget child;
@@ -122,8 +122,12 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
     final roleService = RoleAccessService.instance;
     final role = roleService.getCurrentUserRole() ?? 'member';
     final signedIn = _authService.currentUser != null;
-    final signedInEmail = _authService.currentUser?.email.toLowerCase();
-    final canClaimAdmin = signedInEmail == 'alivenigeria2011@gmail.com';
+    // Admin self-claim removed: any client-toggled "Claim Admin" button can be
+    // abused (a user only needs to set this email locally to gain admin UI).
+    // Admin rights come ONLY from Appwrite server-side truth:
+    // 1) membership in the admin team (verifyAndSyncAdminRights on sign-in), or
+    // 2) role == 'admin' set in the users table by an existing admin via the
+    //    Admin Approval screen (/admin-approval). No client button needed.
     final canSeeAdmin =
         signedIn && (roleService.canAccessAdmin() || role != 'member');
     const bodRoles = {'admin', 'bod', 'trustee'};
@@ -152,9 +156,6 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
 
     if (canSeeAdmin) {
       items.insert(0, const _MoreItem('Admin Portal', Icons.admin_panel_settings, AppConstants.adminRoute, color: Color(0xFFDC2626)));
-    }
-    if (canClaimAdmin) {
-      items.insert(0, _MoreItem('Claim Admin', Icons.verified_user, null, action: () => _handleClaimAdminRole(context), color: Color(0xFF7C3AED)));
     }
     if (canSeeBod) {
       items.insert(0, const _MoreItem('BOD Trustees', Icons.groups, AppConstants.bodTrusteesRoute, color: Color(0xFF4F46E5)));
@@ -185,11 +186,6 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
               Navigator.of(context).pop();
               if (item.route != null) {
                 context.go(item.route!);
-                return;
-              }
-              if (item.action != null) {
-                item.action!.call();
-                return;
               }
             },
             child: Container(
@@ -330,27 +326,51 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
 
 
   /// Build a card showing the user's current role and approval status
+  /// Status is loaded from the fresh Appwrite profile (never hardcoded):
+  /// pending -> amber hourglass, approved -> green verified, rejected -> red.
   Widget _buildUserStatusCard(BuildContext context) {
     final roleService = RoleAccessService.instance;
     final userRole = roleService.getCurrentUserRole();
-    // For now, we'll show a simple status based on role
-    // The actual approval status check can be added later with a proper async approach
     final theme = Theme.of(context);
 
-    // Determine status color and icon based on role
-    Color statusColor;
-    IconData statusIcon;
-    String statusText;
+    return FutureBuilder<UserProfile?>(
+      future: roleService.getCurrentUserProfile(),
+      builder: (context, snapshot) {
+        final approvalStatus = snapshot.data?.approvalStatus;
+        final isLoading = snapshot.connectionState == ConnectionState.waiting;
 
-    if (userRole == null) {
-      statusColor = theme.colorScheme.outline;
-      statusIcon = Icons.person_outline;
-      statusText = 'Not Signed In';
-    } else {
-      statusColor = theme.colorScheme.primary;
-      statusIcon = Icons.verified_user;
-      statusText = 'Active';
-    }
+        Color statusColor;
+        IconData statusIcon;
+        String statusText;
+
+        if (userRole == null) {
+          statusColor = theme.colorScheme.outline;
+          statusIcon = Icons.person_outline;
+          statusText = 'Not Signed In';
+        } else if (isLoading || approvalStatus == null) {
+          statusColor = theme.colorScheme.outline;
+          statusIcon = Icons.sync;
+          statusText = 'Checking…';
+        } else {
+          switch (approvalStatus) {
+            case 'pending':
+              statusColor = Colors.amber.shade700;
+              statusIcon = Icons.hourglass_bottom;
+              statusText = 'Pending Approval';
+              break;
+            case 'rejected':
+              statusColor = theme.colorScheme.error;
+              statusIcon = Icons.cancel_outlined;
+              statusText = 'Rejected';
+              break;
+            case 'approved':
+            default:
+              statusColor = Colors.green.shade700;
+              statusIcon = Icons.verified_user;
+              statusText = 'Approved';
+              break;
+          }
+        }
 
     return Card(
       elevation: 0,
@@ -456,6 +476,8 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
         ),
       ),
     );
+      },
+    );
   }
 }
 
@@ -463,9 +485,8 @@ class _MoreItem {
   final String label;
   final IconData icon;
   final String? route;
-  final VoidCallback? action;
   final Color? color;
 
-  const _MoreItem(this.label, this.icon, this.route, {this.action, this.color});
+  const _MoreItem(this.label, this.icon, this.route, {this.color});
 }
 

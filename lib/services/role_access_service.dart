@@ -411,6 +411,27 @@ class RoleAccessService {
     return _cachedUserProfile;
   }
 
+  /// Synchronously read the cached approval status (`pending`/`approved`/`rejected`).
+  /// Returns null when no profile is cached yet — callers should treat null as
+  /// "unknown, still loading" rather than as pending.
+  String? getCachedApprovalStatus() => _cachedUserProfile?.approvalStatus;
+
+  /// Synchronously check the cached approval flag. Null-safe: returns false
+  /// when no profile is cached yet.
+  bool isCachedUserApproved() => _cachedUserProfile?.isApproved ?? false;
+
+  /// Async: fetch the fresh profile then return its approval status.
+  Future<String?> getUserApprovalStatus() async {
+    final profile = await getCurrentUserProfile();
+    return profile?.approvalStatus;
+  }
+
+  /// Async: fetch the fresh profile then return whether the user is approved.
+  Future<bool> isUserApproved() async {
+    final profile = await getCurrentUserProfile();
+    return profile?.isApproved ?? false;
+  }
+
   /// Validate access and throw exception if denied
   void requireRole(String requiredRole, {String? resource}) {
     if (!hasRole(requiredRole)) {

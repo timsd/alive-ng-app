@@ -8,11 +8,11 @@ import '../../providers/achievement_provider.dart';
 import '../../widgets/greeting_header.dart';
 import '../../widgets/quick_actions_grid.dart';
 import '../../widgets/daily_verse_card.dart';
-import '../../widgets/role_guard.dart';
 import '../../utils/responsive_utils.dart';
 import '../../screens/daily/daily_screen.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/error_widget.dart';
+import '../../models/app_models.dart';
 import '../../services/role_access_service.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -70,7 +70,9 @@ class HomeScreen extends ConsumerWidget {
         children: [
           const GreetingHeader(),
           SizedBox(height: context.isMobile ? 12 : 16),
-          // Pending Approval Banner
+          // Pending Approval Banner — only renders when Appwrite profile
+          // confirms approval_status == 'pending'. Hidden while loading
+          // or when approved, so it never flashes for approved users.
           if (user != null && !isGuest)
             _buildPendingApprovalBanner(context, roleService),
           // Achievement Badge (opt-in)
@@ -123,49 +125,61 @@ class HomeScreen extends ConsumerWidget {
   /// Build a banner to show when user account is pending approval
   Widget _buildPendingApprovalBanner(
       BuildContext context, RoleAccessService roleService) {
-    // For now, we'll show a simple banner for all signed-in users
-    // The actual approval status check can be added later with a proper async approach
-    return const SizedBox.shrink();
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.tertiaryContainer.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.5),
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.pending_actions,
-            color: Theme.of(context).colorScheme.tertiary,
-            size: 24,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Account Pending Approval',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.tertiary,
-                      ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Your account is being reviewed. Some features may be limited until approval.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                ),
-              ],
+    // Gated on the async Appwrite profile: render ONLY when the fresh
+    // profile confirms approval_status == 'pending'. While loading or for
+    // approved/rejected users, render nothing (no banner flash).
+    return FutureBuilder<UserProfile?>(
+      future: roleService.getCurrentUserProfile(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data == null) {
+          return const SizedBox.shrink();
+        }
+        if (snapshot.data!.approvalStatus != 'pending') {
+          return const SizedBox.shrink();
+        }
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.tertiaryContainer.withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.5),
             ),
           ),
-        ],
-      ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.pending_actions,
+                color: Theme.of(context).colorScheme.tertiary,
+                size: 24,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Account Pending Approval',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.tertiary,
+                          ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Your account is being reviewed. Some features may be limited until approval.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
