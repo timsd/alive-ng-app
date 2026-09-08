@@ -13,6 +13,7 @@ import '../../utils/responsive_utils.dart';
 import '../../screens/daily/daily_screen.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/error_widget.dart';
+import '../../services/role_access_service.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -60,6 +61,7 @@ class HomeScreen extends ConsumerWidget {
   Widget _buildHomeContent(BuildContext context, WidgetRef ref, user,
       bool isGuest, Function translate) {
     final dailyVerseAsync = ref.watch(dailyVerseProvider);
+    final roleService = RoleAccessService.instance;
 
     return SingleChildScrollView(
       padding: ResponsiveUtils.getResponsivePadding(context),
@@ -68,6 +70,9 @@ class HomeScreen extends ConsumerWidget {
         children: [
           const GreetingHeader(),
           SizedBox(height: context.isMobile ? 12 : 16),
+          // Pending Approval Banner
+          if (user != null && !isGuest)
+            _buildPendingApprovalBanner(context, roleService),
           // Achievement Badge (opt-in)
           Consumer(
             builder: (context, ref, _) {
@@ -103,19 +108,76 @@ class HomeScreen extends ConsumerWidget {
             ),
           ),
           SizedBox(height: context.isMobile ? 20 : 28),
+          // Quick Actions - show for all users (guests see limited set internally)
           if (user != null && !isGuest) ...[
-            const RoleVisibility(
-              allowedRoles: ['member', 'admin', 'leader'],
-              child: QuickActionsGrid(),
-            ),
-          ] else ...[
+            // Show quick actions for approved users or users with appropriate role
             Consumer(
               builder: (context, ref, _) {
+                final isApproved = roleService.isUserApproved();
+                final userRole = roleService.getCurrentUserRole();
+                // Show quick actions if user is approved or has a role other than pending
+                if (isApproved || (userRole != null && userRole != 'member')) {
+                  return const QuickActionsGrid();
+                }
+                // For pending users, still show quick actions but they may have limited access
                 return const QuickActionsGrid();
               },
             ),
+          ] else ...[
+            const QuickActionsGrid(),
             SizedBox(height: context.isMobile ? 16 : 24),
           ],
+        ],
+      ),
+    );
+  }
+
+  /// Build a banner to show when user account is pending approval
+  Widget _buildPendingApprovalBanner(
+      BuildContext context, RoleAccessService roleService) {
+    final approvalStatus = roleService.getUserApprovalStatus();
+
+    if (approvalStatus != 'pending') return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.tertiaryContainer.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.5),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.pending_actions,
+            color: Theme.of(context).colorScheme.tertiary,
+            size: 24,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Account Pending Approval',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.tertiary,
+                      ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Your account is being reviewed. Some features may be limited until approval.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

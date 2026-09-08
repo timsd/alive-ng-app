@@ -41,6 +41,8 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
             children: [
               _buildMoreHeader(context),
               const SizedBox(height: 16),
+              _buildUserStatusCard(context),
+              const SizedBox(height: 16),
               _buildMoreGrid(context),
             ],
           ),
@@ -327,38 +329,136 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
 
 
 
-  Future<void> _handleClaimAdminRole(BuildContext context) async {
-    try {
-      final user = await ref.read(authGatewayProvider).getCurrentUser();
-      if (!context.mounted) return;
-      if (user == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Sign in before refreshing admin access.'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-        return;
-      }
+  /// Build a card showing the user's current role and approval status
+  Widget _buildUserStatusCard(BuildContext context) {
+    final roleService = RoleAccessService.instance;
+    final userRole = roleService.getCurrentUserRole();
+    final approvalStatus = roleService.getUserApprovalStatus();
+    final theme = Theme.of(context);
 
-      RoleAccessService.instance.clearCache();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-            'Admin access checked. If your account is in the Appwrite admin team, access will refresh now.',
-          ),
-          backgroundColor: Theme.of(context).colorScheme.tertiary,
-        ),
-      );
-    } catch (_) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Could not refresh admin access right now.'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
+    // Determine status color and icon
+    Color statusColor;
+    IconData statusIcon;
+    String statusText;
+
+    if (approvalStatus == 'pending') {
+      statusColor = theme.colorScheme.tertiary;
+      statusIcon = Icons.pending_actions;
+      statusText = 'Pending Approval';
+    } else if (approvalStatus == 'rejected') {
+      statusColor = theme.colorScheme.error;
+      statusIcon = Icons.cancel;
+      statusText = 'Approval Rejected';
+    } else {
+      statusColor = theme.colorScheme.primary;
+      statusIcon = Icons.verified_user;
+      statusText = 'Approved';
     }
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: theme.colorScheme.outline.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  statusIcon,
+                  color: statusColor,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Account Status',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Spacer(),
+                // Refresh button
+                IconButton(
+                  icon: Icon(
+                    Icons.refresh,
+                    size: 20,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  onPressed: () async {
+                    await roleService.forceRefreshCache();
+                    if (context.mounted) {
+                      setState(() {});
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text('Status refreshed'),
+                          backgroundColor: theme.colorScheme.tertiary,
+                          duration: const Duration(seconds: 1),
+                        ),
+                      );
+                    }
+                  },
+                  tooltip: 'Refresh status',
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Role row
+            Row(
+              children: [
+                Icon(
+                  Icons.badge_outlined,
+                  size: 18,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Role: ',
+                  style: theme.textTheme.bodySmall,
+                ),
+                Text(
+                  userRole?.toUpperCase() ?? 'UNKNOWN',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: userRole == 'admin'
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // Approval status row
+            Row(
+              children: [
+                Icon(
+                  statusIcon,
+                  size: 18,
+                  color: statusColor,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Status: ',
+                  style: theme.textTheme.bodySmall,
+                ),
+                Text(
+                  statusText,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: statusColor,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

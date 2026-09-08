@@ -51,6 +51,7 @@ const REQUIRED_APPWRITE_ENV = {
   '_APP_DOMAIN': 'api.alivenigeria.org',
   '_APP_DOMAIN_TARGET': 'api.alivenigeria.org',
   '_APP_ENV': 'production',
+  '_APP_OPTIONS_FORCE_HTTPS': 'enabled',
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────

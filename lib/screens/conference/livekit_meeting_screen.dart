@@ -69,8 +69,22 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
         meetingType: widget.meetingType?.name ?? 'general',
       );
     } catch (e) {
-      _showMessage(
-          'ALIVE Meet could not be joined. Please check your connection and try again.');
+      // Extract user-friendly error message
+      String errorMessage =
+          'ALIVE Meet could not be joined. Please check your connection and try again.';
+      if (e.toString().contains('certificate') ||
+          e.toString().contains('SSL') ||
+          e.toString().contains('TLS')) {
+        errorMessage =
+            'SSL certificate error. The LiveKit server certificate may be self-signed or expired.';
+      } else if (e.toString().contains('timeout')) {
+        errorMessage =
+            'Connection timed out. Please check your internet connection.';
+      } else if (e.toString().contains('Token not found')) {
+        errorMessage =
+            'Failed to generate meeting token. Please try again later.';
+      }
+      _showMessage(errorMessage);
     } finally {
       if (mounted) setState(() => _isJoining = false);
     }
@@ -124,8 +138,78 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.video_call),
-              label: Text(connected ? 'Connected' : 'Join ALIVE Meet'),
+              label: Text(_isJoining
+                  ? 'Joining...'
+                  : connected
+                      ? 'Connected'
+                      : 'Join ALIVE Meet'),
             ),
+            // Connection status banner
+            if (session.status == RoomStatus.connecting ||
+                session.status == RoomStatus.reconnecting) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .primaryContainer
+                      .withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        session.status == RoomStatus.reconnecting
+                            ? 'Reconnecting to meeting...'
+                            : 'Connecting to meeting...',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            // Error banner
+            if (session.error != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .errorContainer
+                      .withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.error_outline,
+                      color: Theme.of(context).colorScheme.error,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        session.error!,
+                        style:
+                            Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: Theme.of(context).colorScheme.error,
+                                ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             if (connected) ...[
               Wrap(

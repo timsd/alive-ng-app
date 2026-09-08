@@ -26,6 +26,9 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
     defaultValue: 'wss://livekit.alivenigeria.org',
   );
 
+  /// Connection timeout duration
+  static const Duration _connectionTimeout = Duration(seconds: 30);
+
   lk.Room? _room;
   lk.EventsListener<lk.RoomEvent>? _roomListener;
 
@@ -246,14 +249,28 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
               maxBitrate: 1500000,
             ),
           ),
+          // Enable adaptive stream for better connection quality
+          adaptiveStream: true,
+          // Enable dynacast for better bandwidth management
+          dynacast: true,
         ),
       );
 
       _attachRoomListeners(room);
 
+      // Connect with timeout
       await room.connect(
         livekitUrl,
         roomToken,
+      ).timeout(
+        _connectionTimeout,
+        onTimeout: () {
+          throw TimeoutException(
+            'Connection to LiveKit timed out after ${_connectionTimeout.inSeconds} seconds. '
+            'Please check your internet connection and try again.',
+            _connectionTimeout,
+          );
+        },
       );
 
       _room = room;
@@ -281,10 +298,28 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       debugPrint('Failed to connect to LiveKit Room: $e');
       await _room?.disconnect();
       _room = null;
+
+      // Provide user-friendly error messages
+      String errorMessage = e.toString();
+      if (e.toString().contains('certificate') ||
+          e.toString().contains('SSL') ||
+          e.toString().contains('TLS')) {
+        errorMessage =
+            'SSL certificate error. Please ensure the LiveKit server has a valid SSL certificate.';
+      } else if (e.toString().contains('timeout') ||
+          e.toString().contains('TimeoutException')) {
+        errorMessage =
+            'Connection timed out. Please check your internet connection and try again.';
+      } else if (e.toString().contains('WebSocket') ||
+          e.toString().contains('connection')) {
+        errorMessage =
+            'Could not connect to LiveKit server. Please check your connection and try again.';
+      }
+
       _currentSession = MeetingSession(
         roomName: roomName ?? '',
         status: RoomStatus.disconnected,
-        error: e.toString(),
+        error: errorMessage,
       );
       _emitSession();
       rethrow;

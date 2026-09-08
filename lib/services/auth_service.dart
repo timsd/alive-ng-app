@@ -26,6 +26,9 @@ class AuthService {
   })  : _appwriteAuth = appwriteAuth ?? AppwriteAuthService(),
         _profileService = profileService ?? AppwriteProfileService();
 
+  /// Expose the underlying AppwriteAuthService for admin operations
+  AppwriteAuthService get appwriteAuth => _appwriteAuth;
+
   AppUser? _mapUser(dynamic user) {
     if (user == null) return null;
     return AppUser(

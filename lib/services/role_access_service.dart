@@ -28,6 +28,9 @@ class RoleAccessService {
     'admin'
   ];
 
+  /// Cache duration - standard 5 minutes for balanced performance
+  static const Duration _cacheDuration = Duration(minutes: 5);
+
   /// Get current user's role
   String? getCurrentUserRole() {
     final user = _authService.currentUser;
@@ -42,10 +45,10 @@ class RoleAccessService {
   UserProfile? _getCachedUserProfile() {
     final now = DateTime.now();
 
-    // Return cached profile if it's less than 5 minutes old
+    // Return cached profile if it's still valid
     if (_cachedUserProfile != null &&
         _cacheTimestamp != null &&
-        now.difference(_cacheTimestamp!).inMinutes < 5) {
+        now.difference(_cacheTimestamp!) < _cacheDuration) {
       return _cachedUserProfile;
     }
 
@@ -406,6 +409,29 @@ class RoleAccessService {
   void clearCache() {
     _cachedUserProfile = null;
     _cacheTimestamp = null;
+  }
+
+  /// Force refresh the user profile cache
+  /// Call this when you need immediate fresh data (e.g., after admin approval)
+  Future<UserProfile?> forceRefreshCache() async {
+    clearCache();
+    _cachedUserProfile = await _authService.getCurrentUserProfile();
+    if (_cachedUserProfile != null) {
+      _cacheTimestamp = DateTime.now();
+    }
+    return _cachedUserProfile;
+  }
+
+  /// Check if current user is approved (not pending)
+  bool isUserApproved() {
+    final profile = _getCachedUserProfile();
+    return profile?.approvalStatus == 'approved';
+  }
+
+  /// Get the current user's approval status
+  String? getUserApprovalStatus() {
+    final profile = _getCachedUserProfile();
+    return profile?.approvalStatus;
   }
 
   /// Validate access and throw exception if denied
