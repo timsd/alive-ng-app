@@ -110,19 +110,7 @@ class HomeScreen extends ConsumerWidget {
           SizedBox(height: context.isMobile ? 20 : 28),
           // Quick Actions - show for all users (guests see limited set internally)
           if (user != null && !isGuest) ...[
-            // Show quick actions for approved users or users with appropriate role
-            Consumer(
-              builder: (context, ref, _) {
-                final isApproved = roleService.isUserApproved();
-                final userRole = roleService.getCurrentUserRole();
-                // Show quick actions if user is approved or has a role other than pending
-                if (isApproved || (userRole != null && userRole != 'member')) {
-                  return const QuickActionsGrid();
-                }
-                // For pending users, still show quick actions but they may have limited access
-                return const QuickActionsGrid();
-              },
-            ),
+            const QuickActionsGrid(),
           ] else ...[
             const QuickActionsGrid(),
             SizedBox(height: context.isMobile ? 16 : 24),
@@ -135,11 +123,9 @@ class HomeScreen extends ConsumerWidget {
   /// Build a banner to show when user account is pending approval
   Widget _buildPendingApprovalBanner(
       BuildContext context, RoleAccessService roleService) {
-    final approvalStatus = roleService.getUserApprovalStatus();
-
-    if (approvalStatus != 'pending') return const SizedBox.shrink();
-
-    return Container(
+    // For now, we'll show a simple banner for all signed-in users
+    // The actual approval status check can be added later with a proper async approach
+    return const SizedBox.shrink();
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(

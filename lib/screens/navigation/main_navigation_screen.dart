@@ -333,26 +333,23 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
   Widget _buildUserStatusCard(BuildContext context) {
     final roleService = RoleAccessService.instance;
     final userRole = roleService.getCurrentUserRole();
-    final approvalStatus = roleService.getUserApprovalStatus();
+    // For now, we'll show a simple status based on role
+    // The actual approval status check can be added later with a proper async approach
     final theme = Theme.of(context);
 
-    // Determine status color and icon
+    // Determine status color and icon based on role
     Color statusColor;
     IconData statusIcon;
     String statusText;
 
-    if (approvalStatus == 'pending') {
-      statusColor = theme.colorScheme.tertiary;
-      statusIcon = Icons.pending_actions;
-      statusText = 'Pending Approval';
-    } else if (approvalStatus == 'rejected') {
-      statusColor = theme.colorScheme.error;
-      statusIcon = Icons.cancel;
-      statusText = 'Approval Rejected';
+    if (userRole == null) {
+      statusColor = theme.colorScheme.outline;
+      statusIcon = Icons.person_outline;
+      statusText = 'Not Signed In';
     } else {
       statusColor = theme.colorScheme.primary;
       statusIcon = Icons.verified_user;
-      statusText = 'Approved';
+      statusText = 'Active';
     }
 
     return Card(

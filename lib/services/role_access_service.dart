@@ -237,18 +237,6 @@ class RoleAccessService {
     return profile?.isNewConvert ?? false;
   }
 
-  /// Check if user is approved by admin
-  bool isUserApproved() {
-    final profile = _getCachedUserProfile();
-    return profile?.isApproved ?? false;
-  }
-
-  /// Get user's approval status
-  String getUserApprovalStatus() {
-    final profile = _getCachedUserProfile();
-    return profile?.approvalStatus ?? 'pending';
-  }
-
   /// Check if user can create content (missions, events, announcements)
   bool canCreateContent() {
     final currentRole = getCurrentUserRole();
@@ -284,7 +272,8 @@ class RoleAccessService {
   /// Check if user can access role-gated features
   bool canAccessRoleGatedFeatures() {
     // User must be approved to access role-gated features
-    return isUserApproved() && !isUserArchived();
+    final profile = _getCachedUserProfile();
+    return (profile?.isApproved ?? false) && !isUserArchived();
   }
 
   /// Get user's chapter ID
@@ -420,18 +409,6 @@ class RoleAccessService {
       _cacheTimestamp = DateTime.now();
     }
     return _cachedUserProfile;
-  }
-
-  /// Check if current user is approved (not pending)
-  bool isUserApproved() {
-    final profile = _getCachedUserProfile();
-    return profile?.approvalStatus == 'approved';
-  }
-
-  /// Get the current user's approval status
-  String? getUserApprovalStatus() {
-    final profile = _getCachedUserProfile();
-    return profile?.approvalStatus;
   }
 
   /// Validate access and throw exception if denied
