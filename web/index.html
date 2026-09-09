@@ -48,6 +48,25 @@
   <title>ALIVE-NG</title>
   <link rel="manifest" href="manifest.json">
   <link rel="preload" as="script" href="flutter_bootstrap.js">
+  <!-- Cache-busting: forces browsers to fetch fresh assets after each deploy -->
+  <meta name="version" content="2.0.1-8">
+  <script>
+    // Clear stale service-worker caches so users always get the latest build.
+    (function () {
+      try {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function (regs) {
+            regs.forEach(function (r) { r.unregister(); });
+          });
+        }
+        if (window.caches && window.caches.keys) {
+          caches.keys().then(function (keys) {
+            keys.forEach(function (k) { caches.delete(k); });
+          });
+        }
+      } catch (_) { }
+    })();
+  </script>
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://www.google.com" crossorigin>
   <link rel="preconnect" href="https://www.googleapis.com" crossorigin>
