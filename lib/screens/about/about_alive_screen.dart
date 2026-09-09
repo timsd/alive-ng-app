@@ -267,7 +267,8 @@ class AboutAliveScreen extends ConsumerWidget {
                             context,
                             icon: Icons.email_rounded,
                             title: 'Email',
-                            onTap: () => _launchEmail('alivenigeria2011@gmail.com'),
+                            onTap: () =>
+                                _launchEmail('alivenigeria2011@gmail.com'),
                           ),
                           _buildAliveContactIcon(
                             context,
@@ -299,7 +300,7 @@ class AboutAliveScreen extends ConsumerWidget {
     BuildContext context, {
     required IconData icon,
     required String title,
-    required String subtitle,
+    String subtitle = '',
     required VoidCallback onTap,
   }) {
     final theme = Theme.of(context);

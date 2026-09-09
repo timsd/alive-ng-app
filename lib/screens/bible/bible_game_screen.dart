@@ -5,7 +5,6 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'dart:math';
 import '../../services/bible_source.dart';
 import '../../constants/bible_verses.dart';
-import '../../widgets/bible_reference_widget.dart';
 import '../../widgets/star_animation_widget.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../providers/language_provider.dart';
@@ -93,7 +92,8 @@ class BibleGameState {
       selectedChoiceIndex: clearSelectedChoiceIndex
           ? null
           : selectedChoiceIndex ?? this.selectedChoiceIndex,
-      multipleChoiceOptions: multipleChoiceOptions ?? this.multipleChoiceOptions,
+      multipleChoiceOptions:
+          multipleChoiceOptions ?? this.multipleChoiceOptions,
       showAnswer: showAnswer ?? this.showAnswer,
       attemptCount: attemptCount ?? this.attemptCount,
       showHintButton: showHintButton ?? this.showHintButton,
@@ -174,10 +174,15 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
         text.split(RegExp(r'\s+')).where((word) => word.isNotEmpty).toList();
     if (words.isEmpty) return const [];
 
-    final candidates = words.asMap().entries.where((entry) {
-      final normalized = _normalizeText(entry.value);
-      return normalized.length > 2;
-    }).map((entry) => entry.key).toList()
+    final candidates = words
+        .asMap()
+        .entries
+        .where((entry) {
+          final normalized = _normalizeText(entry.value);
+          return normalized.length > 2;
+        })
+        .map((entry) => entry.key)
+        .toList()
       ..shuffle(_random);
 
     if (candidates.isEmpty) return const [];
@@ -193,7 +198,8 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
     BibleVerse verse,
     String selectedVersion,
   ) {
-    final correctAnswer = verse.text[selectedVersion] ?? verse.text.values.first;
+    final correctAnswer =
+        verse.text[selectedVersion] ?? verse.text.values.first;
     final normalizedCorrect = _normalizeText(correctAnswer);
 
     final wrongAnswers = BibleSource.instance.nonGenealogyCorpus
@@ -234,6 +240,7 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
   }
 
   void flipCardWithDeduction() {
+    if (state.score < 2 || state.hasCheckedAnswer) return;
     deductPoints(2);
     state = state.copyWith(hasCheckedAnswer: true, showAnswer: true);
   }
@@ -489,7 +496,14 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
   String _resolvedSttLocale = 'en-NG';
 
   /// Ordered locale fallback chain: Nigerian English → British English → US English.
-  static const _localeFallbackChain = ['en-NG', 'en_NG', 'en-GB', 'en_GB', 'en-US', 'en_US'];
+  static const _localeFallbackChain = [
+    'en-NG',
+    'en_NG',
+    'en-GB',
+    'en_GB',
+    'en-US',
+    'en_US'
+  ];
 
   @override
   void initState() {
@@ -501,7 +515,8 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
       // Anti-cheat: user minimized or switched app, rotate verse
       if (mounted) {
         ref.read(bibleGameProvider.notifier).loadNewVerse();
@@ -541,6 +556,13 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
   }
 
   Future<void> _confirmFlipCard(BuildContext context) async {
+    if (ref.read(bibleGameProvider).score < 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('You need 2 points to reveal this verse.')),
+      );
+      return;
+    }
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -720,10 +742,8 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
 
       // Try locale fallback chain for TTS: en-NG → en-GB → en-US
       final languages = await _tts.getLanguages;
-      final availableLangs = (languages as List?)
-              ?.map((l) => l.toString())
-              .toSet() ??
-          <String>{};
+      final availableLangs =
+          (languages as List?)?.map((l) => l.toString()).toSet() ?? <String>{};
 
       String resolvedTtsLang = 'en-US'; // ultimate fallback
       for (final candidate in _localeFallbackChain) {
@@ -779,7 +799,7 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
             ref.read(bibleGameProvider.notifier).setListening(false);
           }
         },
-                        // Uses best available: en-NG → en-GB → en-US
+        // Uses best available: en-NG → en-GB → en-US
         listenOptions: stt.SpeechListenOptions(
           partialResults: true,
           cancelOnError: false,
@@ -1012,10 +1032,9 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                BibleReferenceWidget(
-                  text: gameState.currentVerse!.reference,
-                  preferredVersion: gameState.selectedVersion,
-                  textStyle: Theme.of(context).textTheme.titleLarge?.copyWith(
+                Text(
+                  gameState.currentVerse!.reference,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: Theme.of(context).colorScheme.primary,
                       ),
@@ -1107,7 +1126,9 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return InkWell(
-      onTap: () => _confirmFlipCard(context),
+      onTap: ref.watch(bibleGameProvider).score >= 2
+          ? () => _confirmFlipCard(context)
+          : null,
       borderRadius: BorderRadius.circular(12),
       child: Container(
         key: const ValueKey('prompt'),
@@ -1137,13 +1158,19 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
           border: Border.all(
               color: isDark
                   ? Theme.of(context).colorScheme.outline
-                  : Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+                  : Theme.of(context)
+                      .colorScheme
+                      .primary
+                      .withValues(alpha: 0.3),
               width: 2),
           boxShadow: [
             BoxShadow(
               color: isDark
                   ? Theme.of(context).colorScheme.shadow.withValues(alpha: 0.3)
-                  : Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                  : Theme.of(context)
+                      .colorScheme
+                      .primary
+                      .withValues(alpha: 0.1),
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),
@@ -1607,13 +1634,6 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      gameState.isListening ? Icons.mic : Icons.mic_none,
-                      size: 40,
-                      color: gameState.isListening
-                          ? Theme.of(context).colorScheme.error
-                          : Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
                     const SizedBox(height: 8),
                     Text(
                       gameState.isListening
@@ -1796,5 +1816,4 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
       ),
     );
   }
-
 }

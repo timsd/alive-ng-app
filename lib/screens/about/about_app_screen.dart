@@ -264,7 +264,6 @@ class AboutAppScreen extends ConsumerWidget {
                       CustomButton(
                         text: 'Send Feedback',
                         icon: Icons.email_rounded,
-                        label: 'Developer contact',
                         isFullWidth: !isDark,
                         onPressed: () => _launchEmail('dammyolodude@gmail.com'),
                       ),

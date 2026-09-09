@@ -273,7 +273,8 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
     final guides = [
       GuideItem(
         title: 'Bible Reader & Offline Translations',
-        description: 'Read the Bible offline with KJV, NIV, ASV, Yoruba, Igbo, and Hausa translations.',
+        description:
+            'Read the Bible offline with KJV, NIV, ASV, Yoruba, Igbo, and Hausa translations.',
         icon: Icons.menu_book_rounded,
         color: Theme.of(context).colorScheme.primary,
         steps: [
@@ -286,7 +287,8 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
       ),
       GuideItem(
         title: 'Instant Word Memory Game',
-        description: 'Memorize scripture verses through Voice Recitation and Fill-in-the-Gaps modes.',
+        description:
+            'Memorize scripture verses through Voice Recitation and Fill-in-the-Gaps modes.',
         icon: Icons.sports_esports_rounded,
         color: Theme.of(context).colorScheme.tertiary,
         steps: [
@@ -299,7 +301,8 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
       ),
       GuideItem(
         title: 'Prayer Wall & Community Support',
-        description: 'Submit prayer requests, pray for others, and share praise testimonies.',
+        description:
+            'Submit prayer requests, pray for others, and share praise testimonies.',
         icon: Icons.volunteer_activism_rounded,
         color: Theme.of(context).colorScheme.secondary,
         steps: [
@@ -311,7 +314,8 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
       ),
       GuideItem(
         title: 'Books & Tracts Interactive Reader',
-        description: 'Read Christian literature, answer reflection questions, and download PDFs.',
+        description:
+            'Read Christian literature, answer reflection questions, and download PDFs.',
         icon: Icons.library_books_rounded,
         color: Colors.deepOrange,
         steps: [
@@ -324,7 +328,8 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
       ),
       GuideItem(
         title: 'Kids Mission & Interactive Stories',
-        description: 'Exciting Bible adventures, quizzes, and mission challenges for children.',
+        description:
+            'Exciting Bible adventures, quizzes, and mission challenges for children.',
         icon: Icons.child_care_rounded,
         color: Colors.teal,
         steps: [
@@ -336,7 +341,8 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
       ),
       GuideItem(
         title: 'Giving & Non-Monetary Gifts',
-        description: 'Support specific projects or donate non-monetary items like equipment or books.',
+        description:
+            'Support specific projects or donate non-monetary items like equipment or books.',
         icon: Icons.favorite_rounded,
         color: Colors.green,
         steps: [
@@ -503,7 +509,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
     BuildContext context, {
     required IconData icon,
     required String title,
-    required String subtitle,
+    String subtitle = '',
     required VoidCallback onTap,
   }) {
     final theme = Theme.of(context);
@@ -599,8 +605,8 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-                color: Theme.of(context).colorScheme.outlineVariant),
+            border:
+                Border.all(color: Theme.of(context).colorScheme.outlineVariant),
           ),
           child: Column(
             children: [
@@ -910,8 +916,8 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
     // For now, we'll just show a success message
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content:
-            const Text('Thank you for your feedback! We will review it shortly.'),
+        content: const Text(
+            'Thank you for your feedback! We will review it shortly.'),
         backgroundColor: Theme.of(context).colorScheme.tertiary,
       ),
     );
