@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../models/project_model.dart';
 import 'project_fund_update.dart';
 
@@ -27,6 +29,13 @@ class ProjectCard extends StatelessWidget {
         ? 'Donate'
         : project.ctaLabel;
 
+    // Interactive 3D project viewer (served with the web build). Donors can
+    // explore the real project in detail before giving.
+    var viewerUrl = project.viewerUrl.trim();
+    if (viewerUrl.isEmpty && project.id == 'impact_hub_center') {
+      viewerUrl = 'alive_ng_3d_viewer.html';
+    }
+
     return Card(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
@@ -36,15 +45,25 @@ class ProjectCard extends StatelessWidget {
           if (project.imageUrl?.isNotEmpty == true)
             AspectRatio(
               aspectRatio: 16 / 9,
-              child: Image.network(
-                project.imageUrl!,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => ColoredBox(
-                  color: colors.surfaceContainerHighest,
-                  child: Icon(Icons.image_not_supported_outlined,
-                      color: colors.onSurfaceVariant),
-                ),
-              ),
+              child: project.imageUrl!.startsWith('assets/')
+                  ? Image.asset(
+                      project.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => ColoredBox(
+                        color: colors.surfaceContainerHighest,
+                        child: Icon(Icons.image_not_supported_outlined,
+                            color: colors.onSurfaceVariant),
+                      ),
+                    )
+                  : Image.network(
+                      project.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => ColoredBox(
+                        color: colors.surfaceContainerHighest,
+                        child: Icon(Icons.image_not_supported_outlined,
+                            color: colors.onSurfaceVariant),
+                      ),
+                    ),
             ),
           Padding(
             padding: const EdgeInsets.all(16),
@@ -88,6 +107,26 @@ class ProjectCard extends StatelessWidget {
                     minimumSize: const Size(0, 44),
                   ),
                 ),
+                if (viewerUrl.isNotEmpty && kIsWeb) ...[
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      try {
+                        await launchUrl(
+                          Uri.parse(viewerUrl),
+                          webOnlyWindowName: '_blank',
+                        );
+                      } catch (_) {
+                        // Viewer unavailable; fail silently.
+                      }
+                    },
+                    icon: const Icon(Icons.view_in_ar_rounded, size: 18),
+                    label: const Text('Explore the project in 3D'),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 44),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

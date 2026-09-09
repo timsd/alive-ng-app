@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../constants/app_constants.dart';
+import '../utils/i18n_service.dart';
 import '../utils/text_formatter.dart';
 
 // Language/Locale Provider
@@ -34,6 +35,10 @@ class LocaleNotifier extends StateNotifier<Locale> {
           default:
             state = const Locale('en', 'US');
         }
+        // Keep the I18nService translation system in sync with the saved
+        // language so every part of the app starts in the same language.
+        await i18nService
+            .changeLanguage(SupportedLanguage.fromCode(languageCode));
       }
     } catch (e) {
       state = const Locale('en', 'US');
@@ -64,6 +69,15 @@ class LocaleNotifier extends StateNotifier<Locale> {
     }
 
     state = newLocale;
+
+    // Sync the secondary I18nService translation system (used by some
+    // screens) so the whole app switches language together in one action.
+    try {
+      await i18nService
+          .changeLanguage(SupportedLanguage.fromCode(languageCode));
+    } catch (e) {
+      debugPrint('Error syncing I18nService language: $e');
+    }
 
     try {
       final prefs = await SharedPreferences.getInstance();

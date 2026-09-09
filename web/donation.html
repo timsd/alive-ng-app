@@ -349,6 +349,54 @@
         padding: 0 22px 28px;
       }
     }
+    /* Interactive 3D project viewer (Impact Hub) */
+    .project-viewer {
+      background: #101c19;
+      border: 1px solid var(--slate-200);
+      border-radius: 14px;
+      margin-top: 16px;
+      overflow: hidden;
+      padding: 12px;
+    }
+
+    .project-viewer-head {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      margin-bottom: 10px;
+    }
+
+    .project-viewer-head strong {
+      color: #f4e9cf;
+      font-size: 14px;
+    }
+
+    .project-viewer-head span {
+      color: rgba(244, 233, 207, 0.72);
+      font-size: 12px;
+    }
+
+    .project-viewer iframe {
+      background: #101c19;
+      border: 0;
+      border-radius: 10px;
+      display: block;
+      height: 360px;
+      width: 100%;
+    }
+
+    .viewer-open {
+      background: #fff;
+      border: 1px solid var(--slate-200);
+      border-radius: 999px;
+      color: var(--slate-800);
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 700;
+      margin-top: 10px;
+      padding: 7px 14px;
+      text-decoration: none;
+    }
   </style>
 </head>
 
@@ -386,6 +434,14 @@
         <div class="amounts">
           <span id="raised-label">Raised: tracked securely</span>
           <span id="goal-label">Goal: active project</span>
+        </div>
+        <div class="project-viewer" id="project-viewer" style="display: none;">
+          <div class="project-viewer-head">
+            <strong>See the real project</strong>
+            <span>Explore the Impact Hub facilities in interactive 3D &mdash; drag to orbit, scroll to zoom.</span>
+          </div>
+          <iframe id="project-viewer-frame" title="ALIVE-NG Impact Hub interactive 3D viewer" src="alive_ng_3d_viewer.html" loading="lazy"></iframe>
+          <a class="viewer-open" href="alive_ng_3d_viewer.html" target="_blank" rel="noopener">Open the 3D viewer full screen</a>
         </div>
         <form id="donation-form" class="donation-form">
           <div class="field">
@@ -495,6 +551,14 @@
       if (btnNGN) btnNGN.addEventListener('click', function () { setCurrency('NGN'); });
       if (btnUSD) btnUSD.addEventListener('click', function () { setCurrency('USD'); });
 
+      // Shows the interactive 3D viewer only for the Impact Hub project so
+      // donors can inspect the real facilities before giving.
+      function updateProjectViewer(id) {
+        var wrap = document.getElementById('project-viewer');
+        if (!wrap) return;
+        wrap.style.display = (id === 'impact_hub_center') ? 'block' : 'none';
+      }
+
       if (project) {
         document.getElementById('project-title').textContent = project.title;
         document.getElementById('project-copy').textContent = project.copy;
@@ -502,6 +566,7 @@
         document.getElementById('goal-label').textContent = project.goal;
         document.getElementById('progress-fill').style.width = Math.max(0, Math.min(project.progress, 100)) + '%';
       }
+      updateProjectViewer(projectId);
 
       var projectSelectEl = document.getElementById('project-select');
       if (projectSelectEl) {
@@ -511,6 +576,7 @@
         projectSelectEl.addEventListener('change', function () {
           var selId = this.value;
           var selProj = projects[selId];
+          updateProjectViewer(selId);
           if (selProj) {
             document.getElementById('project-title').textContent = selProj.title;
             document.getElementById('project-copy').textContent = selProj.copy;

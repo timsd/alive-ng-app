@@ -43,15 +43,18 @@ class InAppUpdateService {
 
     // 2. Fallback to Appwrite-managed OTA updates (for direct APK downloads)
     if (!googlePlayHandled) {
-      await _checkSelfHostedOtaUpdate(context);
+      await _checkSelfHostedOtaUpdate();
     }
   }
 
-  static Future<void> _checkSelfHostedOtaUpdate([BuildContext? context]) async {
+  static Future<void> _checkSelfHostedOtaUpdate() async {
     if (_updateDialogShown) return;
 
     try {
       final databases = Databases(appwriteClient);
+      // Kept on getDocument for compatibility with the self-hosted Appwrite
+      // server; TablesDB.getRow requires the newer /tablesdb endpoints.
+      // ignore: deprecated_member_use
       final doc = await databases.getDocument(
         databaseId: AppwriteBackendConfig.databaseId,
         collectionId: AppwriteBackendConfig.appSettingsCollectionId,
@@ -76,7 +79,7 @@ class InAppUpdateService {
       final currentVersion = packageInfo.version.trim();
 
       if (_isVersionNewer(latestVersion, currentVersion)) {
-        final ctx = context ?? rootNavigatorKey.currentContext;
+        final ctx = rootNavigatorKey.currentContext;
         if (ctx != null && ctx.mounted) {
           _updateDialogShown = true;
           _showOtaUpdateDialog(

@@ -11,8 +11,8 @@ final List<Project> donationFallbackProjects = [
     currency: 'NGN',
     status: 'active',
     priority: 1,
-    imageUrl:
-        'https://images.unsplash.com/photo-1593914370442-49d414beca24?q=80&w=1031&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+    imageUrl: 'assets/images/impact_hub_3d_view.png',
+    viewerUrl: 'alive_ng_3d_viewer.html',
     fundUpdateTitle: 'Progress so far',
     fundUpdateText:
         'Seed funding has helped prepare the project scope, early planning, and ministry coordination for the hub.',

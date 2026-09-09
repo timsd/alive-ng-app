@@ -789,7 +789,11 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
             desktop: 64,
           ),
           child: ElevatedButton(
-            onPressed: isEnabled ? _handleDonateClick : null,
+            // Enable only when an amount is selected and, for guests, the
+            // name/email details have been filled in.
+            onPressed: isEnabled && (isAuthenticated || guestInfoValid)
+                ? _handleDonateClick
+                : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: theme.colorScheme.primary,
               foregroundColor: theme.colorScheme.onPrimary,
@@ -1516,18 +1520,25 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.7,
-        maxChildSize: 0.95,
-        minChildSize: 0.4,
-        expand: false,
-        builder: (ctx2, scrollController) => Container(
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        child: ConstrainedBox(
+          // Sheet hugs its content instead of forcing a fixed 70% height,
+          // which used to leave a long white area under the last project's
+          // donate button.
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+          ),
+          child: Container(
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: theme.scaffoldBackgroundColor,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           ),
-          child: Column(
+          child: SafeArea(
+            top: false,
+            child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               // Drag handle
               Container(
@@ -1558,17 +1569,22 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                 ),
               ),
               const Divider(height: 1),
-              Expanded(
+              Flexible(
                 child: FutureBuilder<List<Project>>(
                   future: _fetchProjects(),
                   builder: (ctx3, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
+                      return const SizedBox(
+                        height: 220,
+                        child: Center(child: CircularProgressIndicator()),
+                      );
                     }
                     if (snapshot.hasError ||
                         !snapshot.hasData ||
                         snapshot.data!.isEmpty) {
-                      return Center(
+                      return SizedBox(
+                        height: 240,
+                        child: Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -1581,12 +1597,12 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                                 style: theme.textTheme.bodyLarge),
                           ],
                         ),
+                        ),
                       );
                     }
                     final projects = snapshot.data!;
                     // Use SingleChildScrollView with Column to avoid scroll conflicts
                     return SingleChildScrollView(
-                      controller: scrollController,
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         children: [
@@ -1612,6 +1628,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
               ),
             ],
           ),
+          ),
+        ),
         ),
       ),
     );

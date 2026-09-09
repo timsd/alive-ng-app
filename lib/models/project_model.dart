@@ -14,6 +14,7 @@ class Project {
   final bool isActive;
   final String? imageUrl;
   final String ctaLabel;
+  final String viewerUrl;
   final String fundUpdateTitle;
   final String fundUpdateText;
   final List<String> fundUpdateImages;
@@ -33,6 +34,7 @@ class Project {
     required this.isActive,
     this.imageUrl,
     this.ctaLabel = '',
+    this.viewerUrl = '',
     this.fundUpdateTitle = '',
     this.fundUpdateText = '',
     this.fundUpdateImages = const [],
@@ -66,6 +68,7 @@ class Project {
       isActive: active,
       imageUrl: json['image_url'] as String?,
       ctaLabel: json['cta_label'] as String? ?? '',
+      viewerUrl: json['viewer_url'] as String? ?? '',
       fundUpdateTitle: json['fund_update_title'] as String? ?? '',
       fundUpdateText: json['fund_update_text'] as String? ?? '',
       fundUpdateImages: _parseImageList(json['fund_update_images']),
@@ -127,6 +130,7 @@ class Project {
       'is_active': isActive,
       'image_url': imageUrl,
       'cta_label': ctaLabel,
+      'viewer_url': viewerUrl,
       'fund_update_title': fundUpdateTitle,
       'fund_update_text': fundUpdateText,
       'fund_update_images': fundUpdateImages,

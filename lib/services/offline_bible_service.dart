@@ -6,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_exception.dart';
 import '../models/bible_models.dart';
 import 'bible_database_helper.dart';
-import '../config/app_config.dart';
 import '../utils/logger.dart';
 
 class OfflineBibleService {

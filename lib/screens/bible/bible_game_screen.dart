@@ -7,7 +7,6 @@ import '../../services/bible_source.dart';
 import '../../constants/bible_verses.dart';
 import '../../widgets/star_animation_widget.dart';
 import '../../widgets/custom_app_bar.dart';
-import '../../providers/language_provider.dart';
 
 // Game State Provider
 final bibleGameProvider =

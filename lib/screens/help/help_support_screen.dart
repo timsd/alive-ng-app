@@ -854,31 +854,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
     );
   }
 
-  void _showAddressDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('ALIVE Nigeria Address'),
-        content: const Text(
-          'ALIVE Nigeria Headquarters\n'
-          'Lagos, Nigeria\n\n'
-          'For specific location details, please contact us via phone or email.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              if (context.mounted) {
-                Navigator.of(context).pop();
-              }
-            },
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _launchEmail(String email) async {
+  void _launchEmail(String email) async {
     final Uri emailUri = Uri(
       scheme: 'mailto',
       path: email,

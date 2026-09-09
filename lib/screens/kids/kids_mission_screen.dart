@@ -569,7 +569,7 @@ class _KidsMissionScreenState extends ConsumerState<KidsMissionScreen> {
                       context,
                       title: 'No Missions Found',
                       message: _selectedCategory != null
-                          ? 'There are no active ${_selectedCategory} missions at the moment.'
+                          ? 'There are no active $_selectedCategory missions at the moment.'
                           : 'Check back soon for new mission challenges!',
                       icon: Icons.star_border_rounded,
                     );
