@@ -1,9 +1,7 @@
-import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../constants/app_constants.dart';
 import '../../providers/language_provider.dart';
 import '../../services/appwrite_content_service.dart';
 import '../../services/onboarding_service.dart';
@@ -18,32 +16,35 @@ class OnboardingScreen extends ConsumerStatefulWidget {
 
 class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final PageController _pageController = PageController();
-  int _step = 0;
   String? _dynamicContent;
   bool _isLoading = false;
 
   final List<Map<String, dynamic>> _steps = [
     {
       'title': 'Welcome to ALIVE Nigeria',
-      'body': 'Join our vibrant community united by Prayer, Study, Missions, and Health.',
+      'body':
+          'Join our vibrant community united by Prayer, Study, Missions, and Health.',
       'icon': Icons.public,
-      'color': null, // default primary
+      'color': null,
     },
     {
       'title': 'Roles & Organization',
-      'body': 'We are organized to serve! From dedicated Members and Chapter Leaders to Coordinators, Directors, and BODs, every role is vital.',
+      'body':
+          'We are organized to serve! From dedicated Members and Chapter Leaders to Coordinators, Directors, and BODs, every role is vital.',
       'icon': Icons.groups,
       'color': Colors.indigo,
     },
     {
       'title': 'Tagging, Praying & Chatting',
-      'body': 'Stay deeply connected. Tag members, join chapter chats, pray together instantly, and share your powerful testimonies with the community.',
+      'body':
+          'Stay deeply connected. Tag members, join chapter chats, pray together instantly, and share your powerful testimonies with the community.',
       'icon': Icons.chat_bubble_outline,
       'color': Colors.teal,
     },
     {
       'title': 'Kids & Discipleship',
-      'body': 'A rich library of Books, Tracts, and Podcasts awaits you. Plus, special mission activities and Bible memorization features for both Kids and Adults to grow as true Disciples of Christ.',
+      'body':
+          'A rich library of Books, Tracts, and Podcasts awaits you. Plus special mission activities and Bible memorization features for both Kids and Adults.',
       'icon': Icons.menu_book,
       'color': Colors.orange,
     },
@@ -76,34 +77,19 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         _dynamicContent = contentData?['content']?.toString();
       });
     } catch (_) {
-      // keep static onboarding fallback
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _next() async {
-    if (_step < _steps.length - 1) {
-      final next = _step + 1;
-      await _pageController.animateToPage(
-        next,
-        duration: const Duration(milliseconds: 320),
-        curve: Curves.easeInOut,
-      );
-      return;
-    }
     await OnboardingService.complete();
-    if (mounted) {
-      context.go(kIsWeb ? AppConstants.homeRoute : AppConstants.authRoute);
-    }
+    if (mounted) context.go('/oath');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Getting Started')),
       body: Padding(
         padding: context.responsivePadding,
         child: Column(
@@ -113,61 +99,36 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               child: PageView.builder(
                 controller: _pageController,
                 itemCount: _steps.length,
-                onPageChanged: (index) => setState(() => _step = index),
                 itemBuilder: (context, index) {
-                  final item = _steps[index];
+                  final step = _steps[index];
                   return _OnboardingCard(
-                    title: item['title'] as String,
-                    body: item['body'] as String,
-                    icon: item['icon'] as IconData,
-                    iconColor: (item['color'] as Color?) ?? Theme.of(context).colorScheme.primary,
-                    extra: index == 0 ? _dynamicContent : null,
+                    title: step['title'] as String,
+                    body: step['body'] as String,
+                    icon: step['icon'] as IconData,
+                    iconColor: (step['color'] as Color?) ??
+                        Theme.of(context).colorScheme.primary,
+                    extra: index == _steps.length - 1 ? _dynamicContent : null,
                   );
                 },
               ),
             ),
-            SizedBox(height: context.responsivePadding.top / 2),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(_steps.length, (i) {
-                final active = i == _step;
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                  width: active ? 18 : 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: active
-                        ? Theme.of(context).colorScheme.primary
-                        : Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                );
-              }),
-            ),
-            SizedBox(height: context.responsivePadding.top),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _next,
-                    child: Text(
-                      _step < _steps.length - 1 ? 'Next' : 'Get Started',
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _next,
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(52),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
                     ),
                   ),
+                  child: const Text('Get Started'),
                 ),
-              ],
-            ),
-            SizedBox(height: context.responsivePadding.top / 2),
-            Center(
-              child: TextButton(
-                onPressed: () => context.go(AppConstants.authRoute),
-                child: const Text('Sign In'),
               ),
             ),
+            SizedBox(height: context.responsivePadding.top / 2),
           ],
         ),
       ),
@@ -211,11 +172,7 @@ class _OnboardingCard extends StatelessWidget {
                     color: iconColor.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(
-                    icon,
-                    size: 80,
-                    color: iconColor,
-                  ),
+                  child: Icon(icon, size: 80, color: iconColor),
                 ),
                 SizedBox(height: context.responsivePadding.top * 1.5),
                 Text(
@@ -266,3 +223,6 @@ class _OnboardingCard extends StatelessWidget {
     );
   }
 }
+
+
+

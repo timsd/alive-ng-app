@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../screens/splash/animated_splash_screen.dart';
 import '../screens/onboarding/onboarding_screen.dart';
+import '../screens/oath/oath_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/study_guides/study_screen.dart';
 import '../screens/daily/daily_screen.dart';
@@ -248,6 +249,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppConstants.onboardingRoute,
         builder: (context, state) => const OnboardingScreen(),
+      ),
+      GoRoute(
+        path: '/oath',
+        builder: (context, state) => const OathScreen(),
       ),
 
       // Main Navigation Shell Route

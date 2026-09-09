@@ -27,6 +27,7 @@ class DonationService {
 
   late final TablesDB _tables = TablesDB(appwriteClient);
   final Uuid _uuid = const Uuid();
+  final Map<String, DonationRecord> _checkoutDrafts = {};
   final Logger _logger = Logger('DonationService');
 
   String get _databaseId => AppwriteBackendConfig.databaseId;
@@ -364,6 +365,11 @@ class DonationService {
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
+
+      if (paymentMethod == PaymentMethod.paystack) {
+        _checkoutDrafts[donation.id] = donation;
+        return donation;
+      }
 
       final data = _appwriteData(donation.toJson());
       data['reference'] = donation.id;
@@ -733,12 +739,15 @@ class DonationService {
   }) async {
     try {
       // Get the donation record
-      final donationRow = await _tables.getRow(
-        databaseId: _databaseId,
-        tableId: _donationsCollectionId,
-        rowId: donationId,
-      );
-      final donation = DonationRecord.fromJson(_rowData(donationRow));
+      var donation = _checkoutDrafts[donationId];
+      if (donation == null) {
+        final row = await _tables.getRow(
+          databaseId: _databaseId,
+          tableId: _donationsCollectionId,
+          rowId: donationId,
+        );
+        donation = DonationRecord.fromJson(_rowData(row));
+      }
 
       // Ensure context is still valid before using it across async boundary
       if (!context.mounted) {
@@ -784,75 +793,21 @@ class DonationService {
               metadata: baseMetadata,
             );
 
-      if (paymentResult.initialized && !paymentResult.success) {
-        await updateDonationStatus(
-          donationId,
-          DonationStatus.processing,
-          metadata: {
-            'processor': 'paystack',
-            'message': paymentResult.message,
-          },
-        );
-        return {
-          'success': false,
-          'message':
-              'Payment initialized. Complete checkout to finalize donation.',
-          'donation_id': donationId,
-          'initialized': true,
-        };
-      } else if (paymentResult.success) {
-        // Update donation status to completed
-        await updateDonationStatus(
-          donationId,
-          DonationStatus.completed,
-          transactionId: paymentResult.reference,
-          metadata: {
-            'processor': 'paystack',
-            'message': paymentResult.message,
-          },
-        );
-
-        return {
-          'success': true,
-          'message': 'Payment processed successfully',
-          'donation_id': donationId,
-          'transaction_id': paymentResult.reference,
-          'initialized': false,
-        };
-      } else {
-        // Update donation status to failed
-        await updateDonationStatus(
-          donationId,
-          DonationStatus.failed,
-          metadata: {
-            'processor': 'paystack',
-            'message': paymentResult.message,
-          },
-        );
-
-        return {
-          'success': false,
-          'message': paymentResult.message,
-          'donation_id': donationId,
-          'initialized': false,
-        };
-      }
-    } catch (e) {
-      _logger.error('Error processing Paystack payment', e);
-      // Attempt to mark as failed if donation exists
-      try {
-        await updateDonationStatus(
-          donationId,
-          DonationStatus.failed,
-          metadata: {'error': '$e'},
-        );
-      } catch (_) {}
-
-      if (e is AppException) rethrow;
-
+      _checkoutDrafts.remove(donationId);
+      // Only the signed server webhook confirms payment and grants access.
       return {
         'success': false,
-        'message': 'Payment processing error: $e',
+        'initialized': paymentResult.initialized || paymentResult.success,
+        'message': paymentResult.initialized || paymentResult.success
+            ? 'Complete checkout. Your donation will appear after payment is verified.'
+            : paymentResult.message,
+        'donation_id': donationId,
+      };
+    } catch (e) {
+      _logger.error('Error processing Paystack payment', e);
+      return {
+        'success': false,
+        'message': 'We could not open checkout. Please try again.',
         'donation_id': donationId,
         'initialized': false,
       };
