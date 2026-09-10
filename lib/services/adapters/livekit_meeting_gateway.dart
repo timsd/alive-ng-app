@@ -19,6 +19,9 @@ import '../../main.dart';
 import '../../models/meeting_models.dart';
 import '../ports/meeting_gateway.dart';
 
+/// Appwrite Function ID for the LiveKit broadcast backend.
+const String _broadcastFunctionId = 'start_livekit_broadcast';
+
 /// Concrete [MeetingGateway] backed by LiveKit WebRTC.
 class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
   static const String livekitUrl = String.fromEnvironment(
@@ -42,6 +45,12 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
 
   final StreamController<RoomStatus> _statusController =
       StreamController<RoomStatus>.broadcast();
+
+  // ── Broadcast state ──────────────────────────────────────────
+  bool _isBroadcasting = false;
+  String? _activeEgressId;
+  final StreamController<bool> _broadcastingController =
+      StreamController<bool>.broadcast();
 
   LiveKitMeetingGateway() {
     _emitSession();
@@ -72,6 +81,16 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
   /// Exposes the underlying room strictly for adapter-level consumers
   /// if specialized widgets need it, though UI should avoid direct usage.
   lk.Room? get rawRoom => _room;
+
+  // ──────────────────────────────────────────────────────────
+  //  Broadcast getters
+  // ──────────────────────────────────────────────────────────
+
+  @override
+  bool get isBroadcasting => _isBroadcasting;
+
+  @override
+  Stream<bool> get broadcastingStream => _broadcastingController.stream;
 
   // ──────────────────────────────────────────────────────────
   //  Internal state updates & mappings
@@ -375,6 +394,94 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
     }
   }
 
+  // ──────────────────────────────────────────────────────────
+  //  Broadcast implementations (server-side via Appwrite)
+  // ──────────────────────────────────────────────────────────
+
+  void _updateBroadcastState(bool broadcasting, {String? egressId}) {
+    _isBroadcasting = broadcasting;
+    _activeEgressId = egressId;
+    _broadcastingController.add(broadcasting);
+    notifyListeners();
+  }
+
+  @override
+  Future<String> startBroadcast({required String meetingType}) async {
+    try {
+      final functions = Functions(appwriteClient);
+      final result = await functions.createExecution(
+        functionId: _broadcastFunctionId,
+        body: jsonEncode({'action': 'start', 'meetingType': meetingType}),
+        xasync: false,
+      );
+
+      if (result.statusCode != 200) {
+        throw Exception('Broadcast failed (${result.statusCode}): ${result.responseBody}');
+      }
+
+      final response = jsonDecode(result.responseBody);
+      if (response['error'] != null) {
+        throw Exception(response['error']);
+      }
+
+      final egressId = response['egressId'] as String?;
+      if (egressId == null) {
+        throw Exception('No egressId returned from broadcast function.');
+      }
+
+      _updateBroadcastState(true, egressId: egressId);
+      debugPrint('Broadcast started: egressId=$egressId, room=${response['roomName']}');
+      return egressId;
+    } catch (e) {
+      debugPrint('Failed to start broadcast: $e');
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> stopBroadcast({required String egressId}) async {
+    try {
+      final functions = Functions(appwriteClient);
+      final result = await functions.createExecution(
+        functionId: _broadcastFunctionId,
+        body: jsonEncode({'action': 'stop', 'egressId': egressId}),
+        xasync: false,
+      );
+
+      if (result.statusCode != 200) {
+        throw Exception('Stop broadcast failed (${result.statusCode}): ${result.responseBody}');
+      }
+
+      _updateBroadcastState(false);
+      debugPrint('Broadcast stopped: egressId=$egressId');
+    } catch (e) {
+      debugPrint('Failed to stop broadcast: $e');
+      rethrow;
+    }
+  }
+
+  @override
+  Future<List<dynamic>> listBroadcasts() async {
+    try {
+      final functions = Functions(appwriteClient);
+      final result = await functions.createExecution(
+        functionId: _broadcastFunctionId,
+        body: jsonEncode({'action': 'list'}),
+        xasync: false,
+      );
+
+      if (result.statusCode != 200) {
+        throw Exception('List broadcasts failed (${result.statusCode}): ${result.responseBody}');
+      }
+
+      final response = jsonDecode(result.responseBody);
+      return (response['egresses'] as List?) ?? [];
+    } catch (e) {
+      debugPrint('Failed to list broadcasts: $e');
+      rethrow;
+    }
+  }
+
   @override
   void dispose() {
     _roomListener?.dispose();
@@ -383,6 +490,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
     _room = null;
     _sessionController.close();
     _statusController.close();
+    _broadcastingController.close();
     super.dispose();
   }
 }

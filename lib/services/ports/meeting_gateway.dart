@@ -56,4 +56,28 @@ abstract class MeetingGateway {
 
   /// Releases resources, disconnects from room, and closes streams.
   void dispose();
+
+  // ──────────────────────────────────────────────────────────
+  //  LiveKit → YouTube broadcast (server-side via Appwrite)
+  // ──────────────────────────────────────────────────────────
+
+  /// Whether the current room is being broadcast to an external platform.
+  bool get isBroadcasting;
+
+  /// Stream of broadcast status changes.
+  Stream<bool> get broadcastingStream;
+
+  /// Starts broadcasting the current room to YouTube via LiveKit egress.
+  ///
+  /// [meetingType] selects the broadcast room policy (e.g. 'general', 'leadership').
+  /// Returns the egress ID on success.
+  Future<String> startBroadcast({required String meetingType});
+
+  /// Stops an active broadcast.
+  ///
+  /// [egressId] is the identifier returned by [startBroadcast].
+  Future<void> stopBroadcast({required String egressId});
+
+  /// Lists all active egress instances.
+  Future<List<dynamic>> listBroadcasts();
 }

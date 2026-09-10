@@ -119,6 +119,26 @@
             "timeout": 15,
             "commands": "npm install",
             "scopes": []
+        },
+        {
+            "$id": "start_livekit_broadcast",
+            "name": "startLiveKitBroadcast",
+            "runtime": "node-20.0",
+            "path": "appwrite_functions/startLiveKitBroadcast",
+            "entrypoint": "src/main.js",
+            "execute": [
+                "users"
+            ],
+            "enabled": true,
+            "logging": true,
+            "events": [],
+            "schedule": "",
+            "timeout": 30,
+            "commands": "npm install",
+            "scopes": [
+                "databases.read",
+                "documents.read"
+            ]
         }
     ]
 }

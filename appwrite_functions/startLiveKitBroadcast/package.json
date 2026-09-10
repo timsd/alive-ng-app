@@ -1,0 +1,10 @@
+{
+  "name": "start-livekit-broadcast",
+  "version": "1.0.0",
+  "description": "Starts/stops LiveKit Egress broadcast of an ALIVE Meet room to YouTube Live (RTMP)",
+  "type": "module",
+  "main": "src/main.js",
+  "dependencies": {
+    "livekit-server-sdk": "^2.13.1"
+  }
+}
