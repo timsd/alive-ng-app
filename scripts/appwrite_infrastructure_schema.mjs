@@ -91,7 +91,9 @@ export const topics = [
 ];
 
 const s = (key, size = 255, required = false, array = false) => ({ type: 'varchar', key, size, required, array });
-const text = (key, required = false) => ({ type: 'text', key, required });
+// Appwrite 1.8's string fallback must exceed 16381 to use off-row TEXT.
+// A 10000-character VARCHAR consumes 40002 bytes of MariaDB's row budget.
+const text = (key, required = false) => ({ type: 'text', key, required, size: 60000 });
 const mediumtext = (key, required = false) => ({ type: 'mediumtext', key, required });
 const i = (key, required = false) => ({ type: 'integer', key, required });
 const f = (key, required = false) => ({ type: 'float', key, required });
@@ -123,13 +125,13 @@ export const tables = [
     id: '6a08943100226f5b4963',
     name: 'Users',
     columns: [
-      s('email', 320, true), s('fullName'), s('full_name'), s('avatar_url', 1024), s('photo_url', 1024), b('is_email_verified'), b('is_anonymous'),
-      s('provider', 64), dt('date_of_birth'), s('phone_number', 64), text('address'), text('bio'), s('chapter_id', 128), s('role', 64, true),
+      s('email', 320, true), s('full_name'), s('photo_url', 1024), b('is_email_verified'), b('is_anonymous'),
+      s('provider', 64), dt('date_of_birth'), s('phone_number', 64), text('address'), s('chapter_id', 128), s('role', 64, true),
       b('is_archived', false, false), b('is_new_convert', false, false), dt('convert_date'), b('is_approved', false, true), s('approved_by', 128),
-      dt('approved_at'), s('approval_status', 64), text('rejection_reason'), s('location'), s('local_church'), s('occupation'), text('skills'),
-      s('work_contact'), s('home_contact'), text('general_info'), s('local_chapter'), b('is_chapter_verified', false, false),
+      dt('approved_at'), s('approval_status', 64), s('location'), s('local_church'), s('occupation'),
+      s('work_contact'), s('home_contact'), b('is_chapter_verified', false, false),
       b('is_church_verified', false, false), s('commitment_type', 64), f('financial_commitment'),
-      text('availability_commitment'), mediumtext('commitment_details'), i('total_reading_time'), i('chapters_read'), i('verses_read'),
+      mediumtext('commitment_details'), mediumtext('additional_profile'), i('total_reading_time'), i('chapters_read'), i('verses_read'),
       i('prayers_offered'), i('study_sessions_completed'), i('session_count'), i('total_study_time'), i('total_app_time'),
       s('last_chapter_read'), s('last_verse_read'), s('last_prayer_type'), s('last_study_session_type'), dt('last_reading_date'),
       dt('last_prayer_date'), dt('last_study_date'), dt('last_session_start'), dt('last_activity'), dt('stats_start_date'),

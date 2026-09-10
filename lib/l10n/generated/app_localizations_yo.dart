@@ -938,4 +938,76 @@ class AppLocalizationsYo extends AppLocalizations {
 
   @override
   String get enable => 'Muu ṣiṣẹ';
+
+  @override
+  String get alive_meet => 'ALIVE Meet';
+
+  @override
+  String get recipes => 'Recipes';
+
+  @override
+  String get bod_trustees => 'BOD Trustees';
+
+  @override
+  String get events => 'Events';
+
+  @override
+  String get bible_game => 'Bible Game';
+
+  @override
+  String get chat => 'Chat';
+
+  @override
+  String get chapters => 'Chapters';
+
+  @override
+  String get library => 'Library';
+
+  @override
+  String get podcasts => 'Podcasts';
+
+  @override
+  String get lessons => 'Lessons';
+
+  @override
+  String get testimonies => 'Testimonies';
+
+  @override
+  String get kids_stories => 'Kids Stories';
+
+  @override
+  String get kids_mission => 'Kids Mission';
+
+  @override
+  String get submit_recipe => 'Submit Recipe';
+
+  @override
+  String get tools_games => 'Tools & Games';
+
+  @override
+  String get content_tools => 'Content Tools';
+
+  @override
+  String get content_management => 'Content Management';
+
+  @override
+  String get admin => 'Admin';
+
+  @override
+  String get dashboard => 'Dashboard';
+
+  @override
+  String get user_archive => 'User Archive';
+
+  @override
+  String get role_management => 'Role Management';
+
+  @override
+  String get auto_theme => 'Auto Theme';
+
+  @override
+  String get light_mode => 'Light Mode';
+
+  @override
+  String get dark_mode => 'Dark Mode';
 }

@@ -604,6 +604,54 @@ String lookupLegacyMessage(AppLocalizations messages, String key) {
       return messages.skip;
     case 'enable':
       return messages.enable;
+    case 'alive_meet':
+      return messages.alive_meet;
+    case 'recipes':
+      return messages.recipes;
+    case 'bod_trustees':
+      return messages.bod_trustees;
+    case 'events':
+      return messages.events;
+    case 'bible_game':
+      return messages.bible_game;
+    case 'chat':
+      return messages.chat;
+    case 'chapters':
+      return messages.chapters;
+    case 'library':
+      return messages.library;
+    case 'podcasts':
+      return messages.podcasts;
+    case 'lessons':
+      return messages.lessons;
+    case 'testimonies':
+      return messages.testimonies;
+    case 'kids_stories':
+      return messages.kids_stories;
+    case 'kids_mission':
+      return messages.kids_mission;
+    case 'submit_recipe':
+      return messages.submit_recipe;
+    case 'tools_games':
+      return messages.tools_games;
+    case 'content_tools':
+      return messages.content_tools;
+    case 'content_management':
+      return messages.content_management;
+    case 'admin':
+      return messages.admin;
+    case 'dashboard':
+      return messages.dashboard;
+    case 'user_archive':
+      return messages.user_archive;
+    case 'role_management':
+      return messages.role_management;
+    case 'auto_theme':
+      return messages.auto_theme;
+    case 'light_mode':
+      return messages.light_mode;
+    case 'dark_mode':
+      return messages.dark_mode;
     default:
       return TextFormatter.formatText(key);
   }

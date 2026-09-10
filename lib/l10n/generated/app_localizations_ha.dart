@@ -189,7 +189,7 @@ class AppLocalizationsHa extends AppLocalizations {
   String get health => 'Lafiya';
 
   @override
-  String get welcome_message => 'Welcome Message';
+  String get welcome_message => 'Sakon Maraba';
 
   @override
   String get good_morning => 'Barka da Safe';
@@ -470,34 +470,35 @@ class AppLocalizationsHa extends AppLocalizations {
   String get admin_dashboard => 'Dashboard Mai Gudanarwa';
 
   @override
-  String get user_approval => 'User Approval';
+  String get user_approval => 'Amincewar Masu amfani';
 
   @override
-  String get pending_users => 'Pending Users';
+  String get pending_users => 'Masu amfani masu jira';
 
   @override
-  String get approved_users => 'Approved Users';
+  String get approved_users => 'Masu amfani da aka amince';
 
   @override
-  String get rejected_users => 'Rejected Users';
+  String get rejected_users => 'Masu amfani da aka ƙi';
 
   @override
-  String get approve_user => 'Approve User';
+  String get approve_user => 'Amince da Mai amfani';
 
   @override
-  String get reject_user => 'Reject User';
+  String get reject_user => 'Ƙi Mai amfani';
 
   @override
-  String get approval_reason => 'Approval Reason';
+  String get approval_reason => 'Dalilin Amincewa';
 
   @override
-  String get rejection_reason => 'Rejection Reason';
+  String get rejection_reason => 'Dalilin Ƙin Amincewa';
 
   @override
-  String get user_approved_successfully => 'User approved successfully';
+  String get user_approved_successfully =>
+      'An sami nasarar amincewa da mai amfani';
 
   @override
-  String get user_rejected_successfully => 'User rejected successfully';
+  String get user_rejected_successfully => 'An yi nasarar ƙin mai amfani';
 
   @override
   String get account_pending_approval =>
@@ -505,34 +506,34 @@ class AppLocalizationsHa extends AppLocalizations {
 
   @override
   String get account_under_review =>
-      'Your account is currently under review. You\'ll have full access once approved.';
+      'Ana duba asusunka. Za ka sami cikakken shiga da zarar an ba ka izini.';
 
   @override
-  String get pending_admin_approval => 'Pending admin approval';
+  String get pending_admin_approval => 'Ana jiran amincewar mai gudanarwa';
 
   @override
-  String get no_pending_users => 'No pending users found';
+  String get no_pending_users => 'Ba a sami masu amfani masu jira ba';
 
   @override
-  String get local_chapter => 'Local Chapter';
+  String get local_chapter => 'Ƙungiya ta Wuri';
 
   @override
-  String get local_church => 'Local Church';
+  String get local_church => 'Ikklisiya ta Wuri';
 
   @override
-  String get conference => 'Conference';
+  String get conference => 'Taro';
 
   @override
-  String get commitment_type => 'Commitment Type';
+  String get commitment_type => 'Nau\'in Alƙawari';
 
   @override
-  String get financial_commitment => 'Financial Commitment';
+  String get financial_commitment => 'Alƙawarin Kuɗi';
 
   @override
-  String get verification_details => 'Verification Details';
+  String get verification_details => 'Bayanan Tabbatarwa';
 
   @override
-  String get commitment_details => 'Commitment Details';
+  String get commitment_details => 'Bayanan Alƙawari';
 
   @override
   String get bible_reader => 'Mai Karanta Littafi Mai Tsarki';
@@ -774,7 +775,7 @@ class AppLocalizationsHa extends AppLocalizations {
   String get community => 'Al\'umma';
 
   @override
-  String get main_features => 'Main Features';
+  String get main_features => 'Manyan Abubuwan Aiki';
 
   @override
   String get page_not_found => 'Ba a sami wannan shafin ba';
@@ -798,128 +799,128 @@ class AppLocalizationsHa extends AppLocalizations {
   String get board_meeting_available => 'Taron Hukumar Gudanarwa yana samuwa';
 
   @override
-  String get how_to_join_chapter => 'How do I join a local chapter?';
+  String get how_to_join_chapter => 'Ta yaya zan iya shiga ƙungiya ta wurin?';
 
   @override
   String get join_chapter_answer =>
-      'You can join a local chapter by navigating to the \"Chapters\" section on the Home screen, selecting a chapter near you, and clicking the \"Join\" button.';
+      'Za ka iya shiga ƙungiya ta wurin ta hanyar zuwa sashin Ƙungiyoyi a allon Gida, zabar ƙungiyar da ke kusa da kai, sannan danna maɓallin Shiga.';
 
   @override
   String get how_to_submit_prayer_request =>
-      'How can I submit a prayer request?';
+      'Ta yaya zan iya aika bukatar addu\'a?';
 
   @override
   String get prayer_request_answer =>
-      'Go to the \"Prayer\" tab, click the \"Add Request\" button, fill in your details, and select \"Public\" or \"Private\".';
+      'Je sashin Addu\'a, danna maɓallin Ƙara Bukata, cika bayananka, sannan zabi Na Jari ko Na Sirri.';
 
   @override
-  String get how_to_access_study_materials =>
-      'How do I access study materials?';
+  String get how_to_access_study_materials => 'Ta yaya zan sami kayan karatu?';
 
   @override
   String get study_materials_answer =>
-      'Navigate to the \"Study\" tab to see all available Bible study programs and lessons.';
+      'Je sashin Karatu don ganin duk shirye-shiryen karatu da darussa.';
 
   @override
-  String get how_to_track_health => 'How do I track my health activities?';
+  String get how_to_track_health => 'Ta yaya zan iya bin lafiyara?';
 
   @override
   String get health_tracking_answer =>
-      'Use the \"Health Tracking\" quick action on the Home screen or navigate to the Health tab to log your activities.';
+      'Yi amfani da maballin Bin Lafiya mai sauri a allon Gida ko kuwa je sashin Lafiya don rubuta ayyukanka.';
 
   @override
-  String get how_to_reset_password => 'How do I reset my password?';
+  String get how_to_reset_password =>
+      'Ta yaya zan iya sake saitata kalmar sirrira?';
 
   @override
   String get reset_password_answer =>
-      'On the Sign In screen, click \"Forgot Password\". We will send you a link to reset your password via email.';
+      'A allon Shiga, danna Manta da Kalmar Sirri. Za mu aiko maka hanyar sake saitata ta imel.';
 
   @override
-  String get how_to_change_language => 'How can I change the app language?';
+  String get how_to_change_language => 'Ta yaya zan iya canza harshen manhaja?';
 
   @override
   String get change_language_answer =>
-      'Go to Profile > Settings > Language and select your preferred language or use the language icon on the AppBar for Quick Access.';
+      'Je Furofil > Saituna > Harshe kana zabi harshen da ka fi so.';
 
   @override
-  String get search_faq => 'Search FAQ...';
+  String get search_faq => 'Nemo FAQ...';
 
   @override
-  String get getting_started => 'Getting Started';
+  String get getting_started => 'Fara Aiki';
 
   @override
   String get getting_started_desc =>
-      'Learn the basics of using the ALIVE Nigeria app.';
+      'Koyi tushe na yin amfani da manhajar ALIVE Nigeria.';
 
   @override
-  String get using_prayer_wall => 'Using the Prayer Wall';
+  String get using_prayer_wall => 'Amfani da Bangon Addu\'a';
 
   @override
   String get prayer_wall_guide_desc =>
-      'Discover how to share requests and pray for others.';
+      'Gano yadda ake raba bukatu da yin addu\'a don wasu.';
 
   @override
-  String get study_guides_tutorial => 'Study Guides Tutorial';
+  String get study_guides_tutorial => 'Koyarwar Jagororin Karatu';
 
   @override
   String get study_guides_desc =>
-      'A step-by-step guide to completing study lessons.';
+      'Jagora kan-gaba-kan-gaba don kammala darussan karatu.';
 
   @override
-  String get health_tracking_guide => 'Health Tracking Guide';
+  String get health_tracking_guide => 'Jagoran Bin Lafiya';
 
   @override
   String get health_tracking_desc =>
-      'How to use the health tracker for better living.';
+      'Yadda ake amfani da na\'urar bin lafiya don kyakkyawar rayuwa.';
 
   @override
-  String get chapter_management => 'Chapter Management';
+  String get chapter_management => 'Sarrafa Ƙungiya';
 
   @override
   String get chapter_management_desc =>
-      'For chapter leaders on how to manage members.';
+      'Don shugabannin ƙungiyoyi kan yadda ake sarrafa mambobi.';
 
   @override
-  String get notification_settings_guide => 'Notification Settings';
+  String get notification_settings_guide => 'Saitunan Sanarwa';
 
   @override
   String get notification_settings_desc =>
-      'Configure alerts for missions and prayers.';
+      'Saita faɗakarwa don ayyuka da addu\'a.';
 
   @override
-  String get user_guides => 'User Guides';
+  String get user_guides => 'Jagororin Masu amfani';
 
   @override
-  String get need_help => 'Need Help?';
+  String get need_help => 'Kana Bukatar Taimako?';
 
   @override
   String get contact_us_message =>
-      'Our support team is available to assist you with any questions or issues.';
+      'Ƙungiyar tallafinmu tana shirye don taimaka muku da kowace tambaya ko matsala.';
 
   @override
-  String get office_hours => 'Office Hours';
+  String get office_hours => 'Sa\'o\'in Aiki';
 
   @override
-  String get send_feedback => 'Send Feedback';
+  String get send_feedback => 'Aika Ra\'ayi';
 
   @override
-  String get feedback_type => 'Feedback Type';
+  String get feedback_type => 'Nau\'in Ra\'ayi';
 
   @override
-  String get email_optional => 'Email (Optional)';
+  String get email_optional => 'Imel (Zabi)';
 
   @override
-  String get enter_email => 'Enter your email';
+  String get enter_email => 'Shigar da imel ɗinka';
 
   @override
-  String get feedback_message => 'Feedback Message';
+  String get feedback_message => 'Sakon Ra\'ayi';
 
   @override
   String get describe_feedback =>
-      'Describe your feedback or report an issue...';
+      'Bayyana ra\'ayinka ko ba da rahotar matsala...';
 
   @override
-  String get submit_feedback => 'Submit Feedback';
+  String get submit_feedback => 'Aika Ra\'ayi';
 
   @override
   String get enable_biometric_auth => 'Kunna Shiga da Biometric';
@@ -946,4 +947,76 @@ class AppLocalizationsHa extends AppLocalizations {
 
   @override
   String get enable => 'Kunna';
+
+  @override
+  String get alive_meet => 'Taron ALIVE';
+
+  @override
+  String get recipes => 'Girki';
+
+  @override
+  String get bod_trustees => 'Amintattun BOD';
+
+  @override
+  String get events => 'Abubuwan da suka faru';
+
+  @override
+  String get bible_game => 'Wasan Littafi Mai Tsarki';
+
+  @override
+  String get chat => 'Taɗi';
+
+  @override
+  String get chapters => 'Ƙungiyoyi';
+
+  @override
+  String get library => 'Laburare';
+
+  @override
+  String get podcasts => 'Podcast';
+
+  @override
+  String get lessons => 'Darussa';
+
+  @override
+  String get testimonies => 'Shaidu';
+
+  @override
+  String get kids_stories => 'Labaru na Yara';
+
+  @override
+  String get kids_mission => 'Aikin Yara';
+
+  @override
+  String get submit_recipe => 'Aika Girki';
+
+  @override
+  String get tools_games => 'Kayan Aiki da Wasanni';
+
+  @override
+  String get content_tools => 'Kayan Aiki na Abun ciki';
+
+  @override
+  String get content_management => 'Sarrafa Abun ciki';
+
+  @override
+  String get admin => 'Gudanarwa';
+
+  @override
+  String get dashboard => 'Allon Aiki';
+
+  @override
+  String get user_archive => 'Rumbun Masu amfani';
+
+  @override
+  String get role_management => 'Sarrafa Matsayi';
+
+  @override
+  String get auto_theme => 'Jigon Kama da Kai';
+
+  @override
+  String get light_mode => 'Yanayin Haskaka';
+
+  @override
+  String get dark_mode => 'Yanayin Duhu';
 }

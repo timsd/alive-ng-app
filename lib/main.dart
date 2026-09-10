@@ -375,131 +375,131 @@ class MainNavigationScreen extends ConsumerWidget {
                 if (canAccessRoleGated) ...[
                   {
                     'icon': Icons.health_and_safety_rounded,
-                    'label': 'Health',
+                    'label': 'health',
                     'route': AppConstants.enhancedHealthRoute
                   },
                   {
                     'icon': Icons.wb_sunny_rounded,
-                    'label': 'Daily',
+                    'label': 'daily',
                     'route': AppConstants.dailyRoute
                   },
                   {
                     'icon': Icons.volunteer_activism_rounded,
-                    'label': 'Missions',
+                    'label': 'missions',
                     'route': AppConstants.missionsRoute
                   },
                   {
                     'icon': Icons.event_available_rounded,
-                    'label': 'Events',
+                    'label': 'events',
                     'route': AppConstants.eventsRoute
                   },
                   {
                     'icon': Icons.sports_esports_rounded,
-                    'label': 'Bible Game',
+                    'label': 'bible_game',
                     'route': AppConstants.bibleGameRoute
                   },
                   {
                     'icon': Icons.forum_rounded,
-                    'label': 'Chat',
+                    'label': 'chat',
                     'route': AppConstants.chatRoute
                   },
                   {
                     'icon': Icons.diversity_3_rounded,
-                    'label': 'Chapters',
+                    'label': 'chapters',
                     'route': AppConstants.chaptersRoute
                   },
                   {
                     'icon': Icons.video_call_rounded,
-                    'label': 'ALIVE Meet',
+                    'label': 'alive_meet',
                     'route': AppConstants.conferenceRoute
                   },
                   {
                     'icon': Icons.restaurant_menu_rounded,
-                    'label': 'Recipes',
+                    'label': 'recipes',
                     'route': AppConstants.recipesRoute
                   },
                   {
                     'icon': Icons.shield_rounded,
-                    'label': 'BOD Trustees',
+                    'label': 'bod_trustees',
                     'route': AppConstants.bodTrusteesRoute,
                     'allowedRoles': ['admin', 'bod', 'trustee']
                   },
                 ],
                 {
                   'icon': Icons.menu_book_rounded,
-                  'label': 'Bible',
+                  'label': 'bible',
                   'route': AppConstants.bibleRoute,
                 },
                 {
                   'icon': Icons.account_circle_rounded,
-                  'label': 'Profile',
+                  'label': 'profile',
                   'route': AppConstants.profileRoute
                 },
                 {
                   'icon': Icons.admin_panel_settings_rounded,
-                  'label': 'Admin',
+                  'label': 'admin',
                   'route': AppConstants.adminRoute,
                   'roleOnly': true
                 },
                 {
                   'icon': Icons.auto_stories_rounded,
-                  'label': 'Kids Stories',
+                  'label': 'kids_stories',
                   'route': AppConstants.kidsStoriesRoute
                 },
                 {
                   'icon': Icons.local_library_rounded,
-                  'label': 'Library',
+                  'label': 'library',
                   'route': AppConstants.libraryRoute
                 },
                 {
                   'icon': Icons.podcasts_rounded,
-                  'label': 'Podcasts',
+                  'label': 'podcasts',
                   'route': AppConstants.podcastsRoute
                 },
                 {
                   'icon': Icons.school_rounded,
-                  'label': 'Lessons',
+                  'label': 'lessons',
                   'route': AppConstants.interactiveLessonsRoute
                 },
                 {
                   'icon': Icons.library_books_rounded,
-                  'label': 'Tracts',
+                  'label': 'tracts',
                   'route': AppConstants.booksTractsRoute
                 },
                 {
                   'icon': Icons.record_voice_over_rounded,
-                  'label': 'Testimonies',
+                  'label': 'testimonies',
                   'route': AppConstants.testimoniesRoute
                 },
                 {
                   'icon': Icons.child_care_rounded,
-                  'label': 'Kids Mission',
+                  'label': 'kids_mission',
                   'route': AppConstants.kidsMissionRoute
                 },
                 {
                   'icon': Icons.help_outline_rounded,
-                  'label': 'Help & Support',
+                  'label': 'help_support',
                   'route': '/help-support',
                 },
                 {
                   'icon': Icons.info_outline_rounded,
-                  'label': 'About App',
+                  'label': 'about_app',
                   'route': '/about-app',
                 },
                 {
                   'icon': Icons.info_rounded,
-                  'label': 'About ALIVE',
+                  'label': 'about_alive',
                   'route': '/about-alive',
                 },
                 {
                   'icon': Icons.login_rounded,
-                  'label': 'Sign In',
+                  'label': 'sign_in',
                   'route': AppConstants.authRoute,
                   'guestOnly': true,
                 },
                 {
                   'icon': Icons.logout_rounded,
-                  'label': 'Sign Out',
+                  'label': 'sign_out',
                   'authOnly': true,
                   'onTap': () => _showSignOutDialog(context, ref),
                 },
@@ -546,7 +546,7 @@ class MainNavigationScreen extends ConsumerWidget {
                     return _buildMoreItem(
                       context,
                       item['icon'] as IconData,
-                      item['label'] as String,
+                      translate(item['label'] as String),
                       item['route'] as String?,
                       roleOnly: item['roleOnly'] == true,
                       onTap: item['onTap'] as VoidCallback?,
@@ -722,7 +722,7 @@ class MainNavigationScreen extends ConsumerWidget {
                       )),
                       Expanded(
                         child: Text(
-                          'Account pending admin approval',
+                          translate('pending_admin_approval'),
                           style: TextStyle(
                             color:
                                 Theme.of(context).colorScheme.onErrorContainer,
@@ -737,15 +737,15 @@ class MainNavigationScreen extends ConsumerWidget {
               ],
               _buildDrawerSection(context, translate('main_features'), [
                 _buildDrawerItem(
-                    context, Icons.home, 'Home', AppConstants.homeRoute),
+                    context, Icons.home, translate('home'), AppConstants.homeRoute),
                 if (canAccessRoleGated) ...[
                   _buildDrawerItem(
-                      context, Icons.book, 'Study', AppConstants.studyRoute),
-                  _buildDrawerItem(context, Icons.favorite, 'Prayer',
+                      context, Icons.book, translate('study'), AppConstants.studyRoute),
+                  _buildDrawerItem(context, Icons.favorite, translate('prayer'),
                       AppConstants.prayerRoute),
-                  _buildDrawerItem(context, Icons.health_and_safety, 'Health',
+                  _buildDrawerItem(context, Icons.health_and_safety, translate('health'),
                       AppConstants.healthRoute),
-                  _buildDrawerItem(context, Icons.calendar_today, 'Daily',
+                  _buildDrawerItem(context, Icons.calendar_today, translate('daily'),
                       AppConstants.dailyRoute),
                 ],
               ]),
@@ -753,71 +753,71 @@ class MainNavigationScreen extends ConsumerWidget {
                 const Divider(),
                 _buildDrawerSection(context, translate('community'), [
                   _buildDrawerItem(context, Icons.volunteer_activism,
-                      'Missions', AppConstants.missionsRoute),
+                      translate('missions'), AppConstants.missionsRoute),
                   _buildDrawerItem(
-                      context, Icons.chat, 'Chat', AppConstants.chatRoute),
-                  _buildDrawerItem(context, Icons.groups, 'Chapters',
+                      context, Icons.chat, translate('chat'), AppConstants.chatRoute),
+                  _buildDrawerItem(context, Icons.groups, translate('chapters'),
                       AppConstants.chaptersRoute),
-                  _buildDrawerItem(context, Icons.video_call, 'ALIVE Meet',
+                  _buildDrawerItem(context, Icons.video_call, translate('alive_meet'),
                       AppConstants.conferenceRoute),
                 ]),
                 const Divider(),
-                _buildDrawerSection(context, 'Tools & Games', [
-                  _buildDrawerItem(context, Icons.games, 'Bible Game',
+                _buildDrawerSection(context, translate('tools_games'), [
+                  _buildDrawerItem(context, Icons.games, translate('bible_game'),
                       AppConstants.bibleGameRoute),
-                  _buildDrawerItem(context, Icons.restaurant, 'Recipes',
+                  _buildDrawerItem(context, Icons.restaurant, translate('recipes'),
                       AppConstants.recipesRoute),
-                  _buildDrawerItem(context, Icons.add_circle, 'Submit Recipe',
+                  _buildDrawerItem(context, Icons.add_circle, translate('submit_recipe'),
                       AppConstants.recipeSubmissionRoute),
                 ]),
               ],
               if (isAuthenticated && canAccessRoleGated) ...[
                 const Divider(),
                 if (roleService.canCreateContent())
-                  _buildDrawerSection(context, 'Content Tools', [
+                  _buildDrawerSection(context, translate('content_tools'), [
                     _buildDrawerItem(
                       context,
                       Icons.edit_note,
-                      'Content Management',
+                      translate('content_management'),
                       AppConstants.contentManagementRoute,
                     ),
                   ]),
                 if (roleService.canCreateContent()) const Divider(),
                 RoleVisibility(
                   allowedRoles: const ['admin'],
-                  child: _buildDrawerSection(context, 'Admin', [
+                  child: _buildDrawerSection(context, translate('admin'), [
                     _buildDrawerItem(context, Icons.admin_panel_settings,
-                        'Dashboard', AppConstants.adminRoute),
-                    _buildDrawerItem(context, Icons.approval, 'User Approval',
+                        translate('dashboard'), AppConstants.adminRoute),
+                    _buildDrawerItem(context, Icons.approval, translate('user_approval'),
                         AppConstants.adminApprovalRoute),
-                    _buildDrawerItem(context, Icons.people, 'BOD Trustees',
+                    _buildDrawerItem(context, Icons.people, translate('bod_trustees'),
                         AppConstants.bodTrusteesRoute),
-                    _buildDrawerItem(context, Icons.archive, 'User Archive',
+                    _buildDrawerItem(context, Icons.archive, translate('user_archive'),
                         AppConstants.userArchiveRoute),
-                    _buildDrawerItem(context, Icons.security, 'Role Management',
+                    _buildDrawerItem(context, Icons.security, translate('role_management'),
                         AppConstants.roleManagementRoute),
                   ]),
                 ),
               ],
               const Divider(),
-              _buildDrawerSection(context, 'About', [
-                _buildDrawerItem(context, Icons.info, 'About App',
+              _buildDrawerSection(context, translate('about'), [
+                _buildDrawerItem(context, Icons.info, translate('about_app'),
                     AppConstants.aboutAppRoute),
-                _buildDrawerItem(context, Icons.info_outline, 'About ALIVE',
+                _buildDrawerItem(context, Icons.info_outline, translate('about_alive'),
                     AppConstants.aboutAliveRoute),
-                _buildDrawerItem(context, Icons.person, 'Profile',
+                _buildDrawerItem(context, Icons.person, translate('profile'),
                     AppConstants.profileRoute),
               ]),
               const Divider(),
-              _buildDrawerSection(context, 'Settings', [
+              _buildDrawerSection(context, translate('settings'), [
                 _buildThemeToggleDrawerItem(context, ref),
                 _buildLanguageToggleDrawerItem(context, ref),
               ]),
               if (!isAuthenticated) ...[
                 const Divider(),
-                _buildDrawerSection(context, 'Account', [
+                _buildDrawerSection(context, translate('account'), [
                   _buildDrawerItem(
-                      context, Icons.login, 'Sign In', AppConstants.authRoute),
+                      context, Icons.login, translate('sign_in'), AppConstants.authRoute),
                 ]),
               ],
             ],
@@ -887,6 +887,7 @@ class MainNavigationScreen extends ConsumerWidget {
 
   Widget _buildThemeToggleDrawerItem(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
+    final translate = ref.watch(languageProvider);
 
     IconData themeIcon;
     String themeText;
@@ -894,15 +895,15 @@ class MainNavigationScreen extends ConsumerWidget {
     switch (themeMode) {
       case ThemeMode.system:
         themeIcon = Icons.brightness_auto;
-        themeText = 'Auto Theme';
+        themeText = translate('auto_theme');
         break;
       case ThemeMode.light:
         themeIcon = Icons.light_mode;
-        themeText = 'Light Mode';
+        themeText = translate('light_mode');
         break;
       case ThemeMode.dark:
         themeIcon = Icons.dark_mode;
-        themeText = 'Dark Mode';
+        themeText = translate('dark_mode');
         break;
     }
 
@@ -929,6 +930,7 @@ class MainNavigationScreen extends ConsumerWidget {
   }
 
   Widget _buildLanguageToggleDrawerItem(BuildContext context, WidgetRef ref) {
+    final translate = ref.watch(languageProvider);
     return ListTile(
       leading: Icon(
         Icons.language,
@@ -939,7 +941,7 @@ class MainNavigationScreen extends ConsumerWidget {
             .withValues(alpha: 179 / 255.0),
       ),
       title: Text(
-        'Language',
+        translate('language'),
         style: TextStyle(
           color: Theme.of(context).colorScheme.onSurface,
           fontSize: context.responsiveFontSize(16.0),

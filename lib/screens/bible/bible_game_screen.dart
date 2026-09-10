@@ -1139,9 +1139,7 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return InkWell(
-      onTap: ref.watch(bibleGameProvider).score >= 2
-          ? () => _confirmFlipCard(context)
-          : null,
+      onTap: () => _confirmFlipCard(context),
       borderRadius: BorderRadius.circular(12),
       child: Container(
         key: const ValueKey('prompt'),

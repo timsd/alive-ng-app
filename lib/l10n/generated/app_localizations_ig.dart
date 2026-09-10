@@ -189,7 +189,7 @@ class AppLocalizationsIg extends AppLocalizations {
   String get health => 'Ahụ Ike';
 
   @override
-  String get welcome_message => 'Welcome Message';
+  String get welcome_message => 'Ozi Nnọọ';
 
   @override
   String get good_morning => 'Ụtụtụ Ọma';
@@ -466,68 +466,68 @@ class AppLocalizationsIg extends AppLocalizations {
   String get admin_dashboard => 'Dashboard Nchịkwa';
 
   @override
-  String get user_approval => 'User Approval';
+  String get user_approval => 'Nkwado Ndị Ọrụ';
 
   @override
-  String get pending_users => 'Pending Users';
+  String get pending_users => 'Ndị Ọrụ Nọ Na-eche';
 
   @override
-  String get approved_users => 'Approved Users';
+  String get approved_users => 'Ndị Ọrụ Akwadoro';
 
   @override
-  String get rejected_users => 'Rejected Users';
+  String get rejected_users => 'Ndị Ọrụ Ajụrụ';
 
   @override
-  String get approve_user => 'Approve User';
+  String get approve_user => 'Kwado Onye Ọrụ';
 
   @override
-  String get reject_user => 'Reject User';
+  String get reject_user => 'Jụ Onye Ọrụ';
 
   @override
-  String get approval_reason => 'Approval Reason';
+  String get approval_reason => 'Ihe Kpatara Nkwado';
 
   @override
-  String get rejection_reason => 'Rejection Reason';
+  String get rejection_reason => 'Ihe Kpatara Ịjụ';
 
   @override
-  String get user_approved_successfully => 'User approved successfully';
+  String get user_approved_successfully => 'Enyere onye ọrụ nkwado nke ọma';
 
   @override
-  String get user_rejected_successfully => 'User rejected successfully';
+  String get user_rejected_successfully => 'Ejụrụ onye ọrụ nke ọma';
 
   @override
-  String get account_pending_approval => 'Account Pending Approval';
+  String get account_pending_approval => 'Akaụntị gị nọ na-eche nkwado.';
 
   @override
   String get account_under_review =>
-      'Your account is currently under review. You\'ll have full access once approved.';
+      'A na-enyocha akaụntị gị. Ị ga-enweta ohere zuru oke mgbe enyere ya nkwado.';
 
   @override
-  String get pending_admin_approval => 'Pending admin approval';
+  String get pending_admin_approval => 'Na-eche nkwado onye nchịkwa';
 
   @override
-  String get no_pending_users => 'No pending users found';
+  String get no_pending_users => 'Ahụghị ndị ọrụ ọ bụla na-eche';
 
   @override
-  String get local_chapter => 'Local Chapter';
+  String get local_chapter => 'Òtù Mpaghara';
 
   @override
-  String get local_church => 'Local Church';
+  String get local_church => 'Ụka Mpaghara';
 
   @override
-  String get conference => 'Conference';
+  String get conference => 'Ọgbakọ';
 
   @override
-  String get commitment_type => 'Commitment Type';
+  String get commitment_type => 'Ụdị Nkwa';
 
   @override
-  String get financial_commitment => 'Financial Commitment';
+  String get financial_commitment => 'Nkwa Ego';
 
   @override
-  String get verification_details => 'Verification Details';
+  String get verification_details => 'Nkọwa Nkwenye';
 
   @override
-  String get commitment_details => 'Commitment Details';
+  String get commitment_details => 'Nkọwa Nkwa';
 
   @override
   String get bible_reader => 'Onye Na-agụ Akwụkwọ Nsọ';
@@ -792,128 +792,124 @@ class AppLocalizationsIg extends AppLocalizations {
   String get board_meeting_available => 'Nzukọ nke Board of Directors dị';
 
   @override
-  String get how_to_join_chapter => 'How do I join a local chapter?';
+  String get how_to_join_chapter => 'Olee otu m ga-esi sonye òtù mpaghara?';
 
   @override
   String get join_chapter_answer =>
-      'You can join a local chapter by navigating to the \"Chapters\" section on the Home screen, selecting a chapter near you, and clicking the \"Join\" button.';
+      'Ị ga-esonye òtù mpaghara site na ịga ngalaba Òtù na ibe Ụlọ, họrọ òtù dị nso gị, pịa bọtịnị Sonye.';
 
   @override
   String get how_to_submit_prayer_request =>
-      'How can I submit a prayer request?';
+      'Olee otu m ga-esi ziga arịrịọ ekpere?';
 
   @override
   String get prayer_request_answer =>
-      'Go to the \"Prayer\" tab, click the \"Add Request\" button, fill in your details, and select \"Public\" or \"Private\".';
+      'Gaa na taab Ekpere, pịa bọtịnị Tinye Arịrịọ, dejupụta nkọwa gị, họrọ Ọha na-ahụ ma ọ bụ Nkeonwe.';
 
   @override
   String get how_to_access_study_materials =>
-      'How do I access study materials?';
+      'Olee otu m ga-esi nweta ihe ọmụmụ?';
 
   @override
   String get study_materials_answer =>
-      'Navigate to the \"Study\" tab to see all available Bible study programs and lessons.';
+      'Gaa na taab Ọmụmụ iji hụ mmemme ọmụmụ Akwụkwọ Nsọ na nkuzi niile.';
 
   @override
-  String get how_to_track_health => 'How do I track my health activities?';
+  String get how_to_track_health => 'Olee otu m ga-esi soro ahụike m?';
 
   @override
   String get health_tracking_answer =>
-      'Use the \"Health Tracking\" quick action on the Home screen or navigate to the Health tab to log your activities.';
+      'Jiri ihe ahụike ngwa ngwa na ibe Ụlọ ma ọ bụ gaa na taab Ahụike idepụta ọrụ gị.';
 
   @override
-  String get how_to_reset_password => 'How do I reset my password?';
+  String get how_to_reset_password => 'Olee otu m ga-esi gbanwee paswọọdụ m?';
 
   @override
   String get reset_password_answer =>
-      'On the Sign In screen, click \"Forgot Password\". We will send you a link to reset your password via email.';
+      'Na ibe Ịbanye, pịa Chefuru Paswọọdụ. Anyị ga-ezitere gị njikọ iji gbanwee paswọọdụ gị site na imel.';
 
   @override
-  String get how_to_change_language => 'How can I change the app language?';
+  String get how_to_change_language => 'Olee otu m ga-esi gbanwee asụsụ ngwa?';
 
   @override
   String get change_language_answer =>
-      'Go to Profile > Settings > Language and select your preferred language or use the language icon on the AppBar for Quick Access.';
+      'Gaa na Profaịl > Ntọala > Asụsụ wee họrọ asụsụ ị masịrị.';
 
   @override
-  String get search_faq => 'Search FAQ...';
+  String get search_faq => 'Chọọ FAQ...';
 
   @override
-  String get getting_started => 'Getting Started';
+  String get getting_started => 'Ịmalite';
 
   @override
-  String get getting_started_desc =>
-      'Learn the basics of using the ALIVE Nigeria app.';
+  String get getting_started_desc => 'Mụta isi nke iji ngwa ALIVE Nigeria.';
 
   @override
-  String get using_prayer_wall => 'Using the Prayer Wall';
+  String get using_prayer_wall => 'Iji Mgbidi Ekpere';
 
   @override
   String get prayer_wall_guide_desc =>
-      'Discover how to share requests and pray for others.';
+      'Chọpụta otu esi ekesa arịrịọ na ekpere maka ndị ọzọ.';
 
   @override
-  String get study_guides_tutorial => 'Study Guides Tutorial';
+  String get study_guides_tutorial => 'Ntuzi Ọmụmụ';
 
   @override
-  String get study_guides_desc =>
-      'A step-by-step guide to completing study lessons.';
+  String get study_guides_desc => 'Ntuzi nzuzo maka ịmecha nkuzi ọmụmụ.';
 
   @override
-  String get health_tracking_guide => 'Health Tracking Guide';
+  String get health_tracking_guide => 'Ntuzi Ahụike';
 
   @override
   String get health_tracking_desc =>
-      'How to use the health tracker for better living.';
+      'Otu esi eji ihe soro ahụike maka ibi ndụ ka mma.';
 
   @override
-  String get chapter_management => 'Chapter Management';
+  String get chapter_management => 'Njikwa Òtù';
 
   @override
   String get chapter_management_desc =>
-      'For chapter leaders on how to manage members.';
+      'Maka ndị ndú òtù ka ha ga-esi jikwaa ndị otu.';
 
   @override
-  String get notification_settings_guide => 'Notification Settings';
+  String get notification_settings_guide => 'Ntọala Ngosi';
 
   @override
-  String get notification_settings_desc =>
-      'Configure alerts for missions and prayers.';
+  String get notification_settings_desc => 'Hazie ngosi maka ozi na ekpere.';
 
   @override
-  String get user_guides => 'User Guides';
+  String get user_guides => 'Ntuzi Ndị Ọrụ';
 
   @override
-  String get need_help => 'Need Help?';
+  String get need_help => 'Ị Chọrọ Enyemaka?';
 
   @override
   String get contact_us_message =>
-      'Our support team is available to assist you with any questions or issues.';
+      'Òtù nkwado anyị dị njikere inyere gị aka na ajụjụ ma ọ bụ nsogbu ọ bụla.';
 
   @override
-  String get office_hours => 'Office Hours';
+  String get office_hours => 'Oge Ọfịs';
 
   @override
-  String get send_feedback => 'Send Feedback';
+  String get send_feedback => 'Ziga Echiche';
 
   @override
-  String get feedback_type => 'Feedback Type';
+  String get feedback_type => 'Ụdị Echiche';
 
   @override
-  String get email_optional => 'Email (Optional)';
+  String get email_optional => 'Imel (Nhọrọ)';
 
   @override
-  String get enter_email => 'Enter your email';
+  String get enter_email => 'Tinye imel gị';
 
   @override
-  String get feedback_message => 'Feedback Message';
+  String get feedback_message => 'Ozi Echiche';
 
   @override
-  String get describe_feedback =>
-      'Describe your feedback or report an issue...';
+  String get describe_feedback => 'Kọwaa echiche gị ma ọ bụ kọọ nsogbu...';
 
   @override
-  String get submit_feedback => 'Submit Feedback';
+  String get submit_feedback => 'Ziga Echiche';
 
   @override
   String get enable_biometric_auth => 'Mee Ka Nbanye Biometric rụọ ọrụ';
@@ -941,4 +937,76 @@ class AppLocalizationsIg extends AppLocalizations {
 
   @override
   String get enable => 'Mee ka ọ rụọ ọrụ';
+
+  @override
+  String get alive_meet => 'Nzukọ ALIVE';
+
+  @override
+  String get recipes => 'Esi Nri';
+
+  @override
+  String get bod_trustees => 'BOD Ndị Atụkwasịrị Obi';
+
+  @override
+  String get events => 'Ihe Omume';
+
+  @override
+  String get bible_game => 'Egwuregwu Akwụkwọ Nsọ';
+
+  @override
+  String get chat => 'Nkata';
+
+  @override
+  String get chapters => 'Òtù';
+
+  @override
+  String get library => 'Ọ́bá Akwụkwọ';
+
+  @override
+  String get podcasts => 'Podcast';
+
+  @override
+  String get lessons => 'Nkuzi';
+
+  @override
+  String get testimonies => 'Akaebe';
+
+  @override
+  String get kids_stories => 'Akụkọ Ụmụaka';
+
+  @override
+  String get kids_mission => 'Ozi Ụmụaka';
+
+  @override
+  String get submit_recipe => 'Ziga Esi Nri';
+
+  @override
+  String get tools_games => 'Ngwá Ọrụ na Egwuregwu';
+
+  @override
+  String get content_tools => 'Ngwá Ọrụ Ọdịnà';
+
+  @override
+  String get content_management => 'Njikwa Ọdịnà';
+
+  @override
+  String get admin => 'Ọchịchị';
+
+  @override
+  String get dashboard => 'Ihe Ngosịpụta';
+
+  @override
+  String get user_archive => 'Ebe Nchekwa Ndị Ọrụ';
+
+  @override
+  String get role_management => 'Njikwa Ọkwa';
+
+  @override
+  String get auto_theme => 'Isiokwu Akpaka';
+
+  @override
+  String get light_mode => 'Ụdị Ihè';
+
+  @override
+  String get dark_mode => 'Ụdị Ọchịchị';
 }

@@ -1901,6 +1901,150 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Enable'**
   String get enable;
+
+  /// No description provided for @alive_meet.
+  ///
+  /// In en, this message translates to:
+  /// **'ALIVE Meet'**
+  String get alive_meet;
+
+  /// No description provided for @recipes.
+  ///
+  /// In en, this message translates to:
+  /// **'Recipes'**
+  String get recipes;
+
+  /// No description provided for @bod_trustees.
+  ///
+  /// In en, this message translates to:
+  /// **'BOD Trustees'**
+  String get bod_trustees;
+
+  /// No description provided for @events.
+  ///
+  /// In en, this message translates to:
+  /// **'Events'**
+  String get events;
+
+  /// No description provided for @bible_game.
+  ///
+  /// In en, this message translates to:
+  /// **'Bible Game'**
+  String get bible_game;
+
+  /// No description provided for @chat.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat'**
+  String get chat;
+
+  /// No description provided for @chapters.
+  ///
+  /// In en, this message translates to:
+  /// **'Chapters'**
+  String get chapters;
+
+  /// No description provided for @library.
+  ///
+  /// In en, this message translates to:
+  /// **'Library'**
+  String get library;
+
+  /// No description provided for @podcasts.
+  ///
+  /// In en, this message translates to:
+  /// **'Podcasts'**
+  String get podcasts;
+
+  /// No description provided for @lessons.
+  ///
+  /// In en, this message translates to:
+  /// **'Lessons'**
+  String get lessons;
+
+  /// No description provided for @testimonies.
+  ///
+  /// In en, this message translates to:
+  /// **'Testimonies'**
+  String get testimonies;
+
+  /// No description provided for @kids_stories.
+  ///
+  /// In en, this message translates to:
+  /// **'Kids Stories'**
+  String get kids_stories;
+
+  /// No description provided for @kids_mission.
+  ///
+  /// In en, this message translates to:
+  /// **'Kids Mission'**
+  String get kids_mission;
+
+  /// No description provided for @submit_recipe.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit Recipe'**
+  String get submit_recipe;
+
+  /// No description provided for @tools_games.
+  ///
+  /// In en, this message translates to:
+  /// **'Tools & Games'**
+  String get tools_games;
+
+  /// No description provided for @content_tools.
+  ///
+  /// In en, this message translates to:
+  /// **'Content Tools'**
+  String get content_tools;
+
+  /// No description provided for @content_management.
+  ///
+  /// In en, this message translates to:
+  /// **'Content Management'**
+  String get content_management;
+
+  /// No description provided for @admin.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin'**
+  String get admin;
+
+  /// No description provided for @dashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Dashboard'**
+  String get dashboard;
+
+  /// No description provided for @user_archive.
+  ///
+  /// In en, this message translates to:
+  /// **'User Archive'**
+  String get user_archive;
+
+  /// No description provided for @role_management.
+  ///
+  /// In en, this message translates to:
+  /// **'Role Management'**
+  String get role_management;
+
+  /// No description provided for @auto_theme.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto Theme'**
+  String get auto_theme;
+
+  /// No description provided for @light_mode.
+  ///
+  /// In en, this message translates to:
+  /// **'Light Mode'**
+  String get light_mode;
+
+  /// No description provided for @dark_mode.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark Mode'**
+  String get dark_mode;
 }
 
 class _AppLocalizationsDelegate

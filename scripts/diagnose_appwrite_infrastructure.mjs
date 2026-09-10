@@ -65,10 +65,16 @@ const baseHeaders = {
 };
 
 async function apiGet(path) {
-  const response = await fetch(`${endpoint}${path}`, { headers: baseHeaders });
+  const response = await fetch(`${endpoint}${path}`, {
+    headers: baseHeaders,
+    signal: AbortSignal.timeout(30000),
+  });
   const text = await response.text();
   let body = null;
   try { body = text ? JSON.parse(text) : null; } catch (_) { body = text; }
+  if (!response.ok && response.status !== 404) {
+    throw new Error(`Appwrite request failed: HTTP ${response.status} at ${path}. Check connectivity and API-key scopes.`);
+  }
   return { status: response.status, ok: response.ok, body };
 }
 
@@ -88,6 +94,7 @@ async function detectTablesDB() {
 
 const useTablesDB = await detectTablesDB();
 const collectionSegment = useTablesDB ? 'tables' : 'collections';
+const databaseSegment = useTablesDB ? 'tablesdb' : 'databases';
 
 console.log(`Endpoint:        ${endpoint}`);
 console.log(`Project:         ${projectId}`);
@@ -106,7 +113,7 @@ const report = {
 };
 
 // 1) Database existence
-const dbRes = await apiGet(`/databases/${encodeURIComponent(databaseId)}`);
+const dbRes = await apiGet(`/${databaseSegment}/${encodeURIComponent(databaseId)}`);
 if (!dbRes.ok) {
   report.databaseMissing = true;
   console.log(`[MISSING] database ${databaseId} (HTTP ${dbRes.status})`);
@@ -122,11 +129,14 @@ async function listAllCollections() {
   let offset = 0;
   const limit = 100;
   for (;;) {
+    const query = new URLSearchParams();
+    query.append('queries[]', JSON.stringify({ method: 'limit', values: [limit] }));
+    query.append('queries[]', JSON.stringify({ method: 'offset', values: [offset] }));
     const res = await apiGet(
-      `/databases/${encodeURIComponent(databaseId)}/${collectionSegment}?limit=${limit}&offset=${offset}`,
+      `/${databaseSegment}/${encodeURIComponent(databaseId)}/${collectionSegment}?${query}`,
     );
     if (!res.ok) {
-      if (res.status === 404) return null;
+      if (res.status === 404) throw new Error('Table listing route was not found; this does not mean all tables are missing.');
       throw new Error(`Failed to list ${collectionSegment}: HTTP ${res.status} ${JSON.stringify(res.body)}`);
     }
     const items = res.body?.[collectionSegment] || res.body?.collections || res.body?.tables || [];
