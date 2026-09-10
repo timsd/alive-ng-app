@@ -189,7 +189,7 @@ class AppLocalizationsYo extends AppLocalizations {
   String get health => 'Ilera';
 
   @override
-  String get welcome_message => 'Welcome Message';
+  String get welcome_message => 'Ifiranṣẹ Ikini';
 
   @override
   String get good_morning => 'Ẹ káàrọ̀';
@@ -691,7 +691,7 @@ class AppLocalizationsYo extends AppLocalizations {
   String get closed => 'Pípá';
 
   @override
-  String get copyright => '© 2025 ALIVE Nigeria';
+  String get copyright => '© 2025 ALIVE Naijiria';
 
   @override
   String get books_and_tracts => 'Awọn Iwe & Awọn Tirakti';
@@ -790,128 +790,129 @@ class AppLocalizationsYo extends AppLocalizations {
   String get board_meeting_available => 'Ipejọpọ Igbimọ Awọn Oludari wa';
 
   @override
-  String get how_to_join_chapter => 'How do I join a local chapter?';
+  String get how_to_join_chapter => 'Bawo ni mo ṣe le darapọ mọ ẹka agbegbe?';
 
   @override
   String get join_chapter_answer =>
-      'You can join a local chapter by navigating to the \"Chapters\" section on the Home screen, selecting a chapter near you, and clicking the \"Join\" button.';
+      'O le darapọ mọ ẹka agbegbe nipa lilo apakan \"Awọn Ẹka\" ni iboju Ile, yiyan ẹka nitosi rẹ, ki o tẹ bọtini \"Darapọ\".';
 
   @override
   String get how_to_submit_prayer_request =>
-      'How can I submit a prayer request?';
+      'Bawo ni mo ṣe le fi ibeere adura silẹ?';
 
   @override
   String get prayer_request_answer =>
-      'Go to the \"Prayer\" tab, click the \"Add Request\" button, fill in your details, and select \"Public\" or \"Private\".';
+      'Lọ si taabu \"Adura\", tẹ bọtini \"Fi Ibeere kun\", kun awọn alaye rẹ, ki o yan \"Gbangba\" tabi \"Ikọkọ\".';
 
   @override
   String get how_to_access_study_materials =>
-      'How do I access study materials?';
+      'Bawo ni mo ṣe le wọle si awọn ohun elo eko?';
 
   @override
   String get study_materials_answer =>
-      'Navigate to the \"Study\" tab to see all available Bible study programs and lessons.';
+      'Lọ si taabu \"Eko\" lati rii gbogbo awọn eto eko Bibeli ati awọn eko ti o wa.';
 
   @override
-  String get how_to_track_health => 'How do I track my health activities?';
+  String get how_to_track_health =>
+      'Bawo ni mo ṣe le tọpinpin awọn iṣẹ ilera mi?';
 
   @override
   String get health_tracking_answer =>
-      'Use the \"Health Tracking\" quick action on the Home screen or navigate to the Health tab to log your activities.';
+      'Lo iṣe kiakia \"Itọpinpin Ilera\" ni iboju Ile tabi lọ si taabu Ilera lati gbasilẹ awọn iṣẹ rẹ.';
 
   @override
-  String get how_to_reset_password => 'How do I reset my password?';
+  String get how_to_reset_password =>
+      'Bawo ni mo ṣe le tunse ọrọ igbaniwọle mi?';
 
   @override
   String get reset_password_answer =>
-      'On the Sign In screen, click \"Forgot Password\". We will send you a link to reset your password via email.';
+      'Ni iboju Wọle, tẹ \"Gbagbe Ọrọ igbaniwọle\". A o fi ọna atunse ọrọ igbaniwọle ranse si imeeli rẹ.';
 
   @override
-  String get how_to_change_language => 'How can I change the app language?';
+  String get how_to_change_language => 'Bawo ni mo ṣe le yi ede iṣafihan pada?';
 
   @override
   String get change_language_answer =>
-      'Go to Profile > Settings > Language and select your preferred language or use the language icon on the AppBar for Quick Access.';
+      'Lọ si Profaili > Awọn Eto > Ede ki o yan ede ti o fẹ tabi lo aami ede lori AppBar fun wiwọle kiakia.';
 
   @override
-  String get search_faq => 'Search FAQ...';
+  String get search_faq => 'Wa FAQ...';
 
   @override
-  String get getting_started => 'Getting Started';
+  String get getting_started => 'Bẹrẹ';
 
   @override
   String get getting_started_desc =>
-      'Learn the basics of using the ALIVE Nigeria app.';
+      'Kọ awọn ipilẹṣẹ ti lilo iṣafihan ALIVE Naijiria.';
 
   @override
-  String get using_prayer_wall => 'Using the Prayer Wall';
+  String get using_prayer_wall => 'Lilo Ogiri Adura';
 
   @override
   String get prayer_wall_guide_desc =>
-      'Discover how to share requests and pray for others.';
+      'Ṣawari bi o ṣe le pin awọn ibeere ati gbadura fun awọn miiran.';
 
   @override
-  String get study_guides_tutorial => 'Study Guides Tutorial';
+  String get study_guides_tutorial => 'Itọsọna Awọn Eko';
 
   @override
   String get study_guides_desc =>
-      'A step-by-step guide to completing study lessons.';
+      'Itọsọna igbesẹ-fun-igbesẹ lati pari awọn eko.';
 
   @override
-  String get health_tracking_guide => 'Health Tracking Guide';
+  String get health_tracking_guide => 'Itọsọna Itọpinpin Ilera';
 
   @override
   String get health_tracking_desc =>
-      'How to use the health tracker for better living.';
+      'Bi o ṣe le lo itọpinpin ilera fun igbesi aye to dara.';
 
   @override
-  String get chapter_management => 'Chapter Management';
+  String get chapter_management => 'Isakoso Ẹka';
 
   @override
   String get chapter_management_desc =>
-      'For chapter leaders on how to manage members.';
+      'Fun awọn olori ẹka lori bi o ṣe le ṣakoso awọn ọmọ ẹgbẹ.';
 
   @override
-  String get notification_settings_guide => 'Notification Settings';
+  String get notification_settings_guide => 'Awọn Eto Iwifunni';
 
   @override
   String get notification_settings_desc =>
-      'Configure alerts for missions and prayers.';
+      'Ṣeto awọn itaniji fun awọn iṣẹ ihinrere ati awọn adura.';
 
   @override
-  String get user_guides => 'User Guides';
+  String get user_guides => 'Awọn Itọsọna Olumulo';
 
   @override
-  String get need_help => 'Need Help?';
+  String get need_help => 'Nilo Iranlọwọ?';
 
   @override
   String get contact_us_message =>
-      'Our support team is available to assist you with any questions or issues.';
+      'Ẹgbẹ atilẹyin wa wa lati ran ọ lọwọ pẹlu eyikeyi awọn ibeere tabi awọn ọrọ.';
 
   @override
-  String get office_hours => 'Office Hours';
+  String get office_hours => 'Awọn Wakati Ọfiisi';
 
   @override
-  String get send_feedback => 'Send Feedback';
+  String get send_feedback => 'Firanṣẹ Ero';
 
   @override
-  String get feedback_type => 'Feedback Type';
+  String get feedback_type => 'Iru Ero';
 
   @override
-  String get email_optional => 'Email (Optional)';
+  String get email_optional => 'Imeeli (Aṣayan)';
 
   @override
-  String get enter_email => 'Enter your email';
+  String get enter_email => 'Tẹ imeeli rẹ sinu';
 
   @override
-  String get feedback_message => 'Feedback Message';
+  String get feedback_message => 'Ifiranṣẹ Ero';
 
   @override
-  String get describe_feedback =>
-      'Describe your feedback or report an issue...';
+  String get describe_feedback => 'Ṣapejuwe ero rẹ tabi jabo ọrọ kan...';
 
   @override
-  String get submit_feedback => 'Submit Feedback';
+  String get submit_feedback => 'Fi Ero silẹ';
 
   @override
   String get enable_biometric_auth => 'Muu Wọle pẹlu Biometric ṣiṣẹ';
@@ -943,71 +944,71 @@ class AppLocalizationsYo extends AppLocalizations {
   String get alive_meet => 'ALIVE Meet';
 
   @override
-  String get recipes => 'Recipes';
+  String get recipes => 'Awọn Ohunelo';
 
   @override
-  String get bod_trustees => 'BOD Trustees';
+  String get bod_trustees => 'BOD Awọn Olotitọ';
 
   @override
-  String get events => 'Events';
+  String get events => 'Awọn Iṣẹlẹ';
 
   @override
-  String get bible_game => 'Bible Game';
+  String get bible_game => 'Ere Bibeli';
 
   @override
-  String get chat => 'Chat';
+  String get chat => 'Ibaraẹnisọrọ';
 
   @override
-  String get chapters => 'Chapters';
+  String get chapters => 'Awọn Ẹka';
 
   @override
-  String get library => 'Library';
+  String get library => 'Ile-ikawe';
 
   @override
-  String get podcasts => 'Podcasts';
+  String get podcasts => 'Awọn Podcast';
 
   @override
-  String get lessons => 'Lessons';
+  String get lessons => 'Awọn Eko';
 
   @override
-  String get testimonies => 'Testimonies';
+  String get testimonies => 'Awọn Ẹri';
 
   @override
-  String get kids_stories => 'Kids Stories';
+  String get kids_stories => 'Awọn Itan Awọn Ọmọde';
 
   @override
-  String get kids_mission => 'Kids Mission';
+  String get kids_mission => 'Iṣẹ Awọn Ọmọde';
 
   @override
-  String get submit_recipe => 'Submit Recipe';
+  String get submit_recipe => 'Fi Ohunelo silẹ';
 
   @override
-  String get tools_games => 'Tools & Games';
+  String get tools_games => 'Awọn Ohun elo & Awọn Ere';
 
   @override
-  String get content_tools => 'Content Tools';
+  String get content_tools => 'Awọn Ohun elo Akoonu';
 
   @override
-  String get content_management => 'Content Management';
+  String get content_management => 'Isakoso Akoonu';
 
   @override
-  String get admin => 'Admin';
+  String get admin => 'Alabojuto';
 
   @override
   String get dashboard => 'Dashboard';
 
   @override
-  String get user_archive => 'User Archive';
+  String get user_archive => 'Ibi-ipamọ Olumulo';
 
   @override
-  String get role_management => 'Role Management';
+  String get role_management => 'Isakoso Ipa';
 
   @override
-  String get auto_theme => 'Auto Theme';
+  String get auto_theme => 'Aṣa Adaṣe';
 
   @override
-  String get light_mode => 'Light Mode';
+  String get light_mode => 'Ipo Imọlẹ';
 
   @override
-  String get dark_mode => 'Dark Mode';
+  String get dark_mode => 'Ipo Okunkun';
 }

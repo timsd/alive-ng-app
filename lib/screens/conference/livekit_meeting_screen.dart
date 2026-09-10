@@ -28,6 +28,8 @@ class LiveKitMeetingScreen extends ConsumerStatefulWidget {
 class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   late final TextEditingController _roomController;
   bool _isJoining = false;
+  bool _isBroadcasting = false;
+  String? _activeEgressId;
 
   @override
   void initState() {
@@ -231,6 +233,19 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                     icon: const Icon(Icons.call_end),
                     label: const Text('Leave'),
                   ),
+                  // Go Live button — streams to YouTube via LiveKit egress
+                  if (widget.isModerator)
+                    FilledButton.icon(
+                      onPressed: _isBroadcasting
+                          ? () => _stopBroadcast(gateway)
+                          : () => _startBroadcast(gateway),
+                      icon: Icon(_isBroadcasting ? Icons.stop : Icons.live_tv),
+                      label: Text(_isBroadcasting ? 'Stop Live' : 'Go Live'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor:
+                            _isBroadcasting ? Colors.red : null,
+                      ),
+                    ),
                 ],
               ),
               if (session.participants.isNotEmpty) ...[
@@ -292,6 +307,36 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _startBroadcast(MeetingGateway gateway) async {
+    final meetingType = widget.meetingType?.name ?? 'general';
+    try {
+      final egressId = await gateway.startBroadcast(meetingType: meetingType);
+      if (!mounted) return;
+      setState(() {
+        _isBroadcasting = true;
+        _activeEgressId = egressId;
+      });
+      _showMessage('Live stream started');
+    } catch (e) {
+      _showMessage('Go Live failed: $e');
+    }
+  }
+
+  Future<void> _stopBroadcast(MeetingGateway gateway) async {
+    if (_activeEgressId == null) return;
+    try {
+      await gateway.stopBroadcast(egressId: _activeEgressId!);
+      if (!mounted) return;
+      setState(() {
+        _isBroadcasting = false;
+        _activeEgressId = null;
+      });
+      _showMessage('Live stream stopped');
+    } catch (e) {
+      _showMessage('Stop Live failed: $e');
+    }
   }
 
   @override
