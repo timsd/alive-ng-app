@@ -114,6 +114,15 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
   final Random _random = Random();
   List<String> _remainingVerseReferences = <String>[];
 
+  /// Incremented every time a new verse is loaded so pending delayed callbacks
+  /// from a previous verse can detect that they are now stale and bail.
+  int _verseGeneration = 0;
+
+  /// Returns the verse text for the currently selected version, falling back
+  /// to the first available translation if the requested one is missing.
+  String _verseText(BibleVerse verse) =>
+      verse.text[state.selectedVersion] ?? verse.text.values.first;
+
   void _rebuildVersePool({String? avoidReference}) {
     final references = BibleSource.instance.nonGenealogyCorpus
         .map((verse) => verse.reference)
@@ -124,6 +133,9 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
   }
 
   Future<void> loadNewVerse() async {
+    // Invalidate any in-flight delayed callbacks tied to the previous verse.
+    _verseGeneration++;
+
     final previousReference = state.currentVerse?.reference;
 
     // Show loading state implicitly by clearing out the current verse briefly
@@ -148,8 +160,7 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
     if (verse == null) return;
 
     // Pick the version based on current selection (or fallback to KJV if not found)
-    final textForVersion =
-        verse.text[state.selectedVersion] ?? verse.text.values.first;
+    final textForVersion = _verseText(verse);
     final blankedWords = _generateBlankedWords(textForVersion);
     final multipleChoiceOptions =
         _generateMultipleChoiceOptions(verse, state.selectedVersion);
@@ -272,8 +283,7 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
   void checkAnswer() {
     if (state.currentVerse == null) return;
 
-    final correctText = state.currentVerse!.text[state.selectedVersion] ??
-        state.currentVerse!.text.values.first;
+    final correctText = _verseText(state.currentVerse!);
     final isCorrect = state.gameMode == GameMode.fillInTheGap
         ? _areFillInGapWordsCorrect(state.userInput, correctText)
         : _isAnswerCorrect(state.userInput, correctText);
@@ -296,7 +306,10 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
       );
 
       // Keep the celebration brief so the feedback feels immediate.
+      final generation = _verseGeneration;
       Future.delayed(const Duration(milliseconds: 1400), () {
+        // Skip if the verse changed or the notifier was disposed meanwhile.
+        if (generation != _verseGeneration || !mounted) return;
         state = state.copyWith(showStarAnimation: false);
         loadNewVerse();
       });
@@ -326,8 +339,7 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
       return;
     }
 
-    final correctText = state.currentVerse!.text[state.selectedVersion] ??
-        state.currentVerse!.text.values.first;
+    final correctText = _verseText(state.currentVerse!);
 
     // We only auto-verify if the user actually matched it perfectly
     if (_isAnswerCorrect(input, correctText)) {
@@ -445,8 +457,7 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
       return;
     }
 
-    final correctAnswer = state.currentVerse!.text[state.selectedVersion] ??
-        state.currentVerse!.text.values.first;
+    final correctAnswer = _verseText(state.currentVerse!);
     final selectedAnswer = state.multipleChoiceOptions[selectedIndex];
     final isCorrect =
         _normalizeText(selectedAnswer) == _normalizeText(correctAnswer);
@@ -464,7 +475,10 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
       );
 
       // Show star animation and move to next verse after delay
+      final generation = _verseGeneration;
       Future.delayed(const Duration(seconds: 2), () {
+        // Skip if the verse changed or the notifier was disposed meanwhile.
+        if (generation != _verseGeneration || !mounted) return;
         loadNewVerse();
       });
     } else {
@@ -1178,12 +1192,6 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.mic_rounded,
-              size: 48,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(height: 16),
             Text(
               'Recite the verse aloud from memory',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(

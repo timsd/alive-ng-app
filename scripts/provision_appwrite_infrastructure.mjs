@@ -9,6 +9,35 @@ const {
   Teams,
   Webhooks,
 } = appwriteSdk;
+// ---------------------------------------------------------------------------
+// Compatibility fix: node-appwrite 22.x + certain Node/undici versions.
+//
+// The SDK's `prepareRequest` injects a custom undici `dispatcher` (and a
+// `node:https` `agent`) into every request — see its `agent.createAgent(...)`
+// spread. That custom dispatcher is built against undici ~6.10, and when it is
+// handed to this runtime's native `fetch` (which the adapter's `fetch` resolves
+// to when `FORCE_NODE_FETCH` is not set), the mismatched internals make undici
+// throw `UND_ERR_INVALID_ARG - invalid onError method`, aborting provisioning.
+//
+// Raw native `fetch` works fine against the same server (see the diagnose
+// script), so we simply strip the injected `dispatcher`/`agent` from the SDK's
+// request options before they are sent.
+const _originalPrepareRequest =
+  Client.prototype && typeof Client.prototype.prepareRequest === 'function'
+    ? Client.prototype.prepareRequest
+    : null;
+
+if (_originalPrepareRequest) {
+  Client.prototype.prepareRequest = function (...args) {
+    const result = _originalPrepareRequest.apply(this, args);
+    if (result && result.options) {
+      delete result.options.dispatcher;
+      delete result.options.agent;
+    }
+    return result;
+  };
+}
+// ---------------------------------------------------------------------------
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
