@@ -87,9 +87,39 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     if (mounted) context.go('/oath');
   }
 
+  void _skip() {
+    // Skip jumps straight to the final step so the user can review the
+    // last card before continuing.
+    _pageController.animateToPage(
+      _steps.length - 1,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeInOut,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Getting Started'),
+        centerTitle: true,
+        backgroundColor: theme.colorScheme.primary,
+        foregroundColor: theme.colorScheme.onPrimary,
+        elevation: 0,
+        actions: [
+          TextButton(
+            onPressed: _skip,
+            child: Text(
+              'Skip',
+              style: TextStyle(
+                color: theme.colorScheme.onPrimary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
       body: Padding(
         padding: context.responsivePadding,
         child: Column(

@@ -7,7 +7,6 @@ import '../../services/appwrite_facade.dart';
 import '../../config/appwrite_backend_config.dart';
 import '../../main.dart';
 import '../../providers/auth_provider.dart';
-import '../../utils/i18n_service.dart';
 import '../../utils/responsive_utils.dart';
 import '../../widgets/guest_access_indicator.dart';
 import '../../widgets/error_widget.dart';

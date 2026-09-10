@@ -184,19 +184,19 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                                   Icon(Icons.volunteer_activism,
                                       size: 18, color: theme.colorScheme.primary),
                                   const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      _selectedProjectTitle != null
-                                          ? 'Project: $_selectedProjectTitle'
-                                          : 'Selected Project',
-                                      style: theme.textTheme.labelMedium?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: theme.colorScheme.onPrimaryContainer,
+                                                                      Expanded(
+                                      child: Text(
+                                        _selectedProjectTitle != null
+                                            ? 'Project: $_selectedProjectTitle'
+                                            : 'Selected Project',
+                                        style: theme.textTheme.labelMedium?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: theme.colorScheme.onPrimaryContainer,
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.fade,
                                       ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                  ),
                                   TextButton(
                                     onPressed: _clearSelectedProject,
                                     style: TextButton.styleFrom(
@@ -226,7 +226,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                                   Icon(Icons.check_circle_outline,
                                       size: 18, color: theme.colorScheme.secondary),
                                   const SizedBox(width: 8),
-                                  Expanded(
+                                                                    Expanded(
                                     child: Text(
                                       _selectedFundDesignations.length == 1
                                           ? 'Designated: ${_selectedFundDesignations.first} (100%)'
@@ -235,8 +235,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                                         fontWeight: FontWeight.bold,
                                         color: theme.colorScheme.onSecondaryContainer,
                                       ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 3,
+                                      overflow: TextOverflow.fade,
                                     ),
                                   ),
                                   TextButton(

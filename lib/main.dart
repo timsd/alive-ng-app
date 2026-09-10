@@ -18,7 +18,8 @@ import 'services/in_app_update_service.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'providers/language_provider.dart';
-import 'utils/i18n_service.dart';
+import 'l10n/generated/app_localizations.dart';
+import 'l10n/widget_localizations.dart';
 import 'config/appwrite_backend_config.dart';
 import 'services/analytics_service.dart';
 import 'services/crash_reporting_service.dart';
@@ -35,10 +36,9 @@ void main() {
     WidgetsFlutterBinding.ensureInitialized();
     await CrashReportingService.instance.initialize();
 
-    // Initialize the i18n service so every screen that uses I18nService
-    // has translations loaded and the saved language applied from startup.
+    // Restore the preference before the first frame; ARB messages are compiled.
     try {
-      await i18nService.initialize();
+      await LocaleNotifier.loadSavedLocale();
     } catch (e) {
       debugPrint('I18n initialization failed: $e');
     }
@@ -127,29 +127,14 @@ class AliveApp extends ConsumerWidget {
       darkTheme: AppTheme.darkTheme,
       themeMode: themeMode,
 
-      // Localization - app text is translated by our custom translation
-      // system (translationProvider + I18nService) which follows the user's
-      // selected language across the entire app.
       locale: currentLocale,
-      supportedLocales: const [
-        Locale('en', 'US'), // English
-        Locale('yo', 'NG'), // Yoruba
-        Locale('ig', 'NG'), // Igbo
-        Locale('ha', 'NG'), // Hausa
-      ],
+      supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
+        AppLocalizations.delegate,
+        AppMaterialDelegate(),
+        AppCupertinoDelegate(),
         GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
       ],
-      localeResolutionCallback: (locale, supportedLocales) {
-        // Flutter only ships Material/Cupertino widget translations for
-        // English among our supported languages, so resolve those to English
-        // to keep system widgets stable while our custom translation system
-        // handles the actual Yoruba/Igbo/Hausa switching app-wide.
-        return const Locale('en', 'US');
-      },
-
       // Routing
       routerConfig: router,
     );

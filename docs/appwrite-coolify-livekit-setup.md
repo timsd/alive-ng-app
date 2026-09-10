@@ -169,7 +169,7 @@ If `1.9.5` fails to deploy in Coolify, check the Appwrite upgrade logs rather th
 ## LiveKit
 
 - LiveKit is not a built-in Coolify service in this setup. Add it as a custom Docker Compose resource.
-- Create DNS `A livekit.alivenigeria.org YOUR_PUBLIC_IP`, then in Coolify add a Docker Compose / Empty Compose resource with domain `https://meet.alivenigeria.org` and HTTP port `7880`.
+- Create DNS `A livekit.alivenigeria.org YOUR_PUBLIC_IP`, then in Coolify add a Docker Compose / Empty Compose resource with domain `https://livekit.alivenigeria.org` and HTTP port `7880`.
 - Use this compose. It embeds the config into the compose resource so Coolify does not fail because `./livekit.yaml` is missing from the deployment directory:
 
 ```yaml

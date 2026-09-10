@@ -209,6 +209,7 @@
       display: grid;
       gap: 12px;
       margin-top: 26px;
+      grid-template-columns: 1fr;
     }
 
     .donation-form {
@@ -492,7 +493,7 @@
 
   <script>
     (function () {
-      var APPWRITE_ENDPOINT = 'https://api.alivenigeria.org/v1';
+                var APPWRITE_ENDPOINT = 'https://api.alivenigeria.org/v1';
       var APPWRITE_PROJECT_ID = '6a3bef53002f5090dedf';
       var PAYSTACK_FUNCTION_ID = 'paystack_payments';
       var CALLBACK_URL = window.location.origin + '/donation.html?status=callback';
@@ -651,17 +652,21 @@
         var amountMinor = Math.round(amountValue * 100);
 
         donateBtn.disabled = true;
+        // The Appwrite Paystack function expects amount in kobo (minor units).
+        // We keep amount_minor in metadata for server-side validation.
         setStatus('Initializing secure checkout...', '');
 
-        try {
+                try {
+          var headers = {
+            'Content-Type': 'application/json',
+            'X-Appwrite-Project': APPWRITE_PROJECT_ID
+          };
+          // Guest checkout uses public execution permission, never an API key.
           var response = await fetch(
             APPWRITE_ENDPOINT + '/functions/' + PAYSTACK_FUNCTION_ID + '/executions',
             {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-Appwrite-Project': APPWRITE_PROJECT_ID
-              },
+              headers: headers,
               body: JSON.stringify({
                 body: JSON.stringify({
                   email: email,
@@ -688,7 +693,17 @@
           var result = await response.json().catch(function () { return {}; });
 
           if (!response.ok) {
-            throw new Error(result.message || result.error || 'Checkout initialization failed (' + response.status + ').');
+            var errMsg = result.message || result.error || result;
+            if (errMsg && typeof errMsg === 'object') {
+              errMsg = errMsg.message || errMsg.error || 'unknown error';
+            }
+            var httpError = '';
+            if (response.status === 401 || response.status === 403) {
+              httpError = ' (HTTP ' + response.status + ' — authentication required. A limited API key with functions.read scope must be set in the web donation page. See docs/appwrite_functions_and_coolify_env_guide.md)';
+            } else {
+              httpError = ' (HTTP ' + response.status + ')';
+            }
+            throw new Error(errMsg || ('Checkout initialization failed' + httpError));
           }
 
           // Appwrite returns the execution wrapper; the function payload is in responseBody.

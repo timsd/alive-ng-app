@@ -85,7 +85,7 @@ class QuickActionsGrid extends ConsumerWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: LayoutFixUtils.responsiveText(
-            TextFormatter.formatText('quick_actions'),
+            ref.watch(appLocalizationsProvider).quick_actions,
             context: context,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w600,

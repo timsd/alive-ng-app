@@ -51,6 +51,8 @@ void main() async {
     }
   }
 
+  // HTML receives public configuration only; server keys are never substituted.
+
   if (missingKeys) {
     stderr.writeln('Some environment variables are missing. Please set them before running this script.');
     // We don't exit here to allow partial updates if intended, but usually this is fatal for a correct build.

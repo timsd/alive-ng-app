@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -45,6 +45,42 @@
         padding: 8px 15px;
         font-size: 11px;
         letter-spacing: 1px
+    }
+
+    .viewer-donate {
+        position: fixed;
+        right: 22px;
+        bottom: 22px;
+        z-index: 2000;
+        background: #d4af37;
+        color: #0f172a;
+        border: none;
+        border-radius: 50px;
+        padding: 14px 22px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: background 0.18s ease, transform 0.1s ease;
+        text-decoration: none;
+    }
+
+    .viewer-donate:hover {
+        background: #e8c66a;
+        transform: translateY(-2px);
+    }
+
+    .viewer-donate:active {
+        transform: translateY(0);
+    }
+
+    .viewer-donate svg {
+        width: 18px;
+        height: 18px;
+        fill: #0f172a;
     }
 
     main {
@@ -291,10 +327,14 @@
     }
 </style>
 <header>
-    <div>
+        <div>
         <h1>ALIVE-NG IMPACT HUB</h1>
         <p>AKINYELE, IBADAN · PROPOSED PLAN / THREE-DIMENSIONAL STUDY</p>
     </div><span class="badge">CONCEPT</span>
+      <a href="donation.html?projectId=impact_hub_center" class="viewer-donate" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"></path></svg>
+        Donate for Impact Hub
+      </a>
 </header>
 <main>
     <aside>
@@ -312,11 +352,11 @@
         <div class="section">
             <h2>View from every side</h2>
             <div class="grid"><button data-view="aerial">Aerial</button><button data-view="top">Plan /
-                    above</button><button data-view="front">Front · −Y</button><button data-view="rear">Rear ·
-                    +Y</button><button data-view="left">Left · −X</button><button data-view="right">Right · +X</button>
-            </div><button id="spin" class="wide">Start 360° rotation</button>
+                    above</button><button data-view="front">Front Â· âˆ’Y</button><button data-view="rear">Rear Â·
+                    +Y</button><button data-view="left">Left Â· âˆ’X</button><button data-view="right">Right Â· +X</button>
+            </div><button id="spin" class="wide">Start 360Â° rotation</button>
             <div class="grid" style="margin-top:7px"><button id="zoomIn">Zoom +</button><button id="zoomOut">Zoom
-                    −</button></div><button id="save" class="wide">Save this view as an image</button>
+                    âˆ’</button></div><button id="save" class="wide">Save this view as an image</button>
         </div>
         <div class="stats">
             <div class="stat"><b>1,500</b><span>event audience target</span></div>
@@ -325,7 +365,7 @@
             <div class="stat"><b>8</b><span>staff units</span></div>
         </div>
         <div class="note">Source locked to your attached first-plan code. All building positions and footprints are
-            retained. This version has <b>two parking bays</b>.<br><br>Proposed heights, roofs and façades illustrate
+            retained. This version has <b>two parking bays</b>.<br><br>Proposed heights, roofs and faÃ§ades illustrate
             the architecture. They are not supplied elevations or an engineered design.</div>
         <details>
             <summary>About this model & controls</summary>Drag to rotate. Scroll or pinch to zoom. Choose a building and
@@ -337,11 +377,11 @@
     </aside>
     <section class="viewport"><canvas id="view"
             aria-label="Interactive three-dimensional facilities model. Drag to rotate; use the named view buttons for keyboard navigation."></canvas>
-        <div class="caption"><strong id="title">All facilities</strong><span id="subtitle">Original layout · proposed
+        <div class="caption"><strong id="title">All facilities</strong><span id="subtitle">Original layout Â· proposed
                 architectural massing</span></div>
         <div class="hint">DRAG TO ORBIT &nbsp; / &nbsp; SCROLL TO ZOOM &nbsp; / &nbsp; SELECT A BUILDING TO EXPLORE
         </div>
-        <div class="scale">LOCAL GRID · METRES<br>CONCEPT / NOT FOR CONSTRUCTION</div>
+        <div class="scale">LOCAL GRID Â· METRES<br>CONCEPT</div>
     </section>
 </main>
 <script>
@@ -372,16 +412,16 @@
         window.lastRender = { faces: fs.length, width, height }; dirty = false;
     }
     function resize() { let r = canvas.getBoundingClientRect(); width = r.width; height = r.height; let d = Math.min(devicePixelRatio || 1, 2); canvas.width = width * d; canvas.height = height * d; ctx.setTransform(d, 0, 0, d, 0, 0); dirty = true; } new ResizeObserver(resize).observe(canvas);
-    function focus(id) { state.selected = Number(id); $('building').value = id; let b = MODEL.buildings[id]; state.target = b ? [b.x + b.w / 2, b.y + b.d / 2, b.height / 3] : [55, 84, 0]; state.span = b ? Math.max(b.w, b.d) * 1.5 : 180; state.zoom = 1; $('title').textContent = b ? b.name : 'All facilities'; $('subtitle').textContent = b ? `${b.w} × ${b.d} m footprint · ${b.capacity}` : 'Original layout · proposed architectural massing'; if (b && ![0, 1, 2, 3, 4, 5].includes(b.id) && state.mode === 'upper') { state.mode = 'ground'; $('mode').value = 'ground' } dirty = true; }
+    function focus(id) { state.selected = Number(id); $('building').value = id; let b = MODEL.buildings[id]; state.target = b ? [b.x + b.w / 2, b.y + b.d / 2, b.height / 3] : [55, 84, 0]; state.span = b ? Math.max(b.w, b.d) * 1.5 : 180; state.zoom = 1; $('title').textContent = b ? b.name : 'All facilities'; $('subtitle').textContent = b ? `${b.w} Ã— ${b.d} m footprint Â· ${b.capacity}` : 'Original layout Â· proposed architectural massing'; if (b && ![0, 1, 2, 3, 4, 5].includes(b.id) && state.mode === 'upper') { state.mode = 'ground'; $('mode').value = 'ground' } dirty = true; }
     function preset(v) { let a = { aerial: [-.75, .82], top: [0, Math.PI / 2], front: [Math.PI, .04], rear: [0, .04], left: [Math.PI / 2, .04], right: [-Math.PI / 2, .04] }[v]; state.angle = a[0]; state.elevation = a[1]; dirty = true; }
     $('building').onchange = e => focus(e.target.value); $('mode').onchange = e => { state.mode = e.target.value; if (state.mode !== 'exterior') { state.elevation = 1.05; if (state.selected < 0) focus(0) } dirty = true };
     $('isolate').onclick = () => { if (state.selected < 0) focus(0); state.isolated = !state.isolated; $('isolate').textContent = 'Isolate: ' + (state.isolated ? 'on' : 'off'); $('isolate').classList.toggle('active', state.isolated); dirty = true };
     $('labels').onclick = () => { state.labels = !state.labels; $('labels').textContent = 'Labels: ' + (state.labels ? 'on' : 'off'); $('labels').classList.toggle('active', state.labels); dirty = true };
-    document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => preset(b.dataset.view)); $('spin').onclick = () => { state.spin = !state.spin; $('spin').textContent = state.spin ? 'Pause rotation' : 'Start 360° rotation' };
+    document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => preset(b.dataset.view)); $('spin').onclick = () => { state.spin = !state.spin; $('spin').textContent = state.spin ? 'Pause rotation' : 'Start 360Â° rotation' };
     $('zoomIn').onclick = () => { state.zoom = Math.min(8, state.zoom * 1.2); dirty = true }; $('zoomOut').onclick = () => { state.zoom = Math.max(.3, state.zoom / 1.2); dirty = true };
     canvas.addEventListener('wheel', e => { e.preventDefault(); state.zoom = Math.max(.3, Math.min(8, state.zoom * Math.exp(-e.deltaY * .001))); dirty = true }, { passive: false });
-    let pointers = new Map(), pinch = 0; canvas.onpointerdown = e => { canvas.setPointerCapture(e.pointerId); pointers.set(e.pointerId, [e.clientX, e.clientY]); drag = [e.clientX, e.clientY]; state.spin = false; $('spin').textContent = 'Start 360° rotation'; }; canvas.onpointermove = e => { if (!pointers.has(e.pointerId)) return; pointers.set(e.pointerId, [e.clientX, e.clientY]); if (pointers.size === 2) { let a = [...pointers.values()], dist = Math.hypot(a[0][0] - a[1][0], a[0][1] - a[1][1]); if (pinch) state.zoom = Math.max(.3, Math.min(8, state.zoom * dist / pinch)); pinch = dist } else if (drag) { state.angle -= (e.clientX - drag[0]) * .009; state.elevation = Math.max(.02, Math.min(Math.PI / 2, state.elevation + (e.clientY - drag[1]) * .008)) } drag = [e.clientX, e.clientY]; dirty = true }; function end(e) { pointers.delete(e.pointerId); drag = null; pinch = 0 } canvas.onpointerup = end; canvas.onpointercancel = end;
-    function image() { draw(); let c = document.createElement('canvas'); c.width = canvas.width; c.height = canvas.height + 100; let x = c.getContext('2d'); x.fillStyle = '#193e36'; x.fillRect(0, 0, c.width, c.height); x.drawImage(canvas, 0, 0); x.fillStyle = '#f6efdc'; x.font = '24px system-ui'; x.fillText('ALIVE-NG | ' + $('title').textContent, 25, canvas.height + 37); x.font = '17px system-ui'; x.fillText('FIRST PLAN · CONCEPTUAL HEIGHTS & FINISHES · NOT FOR CONSTRUCTION', 25, canvas.height + 72); return c.toDataURL('image/png') }
+    let pointers = new Map(), pinch = 0; canvas.onpointerdown = e => { canvas.setPointerCapture(e.pointerId); pointers.set(e.pointerId, [e.clientX, e.clientY]); drag = [e.clientX, e.clientY]; state.spin = false; $('spin').textContent = 'Start 360Â° rotation'; }; canvas.onpointermove = e => { if (!pointers.has(e.pointerId)) return; pointers.set(e.pointerId, [e.clientX, e.clientY]); if (pointers.size === 2) { let a = [...pointers.values()], dist = Math.hypot(a[0][0] - a[1][0], a[0][1] - a[1][1]); if (pinch) state.zoom = Math.max(.3, Math.min(8, state.zoom * dist / pinch)); pinch = dist } else if (drag) { state.angle -= (e.clientX - drag[0]) * .009; state.elevation = Math.max(.02, Math.min(Math.PI / 2, state.elevation + (e.clientY - drag[1]) * .008)) } drag = [e.clientX, e.clientY]; dirty = true }; function end(e) { pointers.delete(e.pointerId); drag = null; pinch = 0 } canvas.onpointerup = end; canvas.onpointercancel = end;
+    function image() { draw(); let c = document.createElement('canvas'); c.width = canvas.width; c.height = canvas.height + 100; let x = c.getContext('2d'); x.fillStyle = '#193e36'; x.fillRect(0, 0, c.width, c.height); x.drawImage(canvas, 0, 0); x.fillStyle = '#f6efdc'; x.font = '24px system-ui'; x.fillText('ALIVE-NG | ' + $('title').textContent, 25, canvas.height + 37); x.font = '17px system-ui'; x.fillText('FIRST PLAN Â· CONCEPTUAL HEIGHTS & FINISHES Â·', 25, canvas.height + 72); return c.toDataURL('image/png') }
     $('save').onclick = () => { let a = document.createElement('a'); a.download = 'ALIVE-NG_' + (MODEL.buildings[state.selected]?.name || 'Facilities').replaceAll(' ', '_') + '.png'; a.href = image(); a.click() };
     function tick(t) { if (state.spin) { state.angle += (t - last) * .00012; dirty = true } last = t; if (dirty) draw(); requestAnimationFrame(tick) } requestAnimationFrame(tick);
     window.viewer = { state, focus, preset, draw, image, model: MODEL };

@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../utils/layout_fix_utils.dart';
 import '../providers/theme_provider.dart';
 import '../providers/language_provider.dart';
-import '../utils/i18n_service.dart';
+import '../l10n/supported_language.dart';
 import 'donation_button.dart';
 import 'custom_image.dart';
 import '../constants/app_constants.dart';
