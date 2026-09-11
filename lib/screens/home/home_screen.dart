@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../l10n/generated/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/guest_provider.dart';
-import '../../providers/language_provider.dart';
 import '../../providers/achievement_provider.dart';
 import '../../widgets/greeting_header.dart';
 import '../../widgets/quick_actions_grid.dart';
@@ -89,7 +89,7 @@ class HomeScreen extends ConsumerWidget {
             },
           ),
           Text(
-            translate('daily_verse'),
+            l10n.daily_verse,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
@@ -100,30 +100,6 @@ class HomeScreen extends ConsumerWidget {
               verse: verse,
               isLoading: false,
             ),
-                  _buildQuickAction(
-                    context,
-                    icon: Icons.church,
-                    label: l10n.prayerWall,
-                    onTap: () => context.push('/prayer'),
-                  ),
-                  _buildQuickAction(
-                    context,
-                    icon: Icons.menu_book,
-                    label: l10n.bibleStudy,
-                    onTap: () => context.push('/study'),
-                  ),
-                  _buildQuickAction(
-                    context,
-                    icon: Icons.favorite,
-                    label: l10n.health_tracking,
-                    onTap: () => context.push('/health'),
-                  ),
-                  _buildQuickAction(
-                    context,
-                    icon: Icons.public,
-                    label: l10n.missionStories,
-                    onTap: () => context.push('/missions'),
-                  ),
             loading: () => const DailyVerseCard(
               verse: null,
               isLoading: true,

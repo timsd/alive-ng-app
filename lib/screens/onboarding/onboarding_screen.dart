@@ -107,9 +107,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         backgroundColor: theme.colorScheme.primary,
         foregroundColor: theme.colorScheme.onPrimary,
         elevation: 0,
-        actions: [],
-          // Actions placeholder
-        ],
+        actions: [
           TextButton(
             onPressed: _skip,
             child: Text(

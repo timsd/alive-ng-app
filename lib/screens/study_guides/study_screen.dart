@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../widgets/custom_app_bar.dart';
 import 'package:go_router/go_router.dart';
-import '../../providers/language_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/app_models.dart';
 import '../../constants/app_constants.dart';

@@ -415,8 +415,8 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         xasync: false,
       );
 
-      if (result.statusCode != 200) {
-        throw Exception('Broadcast failed (${result.statusCode}): ${result.responseBody}');
+      if (result.responseStatusCode != 200) {
+        throw Exception('Broadcast failed (${result.responseStatusCode}): ${result.responseBody}');
       }
 
       final response = jsonDecode(result.responseBody);
@@ -448,8 +448,8 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         xasync: false,
       );
 
-      if (result.statusCode != 200) {
-        throw Exception('Stop broadcast failed (${result.statusCode}): ${result.responseBody}');
+      if (result.responseStatusCode != 200) {
+        throw Exception('Stop broadcast failed (${result.responseStatusCode}): ${result.responseBody}');
       }
 
       _updateBroadcastState(false);
@@ -470,8 +470,8 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         xasync: false,
       );
 
-      if (result.statusCode != 200) {
-        throw Exception('List broadcasts failed (${result.statusCode}): ${result.responseBody}');
+      if (result.responseStatusCode != 200) {
+        throw Exception('List broadcasts failed (${result.responseStatusCode}): ${result.responseBody}');
       }
 
       final response = jsonDecode(result.responseBody);

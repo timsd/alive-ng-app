@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../constants/app_constants.dart';
-import '../../providers/language_provider.dart';
 
 /// Oath page shown after onboarding's "Get Started".
 /// User commits to the community values before entering the app.

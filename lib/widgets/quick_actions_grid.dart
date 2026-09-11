@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../constants/app_constants.dart';
 import '../providers/language_provider.dart';
-import '../utils/text_formatter.dart';
 import '../utils/layout_fix_utils.dart';
 
 /// Quick Actions Grid - styled to match the "More" feature display

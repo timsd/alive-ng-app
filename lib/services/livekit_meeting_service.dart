@@ -73,6 +73,24 @@ class LiveKitMeetingService extends ChangeNotifier implements MeetingGateway {
   @override
   Future<void> leaveMeeting() => _gateway.leaveMeeting();
 
+
+  @override
+  bool get isBroadcasting => _gateway.isBroadcasting;
+
+  @override
+  Stream<bool> get broadcastingStream => _gateway.broadcastingStream;
+
+  @override
+  Future<String> startBroadcast({required String meetingType}) =>
+      _gateway.startBroadcast(meetingType: meetingType);
+
+  @override
+  Future<void> stopBroadcast({required String egressId}) =>
+      _gateway.stopBroadcast(egressId: egressId);
+
+  @override
+  Future<List<dynamic>> listBroadcasts() => _gateway.listBroadcasts();
+
   @override
   void dispose() {
     _gateway.removeListener(notifyListeners);

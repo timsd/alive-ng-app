@@ -151,7 +151,7 @@ class DonationSetupValidator {
         } else {
           buffer.writeln('  ✗ ERROR ($code): $msg');
         }
-        _logger.warn('Table $tableId check failed', e);
+        _logger.warning('Table $tableId check failed: $e');
         continue;
       } catch (e) {
         missing++;
