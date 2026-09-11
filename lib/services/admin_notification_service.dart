@@ -76,6 +76,55 @@ class AdminNotificationService {
     }
   }
 
+  /// Send a welcome email / notification to the new user after successful signup.
+  /// Best-effort — never throws; failures are logged only.
+  Future<void> sendWelcomeNotification({
+    required String userId,
+    required String name,
+    required String email,
+  }) async {
+    try {
+      _logger.info('Sending welcome notification to new user: $email');
+      const subject = 'Welcome to ALIVE Nigeria! 🎉';
+      final html = '''
+<html><body>
+<h2>Welcome, $name! 🎉</h2>
+<p>Welcome to the <strong>ALIVE Nigeria App</strong>! We're excited to have you join our community.</p>
+<h3>Here's what you can do next:</h3>
+<ul>
+  <li>Complete your profile to connect with your chapter</li>
+  <li>Read today's Daily Verse for spiritual nourishment</li>
+  <li>Explore Study Guides, Prayer Wall, and more</li>
+  <li>Join an ALIVE Meet conference or Bible Game session</li>
+</ul>
+<p>If you have any questions, please reach out through the <strong>Help &amp; Support</strong> section.</p>
+<p>God bless you,<br/><strong>The ALIVE Nigeria Team</strong></p>
+</body></html>
+''';
+      await EmailService.instance.sendCustomEmail(
+        toEmail: email,
+        toName: name,
+        subject: subject,
+        html: html,
+      );
+
+      // Store welcome notification record
+      await _storeNotificationRecord(
+        type: 'welcome_notification',
+        userId: userId,
+        details: {
+          'email': email,
+          'full_name': name,
+          'status': 'sent',
+        },
+      );
+
+      _logger.info('Welcome notification sent to: $email');
+    } catch (e) {
+      _logger.error('Failed to send welcome notification (non-fatal): $e');
+    }
+  }
+
   /// Build email body with user information for admin review
   String _buildEmailBody(UserProfile userProfile) {
     final buffer = StringBuffer();

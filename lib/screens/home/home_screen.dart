@@ -14,6 +14,7 @@ import '../../widgets/custom_app_bar.dart';
 import '../../widgets/error_widget.dart';
 import '../../models/app_models.dart';
 import '../../services/role_access_service.dart';
+import '../../config/appwrite_backend_config.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -125,6 +126,9 @@ class HomeScreen extends ConsumerWidget {
   /// Build a banner to show when user account is pending approval
   Widget _buildPendingApprovalBanner(
       BuildContext context, RoleAccessService roleService) {
+    if (roleService.canAccessAdmin()) {
+      return const SizedBox.shrink();
+    }
     // Gated on the async Appwrite profile: render ONLY when the fresh
     // profile confirms approval_status == 'pending'. While loading or for
     // approved/rejected users, render nothing (no banner flash).
@@ -134,7 +138,11 @@ class HomeScreen extends ConsumerWidget {
         if (!snapshot.hasData || snapshot.data == null) {
           return const SizedBox.shrink();
         }
-        if (snapshot.data!.approvalStatus != 'pending') {
+        final profile = snapshot.data!;
+        if (profile.role == 'admin' ||
+            profile.role == 'staff' ||
+            AppwriteBackendConfig.isSuperAdminEmail(profile.email) ||
+            profile.approvalStatus != 'pending') {
           return const SizedBox.shrink();
         }
         return Container(

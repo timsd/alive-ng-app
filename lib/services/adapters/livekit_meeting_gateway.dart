@@ -63,6 +63,8 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
   @override
   MeetingSession get currentSession => _currentSession;
 
+  String? get activeEgressId => _activeEgressId;
+
   @override
   Stream<MeetingSession> get sessionStream => _sessionController.stream;
 

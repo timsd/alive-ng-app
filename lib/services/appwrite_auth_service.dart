@@ -9,6 +9,7 @@ import '../main.dart';
 import '../utils/web_launch_params.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'appwrite_profile_service.dart';
+import 'role_access_service.dart';
 
 /// Provider to access the Appwrite authentication service instance.
 final appwriteAuthServiceProvider = Provider<AppwriteAuthService>((ref) {
@@ -86,10 +87,33 @@ class AppwriteAuthService {
 
   Future<void> verifyAndSyncAdminRights(String userId) async {
     try {
-      final teamList = await _teams.list();
-      final isAdmin = teamList.teams.any(
-        (team) => team.$id == AppwriteBackendConfig.adminTeamId,
-      );
+      final email = _currentUser?.email.toLowerCase() ?? '';
+      final isSuperAdmin = AppwriteBackendConfig.isSuperAdminEmail(email);
+
+      bool isInAdminTeam = false;
+      try {
+        final teamList = await _teams.list();
+        isInAdminTeam = teamList.teams.any(
+          (team) => team.$id == AppwriteBackendConfig.adminTeamId,
+        );
+      } catch (te) {
+        debugPrint('Appwrite team check skipped: $te');
+      }
+
+      bool isExistingAdminRow = false;
+      try {
+        final row = await _tables.getRow(
+          databaseId: databaseId,
+          tableId: usersCollectionId,
+          rowId: userId,
+        );
+        final currentRole = (row.data['role'] ?? '').toString().toLowerCase();
+        if (currentRole == 'admin' || currentRole == 'staff') {
+          isExistingAdminRow = true;
+        }
+      } catch (_) {}
+
+      final isAdmin = isSuperAdmin || isInAdminTeam || isExistingAdminRow;
 
       if (!isAdmin) return;
 
@@ -101,14 +125,21 @@ class AppwriteAuthService {
           'role': 'admin',
           'approval_status': 'approved',
           'is_approved': true,
-          'approved_by': 'appwrite_team:${AppwriteBackendConfig.adminTeamId}',
+          'approved_by': isSuperAdmin
+              ? 'super_admin_email:$email'
+              : isInAdminTeam
+                  ? 'appwrite_team:${AppwriteBackendConfig.adminTeamId}'
+                  : 'database_role:admin',
           'approved_at': DateTime.now().toIso8601String(),
           'updated_at': DateTime.now().toIso8601String(),
         },
       );
-      debugPrint('Admin privileges synced from Appwrite Team for: $userId');
+      debugPrint('Admin privileges synced for: $userId ($email)');
+      // Immediately warm the RoleAccessService cache so the UI reflects the
+      // admin role without waiting for the next scheduled cache refresh.
+      await RoleAccessService.instance.forceRefreshCache();
     } catch (e) {
-      debugPrint('Skipping Appwrite Team admin sync: $e');
+      debugPrint('Skipping Appwrite admin sync: $e');
     }
   }
 

@@ -65,6 +65,7 @@ import '../utils/navigation_keys.dart';
 
 // New screen imports
 import '../screens/admin/leadership_archive_screen.dart';
+import '../screens/profile/profile_completion_screen.dart';
 
 const bool kMinimalRouterMode = false;
 
@@ -253,6 +254,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/oath',
         builder: (context, state) => const OathScreen(),
+      ),
+
+      // Profile Completion Route — shown after Google sign-in for new users
+      GoRoute(
+        path: '/profile-completion',
+        builder: (context, state) => const ProfileCompletionScreen(),
       ),
 
       // Main Navigation Shell Route

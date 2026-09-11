@@ -1,6 +1,19 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+if (fs.existsSync('.env')) {
+  const envContent = fs.readFileSync('.env', 'utf8');
+  for (const line of envContent.split(/\r?\n/)) {
+    if (!line || line.startsWith('#')) continue;
+    const idx = line.indexOf('=');
+    if (idx > 0) {
+      const k = line.slice(0, idx).trim();
+      const v = line.slice(idx + 1).trim();
+      if (!process.env[k]) process.env[k] = v;
+    }
+  }
+}
+
 const bucketId = 'app_releases';
 const fileId = 'alive_ng_android_release';
 const localArtifact = path.resolve('build/app/outputs/flutter-apk/app-release.apk');
@@ -97,7 +110,7 @@ async function uploadRelease() {
 
   const formData = new FormData();
   formData.append('fileId', fileId);
-  formData.append('file', blob, 'ALIVE-NG-App.apk');
+  formData.append('file', blob, 'ALIVE-Nigeria-App-v2.0.1.apk');
   formData.append('permissions[]', 'read("any")');
 
   console.log('Uploading ALIVE-NG-App.apk to Appwrite Storage...');

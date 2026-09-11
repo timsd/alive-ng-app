@@ -262,8 +262,10 @@ class AppwriteProfileService {
     required bool includeDefaults,
   }) {
     final data = <String, dynamic>{};
+    final isSuper =
+        email != null && AppwriteBackendConfig.isSuperAdminEmail(email);
     if (includeDefaults) {
-      data['role'] = role ?? 'member';
+      data['role'] = isSuper ? 'admin' : (role ?? 'member');
       data['provider'] = 'appwrite';
       data['is_approved'] = true;
       data['approval_status'] = 'approved';
@@ -278,7 +280,11 @@ class AppwriteProfileService {
     put('email', email);
     put('fullName', fullName);
     put('full_name', fullName);
-    put('role', role);
+    put('role', isSuper ? 'admin' : role);
+    if (isSuper) {
+      put('approval_status', 'approved');
+      put('is_approved', true);
+    }
 
     if (profileData != null) {
       for (final entry in profileData.entries) {

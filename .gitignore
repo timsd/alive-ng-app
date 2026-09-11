@@ -102,3 +102,10 @@ docs/oracle-free-tier-deployment-roadmap.md
 
 /android/key.properties.*
 android/.kotlin/
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/

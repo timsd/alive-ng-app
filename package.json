@@ -31,6 +31,8 @@
     "puppeteer": "^24.39.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^22.20.2",
     "appwrite-cli": "^27.3.0"
   }
 }

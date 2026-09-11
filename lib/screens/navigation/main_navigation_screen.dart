@@ -6,6 +6,7 @@ import 'package:alive_flutter_app/models/app_models.dart';
 import 'package:alive_flutter_app/services/role_access_service.dart';
 import 'package:alive_flutter_app/services/auth_service.dart';
 import 'package:alive_flutter_app/widgets/custom_app_bar.dart';
+import 'package:alive_flutter_app/config/appwrite_backend_config.dart';
 
 class MainNavigationScreen extends ConsumerStatefulWidget {
   final Widget child;
@@ -336,7 +337,12 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
     return FutureBuilder<UserProfile?>(
       future: roleService.getCurrentUserProfile(),
       builder: (context, snapshot) {
-        final approvalStatus = snapshot.data?.approvalStatus;
+        final userProfile = snapshot.data;
+        final isAdmin = userRole == 'admin' ||
+            userRole == 'staff' ||
+            AppwriteBackendConfig.isSuperAdminEmail(userProfile?.email);
+        final approvalStatus =
+            isAdmin ? 'approved' : userProfile?.approvalStatus;
         final isLoading = snapshot.connectionState == ConnectionState.waiting;
 
         Color statusColor;
@@ -367,7 +373,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
             default:
               statusColor = Colors.green.shade700;
               statusIcon = Icons.verified_user;
-              statusText = 'Approved';
+              statusText = isAdmin ? 'Admin (Approved)' : 'Approved';
               break;
           }
         }

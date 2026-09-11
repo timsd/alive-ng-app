@@ -116,4 +116,22 @@ class AppwriteBackendConfig {
       'https://app.alivenigeria.org/#/reset-password';
   static const String oauthSuccessUrl = 'https://app.alivenigeria.org/#/home';
   static const String oauthFailureUrl = 'https://app.alivenigeria.org/#/auth';
+
+  static const String _superAdminEmailsRaw = String.fromEnvironment(
+    'APPWRITE_SUPER_ADMIN_EMAILS',
+    defaultValue:
+        'alivenigeria2011@gmail.com,dammyolodude@gmail.com,app@alivenigeria.org',
+  );
+
+  static List<String> get superAdminEmails => _superAdminEmailsRaw
+      .split(',')
+      .map((e) => e.trim().toLowerCase())
+      .where((e) => e.isNotEmpty)
+      .toList();
+
+  static bool isSuperAdminEmail(String? email) {
+    if (email == null || email.trim().isEmpty) return false;
+    final normalized = email.trim().toLowerCase();
+    return superAdminEmails.contains(normalized);
+  }
 }

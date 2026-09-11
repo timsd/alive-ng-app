@@ -2,6 +2,7 @@ import '../models/app_models.dart';
 import '../utils/logger.dart';
 import 'auth_service.dart';
 import '../config/development_config.dart';
+import '../config/appwrite_backend_config.dart';
 
 /// Service for managing role-based access control throughout the app
 class RoleAccessService {
@@ -36,8 +37,16 @@ class RoleAccessService {
     final user = _authService.currentUser;
     if (user == null) return null;
 
+    if (AppwriteBackendConfig.isSuperAdminEmail(user.email)) {
+      return 'admin';
+    }
+
     // Get role from cached user profile or fetch from database
     final profile = _getCachedUserProfile();
+    if (profile != null &&
+        AppwriteBackendConfig.isSuperAdminEmail(profile.email)) {
+      return 'admin';
+    }
     return _normalizeRole(profile?.role);
   }
 
@@ -271,7 +280,11 @@ class RoleAccessService {
 
   /// Check if user can access role-gated features
   bool canAccessRoleGatedFeatures() {
-    // User must be approved to access role-gated features
+    final currentRole = getCurrentUserRole();
+    // Admins and staff are always considered approved — they manage approvals
+    // for everyone else, so they must never be blocked by their own gate.
+    if (currentRole == 'admin' || currentRole == 'staff') return true;
+    // For all other roles the Appwrite profile approval flag governs access.
     final profile = _getCachedUserProfile();
     return (profile?.isApproved ?? false) && !isUserArchived();
   }

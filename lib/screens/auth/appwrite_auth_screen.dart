@@ -11,6 +11,7 @@ import '../../providers/guest_provider.dart';
 import '../../constants/app_constants.dart';
 import '../../services/biometric_auth_service.dart';
 import '../../services/admin_notification_service.dart';
+import '../../services/appwrite_profile_service.dart';
 import '../../utils/responsive_utils.dart';
 import '../../models/app_models.dart';
 import '../../models/auth_models.dart';
@@ -1186,22 +1187,44 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
         ),
       );
 
-      // Notify admin of new signup (best-effort, don't block UI)
+      // Notify admin of new signup + send welcome email (best-effort)
       try {
-        await AdminNotificationService.instance.notifyAdminOfNewSignup(
-          UserProfile(
-            id: '',
-            email: _emailController.text.trim(),
-            fullName: _nameController.text.trim(),
-            phoneNumber: _phoneController.text.trim(),
-            localChurch: _localChurchController.text.trim(),
-            commitmentType: _commitmentType,
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-          ),
+        final newProfile = UserProfile(
+          id: '',
+          email: _emailController.text.trim(),
+          fullName: _nameController.text.trim(),
+          phoneNumber: _phoneController.text.trim(),
+          localChurch: _localChurchController.text.trim(),
+          commitmentType: _commitmentType,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+        await AdminNotificationService.instance
+            .notifyAdminOfNewSignup(newProfile);
+        await AdminNotificationService.instance.sendWelcomeNotification(
+          userId: '',
+          name: _nameController.text.trim().isNotEmpty
+              ? _nameController.text.trim()
+              : _emailController.text.split('@').first,
+          email: _emailController.text.trim(),
         );
       } catch (_) {
-        // Best-effort notification — don't fail signup
+        // Best-effort — don't fail signup
+      }
+
+      // Show in-app welcome SnackBar
+      if (mounted) {
+        final name = _nameController.text.trim().isNotEmpty
+            ? _nameController.text.trim()
+            : _emailController.text.split('@').first;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Welcome to ALIVE Nigeria, $name! 🎉'),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+          ),
+        );
       }
     } finally {
       if (mounted) {
@@ -1218,6 +1241,37 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
     setState(() => _isGoogleSigningIn = true);
     try {
       await ref.read(signInControllerProvider.notifier).signInWithGoogle();
+
+      // After Google sign-in, check if the profile needs to be completed.
+      // We read the current Appwrite user from the stream provider.
+      if (!mounted) return;
+      final user = ref.read(appwriteUserStreamProvider).value;
+      if (user != null) {
+        try {
+          final profileService = ref.read(appwriteProfileServiceProvider);
+          final profile = await profileService.getUserProfileModel(user.uid);
+          final needsCompletion = profile == null ||
+              (profile.phoneNumber == null || profile.phoneNumber!.isEmpty) &&
+                  (profile.localChurch == null || profile.localChurch!.isEmpty);
+          if (!mounted) return;
+          if (needsCompletion) {
+            context.go('/profile-completion');
+            return;
+          }
+        } catch (_) {
+          // Best-effort — fall through to home
+        }
+        if (!mounted) return;
+        // Show welcome back message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Welcome back, ${user.displayName ?? user.email.split("@").first}! 👋'),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isGoogleSigningIn = false);
     }

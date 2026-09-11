@@ -1,4 +1,5 @@
 import 'package:appwrite/appwrite.dart' hide Permission;
+import 'package:flutter/foundation.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../config/appwrite_backend_config.dart';
@@ -99,7 +100,6 @@ class NotificationSettingsService {
       }
 
       await StorageHelper.setNotificationSettings(settings.toJson());
-
       ToastUtils.showSuccess('Your notification preferences have been saved');
       return true;
     } catch (error) {
@@ -117,17 +117,30 @@ class NotificationSettingsService {
         return false;
       }
 
-      // Request notification permission
+      // On web, permission_handler cannot request OS-level notification
+      // permission. Skip the OS prompt and directly enable notifications
+      // in the Appwrite settings record.
+      if (kIsWeb) {
+        final currentSettings = await fetchSettings();
+        if (currentSettings != null) {
+          await updateSettings(
+            currentSettings.copyWith(pushNotificationsEnabled: true),
+          );
+        }
+        ToastUtils.showSuccess(
+            "You'll receive reminders for your daily activities");
+        return true;
+      }
+
+      // Native: request OS-level permission first
       final status = await Permission.notification.request();
 
       if (status.isGranted) {
-        // Update settings to enable push notifications
         final currentSettings = await fetchSettings();
         if (currentSettings != null) {
-          final updatedSettings = currentSettings.copyWith(
-            pushNotificationsEnabled: true,
+          await updateSettings(
+            currentSettings.copyWith(pushNotificationsEnabled: true),
           );
-          await updateSettings(updatedSettings);
         }
 
         _logger.info(
@@ -136,7 +149,7 @@ class NotificationSettingsService {
         );
 
         ToastUtils.showSuccess(
-            'You\'ll receive reminders for your daily activities');
+            "You'll receive reminders for your daily activities");
         return true;
       } else {
         ToastUtils.showError(
@@ -236,7 +249,3 @@ class NotificationSettingsService {
     };
   }
 }
-
-
-
-

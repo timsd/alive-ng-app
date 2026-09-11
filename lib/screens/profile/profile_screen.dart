@@ -6,7 +6,6 @@ import '../../providers/appwrite_auth_provider.dart';
 import '../../models/app_models.dart';
 import '../../services/appwrite_profile_service.dart';
 import '../../utils/responsive_utils.dart';
-import '../../services/user_statistics_service.dart';
 import 'edit_profile_screen.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../constants/app_constants.dart';
@@ -32,68 +31,6 @@ final userProfileProvider = FutureProvider<UserProfile?>((ref) async {
     photoUrl: user.photoUrl,
   );
 });
-
-// Provider for user statistics
-final userStatisticsProvider =
-    FutureProvider<Map<String, dynamic>>((ref) async {
-  final user = ref.watch(appwriteUserStreamProvider).value;
-
-  // Return zero stats for guests or unauthenticated users
-  if (user == null) {
-    return {
-      'prayers_offered': 0,
-      'study_sessions_completed': 0,
-      'current_streak': 0,
-    };
-  }
-
-  try {
-    final userId = user.uid;
-
-    final stats =
-        await UserStatisticsService.instance.getUserStatistics(userId);
-
-    // Calculate current streak (simplified - you may want to implement proper streak logic)
-    final currentStreak = await _calculateCurrentStreak(userId);
-
-    return {
-      'prayers_offered': stats['prayers_offered'] ?? 0,
-      'study_sessions_completed': stats['study_sessions_completed'] ?? 0,
-      'current_streak': currentStreak,
-    };
-  } catch (e) {
-    // Return zero stats on error
-    return {
-      'prayers_offered': 0,
-      'study_sessions_completed': 0,
-      'current_streak': 0,
-    };
-  }
-});
-
-// Helper function to calculate current streak
-Future<int> _calculateCurrentStreak(String userId) async {
-  try {
-    // This is a simplified streak calculation
-    // You may want to implement more sophisticated logic based on your requirements
-    final monthlyStats =
-        await UserStatisticsService.instance.getMonthlyStatistics(userId);
-
-    // For now, return a simple calculation based on recent activity
-    final recentPrayers = monthlyStats['prayersOfferedThisMonth'] ?? 0;
-    final recentStudies = monthlyStats['studyTimeThisMonth'] ?? 0;
-
-    // Simple streak logic: if user has recent activity, calculate based on days
-    if (recentPrayers > 0 || recentStudies > 0) {
-      // This is a placeholder - implement proper streak calculation
-      return (recentPrayers + (recentStudies / 30)).round().clamp(0, 365);
-    }
-
-    return 0;
-  } catch (e) {
-    return 0;
-  }
-}
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -121,15 +58,6 @@ class ProfileScreen extends ConsumerWidget {
     return Scaffold(
       appBar: CustomAppBar(
         title: translate('profile'),
-        actions: [
-          IconButton(
-            onPressed: () {
-              context.push(AppConstants.notificationSettingsRoute);
-            },
-            icon: const Icon(Icons.settings),
-            tooltip: translate('settings'),
-          ),
-        ],
       ),
       body: SafeArea(
         child: LayoutBuilder(
@@ -151,15 +79,6 @@ class ProfileScreen extends ConsumerWidget {
                             tablet: 32,
                             desktop: 40)),
 
-                    // Quick Stats
-                    _buildQuickStats(context, translate, ref),
-                    SizedBox(
-                        height: ResponsiveUtils.getResponsiveValue(
-                            context: context,
-                            mobile: 24,
-                            tablet: 32,
-                            desktop: 40)),
-
                     // Management Section (Admin/BOD only)
                     _buildManagementSection(context, translate, ref),
                     SizedBox(
@@ -171,15 +90,6 @@ class ProfileScreen extends ConsumerWidget {
 
                     // Settings Section
                     _buildSettingsSection(context, translate, ref),
-                    SizedBox(
-                        height: ResponsiveUtils.getResponsiveValue(
-                            context: context,
-                            mobile: 24,
-                            tablet: 32,
-                            desktop: 40)),
-
-                    // Account Section
-                    _buildAccountSection(context, translate, ref),
                     SizedBox(
                         height: ResponsiveUtils.getResponsiveValue(
                             context: context,
@@ -411,191 +321,6 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildQuickStats(
-      BuildContext context, String Function(String) translate, WidgetRef ref) {
-    final statsAsync = ref.watch(userStatisticsProvider);
-
-    return Container(
-      margin: EdgeInsets.symmetric(
-          horizontal: ResponsiveUtils.getResponsiveValue(
-              context: context, mobile: 20, tablet: 24, desktop: 28)),
-      padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(
-          context: context, mobile: 20, tablet: 24, desktop: 28)),
-      decoration: _sectionDecoration(context),
-      child: statsAsync.when(
-        data: (stats) => Row(
-          children: [
-            Expanded(
-              child: _buildStatItem(
-                context,
-                translate('prayers'),
-                '${stats['prayers_offered'] ?? 0}',
-                Icons.favorite,
-                Theme.of(context).colorScheme.error,
-              ),
-            ),
-            Container(
-              width: ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 1, tablet: 1.5, desktop: 2),
-              height: ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 40, tablet: 48, desktop: 56),
-              color: Theme.of(context).dividerColor,
-            ),
-            Expanded(
-              child: _buildStatItem(
-                context,
-                translate('studies'),
-                '${stats['study_sessions_completed'] ?? 0}',
-                Icons.book,
-                Theme.of(context).colorScheme.primary,
-              ),
-            ),
-            Container(
-              width: ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 1, tablet: 1.5, desktop: 2),
-              height: ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 40, tablet: 48, desktop: 56),
-              color: Theme.of(context).dividerColor,
-            ),
-            Expanded(
-              child: _buildStatItem(
-                context,
-                translate('streak'),
-                '${stats['current_streak'] ?? 0}',
-                Icons.local_fire_department,
-                Theme.of(context).colorScheme.secondary,
-              ),
-            ),
-          ],
-        ),
-        loading: () => Row(
-          children: [
-            Expanded(
-              child: _buildStatItem(
-                context,
-                translate('prayers'),
-                '0',
-                Icons.favorite,
-                Theme.of(context).colorScheme.error,
-              ),
-            ),
-            Container(
-              width: ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 1, tablet: 1.5, desktop: 2),
-              height: ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 40, tablet: 48, desktop: 56),
-              color: Theme.of(context).dividerColor,
-            ),
-            Expanded(
-              child: _buildStatItem(
-                context,
-                translate('studies'),
-                '0',
-                Icons.book,
-                Theme.of(context).colorScheme.primary,
-              ),
-            ),
-            Container(
-              width: ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 1, tablet: 1.5, desktop: 2),
-              height: ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 40, tablet: 48, desktop: 56),
-              color: Theme.of(context).dividerColor,
-            ),
-            Expanded(
-              child: _buildStatItem(
-                context,
-                translate('streak'),
-                '0',
-                Icons.local_fire_department,
-                Theme.of(context).colorScheme.secondary,
-              ),
-            ),
-          ],
-        ),
-        error: (_, __) => Row(
-          children: [
-            Expanded(
-              child: _buildStatItem(
-                context,
-                translate('prayers'),
-                '0',
-                Icons.favorite,
-                Theme.of(context).colorScheme.error,
-              ),
-            ),
-            Container(
-              width: ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 1, tablet: 1.5, desktop: 2),
-              height: ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 40, tablet: 48, desktop: 56),
-              color: Theme.of(context).dividerColor,
-            ),
-            Expanded(
-              child: _buildStatItem(
-                context,
-                translate('studies'),
-                '0',
-                Icons.book,
-                Theme.of(context).colorScheme.primary,
-              ),
-            ),
-            Container(
-              width: ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 1, tablet: 1.5, desktop: 2),
-              height: ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 40, tablet: 48, desktop: 56),
-              color: Theme.of(context).dividerColor,
-            ),
-            Expanded(
-              child: _buildStatItem(
-                context,
-                translate('streak'),
-                '0',
-                Icons.local_fire_department,
-                Theme.of(context).colorScheme.secondary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatItem(BuildContext context, String label, String value,
-      IconData icon, Color color) {
-    return Column(
-      children: [
-        Icon(
-          icon,
-          color: color,
-          size: ResponsiveUtils.getResponsiveValue(
-              context: context, mobile: 24, tablet: 28, desktop: 32),
-        ),
-        SizedBox(
-            height: ResponsiveUtils.getResponsiveValue(
-                context: context, mobile: 8, tablet: 10, desktop: 12)),
-        Text(
-          value,
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: color,
-                fontSize: ResponsiveUtils.getResponsiveValue(
-                    context: context, mobile: 18, tablet: 22, desktop: 26),
-              ),
-        ),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: Theme.of(context)
-                    .colorScheme
-                    .onSurface
-                    .withValues(alpha: 0.7),
-              ),
-        ),
-      ],
-    );
-  }
 
   Widget _buildManagementSection(
       BuildContext context, String Function(String) translate, WidgetRef ref) {
@@ -811,111 +536,5 @@ class ProfileScreen extends ConsumerWidget {
       ],
     );
   }
-
-  Widget _buildAccountSection(
-      BuildContext context, String Function(String) translate, WidgetRef ref) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: EdgeInsets.symmetric(
-              horizontal: ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 20, tablet: 24, desktop: 28)),
-          child: Text(
-            translate('account'),
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  fontSize: ResponsiveUtils.getResponsiveValue(
-                      context: context, mobile: 18, tablet: 22, desktop: 26),
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-          ),
-        ),
-        SizedBox(
-            height: ResponsiveUtils.getResponsiveValue(
-                context: context, mobile: 16, tablet: 20, desktop: 24)),
-        Container(
-          margin: EdgeInsets.symmetric(
-              horizontal: ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 20, tablet: 24, desktop: 28)),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(
-                ResponsiveUtils.getResponsiveValue(
-                    context: context, mobile: 16, tablet: 20, desktop: 24)),
-            border: Border.all(
-              color: Theme.of(context).colorScheme.outlineVariant,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Theme.of(context)
-                    .colorScheme
-                    .shadow
-                    .withValues(alpha: 0.08),
-                blurRadius: ResponsiveUtils.getResponsiveValue(
-                    context: context, mobile: 8, tablet: 10, desktop: 12),
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              ListTile(
-                leading: Icon(
-                  Icons.privacy_tip_outlined,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: ResponsiveUtils.getResponsiveValue(
-                      context: context, mobile: 24, tablet: 28, desktop: 32),
-                ),
-                title: Text(
-                  translate('privacy_policy'),
-                  style: TextStyle(
-                    fontSize: ResponsiveUtils.getResponsiveValue(
-                        context: context, mobile: 16, tablet: 18, desktop: 20),
-                  ),
-                ),
-                trailing: Icon(
-                  Icons.arrow_forward_ios,
-                  size: ResponsiveUtils.getResponsiveValue(
-                      context: context, mobile: 16, tablet: 18, desktop: 20),
-                ),
-                onTap: () {
-                  // Navigate to privacy policy
-                  context.push('/privacy-policy');
-                },
-              ),
-              const Divider(height: 1),
-              ListTile(
-                leading: Icon(
-                  Icons.gavel_outlined,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: ResponsiveUtils.getResponsiveValue(
-                      context: context, mobile: 24, tablet: 28, desktop: 32),
-                ),
-                title: Text(
-                  translate('terms_conditions'),
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        fontSize: ResponsiveUtils.getResponsiveValue(
-                            context: context,
-                            mobile: 16,
-                            tablet: 18,
-                            desktop: 20),
-                      ),
-                ),
-                trailing: Icon(
-                  Icons.arrow_forward_ios,
-                  size: ResponsiveUtils.getResponsiveValue(
-                      context: context, mobile: 16, tablet: 18, desktop: 20),
-                ),
-                onTap: () {
-                  // Navigate to terms & conditions
-                  context.push('/terms-conditions');
-                },
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
 }
+
