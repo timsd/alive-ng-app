@@ -22,13 +22,13 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authStateProvider);
     final isGuest = ref.watch(isGuestModeProvider);
-    final translate = ref.watch(translationProvider);
+    final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: const CustomAppBar(
-        title: 'Home',
+      appBar: CustomAppBar(
+        title: l10n.home,
       ),
       body: Container(
         decoration: BoxDecoration(
@@ -43,8 +43,7 @@ class HomeScreen extends ConsumerWidget {
           ),
         ),
         child: authState.when(
-          data: (user) =>
-              _buildHomeContent(context, ref, user, isGuest, translate),
+          data: (user) => _buildHomeContent(context, ref, user, isGuest),
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (_, __) => AppErrorWidget(
             title: 'Home is unavailable',
@@ -58,8 +57,9 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildHomeContent(BuildContext context, WidgetRef ref, user,
-      bool isGuest, Function translate) {
+  Widget _buildHomeContent(
+      BuildContext context, WidgetRef ref, user, bool isGuest) {
+    final l10n = AppLocalizations.of(context)!;
     final dailyVerseAsync = ref.watch(dailyVerseProvider);
     final roleService = RoleAccessService.instance;
 
@@ -100,6 +100,30 @@ class HomeScreen extends ConsumerWidget {
               verse: verse,
               isLoading: false,
             ),
+                  _buildQuickAction(
+                    context,
+                    icon: Icons.church,
+                    label: l10n.prayerWall,
+                    onTap: () => context.push('/prayer'),
+                  ),
+                  _buildQuickAction(
+                    context,
+                    icon: Icons.menu_book,
+                    label: l10n.bibleStudy,
+                    onTap: () => context.push('/study'),
+                  ),
+                  _buildQuickAction(
+                    context,
+                    icon: Icons.favorite,
+                    label: l10n.health_tracking,
+                    onTap: () => context.push('/health'),
+                  ),
+                  _buildQuickAction(
+                    context,
+                    icon: Icons.public,
+                    label: l10n.missionStories,
+                    onTap: () => context.push('/missions'),
+                  ),
             loading: () => const DailyVerseCard(
               verse: null,
               isLoading: true,

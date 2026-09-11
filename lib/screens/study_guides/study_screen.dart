@@ -27,13 +27,13 @@ class StudyScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final translate = ref.watch(translationProvider);
+    final l10n = AppLocalizations.of(context)!;
     final studyProgramsAsync = ref.watch(studyProgramsProvider);
     final studyProgressAsync = ref.watch(studyProgressProvider);
 
     return Scaffold(
       appBar: CustomAppBar(
-        title: translate('study'),
+        title: l10n.study,
         elevation: 0,
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Theme.of(context).colorScheme.onPrimary,
@@ -96,24 +96,23 @@ class StudyScreen extends ConsumerWidget {
 
               // Progress Overview
               studyProgressAsync.when(
-                data: (progress) =>
-                    _buildProgressOverview(context, translate, progress),
+                data: (progress) => _buildProgressOverview(context, progress),
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (error, stack) =>
-                    _buildErrorWidget(context, translate, error.toString()),
+                    _buildErrorWidget(context, error.toString()),
               ),
 
               SizedBox(
                   height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
 
               // Bible Reader Card (accessible to all users)
-              _buildBibleReaderCard(context, translate),
+              _buildBibleReaderCard(context),
 
               SizedBox(
                   height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
 
               // Instant Word Card
-              _buildBibleGameCard(context, translate),
+              _buildBibleGameCard(context),
 
               SizedBox(
                   height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
@@ -135,11 +134,10 @@ class StudyScreen extends ConsumerWidget {
                   height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
 
               studyProgramsAsync.when(
-                data: (programs) =>
-                    _buildStudyPrograms(context, translate, programs),
+                data: (programs) => _buildStudyPrograms(context, programs),
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (error, stack) =>
-                    _buildErrorWidget(context, translate, error.toString()),
+                    _buildErrorWidget(context, error.toString()),
               ),
 
               SizedBox(
@@ -151,8 +149,8 @@ class StudyScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildBibleReaderCard(
-      BuildContext context, String Function(String) translate) {
+  Widget _buildBibleReaderCard(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       margin: EdgeInsets.symmetric(
           horizontal: ResponsiveUtils.getResponsiveSpacing(context, 20)),
@@ -195,7 +193,7 @@ class StudyScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        translate('bible'),
+                        l10n.bible,
                         style:
                             Theme.of(context).textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.bold,
@@ -205,7 +203,7 @@ class StudyScreen extends ConsumerWidget {
                           height:
                               ResponsiveUtils.getResponsiveSpacing(context, 6)),
                       Text(
-                        translate('read_bible'),
+                        l10n.read_bible,
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                     ],
@@ -224,8 +222,7 @@ class StudyScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildBibleGameCard(
-      BuildContext context, String Function(String) translate) {
+  Widget _buildBibleGameCard(BuildContext context) {
     return Container(
       margin: EdgeInsets.symmetric(
           horizontal: ResponsiveUtils.getResponsiveSpacing(context, 20)),
@@ -312,8 +309,8 @@ class StudyScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildProgressOverview(BuildContext context,
-      String Function(String) translate, List<StudyProgress> progress) {
+  Widget _buildProgressOverview(
+      BuildContext context, List<StudyProgress> progress) {
     final completedLessons =
         progress.fold<int>(0, (sum, p) => sum + p.completedLessons);
     final totalLessons = progress.length;
@@ -391,8 +388,8 @@ class StudyScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStudyPrograms(BuildContext context,
-      String Function(String) translate, List<StudyProgram> programs) {
+  Widget _buildStudyPrograms(
+      BuildContext context, List<StudyProgram> programs) {
     if (programs.isEmpty) {
       return Container(
         margin: EdgeInsets.symmetric(
@@ -440,8 +437,7 @@ class StudyScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildErrorWidget(
-      BuildContext context, String Function(String) translate, String error) {
+  Widget _buildErrorWidget(BuildContext context, String error) {
     return Container(
       margin: EdgeInsets.symmetric(
           horizontal: ResponsiveUtils.getResponsiveSpacing(context, 20)),
