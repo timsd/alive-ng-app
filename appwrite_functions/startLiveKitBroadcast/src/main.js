@@ -1,4 +1,4 @@
-import { EgressClient, RtmpOutput } from 'livekit-server-sdk';
+import { EgressClient } from 'livekit-server-sdk';
 
 const SERVICE_URL = (process.env.LIVEKIT_URL || 'wss://livekit.alivenigeria.org')
   .replace(/\/$/, '');
@@ -84,8 +84,8 @@ export default async ({ req, res, error }) => {
     }
 
     // 'start' (default) path.
-    const streamKey = process.env.YOUTUBE_STREAM_KEY;
-    if (!streamKey) return res.json({ error: 'Broadcast is not configured.' }, 503);
+    const streamKey = body.streamKey || process.env.YOUTUBE_STREAM_KEY;
+    if (!streamKey) return res.json({ error: 'YouTube stream key is not configured.' }, 503);
 
     const policy = roomPolicies[meetingType];
     if (!policy || !ALLOWED_ROOMS.has(policy.room)) {
@@ -99,17 +99,27 @@ export default async ({ req, res, error }) => {
       return res.json({ error: 'You do not have permission to broadcast.' }, 403);
     }
 
-    const egressIdOut = await egress.startRoomCompositeEgress(
+    const ingestUrl = (process.env.YOUTUBE_STREAM_URL || YOUTUBE_INGEST).replace(/\/$/, '');
+    const urls = [`${ingestUrl}/${streamKey}`];
+
+    if (process.env.YOUTUBE_BACKUP_STREAM_URL) {
+      const backupUrl = process.env.YOUTUBE_BACKUP_STREAM_URL.replace(/\/$/, '');
+      urls.push(`${backupUrl}/${streamKey}`);
+    }
+
+    const egressInfo = await egress.startRoomCompositeEgress(
       policy.room,
-      new RtmpOutput(YOUTUBE_INGEST, streamKey),
+      {
+        stream: {
+          urls: urls,
+        },
+      },
       {
         layout: 'speaker-layout',
-        width: 1920,
-        height: 1080,
-        fps: 30,
       },
     );
 
+    const egressIdOut = egressInfo.egressId || (typeof egressInfo === 'string' ? egressInfo : JSON.stringify(egressInfo));
     return res.json({ egressId: egressIdOut, status: 'started', roomName: policy.room });
   } catch (err) {
     error(`Broadcast failed: ${err.message}`);
