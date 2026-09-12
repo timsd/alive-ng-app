@@ -508,25 +508,48 @@ class BibleDatabaseHelper {
     );
   }
 
-  // Search operations
-  Future<List<BibleSearchResult>> searchVerses(String query, {String? version, String? language, int limit = 50}) async {
+  // Search operations.
+  //
+  // Search standard (shared with SearchUtils + OfflineBibleService):
+  // exact phrase ("jesus wept" -> John 11:35) ranks above verses that merely
+  // contain the individual words. LIKE feeds candidates, Dart ranks them.
+  Future<List<BibleSearchResult>> searchVerses(String query,
+      {String? version, String? language, int limit = 50}) async {
     final db = await database;
-    
-    String whereClause = 'v.text LIKE ?';
-    List<dynamic> whereArgs = ['%$query%'];
-    
+
+    final normPhrase =
+        query.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (normPhrase.isEmpty) return [];
+    final words = normPhrase
+        .split(' ')
+        .map((w) => w.replaceAll(RegExp(r'[^\p{L}\p{N}]', unicode: true), ''))
+        .where((w) => w.length > 1 || RegExp(r'^\d+$').hasMatch(w))
+        .where((w) => w.isNotEmpty)
+        .toSet()
+        .toList();
+    if (words.isEmpty) return [];
+
+    // Pull candidates touching ANY query word, then rank in Dart.
+    final likeClauses =
+        List.filled(words.length, 'v.text LIKE ?').join(' OR ');
+    String whereClause = '($likeClauses OR c.book LIKE ?)';
+    final andArgs = <dynamic>[
+      for (final w in words) '%$w%',
+      '%$normPhrase%',
+    ];
+
     if (version != null) {
       whereClause += ' AND c.version = ?';
-      whereArgs.add(version);
+      andArgs.add(version);
     }
-    
+
     if (language != null) {
       whereClause += ' AND c.language = ?';
-      whereArgs.add(language);
+      andArgs.add(language);
     }
 
     final List<Map<String, dynamic>> maps = await db.rawQuery('''
-      SELECT 
+      SELECT
         c.book,
         c.chapter,
         v.verse_number as verse,
@@ -537,12 +560,33 @@ class BibleDatabaseHelper {
       FROM $_versesTable v
       INNER JOIN $_chaptersTable c ON v.chapter_id = c.id
       WHERE $whereClause
-      ORDER BY c.book, c.chapter, v.verse_number
       LIMIT ?
-    ''', [...whereArgs, limit]);
+    ''', [...andArgs, limit * 8]);
 
-    return List.generate(maps.length, (i) {
-      final map = maps[i];
+    int scoreRow(Map<String, dynamic> map) {
+      final text = (map['text'] ?? '').toString().toLowerCase();
+      final ref = (map['reference'] ?? '').toString().toLowerCase();
+      var score = 0;
+      if (text.contains(normPhrase)) score += 300;
+      if (ref.contains(normPhrase)) score += 500;
+      var hits = 0;
+      for (final w in words) {
+        if (text.contains(w)) hits++;
+        if (ref.contains(w)) score += 5;
+      }
+      if (hits == words.length && words.length > 1) {
+        score += 200 + hits * 10;
+      } else {
+        score += hits * 10;
+      }
+      return score;
+    }
+
+    final ranked =
+        maps.where((m) => scoreRow(m) > 0).toList(growable: false)
+          ..sort((a, b) => scoreRow(b).compareTo(scoreRow(a)));
+
+    return ranked.take(limit).map((map) {
       return BibleSearchResult(
         book: map['book'],
         chapter: map['chapter'],
@@ -552,7 +596,7 @@ class BibleDatabaseHelper {
         language: map['language'],
         reference: map['reference'],
       );
-    });
+    }).toList();
   }
 
   // User Progress operations

@@ -1,7 +1,7 @@
 class AppConstants {
   // App Information
   static const String appName = 'ALIVE-NG APP';
-  static const String appVersion = '2.0.0+6';
+  static const String appVersion = '2.0.2+8';
 
   // Navigation Routes
   static const String splashRoute = '/';
@@ -53,6 +53,7 @@ class AppConstants {
   static const String booksTractsRoute = '/books-tracts';
   static const String kidsStoriesRoute = '/kids-stories';
   static const String prayerWallRoute = '/prayer-wall';
+  static const String privatePrayerRoomRoute = '/private-prayer-room';
   static const String eventsRoute = '/events';
   static const String testimoniesRoute = '/testimonies';
   static const String resourcesRoute = '/resources';

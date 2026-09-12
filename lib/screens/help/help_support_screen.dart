@@ -279,7 +279,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
         color: Theme.of(context).colorScheme.primary,
         steps: [
           'Open the Bible Reader from the Home quick actions or the navigation bar.',
-          'Tap the language or translation selector at the top to switch between English (KJV, NIV, ASV, NASB, NKJV, NLT), Yoruba (BM), Igbo (IGBOB), or Hausa (HAU).',
+          'Tap the language or translation selector at the top to switch between English (KJV, NIV, ASV, NASB, NKJV), Yoruba (BM), Igbo (IGBOB), or Hausa (HAU).',
           'Swipe left or right or use the navigation buttons at the bottom to flip between chapters.',
           'Tap any verse to open options: highlight in custom colors, bookmark, copy, or share.',
           'Tap the Speaker icon on any chapter or verse to listen with Text-To-Speech.',

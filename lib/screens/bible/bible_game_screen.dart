@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_tts/flutter_tts.dart';
@@ -317,6 +317,12 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
       final attempts = state.attemptCount + 1;
       final autoShowHint =
           attempts >= 3 && state.gameMode == GameMode.voiceRecitation;
+
+      // -1pt deduction after 3 wrong voice recording attempts
+      if (attempts >= 3 && state.gameMode == GameMode.voiceRecitation) {
+        final newScore = max(0, state.score - 1);
+        state = state.copyWith(score: newScore);
+      }
 
       state = state.copyWith(
         showAnswer: autoShowHint,
@@ -798,13 +804,16 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
           final transcript = result.recognizedWords.trim();
           if (transcript.isEmpty) return;
 
-          ref.read(bibleGameProvider.notifier).updateUserInput(transcript);
+          // Deduplicate repeated sentence fragments from partial STT results
+          final deduped = _deduplicateTranscript(transcript);
+
+          ref.read(bibleGameProvider.notifier).updateUserInput(deduped);
           _textController.value = TextEditingValue(
-            text: transcript,
-            selection: TextSelection.collapsed(offset: transcript.length),
+            text: deduped,
+            selection: TextSelection.collapsed(offset: deduped.length),
           );
 
-          ref.read(bibleGameProvider.notifier).checkPartialMatch(transcript);
+          ref.read(bibleGameProvider.notifier).checkPartialMatch(deduped);
 
           final gameState = ref.read(bibleGameProvider);
           if (gameState.showStarAnimation) {
@@ -1467,6 +1476,25 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
     return input.toLowerCase().replaceAll(RegExp(r'[^\w\s]'), '').trim();
   }
 
+  /// Deduplicate repeated sentence fragments from STT partial results.
+  /// e.g. "the Lord is good the Lord is good" → "the Lord is good"
+  String _deduplicateTranscript(String text) {
+    final words = text.split(RegExp(r'\s+'));
+    if (words.length < 4) return text;
+
+    // Try progressively larger prefix lengths to find a repeated block
+    for (int prefixLen = (words.length ~/ 2); prefixLen >= 3; prefixLen--) {
+      final prefix = words.sublist(0, prefixLen).join(' ').toLowerCase();
+      final rest =
+          words.sublist(prefixLen).join(' ').toLowerCase().trimLeft();
+      if (rest.startsWith(prefix)) {
+        // The first half repeated — return only the first occurrence
+        return words.sublist(0, prefixLen).join(' ');
+      }
+    }
+    return text;
+  }
+
   /// Compact voice transcript box: shows max 2 lines + a similarity score
   /// so users (especially non-English speakers) know how close they are.
   Widget _buildVoiceTranscriptBox(BibleGameState gameState) {
@@ -1578,31 +1606,60 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
             Row(
               children: [
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: _submitFillGaps,
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(120, 48),
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                  child: SizedBox(
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: _submitFillGaps,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                      ),
+                      child: const Text(
+                        'Submit',
+                        textAlign: TextAlign.center,
+                      ),
                     ),
-                    child: const Text('Submit'),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: gameState.showHintButton
-                        ? () => _confirmFillGapsHint(context, gameState)
-                        : null,
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(120, 48),
-                      backgroundColor: Theme.of(context).colorScheme.tertiary,
-                      foregroundColor: Theme.of(context).colorScheme.onTertiary,
-                    ),
-                    child: Text(
-                      gameState.showHintButton
-                          ? 'Hint (-2 pts)'
-                          : 'Hint (3 attempts)',
+                  child: SizedBox(
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: gameState.showHintButton
+                          ? () => _confirmFillGapsHint(context, gameState)
+                          : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.tertiary,
+                        foregroundColor: Theme.of(context).colorScheme.onTertiary,
+                      ),
+                      child: gameState.showHintButton
+                          ? const Text(
+                              'Hint (-2 pts)',
+                              textAlign: TextAlign.center,
+                            )
+                          : Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                const Text(
+                                  'Hint',
+                                  textAlign: TextAlign.center,
+                                ),
+                                Text(
+                                  '(3 attempts)',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontStyle: FontStyle.italic,
+                                    fontSize: Theme.of(context)
+                                            .textTheme
+                                            .labelSmall
+                                            ?.fontSize ??
+                                        10,
+                                  ),
+                                ),
+                              ],
+                            ),
                     ),
                   ),
                 ),
@@ -1615,6 +1672,9 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
   }
 
   Widget _buildVoiceRecitationInput(BibleGameState gameState) {
+    final cs = Theme.of(context).colorScheme;
+    final isListening = gameState.isListening;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -1627,79 +1687,103 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
                     fontWeight: FontWeight.bold,
                   ),
             ),
-            const SizedBox(height: 20),
-            Container(
-              height: 120,
-              decoration: BoxDecoration(
-                border:
-                    Border.all(color: Theme.of(context).colorScheme.outline),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Center(
+            const SizedBox(height: 16),
+            // Recording box — tap to start/stop recording
+            InkWell(
+              onTap: _speechEnabled
+                  ? (isListening ? _stopListening : _startListening)
+                  : null,
+              borderRadius: BorderRadius.circular(12),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: isListening
+                        ? cs.error
+                        : cs.primary.withValues(alpha: 0.4),
+                    width: isListening ? 2 : 1.5,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  color: isListening
+                      ? cs.error.withValues(alpha: 0.06)
+                      : cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                ),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Mic / Stop icon inside the box
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 200),
+                      child: Icon(
+                        isListening ? Icons.stop_circle_rounded : Icons.mic_rounded,
+                        key: ValueKey(isListening),
+                        size: 40,
+                        color: isListening ? cs.error : cs.primary,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     Text(
-                      gameState.isListening
-                          ? 'Listening...'
-                          : 'Tap to start recording',
+                      isListening ? 'Listening… Tap to stop' : 'Tap to start recording',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: gameState.isListening
-                                ? Theme.of(context).colorScheme.error
-                                : Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant,
+                            color: isListening ? cs.error : cs.onSurfaceVariant,
+                            fontWeight: FontWeight.w500,
                           ),
                     ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-            if (gameState.userInput.isNotEmpty)
-              _buildVoiceTranscriptBox(gameState),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _speechEnabled
-                        ? (gameState.isListening
-                            ? _stopListening
-                            : _startListening)
-                        : null,
-                    icon: Icon(gameState.isListening ? Icons.stop : Icons.mic),
-                    label: Text(gameState.isListening ? 'Stop' : 'Record'),
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(120, 48),
-                      backgroundColor: gameState.isListening
-                          ? Theme.of(context).colorScheme.error
-                          : Theme.of(context).colorScheme.primary,
-                      foregroundColor: gameState.isListening
-                          ? Theme.of(context).colorScheme.onError
-                          : Theme.of(context).colorScheme.onPrimary,
+            const SizedBox(height: 10),
+            // "-1pt after 3 wrong attempts" pill — consistent with "Tap card to flip (-2pts)"
+            Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: cs.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: cs.outlineVariant),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.info_outline_rounded,
+                      size: 16,
+                      color: cs.primary,
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '-1pt after 3 wrong attempts',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: cs.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: gameState.showHintButton
-                      ? () => _confirmVoiceHint(context)
-                      : null,
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(120, 48),
-                    backgroundColor: Theme.of(context).colorScheme.tertiary,
-                    foregroundColor: Theme.of(context).colorScheme.onTertiary,
-                  ),
-                  child: Text(
-                    gameState.showHintButton
-                        ? 'Hint (-1 pt)'
-                        : 'Hint (3 attempts)',
-                  ),
-                ),
-              ],
+              ),
             ),
+            if (gameState.userInput.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _buildVoiceTranscriptBox(gameState),
+            ],
+            // Show hint button only after 3 wrong attempts
+            if (gameState.showHintButton) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 44,
+                child: ElevatedButton.icon(
+                  onPressed: () => _confirmVoiceHint(context),
+                  icon: const Icon(Icons.lightbulb_outline, size: 18),
+                  label: const Text('Hint (-1 pt)'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: cs.tertiary,
+                    foregroundColor: cs.onTertiary,
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),

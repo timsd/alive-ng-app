@@ -1,5 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { Client, Storage, Permission, Role } from 'node-appwrite';
+import { InputFile } from 'node-appwrite/file';
 
 if (fs.existsSync('.env')) {
   const envContent = fs.readFileSync('.env', 'utf8');
@@ -97,37 +99,107 @@ async function deleteExistingRelease() {
   }
 }
 
+function getAppVersion() {
+  try {
+    const content = fs.readFileSync('pubspec.yaml', 'utf8');
+    const match = content.match(/^version:\s*([^\s+]+)/m);
+    return match ? match[1] : '2.0.2';
+  } catch {
+    return '2.0.2';
+  }
+}
+
+const releaseFileName = `alive-ng-app-v${getAppVersion()}.apk`;
+
 async function uploadRelease() {
   if (!fs.existsSync(artifactPath)) {
     throw new Error(`Android release artifact was not found at: ${artifactPath}. Please build the APK first.`);
   }
 
   const stat = fs.statSync(artifactPath);
-  console.log(`Reading APK artifact from ${artifactPath} (${stat.size} bytes)...`);
+  const totalSize = stat.size;
+  const CHUNK_SIZE = 5 * 1024 * 1024; // 5 MB per chunk
+  const totalChunks = Math.ceil(totalSize / CHUNK_SIZE);
 
-  const fileBuffer = fs.readFileSync(artifactPath);
-  const blob = new Blob([fileBuffer], { type: 'application/vnd.android.package-archive' });
+  console.log(`Uploading ${artifactPath} (${totalSize} bytes) as ${releaseFileName} in ${totalChunks} chunk(s)...`);
 
-  const formData = new FormData();
-  formData.append('fileId', fileId);
-  formData.append('file', blob, 'ALIVE-Nigeria-App-v2.0.1.apk');
-  formData.append('permissions[]', 'read("any")');
+  const fd = fs.openSync(artifactPath, 'r');
+  let start = 0;
+  let chunkIndex = 0;
+  let uploadResult = null;
 
-  console.log('Uploading ALIVE-NG-App.apk to Appwrite Storage...');
-  const uploadRes = await appwriteRequest(`/storage/buckets/${bucketId}/files`, {
-    method: 'POST',
-    body: formData,
-  });
+  try {
+    while (start < totalSize) {
+      let end = start + CHUNK_SIZE;
+      if (end > totalSize) end = totalSize;
+      const chunkSize = end - start;
 
-  if (!uploadRes.ok) {
-    throw new Error(`Upload failed (${uploadRes.status}): ${await uploadRes.text()}`);
+      const buffer = Buffer.alloc(chunkSize);
+      fs.readSync(fd, buffer, 0, chunkSize, start);
+      const blob = new Blob([buffer], { type: 'application/vnd.android.package-archive' });
+
+      const formData = new FormData();
+      formData.append('fileId', fileId);
+      formData.append('file', blob, releaseFileName);
+      if (chunkIndex === 0) {
+        formData.append('permissions[]', 'read("any")');
+      }
+
+      const reqHeaders = {
+        'Content-Range': `bytes ${start}-${end - 1}/${totalSize}`,
+      };
+      if (uploadResult && uploadResult.$id) {
+        reqHeaders['x-appwrite-id'] = uploadResult.$id;
+      }
+
+      let res;
+      let retries = 4;
+      while (retries > 0) {
+        res = await appwriteRequest(`/storage/buckets/${bucketId}/files`, {
+          method: 'POST',
+          headers: reqHeaders,
+          body: formData,
+        });
+        if (res.ok) break;
+        retries--;
+        if (retries > 0) {
+          console.warn(`Chunk ${chunkIndex + 1} got HTTP ${res.status}. Retrying in 4s (${retries} attempts left)...`);
+          await new Promise((r) => setTimeout(r, 4000));
+        }
+      }
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Upload failed on chunk ${chunkIndex + 1}/${totalChunks} (HTTP ${res.status}): ${errorText}`);
+      }
+
+      uploadResult = await res.json();
+      chunkIndex++;
+      const progress = Math.round((end / totalSize) * 100);
+      console.log(`Chunk ${chunkIndex}/${totalChunks} uploaded (${progress}%, ${end}/${totalSize} bytes)`);
+
+      start = end;
+    }
+  } finally {
+    fs.closeSync(fd);
   }
 
-  const data = await uploadRes.json();
-  const downloadUrl = `${endpoint}/storage/buckets/${bucketId}/files/${data.$id}/download?project=${encodeURIComponent(projectId)}`;
+  // Ensure public read permissions are persisted on the uploaded file
+  try {
+    await appwriteRequest(`/storage/buckets/${bucketId}/files/${uploadResult.$id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ permissions: ['read("any")'] }),
+    });
+    console.log('Public read permissions confirmed on uploaded APK.');
+  } catch (permErr) {
+    console.warn('Notice on file permissions update:', permErr.message);
+  }
+
+  const downloadUrl = `${endpoint}/storage/buckets/${bucketId}/files/${uploadResult.$id}/download?project=${encodeURIComponent(projectId)}`;
 
   console.log(`\n========================================`);
-  console.log(`SUCCESS: Uploaded ${data.name} (${stat.size} bytes)`);
+  console.log(`SUCCESS: Uploaded ${uploadResult.name} (${uploadResult.sizeOriginal || totalSize} bytes)`);
   console.log(`ANDROID_APK_URL=${downloadUrl}`);
   console.log(`========================================\n`);
 }
@@ -146,5 +218,7 @@ async function main() {
 
 main().catch((err) => {
   console.error('\nERROR:', err.message);
+  if (err.cause) console.error('CAUSE:', err.cause);
+  if (err.response) console.error('RESPONSE:', err.response);
   process.exit(1);
 });

@@ -314,6 +314,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
             children: [
               Expanded(
                 child: DropdownButtonFormField<StudyGuideType>(
+                  isExpanded: true,
                   initialValue: _selectedType,
                   decoration: const InputDecoration(
                     labelText: 'Type',
@@ -322,7 +323,8 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
                   items: [null, ...StudyGuideType.values].map((type) {
                     return DropdownMenuItem(
                       value: type,
-                      child: Text(type?.name.toUpperCase() ?? 'All Types'),
+                      child: Text(type?.name.toUpperCase() ?? 'All Types',
+                          overflow: TextOverflow.ellipsis),
                     );
                   }).toList(),
                   onChanged: (value) {
@@ -334,6 +336,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
               SizedBox(width: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
               Expanded(
                 child: DropdownButtonFormField<StudyDifficulty>(
+                  isExpanded: true,
                   initialValue: _selectedDifficulty,
                   decoration: const InputDecoration(
                     labelText: 'Difficulty',
@@ -342,7 +345,8 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
                   items: [null, ...StudyDifficulty.values].map((difficulty) {
                     return DropdownMenuItem(
                       value: difficulty,
-                      child: Text(difficulty?.name.toUpperCase() ?? 'All Levels'),
+                      child: Text(difficulty?.name.toUpperCase() ?? 'All Levels',
+                          overflow: TextOverflow.ellipsis),
                     );
                   }).toList(),
                   onChanged: (value) {

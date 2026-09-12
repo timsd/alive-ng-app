@@ -822,6 +822,10 @@ class PrayerRequest {
   final DateTime createdAt;
   final DateTime updatedAt;
   final UserProfile? user;
+  final bool isPrivate;
+  final String? roomId;
+  final String? testimonyId;
+  final DateTime? answeredAt;
 
   PrayerRequest({
     required this.id,
@@ -835,22 +839,36 @@ class PrayerRequest {
     required this.createdAt,
     required this.updatedAt,
     this.user,
+    this.isPrivate = false,
+    this.roomId,
+    this.testimonyId,
+    this.answeredAt,
   });
 
   factory PrayerRequest.fromJson(Map<String, dynamic> json) {
     return PrayerRequest(
       id: json['id'] as String,
-      userId: json['user_id'] as String,
-      title: json['title'] as String,
-      description: json['description'] as String,
-      category: json['category'] as String,
+      userId: (json['user_id'] as String?) ?? (json['userId'] as String?) ?? '',
+      title: json['title'] as String? ?? '',
+      description: json['description'] as String? ?? '',
+      category: json['category'] as String? ?? '',
       isAnonymous: json['is_anonymous'] as bool? ?? false,
       isAnswered: json['is_answered'] as bool? ?? false,
       prayerCount: json['prayer_count'] as int? ?? 0,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'] as String)
+          : DateTime.now(),
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'] as String)
+          : DateTime.now(),
       user: json['user'] != null
           ? UserProfile.fromJson(json['user'] as Map<String, dynamic>)
+          : null,
+      isPrivate: json['is_private'] as bool? ?? false,
+      roomId: json['room_id'] as String?,
+      testimonyId: json['testimony_id'] as String?,
+      answeredAt: json['answered_at'] != null
+          ? DateTime.parse(json['answered_at'] as String)
           : null,
     );
   }
@@ -867,6 +885,133 @@ class PrayerRequest {
       'prayer_count': prayerCount,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
+      'is_private': isPrivate,
+      if (roomId != null) 'room_id': roomId,
+      if (testimonyId != null) 'testimony_id': testimonyId,
+      if (answeredAt != null) 'answered_at': answeredAt!.toIso8601String(),
+    };
+  }
+}
+
+// Private Prayer Room Model
+class PrivatePrayerRoom {
+  final String id;
+  final String name;
+  final String description;
+  final List<String> allowedRoles;
+  final List<String> allowedUserIds;
+  final String createdBy;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final int memberCount;
+
+  PrivatePrayerRoom({
+    required this.id,
+    required this.name,
+    required this.description,
+    this.allowedRoles = const [],
+    this.allowedUserIds = const [],
+    required this.createdBy,
+    required this.createdAt,
+    required this.updatedAt,
+    this.memberCount = 0,
+  });
+
+  factory PrivatePrayerRoom.fromJson(Map<String, dynamic> json) {
+    return PrivatePrayerRoom(
+      id: json['id'] as String,
+      name: json['name'] as String? ?? '',
+      description: json['description'] as String? ?? '',
+      allowedRoles: (json['allowed_roles'] as List?)?.map((e) => e.toString()).toList() ??
+          (json['allowedRoles'] as List?)?.map((e) => e.toString()).toList() ??
+          const [],
+      allowedUserIds: (json['allowed_user_ids'] as List?)?.map((e) => e.toString()).toList() ??
+          (json['allowedUserIds'] as List?)?.map((e) => e.toString()).toList() ??
+          const [],
+      createdBy: json['created_by'] as String? ?? json['createdBy'] as String? ?? '',
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'] as String)
+          : DateTime.now(),
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'] as String)
+          : DateTime.now(),
+      memberCount: json['member_count'] as int? ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'description': description,
+      'allowed_roles': allowedRoles,
+      'allowed_user_ids': allowedUserIds,
+      'created_by': createdBy,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
+      'member_count': memberCount,
+    };
+  }
+
+  bool canUserAccess({required String? role, required String userId}) {
+    if (role != null && allowedRoles.map((r) => r.toLowerCase()).contains(role.toLowerCase())) {
+      return true;
+    }
+    if (allowedUserIds.contains(userId)) return true;
+    if (createdBy == userId) return true;
+    return false;
+  }
+}
+
+// Prayer Testimony Model
+class PrayerTestimony {
+  final String id;
+  final String prayerRequestId;
+  final String userId;
+  final String authorName;
+  final String title;
+  final String body;
+  final DateTime createdAt;
+  final DateTime? updatedAt;
+
+  PrayerTestimony({
+    required this.id,
+    required this.prayerRequestId,
+    required this.userId,
+    required this.authorName,
+    required this.title,
+    required this.body,
+    required this.createdAt,
+    this.updatedAt,
+  });
+
+  factory PrayerTestimony.fromJson(Map<String, dynamic> json) {
+    return PrayerTestimony(
+      id: json['id'] as String,
+      prayerRequestId: json['prayer_request_id'] as String? ?? json['prayerRequestId'] as String? ?? '',
+      userId: json['user_id'] as String? ?? json['userId'] as String? ?? '',
+      authorName: json['author_name'] as String? ?? json['authorName'] as String? ?? 'ALIVE Member',
+      title: json['title'] as String? ?? '',
+      body: json['body'] as String? ?? json['content'] as String? ?? '',
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'] as String)
+          : DateTime.now(),
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'] as String)
+          : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'prayer_request_id': prayerRequestId,
+      'user_id': userId,
+      'author_name': authorName,
+      'title': title,
+      'body': body,
+      'created_at': createdAt.toIso8601String(),
+      if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
     };
   }
 }

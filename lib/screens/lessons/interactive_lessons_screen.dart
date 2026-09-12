@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/language_provider.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../utils/responsive_utils.dart';
+import '../../utils/search_utils.dart';
 import '../../utils/text_formatter.dart';
 import '../../services/role_access_service.dart';
 
@@ -132,10 +133,14 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
       lessons = lessons.where((lesson) => lesson['level'] == _selectedLevel).toList();
     }
     if (_searchQuery.isNotEmpty) {
-      lessons = lessons.where((lesson) => 
-        lesson['title'].toLowerCase().contains(_searchQuery.toLowerCase()) ||
-        lesson['description'].toLowerCase().contains(_searchQuery.toLowerCase())
-      ).toList();
+      lessons = SearchUtils.rankFilter(
+        lessons,
+        _searchQuery,
+        (lesson) => [
+          lesson['title']?.toString() ?? '',
+          lesson['description']?.toString() ?? '',
+        ],
+      );
     }
     return lessons;
   }

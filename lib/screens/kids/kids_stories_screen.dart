@@ -8,6 +8,7 @@ import '../../utils/responsive_utils.dart';
 import '../../utils/layout_fix_utils.dart';
 import '../../models/kids_models.dart';
 import '../../utils/error_handler.dart';
+import '../../utils/search_utils.dart';
 
 class KidsStoriesScreen extends ConsumerStatefulWidget {
   const KidsStoriesScreen({super.key});
@@ -260,7 +261,8 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
                         children: [
                           Expanded(
                             child: DropdownButtonFormField<String>(
-                              initialValue: _selectedAgeGroup,
+                              isExpanded: true,
+                              value: _selectedAgeGroup,
                               decoration: InputDecoration(
                                 labelText: 'Age Group',
                                 border: OutlineInputBorder(
@@ -304,7 +306,8 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
                                   desktop: 14.0)),
                           Expanded(
                             child: DropdownButtonFormField<String>(
-                              initialValue: _selectedCategory,
+                              isExpanded: true,
+                              value: _selectedCategory,
                               decoration: InputDecoration(
                                 labelText: 'Category',
                                 border: OutlineInputBorder(
@@ -437,21 +440,19 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
       );
     }
 
-    // Filter
-    final filteredStories = stories.where((story) {
-      final matchesSearch = _searchController.text.isEmpty ||
-          story.title
-              .toLowerCase()
-              .contains(_searchController.text.toLowerCase()) ||
-          story.description
-              .toLowerCase()
-              .contains(_searchController.text.toLowerCase());
+    // Filter (search standard: exact phrase, then ALL words, then ANY word).
+    final preFiltered = stories.where((story) {
       final matchesAge = _selectedAgeGroup == 'All' ||
           story.ageGroup.displayName == _selectedAgeGroup;
       final matchesCategory = _selectedCategory == 'All' ||
           story.category.displayName == _selectedCategory;
-      return matchesSearch && matchesAge && matchesCategory;
+      return matchesAge && matchesCategory;
     }).toList();
+    final filteredStories = SearchUtils.rankFilter(
+      preFiltered,
+      _searchController.text,
+      (story) => [story.title, story.description],
+    );
 
     if (filteredStories.isEmpty) {
       return Center(

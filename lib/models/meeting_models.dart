@@ -135,11 +135,10 @@ class MeetingSession {
 
   /// Local participant, if one exists in [participants].
   ParticipantInfo? get localParticipant {
-    try {
-      return participants.firstWhere((p) => p.isLocal);
-    } catch (_) {
-      return null;
+    for (final p in participants) {
+      if (p.isLocal) return p;
     }
+    return null;
   }
 
   /// Remote participants (excluding local).

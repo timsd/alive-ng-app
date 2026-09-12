@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -18,9 +18,9 @@ class QuickActionsGrid extends ConsumerWidget {
     final actions = [
       const QuickAction(
         icon: Icons.child_care_rounded,
-        title: 'Kid Mission',
+        title: 'Kids Missions',
         color: Color(0xFFF43F5E), // Rose 500
-        route: '/kid-mission',
+        route: AppConstants.kidsMissionRoute,
       ),
       const QuickAction(
         icon: Icons.trending_up_rounded,
@@ -38,7 +38,7 @@ class QuickActionsGrid extends ConsumerWidget {
         icon: Icons.restaurant_menu_rounded,
         title: 'Recipes',
         color: Color(0xFFF59E0B), // Amber 500
-        route: '/healthy-recipes',
+        route: AppConstants.recipesRoute,
       ),
       QuickAction(
         icon: Icons.public_rounded,
@@ -75,6 +75,12 @@ class QuickActionsGrid extends ConsumerWidget {
         title: 'Bible',
         color: Color(0xFF6366F1), // Indigo 500
         route: AppConstants.bibleRoute,
+      ),
+      const QuickAction(
+        icon: Icons.wb_sunny_rounded,
+        title: 'Daily Verse',
+        color: Color(0xFFF59E0B), // Amber 500
+        route: AppConstants.dailyRoute,
       ),
     ];
 

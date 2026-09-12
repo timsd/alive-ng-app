@@ -50,6 +50,8 @@ class AppwriteBackendConfig {
   static const String prayerStrengtheningFeedCollectionId =
       'prayer_strengthening_feed';
   static const String testimoniesCollectionId = 'testimonies';
+  static const String privatePrayerRoomsCollectionId = 'private_prayer_rooms';
+  static const String prayerTestimoniesCollectionId = 'prayer_testimonies';
   static const String pushTokensCollectionId = 'push_tokens';
   static const String notificationSettingsCollectionId =
       'notification_settings';

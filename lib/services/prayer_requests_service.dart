@@ -33,6 +33,7 @@ class PrayerRequestsService {
 
       return response.rows
           .map((doc) => PrayerRequest.fromJson(_documentData(doc)))
+          .where((r) => !r.isPrivate)
           .toList();
     } catch (e) {
       _logger.error('Error fetching prayer requests', e);
@@ -144,6 +145,8 @@ class PrayerRequestsService {
           'status': 'active',
           'is_anonymous': request.isAnonymous,
           'is_answered': false,
+          'is_private': request.isPrivate,
+          if (request.roomId != null) 'room_id': request.roomId,
           'prayer_count': 0,
           'created_at': now,
           'updated_at': now,
@@ -239,6 +242,174 @@ class PrayerRequestsService {
         'Failed to delete prayer request',
         originalError: e,
       );
+    }
+  }
+
+  // --- Private Prayer Rooms ---
+
+  Future<List<PrivatePrayerRoom>> fetchPrivateRooms({
+    required String userId,
+    required String role,
+  }) async {
+    try {
+      final response = await _tables.listRows(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: AppwriteBackendConfig.privatePrayerRoomsCollectionId,
+        queries: [
+          Query.orderDesc('created_at'),
+          Query.limit(100),
+        ],
+      );
+
+      final allRooms = response.rows
+          .map((doc) => PrivatePrayerRoom.fromJson(_documentData(doc)))
+          .toList();
+
+      return allRooms
+          .where((room) => room.canUserAccess(role: role, userId: userId))
+          .toList();
+    } catch (e) {
+      _logger.error('Error fetching private prayer rooms', e);
+      // If collection doesn't exist yet or is empty, return empty list gracefully
+      return <PrivatePrayerRoom>[];
+    }
+  }
+
+  Future<PrivatePrayerRoom> createPrivateRoom(PrivatePrayerRoom room) async {
+    try {
+      final now = DateTime.now().toIso8601String();
+      final document = await _tables.createRow(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: AppwriteBackendConfig.privatePrayerRoomsCollectionId,
+        rowId: ID.unique(),
+        data: {
+          'name': room.name,
+          'description': room.description,
+          'allowed_roles': room.allowedRoles,
+          'allowed_user_ids': room.allowedUserIds,
+          'created_by': room.createdBy,
+          'created_at': now,
+          'updated_at': now,
+          'member_count': room.memberCount,
+        },
+      );
+
+      return PrivatePrayerRoom.fromJson(_documentData(document));
+    } catch (e) {
+      _logger.error('Error creating private prayer room', e);
+      throw DatabaseException(
+        'Failed to create private prayer room',
+        originalError: e,
+      );
+    }
+  }
+
+  Future<List<PrayerRequest>> fetchRoomPrayerRequests(String roomId) async {
+    try {
+      final response = await _tables.listRows(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: AppwriteBackendConfig.prayerRequestsCollectionId,
+        queries: [
+          Query.equal('room_id', roomId),
+          Query.orderDesc('created_at'),
+          Query.limit(200),
+        ],
+      );
+
+      return response.rows
+          .map((doc) => PrayerRequest.fromJson(_documentData(doc)))
+          .toList();
+    } catch (e) {
+      _logger.error('Error fetching room prayer requests', e);
+      return <PrayerRequest>[];
+    }
+  }
+
+  // --- Answered Prayer & Testimonies ---
+
+  Future<void> markPrayerAnswered({
+    required String requestId,
+    String? testimonyId,
+  }) async {
+    try {
+      final now = DateTime.now().toIso8601String();
+      final updates = <String, dynamic>{
+        'is_answered': true,
+        'status': 'answered',
+        'answered_at': now,
+        'updated_at': now,
+      };
+      if (testimonyId != null) {
+        updates['testimony_id'] = testimonyId;
+      }
+
+      await _tables.updateRow(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: AppwriteBackendConfig.prayerRequestsCollectionId,
+        rowId: requestId,
+        data: updates,
+      );
+    } catch (e) {
+      _logger.error('Error marking prayer as answered', e);
+      throw DatabaseException(
+        'Failed to mark prayer as answered',
+        originalError: e,
+      );
+    }
+  }
+
+  Future<PrayerTestimony> addPrayerTestimony(PrayerTestimony testimony) async {
+    try {
+      final now = DateTime.now().toIso8601String();
+      final doc = await _tables.createRow(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: AppwriteBackendConfig.prayerTestimoniesCollectionId,
+        rowId: ID.unique(),
+        data: {
+          'prayer_request_id': testimony.prayerRequestId,
+          'user_id': testimony.userId,
+          'author_name': testimony.authorName,
+          'title': testimony.title,
+          'body': testimony.body,
+          'created_at': now,
+          'updated_at': now,
+        },
+      );
+
+      final created = PrayerTestimony.fromJson(_documentData(doc));
+
+      // Link testimony to prayer request and mark as answered
+      await markPrayerAnswered(
+        requestId: testimony.prayerRequestId,
+        testimonyId: created.id,
+      );
+
+      return created;
+    } catch (e) {
+      _logger.error('Error adding prayer testimony', e);
+      throw DatabaseException(
+        'Failed to record prayer testimony',
+        originalError: e,
+      );
+    }
+  }
+
+  Future<PrayerTestimony?> fetchPrayerTestimony(String prayerRequestId) async {
+    try {
+      final response = await _tables.listRows(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: AppwriteBackendConfig.prayerTestimoniesCollectionId,
+        queries: [
+          Query.equal('prayer_request_id', prayerRequestId),
+          Query.limit(1),
+        ],
+      );
+
+      if (response.rows.isEmpty) return null;
+      return PrayerTestimony.fromJson(_documentData(response.rows.first));
+    } catch (e) {
+      _logger.error('Error fetching prayer testimony', e);
+      return null;
     }
   }
 

@@ -1,422 +1,22 @@
 [
   {
-    "name": "ABÙ NKE ABÙ",
-    "abbreviation": "ABÙNKE",
-    "chapters": 8,
-    "testament": "old",
-    "order": 1,
-    "translations": {
-      "IGBOB": "ABÙ NKE ABÙ"
-    }
-  },
-  {
-    "name": "ABÙ ỌMA",
-    "abbreviation": "ABÙỌMA",
-    "chapters": 150,
-    "testament": "new",
-    "order": 2,
-    "translations": {
-      "IGBOB": "ABÙ ỌMA"
-    }
-  },
-  {
-    "name": "ABÙ-ÁKWÁ",
-    "abbreviation": "ABÙ-",
-    "chapters": 5,
-    "testament": "new",
-    "order": 3,
-    "translations": {
-      "IGBOB": "ABÙ-ÁKWÁ"
-    }
-  },
-  {
-    "name": "AISAIA",
-    "abbreviation": "AISA",
-    "chapters": 66,
-    "testament": "old",
-    "order": 4,
-    "translations": {
-      "IGBOB": "AISAIA"
-    }
-  },
-  {
-    "name": "DANIEL",
-    "abbreviation": "DANI",
-    "chapters": 12,
-    "testament": "new",
-    "order": 5,
-    "translations": {
-      "IGBOB": "DANIEL"
-    }
-  },
-  {
-    "name": "DEUTERONOMI",
-    "abbreviation": "DEUT",
-    "chapters": 34,
-    "testament": "old",
-    "order": 6,
-    "translations": {
-      "IGBOB": "DEUTERONOMI"
-    }
-  },
-  {
-    "name": "EKLISIASTIS",
-    "abbreviation": "EKLI",
-    "chapters": 12,
-    "testament": "new",
-    "order": 7,
-    "translations": {
-      "IGBOB": "EKLISIASTIS"
-    }
-  },
-  {
-    "name": "EMOS",
-    "abbreviation": "EMOS",
-    "chapters": 9,
-    "testament": "new",
-    "order": 8,
-    "translations": {
-      "IGBOB": "EMOS"
-    }
-  },
-  {
-    "name": "ESTA",
-    "abbreviation": "ESTA",
-    "chapters": 10,
-    "testament": "old",
-    "order": 9,
-    "translations": {
-      "IGBOB": "ESTA"
-    }
-  },
-  {
-    "name": "EZIKIEL",
-    "abbreviation": "EZIK",
-    "chapters": 48,
-    "testament": "new",
-    "order": 10,
-    "translations": {
-      "IGBOB": "EZIKIEL"
-    }
-  },
-  {
-    "name": "EZRA",
-    "abbreviation": "EZRA",
-    "chapters": 10,
-    "testament": "new",
-    "order": 11,
-    "translations": {
-      "IGBOB": "EZRA"
-    }
-  },
-  {
-    "name": "FAILIMON",
-    "abbreviation": "FAIL",
-    "chapters": 1,
-    "testament": "old",
-    "order": 12,
-    "translations": {
-      "IGBOB": "FAILIMON"
-    }
-  },
-  {
-    "name": "HABAKUK",
-    "abbreviation": "HABA",
-    "chapters": 3,
-    "testament": "new",
-    "order": 13,
-    "translations": {
-      "IGBOB": "HABAKUK"
-    }
-  },
-  {
-    "name": "HAGAI",
-    "abbreviation": "HAGA",
-    "chapters": 2,
-    "testament": "old",
-    "order": 14,
-    "translations": {
-      "IGBOB": "HAGAI"
-    }
-  },
-  {
-    "name": "HOSEA",
-    "abbreviation": "HOSE",
-    "chapters": 14,
-    "testament": "new",
-    "order": 15,
-    "translations": {
-      "IGBOB": "HOSEA"
-    }
-  },
-  {
-    "name": "I. IHE EMERE",
-    "abbreviation": "I.IHE",
-    "chapters": 29,
-    "testament": "new",
-    "order": 16,
-    "translations": {
-      "IGBOB": "I. IHE EMERE"
-    }
-  },
-  {
-    "name": "I. JỌN",
-    "abbreviation": "I.JỌN",
-    "chapters": 5,
-    "testament": "new",
-    "order": 17,
-    "translations": {
-      "IGBOB": "I. JỌN"
-    }
-  },
-  {
-    "name": "I. NDI KỌRINT",
-    "abbreviation": "I.NDI",
-    "chapters": 16,
-    "testament": "new",
-    "order": 18,
-    "translations": {
-      "IGBOB": "I. NDI KỌRINT"
-    }
-  },
-  {
-    "name": "I. NDI TESALỌNAIKA",
-    "abbreviation": "I.NDI",
-    "chapters": 5,
-    "testament": "old",
-    "order": 19,
-    "translations": {
-      "IGBOB": "I. NDI TESALỌNAIKA"
-    }
-  },
-  {
-    "name": "I. NDI-EZE",
-    "abbreviation": "I.NDI-EZE",
-    "chapters": 22,
-    "testament": "new",
-    "order": 20,
-    "translations": {
-      "IGBOB": "I. NDI-EZE"
-    }
-  },
-  {
-    "name": "I. PITA",
-    "abbreviation": "I.PITA",
-    "chapters": 5,
-    "testament": "old",
-    "order": 21,
-    "translations": {
-      "IGBOB": "I. PITA"
-    }
-  },
-  {
-    "name": "I. SAMUEL",
-    "abbreviation": "I.SAMUEL",
-    "chapters": 31,
-    "testament": "old",
-    "order": 22,
-    "translations": {
-      "IGBOB": "I. SAMUEL"
-    }
-  },
-  {
-    "name": "I. TIMỌTI",
-    "abbreviation": "I.TIMỌTI",
-    "chapters": 6,
-    "testament": "old",
-    "order": 23,
-    "translations": {
-      "IGBOB": "I. TIMỌTI"
-    }
-  },
-  {
-    "name": "II. IHE EMERE",
-    "abbreviation": "II.IHE",
-    "chapters": 36,
-    "testament": "new",
-    "order": 24,
-    "translations": {
-      "IGBOB": "II. IHE EMERE"
-    }
-  },
-  {
-    "name": "II. JỌN",
-    "abbreviation": "II.JỌN",
-    "chapters": 1,
-    "testament": "old",
-    "order": 25,
-    "translations": {
-      "IGBOB": "II. JỌN"
-    }
-  },
-  {
-    "name": "II. NDI KỌRINT",
-    "abbreviation": "II.NDI",
-    "chapters": 13,
-    "testament": "old",
-    "order": 26,
-    "translations": {
-      "IGBOB": "II. NDI KỌRINT"
-    }
-  },
-  {
-    "name": "II. NDI TESALỌNAIKA",
-    "abbreviation": "II.NDI",
-    "chapters": 3,
-    "testament": "old",
-    "order": 27,
-    "translations": {
-      "IGBOB": "II. NDI TESALỌNAIKA"
-    }
-  },
-  {
-    "name": "II. NDI-EZE",
-    "abbreviation": "II.NDI-EZE",
-    "chapters": 25,
-    "testament": "old",
-    "order": 28,
-    "translations": {
-      "IGBOB": "II. NDI-EZE"
-    }
-  },
-  {
-    "name": "II. PITA",
-    "abbreviation": "II.PITA",
-    "chapters": 3,
-    "testament": "new",
-    "order": 29,
-    "translations": {
-      "IGBOB": "II. PITA"
-    }
-  },
-  {
-    "name": "II. SAMUEL",
-    "abbreviation": "II.SAMUEL",
-    "chapters": 24,
-    "testament": "old",
-    "order": 30,
-    "translations": {
-      "IGBOB": "II. SAMUEL"
-    }
-  },
-  {
-    "name": "II. TIMỌTI",
-    "abbreviation": "II.TIMỌTI",
-    "chapters": 4,
-    "testament": "old",
-    "order": 31,
-    "translations": {
-      "IGBOB": "II. TIMỌTI"
-    }
-  },
-  {
-    "name": "III. JỌN",
-    "abbreviation": "IIIJỌN",
-    "chapters": 1,
-    "testament": "old",
-    "order": 32,
-    "translations": {
-      "IGBOB": "III. JỌN"
-    }
-  },
-  {
-    "name": "ILU",
-    "abbreviation": "ILU",
-    "chapters": 31,
-    "testament": "new",
-    "order": 33,
-    "translations": {
-      "IGBOB": "ILU"
-    }
-  },
-  {
-    "name": "JEMES",
-    "abbreviation": "JEME",
-    "chapters": 5,
-    "testament": "old",
-    "order": 34,
-    "translations": {
-      "IGBOB": "JEMES"
-    }
-  },
-  {
     "name": "JENESIS",
     "abbreviation": "JENE",
     "chapters": 50,
     "testament": "old",
-    "order": 35,
+    "order": 1,
     "translations": {
       "IGBOB": "JENESIS"
     }
   },
   {
-    "name": "JEREMAIA",
-    "abbreviation": "JERE",
-    "chapters": 52,
-    "testament": "new",
-    "order": 36,
-    "translations": {
-      "IGBOB": "JEREMAIA"
-    }
-  },
-  {
-    "name": "JOB",
-    "abbreviation": "JOB",
-    "chapters": 42,
+    "name": "ỌPUPU",
+    "abbreviation": "ỌPUP",
+    "chapters": 40,
     "testament": "old",
-    "order": 37,
+    "order": 2,
     "translations": {
-      "IGBOB": "JOB"
-    }
-  },
-  {
-    "name": "JOEL",
-    "abbreviation": "JOEL",
-    "chapters": 3,
-    "testament": "old",
-    "order": 38,
-    "translations": {
-      "IGBOB": "JOEL"
-    }
-  },
-  {
-    "name": "JONA",
-    "abbreviation": "JONA",
-    "chapters": 4,
-    "testament": "old",
-    "order": 39,
-    "translations": {
-      "IGBOB": "JONA"
-    }
-  },
-  {
-    "name": "JOSHUA",
-    "abbreviation": "JOSH",
-    "chapters": 24,
-    "testament": "new",
-    "order": 40,
-    "translations": {
-      "IGBOB": "JOSHUA"
-    }
-  },
-  {
-    "name": "JUD",
-    "abbreviation": "JUD",
-    "chapters": 1,
-    "testament": "old",
-    "order": 41,
-    "translations": {
-      "IGBOB": "JUD"
-    }
-  },
-  {
-    "name": "JỌN",
-    "abbreviation": "JỌN",
-    "chapters": 21,
-    "testament": "old",
-    "order": 42,
-    "translations": {
-      "IGBOB": "JỌN"
+      "IGBOB": "ỌPUPU"
     }
   },
   {
@@ -424,19 +24,299 @@
     "abbreviation": "LEVI",
     "chapters": 27,
     "testament": "new",
-    "order": 43,
+    "order": 3,
     "translations": {
       "IGBOB": "LEVITIKỌS"
     }
   },
   {
-    "name": "LUK",
-    "abbreviation": "LUK",
+    "name": "ỌNU-ỌGUGU",
+    "abbreviation": "ỌNU-",
+    "chapters": 36,
+    "testament": "old",
+    "order": 4,
+    "translations": {
+      "IGBOB": "ỌNU-ỌGUGU"
+    }
+  },
+  {
+    "name": "DEUTERONOMI",
+    "abbreviation": "DEUT",
+    "chapters": 34,
+    "testament": "old",
+    "order": 5,
+    "translations": {
+      "IGBOB": "DEUTERONOMI"
+    }
+  },
+  {
+    "name": "JOSHUA",
+    "abbreviation": "JOSH",
+    "chapters": 24,
+    "testament": "new",
+    "order": 6,
+    "translations": {
+      "IGBOB": "JOSHUA"
+    }
+  },
+  {
+    "name": "NDI-IKPE",
+    "abbreviation": "NDI-",
+    "chapters": 21,
+    "testament": "old",
+    "order": 7,
+    "translations": {
+      "IGBOB": "NDI-IKPE"
+    }
+  },
+  {
+    "name": "RUT",
+    "abbreviation": "RUT",
+    "chapters": 4,
+    "testament": "new",
+    "order": 8,
+    "translations": {
+      "IGBOB": "RUT"
+    }
+  },
+  {
+    "name": "I. SAMUEL",
+    "abbreviation": "I.SAMUEL",
+    "chapters": 31,
+    "testament": "old",
+    "order": 9,
+    "translations": {
+      "IGBOB": "I. SAMUEL"
+    }
+  },
+  {
+    "name": "II. SAMUEL",
+    "abbreviation": "II.SAMUEL",
     "chapters": 24,
     "testament": "old",
-    "order": 44,
+    "order": 10,
     "translations": {
-      "IGBOB": "LUK"
+      "IGBOB": "II. SAMUEL"
+    }
+  },
+  {
+    "name": "I. NDI-EZE",
+    "abbreviation": "I.NDI-EZE",
+    "chapters": 22,
+    "testament": "new",
+    "order": 11,
+    "translations": {
+      "IGBOB": "I. NDI-EZE"
+    }
+  },
+  {
+    "name": "II. NDI-EZE",
+    "abbreviation": "II.NDI-EZE",
+    "chapters": 25,
+    "testament": "old",
+    "order": 12,
+    "translations": {
+      "IGBOB": "II. NDI-EZE"
+    }
+  },
+  {
+    "name": "I. IHE EMERE",
+    "abbreviation": "I.IHE",
+    "chapters": 29,
+    "testament": "new",
+    "order": 13,
+    "translations": {
+      "IGBOB": "I. IHE EMERE"
+    }
+  },
+  {
+    "name": "II. IHE EMERE",
+    "abbreviation": "II.IHE",
+    "chapters": 36,
+    "testament": "new",
+    "order": 14,
+    "translations": {
+      "IGBOB": "II. IHE EMERE"
+    }
+  },
+  {
+    "name": "EZRA",
+    "abbreviation": "EZRA",
+    "chapters": 10,
+    "testament": "new",
+    "order": 15,
+    "translations": {
+      "IGBOB": "EZRA"
+    }
+  },
+  {
+    "name": "NEHEMAIA",
+    "abbreviation": "NEHE",
+    "chapters": 13,
+    "testament": "new",
+    "order": 16,
+    "translations": {
+      "IGBOB": "NEHEMAIA"
+    }
+  },
+  {
+    "name": "ESTA",
+    "abbreviation": "ESTA",
+    "chapters": 10,
+    "testament": "old",
+    "order": 17,
+    "translations": {
+      "IGBOB": "ESTA"
+    }
+  },
+  {
+    "name": "JOB",
+    "abbreviation": "JOB",
+    "chapters": 42,
+    "testament": "old",
+    "order": 18,
+    "translations": {
+      "IGBOB": "JOB"
+    }
+  },
+  {
+    "name": "ABÙ ỌMA",
+    "abbreviation": "ABÙỌMA",
+    "chapters": 150,
+    "testament": "new",
+    "order": 19,
+    "translations": {
+      "IGBOB": "ABÙ ỌMA"
+    }
+  },
+  {
+    "name": "ILU",
+    "abbreviation": "ILU",
+    "chapters": 31,
+    "testament": "new",
+    "order": 20,
+    "translations": {
+      "IGBOB": "ILU"
+    }
+  },
+  {
+    "name": "EKLISIASTIS",
+    "abbreviation": "EKLI",
+    "chapters": 12,
+    "testament": "new",
+    "order": 21,
+    "translations": {
+      "IGBOB": "EKLISIASTIS"
+    }
+  },
+  {
+    "name": "ABÙ NKE ABÙ",
+    "abbreviation": "ABÙNKE",
+    "chapters": 8,
+    "testament": "old",
+    "order": 22,
+    "translations": {
+      "IGBOB": "ABÙ NKE ABÙ"
+    }
+  },
+  {
+    "name": "AISAIA",
+    "abbreviation": "AISA",
+    "chapters": 66,
+    "testament": "old",
+    "order": 23,
+    "translations": {
+      "IGBOB": "AISAIA"
+    }
+  },
+  {
+    "name": "JEREMAIA",
+    "abbreviation": "JERE",
+    "chapters": 52,
+    "testament": "new",
+    "order": 24,
+    "translations": {
+      "IGBOB": "JEREMAIA"
+    }
+  },
+  {
+    "name": "ABÙ-ÁKWÁ",
+    "abbreviation": "ABÙ-",
+    "chapters": 5,
+    "testament": "new",
+    "order": 25,
+    "translations": {
+      "IGBOB": "ABÙ-ÁKWÁ"
+    }
+  },
+  {
+    "name": "EZIKIEL",
+    "abbreviation": "EZIK",
+    "chapters": 48,
+    "testament": "new",
+    "order": 26,
+    "translations": {
+      "IGBOB": "EZIKIEL"
+    }
+  },
+  {
+    "name": "DANIEL",
+    "abbreviation": "DANI",
+    "chapters": 12,
+    "testament": "new",
+    "order": 27,
+    "translations": {
+      "IGBOB": "DANIEL"
+    }
+  },
+  {
+    "name": "HOSEA",
+    "abbreviation": "HOSE",
+    "chapters": 14,
+    "testament": "new",
+    "order": 28,
+    "translations": {
+      "IGBOB": "HOSEA"
+    }
+  },
+  {
+    "name": "JOEL",
+    "abbreviation": "JOEL",
+    "chapters": 3,
+    "testament": "old",
+    "order": 29,
+    "translations": {
+      "IGBOB": "JOEL"
+    }
+  },
+  {
+    "name": "EMOS",
+    "abbreviation": "EMOS",
+    "chapters": 9,
+    "testament": "new",
+    "order": 30,
+    "translations": {
+      "IGBOB": "EMOS"
+    }
+  },
+  {
+    "name": "OBADAIA",
+    "abbreviation": "OBAD",
+    "chapters": 1,
+    "testament": "old",
+    "order": 31,
+    "translations": {
+      "IGBOB": "OBADAIA"
+    }
+  },
+  {
+    "name": "JONA",
+    "abbreviation": "JONA",
+    "chapters": 4,
+    "testament": "old",
+    "order": 32,
+    "translations": {
+      "IGBOB": "JONA"
     }
   },
   {
@@ -444,19 +324,59 @@
     "abbreviation": "MAIK",
     "chapters": 7,
     "testament": "old",
-    "order": 45,
+    "order": 33,
     "translations": {
       "IGBOB": "MAIKA"
     }
   },
   {
-    "name": "MAK",
-    "abbreviation": "MAK",
-    "chapters": 16,
-    "testament": "old",
-    "order": 46,
+    "name": "NEHUM",
+    "abbreviation": "NEHU",
+    "chapters": 3,
+    "testament": "new",
+    "order": 34,
     "translations": {
-      "IGBOB": "MAK"
+      "IGBOB": "NEHUM"
+    }
+  },
+  {
+    "name": "HABAKUK",
+    "abbreviation": "HABA",
+    "chapters": 3,
+    "testament": "new",
+    "order": 35,
+    "translations": {
+      "IGBOB": "HABAKUK"
+    }
+  },
+  {
+    "name": "ZEFANAIA",
+    "abbreviation": "ZEFA",
+    "chapters": 3,
+    "testament": "old",
+    "order": 36,
+    "translations": {
+      "IGBOB": "ZEFANAIA"
+    }
+  },
+  {
+    "name": "HAGAI",
+    "abbreviation": "HAGA",
+    "chapters": 2,
+    "testament": "old",
+    "order": 37,
+    "translations": {
+      "IGBOB": "HAGAI"
+    }
+  },
+  {
+    "name": "ZEKARAIA",
+    "abbreviation": "ZEKA",
+    "chapters": 14,
+    "testament": "old",
+    "order": 38,
+    "translations": {
+      "IGBOB": "ZEKARAIA"
     }
   },
   {
@@ -464,7 +384,7 @@
     "abbreviation": "MALA",
     "chapters": 4,
     "testament": "new",
-    "order": 47,
+    "order": 39,
     "translations": {
       "IGBOB": "MALAKAI"
     }
@@ -474,9 +394,89 @@
     "abbreviation": "MATI",
     "chapters": 28,
     "testament": "old",
-    "order": 48,
+    "order": 40,
     "translations": {
       "IGBOB": "MATIU"
+    }
+  },
+  {
+    "name": "MAK",
+    "abbreviation": "MAK",
+    "chapters": 16,
+    "testament": "old",
+    "order": 41,
+    "translations": {
+      "IGBOB": "MAK"
+    }
+  },
+  {
+    "name": "LUK",
+    "abbreviation": "LUK",
+    "chapters": 24,
+    "testament": "old",
+    "order": 42,
+    "translations": {
+      "IGBOB": "LUK"
+    }
+  },
+  {
+    "name": "JỌN",
+    "abbreviation": "JỌN",
+    "chapters": 21,
+    "testament": "old",
+    "order": 43,
+    "translations": {
+      "IGBOB": "JỌN"
+    }
+  },
+  {
+    "name": "ỌLU NDI-OZI",
+    "abbreviation": "ỌLUNDI-OZI",
+    "chapters": 28,
+    "testament": "new",
+    "order": 44,
+    "translations": {
+      "IGBOB": "ỌLU NDI-OZI"
+    }
+  },
+  {
+    "name": "NDI ROM",
+    "abbreviation": "NDIROM",
+    "chapters": 16,
+    "testament": "old",
+    "order": 45,
+    "translations": {
+      "IGBOB": "NDI ROM"
+    }
+  },
+  {
+    "name": "I. NDI KỌRINT",
+    "abbreviation": "I.NDI",
+    "chapters": 16,
+    "testament": "new",
+    "order": 46,
+    "translations": {
+      "IGBOB": "I. NDI KỌRINT"
+    }
+  },
+  {
+    "name": "II. NDI KỌRINT",
+    "abbreviation": "II.NDI",
+    "chapters": 13,
+    "testament": "old",
+    "order": 47,
+    "translations": {
+      "IGBOB": "II. NDI KỌRINT"
+    }
+  },
+  {
+    "name": "NDI GALETIA",
+    "abbreviation": "NDIGALETIA",
+    "chapters": 6,
+    "testament": "old",
+    "order": 48,
+    "translations": {
+      "IGBOB": "NDI GALETIA"
     }
   },
   {
@@ -500,103 +500,53 @@
     }
   },
   {
-    "name": "NDI GALETIA",
-    "abbreviation": "NDIGALETIA",
-    "chapters": 6,
-    "testament": "old",
-    "order": 51,
-    "translations": {
-      "IGBOB": "NDI GALETIA"
-    }
-  },
-  {
     "name": "NDI KỌLỌSI",
     "abbreviation": "NDIKỌLỌSI",
     "chapters": 4,
     "testament": "old",
-    "order": 52,
+    "order": 51,
     "translations": {
       "IGBOB": "NDI KỌLỌSI"
     }
   },
   {
-    "name": "NDI ROM",
-    "abbreviation": "NDIROM",
-    "chapters": 16,
+    "name": "I. NDI TESALỌNAIKA",
+    "abbreviation": "I.NDI",
+    "chapters": 5,
+    "testament": "old",
+    "order": 52,
+    "translations": {
+      "IGBOB": "I. NDI TESALỌNAIKA"
+    }
+  },
+  {
+    "name": "II. NDI TESALỌNAIKA",
+    "abbreviation": "II.NDI",
+    "chapters": 3,
     "testament": "old",
     "order": 53,
     "translations": {
-      "IGBOB": "NDI ROM"
+      "IGBOB": "II. NDI TESALỌNAIKA"
     }
   },
   {
-    "name": "NDI-HIBRU",
-    "abbreviation": "NDI-",
-    "chapters": 13,
+    "name": "I. TIMỌTI",
+    "abbreviation": "I.TIMỌTI",
+    "chapters": 6,
     "testament": "old",
     "order": 54,
     "translations": {
-      "IGBOB": "NDI-HIBRU"
+      "IGBOB": "I. TIMỌTI"
     }
   },
   {
-    "name": "NDI-IKPE",
-    "abbreviation": "NDI-",
-    "chapters": 21,
+    "name": "II. TIMỌTI",
+    "abbreviation": "II.TIMỌTI",
+    "chapters": 4,
     "testament": "old",
     "order": 55,
     "translations": {
-      "IGBOB": "NDI-IKPE"
-    }
-  },
-  {
-    "name": "NEHEMAIA",
-    "abbreviation": "NEHE",
-    "chapters": 13,
-    "testament": "new",
-    "order": 56,
-    "translations": {
-      "IGBOB": "NEHEMAIA"
-    }
-  },
-  {
-    "name": "NEHUM",
-    "abbreviation": "NEHU",
-    "chapters": 3,
-    "testament": "new",
-    "order": 57,
-    "translations": {
-      "IGBOB": "NEHUM"
-    }
-  },
-  {
-    "name": "NKPUGHE",
-    "abbreviation": "NKPU",
-    "chapters": 22,
-    "testament": "old",
-    "order": 58,
-    "translations": {
-      "IGBOB": "NKPUGHE"
-    }
-  },
-  {
-    "name": "OBADAIA",
-    "abbreviation": "OBAD",
-    "chapters": 1,
-    "testament": "old",
-    "order": 59,
-    "translations": {
-      "IGBOB": "OBADAIA"
-    }
-  },
-  {
-    "name": "RUT",
-    "abbreviation": "RUT",
-    "chapters": 4,
-    "testament": "new",
-    "order": 60,
-    "translations": {
-      "IGBOB": "RUT"
+      "IGBOB": "II. TIMỌTI"
     }
   },
   {
@@ -604,59 +554,109 @@
     "abbreviation": "TAIT",
     "chapters": 3,
     "testament": "new",
-    "order": 61,
+    "order": 56,
     "translations": {
       "IGBOB": "TAITỌS"
     }
   },
   {
-    "name": "ZEFANAIA",
-    "abbreviation": "ZEFA",
-    "chapters": 3,
+    "name": "FAILIMON",
+    "abbreviation": "FAIL",
+    "chapters": 1,
     "testament": "old",
-    "order": 62,
+    "order": 57,
     "translations": {
-      "IGBOB": "ZEFANAIA"
+      "IGBOB": "FAILIMON"
     }
   },
   {
-    "name": "ZEKARAIA",
-    "abbreviation": "ZEKA",
-    "chapters": 14,
+    "name": "NDI-HIBRU",
+    "abbreviation": "NDI-",
+    "chapters": 13,
+    "testament": "old",
+    "order": 58,
+    "translations": {
+      "IGBOB": "NDI-HIBRU"
+    }
+  },
+  {
+    "name": "JEMES",
+    "abbreviation": "JEME",
+    "chapters": 5,
+    "testament": "old",
+    "order": 59,
+    "translations": {
+      "IGBOB": "JEMES"
+    }
+  },
+  {
+    "name": "I. PITA",
+    "abbreviation": "I.PITA",
+    "chapters": 5,
+    "testament": "old",
+    "order": 60,
+    "translations": {
+      "IGBOB": "I. PITA"
+    }
+  },
+  {
+    "name": "II. PITA",
+    "abbreviation": "II.PITA",
+    "chapters": 3,
+    "testament": "new",
+    "order": 61,
+    "translations": {
+      "IGBOB": "II. PITA"
+    }
+  },
+  {
+    "name": "I. JỌN",
+    "abbreviation": "I.JỌN",
+    "chapters": 5,
+    "testament": "new",
+    "order": 62,
+    "translations": {
+      "IGBOB": "I. JỌN"
+    }
+  },
+  {
+    "name": "II. JỌN",
+    "abbreviation": "II.JỌN",
+    "chapters": 1,
     "testament": "old",
     "order": 63,
     "translations": {
-      "IGBOB": "ZEKARAIA"
+      "IGBOB": "II. JỌN"
     }
   },
   {
-    "name": "ỌLU NDI-OZI",
-    "abbreviation": "ỌLUNDI-OZI",
-    "chapters": 28,
-    "testament": "new",
+    "name": "III. JỌN",
+    "abbreviation": "IIIJỌN",
+    "chapters": 1,
+    "testament": "old",
     "order": 64,
     "translations": {
-      "IGBOB": "ỌLU NDI-OZI"
+      "IGBOB": "III. JỌN"
     }
   },
   {
-    "name": "ỌNU-ỌGUGU",
-    "abbreviation": "ỌNU-",
-    "chapters": 36,
+    "name": "JUD",
+    "abbreviation": "JUD",
+    "chapters": 1,
     "testament": "old",
     "order": 65,
     "translations": {
-      "IGBOB": "ỌNU-ỌGUGU"
+      "IGBOB": "JUD"
     }
   },
   {
-    "name": "ỌPUPU",
-    "abbreviation": "ỌPUP",
-    "chapters": 40,
+    "name": "NKPUGHE",
+    "abbreviation": "NKPU",
+    "chapters": 22,
     "testament": "old",
     "order": 66,
     "translations": {
-      "IGBOB": "ỌPUPU"
+      "IGBOB": "NKPUGHE"
     }
   }
 ]

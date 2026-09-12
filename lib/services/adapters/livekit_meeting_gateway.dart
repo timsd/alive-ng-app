@@ -225,9 +225,23 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         method: appwrite_enums.ExecutionMethod.pOST,
       );
 
-      final responseData =
-          jsonDecode(execution.responseBody) as Map<String, dynamic>;
-      final token = responseData['token'] as String?;
+      dynamic decoded;
+      try {
+        decoded = jsonDecode(execution.responseBody);
+      } catch (_) {
+        throw Exception(
+          'Invalid response from server (${execution.responseStatusCode}): '
+          '${execution.responseBody}',
+        );
+      }
+
+      if (decoded is Map<String, dynamic> && decoded['error'] != null) {
+        throw Exception(decoded['error']);
+      }
+
+      final token = (decoded is Map<String, dynamic>)
+          ? decoded['token'] as String?
+          : null;
       if (token == null || token.isEmpty) {
         throw Exception(
           'Token not found in Appwrite Function response: '
@@ -295,11 +309,24 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       );
 
       _room = room;
-      await _room!.localParticipant?.setMicrophoneEnabled(true);
-      await _room!.localParticipant?.setCameraEnabled(true);
 
-      _isAudioMuted = false;
-      _isVideoMuted = false;
+      // Enable microphone defensively so hardware/permission absence does not abort meeting join
+      try {
+        await _room!.localParticipant?.setMicrophoneEnabled(true);
+        _isAudioMuted = false;
+      } catch (audioErr) {
+        debugPrint('Microphone unavailable or permission denied: $audioErr');
+        _isAudioMuted = true;
+      }
+
+      // Enable camera defensively so hardware/permission absence does not abort meeting join
+      try {
+        await _room!.localParticipant?.setCameraEnabled(true);
+        _isVideoMuted = false;
+      } catch (videoErr) {
+        debugPrint('Camera unavailable or permission denied: $videoErr');
+        _isVideoMuted = true;
+      }
 
       final finalRoomName = (room.name != null && room.name!.isNotEmpty)
           ? room.name!
@@ -308,8 +335,8 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       _currentSession = MeetingSession(
         roomName: finalRoomName,
         status: RoomStatus.connected,
-        isAudioMuted: false,
-        isVideoMuted: false,
+        isAudioMuted: _isAudioMuted,
+        isVideoMuted: _isVideoMuted,
         participants: _collectParticipants(),
       );
       _emitSession();
@@ -335,6 +362,10 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
           e.toString().contains('connection')) {
         errorMessage =
             'Could not connect to LiveKit server. Please check your connection and try again.';
+      } else if (e.toString().contains('No element') ||
+          e.toString().contains('Bad state')) {
+        errorMessage =
+            'Audio/video device not detected. Please verify your camera and microphone connections.';
       }
 
       _currentSession = MeetingSession(

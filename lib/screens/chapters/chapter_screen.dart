@@ -488,6 +488,7 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
             children: [
               Expanded(
                 child: DropdownButtonFormField<WorkersType?>(
+                  isExpanded: true,
                   initialValue: _selectedType,
                   decoration: const InputDecoration(
                     labelText: 'Worker Type',
@@ -496,11 +497,13 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
                   items: [
                     const DropdownMenuItem<WorkersType?>(
                       value: null,
-                      child: Text('All Worker Types'),
+                      child: Text('All Worker Types',
+                          overflow: TextOverflow.ellipsis),
                     ),
                     ...WorkersType.values.map((type) => DropdownMenuItem(
                           value: type,
-                          child: Text(_chapterService.getTypeDescription(type)),
+                          child: Text(_chapterService.getTypeDescription(type),
+                              overflow: TextOverflow.ellipsis),
                         )),
                   ],
                   onChanged: (value) {

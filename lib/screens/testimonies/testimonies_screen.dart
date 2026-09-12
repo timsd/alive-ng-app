@@ -30,14 +30,13 @@ class _TestimoniesScreenState extends ConsumerState<TestimoniesScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    final testimonyService = ref.read(testimonyServiceProvider);
+    _publicTestimoniesFuture = testimonyService.fetchTestimonies();
     final currentUser = ref.read(currentUserProvider);
-    if (currentUser == null) {
-      _publicTestimoniesFuture = Future.value(const <Testimony>[]);
-      _myTestimoniesFuture = Future.value(const <Testimony>[]);
-    } else {
-      final testimonyService = ref.read(testimonyServiceProvider);
-      _publicTestimoniesFuture = testimonyService.fetchTestimonies();
+    if (currentUser != null) {
       _myTestimoniesFuture = testimonyService.fetchMyTestimonies();
+    } else {
+      _myTestimoniesFuture = Future.value(const <Testimony>[]);
     }
   }
 
@@ -48,11 +47,15 @@ class _TestimoniesScreenState extends ConsumerState<TestimoniesScreen>
   }
 
   void _refreshTestimonies() {
-    if (ref.read(currentUserProvider) == null) return;
+    final currentUser = ref.read(currentUserProvider);
     final testimonyService = ref.read(testimonyServiceProvider);
     setState(() {
       _publicTestimoniesFuture = testimonyService.fetchTestimonies();
-      _myTestimoniesFuture = testimonyService.fetchMyTestimonies();
+      if (currentUser != null) {
+        _myTestimoniesFuture = testimonyService.fetchMyTestimonies();
+      } else {
+        _myTestimoniesFuture = Future.value(const <Testimony>[]);
+      }
     });
   }
 
@@ -180,20 +183,29 @@ class _TestimoniesScreenState extends ConsumerState<TestimoniesScreen>
   Widget build(BuildContext context) {
     final translate = ref.watch(translationProvider);
     final theme = Theme.of(context);
+    final authAsync = ref.watch(authStateProvider);
     final currentUser = ref.watch(currentUserProvider);
 
-    if (currentUser == null) {
+    ref.listen<AsyncValue<AppUser?>>(authStateProvider, (prev, next) {
+      if (next.value != prev?.value) {
+        _refreshTestimonies();
+      }
+    });
+
+    if (authAsync.isLoading && currentUser == null) {
       return Scaffold(
         appBar: CustomAppBar(
           title: translate('testimonies'),
           showBackButton: true,
         ),
-        body: _buildGuestState(context),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
+
     return Scaffold(
       appBar: CustomAppBar(
         title: translate('testimonies'),
+        showBackButton: true,
         bottom: TabBar(
           controller: _tabController,
           tabs: [
@@ -206,11 +218,27 @@ class _TestimoniesScreenState extends ConsumerState<TestimoniesScreen>
         controller: _tabController,
         children: [
           _buildTestimonyList(_publicTestimoniesFuture, false),
-          _buildTestimonyList(_myTestimoniesFuture, true),
+          currentUser != null
+              ? _buildTestimonyList(_myTestimoniesFuture, true)
+              : _buildGuestState(context),
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _showAddTestimonyDialog,
+        onPressed: () {
+          if (currentUser == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text('Please sign in to share a testimony.'),
+                action: SnackBarAction(
+                  label: 'Sign In',
+                  onPressed: () => context.go('/auth'),
+                ),
+              ),
+            );
+          } else {
+            _showAddTestimonyDialog();
+          }
+        },
         backgroundColor: theme.colorScheme.primary,
         foregroundColor: theme.colorScheme.onPrimary,
         child: Icon(

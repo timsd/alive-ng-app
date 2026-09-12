@@ -46,7 +46,8 @@ class TestimonyService {
 
   Future<List<Testimony>> fetchMyTestimonies() async {
     try {
-      final user = _authService.currentUser;
+      var user = _authService.currentUser;
+      user ??= await _authService.getCurrentUser();
       if (user == null) return <Testimony>[];
 
       final response = await _tables.listRows(
@@ -74,7 +75,8 @@ class TestimonyService {
     bool isAnonymous = false,
   }) async {
     try {
-      final user = _authService.currentUser;
+      var user = _authService.currentUser;
+      user ??= await _authService.getCurrentUser();
       if (user == null) {
         throw AuthException(
             'Please sign in to share your testimony. Tap "Sign In" from the menu.');

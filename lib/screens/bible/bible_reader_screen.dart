@@ -6,6 +6,7 @@ import '../../models/bible_models.dart' as models;
 import '../../constants/bible_verses.dart' as data_bible;
 import '../../constants/bible_data.dart';
 import '../../services/offline_bible_service.dart';
+import '../../utils/search_utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../../config/app_config.dart';
@@ -40,6 +41,9 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
   bool _isLoading = false;
   bool _isSpeaking = false;
   List<data_bible.BibleVerse> _searchResults = [];
+  List<BibleTextHit> _fullTextResults = [];
+  bool _isSearching = false;
+  int _searchToken = 0;
   int? _selectedVerseIndex;
   Set<String> _highlightedVerses = {};
   Map<String, Color> _verseHighlightColors = {};
@@ -68,6 +72,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
     _statisticsService.startReadingSession();
     _loadHighlights(); // Now implemented
     _loadBooksAndInit();
+    _offlineBible.prewarmBundle(language: 'en', version: 'KJV');
   }
 
   Future<void> _loadHighlights() async {
@@ -161,7 +166,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
 
   Future<List<String>> _resolveVersionsForLanguage(String languageCode) async {
     if (languageCode == 'en') {
-      return ['ASV', 'KJV', 'NASB', 'NIV', 'NKJV', 'NLT'];
+      return ['ASV', 'KJV', 'NASB', 'NIV', 'NKJV'];
     }
     if (languageCode == 'ha') {
       return ['HAU'];
@@ -416,14 +421,41 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
     }
   }
 
-  void _searchVerses(String query) {
-    if (query.isEmpty) {
-      setState(() => _searchResults = []);
+  void _searchVerses(String query) async {
+    final token = ++_searchToken;
+    if (query.trim().isEmpty) {
+      setState(() {
+        _searchResults = [];
+        _fullTextResults = [];
+        _isSearching = false;
+      });
       return;
     }
 
+    final languageCode = _languageCodes[_selectedLanguage] ?? 'en';
+
     setState(() {
+      // Instant local corpus results (reference/keyword ranked).
       _searchResults = BibleSource.instance.search(query);
+      _isSearching = true;
+    });
+
+    // Full ranked text search across the offline bundles for this language.
+    // "jesus wept" scores its exact phrase first (John 11:35).
+    List<BibleTextHit> ranked = [];
+    try {
+      ranked = await _offlineBible.searchBibleText(
+        query: query,
+        version: _selectedVersion,
+        language: languageCode,
+        limit: 50,
+      );
+    } catch (_) {}
+
+    if (token != _searchToken || !mounted) return;
+    setState(() {
+      _fullTextResults = ranked;
+      _isSearching = false;
     });
   }
 
@@ -1297,6 +1329,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
             ),
           ),
           child: TextField(
+            controller: _searchController,
             style: TextStyle(
               fontSize: isSmallScreen ? 14 : 16,
               color: theme.textTheme.bodyLarge?.color,
@@ -1334,63 +1367,129 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
               ),
             ),
             onChanged: _searchVerses,
+            onSubmitted: (value) {
+              if (value.trim().isNotEmpty) _searchVerses(value);
+            },
           ),
         ),
         Expanded(
-          child: _searchResults.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.search,
-                        size: isSmallScreen ? 48 : 64,
-                        color: Theme.of(context)
-                            .iconTheme
-                            .color
-                            ?.withValues(alpha: 0.5),
-                      ),
-                      SizedBox(height: isSmallScreen ? 12 : 16),
-                      Text(
-                        'Search for Bible verses',
-                        style: TextStyle(
-                          fontSize: isSmallScreen ? 16 : 18,
-                          color: Theme.of(context).textTheme.bodyMedium?.color,
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              : ListView.builder(
-                  padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-                  itemCount: _searchResults.length,
-                  itemBuilder: (context, index) {
-                    final verse = _searchResults[index];
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      child: ListTile(
-                        title: Text(
-                          verse.reference,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: colorScheme.secondary,
+          child: _isSearching
+              ? const Center(child: CircularProgressIndicator())
+              : (_searchResults.isEmpty && _fullTextResults.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.search,
+                            size: isSmallScreen ? 48 : 64,
+                            color: Theme.of(context)
+                                .iconTheme
+                                .color
+                                ?.withValues(alpha: 0.5),
                           ),
-                        ),
-                        subtitle: Text(
-                          verse.text[_selectedVersion] ??
-                              verse.text.values.first,
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        onTap: () {
-                          _tabController.animateTo(0);
-                          _searchController.text = verse.reference;
-                          _openReference(verse.reference);
-                        },
+                          SizedBox(height: isSmallScreen ? 12 : 16),
+                          Text(
+                            'Search for Bible verses',
+                            style: TextStyle(
+                              fontSize: isSmallScreen ? 16 : 18,
+                              color: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.color,
+                            ),
+                          ),
+                        ],
                       ),
-                    );
-                  },
-                ),
+                    )
+                  : ListView(
+                      padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+                      children: [
+                        if (_fullTextResults.isNotEmpty) ...[
+                          Text(
+                            'From $_selectedVersion · $_selectedLanguage',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: colorScheme.secondary,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          ..._fullTextResults.map((hit) {
+                            final hits = SearchUtils.highlightSpans(
+                              hit.text,
+                              _searchController.text,
+                              TextStyle(
+                                color: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.color,
+                              ),
+                              TextStyle(
+                                color: colorScheme.primary,
+                                fontWeight: FontWeight.bold,
+                                backgroundColor: colorScheme.primary
+                                    .withValues(alpha: 0.15),
+                              ),
+                            );
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              child: ListTile(
+                                title: Text(
+                                  hit.reference,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: colorScheme.secondary,
+                                  ),
+                                ),
+                                subtitle: RichText(
+                                  text: TextSpan(children: hits),
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                onTap: () {
+                                  _openReference(hit.reference);
+                                },
+                              ),
+                            );
+                          }),
+                          const SizedBox(height: 8),
+                          if (_searchResults.isNotEmpty)
+                            Text(
+                              'More matches',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.secondary,
+                              ),
+                            ),
+                        ],
+                        ..._searchResults
+                            .where((verse) => !_fullTextResults.any(
+                                (h) => h.reference == verse.reference))
+                            .map((verse) {
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            child: ListTile(
+                              title: Text(
+                                verse.reference,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: colorScheme.secondary,
+                                ),
+                              ),
+                              subtitle: Text(
+                                verse.text[_selectedVersion] ??
+                                    verse.text.values.first,
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              onTap: () {
+                                _openReference(verse.reference);
+                              },
+                            ),
+                          );
+                        }),
+                      ],
+                    )),
         ),
       ],
     );

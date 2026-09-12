@@ -45,6 +45,20 @@ class AuthService {
   bool get isEmailVerified => currentUser?.isEmailVerified ?? false;
   Stream<AppUser?> get authStateChanges => _authStateController.stream;
 
+  /// Asynchronously refresh and return the currently authenticated user.
+  Future<AppUser?> getCurrentUser() async {
+    try {
+      final sdkUser = await _appwriteAuth.getCurrentUser();
+      final user = _mapUser(sdkUser);
+      if (user != null) {
+        _authStateController.add(user);
+      }
+      return user;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<AuthResult> signInWithEmailAndPassword(
     String email,
     String password,
@@ -224,19 +238,46 @@ class AuthService {
   }
 
   Future<bool> updatePassword(String newPassword) async {
-    throw AuthException('Password update is pending Appwrite wiring.');
+    try {
+      await _appwriteAuth.updatePassword(newPassword);
+      return true;
+    } catch (e) {
+      throw AuthException(
+        'Unable to update your password. Please sign in again and try.',
+        originalError: e,
+      );
+    }
   }
 
-  Future<bool> updateEmail(String newEmail) async {
-    throw AuthException('Email update is pending Appwrite wiring.');
+  Future<bool> updateEmail(String newEmail, {String password = ''}) async {
+    try {
+      await _appwriteAuth.updateEmail(newEmail, password: password);
+      return true;
+    } catch (e) {
+      throw AuthException(
+        'Unable to update your email. Please verify your password and try again.',
+        originalError: e,
+      );
+    }
   }
 
   Future<void> resendEmailVerification() async {
-    throw AuthException('Email verification is pending Appwrite wiring.');
+    try {
+      await _appwriteAuth.sendEmailVerification();
+    } catch (e) {
+      throw AuthException(
+        'Unable to send verification email. Please try again later.',
+        originalError: e,
+      );
+    }
   }
 
   Future<void> deleteAccount() async {
-    throw AuthException('Account deletion is pending Appwrite wiring.');
+    final user = currentUser;
+    if (user != null) {
+      await _profileService.deleteUserProfile(user.uid);
+      await signOut();
+    }
   }
 
   Future<UserProfile?> getCurrentUserProfile() async {

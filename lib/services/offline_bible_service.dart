@@ -5,17 +5,36 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_exception.dart';
 import '../models/bible_models.dart';
+import '../utils/search_utils.dart';
 import 'bible_database_helper.dart';
 import '../utils/logger.dart';
 
+class BibleTextHit {
+  final String book;
+  final int chapter;
+  final int verse;
+  final String reference;
+  final String text;
+
+  const BibleTextHit({
+    required this.book,
+    required this.chapter,
+    required this.verse,
+    required this.reference,
+    required this.text,
+  });
+}
+
 class OfflineBibleService {
-  static final OfflineBibleService _instance = OfflineBibleService._internal();
+  static final OfflineBibleService _instance =
+      OfflineBibleService._internal();
   factory OfflineBibleService() => _instance;
   final BibleDatabaseHelper _dbHelper;
 
   static final Logger _logger = Logger('OfflineBibleService');
   final Map<String, Archive> _bundleCache = {};
   final Map<String, Map<String, ArchiveFile>> _bundleFileIndex = {};
+  static final Map<String, BibleChapter> _memoryChapterCache = {};
 
   /// Strips USFM/XML tags like `<pb/>`, `<pb>`, `<t>`, `</t>`, `<f>...</f>`, `<x>...</x>`, etc.
   static String cleanVerseText(String? raw) {
@@ -58,7 +77,6 @@ class OfflineBibleService {
       {'code': 'ASV', 'name': 'American Standard Version'},
       {'code': 'NASB', 'name': 'New American Standard Bible'},
       {'code': 'NKJV', 'name': 'New King James Version'},
-      {'code': 'NLT', 'name': 'New Living Translation'},
     ],
     'yo': [
       {'code': 'BM', 'name': 'Biblica Yoruba (BM)'},
@@ -76,7 +94,6 @@ class OfflineBibleService {
     'KJV': 'King James Version (English)',
     'NIV': 'New International Version (English)',
     'ASV': 'American Standard Version (English)',
-    'NLT': 'New Living Translation (English)',
     'NASB': 'New American Standard Bible (English)',
     'NKJV': 'New King James Version (English)',
   };
@@ -169,11 +186,22 @@ class OfflineBibleService {
       final versionCode = version ?? _defaultVersion;
       final languageCode = language ?? _defaultLanguage;
 
+      // 0. Super fast in-memory cache check (0ms response)
+      final memKey = '$languageCode/$versionCode/${book.toLowerCase().trim()}/$chapter';
+      final inMem = _memoryChapterCache[memKey];
+      if (inMem != null && inMem.verses.isNotEmpty) {
+        // Asynchronously prefetch next chapter in background
+        _prefetchChapter(book, chapter + 1, versionCode, languageCode);
+        return inMem;
+      }
+
       if (!kIsWeb) {
         try {
           final cachedChapter = await _dbHelper.getChapter(
               book, chapter, versionCode, languageCode);
           if (cachedChapter != null && cachedChapter.verses.isNotEmpty) {
+            _memoryChapterCache[memKey] = cachedChapter;
+            _prefetchChapter(book, chapter + 1, versionCode, languageCode);
             return cachedChapter;
           }
         } catch (dbErr) {
@@ -192,6 +220,8 @@ class OfflineBibleService {
             _logger.warning('Failed to cache chapter in DB: $insertErr');
           }
         }
+        _memoryChapterCache[memKey] = assetChapter;
+        _prefetchChapter(book, chapter + 1, versionCode, languageCode);
         return assetChapter;
       }
 
@@ -229,6 +259,144 @@ class OfflineBibleService {
       _logger.error('Error getting full Bible book', e);
       // Return what we have so far if some chapters fail, or rethrow
       return [];
+    }
+  }
+
+  final Map<String, _BibleSearchIndex> _searchIndexes = {};
+  final Map<String, List<BibleTextHit>> _searchCache = {};
+
+  _BibleSearchIndex? _cachedIndex(String key) => _searchIndexes[key];
+
+  // Full-text search over the offline bundles for the selected language/version.
+  // Scoring (see SearchUtils.scoreVerse):
+  // exact reference match first, then exact phrase, then ALL words,
+  // then partial matches. "jesus wept" therefore surfaces John 11:35 first.
+  Future<List<BibleTextHit>> searchBibleText({
+    required String query,
+    String? version,
+    String? language,
+    int limit = 50,
+  }) async {
+    final versionCode = (version == null || version.isEmpty)
+        ? _defaultVersion
+        : version;
+    final languageCode = (language == null || language.isEmpty)
+        ? _defaultLanguage
+        : language;
+    final phrase = SearchUtils.normalize(query);
+    if (phrase.isEmpty) return [];
+
+    final indexKey = '$languageCode/$versionCode';
+    final cacheKey = '$indexKey|$phrase|$limit';
+    final cached = _searchCache[cacheKey];
+    if (cached != null) return cached;
+
+    var index = _cachedIndex(indexKey);
+    index ??= await _buildSearchIndex(
+      indexKey: indexKey,
+      versionCode: versionCode,
+      languageCode: languageCode,
+    );
+    if (index == null || index.entries.isEmpty) return [];
+
+    final tokens = SearchUtils.tokensOf(query);
+
+    // Candidate narrowing: verses containing the rarest query tokens first.
+    // This avoids scoring all ~31k verses on every keystroke.
+    Set<int>? candidates;
+    if (tokens.isNotEmpty) {
+      final byRarity = tokens.toList()
+        ..sort((a, b) => index!
+            .docFreq(a)
+            .compareTo(index.docFreq(b)));
+      for (final token in byRarity.take(3)) {
+        final docs = index.docsFor(token);
+        if (docs.isEmpty) continue;
+        candidates = candidates == null
+            ? Set<int>.of(docs)
+            : candidates.intersection(docs.toSet());
+        if (candidates.isEmpty) break;
+        if (candidates.length < 4000) break;
+      }
+    }
+    // Phrase queries fall back to a windowed scan only when the index
+    // produced no candidates (e.g. heavy punctuation variants).
+    final pool = (candidates == null || candidates.isEmpty)
+        ? index.entries
+        : candidates.map((i) => index!.entries[i]);
+
+    final scored = <MapEntry<BibleTextHit, int>>[];
+    for (final entry in pool) {
+      final score = SearchUtils.scoreVerse(
+        reference: entry.reference,
+        text: entry.text,
+        query: query,
+      );
+      if (score > 0) {
+        scored.add(MapEntry(
+          BibleTextHit(
+            book: entry.book,
+            chapter: entry.chapter,
+            verse: entry.verse,
+            reference: entry.reference,
+            text: entry.text,
+          ),
+          score,
+        ));
+        if (scored.length >= limit * 8) break;
+      }
+    }
+
+    scored.sort((a, b) => b.value.compareTo(a.value));
+    final result = scored.take(limit).map((e) => e.key).toList();
+    if (_searchCache.length > 200) _searchCache.clear();
+    _searchCache[cacheKey] = result;
+    return result;
+  }
+
+  Future<_BibleSearchIndex?> _buildSearchIndex({
+    required String indexKey,
+    required String versionCode,
+    required String languageCode,
+  }) async {
+    try {
+      final books = await getBibleBooks(language: languageCode);
+      final entries = <_IndexedVerse>[];
+      final postings = <String, List<int>>{};
+      for (final book in books) {
+        for (int chapter = 1; chapter <= book.chapters; chapter++) {
+          BibleChapter? chapterData;
+          try {
+            chapterData = await getBibleChapter(
+              book: book.name,
+              chapter: chapter,
+              version: versionCode,
+              language: languageCode,
+            );
+          } catch (_) {
+            continue;
+          }
+          if (chapterData == null) continue;
+          for (final verse in chapterData.verses) {
+            final idx = entries.length;
+            entries.add(_IndexedVerse(
+              book: book.name,
+              chapter: chapter,
+              verse: verse.number,
+              reference: '${book.name} $chapter:${verse.number}',
+              text: verse.text,
+            ));
+            for (final token in SearchUtils.tokensOf(verse.text).toSet()) {
+              (postings[token] ??= []).add(idx);
+            }
+          }
+        }
+      }
+      final index = _BibleSearchIndex(entries, postings);
+      _searchIndexes[indexKey] = index;
+      return index;
+    } catch (_) {
+      return null;
     }
   }
 
@@ -582,8 +750,8 @@ class OfflineBibleService {
     );
     final bytes =
         data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
-    // verify: false saves significant CPU time decoding large bundles on mobile
-    final archive = ZipDecoder().decodeBytes(bytes, verify: false);
+    // Offload decoding from main UI isolate for zero lag
+    final archive = await compute(_decodeZipArchive, bytes);
     _bundleCache[cacheKey] = archive;
 
     final fileMap = <String, ArchiveFile>{};
@@ -651,6 +819,28 @@ class OfflineBibleService {
     return names
         .map((name) => 'assets/bible/$language/$version/${name}_$chapter.json')
         .toList();
+  }
+
+
+  void _prefetchChapter(String book, int chapter, String version, String language) {
+    if (chapter < 1 || chapter > 150) return;
+    final nextKey = '$language/$version/${book.toLowerCase().trim()}/$chapter';
+    if (_memoryChapterCache.containsKey(nextKey)) return;
+    Future.microtask(() async {
+      try {
+        final ch = await _loadChapterFromAssets(book, chapter, version, language);
+        if (ch != null) {
+          _memoryChapterCache[nextKey] = ch;
+        }
+      } catch (_) {}
+    });
+  }
+
+  /// Pre-warm a bundle in background so chapter loads are instant
+  Future<void> prewarmBundle({String language = 'en', String version = 'KJV'}) async {
+    try {
+      await _loadVersionBundle(language, version);
+    } catch (_) {}
   }
 
   // Remote Bible integrations intentionally removed for offline/local assets.
@@ -812,4 +1002,36 @@ class OfflineBibleService {
       return [];
     }
   }
+}
+
+/// A single indexed verse used by the Bible full-text search.
+class _IndexedVerse {
+  final String book;
+  final int chapter;
+  final int verse;
+  final String reference;
+  final String text;
+
+  const _IndexedVerse({
+    required this.book,
+    required this.chapter,
+    required this.verse,
+    required this.reference,
+    required this.text,
+  });
+}
+
+/// In-memory inverted index over [_IndexedVerse] entries.
+/// Supports fast token → document-id lookups for candidate narrowing.
+class _BibleSearchIndex {
+  final List<_IndexedVerse> entries;
+  final Map<String, List<int>> _postings;
+
+  const _BibleSearchIndex(this.entries, this._postings);
+
+  /// Number of documents (verses) containing [token].
+  int docFreq(String token) => _postings[token]?.length ?? 0;
+
+  /// Document indices that contain [token].
+  List<int> docsFor(String token) => _postings[token] ?? const <int>[];
 }

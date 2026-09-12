@@ -1,5 +1,6 @@
 import '../constants/bible_verses.dart' show BibleVerse;
 import '../constants/daily_verses.dart' as daily_data;
+import '../utils/search_utils.dart';
 
 /// BibleSource provides a unified interface for accessing Bible verses
 /// from the bundled corpus, expanded topical references, and remote sources.
@@ -538,16 +539,13 @@ class BibleSource {
     return null;
   }
 
-  /// Comprehensive search across Bible verses by reference, words, phrases, or themes
+  /// Search standard (shared with SearchUtils): exact reference first, then
+  /// exact phrase ("jesus wept" -> John 11:35), then ALL-words, then ANY-word.
   List<BibleVerse> search(String query) {
-    final q = query.trim().toLowerCase();
-    if (q.isEmpty) return [];
+    final phrase = SearchUtils.normalize(query);
+    if (phrase.isEmpty) return [];
 
-    final words = q
-        .split(RegExp(r'\s+'))
-        .map((w) => w.replaceAll(RegExp(r'[^\w]'), ''))
-        .where((w) => w.length > 1)
-        .toList();
+    final words = SearchUtils.tokensOf(query);
 
     final seenRefs = <String>{};
     final results = <BibleVerse>[];
@@ -561,22 +559,22 @@ class BibleSource {
 
     // 1. Exact Reference Match
     for (final verse in dailyCorpus) {
-      if (verse.reference.toLowerCase() == q) {
+      if (SearchUtils.normalize(verse.reference) == phrase) {
         addVerse(verse);
       }
     }
 
     // 2. Partial Reference Match (e.g. "John 3", "Psalm 23")
     for (final verse in dailyCorpus) {
-      if (verse.reference.toLowerCase().contains(q)) {
+      if (SearchUtils.normalize(verse.reference).contains(phrase)) {
         addVerse(verse);
       }
     }
 
-    // 3. Full Phrase in Verse Text
+    // 3. Full Phrase in Verse Text ("jesus wept" matches John 11:35)
     for (final verse in dailyCorpus) {
-      final allTexts = verse.text.values.map((t) => t.toLowerCase()).toList();
-      if (allTexts.any((t) => t.contains(q))) {
+      final allTexts = verse.text.values.map(SearchUtils.normalize).toList();
+      if (allTexts.any((t) => t.contains(phrase))) {
         addVerse(verse);
       }
     }
@@ -584,7 +582,9 @@ class BibleSource {
     // 4. Thematic / Topical Matches (e.g., search "faith", "love", "peace", "hope")
     for (final entry in _topicalThemes.entries) {
       final topic = entry.key;
-      if (q.contains(topic) || topic.contains(q) || words.contains(topic)) {
+      if (phrase.contains(topic) ||
+          topic.contains(phrase) ||
+          words.contains(topic)) {
         for (final ref in entry.value) {
           final matchedVerse = findByReference(ref);
           if (matchedVerse != null) {
@@ -594,22 +594,18 @@ class BibleSource {
       }
     }
 
-    // 5. Multi-Word and Keyword Matches
+    // 5. Multi-Word and Keyword Matches (ranked by shared scoring standard)
     if (words.isNotEmpty) {
       final scoredMatches = <MapEntry<BibleVerse, int>>[];
 
       for (final verse in dailyCorpus) {
         if (seenRefs.contains(verse.reference.toLowerCase())) continue;
 
-        final refLower = verse.reference.toLowerCase();
-        final textCombined =
-            verse.text.values.join(' ').toLowerCase();
-
-        var score = 0;
-        for (final word in words) {
-          if (refLower.contains(word)) score += 3;
-          if (textCombined.contains(word)) score += 1;
-        }
+        final score = SearchUtils.scoreVerse(
+          reference: verse.reference,
+          text: verse.text.values.join(' '),
+          query: query,
+        );
 
         if (score > 0) {
           scoredMatches.add(MapEntry(verse, score));

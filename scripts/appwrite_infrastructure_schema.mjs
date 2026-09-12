@@ -6,7 +6,7 @@ export const appwriteProject = {
   databaseId: process.env.APPWRITE_DATABASE_ID || '6a089307002e54291a32',
 };
 
-const appwrite17MaxFileSize = 30000000;
+const appwrite17MaxFileSize = 200000000;
 // Appwrite can hold many audio files in this bucket. Total storage is limited
 // by the server's disk and `_APP_STORAGE_LIMIT` environment setting, not by code.
 // Increase that server-side limit if you plan to store a large library (e.g. 20 GB).
@@ -16,13 +16,13 @@ export const buckets = [
   {
     id: '6a08f51f002d2baf5e78',
     name: 'Chat Files',
-    maximumFileSize: 25 * 1024 * 1024,
+    maximumFileSize: 100 * 1024 * 1024,
     allowedFileExtensions: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'mp3', 'mp4'],
   },
   {
     id: 'profile_files',
     name: 'Profile Files',
-    maximumFileSize: 10 * 1024 * 1024,
+    maximumFileSize: 50 * 1024 * 1024,
     allowedFileExtensions: ['jpg', 'jpeg', 'png', 'webp', 'pdf'],
   },
   {
@@ -230,8 +230,20 @@ export const tables = [
   {
     id: 'prayer_requests',
     name: 'Prayer Requests',
-    columns: [s('user_id', 128), s('userId', 128), s('requested_by'), s('requestedById', 128), s('title', 255, true), mediumtext('description', true), s('category', 128), s('status', 64), b('is_anonymous', false, false), b('is_answered', false, false), i('prayer_count'), text('answer'), dt('answered_at'), dt('created_at'), dt('updated_at')],
-    indexes: [{ key: 'prayer_status_idx', type: 'key', columns: ['status'] }, { key: 'prayer_user_idx', type: 'key', columns: ['user_id'] }],
+    columns: [s('user_id', 128), s('userId', 128), s('requested_by'), s('requestedById', 128), s('title', 255, true), mediumtext('description', true), s('category', 128), s('status', 64), b('is_anonymous', false, false), b('is_answered', false, false), b('is_private', false, false), s('room_id', 128), s('testimony_id', 128), i('prayer_count'), text('answer'), dt('answered_at'), dt('created_at'), dt('updated_at')],
+    indexes: [{ key: 'prayer_status_idx', type: 'key', columns: ['status'] }, { key: 'prayer_user_idx', type: 'key', columns: ['user_id'] }, { key: 'prayer_room_idx', type: 'key', columns: ['room_id'] }],
+  },
+  {
+    id: 'private_prayer_rooms',
+    name: 'Private Prayer Rooms',
+    columns: [s('name', 255, true), mediumtext('description'), s('allowed_roles', 64, false, true), s('allowed_user_ids', 128, false, true), s('created_by', 128, true), i('member_count'), dt('created_at'), dt('updated_at')],
+    indexes: [{ key: 'private_prayer_rooms_created_by_idx', type: 'key', columns: ['created_by'] }],
+  },
+  {
+    id: 'prayer_testimonies',
+    name: 'Prayer Testimonies',
+    columns: [s('prayer_request_id', 128, true), s('user_id', 128, true), s('author_name', 255), s('title', 255, true), mediumtext('body', true), dt('created_at'), dt('updated_at')],
+    indexes: [{ key: 'prayer_testimonies_request_idx', type: 'key', columns: ['prayer_request_id'] }, { key: 'prayer_testimonies_user_idx', type: 'key', columns: ['user_id'] }],
   },
   { id: 'prayer_interactions', name: 'Prayer Interactions', columns: [s('request_id', 128, true), s('user_id', 128, true), s('type', 64, true), dt('created_at')], indexes: [{ key: 'prayer_interactions_request_idx', type: 'key', columns: ['request_id'] }, { key: 'prayer_interactions_user_idx', type: 'key', columns: ['user_id'] }] },
   { id: 'prayer_strengthening_feed', name: 'Prayer Strengthening Feed', columns: [s('source_id', 128), s('testimony_id', 128), s('user_id', 128), s('title'), s('author_name'), mediumtext('content'), s('source', 64), b('is_anonymous', false, false), b('is_approved'), b('is_visible', false, false), dt('created_at'), dt('updated_at')] },

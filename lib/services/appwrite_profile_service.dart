@@ -30,7 +30,10 @@ class AppwriteProfileService {
         return null;
       }
       debugPrint('Appwrite profile load error: $e');
-      rethrow;
+      return null;
+    } catch (e) {
+      debugPrint('General profile load error: $e');
+      return null;
     }
   }
 
@@ -87,6 +90,18 @@ class AppwriteProfileService {
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       },
     );
+  }
+
+  Future<void> deleteUserProfile(String userId) async {
+    try {
+      await _tables.deleteRow(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: AppwriteBackendConfig.usersCollectionId,
+        rowId: userId,
+      );
+    } catch (_) {
+      await archiveUser(userId);
+    }
   }
 
   Future<void> archiveLeadershipRole(LeadershipRecord record) async {

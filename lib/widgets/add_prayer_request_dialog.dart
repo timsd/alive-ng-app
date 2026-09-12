@@ -117,6 +117,7 @@ class _AddPrayerRequestDialogState extends State<AddPrayerRequestDialog> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
+                isExpanded: true,
                 initialValue: _urgencyLevel,
                 decoration: const InputDecoration(
                   labelText: 'Urgency Level',

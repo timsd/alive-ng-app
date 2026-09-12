@@ -38,6 +38,7 @@ import '../screens/health/enhanced_health_screen.dart';
 import '../screens/health/recipe_submission_screen.dart';
 import '../screens/kids/kids_mission_screen.dart';
 import '../screens/prayer/prayer_wall_screen.dart';
+import '../screens/prayer/private_prayer_room_screen.dart';
 import '../screens/library/library_screen.dart';
 import '../screens/podcasts/podcasts_screen.dart';
 import '../screens/lessons/interactive_lessons_screen.dart';
@@ -71,17 +72,23 @@ const bool kMinimalRouterMode = false;
 
 // Helper function to determine if a route is accessible to guest users
 bool _isGuestAccessibleRoute(String path) {
+  final normalized = path.length > 1 && path.endsWith('/') ? path.substring(0, path.length - 1) : path;
   const guestAccessibleRoutes = [
     '/onboarding',
+    '/oath',
     '/home',
     '/study',
     '/daily',
     '/health',
+    '/enhanced-health',
     '/about-app',
     '/about-alive',
     '/bible',
     '/bible-game',
     '/kids-mission',
+    '/kid-mission',
+    '/recipes',
+    '/healthy-recipes',
     '/library',
     '/podcasts',
     '/interactive-lessons',
@@ -97,7 +104,7 @@ bool _isGuestAccessibleRoute(String path) {
     '/reset-password',
   ];
 
-  return guestAccessibleRoutes.contains(path);
+  return guestAccessibleRoutes.contains(path) || guestAccessibleRoutes.contains(normalized);
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -485,6 +492,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const EnhancedHealthScreen(),
           ),
 
+          GoRoute(
+            path: '/healthy-recipes',
+            builder: (context, state) => const EnhancedHealthScreen(),
+          ),
+
           // Recipe Submission Route (Auth Required)
           GoRoute(
             path: AppConstants.recipeSubmissionRoute,
@@ -497,10 +509,21 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const KidsMissionScreen(),
           ),
 
+          GoRoute(
+            path: '/kid-mission',
+            builder: (context, state) => const KidsMissionScreen(),
+          ),
+
           // Prayer Wall Route
           GoRoute(
             path: AppConstants.prayerWallRoute,
             builder: (context, state) => const PrayerWallScreen(),
+          ),
+
+          // Private Prayer Room Route
+          GoRoute(
+            path: AppConstants.privatePrayerRoomRoute,
+            builder: (context, state) => const PrivatePrayerRoomScreen(),
           ),
 
           // Library Route

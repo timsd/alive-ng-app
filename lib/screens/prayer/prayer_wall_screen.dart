@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../constants/app_constants.dart';
 import '../../models/app_models.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/prayer_requests_service.dart';
+import '../../services/role_access_service.dart';
 import '../../utils/error_handler.dart';
 import '../../widgets/add_prayer_request_dialog.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -53,6 +56,17 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
 
   @override
   Widget build(BuildContext context) {
+    final roleService = RoleAccessService.instance;
+    final role = roleService.getCurrentUserRole() ?? 'member';
+    const privatePrayerRoles = {
+      'admin',
+      'bod',
+      'trustee',
+      'chapter_leader',
+      'director'
+    };
+    final canAccessPrivate = privatePrayerRoles.contains(role.toLowerCase());
+
     return Scaffold(
       appBar: CustomAppBar(
         title: 'Prayer Wall',
@@ -60,6 +74,14 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
         showThemeToggle: true,
         showLanguageToggle: true,
         showDonationButton: true,
+        actions: [
+          if (canAccessPrivate)
+            IconButton(
+              tooltip: 'Private Prayer Rooms',
+              icon: const Icon(Icons.lock_person_rounded),
+              onPressed: () => context.push(AppConstants.privatePrayerRoomRoute),
+            ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
@@ -383,6 +405,56 @@ class _PrayerCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (request.isAnswered)
+                  Container(
+                    margin: const EdgeInsets.only(right: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.green.withOpacity(0.5)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.check_circle_rounded, size: 14, color: Colors.green),
+                        SizedBox(width: 4),
+                        Text(
+                          'Answered',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (request.testimonyId != null)
+                  Container(
+                    margin: const EdgeInsets.only(right: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.amber.withOpacity(0.6)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.celebration_rounded, size: 14, color: Colors.amber),
+                        SizedBox(width: 4),
+                        Text(
+                          'Testified',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.amber,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 if (onDelete != null)
                   IconButton(
                     tooltip: 'Delete',

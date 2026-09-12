@@ -189,15 +189,17 @@ class _KidsMissionScreenState extends ConsumerState<KidsMissionScreen> {
               child: Icon(icon, color: color, size: 24),
             ),
             const SizedBox(height: 6),
-            Text(
-              shortLabel,
-              style: theme.textTheme.labelMedium?.copyWith(
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                color: isSelected ? color : theme.colorScheme.onSurface,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                shortLabel,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                  color: isSelected ? color : theme.colorScheme.onSurface,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
               ),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -471,51 +473,60 @@ class _KidsMissionScreenState extends ConsumerState<KidsMissionScreen> {
               const SizedBox(height: 10),
               LayoutBuilder(
                 builder: (context, constraints) {
+                  final items = [
+                    _buildQuickActionCategory(
+                      context,
+                      'Evangelism',
+                      'evangelism',
+                      Icons.campaign_rounded,
+                      Colors.blue,
+                    ),
+                    _buildQuickActionCategory(
+                      context,
+                      'Service',
+                      'service',
+                      Icons.volunteer_activism_rounded,
+                      Colors.green,
+                    ),
+                    _buildQuickActionCategory(
+                      context,
+                      'Learning',
+                      'learning',
+                      Icons.psychology_rounded,
+                      Colors.purple,
+                    ),
+                    _buildQuickActionCategory(
+                      context,
+                      'Prayer',
+                      'prayer',
+                      Icons.favorite_rounded,
+                      Colors.redAccent,
+                    ),
+                  ];
+
+                  if (constraints.maxWidth < 380) {
+                    return SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: items.map((item) {
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 10),
+                            child: SizedBox(
+                              width: 90,
+                              child: item,
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    );
+                  }
+
                   final itemWidth = (constraints.maxWidth - 36) / 4;
                   return Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      SizedBox(
-                        width: itemWidth,
-                        child: _buildQuickActionCategory(
-                          context,
-                          'Evangelism',
-                          'evangelism',
-                          Icons.campaign_rounded,
-                          Colors.blue,
-                        ),
-                      ),
-                      SizedBox(
-                        width: itemWidth,
-                        child: _buildQuickActionCategory(
-                          context,
-                          'Service',
-                          'service',
-                          Icons.volunteer_activism_rounded,
-                          Colors.green,
-                        ),
-                      ),
-                      SizedBox(
-                        width: itemWidth,
-                        child: _buildQuickActionCategory(
-                          context,
-                          'Learning',
-                          'learning',
-                          Icons.psychology_rounded,
-                          Colors.purple,
-                        ),
-                      ),
-                      SizedBox(
-                        width: itemWidth,
-                        child: _buildQuickActionCategory(
-                          context,
-                          'Prayer',
-                          'prayer',
-                          Icons.favorite_rounded,
-                          Colors.redAccent,
-                        ),
-                      ),
-                    ],
+                    children: items
+                        .map((item) => SizedBox(width: itemWidth, child: item))
+                        .toList(),
                   );
                 },
               ),

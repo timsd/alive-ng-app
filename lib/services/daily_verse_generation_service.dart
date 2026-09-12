@@ -56,70 +56,36 @@ class DailyVerseGenerationService {
     return await generateDailyVerseForDate(today);
   }
 
-  /// Generate daily verse for a specific date
+  /// Generate daily verse for a specific date.
+  ///
+  /// The verse is deterministic: every user worldwide sees the SAME verse
+  /// for the same date. We achieve this by seeding Random with an integer
+  /// derived purely from the calendar date and selecting from the bundled
+  /// (always-available) non-genealogy corpus. We never depend on downloaded
+  /// offline Bible data, which some users may not have.
   Future<DailyVerse?> generateDailyVerseForDate(DateTime date) async {
     try {
       final dateString = _formatDateForDatabase(date);
 
-      // Check if verse already exists for this date.
+      // Check if verse already exists for this date (shared across all
+      // users via the date-keyed Appwrite row).
       final existingVerse = await _repo.getDailyVerse(date);
       if (existingVerse != null) {
         _logger.info('Daily verse already exists for $dateString');
         return existingVerse;
       }
 
-      // Deterministically pick a verse based on the date seed
-      final random = Random(date.year * 10000 + date.month * 100 + date.day);
+      // Deterministic seed from the calendar date alone.
+      // Same date → same seed → same verse for every user.
+      final daySeed = date.year * 10000 + date.month * 100 + date.day;
+      final random = Random(daySeed);
 
-      try {
-        final String booksJson =
-            await rootBundle.loadString('assets/bible/books_en.json');
-        final List<dynamic> booksList = json.decode(booksJson);
-
-        // Attempt up to 10 times to pick a non-genealogical verse across the 66 books
-        for (var attempt = 0; attempt < 10; attempt++) {
-          final book = booksList[random.nextInt(booksList.length)];
-          final chapterNum = random.nextInt(book['chapters']) + 1;
-
-          if (BibleSource.isGenealogy(
-              reference: '${book['name']} $chapterNum')) {
-            continue;
-          }
-
-          final chapterData = await OfflineBibleService().getBibleChapter(
-            book: book['name'],
-            chapter: chapterNum,
-            version: 'KJV',
-            language: 'en',
-          );
-
-          if (chapterData != null && chapterData.verses.isNotEmpty) {
-            final nonGenealogyVerses = chapterData.verses
-                .where((v) => !BibleSource.isGenealogy(
-                      reference: '${book['name']} $chapterNum:${v.number}',
-                      text: v.text,
-                    ))
-                .toList();
-
-            if (nonGenealogyVerses.isNotEmpty) {
-              final verseObj =
-                  nonGenealogyVerses[random.nextInt(nonGenealogyVerses.length)];
-              final dynamicVerse = verse_data.BibleVerse(
-                reference: '${book['name']} $chapterNum:${verseObj.number}',
-                text: {'KJV': verseObj.text, 'BM': verseObj.text},
-              );
-              return await _createDailyVerseFromBibleVerse(dynamicVerse, date);
-            }
-          }
-        }
-      } catch (e) {
-        _logger.error('Failed dynamic pick, falling back to static corpus: $e');
-      }
-
-      // Fallback to static non-genealogy corpus if dynamic selection fails
+      // Pick from the bundled static corpus so the result never depends on
+      // whether a particular user has downloaded offline Bible data.
       final staticCorpus = BibleSource.instance.nonGenealogyCorpus;
-      final fallback = staticCorpus[random.nextInt(staticCorpus.length)];
-      return await _createDailyVerseFromBibleVerse(fallback, date);
+      final selectedVerse = staticCorpus[random.nextInt(staticCorpus.length)];
+
+      return await _createDailyVerseFromBibleVerse(selectedVerse, date);
     } catch (e) {
       _logger.error(
           '❌ Failed to generate daily verse for ${_formatDateForDatabase(date)}: $e');

@@ -74,17 +74,26 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       // Extract user-friendly error message
       String errorMessage =
           'ALIVE Meet could not be joined. Please check your connection and try again.';
-      if (e.toString().contains('certificate') ||
-          e.toString().contains('SSL') ||
-          e.toString().contains('TLS')) {
+      final errStr = e.toString();
+      if (errStr.contains('certificate') ||
+          errStr.contains('SSL') ||
+          errStr.contains('TLS')) {
         errorMessage =
             'SSL certificate error. The LiveKit server certificate may be self-signed or expired.';
-      } else if (e.toString().contains('timeout')) {
+      } else if (errStr.contains('timeout')) {
         errorMessage =
             'Connection timed out. Please check your internet connection.';
-      } else if (e.toString().contains('Token not found')) {
+      } else if (errStr.contains('Token not found')) {
         errorMessage =
             'Failed to generate meeting token. Please try again later.';
+      } else if (errStr.contains('No element') || errStr.contains('Bad state')) {
+        errorMessage =
+            'Audio/video device error. Please ensure your microphone/camera permissions are allowed.';
+      } else if (e is Exception) {
+        final cleanMsg = errStr.replaceAll('Exception: ', '').trim();
+        if (cleanMsg.isNotEmpty && cleanMsg.length < 120) {
+          errorMessage = cleanMsg;
+        }
       }
       _showMessage(errorMessage);
     } finally {

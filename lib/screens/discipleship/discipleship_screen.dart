@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../models/discipleship_models.dart';
 import '../../services/discipleship_service.dart';
@@ -47,8 +48,14 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
     setState(() => _isLoading = true);
 
     try {
-      final user = _authService.currentUser;
-      if (user == null) return;
+      var user = _authService.currentUser;
+      user ??= await _authService.getCurrentUser();
+      if (user == null) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+        return;
+      }
 
       final contacts = await _discipleshipService.getContacts(
         discipleMakerId: user.uid,
@@ -132,16 +139,68 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : TabBarView(
-              controller: _tabController,
+          : _authService.currentUser == null
+              ? _buildGuestState()
+              : TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildOverviewTab(),
+                    _buildContactsTab(),
+                    _buildActivitiesTab(),
+                    _buildPrayerTab(),
+                    _buildReportsTab(),
+                  ],
+                ),
+    );
+  }
+
+  Widget _buildGuestState() {
+    final theme = Theme.of(context);
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Card(
+          margin: const EdgeInsets.all(24),
+          elevation: 2,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                _buildOverviewTab(),
-                _buildContactsTab(),
-                _buildActivitiesTab(),
-                _buildPrayerTab(),
-                _buildReportsTab(),
+                Icon(
+                  Icons.trending_up_rounded,
+                  size: 56,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Discipleship Tracker',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Sign in to track your discipleship contacts, Bible study sessions, and spiritual growth milestones.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    height: 1.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                FilledButton.icon(
+                  onPressed: () => context.go('/auth'),
+                  icon: const Icon(Icons.login_rounded),
+                  label: const Text('Sign in to Continue'),
+                ),
               ],
             ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -348,23 +407,33 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                 tablet: 20.0,
                 desktop: 24.0,
               )),
-              DropdownButton<DiscipleshipLevel?>(
-                value: _selectedLevel,
-                hint: const Text('All Levels'),
-                items: [
-                  const DropdownMenuItem<DiscipleshipLevel?>(
-                    value: null,
-                    child: Text('All Levels'),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 140),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<DiscipleshipLevel?>(
+                    isExpanded: true,
+                    isDense: true,
+                    value: _selectedLevel,
+                    hint: const Text('All Levels', overflow: TextOverflow.ellipsis),
+                    items: [
+                      const DropdownMenuItem<DiscipleshipLevel?>(
+                        value: null,
+                        child: Text('All Levels', overflow: TextOverflow.ellipsis),
+                      ),
+                      ...DiscipleshipLevel.values.map((level) => DropdownMenuItem(
+                            value: level,
+                            child: Text(
+                              _getLevelDisplayName(level),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          )),
+                    ],
+                    onChanged: (value) {
+                      setState(() => _selectedLevel = value);
+                      _loadData();
+                    },
                   ),
-                  ...DiscipleshipLevel.values.map((level) => DropdownMenuItem(
-                        value: level,
-                        child: Text(_getLevelDisplayName(level)),
-                      )),
-                ],
-                onChanged: (value) {
-                  setState(() => _selectedLevel = value);
-                  _loadData();
-                },
+                ),
               ),
             ],
           ),

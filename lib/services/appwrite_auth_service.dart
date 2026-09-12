@@ -28,7 +28,7 @@ class AppwriteAuthService {
   late final TablesDB _tables;
   late final Teams _teams;
   late final AppwriteProfileService _profileService;
-  models.User? _currentUser;
+  static models.User? _sharedCurrentUser;
 
   static const String databaseId = AppwriteBackendConfig.databaseId;
   static const String usersCollectionId =
@@ -44,11 +44,11 @@ class AppwriteAuthService {
   /// Get the currently authenticated user details.
   Future<models.User?> getCurrentUser() async {
     try {
-      _currentUser = await _account.get();
-      if (_currentUser != null) {
-        await verifyAndSyncAdminRights(_currentUser!.$id);
+      _sharedCurrentUser = await _account.get();
+      if (_sharedCurrentUser != null) {
+        await verifyAndSyncAdminRights(_sharedCurrentUser!.$id);
       }
-      return _currentUser;
+      return _sharedCurrentUser;
     } on AppwriteException catch (e) {
       // A 401 / session error means a stale session is poisoning requests.
       // Clean it up so the next auth attempt starts fresh.
@@ -58,17 +58,18 @@ class AppwriteAuthService {
         await _clearStaleSessions();
       }
       debugPrint('No active Appwrite session found: $e');
-      _currentUser = null;
+      _sharedCurrentUser = null;
       return null;
     } catch (e) {
       debugPrint('No active Appwrite session found: $e');
-      _currentUser = null;
+      _sharedCurrentUser = null;
       return null;
     }
   }
 
-  models.User? get currentUser => _currentUser;
-  bool get isAuthenticated => _currentUser != null;
+  models.User? get currentUser => _sharedCurrentUser;
+  set currentUser(models.User? user) => _sharedCurrentUser = user;
+  bool get isAuthenticated => _sharedCurrentUser != null;
 
   /// Kills ALL active sessions (not just the current one) and clears the web
   /// fallback cookie so a stale browser session can never block a fresh login
@@ -87,7 +88,7 @@ class AppwriteAuthService {
 
   Future<void> verifyAndSyncAdminRights(String userId) async {
     try {
-      final email = _currentUser?.email.toLowerCase() ?? '';
+      final email = _sharedCurrentUser?.email.toLowerCase() ?? '';
       final isSuperAdmin = AppwriteBackendConfig.isSuperAdminEmail(email);
 
       bool isInAdminTeam = false;
@@ -207,7 +208,7 @@ class AppwriteAuthService {
   Future<void> logout() async {
     try {
       await _account.deleteSession(sessionId: 'current');
-      _currentUser = null;
+      _sharedCurrentUser = null;
       if (kIsWeb) {
         clearAppwriteCookieFallback();
       }
@@ -261,7 +262,7 @@ class AppwriteAuthService {
       scopes: const ['email', 'profile'],
     );
     await getCurrentUser();
-    final user = _currentUser;
+    final user = _sharedCurrentUser;
     if (user != null) {
       await _profileService.ensureUserProfile(
         userId: user.$id,
@@ -269,6 +270,40 @@ class AppwriteAuthService {
         fullName: user.name.isEmpty ? user.email.split('@').first : user.name,
       );
       await verifyAndSyncAdminRights(user.$id);
+    }
+  }
+
+  /// Update the current user's password.
+  /// Requires the user to have an active session.
+  Future<void> updatePassword(String newPassword) async {
+    try {
+      await _account.updatePassword(password: newPassword);
+    } catch (e) {
+      debugPrint('Appwrite Update Password Error: $e');
+      rethrow;
+    }
+  }
+
+  /// Update the current user's email.
+  /// Requires the user to have an active session and current password.
+  Future<void> updateEmail(String newEmail, {String password = ''}) async {
+    try {
+      await _account.updateEmail(email: newEmail, password: password);
+    } catch (e) {
+      debugPrint('Appwrite Update Email Error: $e');
+      rethrow;
+    }
+  }
+
+  /// Send a verification email to the current user.
+  Future<void> sendEmailVerification() async {
+    try {
+      await _account.createEmailVerification(
+        url: AppwriteBackendConfig.oauthSuccessUrl,
+      );
+    } catch (e) {
+      debugPrint('Appwrite Email Verification Error: $e');
+      rethrow;
     }
   }
 }

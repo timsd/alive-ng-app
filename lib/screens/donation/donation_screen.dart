@@ -213,40 +213,91 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                             const SizedBox(height: 6),
                           if (hasStickyDesignation)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                               decoration: BoxDecoration(
-                                color: theme.colorScheme.secondaryContainer,
-                                borderRadius: BorderRadius.circular(10),
+                                color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: theme.colorScheme.secondary.withValues(alpha: 0.3),
+                                  color: theme.colorScheme.primary.withValues(alpha: 0.25),
                                 ),
                               ),
-                              child: Row(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.check_circle_outline,
-                                      size: 18, color: theme.colorScheme.secondary),
-                                  const SizedBox(width: 8),
-                                                                    Expanded(
-                                    child: Text(
-                                      _selectedFundDesignations.length == 1
-                                          ? 'Designated: ${_selectedFundDesignations.first} (100%)'
-                                          : 'Split (${_selectedFundDesignations.length} areas): ${_selectedFundDesignations.join(', ')} (${(100.0 / _selectedFundDesignations.length).toStringAsFixed(0)}% each)',
-                                      style: theme.textTheme.labelMedium?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: theme.colorScheme.onSecondaryContainer,
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        _selectedFundDesignations.length > 1
+                                            ? Icons.pie_chart_rounded
+                                            : Icons.check_circle_rounded,
+                                        color: theme.colorScheme.primary,
+                                        size: 18,
                                       ),
-                                      maxLines: 3,
-                                      overflow: TextOverflow.fade,
-                                    ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          _selectedFundDesignations.length == 1
+                                              ? 'Designated: ${_selectedFundDesignations.first} (100%)'
+                                              : 'Split Donation: Allocated equally (${_selectedFundDesignations.length} areas @ ${(100.0 / _selectedFundDesignations.length).toStringAsFixed(0)}% each)',
+                                          style: theme.textTheme.bodySmall?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            color: theme.colorScheme.primary,
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      TextButton(
+                                        onPressed: () => setState(() => _selectedFundDesignations.clear()),
+                                        style: TextButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                          minimumSize: Size.zero,
+                                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        ),
+                                        child: const Text('Reset', style: TextStyle(fontSize: 12)),
+                                      ),
+                                    ],
                                   ),
-                                  TextButton(
-                                    onPressed: () => setState(() => _selectedFundDesignations.clear()),
-                                    style: TextButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      minimumSize: Size.zero,
-                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  const SizedBox(height: 6),
+                                  // Selected designations as compact wrapping chips with max height constraint (max 4-5 lines total)
+                                  ConstrainedBox(
+                                    constraints: const BoxConstraints(maxHeight: 76),
+                                    child: SingleChildScrollView(
+                                      child: Wrap(
+                                        spacing: 6,
+                                        runSpacing: 4,
+                                        children: _selectedFundDesignations.map((designation) {
+                                          return Chip(
+                                            label: Text(
+                                              designation,
+                                              style: theme.textTheme.labelSmall?.copyWith(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                                color: theme.colorScheme.primary,
+                                              ),
+                                            ),
+                                            deleteIcon: Icon(
+                                              Icons.close,
+                                              size: 14,
+                                              color: theme.colorScheme.primary.withValues(alpha: 0.7),
+                                            ),
+                                            onDeleted: () {
+                                              setState(() {
+                                                _selectedFundDesignations.remove(designation);
+                                              });
+                                            },
+                                            backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+                                            side: BorderSide(
+                                              color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                                            ),
+                                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                            visualDensity: VisualDensity.compact,
+                                          );
+                                        }).toList(),
+                                      ),
                                     ),
-                                    child: const Text('Reset', style: TextStyle(fontSize: 12)),
                                   ),
                                 ],
                               ),
@@ -758,6 +809,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
   }
 
   Widget _buildDonateButton(BuildContext context, ThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
     final isEnabled = _selectedAmount > 0;
     final totalAmount =
         _coverProcessingFees ? _selectedAmount * 1.035 : _selectedAmount;
@@ -795,10 +847,16 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                 ? _handleDonateClick
                 : null,
             style: ElevatedButton.styleFrom(
-              backgroundColor: theme.colorScheme.primary,
-              foregroundColor: theme.colorScheme.onPrimary,
+              backgroundColor: isDark ? const Color(0xFFE7D39B) : const Color(0xFFE5B94D),
+              foregroundColor: const Color(0xFF17263B),
+              disabledBackgroundColor: isDark
+                  ? const Color(0xFF33445A)
+                  : const Color(0xFFE0E0E0),
+              disabledForegroundColor: isDark
+                  ? const Color(0xFF6B7280)
+                  : const Color(0xFF9E9E9E),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
               ),
               minimumSize: Size(
                 ResponsiveUtils.getResponsiveValue(
@@ -806,13 +864,17 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                 ResponsiveUtils.getResponsiveValue(
                     context: context, mobile: 44, tablet: 48, desktop: 52),
               ),
-              elevation: isEnabled ? 8 : 0,
-              shadowColor: theme.colorScheme.primary.withValues(alpha: 0.3),
+              elevation: isEnabled ? 4 : 0,
+              shadowColor: const Color(0xFFE5B94D).withValues(alpha: 0.4),
             ),
             child: Text(
               _isMonthlySelected ? 'Start Monthly Giving' : 'Donate One-Time',
               style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w800,
+                color: isEnabled
+                    ? const Color(0xFF17263B)
+                    : (isDark ? const Color(0xFF6B7280) : const Color(0xFF9E9E9E)),
+                letterSpacing: 0.3,
               ),
             ),
           ),
@@ -974,64 +1036,6 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
               ),
           ],
         ),
-        if (splitCount > 1) ...[
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: theme.colorScheme.primary.withValues(alpha: 0.25),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.pie_chart_rounded,
-                        color: theme.colorScheme.primary, size: 20),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'Split Donation: Allocated equally ($splitCount areas @ ${splitPercent!.toStringAsFixed(0)}% each)',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.primary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                // Selected designations as wrapping chips
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  children: _selectedFundDesignations.map((designation) {
-                    return Chip(
-                      label: Text(
-                        designation,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.primary,
-                        ),
-                      ),
-                      backgroundColor:
-                          theme.colorScheme.primary.withValues(alpha: 0.1),
-                      side: BorderSide(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.3),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      visualDensity: VisualDensity.compact,
-                    );
-                  }).toList(),
-                ),
-              ],
-            ),
-          ),
-        ],
         SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
         ...impactItems.map((item) {
           final isSelected = _selectedFundDesignations.contains(item.title);

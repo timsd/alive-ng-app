@@ -147,11 +147,23 @@ class DonationService {
     }
   }
 
-  Future<dynamic> _currentUser() async {
+  Future<AppUser?> _currentUser() async {
     final cached = AuthService.instance.currentUser;
     if (cached != null) return cached;
     try {
-      return await appwriteAccount.get();
+      final appUser = await AuthService.instance.getCurrentUser();
+      if (appUser != null) return appUser;
+    } catch (_) {}
+
+    try {
+      final raw = await appwriteAccount.get();
+      return AppUser(
+        uid: raw.$id,
+        email: raw.email,
+        displayName: raw.name.isEmpty ? null : raw.name,
+        isEmailVerified: raw.emailVerification,
+        isAnonymous: false,
+      );
     } catch (_) {
       return null;
     }
@@ -337,8 +349,8 @@ class DonationService {
 
       if (!isGuest) {
         userId = user.uid;
-        userName = user.displayName ?? user.name ?? 'Unknown User';
-        userEmail = user.email ?? '';
+        userName = user.displayName ?? (user.email.isNotEmpty ? user.email.split('@').first : 'Donor');
+        userEmail = user.email.isNotEmpty ? user.email : (guestEmail ?? '');
       } else {
         userId = 'guest-${_uuid.v4()}';
         userName = (guestName ?? 'Guest Donor');

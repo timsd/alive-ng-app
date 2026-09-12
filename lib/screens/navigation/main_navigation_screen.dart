@@ -99,6 +99,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
         return 'Home';
       case AppConstants.prayerRoute:
       case AppConstants.prayerWallRoute:
+      case AppConstants.privatePrayerRoomRoute:
         return 'Prayer';
       case AppConstants.bibleGameRoute:
         return 'Bible Game';
@@ -136,30 +137,70 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
 
     final items = <_MoreItem>[
       const _MoreItem('Daily Verse', Icons.wb_sunny_rounded, AppConstants.dailyRoute, color: Color(0xFFF59E0B)),
-      const _MoreItem('Profile', Icons.account_circle_rounded, AppConstants.profileRoute, color: Color(0xFF3B82F6)),
+      const _MoreItem('Bible Reader', Icons.menu_book_rounded, AppConstants.bibleRoute, color: Color(0xFF6366F1)),
       const _MoreItem('Bible Game', Icons.sports_esports_rounded, AppConstants.bibleGameRoute, color: Color(0xFF2563EB)),
-      const _MoreItem('Study Guides', Icons.school_rounded, AppConstants.studyRoute, color: Color(0xFF6366F1)),
-      const _MoreItem('Health', Icons.health_and_safety_rounded, AppConstants.enhancedHealthRoute, color: Color(0xFF10B981)),
+      const _MoreItem('Study Guides', Icons.school_rounded, AppConstants.studyRoute, color: Color(0xFF4F46E5)),
+      const _MoreItem('Lessons', Icons.menu_book_outlined, AppConstants.interactiveLessonsRoute, color: Color(0xFF8B5CF6)),
+      const _MoreItem('Discipleship', Icons.trending_up_rounded, AppConstants.discipleshipTrackerRoute, color: Color(0xFF10B981)),
+      const _MoreItem('Missions', Icons.public_rounded, AppConstants.missionsRoute, color: Color(0xFF0EA5E9)),
+      const _MoreItem('Kids Missions', Icons.child_care_rounded, AppConstants.kidsMissionRoute, color: Color(0xFFF43F5E)),
+      const _MoreItem('Kids Stories', Icons.auto_stories_rounded, AppConstants.kidsStoriesRoute, color: Color(0xFFFB7185)),
+      const _MoreItem('Health', Icons.health_and_safety_rounded, AppConstants.enhancedHealthRoute, color: Color(0xFF059669)),
+      const _MoreItem('Recipes', Icons.restaurant_menu_rounded, AppConstants.recipesRoute, color: Color(0xFFD97706)),
       const _MoreItem('Prayer Wall', Icons.favorite_rounded, AppConstants.prayerWallRoute, color: Color(0xFFEC4899)),
       const _MoreItem('Testimonies', Icons.record_voice_over_rounded, AppConstants.testimoniesRoute, color: Color(0xFF8B5CF6)),
+      const _MoreItem('Chapters', Icons.location_city_rounded, AppConstants.chaptersRoute, color: Color(0xFF3B82F6)),
+      const _MoreItem('Community Chat', Icons.forum_rounded, AppConstants.chatRoute, color: Color(0xFF0284C7)),
+      const _MoreItem('Events', Icons.event_rounded, AppConstants.eventsRoute, color: Color(0xFF7C3AED)),
       const _MoreItem('Resources', Icons.folder_rounded, AppConstants.resourcesRoute, color: Color(0xFF0EA5E9)),
       const _MoreItem('Library', Icons.local_library_rounded, AppConstants.libraryRoute, color: Color(0xFF14B8A6)),
       const _MoreItem('Podcasts', Icons.podcasts_rounded, AppConstants.podcastsRoute, color: Color(0xFFD946EF)),
-      const _MoreItem('Books & Tracts', Icons.menu_book_rounded, AppConstants.booksTractsRoute, color: Color(0xFFF97316)),
-      const _MoreItem('Kids Stories', Icons.auto_stories_rounded, AppConstants.kidsStoriesRoute, color: Color(0xFFF43F5E)),
+      const _MoreItem('Books & Tracts', Icons.book_online_rounded, AppConstants.booksTractsRoute, color: Color(0xFFF97316)),
       const _MoreItem('ALIVE Meet', Icons.video_call_rounded, AppConstants.conferenceRoute, color: Color(0xFF06B6D4)),
-      const _MoreItem('Donation', Icons.volunteer_activism_rounded, AppConstants.donationRoute, color: Color(0xFF10B981)),
+      const _MoreItem('Support ALIVE', Icons.volunteer_activism_rounded, AppConstants.donationRoute, color: Color(0xFF10B981)),
+      const _MoreItem('Profile', Icons.account_circle_rounded, AppConstants.profileRoute, color: Color(0xFF3B82F6)),
       const _MoreItem('Help & Support', Icons.help_rounded, AppConstants.helpSupportRoute, color: Color(0xFF64748B)),
       const _MoreItem('Notifications', Icons.notifications_rounded, AppConstants.notificationSettingsRoute, color: Color(0xFFEAB308)),
       const _MoreItem('About App', Icons.info_rounded, AppConstants.aboutAppRoute, color: Color(0xFF6B7280)),
       const _MoreItem('About ALIVE', Icons.church_rounded, AppConstants.aboutAliveRoute, color: Color(0xFF16A34A)),
     ];
-
-    if (canSeeAdmin) {
-      items.insert(0, const _MoreItem('Admin Portal', Icons.admin_panel_settings, AppConstants.adminRoute, color: Color(0xFFDC2626)));
+    // Leadership Archive: visible to all signed-in users
+    if (signedIn) {
+      items.add(const _MoreItem('Leadership Archive', Icons.folder_special_rounded, AppConstants.leadershipArchiveRoute, color: Color(0xFF6366F1)));
     }
+
+    // Private Prayer Rooms: visible to leaders, directors, BOD, trustees, admins
+    const privatePrayerRoles = {
+      'admin',
+      'bod',
+      'trustee',
+      'chapter_leader',
+      'director'
+    };
+    if (signedIn && privatePrayerRoles.contains(role.toLowerCase())) {
+      items.add(const _MoreItem('Private Prayer', Icons.lock_person_rounded, AppConstants.privatePrayerRoomRoute, color: Color(0xFF9333EA)));
+    }
+
+
+    // Role-based items for Admin
+    if (canSeeAdmin) {
+      items.insertAll(0, const [
+        _MoreItem('Admin Portal', Icons.admin_panel_settings_rounded, AppConstants.adminRoute, color: Color(0xFFDC2626)),
+        _MoreItem('Approvals', Icons.how_to_reg_rounded, AppConstants.adminApprovalRoute, color: Color(0xFFEA580C)),
+        _MoreItem('Donations Report', Icons.analytics_rounded, AppConstants.adminDonationsReportRoute, color: Color(0xFFB91C1C)),
+        _MoreItem('Role Management', Icons.manage_accounts_rounded, AppConstants.roleManagementRoute, color: Color(0xFFC026D3)),
+        _MoreItem('Content Admin', Icons.post_add_rounded, AppConstants.contentManagementRoute, color: Color(0xFF7C3AED)),
+        _MoreItem('Media Admin', Icons.library_add_rounded, AppConstants.tractPodcastAdminRoute, color: Color(0xFF2563EB)),
+        _MoreItem('Kids Admin', Icons.smart_toy_rounded, AppConstants.kidsContentAdminRoute, color: Color(0xFFE11D48)),
+        _MoreItem('User Archive', Icons.archive_rounded, AppConstants.userArchiveRoute, color: Color(0xFF64748B)),
+      ]);
+    }
+
+    // Role-based items for Board of Trustees (BOD)
     if (canSeeBod) {
-      items.insert(0, const _MoreItem('BOD Trustees', Icons.groups, AppConstants.bodTrusteesRoute, color: Color(0xFF4F46E5)));
+      items.insertAll(canSeeAdmin ? 8 : 0, const [
+        _MoreItem('BOD Trustees', Icons.groups_rounded, AppConstants.bodTrusteesRoute, color: Color(0xFF4F46E5)),
+      ]);
     }
 
     return GridView.builder(
@@ -356,7 +397,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
         } else if (isLoading || approvalStatus == null) {
           statusColor = theme.colorScheme.outline;
           statusIcon = Icons.sync;
-          statusText = 'Checking…';
+          statusText = 'Checkingâ€¦';
         } else {
           switch (approvalStatus) {
             case 'pending':

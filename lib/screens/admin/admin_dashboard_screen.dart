@@ -60,6 +60,9 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
   int _archivedUsers = 0;
   int _totalPodcasts = 0;
   Map<String, int> _podcastCategoryCounts = {};
+  int _dailyUsers = 0;
+  int _totalPrayerRequests = 0;
+  int _answeredPrayers = 0;
 
   @override
   void initState() {
@@ -94,6 +97,10 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
 
   Future<void> _loadDashboardStats() async {
     try {
+      final now = DateTime.now();
+      final todayStart =
+          DateTime(now.year, now.month, now.day).toIso8601String();
+
       final results = await Future.wait([
         _countDocuments(
           AppwriteBackendConfig.usersCollectionId,
@@ -108,12 +115,21 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
           AppwriteBackendConfig.podcastsCollectionId,
           queries: [Query.limit(500)],
         ),
+        _calculateDailyUsers(todayStart),
+        _safeCountDocuments(AppwriteBackendConfig.prayerRequestsCollectionId),
+        _safeCountDocuments(
+          AppwriteBackendConfig.prayerRequestsCollectionId,
+          queries: [Query.equal('is_answered', true)],
+        ),
       ]);
 
       final activeUsers = results[0] as int;
       final archivedUsers = results[1] as int;
       final activeReports = results[2] as int;
       final podcasts = results[3] as List<Podcast>;
+      final dailyUsers = results[4] as int;
+      final totalPrayers = results[5] as int;
+      final answeredPrayers = results[6] as int;
 
       final Map<String, int> categoryCounts = {};
       for (final data in podcasts) {
@@ -129,9 +145,63 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
         _totalChapters = ChapterConstants.availableChapters.length;
         _totalPodcasts = podcasts.length;
         _podcastCategoryCounts = categoryCounts;
+        _dailyUsers = dailyUsers;
+        _totalPrayerRequests = totalPrayers;
+        _answeredPrayers = answeredPrayers;
       });
     } catch (e) {
       rethrow;
+    }
+  }
+
+  Future<int> _calculateDailyUsers(String todayStart) async {
+    try {
+      final activities = await _tables.listRows(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: AppwriteBackendConfig.userActivitiesCollectionId,
+        queries: [
+          Query.greaterThanEqual('created_at', todayStart),
+          Query.limit(500),
+        ],
+      );
+
+      final userIds = activities.rows
+          .map((r) => (r.data['user_id'] ?? r.data['userId']) as String?)
+          .whereType<String>()
+          .toSet();
+
+      return userIds.isNotEmpty
+          ? userIds.length
+          : (activities.total > 0 ? activities.total : 0);
+    } catch (_) {
+      try {
+        final events = await _tables.listRows(
+          databaseId: AppwriteBackendConfig.databaseId,
+          tableId: AppwriteBackendConfig.analyticsEventsCollectionId,
+          queries: [
+            Query.greaterThanEqual('created_at', todayStart),
+            Query.limit(500),
+          ],
+        );
+        final userIds = events.rows
+            .map((r) => (r.data['user_id'] ?? r.data['userId']) as String?)
+            .whereType<String>()
+            .toSet();
+        return userIds.length;
+      } catch (_) {
+        return 0;
+      }
+    }
+  }
+
+  Future<int> _safeCountDocuments(
+    String collectionId, {
+    List<String> queries = const [],
+  }) async {
+    try {
+      return await _countDocuments(collectionId, queries: queries);
+    } catch (_) {
+      return 0;
     }
   }
 
@@ -528,6 +598,72 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                   ],
                 ),
               ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Community Highlights
+            Row(
+              children: [
+                Icon(
+                  Icons.auto_graph_rounded,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 22,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Community Highlights',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStatCard(
+                    'Members Count',
+                    _totalUsers.toString(),
+                    Icons.groups_rounded,
+                    const Color(0xFF2563EB),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildStatCard(
+                    'Daily Active Users',
+                    _dailyUsers.toString(),
+                    Icons.bolt_rounded,
+                    const Color(0xFF10B981),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStatCard(
+                    'Prayer Requests',
+                    _totalPrayerRequests.toString(),
+                    Icons.favorite_rounded,
+                    const Color(0xFFEC4899),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildStatCard(
+                    'Answered Prayers',
+                    _answeredPrayers.toString(),
+                    Icons.verified_rounded,
+                    const Color(0xFFF59E0B),
+                  ),
+                ),
+              ],
             ),
 
             const SizedBox(height: 24),
