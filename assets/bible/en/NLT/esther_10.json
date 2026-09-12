@@ -1,0 +1,25 @@
+{
+  "verses": [
+    {
+      "verse": 1,
+      "text": "King Xerxes imposed a tribute throughout his empire, even to the distant coastlands."
+    },
+    {
+      "verse": 2,
+      "text": "His great achievements and the full account of the greatness of Mordecai, whom the king had promoted, are recorded in The Book of the History of the Kings of Media and Persia."
+    },
+    {
+      "verse": 3,
+      "text": "Mordecai the Jew became the prime minister, with authority next to that of King Xerxes himself. He was very great among the Jews, who held him in high esteem, because he continued to work for the good of his people and to speak up for the welfare of all their descendants."
+    }
+  ],
+  "metadata": {
+    "book": "Esther",
+    "chapter": 10,
+    "version": "NLT",
+    "versionName": "New Living Translation",
+    "language": "en",
+    "source": "NEW LIVING TRANSLATION.json",
+    "importedAt": "2025-10-31T17:16:21.204502"
+  }
+}

@@ -385,6 +385,104 @@ class _AdminKidsMissionsScreenState extends State<AdminKidsMissionsScreen> {
                             style: TextStyle(
                                 fontSize: 16, fontWeight: FontWeight.bold)),
                       ),
+                     const SizedBox(height: 40),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor:
+                              Theme.of(context).colorScheme.secondary,
+                        ),
+                        onPressed: _isSeeding ? null : _seedSampleMissions,
+                        icon: _isSeeding
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.auto_awesome),
+                        label: Text(
+                          _isSeeding
+                              ? 'Loading samples...'
+                              : 'Load 10 Sample Missions',
+                          style: const TextStyle(
+                              fontSize: 14, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'One-tap seed of the 10 built-in sample missions (Share a '
+                      'Bible Story, Help Someone in Need, etc.). Safe to run more '
+                      'than once — duplicates are skipped.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
+                          ),
+                    ),
+                    const SizedBox(height: 40),
+                  ],
+                ),
+              ),
+            ),
+          ),
+    );
+  }
+
+  bool _isSeeding = false;
+
+  Future<void> _seedSampleMissions() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Load Sample Missions?'),
+        content: const Text(
+            'This will create the 10 built-in sample missions (Share a Bible '
+            'Story, Help Someone in Need, Memorize the Beatitudes, etc.).\n\n'
+            'Duplicates are skipped, so it is safe to run more than once.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Load Samples'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    setState(() => _isSeeding = true);
+    try {
+      final created =
+          await KidsContentService.seedSampleKidsMission();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✅ Loaded $created sample mission${created == 1 ? '' : 's'}!'),
+          backgroundColor: Theme.of(context).colorScheme.tertiary,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Seed failed: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isSeeding = false);
+    }
+  }
+}
+
+enum _Kids
                     ),
                     const SizedBox(height: 40),
                   ],

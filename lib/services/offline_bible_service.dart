@@ -73,6 +73,7 @@ class OfflineBibleService {
   static const Map<String, List<Map<String, String>>> _supportedLanguages = {
     'en': [
       {'code': 'KJV', 'name': 'King James Version'},
+      {'code': 'NLT', 'name': 'New Living Translation'},
       {'code': 'NIV', 'name': 'New International Version'},
       {'code': 'ASV', 'name': 'American Standard Version'},
       {'code': 'NASB', 'name': 'New American Standard Bible'},
@@ -92,6 +93,7 @@ class OfflineBibleService {
   // Supported Bible versions and languages
   static const Map<String, String> supportedVersions = {
     'KJV': 'King James Version (English)',
+    'NLT': 'New Living Translation (English)',
     'NIV': 'New International Version (English)',
     'ASV': 'American Standard Version (English)',
     'NASB': 'New American Standard Bible (English)',
@@ -367,7 +369,7 @@ class OfflineBibleService {
         for (int chapter = 1; chapter <= book.chapters; chapter++) {
           BibleChapter? chapterData;
           try {
-            chapterData = await getBibleChapter(
+            chapterData = await _loadChapterFromAssetsOnly(
               book: book.name,
               chapter: chapter,
               version: versionCode,
@@ -398,6 +400,110 @@ class OfflineBibleService {
     } catch (_) {
       return null;
     }
+  }
+
+  /// Load a chapter directly from bundled asset JSON files — no network,
+  /// no ZIP decompression. Falls back to ZIP bundles if direct JSON
+  /// chapter files don't exist yet. Used by the search indexer for fast loading.
+  Future<BibleChapter?> _loadChapterFromAssetsOnly({
+    required String book,
+    required int chapter,
+    required String version,
+    required String language,
+  }) async {
+    final candidates = _candidateAssetPaths(book, chapter, version, language);
+    for (final path in candidates) {
+      try {
+        final raw = await rootBundle.loadString(path);
+        final data = json.decode(raw) as Map<String, dynamic>;
+        final meta = data['metadata'] as Map<String, dynamic>? ?? {};
+        final verses = (data['verses'] as List<dynamic>? ?? [])
+            .map((v) {
+              final vm = v as Map<String, dynamic>;
+              // Support both "number" (KJV/NIV) and "verse" (NLT) field names
+              final verseNum = vm['number'] as int? ?? vm['verse'] as int? ?? 0;
+              return BibleVerse(
+                number: verseNum,
+                text: vm['text'] as String? ?? '',
+                footnotes: null,
+                crossReferences: null,
+              );
+            })
+            .toList();
+        return BibleChapter(
+          book: meta['book']?.toString() ?? book,
+          chapter: meta['chapter'] as int? ?? chapter,
+          version: meta['version']?.toString() ?? version,
+          language: meta['language']?.toString() ?? language,
+          verses: verses,
+          metadata: meta,
+        );
+      } catch (_) {
+        continue;
+      }
+    }
+    // Fallback: try ZIP bundles if direct JSON chapter files don't exist
+    try {
+      return await _loadChapterFromBundle(book, chapter, version, language);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  List<String> _candidateAssetPaths(
+      String book, int chapter, String version, String language) {
+    final sanitizedBook = book
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9\s]'), '')
+        .trim()
+        .replaceAll(RegExp(r'\s+'), '_');
+    final sanitizedBookNoSpace = sanitizedBook.replaceAll('_', '');
+    final chapterStr = chapter.toString();
+    final candidates = <String>[
+      'assets/bible/$language/$version/${sanitizedBook}_$chapterStr.json',
+      'assets/bible/$language/$version/${sanitizedBookNoSpace}_$chapterStr.json',
+    ];
+    // Handle numbered books (1 Samuel, 2 Kings, etc.)
+    if (sanitizedBook.startsWith('1_') ||
+        sanitizedBook.startsWith('2_') ||
+        sanitizedBook.startsWith('3_')) {
+      final withoutNumber =
+          sanitizedBook.substring(2);
+      candidates.add(
+          'assets/bible/$language/$version/${withoutNumber}_$chapterStr.json');
+    }
+    return candidates;
+  }
+
+  /// Build the search index using only bundled asset files — no network,
+  /// no SQLite reads. This makes the first search fast.
+  Future<void> prebuildSearchIndexes() async {
+    for (final lang in ['en', 'yo', 'ha', 'ig']) {
+      final versions = _supportedLanguages[lang] ?? const [];
+      for (final v in versions) {
+        final code = v['code'];
+        if (code == null) continue;
+        final key = '$lang/$code';
+        if (_searchIndexes.containsKey(key)) continue;
+        try {
+          await _buildSearchIndex(
+            indexKey: key,
+            versionCode: code,
+            languageCode: lang,
+          );
+        } catch (_) {}
+      }
+    }
+  }
+
+  /// Load a chapter from ZIP bundles (cached after first load)
+  Future<BibleChapter?> _loadChapterFromBundle(
+    String book,
+    int chapter,
+    String version,
+    String language,
+  ) {
+    return _loadChapterFromAssets(book, chapter, version, language);
   }
 
   // Search Bible verses

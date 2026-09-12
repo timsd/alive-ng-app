@@ -39,6 +39,10 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
   models.BibleVerse? _currentVerse;
   List<models.BibleVerse> _chapterVerses = [];
   bool _isLoading = false;
+  final ScrollController _scrollController = ScrollController();
+  final GlobalKey _formKey = GlobalKey();
+
+  // Search-related state
   bool _isSpeaking = false;
   List<data_bible.BibleVerse> _searchResults = [];
   List<BibleTextHit> _fullTextResults = [];
@@ -70,9 +74,37 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
     _tabController = TabController(length: 2, vsync: this);
     _ttsService.initialize();
     _statisticsService.startReadingSession();
-    _loadHighlights(); // Now implemented
+    _loadHighlights();
     _loadBooksAndInit();
+    // Pre-build search indexes from assets so search is instant on first use
     _offlineBible.prewarmBundle(language: 'en', version: 'KJV');
+    _offlineBible.prebuildSearchIndexes();
+    // Auto-scroll to the form/search section after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToForm();
+    });
+  }
+
+  /// Auto-scroll to the form section so users see the input immediately
+  void _scrollToForm() {
+    if (_scrollController.hasClients && _formKey.currentContext != null) {
+      Scrollable.ensureVisible(
+        _formKey.currentContext!,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+        alignment: 0.0,
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _tabController.dispose();
+    _searchController.dispose();
+    _ttsService.dispose();
+    _statisticsService.stopReadingSession();
+    super.dispose();
   }
 
   Future<void> _loadHighlights() async {
@@ -307,6 +339,10 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
       await _ttsService.speak(chapterText);
     } catch (e) {
       if (mounted) {
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                child: Form(
+                  key: _formKey,
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error speaking chapter: $e'),
@@ -332,16 +368,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
     }
   }
 
-  @override
-  void dispose() {
-    _tabController.dispose();
-    _searchController.dispose();
-    _ttsService.dispose();
-    _statisticsService.stopReadingSession();
-    super.dispose();
-  }
-
-  Future<void> _loadVerse(String reference) async {
+    Future<void> _loadVerse(String reference) async {
     setState(() => _isLoading = true);
 
     try {
@@ -1533,26 +1560,31 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: colorScheme.surface,
+      backgroundColor: Colors.transparent,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Handle bar
-              Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: colorScheme.onSurface.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(2),
+        return Container(
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle bar
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: colorScheme.onSurface.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-              ),
               // Verse reference
               Text(
                 reference,

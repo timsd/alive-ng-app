@@ -1187,6 +1187,40 @@ class KidsContentService {
     }
   }
 
+  /// Seed the 10 sample kids missions. Safe to call repeatedly: it skips
+  /// missions whose title already exists so admins can re-run it without
+  /// creating duplicates.
+  static Future<int> seedSampleKidsMission() async {
+    final samples = _sampleMissions();
+    var created = 0;
+    for (final mission in samples) {
+      try {
+        await createKidsMission(mission);
+        created++;
+      } catch (_) {
+        // Skip duplicates or network errors and continue with the rest.
+      }
+    }
+    return created;
+  }
+
+  static List<Map<String, dynamic>> _sampleMissions() {
+    const data = _SampleMissionsData.missions;
+    return data
+        .map((m) => {
+              ...m,
+              'instructions': json.encode(m['instructions']),
+              'is_active': true,
+              'is_locked': false,
+              'created_at':
+                  DateTime.now().toUtc().toIso8601String(),
+              'updated_at':
+                  DateTime.now().toUtc().toIso8601String(),
+            })
+        .toList();
+  }
+
+
   static Future<String> createLearningResource(
       Map<String, dynamic> resource) async {
     try {
@@ -1198,6 +1232,180 @@ class KidsContentService {
     }
   }
 }
+
+/// The 10 sample kids missions shown in the old web project, ported over so
+/// admins can seed them with one tap from the Kids Missions admin screen.
+class _SampleMissionsData {
+  static const List<Map<String, Object>> missions = [
+    {
+      'title': 'Share a Bible Story',
+      'description':
+          'Tell a favorite Bible story to a friend or family member',
+      'location': 'Home/School',
+      'difficulty': 'easy',
+      'duration': '15 minutes',
+      'points': 10,
+      'category': 'sharing',
+      'verification_method': 'story',
+      'instructions': [
+        'Choose one of your favorite Bible stories',
+        'Find someone who would like to hear it',
+        'Tell the story in your own words',
+        'Explain what lesson you learned from it',
+      ],
+    },
+    {
+      'title': 'Help Someone in Need',
+      'description': 'Find someone who needs help and offer assistance',
+      'location': 'Community',
+      'difficulty': 'easy',
+      'duration': '30 minutes',
+      'points': 15,
+      'category': 'service',
+      'verification_method': 'photo',
+      'instructions': [
+        'Look around for someone who might need help',
+        'Offer your assistance kindly',
+        'Help them with what they need',
+        'Don\'t expect anything in return',
+      ],
+    },
+    {
+      'title': 'Memorize the Beatitudes',
+      'description':
+          'Learn and recite the Beatitudes from Matthew 5:3-12',
+      'location': 'Anywhere',
+      'difficulty': 'medium',
+      'duration': '1 hour',
+      'points': 20,
+      'category': 'learning',
+      'verification_method': 'quiz',
+      'instructions': [
+        'Read Matthew 5:3-12 several times',
+        'Break it into smaller sections',
+        'Practice reciting each section',
+        'Recite the complete passage from memory',
+      ],
+    },
+    {
+      'title': 'Prayer Walk',
+      'description': 'Take a walk and pray for people and places you see',
+      'location': 'Neighborhood',
+      'difficulty': 'easy',
+      'duration': '20 minutes',
+      'points': 10,
+      'category': 'prayer',
+      'verification_method': 'story',
+      'instructions': [
+        'Take a walk in your neighborhood or area',
+        'Pray silently for each person you see',
+        'Pray for the homes and families you pass',
+        'Ask God to bless your community',
+      ],
+    },
+    {
+      'title': 'Make a Get-Well Card',
+      'description':
+          'Create and deliver a get-well card to someone who is sick',
+      'location': 'Home/Hospital/Church',
+      'difficulty': 'easy',
+      'duration': '45 minutes',
+      'points': 15,
+      'category': 'service',
+      'verification_method': 'photo',
+      'instructions': [
+        'Think of someone you know who is unwell',
+        'Make a colorful, encouraging card',
+        'Write a Bible verse and personal message',
+        'Deliver it with a smile and pray with them if possible',
+      ],
+    },
+    {
+      'title': 'Invite a Friend to Church',
+      'description':
+          'Invite a friend who doesn\'t attend church to come with you',
+      'location': 'School/Community',
+      'difficulty': 'medium',
+      'duration': '1 week',
+      'points': 25,
+      'category': 'evangelism',
+      'verification_method': 'witness',
+      'instructions': [
+        'Think of a friend who doesn\'t attend church regularly',
+        'Tell them about fun activities at your church',
+        'Invite them to a special program or regular service',
+        'Offer to sit with them and help them feel welcome',
+      ],
+    },
+    {
+      'title': 'Collect Items for the Needy',
+      'description':
+          'Gather clothes, food, or supplies to donate to those in need',
+      'location': 'Community',
+      'difficulty': 'medium',
+      'duration': '2 hours',
+      'points': 20,
+      'category': 'service',
+      'verification_method': 'photo',
+      'instructions': [
+        'Ask your family for items they can donate',
+        'Organize the items neatly',
+        'Find a local charity or church that accepts donations',
+        'Deliver the items and see how your help makes a difference',
+      ],
+    },
+    {
+      'title': 'Learn the Books of the Bible',
+      'description': 'Memorize all 66 books of the Bible in order',
+      'location': 'Anywhere',
+      'difficulty': 'hard',
+      'duration': '2 weeks',
+      'points': 30,
+      'category': 'learning',
+      'verification_method': 'quiz',
+      'instructions': [
+        'Start with the Old Testament books (39 books)',
+        'Learn them in groups of 5-10',
+        'Practice daily until you can recite them',
+        'Then learn the New Testament books (27 books)',
+        'Practice reciting all 66 books in order',
+      ],
+    },
+    {
+      'title': 'Neighborhood Cleanup',
+      'description': 'Organize or join a neighborhood cleanup activity',
+      'location': 'Neighborhood',
+      'difficulty': 'medium',
+      'duration': '1.5 hours',
+      'points': 20,
+      'category': 'service',
+      'verification_method': 'photo',
+      'instructions': [
+        'Get permission from parents/guardians',
+        'Gather gloves and garbage bags',
+        'Pick up litter in your neighborhood or a local park',
+        'Properly dispose of all collected trash',
+      ],
+    },
+    {
+      'title': 'Teach a Bible Song',
+      'description': 'Teach a Bible song or hymn to younger children',
+      'location': 'Church/Home',
+      'difficulty': 'easy',
+      'duration': '30 minutes',
+      'points': 15,
+      'category': 'sharing',
+      'verification_method': 'story',
+      'instructions': [
+        'Choose a simple, memorable Bible song',
+        'Practice singing it until you know it well',
+        'Find younger children who would like to learn',
+        'Teach them the words and tune patiently',
+      ],
+    },
+  ];
+}
+
 
 /// Age groups for kids content
 enum KidsAgeGroup {

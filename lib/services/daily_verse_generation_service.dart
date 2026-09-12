@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:appwrite/appwrite.dart' hide Locale;
 import 'package:flutter/foundation.dart';
+import '../constants/daily_verses_translations.dart';
 import '../constants/bible_verses.dart' as verse_data;
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';
@@ -51,9 +52,11 @@ class DailyVerseGenerationService {
   }
 
   /// Generate daily verse for today
-  Future<DailyVerse?> generateDailyVerseForToday() async {
+  Future<DailyVerse?> generateDailyVerseForToday({
+    String languageCode = 'en',
+  }) async {
     final today = DateTime.now();
-    return await generateDailyVerseForDate(today);
+    return await generateDailyVerseForDate(today, languageCode: languageCode);
   }
 
   /// Generate daily verse for a specific date.

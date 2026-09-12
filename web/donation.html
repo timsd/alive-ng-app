@@ -30,6 +30,10 @@
       box-sizing: border-box;
     }
 
+    html {
+      scroll-behavior: smooth;
+    }
+
     body {
       align-items: center;
       background:
@@ -350,6 +354,7 @@
         padding: 0 22px 28px;
       }
     }
+
     /* Interactive 3D project viewer (Impact Hub) */
     .project-viewer {
       background: #101c19;
@@ -411,8 +416,8 @@
       <div class="eyebrow">Secure Giving</div>
       <h1>Your donation supports ALIVE-NG's missions across Nigeria.</h1>
       <p>
-        Your donation supports ALIVE-NG's missions, projects, discipleship,
-        training, and community outreach across Nigeria. Give securely through Paystack.
+        Your seed funds mission outreach, projects, discipleship,
+        training, and community development.
       </p>
       <div class="stats">
         <div class="stat"><strong>100%</strong><span>Paystack checkout</span></div>
@@ -441,13 +446,16 @@
             <strong>See the real project</strong>
             <span>Explore the Impact Hub facilities in interactive 3D &mdash; drag to orbit, scroll to zoom.</span>
           </div>
-          <iframe id="project-viewer-frame" title="ALIVE-NG Impact Hub interactive 3D viewer" src="alive_ng_3d_viewer.html" loading="lazy"></iframe>
-          <a class="viewer-open" href="alive_ng_3d_viewer.html" target="_blank" rel="noopener">Open the 3D viewer full screen</a>
+          <iframe id="project-viewer-frame" title="ALIVE-NG Impact Hub interactive 3D viewer"
+            src="alive_ng_3d_viewer.html" loading="lazy"></iframe>
+          <a class="viewer-open" href="alive_ng_3d_viewer.html" target="_blank" rel="noopener">Open the 3D viewer full
+            screen</a>
         </div>
         <form id="donation-form" class="donation-form">
           <div class="field">
             <label for="project-select">Project / Purpose</label>
-            <select id="project-select" name="project" style="width:100%;padding:12px;border:1.5px solid var(--slate-200);border-radius:10px;font-size:15px;background:#fff;color:var(--slate-900);font-family:inherit;">
+            <select id="project-select" name="project"
+              style="width:100%;padding:12px;border:1.5px solid var(--slate-200);border-radius:10px;font-size:15px;background:#fff;color:var(--slate-900);font-family:inherit;">
               <option value="general_mission_fund">General Mission Fund</option>
               <option value="impact_hub_center">Impact Hub Center</option>
               <option value="vehicle_purchase">Mission Vehicle Purchase</option>
@@ -481,19 +489,19 @@
               placeholder="e.g. 5,000 (Min. ₦100)" required>
           </div>
           <div class="actions">
-            <button id="donate-now" class="primary-button" type="submit">Continue securely with Paystack</button>
-            <a class="secondary-button" href="/">Back to ALIVE Nigeria</a>
+            <button id="donate-now" class="primary-button" type="submit">Donate Now</button>
+            <a class="secondary-button" href="/">Back to the App</a>
           </div>
           <div id="donation-status" class="status-message" role="status" aria-live="polite"></div>
         </form>
-        <div class="trust"><span class="dot"></span> Card details are handled by Paystack, not by this server.</div>
+        <div class="trust"><span class="dot"></span> Card details are handled securely by Paystack.</div>
       </div>
     </section>
   </main>
 
   <script>
     (function () {
-                var APPWRITE_ENDPOINT = 'https://api.alivenigeria.org/v1';
+      var APPWRITE_ENDPOINT = 'https://api.alivenigeria.org/v1';
       var APPWRITE_PROJECT_ID = '6a3bef53002f5090dedf';
       var PAYSTACK_FUNCTION_ID = 'paystack_payments';
       var CALLBACK_URL = window.location.origin + '/donation.html?status=callback';
@@ -592,24 +600,30 @@
             document.getElementById('progress-fill').style.width = '15%';
           }
           if (window.innerWidth <= 820) {
-            document.querySelector('.card')?.scrollIntoView({ behavior: 'smooth' });
+            document.querySelector('.panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
         });
       }
 
-      // Auto-scroll to donor form on page load if project was specified
-      if (projectId) {
-        setTimeout(function() {
-          try {
-            document.querySelector('.card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          } catch (_) { }
-        }, 150);
-      }
+      // Always auto-scroll to the form section on page load so users
+      // see the donation fields immediately (especially on mobile).
+      setTimeout(function () {
+        try {
+          var formSection = document.querySelector('.panel');
+          if (formSection) {
+            var rect = formSection.getBoundingClientRect();
+            var fullyVisible = (rect.top >= 0) && (rect.bottom <= window.innerHeight);
+            if (!fullyVisible) {
+              formSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }
+        } catch (_) { }
+      }, 300);
 
       // Auto-scroll on mobile when focusing fields
-      [amountInputEl, document.getElementById('donor-name'), document.getElementById('donor-email')].forEach(function(el) {
+      [amountInputEl, document.getElementById('donor-name'), document.getElementById('donor-email')].forEach(function (el) {
         if (el) {
-          el.addEventListener('focus', function() {
+          el.addEventListener('focus', function () {
             if (window.innerWidth <= 820) {
               el.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
@@ -656,7 +670,7 @@
         // We keep amount_minor in metadata for server-side validation.
         setStatus('Initializing secure checkout...', '');
 
-                try {
+        try {
           var headers = {
             'Content-Type': 'application/json',
             'X-Appwrite-Project': APPWRITE_PROJECT_ID
