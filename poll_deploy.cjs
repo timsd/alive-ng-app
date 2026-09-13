@@ -28,7 +28,7 @@ function request(method, path, headers) {
     const req = https.request({ host: HOST, port: PORT, path: path, method: method, headers: headers }, (res) => {
       const data = [];
       res.on('data', (c) => data.push(c));
-      res.on('end', () => resolve({ status: res.statusCode, body: Buffer.concat(data).toString('utf8') })));
+      res.on('end', () => resolve({ status: res.statusCode, body: Buffer.concat(data).toString('utf8') }));
     });
     req.on('error', reject);
     req.end();
@@ -46,7 +46,7 @@ async function main() {
     const first = deployments[0] || {};
     out.push('POLL' + i + ' HTTP' + res.status + ' status=' + (first.status || 'none') + ' id=' + (first.$id || '') + ' activate=' + (first.activate || ''));
     if (first.status === 'ready') break;
-    await new Promise((r) => setTimeout(r, 15000)));
+    await new Promise((r) => setTimeout(r, 15000));
   }
   fs.writeFileSync('deploy_poll_log.txt', out.join('\n'), 'utf8');
   console.log('done');

@@ -141,6 +141,25 @@ async function deployFunction(functionId, folderPath, entrypoint = 'src/main.js'
 
   console.log(`Deploy ${functionId} status:`, res.status, res.data.status || res.data.message || res.data);
   try { fs.unlinkSync(tarFile); } catch (_) {}
+
+  // Appwrite ignores the multipart 'activate' flag. We must PATCH to activate.
+  const deploymentId = res.data?.$id;
+  if (deploymentId && (res.status === 200 || res.status === 201 || res.status === 202)) {
+    console.log(`Waiting for deployment ${deploymentId} to build...`);
+    let ready = false;
+    for (let i = 0; i < 30; i++) {
+      await new Promise(r => setTimeout(r, 3000));
+      const check = await request(`/functions/${functionId}/deployments/${deploymentId}`);
+      const st = check.data?.status;
+      console.log(`  Build status: ${st}`);
+      if (st === 'ready') { ready = true; break; }
+      if (st === 'failed') { console.error('  ❌ Build failed!'); break; }
+    }
+    if (ready) {
+      const activateRes = await request(`/functions/${functionId}/deployments/${deploymentId}`, 'PATCH', '');
+      console.log(`  Activated: ${activateRes.status}`);
+    }
+  }
 }
 
 async function run() {

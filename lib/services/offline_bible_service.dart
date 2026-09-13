@@ -211,7 +211,7 @@ class OfflineBibleService {
         }
       }
 
-      // If not cached, try to get from assets
+      // If not cached, try to get from assets (ZIP bundle first, then individual JSON files)
       final assetChapter = await _loadChapterFromAssets(
           book, chapter, versionCode, languageCode);
       if (assetChapter != null) {
@@ -225,6 +225,30 @@ class OfflineBibleService {
         _memoryChapterCache[memKey] = assetChapter;
         _prefetchChapter(book, chapter + 1, versionCode, languageCode);
         return assetChapter;
+      }
+
+      // Fallback: try loading from individual JSON files (e.g., NLT)
+      try {
+        final jsonChapter = await _loadChapterFromAssetsOnly(
+          book: book,
+          chapter: chapter,
+          version: versionCode,
+          language: languageCode,
+        );
+        if (jsonChapter != null) {
+          if (!kIsWeb) {
+            try {
+              await _dbHelper.insertChapter(jsonChapter);
+            } catch (insertErr) {
+              _logger.warning('Failed to cache chapter in DB: $insertErr');
+            }
+          }
+          _memoryChapterCache[memKey] = jsonChapter;
+          _prefetchChapter(book, chapter + 1, versionCode, languageCode);
+          return jsonChapter;
+        }
+      } catch (_) {
+        // Ignore and fall through to error
       }
 
       // Local-only mode: do not call external providers.
@@ -354,6 +378,39 @@ class OfflineBibleService {
     if (_searchCache.length > 200) _searchCache.clear();
     _searchCache[cacheKey] = result;
     return result;
+  }
+
+  /// Returns every verse in the bundled Bible for the given language/version
+  /// (~31,000 verses across all 66 books). Used by the daily-verse generator
+  /// so each date maps to a unique verse from the FULL corpus instead of the
+  /// small bundled static list. The result is cached after the first build.
+  Future<List<BibleTextHit>> getAllVerses({
+    String? version,
+    String? language,
+  }) async {
+    final versionCode =
+        (version == null || version.isEmpty) ? _defaultVersion : version;
+    final languageCode =
+        (language == null || language.isEmpty) ? _defaultLanguage : language;
+    final indexKey = '$languageCode/$versionCode';
+
+    var index = _cachedIndex(indexKey);
+    index ??= await _buildSearchIndex(
+      indexKey: indexKey,
+      versionCode: versionCode,
+      languageCode: languageCode,
+    );
+    if (index == null || index.entries.isEmpty) return [];
+
+    return index.entries
+        .map((e) => BibleTextHit(
+              book: e.book,
+              chapter: e.chapter,
+              verse: e.verse,
+              reference: e.reference,
+              text: e.text,
+            ))
+        .toList();
   }
 
   Future<_BibleSearchIndex?> _buildSearchIndex({
@@ -844,6 +901,10 @@ class OfflineBibleService {
       'Failed to load chapter from Bible bundle',
       originalError: lastError,
     );
+  }
+
+  static Archive _decodeZipArchive(Uint8List bytes) {
+    return ZipDecoder().decodeBytes(bytes);
   }
 
   Future<Archive> _loadVersionBundle(String language, String version) async {

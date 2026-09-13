@@ -385,7 +385,8 @@ class _AdminKidsMissionsScreenState extends State<AdminKidsMissionsScreen> {
                             style: TextStyle(
                                 fontSize: 16, fontWeight: FontWeight.bold)),
                       ),
-                     const SizedBox(height: 40),
+                    ),
+                    const SizedBox(height: 40),
                     SizedBox(
                       width: double.infinity,
                       height: 50,
@@ -428,7 +429,6 @@ class _AdminKidsMissionsScreenState extends State<AdminKidsMissionsScreen> {
                 ),
               ),
             ),
-          ),
     );
   }
 
@@ -479,16 +479,5 @@ class _AdminKidsMissionsScreenState extends State<AdminKidsMissionsScreen> {
     } finally {
       if (mounted) setState(() => _isSeeding = false);
     }
-  }
-}
-
-enum _Kids
-                    ),
-                    const SizedBox(height: 40),
-                  ],
-                ),
-              ),
-            ),
-    );
   }
 }

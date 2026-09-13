@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:appwrite/appwrite.dart' as aw;
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';

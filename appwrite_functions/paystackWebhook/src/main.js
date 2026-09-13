@@ -1,3 +1,5 @@
+import crypto from 'node:crypto';
+import { Client, Databases, ID } from 'node-appwrite';
 
 async function sendDonationReceipt(paymentData) {
   const email = paymentData.customer && paymentData.customer.email;
@@ -43,8 +45,7 @@ async function sendDonationReceipt(paymentData) {
     console.error('Failed to send receipt:', err);
   }
 }
-import crypto from 'node:crypto';
-import { Client, Databases } from 'node-appwrite';
+// imports moved to top of file
 
 const databaseId = process.env.APPWRITE_DATABASE_ID || '6a089307002e54291a32';
 const donationsCollectionId = process.env.APPWRITE_DONATION_RECORDS_COLLECTION_ID || 'donation_records';
@@ -186,7 +187,7 @@ async function writePaymentLog(databases, event, reference, status, payload) {
   await databases.createDocument(
     databaseId,
     paymentLogsCollectionId,
-    `${reference}_${Date.now()}`,
+    ID.unique(),
     {
       provider: 'paystack',
       reference,

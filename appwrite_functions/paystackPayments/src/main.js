@@ -1,4 +1,4 @@
-import { Client, Databases } from 'node-appwrite';
+import { Client, Databases, ID } from 'node-appwrite';
 
 const databaseId = process.env.APPWRITE_DATABASE_ID || '6a089307002e54291a32';
 const paymentLogsCollectionId = process.env.APPWRITE_PAYMENT_LOGS_COLLECTION_ID || 'payment_logs';
@@ -166,7 +166,7 @@ async function writePaymentLog({ event, reference, status, payload, log }) {
     await databases.createDocument(
       databaseId,
       paymentLogsCollectionId,
-      `${reference}_${Date.now()}`,
+      ID.unique(),
       {
         provider: 'paystack',
         reference,

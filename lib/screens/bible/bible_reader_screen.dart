@@ -339,10 +339,6 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
       await _ttsService.speak(chapterText);
     } catch (e) {
       if (mounted) {
-              child: SingleChildScrollView(
-                controller: _scrollController,
-                child: Form(
-                  key: _formKey,
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error speaking chapter: $e'),
@@ -1014,12 +1010,12 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.transparent,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       isScrollControlled: true,
       builder: (context) => Container(
         height: screenHeight * (isSmallScreen ? 0.7 : 0.6),
         decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(20),
             topRight: Radius.circular(20),
@@ -1099,12 +1095,12 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.transparent,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       isScrollControlled: true,
       builder: (context) => Container(
         height: screenHeight * (isSmallScreen ? 0.6 : 0.5),
         decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(20),
             topRight: Radius.circular(20),
@@ -1188,12 +1184,12 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.transparent,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       isScrollControlled: true,
       builder: (context) => Container(
         height: screenHeight * (isSmallScreen ? 0.5 : 0.4),
         decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(20),
             topRight: Radius.circular(20),
@@ -1267,12 +1263,12 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
     final languages = _languageCodes.keys.toList();
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.transparent,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       isScrollControlled: true,
       builder: (context) => Container(
         height: screenHeight * (isSmallScreen ? 0.5 : 0.4),
         decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(20),
             topRight: Radius.circular(20),
@@ -1437,7 +1433,8 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                             'From $_selectedVersion · $_selectedLanguage',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: colorScheme.secondary,
+                              fontSize: isSmallScreen ? 14 : 15,
+                              color: colorScheme.primary,
                             ),
                           ),
                           const SizedBox(height: 8),
@@ -1446,10 +1443,9 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                               hit.text,
                               _searchController.text,
                               TextStyle(
-                                color: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.color,
+                                color: colorScheme.onSurface,
+                                fontSize: isSmallScreen ? 14 : 15,
+                                height: 1.35,
                               ),
                               TextStyle(
                                 color: colorScheme.primary,
@@ -1465,13 +1461,22 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                                   hit.reference,
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    color: colorScheme.secondary,
+                                    fontSize: isSmallScreen ? 14 : 16,
+                                    color: colorScheme.onSurface,
                                   ),
                                 ),
                                 subtitle: RichText(
-                                  text: TextSpan(children: hits),
+                                  text: TextSpan(
+                                    style: TextStyle(
+                                      color: colorScheme.onSurface,
+                                      fontSize: isSmallScreen ? 14 : 15,
+                                      height: 1.35,
+                                    ),
+                                    children: hits,
+                                  ),
                                   maxLines: 3,
                                   overflow: TextOverflow.ellipsis,
+                                  softWrap: true,
                                 ),
                                 onTap: () {
                                   _openReference(hit.reference);
@@ -1485,7 +1490,8 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                               'More matches',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                color: colorScheme.secondary,
+                                fontSize: isSmallScreen ? 14 : 15,
+                                color: colorScheme.primary,
                               ),
                             ),
                         ],
@@ -1500,7 +1506,8 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                                 verse.reference,
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  color: colorScheme.secondary,
+                                  fontSize: isSmallScreen ? 14 : 16,
+                                  color: colorScheme.onSurface,
                                 ),
                               ),
                               subtitle: Text(
@@ -1508,6 +1515,11 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                                     verse.text.values.first,
                                 maxLines: 3,
                                 overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: colorScheme.onSurface,
+                                  fontSize: isSmallScreen ? 14 : 15,
+                                  height: 1.35,
+                                ),
                               ),
                               onTap: () {
                                 _openReference(verse.reference);
@@ -1556,35 +1568,30 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
       const Color(0xFFF9A8D4), // pink
       const Color(0xFFFCA5A5), // red
       const Color(0xFFA5B4FC), // navy/indigo
-    ];
+            ];
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.transparent,
+      backgroundColor: colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) {
-        return Container(
-          decoration: BoxDecoration(
-            color: colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Handle bar
-                Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: colorScheme.onSurface.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: colorScheme.onSurface.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(2),
                 ),
+              ),
               // Verse reference
               Text(
                 reference,
