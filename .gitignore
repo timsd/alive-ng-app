@@ -109,3 +109,11 @@ android/.kotlin/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# Development scratch scripts
+/scratch/
+cleanup.py
+create_nlt_bundle.py
+
+# Agent configurations
+.agents/

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -16,28 +16,28 @@ class QuickActionsGrid extends ConsumerWidget {
     final translate = ref.watch(translationProvider);
 
     final actions = [
-      const QuickAction(
+      QuickAction(
         icon: Icons.child_care_rounded,
-        title: 'Kids Missions',
-        color: Color(0xFFF43F5E), // Rose 500
+        title: translate('kids_missions'),
+        color: const Color(0xFFF43F5E), // Rose 500
         route: AppConstants.kidsMissionRoute,
       ),
-      const QuickAction(
+      QuickAction(
         icon: Icons.trending_up_rounded,
-        title: 'Discipleship',
-        color: Color(0xFF10B981), // Emerald 500
+        title: translate('discipleship'),
+        color: const Color(0xFF10B981), // Emerald 500
         route: '/discipleship-tracker',
       ),
-      const QuickAction(
+      QuickAction(
         icon: Icons.sports_esports_rounded,
-        title: 'Bible Game',
-        color: Color(0xFF2563EB), // Blue 600
+        title: translate('bible_game'),
+        color: const Color(0xFF2563EB), // Blue 600
         route: AppConstants.bibleGameRoute,
       ),
-      const QuickAction(
+      QuickAction(
         icon: Icons.restaurant_menu_rounded,
-        title: 'Recipes',
-        color: Color(0xFFF59E0B), // Amber 500
+        title: translate('recipes'),
+        color: const Color(0xFFF59E0B), // Amber 500
         route: AppConstants.recipesRoute,
       ),
       QuickAction(
@@ -46,40 +46,40 @@ class QuickActionsGrid extends ConsumerWidget {
         color: const Color(0xFF0EA5E9), // Sky 500
         route: '/missions',
       ),
-      const QuickAction(
+      QuickAction(
         icon: Icons.record_voice_over_rounded,
-        title: 'Testimonies',
-        color: Color(0xFF8B5CF6), // Violet 500
+        title: translate('testimonies'),
+        color: const Color(0xFF8B5CF6), // Violet 500
         route: '/testimonies',
       ),
-      const QuickAction(
+      QuickAction(
         icon: Icons.auto_stories_rounded,
-        title: 'Kids Stories',
-        color: Color(0xFFF97316), // Orange 500
+        title: translate('kids_stories'),
+        color: const Color(0xFFF97316), // Orange 500
         route: '/kids-stories',
       ),
-      const QuickAction(
+      QuickAction(
         icon: Icons.local_library_rounded,
-        title: 'Library',
-        color: Color(0xFF14B8A6), // Teal 500
+        title: translate('library'),
+        color: const Color(0xFF14B8A6), // Teal 500
         route: '/library',
       ),
-      const QuickAction(
+      QuickAction(
         icon: Icons.podcasts_rounded,
-        title: 'Podcasts',
-        color: Color(0xFFD946EF), // Fuchsia 500
+        title: translate('podcasts'),
+        color: const Color(0xFFD946EF), // Fuchsia 500
         route: '/podcasts',
       ),
-      const QuickAction(
+      QuickAction(
         icon: Icons.menu_book_rounded,
-        title: 'Bible',
-        color: Color(0xFF6366F1), // Indigo 500
+        title: translate('bible'),
+        color: const Color(0xFF6366F1), // Indigo 500
         route: AppConstants.bibleRoute,
       ),
-      const QuickAction(
+      QuickAction(
         icon: Icons.wb_sunny_rounded,
-        title: 'Daily Verse',
-        color: Color(0xFFF59E0B), // Amber 500
+        title: translate('daily_verse'),
+        color: const Color(0xFFF59E0B), // Amber 500
         route: AppConstants.dailyRoute,
       ),
     ];

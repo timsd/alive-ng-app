@@ -1,4 +1,6 @@
 // Board Report Model
+import 'dart:convert';
+
 class BoardReport {
   final String id;
   final String title;
@@ -112,9 +114,7 @@ class BoardDecision {
           ? DateTime.parse(json['voting_deadline'])
           : null,
       status: json['status'] ?? 'proposed',
-      votes: (json['votes'] as List<dynamic>? ?? [])
-          .map((vote) => DecisionVote.fromJson(vote))
-          .toList(),
+      votes: _parseVotes(json['votes']),
       resolution: json['resolution'],
       resolvedAt: json['resolved_at'] != null
           ? DateTime.parse(json['resolved_at'])
@@ -144,6 +144,32 @@ class BoardDecision {
 }
 
 // Decision Vote Model
+List<DecisionVote> _parseVotes(dynamic raw) {
+  if (raw == null) return const [];
+  if (raw is String) {
+    if (raw.trim().isEmpty) return const [];
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is List) {
+        return decoded
+            .whereType<Map>()
+            .map((vote) => DecisionVote.fromJson(Map<String, dynamic>.from(vote)))
+            .toList();
+      }
+      return const [];
+    } catch (_) {
+      return const [];
+    }
+  }
+  if (raw is List) {
+    return raw
+        .whereType<Map>()
+        .map((vote) => DecisionVote.fromJson(Map<String, dynamic>.from(vote)))
+        .toList();
+  }
+  return const [];
+}
+
 class DecisionVote {
   final String id;
   final String decisionId;

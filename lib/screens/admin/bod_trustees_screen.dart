@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../../services/appwrite_profile_service.dart';
 import '../../services/auth_service.dart';
-import '../../models/app_models.dart';
+import '../../services/leadership_service.dart';
+import '../../services/role_access_service.dart';
+import '../../models/app_models.dart' hide LeadershipRecord;
+import '../../models/leadership_models.dart';
 import 'board_reports_screen.dart';
 import 'board_decisions_screen.dart';
 import 'board_documents_screen.dart';
@@ -19,9 +24,13 @@ class BodTrusteesScreen extends StatefulWidget {
 class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
   final AppwriteProfileService _profileService = AppwriteProfileService();
   final AuthService _authService = AuthService.instance;
+  final LeadershipService _leadershipService = LeadershipService();
   bool _isLoading = true;
   bool _hasAccess = false;
+  bool _isAdmin = false;
   String? _currentUserId;
+  List<LeadershipRecord> _records = [];
+  String _tenureFilter = 'all';
 
   @override
   void initState() {
@@ -43,6 +52,8 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
             role == 'leader' ||
             role == 'bod' ||
             role == 'trustee';
+        _isAdmin = RoleAccessService.instance.hasRole('admin');
+        if (_hasAccess) await _loadLeadership();
       }
     } catch (e) {
       _hasAccess = false;
@@ -51,6 +62,41 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  Future<void> _loadLeadership() async {
+    try {
+      final results = await Future.wait([
+        _leadershipService.getRecordsByPosition(LeadershipPosition.bod),
+        _leadershipService.getRecordsByPosition(LeadershipPosition.director),
+        _leadershipService.getRecordsByPosition(LeadershipPosition.trustee),
+      ]);
+      final merged = <LeadershipRecord>[...results[0], ...results[1], ...results[2]];
+      merged.sort((a, b) => b.startDate.compareTo(a.startDate));
+      if (mounted) setState(() => _records = merged);
+    } catch (_) {
+      // Board screen still works when leadership history is unavailable.
+    }
+  }
+
+  List<String> get _tenures {
+    final tenures = _records.map(_tenureLabel).toSet().toList()..sort();
+    return ['all', ...tenures];
+  }
+
+  String _tenureLabel(LeadershipRecord record) {
+    final end = record.endDate;
+    final startYear = record.startDate.year;
+    final endYear = end?.year ?? DateTime.now().year;
+    return startYear == endYear ? '$startYear' : '$startYear–$endYear';
+  }
+
+  List<LeadershipRecord> _filteredRecords(LeadershipPosition position) {
+    return _records.where((record) {
+      if (record.position != position) return false;
+      if (_tenureFilter != 'all' && _tenureLabel(record) != _tenureFilter) return false;
+      return true;
+    }).toList();
   }
 
   @override
@@ -119,6 +165,14 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
         title: const Text('Board of Directors & Trustees'),
         backgroundColor: Colors.green,
         foregroundColor: Colors.white,
+        actions: [
+          if (_isAdmin)
+            IconButton(
+              tooltip: 'Add leader',
+              icon: const Icon(Icons.person_add),
+              onPressed: () => _showLeaderEditor(),
+            ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -151,12 +205,16 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
                             final userEmail = profile?.email ??
                                 profile?.fullName ??
                                 'Administrator';
-                            return Text(
-                              'Welcome, $userEmail',
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green,
+                            return Expanded(
+                              child: Text(
+                                'Welcome, $userEmail',
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             );
                           },
@@ -175,42 +233,64 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                const Icon(Icons.history, color: Colors.green),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Leadership by tenure',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                DropdownButton<String>(
+                  value: _tenureFilter,
+                  items: _tenures
+                      .map((tenure) => DropdownMenuItem(
+                            value: tenure,
+                            child: Text(tenure == 'all' ? 'All tenures' : tenure),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) setState(() => _tenureFilter = value);
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
 
-            // Board of Directors Section
-            _buildSection(
-              'Board of Directors',
-              Icons.business_center,
-              [
-                _buildMemberCard(
-                  'Nwoko Patience Mfon',
-                  'Executive President & Chairman',
-                  'Leading the strategic direction of ALIVE Nigeria',
-                  Icons.person,
-                ),
-                _buildMemberCard(
-                  'Caleb Peters',
-                  'Secretary/Communication Director',
-                  'Managing organizational communications and documentation',
-                  Icons.chat,
-                ),
+            // Directors are operational leaders and are not all BOD members.
+            _buildLeadershipSection(
+              'Directors',
+              Icons.supervisor_account,
+              _filteredRecords(LeadershipPosition.director),
+              fallback: [
                 _buildMemberCard(
                   'Godstime Esuku',
                   'Director: ALIVE Mission Training Center (AMTC)',
                   'Overseeing missionary training and development programs',
                   Icons.school,
                 ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+
+            // Board of Directors Section
+            _buildLeadershipSection(
+              'Board of Directors',
+              Icons.business_center,
+              _filteredRecords(LeadershipPosition.bod),
+              fallback: [
                 _buildMemberCard(
-                  'Timothy Olodude',
-                  'Treasure / Director of Logistics',
-                  'Managing financial operations and logistical coordination',
-                  Icons.account_balance_wallet,
-                ),
-                _buildMemberCard(
-                  'Emenike Ekechi',
-                  'Director: Evangelism/Programming/Health',
-                  'Leading evangelistic initiatives and health programs',
-                  Icons.health_and_safety,
+                  'Nwoko Patience Mfon',
+                  'Executive President & Chairman',
+                  'Leading the strategic direction of ALIVE Nigeria',
+                  Icons.person,
                 ),
               ],
             ),
@@ -218,27 +298,16 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
             const SizedBox(height: 24),
 
             // Trustees Section
-            _buildSection(
+            _buildLeadershipSection(
               'Board of Trustees',
               Icons.security,
-              [
+              _filteredRecords(LeadershipPosition.trustee),
+              fallback: [
                 _buildMemberCard(
                   'Trustee Position 1',
                   'Chairman',
                   'Overseeing organizational governance and compliance',
                   Icons.gavel,
-                ),
-                _buildMemberCard(
-                  'Trustee Position 2',
-                  'Financial Trustee',
-                  'Ensuring financial accountability and transparency',
-                  Icons.account_balance,
-                ),
-                _buildMemberCard(
-                  'Trustee Position 3',
-                  'Legal Trustee',
-                  'Managing legal affairs and regulatory compliance',
-                  Icons.balance,
                 ),
               ],
             ),
@@ -303,7 +372,6 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
             ),
 
             const SizedBox(height: 12),
-
             Row(
               children: [
                 Expanded(
@@ -316,9 +384,134 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Container(),
+                  child: _buildActionCard(
+                    'Meeting Notes',
+                    Icons.note_alt,
+                    'Fathom-style notes + transcript',
+                    () => _openMeetingNotes(),
+                  ),
                 ),
               ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLeadershipSection(
+    String title,
+    IconData icon,
+    List<LeadershipRecord> records, {
+    required List<Widget> fallback,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, color: Colors.green, size: 24),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        if (records.isEmpty) ...fallback else ...records.map(_buildLeadershipCard),
+      ],
+    );
+  }
+
+  Widget _buildLeadershipCard(LeadershipRecord record) {
+    final dateFormat = DateFormat('MMM yyyy');
+    final tenure = _tenureLabel(record);
+    final range = '${dateFormat.format(record.startDate)} - ${record.endDate == null ? 'Present' : dateFormat.format(record.endDate!)}';
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        leading: const CircleAvatar(child: Icon(Icons.person)),
+        title: Text(record.userName, maxLines: 1, overflow: TextOverflow.ellipsis),
+        subtitle: Text('${record.positionTitle}\nTenure: $tenure ($range)', maxLines: 3, overflow: TextOverflow.ellipsis),
+        trailing: _isAdmin ? IconButton(icon: const Icon(Icons.edit), onPressed: () => _showLeaderEditor(record: record)) : null,
+      ),
+    );
+  }
+
+  void _openMeetingNotes() {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BoardMeetingNotesScreen()));
+  }
+
+  Future<void> _showLeaderEditor({LeadershipRecord? record}) async {
+    final nameController = TextEditingController(text: record?.userName ?? '');
+    final emailController = TextEditingController(text: record?.userEmail ?? '');
+    final titleController = TextEditingController(text: record?.positionTitle ?? '');
+    var position = record?.position ?? LeadershipPosition.director;
+    var start = record?.startDate ?? DateTime.now();
+    DateTime? end = record?.endDate;
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(record == null ? 'Add leader' : 'Edit leader'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Full name')),
+                TextField(controller: emailController, decoration: const InputDecoration(labelText: 'Email')),
+                TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Role title')),
+                DropdownButton<LeadershipPosition>(
+                  value: position,
+                  items: const [
+                    DropdownMenuItem(value: LeadershipPosition.bod, child: Text('BOD member')),
+                    DropdownMenuItem(value: LeadershipPosition.director, child: Text('Director')),
+                    DropdownMenuItem(value: LeadershipPosition.trustee, child: Text('Trustee')),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) setDialogState(() => position = value);
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () async {
+                try {
+                  if (record == null) {
+                    await _leadershipService.createRecord(LeadershipRecord(
+                      id: 'new',
+                      userId: _currentUserId ?? 'admin',
+                      userName: nameController.text.trim(),
+                      userEmail: emailController.text.trim(),
+                      position: position,
+                      positionTitle: titleController.text.trim(),
+                      startDate: start,
+                      endDate: end,
+                      yearsOfService: 0,
+                      status: ServiceStatus.active,
+                      createdAt: DateTime.now(),
+                      updatedAt: DateTime.now(),
+                    ));
+                  } else {
+                    await _leadershipService.updateRecord(record.id, {
+                      'user_name': nameController.text.trim(),
+                      'position': position.name,
+                      'position_title': titleController.text.trim(),
+                      'start_date': start.toIso8601String(),
+                    });
+                  }
+                  if (mounted) {
+                    Navigator.pop(context);
+                    await _loadLeadership();
+                  }
+                } catch (e) {
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Save failed: $e')));
+                }
+              },
+              child: const Text('Save'),
             ),
           ],
         ),
@@ -442,7 +635,12 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Start Board Meeting'),
+        title: Row(
+          children: [
+            const Expanded(child: Text('Start Board Meeting')),
+            IconButton(tooltip: 'Close', icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+          ],
+        ),
         content: const Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -454,10 +652,6 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
@@ -485,7 +679,12 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Quick Board Meeting'),
+        title: Row(
+          children: [
+            const Expanded(child: Text('Quick Board Meeting')),
+            IconButton(tooltip: 'Close', icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -584,6 +783,114 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
         builder: (_) => const LiveKitMeetingScreen(
           meetingType: MeetingType.board,
         ),
+      ),
+    );
+  }
+}
+
+class BoardMeetingNotesScreen extends StatefulWidget {
+  const BoardMeetingNotesScreen({super.key});
+
+  @override
+  State<BoardMeetingNotesScreen> createState() => _BoardMeetingNotesScreenState();
+}
+
+class _BoardMeetingNotesScreenState extends State<BoardMeetingNotesScreen> {
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  final TextEditingController _notesController = TextEditingController();
+  final List<String> _transcriptLines = [];
+  bool _listening = false;
+
+  Future<void> _toggleListening() async {
+    if (_listening) {
+      await _speech.stop();
+      setState(() => _listening = false);
+      return;
+    }
+    final available = await _speech.initialize();
+    if (!available || !mounted) return;
+    setState(() => _listening = true);
+    await _speech.listen(
+      onResult: (result) {
+        final words = result.recognizedWords.trim();
+        if (words.isEmpty) return;
+        setState(() {
+          if (_transcriptLines.isEmpty) {
+            _transcriptLines.add(words);
+          } else {
+            _transcriptLines[_transcriptLines.length - 1] = words;
+          }
+        });
+      },
+    );
+  }
+
+  void _addSummaryPoint(String point) {
+    final text = point.trim();
+    if (text.isEmpty) return;
+    setState(() {
+      _notesController.text = _notesController.text.isEmpty ? '- $text' : '${_notesController.text}\n- $text';
+    });
+  }
+
+  @override
+  void dispose() {
+    _speech.stop();
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Meeting notes')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Live transcript', style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 8),
+                  if (_transcriptLines.isEmpty)
+                    const Text('Tap Start to capture board discussion as text.')
+                  else
+                    ..._transcriptLines.map((line) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Text(line),
+                        )),
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                    onPressed: _toggleListening,
+                    icon: Icon(_listening ? Icons.stop : Icons.mic),
+                    label: Text(_listening ? 'Stop' : 'Start'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Fathom-style summary', style: Theme.of(context).textTheme.titleMedium),
+                  TextField(controller: _notesController, minLines: 4, maxLines: 8, decoration: const InputDecoration(hintText: 'Key decisions, action items, owners...')),
+                  Row(
+                    children: [
+                      TextButton.icon(onPressed: () => _addSummaryPoint('Decision:'), icon: const Icon(Icons.check), label: const Text('Decision')),
+                      TextButton.icon(onPressed: () => _addSummaryPoint('Action:'), icon: const Icon(Icons.task), label: const Text('Action')),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

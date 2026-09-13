@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../../config/meeting_links_config.dart';
 import '../../models/meeting_models.dart';
@@ -60,6 +62,19 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     if (user == null) {
       _showMessage('Please sign in before joining a meeting.');
       return;
+    }
+
+    // Proactively request camera & microphone permissions
+    if (!kIsWeb) {
+      try {
+        final statuses = await [
+          Permission.camera,
+          Permission.microphone,
+        ].request();
+        debugPrint('Media permissions requested: $statuses');
+      } catch (permErr) {
+        debugPrint('Media permission request error: $permErr');
+      }
     }
 
     setState(() => _isJoining = true);

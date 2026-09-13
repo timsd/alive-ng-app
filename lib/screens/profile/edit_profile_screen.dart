@@ -238,6 +238,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
+  String _sectionTitle(int index) {
+    switch (index) {
+      case 0:
+        return 'Basic Information';
+      case 1:
+        return 'Profile Details';
+      default:
+        return 'Commitment';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -282,9 +293,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 padding:
                     ResponsiveUtils.getResponsivePaddingWithBase(context, 8),
                 child: Text(
-                  'Section ${_currentPage + 1} of 3',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.outline,
+                  'Section ${_currentPage + 1} of 3: ${_sectionTitle(_currentPage)}',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontWeight: FontWeight.w700,
                       ),
                 ),
               ),

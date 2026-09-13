@@ -24,7 +24,7 @@ class _KidsMissionScreenState extends ConsumerState<KidsMissionScreen> {
       tableId: AppwriteBackendConfig.kidsMissionsCollectionId,
       queries: [Query.equal('is_active', true), Query.limit(100)],
     ).then((snapshot) {
-      return snapshot.rows
+      final list = snapshot.rows
           .map((row) {
             final data = _mapMissionDocument(row);
 
@@ -36,7 +36,101 @@ class _KidsMissionScreenState extends ConsumerState<KidsMissionScreen> {
           })
           .whereType<Mission>()
           .toList();
-    }));
+      return list.isNotEmpty ? list : _sampleMissionsFallback();
+    }).catchError((_) => _sampleMissionsFallback()));
+  }
+
+  static List<Mission> _sampleMissionsFallback() {
+    return [
+      Mission(
+        id: 'sample-1',
+        title: 'Share a Bible Story',
+        description: 'Tell a favorite Bible story to a friend or family member',
+        location: 'Home/School',
+        difficulty: MissionDifficulty.easy,
+        duration: '15 minutes',
+        points: 10,
+        category: MissionCategory.sharing,
+        completed: false,
+        instructions: const [
+          'Choose one of your favorite Bible stories',
+          'Find someone who would like to hear it',
+          'Tell the story in your own words',
+          'Explain what lesson you learned from it',
+        ],
+        verificationMethod: VerificationMethod.story,
+      ),
+      Mission(
+        id: 'sample-2',
+        title: 'Help Someone in Need',
+        description: 'Find someone who needs help and offer assistance with a kind heart',
+        location: 'Community',
+        difficulty: MissionDifficulty.easy,
+        duration: '30 minutes',
+        points: 15,
+        category: MissionCategory.service,
+        completed: false,
+        instructions: const [
+          'Look around for someone who might need help',
+          'Offer your assistance kindly',
+          'Help them with what they need',
+          'Don\'t expect anything in return',
+        ],
+        verificationMethod: VerificationMethod.photo,
+      ),
+      Mission(
+        id: 'sample-3',
+        title: 'Memorize the Beatitudes',
+        description: 'Learn and recite the Beatitudes from Matthew 5:3-12',
+        location: 'Anywhere',
+        difficulty: MissionDifficulty.medium,
+        duration: '1 hour',
+        points: 20,
+        category: MissionCategory.learning,
+        completed: false,
+        instructions: const [
+          'Read Matthew 5:3-12 several times',
+          'Break it into smaller sections',
+          'Practice reciting each section',
+          'Recite the complete passage from memory',
+        ],
+        verificationMethod: VerificationMethod.quiz,
+      ),
+      Mission(
+        id: 'sample-4',
+        title: 'Prayer Walk',
+        description: 'Take a quiet walk and pray for people and places you see',
+        location: 'Neighborhood',
+        difficulty: MissionDifficulty.easy,
+        duration: '20 minutes',
+        points: 10,
+        category: MissionCategory.prayer,
+        completed: false,
+        instructions: const [
+          'Walk with a parent or guardian',
+          'Silently pray for the homes and neighbors you pass',
+          'Thank God for your neighborhood',
+        ],
+        verificationMethod: VerificationMethod.story,
+      ),
+      Mission(
+        id: 'sample-5',
+        title: 'Invite a Friend to Sabbath School',
+        description: 'Invite a classmate or friend to attend Sabbath School or church',
+        location: 'School/Community',
+        difficulty: MissionDifficulty.medium,
+        duration: '30 minutes',
+        points: 25,
+        category: MissionCategory.evangelism,
+        completed: false,
+        instructions: const [
+          'Pray for courage and love',
+          'Warmly invite your friend to join this weekend',
+          'Share what you love about Bible study',
+        ],
+        verificationMethod: VerificationMethod.witness,
+      ),
+    ];
   }
 
   Map<String, dynamic> _mapMissionDocument(dynamic row) {

@@ -131,8 +131,6 @@ class ProfileScreen extends ConsumerWidget {
     final effectiveRole = isSuperAdmin ? 'admin' : profile.role;
     final effectiveApproval =
         isSuperAdmin || effectiveRole == 'admin' ? 'approved' : profile.approvalStatus;
-    final canAccessAdmin = ['admin', 'staff'].contains(effectiveRole);
-    final canAccessBOD = ['admin', 'bod', 'trustee'].contains(effectiveRole);
 
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -176,31 +174,8 @@ class ProfileScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
 
-          // ── Admin / BOD Section ──
-          if (canAccessAdmin || canAccessBOD) ...[
-            _SectionCard(
-              title: 'Administrative',
-              icon: Icons.admin_panel_settings_rounded,
-              children: [
-                if (canAccessAdmin)
-                  _ActionTile(
-                    icon: Icons.admin_panel_settings,
-                    iconColor: const Color(0xFFDC2626),
-                    title: translate('admin_dashboard'),
-                    onTap: () => context.push(AppConstants.adminRoute),
-                  ),
-                if (canAccessBOD)
-                  _ActionTile(
-                    icon: Icons.people,
-                    iconColor: const Color(0xFF4F46E5),
-                    title: translate('bod_trustees'),
-                    onTap: () => context.push(AppConstants.bodTrusteesRoute),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
-          ],
-
+          // Admin entry points live under More > Admin Dashboard and More >
+          // Board (BOD). Profile intentionally omits that Administrative block.
           // ── Preferences ──
           _SectionCard(
             title: translate('preferences'),

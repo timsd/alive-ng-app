@@ -83,6 +83,7 @@ String lookupLegacyMessage(AppLocalizations messages, String key) {
     case 'missions':
       return messages.missions;
     case 'donate':
+    case 'donation':
       return messages.donate;
     case 'volunteer':
       return messages.volunteer;
@@ -133,6 +134,7 @@ String lookupLegacyMessage(AppLocalizations messages, String key) {
     case 'good_evening':
       return messages.good_evening;
     case 'daily_verse':
+    case 'dailyVerse':
       return messages.daily_verse;
     case 'quick_actions':
       return messages.quick_actions;
@@ -613,6 +615,7 @@ String lookupLegacyMessage(AppLocalizations messages, String key) {
     case 'events':
       return messages.events;
     case 'bible_game':
+    case 'bibleGame':
       return messages.bible_game;
     case 'chat':
       return messages.chat;
@@ -627,9 +630,29 @@ String lookupLegacyMessage(AppLocalizations messages, String key) {
     case 'testimonies':
       return messages.testimonies;
     case 'kids_stories':
+    case 'kidsStories':
       return messages.kids_stories;
     case 'kids_mission':
+    case 'kids_missions':
+    case 'kidsMission':
+    case 'kidsMissions':
       return messages.kids_mission;
+    case 'discipleship':
+      if (messages.localeName == 'yo') return 'Ẹ̀kọ́ Ọmọ-ẹ̀yìn';
+      if (messages.localeName == 'ha') return 'Koyarwa';
+      if (messages.localeName == 'ig') return 'Ịbụ Nwaazụ';
+      return 'Discipleship';
+    case 'more':
+      if (messages.localeName == 'yo') return 'Púpọ̀ sí i';
+      if (messages.localeName == 'ha') return 'Ƙari';
+      if (messages.localeName == 'ig') return 'Ọzọ';
+      return 'More';
+    case 'support_alive':
+    case 'supportAlive':
+      if (messages.localeName == 'yo') return 'Ṣe Àtìlẹ́yìn ALIVE';
+      if (messages.localeName == 'ha') return 'Goyi Bayan ALIVE';
+      if (messages.localeName == 'ig') return 'Kwado ALIVE';
+      return 'Support ALIVE';
     case 'submit_recipe':
       return messages.submit_recipe;
     case 'tools_games':

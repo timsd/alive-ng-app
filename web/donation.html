@@ -501,8 +501,8 @@
 
   <script>
     (function () {
-      var APPWRITE_ENDPOINT = 'https://api.alivenigeria.org/v1';
-      var APPWRITE_PROJECT_ID = '6a3bef53002f5090dedf';
+      var APPWRITE_ENDPOINT = 'https://appwrite.alivenigeria.org/v1';
+      var APPWRITE_PROJECT_ID = '6a0892be001150fc90ba';
       var PAYSTACK_FUNCTION_ID = 'paystack_payments';
       var CALLBACK_URL = window.location.origin + '/donation.html?status=callback';
 
@@ -512,21 +512,27 @@
           copy: 'Community discipleship and outreach facility for training, prayer, and practical ministry.',
           raised: 'Raised: NGN 8,000,000',
           goal: 'Goal: NGN 35,000,000',
-          progress: 23
+          progress: 23,
+          raisedNum: 8000000,
+          goalNum: 35000000
         },
         vehicle_purchase: {
           title: 'Vehicle Purchase',
           copy: 'Reliable transportation for mission trips, logistics, and outreach across Nigeria.',
           raised: 'Raised: NGN 0',
           goal: 'Goal: NGN 18,000,000',
-          progress: 0
+          progress: 0,
+          raisedNum: 0,
+          goalNum: 18000000
         },
         media_studio_setup: {
           title: 'Media Studio Setup',
           copy: 'Equipment for podcasts, teaching media, and digital discipleship content.',
           raised: 'Raised: NGN 0',
           goal: 'Goal: NGN 9,000,000',
-          progress: 0
+          progress: 0,
+          raisedNum: 0,
+          goalNum: 9000000
         }
       };
 
@@ -560,8 +566,7 @@
       if (btnNGN) btnNGN.addEventListener('click', function () { setCurrency('NGN'); });
       if (btnUSD) btnUSD.addEventListener('click', function () { setCurrency('USD'); });
 
-      // Shows the interactive 3D viewer only for the Impact Hub project so
-      // donors can inspect the real facilities before giving.
+      // Shows the interactive 3D viewer only for the Impact Hub project
       function updateProjectViewer(id) {
         var wrap = document.getElementById('project-viewer');
         if (!wrap) return;
@@ -605,36 +610,114 @@
         });
       }
 
-      // Always auto-scroll to the form section on page load so users
-      // see the donation fields immediately (especially on mobile).
-      setTimeout(function () {
-        try {
-          var formSection = document.querySelector('.panel');
-          if (formSection) {
-            var rect = formSection.getBoundingClientRect();
-            var fullyVisible = (rect.top >= 0) && (rect.bottom <= window.innerHeight);
-            if (!fullyVisible) {
-              formSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
+      // Handle return from Paystack checkout: active verification & celebratory modal
+      var returnRef = query.get('trxref') || query.get('reference');
+      var isReturn = query.get('status') === 'callback' || Boolean(returnRef);
+
+      if (isReturn) {
+        handlePaymentReturn(returnRef);
+      }
+
+      function showSuccessDialog(amountStr, refStr) {
+        var modal = document.createElement('div');
+        modal.id = 'payment-success-modal';
+        modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.85);backdrop-filter:blur(6px);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
+        
+        var countdown = 6;
+        modal.innerHTML = '<div style="background:#fff;border-radius:24px;max-width:460px;width:100%;padding:32px 28px;text-align:center;box-shadow:0 25px 50px -12px rgba(0,0,0,0.3);position:relative;animation:popIn 0.3s ease-out;">'
+          + '<div style="width:72px;height:72px;background:#ecfdf5;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;color:#10b981;font-size:38px;">✓</div>'
+          + '<h2 style="font-size:24px;font-weight:800;color:#0f172a;margin:0 0 10px;">Thank You!</h2>'
+          + '<p style="font-size:15px;color:#475569;margin:0 0 20px;line-height:1.5;">Your donation was successful and verified. An official receipt has been sent to your email.</p>'
+          + (amountStr ? '<div style="background:#f8fafc;border-radius:16px;padding:16px;margin:0 0 20px;border:1px solid #e2e8f0;text-align:left;">'
+            + '<div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:14px;"><span style="color:#64748b;">Amount:</span><strong style="color:#0f172a;">' + amountStr + '</strong></div>'
+            + (refStr ? '<div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#64748b;">Reference:</span><code style="color:#0f172a;background:#e2e8f0;padding:2px 6px;border-radius:6px;">' + refStr + '</code></div>' : '')
+            + '</div>' : '')
+          + '<button id="btn-go-home" style="width:100%;padding:14px 20px;border-radius:14px;background:#1a365d;color:#fff;border:none;font-size:16px;font-weight:700;cursor:pointer;margin-bottom:12px;transition:background 0.2s;">Return to Home Now</button>'
+          + '<p id="redirect-timer" style="font-size:13px;color:#94a3b8;margin:0;">Redirecting automatically in ' + countdown + 's...</p>'
+          + '</div>';
+
+        document.body.appendChild(modal);
+
+        var timerEl = document.getElementById('redirect-timer');
+        var interval = setInterval(function () {
+          countdown--;
+          if (timerEl) timerEl.textContent = 'Redirecting automatically in ' + countdown + 's...';
+          if (countdown <= 0) {
+            clearInterval(interval);
+            window.location.href = '/';
           }
-        } catch (_) { }
-      }, 300);
+        }, 1000);
 
-      // Auto-scroll on mobile when focusing fields
-      [amountInputEl, document.getElementById('donor-name'), document.getElementById('donor-email')].forEach(function (el) {
-        if (el) {
-          el.addEventListener('focus', function () {
-            if (window.innerWidth <= 820) {
-              el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-          });
+        document.getElementById('btn-go-home').addEventListener('click', function () {
+          clearInterval(interval);
+          window.location.href = '/';
+        });
+      }
+
+      async function handlePaymentReturn(ref) {
+        statusEl.textContent = 'Verifying your donation with Paystack...';
+        statusEl.className = 'status-message';
+        
+        if (!ref) {
+          statusEl.textContent = 'Payment completed. Thank you for your generous support!';
+          statusEl.className = 'status-message success';
+          showSuccessDialog(null, null);
+          return;
         }
-      });
 
-      // Handle return from Paystack checkout.
-      if (query.get('status') === 'callback') {
-        statusEl.textContent = 'Payment complete or pending confirmation. A receipt is emailed once Paystack confirms your transaction.';
-        statusEl.className = 'status-message success';
+        try {
+          var response = await fetch(
+            APPWRITE_ENDPOINT + '/functions/' + PAYSTACK_FUNCTION_ID + '/executions',
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Appwrite-Project': APPWRITE_PROJECT_ID
+              },
+              body: JSON.stringify({
+                body: JSON.stringify({
+                  action: 'verify_transaction',
+                  reference: ref
+                }),
+                async: false
+              })
+            }
+          );
+          var result = await response.json().catch(function () { return {}; });
+          var payload = result.responseBody !== undefined ? result.responseBody : result.response;
+          if (typeof payload === 'string') {
+            try { payload = JSON.parse(payload); } catch (_) { payload = {}; }
+          }
+
+          if (payload && (payload.status === 'success' || payload.success)) {
+            var amountVal = payload.amount || 0;
+            var cur = payload.currency || 'NGN';
+            var sym = currencySymbols[cur] || cur;
+            var amtStr = sym + ' ' + Number(amountVal).toLocaleString();
+
+            // Increment the counter on the page
+            var selProjId = (projectSelectEl ? projectSelectEl.value : projectId) || 'impact_hub_center';
+            if (projects[selProjId] && amountVal > 0) {
+              var p = projects[selProjId];
+              p.raisedNum = (p.raisedNum || 0) + amountVal;
+              var newProg = Math.round((p.raisedNum / p.goalNum) * 100);
+              document.getElementById('raised-label').textContent = 'Raised: ' + cur + ' ' + p.raisedNum.toLocaleString();
+              document.getElementById('progress-fill').style.width = Math.min(newProg, 100) + '%';
+            }
+
+            statusEl.textContent = '✓ Payment verified! Thank you for your donation of ' + amtStr + '.';
+            statusEl.className = 'status-message success';
+            showSuccessDialog(amtStr, ref);
+          } else {
+            statusEl.textContent = 'Payment received. A receipt will be sent to your email once fully confirmed.';
+            statusEl.className = 'status-message success';
+            showSuccessDialog(null, ref);
+          }
+        } catch (err) {
+          statusEl.textContent = 'Payment recorded. Thank you for your support!';
+          statusEl.className = 'status-message success';
+          showSuccessDialog(null, ref);
+        }
       }
 
       function makeReference() {

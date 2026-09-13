@@ -3,7 +3,7 @@ class PaymentConfig {
   // Paystack API Keys
   static String get paystackPublicKey {
     return const String.fromEnvironment('PAYSTACK_PUBLIC_KEY',
-        defaultValue: '');
+        defaultValue: 'pk_live_2c83ec0083f461344b6e11753a87ed4f7f365d4a');
   }
 
   // Paystack Secret Keys - NEVER expose in client code

@@ -26,6 +26,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final ChatService _chatService = ChatService();
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _messageController = TextEditingController();
+  bool _channelsExpanded = true;
 
   List<ChatChannel> _channels = [];
   List<ChatMessage> _messages = [];
@@ -302,38 +303,103 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   message: _error!,
                   onAction: _loadChannels,
                 )
-              : Row(
-                  children: [
-                    // Channel list sidebar
-                    Container(
-                      width: 300,
-                      decoration: BoxDecoration(
-                        border: Border(
-                          right: BorderSide(
-                            color: Theme.of(context).dividerColor,
+              : LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isWide = constraints.maxWidth >= 720;
+                    final channelPane = _channelsExpanded
+                        ? ChannelListWidget(
+                            channels: _channels,
+                            selectedChannel: _selectedChannel,
+                            onChannelSelected: (channel) {
+                              _selectChannel(channel);
+                              if (!isWide) {
+                                setState(() => _channelsExpanded = false);
+                              }
+                            },
+                            onRefresh: _loadChannels,
+                          )
+                        : const SizedBox.shrink();
+                    if (!isWide) {
+                      return Column(
+                        children: [
+                          ListTile(
+                            leading: Icon(_channelsExpanded ? Icons.expand_less : Icons.expand_more),
+                            title: Text(
+                              _selectedChannel?.name ?? 'Channels (${_channels.length})',
+                              style: Theme.of(context).textTheme.titleMedium,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            trailing: TextButton.icon(
+                              onPressed: () => setState(() => _channelsExpanded = !_channelsExpanded),
+                              icon: Icon(_channelsExpanded ? Icons.visibility_off : Icons.forum),
+                              label: Text(_channelsExpanded ? 'Hide' : 'Show'),
+                            ),
+                            onTap: () => setState(() => _channelsExpanded = !_channelsExpanded),
                           ),
-                        ),
-                      ),
-                      child: ChannelListWidget(
-                        channels: _channels,
-                        selectedChannel: _selectedChannel,
-                        onChannelSelected: _selectChannel,
-                        onRefresh: _loadChannels,
-                      ),
-                    ),
-                    // Chat area
-                    Expanded(
-                      child: _selectedChannel == null
-                          ? const Center(
-                              child: Text(
-                                'Select a channel to start chatting',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  color: Colors.grey,
+                          const Divider(height: 1),
+                          if (_channelsExpanded)
+                            Expanded(child: channelPane)
+                          else
+                            Expanded(child: _buildChatPane(context, canStartGeneral, isModerator)),
+                          if (_channelsExpanded)
+                            Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: SizedBox(
+                                width: double.infinity,
+                                child: FilledButton.icon(
+                                  onPressed: _selectedChannel == null
+                                      ? null
+                                      : () => setState(() => _channelsExpanded = false),
+                                  icon: const Icon(Icons.chat),
+                                  label: Text(_selectedChannel == null ? 'Select a channel above' : 'Open ${_selectedChannel!.name}'),
                                 ),
                               ),
-                            )
-                          : Column(
+                            ),
+                        ],
+                      );
+                    }
+                    return Row(
+                      children: [
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 220),
+                          width: _channelsExpanded ? 300 : 56,
+                          decoration: BoxDecoration(
+                            border: Border(
+                              right: BorderSide(color: Theme.of(context).dividerColor),
+                            ),
+                          ),
+                          child: _channelsExpanded
+                              ? channelPane
+                              : Column(
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.chevron_right),
+                                      tooltip: 'Show channels',
+                                      onPressed: () => setState(() => _channelsExpanded = true),
+                                    ),
+                                  ],
+                                ),
+                        ),
+                        Expanded(child: _buildChatPane(context, canStartGeneral, isModerator)),
+                      ],
+                    );
+                  },
+                ),
+    );
+  }
+
+  Widget _buildChatPane(BuildContext context, bool canStartGeneral, bool isModerator) {
+    if (_selectedChannel == null) {
+      return Center(
+        child: Text(
+          _channels.isEmpty ? 'No channels yet. Create the first channel.' : 'Select a channel to start chatting',
+          style: Theme.of(context).textTheme.titleMedium,
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
+    return Column(
                               children: [
                                 // Filter bar
                                 Padding(
@@ -446,10 +512,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                   onTagSearch: _chatService.getTaggableEntities,
                                 ),
                               ],
-                            ),
-                    ),
-                  ],
-                ),
     );
   }
 
@@ -533,13 +595,16 @@ class _CreateChannelDialogState extends State<_CreateChannelDialog> {
     });
 
     try {
+      final userId = widget.currentUserId;
+      if (userId == null || userId.isEmpty) {
+        throw Exception('Please sign in as an admin/leader to create a channel.');
+      }
       final channel = await ChatService().createChannel(
         name: _nameController.text.trim(),
         description: _descriptionController.text.trim(),
         type: _selectedType,
-        members: [
-          if (widget.currentUserId != null) widget.currentUserId!,
-        ],
+        members: [userId],
+        admins: [userId],
       );
 
       widget.onChannelCreated(channel);
@@ -550,8 +615,8 @@ class _CreateChannelDialogState extends State<_CreateChannelDialog> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to create channel: $e'),
-            backgroundColor: Colors.red,
+            content: Text(_friendlyChannelError(e)),
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -562,6 +627,17 @@ class _CreateChannelDialogState extends State<_CreateChannelDialog> {
         });
       }
     }
+  }
+
+  String _friendlyChannelError(Object e) {
+    final text = e.toString().toLowerCase();
+    if (text.contains('not authenticated') || text.contains('sign in')) {
+      return 'Please sign in as an admin/leader to create a channel.';
+    }
+    if (text.contains('permission') || text.contains('unauthorized') || text.contains('403')) {
+      return 'Your role cannot create channels yet. Ask an admin to grant access.';
+    }
+    return 'Channel could not be created. Check your connection and try again.';
   }
 
   @override

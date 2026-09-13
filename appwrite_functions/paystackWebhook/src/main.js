@@ -24,20 +24,22 @@ async function sendDonationReceipt(paymentData) {
   
   try {
     if (process.env.RESEND_API_KEY) {
-      await fetch('https://api.resend.com/emails', {
+      const sender = process.env.RECEIPT_SENDER_EMAIL || process.env.SENDER_EMAIL || 'ALIVE Nigeria <app@alivenigeria.org>';
+      const emailRes = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
           'Authorization': 'Bearer ' + process.env.RESEND_API_KEY,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          from: 'ALIVE Nigeria <alivenigeria2011@gmail.com>',
-          to: email,
+          from: sender,
+          to: [email],
           subject: 'Your ALIVE-NG Donation Receipt - ' + reference,
           html: receiptHtml
         })
       });
-      console.log('Receipt emailed to', email, 'for', currency, amount);
+      const resText = await emailRes.text();
+      console.log('Resend receipt status:', emailRes.status, 'Response:', resText);
     } else {
       console.log('Receipt generated (no email service configured):', email, reference);
     }

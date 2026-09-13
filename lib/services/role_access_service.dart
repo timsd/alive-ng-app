@@ -247,6 +247,23 @@ class RoleAccessService {
   }
 
   /// Check if user can create content (missions, events, announcements)
+  bool canPostHealth() {
+    final currentRole = getCurrentUserRole();
+    if (currentRole == null) return false;
+    const allowed = [
+      'admin',
+      'super_admin',
+      'content_manager',
+      'leader',
+      'director',
+      'president',
+      'bod',
+      'trustee',
+      'health_editor',
+    ];
+    return allowed.contains(currentRole);
+  }
+
   bool canCreateContent() {
     final currentRole = getCurrentUserRole();
     if (currentRole == null) return false;

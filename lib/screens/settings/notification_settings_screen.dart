@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/notification_settings.dart';
@@ -192,13 +191,24 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
                               const SizedBox(height: 16),
                               SwitchListTile(
                                 title: const Text('Enable Push Notifications'),
-                                subtitle: const Text('Receive ALIVE reminders and Appwrite messaging updates'),
+                                subtitle: const Text('Receive reminders and ministry updates on this device'),
                                 value: _settings!.pushNotificationsEnabled,
                                 onChanged: _isSaving ? null : (value) async {
                                   if (value) {
-                                    final granted = await NotificationSettingsService.requestNotificationPermission();
-                                    if (!granted) return;
-                                    await _updateSetting(_settings!.copyWith(pushNotificationsEnabled: true));
+                                    setState(() => _isSaving = true);
+                                    try {
+                                      final granted = await NotificationSettingsService.requestNotificationPermission();
+                                      if (!mounted) return;
+                                      if (!granted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('Notifications permission was not granted.')),
+                                        );
+                                        return;
+                                      }
+                                      await _updateSetting(_settings!.copyWith(pushNotificationsEnabled: true));
+                                    } finally {
+                                      if (mounted) setState(() => _isSaving = false);
+                                    }
                                   } else {
                                     await _updateSetting(_settings!.copyWith(pushNotificationsEnabled: value));
                                   }
@@ -379,53 +389,6 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
                       ),
 
                       const SizedBox(height: 16),
-                      
-                      // Test Notification Button (Hidden for standard users; debug only)
-                      if (kDebugMode) ...[
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Test Notifications (Dev Mode)',
-                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: ElevatedButton.icon(
-                                    onPressed: _isSaving ? null : () async {
-                                      try {
-                                        await ReminderService().showImmediateNotification(
-                                          id: DateTime.now().millisecondsSinceEpoch,
-                                          title: 'Test Notification',
-                                          body: 'This is a test notification from ALIVE NG',
-                                        );
-                                        if (!context.mounted) return;
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(content: Text('Test notification sent')),
-                                        );
-                                      } catch (e) {
-                                        if (!context.mounted) return;
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(content: Text('Error sending test notification: $e')),
-                                        );
-                                      }
-                                    },
-                                    icon: const Icon(Icons.notifications_active),
-                                    label: const Text('Send Test Notification'),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                      
                       if (_isSaving)
                         const Padding(
                           padding: EdgeInsets.all(16),

@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import '../../models/health_models.dart';
 import '../../services/health_service.dart';
+import '../../services/role_access_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/language_provider.dart';
 import '../../utils/responsive_utils.dart';
 import '../../utils/layout_fix_utils.dart';
+import '../../widgets/custom_app_bar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../constants/app_constants.dart';
 
 class EnhancedHealthScreen extends ConsumerStatefulWidget {
   const EnhancedHealthScreen({super.key});
@@ -32,7 +36,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _loadHealthData();
   }
 
@@ -80,27 +84,35 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
   @override
   Widget build(BuildContext context) {
     final translate = ref.watch(translationProvider);
-
+    final theme = Theme.of(context);
+    final canPost = RoleAccessService.instance.canPostHealth();
     return Scaffold(
-      appBar: AppBar(
-        title: Text(translate('health_wellness')),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Theme.of(context).colorScheme.onPrimary,
+      appBar: CustomAppBar(
+        title: translate('health_wellness'),
+        showDonationButton: false,
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
-          indicatorColor: Theme.of(context).colorScheme.primary,
-          labelColor: Theme.of(context).colorScheme.primary,
-          unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+          indicatorColor: theme.colorScheme.onPrimary,
+          indicatorWeight: 3,
+          labelColor: theme.colorScheme.onPrimary,
+          unselectedLabelColor:
+              theme.colorScheme.onPrimary.withValues(alpha: 0.72),
           tabs: const [
-            Tab(icon: Icon(Icons.dashboard), text: 'Overview'),
-            Tab(icon: Icon(Icons.restaurant), text: 'Meal Plans'),
-            Tab(icon: Icon(Icons.lightbulb), text: 'Tips'),
-            Tab(icon: Icon(Icons.track_changes), text: 'Tracker'),
-            Tab(icon: Icon(Icons.insights), text: 'Insights'),
+            Tab(icon: Icon(Icons.restaurant_menu), text: 'Recipes'),
+            Tab(icon: Icon(Icons.spa), text: 'Remedies'),
+            Tab(icon: Icon(Icons.favorite), text: 'NEWSTART Guide'),
+            Tab(icon: Icon(Icons.forum), text: 'Discussion'),
           ],
         ),
       ),
+      floatingActionButton: canPost
+          ? FloatingActionButton.extended(
+              onPressed: () => context.push(AppConstants.recipeSubmissionRoute),
+              icon: const Icon(Icons.add),
+              label: const Text('Add'),
+            )
+          : null,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
@@ -108,11 +120,10 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
               : TabBarView(
                   controller: _tabController,
                   children: [
-                    _buildOverviewTab(),
-                    _buildMealPlansTab(),
-                    _buildTipsTab(),
-                    _buildTrackerTab(),
-                    _buildInsightsTab(),
+                    _buildRecipesTab(),
+                    _buildRemediesTab(),
+                    _buildNewstartGuideTab(),
+                    _buildCommunityTab(),
                   ],
                 ),
     );
@@ -1164,5 +1175,65 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
         ],
       ),
     );
+  }
+
+  Widget _buildRecipesTab() {
+    return ListView(
+      padding: context.responsivePadding,
+      children: [
+        _sectionHeader(
+          'Nigerian SDA Recipes',
+          'Plant-based meals with local ingredients.',
+          Icons.restaurant_menu,
+        ),
+        if (_mealPlans.isEmpty)
+          _emptyCard('No recipes yet', 'Admins can publish the first recipe.')
+        else
+          ..._mealPlans.map(_buildMealPlanCard),
+      ],
+    );
+  }
+
+  Widget _buildRemediesTab() {
+    return ListView(
+      padding: context.responsivePadding,
+      children: [
+        _sectionHeader('Natural Remedies', 'Remedies with ID photos.', Icons.spa),
+        _infoCard('Include photos, preparation, dosage and precautions.'),
+      ],
+    );
+  }
+
+  Widget _buildNewstartGuideTab() {
+    return ListView(
+      padding: context.responsivePadding,
+      children: [
+        _sectionHeader('NEWSTART Guide', 'SDA lifestyle framework.', Icons.favorite),
+        _infoCard('Nutrition, Exercise, Water, Sunlight, Temperance, Air, Rest, Trust in God.'),
+      ],
+    );
+  }
+
+  Widget _buildCommunityTab() {
+    final user = ref.watch(currentUserProvider);
+    return ListView(
+      padding: context.responsivePadding,
+      children: [
+        _sectionHeader('Discussion', 'Questions and comments.', Icons.forum),
+        _infoCard(user == null ? 'Please sign in to join discussion.' : 'Authenticated members can comment here.'),
+      ],
+    );
+  }
+
+  Widget _sectionHeader(String title, String subtitle, IconData icon) {
+    return ListTile(leading: Icon(icon), title: Text(title), subtitle: Text(subtitle));
+  }
+
+  Widget _emptyCard(String title, String subtitle) {
+    return Card(child: ListTile(title: Text(title), subtitle: Text(subtitle)));
+  }
+
+  Widget _infoCard(String text) {
+    return Card(child: Padding(padding: const EdgeInsets.all(16), child: Text(text)));
   }
 }

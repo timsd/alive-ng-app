@@ -55,13 +55,24 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Password reset failed: $e')),
+        SnackBar(content: Text(_friendlyRecoveryError(e))),
       );
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);
       }
     }
+  }
+
+  String _friendlyRecoveryError(Object e) {
+    final text = e.toString().toLowerCase();
+    if (text.contains('session') || text.contains('unauthorized') || text.contains('401')) {
+      return 'This reset link opened without an Appwrite session. Please open the latest email link in the same browser, or request a fresh reset link.';
+    }
+    if (text.contains('expired') || text.contains('invalid')) {
+      return 'This reset link has expired or was already used. Please request a new one.';
+    }
+    return 'Password reset failed. Please request a fresh link and try again.';
   }
 
   @override

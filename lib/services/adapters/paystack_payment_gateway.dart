@@ -84,8 +84,15 @@ class PaystackPaymentGateway implements PaymentGateway {
       return _handlePaystackInitResponse(data: data, fallbackReference: ref);
     } catch (e) {
       _logger.error('Error processing donation: $e');
+      String msg = 'Could not initialize payment. Please try again.';
+      final eStr = e.toString();
+      if (eStr.contains('Bad state') || eStr.contains('No element')) {
+        msg = 'Payment service unavailable or returned invalid state. Please try again.';
+      } else if (e is Exception) {
+        msg = eStr.replaceFirst('Exception: ', '');
+      }
       return PaymentResponse.failed(
-        message: 'Error processing payment: $e',
+        message: msg,
         reference: request.reference,
       );
     }

@@ -10,7 +10,6 @@ import '../../widgets/custom_app_bar.dart';
 import '../../providers/language_provider.dart';
 import '../../models/app_models.dart';
 import '../../widgets/daily_verse_card.dart';
-import '../../services/daily_verse_repository.dart';
 import '../../services/daily_verse_generation_service.dart';
 import '../../services/bible_source.dart';
 import '../../utils/text_formatter.dart';
@@ -19,17 +18,22 @@ import '../../constants/app_constants.dart';
 
 // Provider for daily verse
 final dailyVerseProvider = FutureProvider<DailyVerse?>((ref) async {
+  final locale = ref.watch(localeProvider);
+  final langCode = locale.languageCode;
+
   DailyVerse fallbackVerse() {
     final now = DateTime.now();
     final epochDays = now.toUtc().difference(DateTime.utc(1970, 1, 1)).inDays;
     final verses = BibleSource.instance.dailyCorpus;
     final index = verses.isEmpty ? 0 : epochDays % verses.length;
     final v = verses.isEmpty ? null : verses[index];
+    final localVersion = {'yo': 'BM', 'ha': 'HAU', 'ig': 'IGBOB'}[langCode] ?? 'KJV';
+    final text = v?.text[localVersion] ?? v?.text['KJV'] ?? v?.text.values.firstOrNull ?? 'Trust in the Lord with all your heart.';
     return DailyVerse(
-      id: 'local-fallback',
-      verse: v?.text['KJV'] ?? 'Trust in the Lord with all your heart.',
+      id: 'local-fallback-$langCode',
+      verse: text,
       reference: v?.reference ?? 'Proverbs 3:5',
-      translation: 'KJV',
+      translation: localVersion,
       date: now,
       reflection: null,
       createdAt: DateTime.now(),
@@ -37,20 +41,12 @@ final dailyVerseProvider = FutureProvider<DailyVerse?>((ref) async {
   }
 
   try {
-    final repo = DailyVerseRepository.instance;
     final verseGenerator = DailyVerseGenerationService.instance;
-
-    DailyVerse? dailyVerse = await repo.getDailyVerse(DateTime.now());
-    if (dailyVerse == null) {
-      debugPrint('No daily verse found, generating new one...');
-      dailyVerse = await verseGenerator.generateDailyVerseForToday();
+    final dailyVerse = await verseGenerator.generateDailyVerseForToday(languageCode: langCode);
+    if (dailyVerse != null) {
+      return dailyVerse;
     }
-
-    if (dailyVerse == null) {
-      return fallbackVerse();
-    }
-
-    return dailyVerse;
+    return fallbackVerse();
   } catch (e) {
     debugPrint('Error fetching/generating daily verse: $e');
     return fallbackVerse();

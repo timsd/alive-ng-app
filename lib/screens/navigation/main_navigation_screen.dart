@@ -7,6 +7,8 @@ import 'package:alive_flutter_app/services/role_access_service.dart';
 import 'package:alive_flutter_app/services/auth_service.dart';
 import 'package:alive_flutter_app/widgets/custom_app_bar.dart';
 import 'package:alive_flutter_app/config/appwrite_backend_config.dart';
+import '../../l10n/generated/app_localizations.dart';
+import '../../providers/language_provider.dart';
 
 class MainNavigationScreen extends ConsumerStatefulWidget {
   final Widget child;
@@ -26,11 +28,13 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
   Widget build(BuildContext context) {
     final currentLocation =
         GoRouter.of(context).routerDelegate.currentConfiguration.uri.path;
+    final l10n = AppLocalizations.of(context);
+    final translate = ref.watch(translationProvider);
 
     return Scaffold(
       key: _scaffoldKey,
       appBar: CustomAppBar(
-        title: _routeTitle(currentLocation),
+        title: _routeTitle(currentLocation, l10n, translate),
         showThemeToggle: true,
         showLanguageToggle: true,
         showDonationButton: true,
@@ -62,59 +66,59 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
             .bottomNavigationBarTheme
             .unselectedItemColor ??
             Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-        items: const [
+        items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home),
-            label: 'Home',
+            icon: const Icon(Icons.home_outlined),
+            activeIcon: const Icon(Icons.home),
+            label: l10n?.home ?? 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.menu_book_outlined),
-            activeIcon: Icon(Icons.menu_book),
-            label: 'Study',
+            icon: const Icon(Icons.menu_book_outlined),
+            activeIcon: const Icon(Icons.menu_book),
+            label: l10n?.study ?? 'Study',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.volunteer_activism_outlined),
-            activeIcon: Icon(Icons.volunteer_activism),
-            label: 'Prayer',
+            icon: const Icon(Icons.volunteer_activism_outlined),
+            activeIcon: const Icon(Icons.volunteer_activism),
+            label: l10n?.prayer ?? 'Prayer',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.health_and_safety_outlined),
-            activeIcon: Icon(Icons.health_and_safety),
-            label: 'Health',
+            icon: const Icon(Icons.health_and_safety_outlined),
+            activeIcon: const Icon(Icons.health_and_safety),
+            label: translate('health'),
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.grid_view_rounded),
-            activeIcon: Icon(Icons.grid_view_rounded),
-            label: 'More',
+            icon: const Icon(Icons.grid_view_rounded),
+            activeIcon: const Icon(Icons.grid_view_rounded),
+            label: translate('more'),
           ),
         ],
       ),
     );
   }
 
-  String _routeTitle(String location) {
+  String _routeTitle(String location, AppLocalizations? l10n, String Function(String) translate) {
     switch (location) {
       case AppConstants.homeRoute:
-        return 'Home';
+        return l10n?.home ?? 'Home';
       case AppConstants.prayerRoute:
       case AppConstants.prayerWallRoute:
       case AppConstants.privatePrayerRoomRoute:
-        return 'Prayer';
+        return l10n?.prayer ?? 'Prayer';
       case AppConstants.bibleGameRoute:
-        return 'Bible Game';
+        return translate('bible_game');
       case AppConstants.chaptersRoute:
-        return 'Chapters';
+        return translate('chapters');
       case AppConstants.dailyRoute:
-        return 'Daily';
+        return l10n?.daily ?? 'Daily';
       case AppConstants.studyRoute:
-        return 'Study';
+        return l10n?.study ?? 'Study';
       case AppConstants.resourcesRoute:
-        return 'Resources';
+        return translate('resources');
       case AppConstants.testimoniesRoute:
-        return 'Testimonies';
+        return translate('testimonies');
       case AppConstants.donationRoute:
-        return 'Donation';
+        return translate('donation');
       default:
         return 'ALIVE-NG';
     }

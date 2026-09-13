@@ -12,7 +12,6 @@ import '../../constants/app_constants.dart';
 import 'content_management_screen.dart';
 import '../../models/podcast_models.dart';
 import 'storage_admin_screen.dart';
-import 'admin_claims_preview_screen.dart';
 import 'admin_donations_report_screen.dart';
 import 'role_management_screen.dart';
 import 'board_reports_screen.dart';
@@ -602,7 +601,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
 
             const SizedBox(height: 24),
 
-            // Community Highlights
+            // Community Highlights — concise archived-user style list
             Row(
               children: [
                 Icon(
@@ -611,60 +610,23 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                   size: 22,
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  'Community Highlights',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            Row(
-              children: [
                 Expanded(
-                  child: _buildStatCard(
-                    'Members Count',
-                    _totalUsers.toString(),
-                    Icons.groups_rounded,
-                    const Color(0xFF2563EB),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatCard(
-                    'Daily Active Users',
-                    _dailyUsers.toString(),
-                    Icons.bolt_rounded,
-                    const Color(0xFF10B981),
+                  child: Text(
+                    'Community Highlights',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatCard(
-                    'Prayer Requests',
-                    _totalPrayerRequests.toString(),
-                    Icons.favorite_rounded,
-                    const Color(0xFFEC4899),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatCard(
-                    'Answered Prayers',
-                    _answeredPrayers.toString(),
-                    Icons.verified_rounded,
-                    const Color(0xFFF59E0B),
-                  ),
-                ),
-              ],
-            ),
+            _buildHighlightTile('Members', _totalUsers.toString(), Icons.groups_rounded),
+            _buildHighlightTile('Daily active', _dailyUsers.toString(), Icons.bolt_rounded),
+            _buildHighlightTile('Prayer requests', _totalPrayerRequests.toString(), Icons.favorite_rounded),
+            _buildHighlightTile('Answered prayers', _answeredPrayers.toString(), Icons.verified_rounded),
 
             const SizedBox(height: 24),
 
@@ -820,18 +782,8 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
               [
                 _buildActionTile(
                   'Donation Reports & Analytics',
-                  'View all incoming donations, track fund usage, and export detailed reports',
+                  'View all incoming donations, track fund usage, and download reports',
                   Icons.receipt_long_outlined,
-                  () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (ctx) => const AdminDonationsReportScreen(),
-                    ),
-                  ),
-                ),
-                _buildActionTile(
-                  'Quick Export Donations (CSV)',
-                  'Export complete spreadsheet of all processed donations with donor details',
-                  Icons.file_download_outlined,
                   () => Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (ctx) => const AdminDonationsReportScreen(),
@@ -859,12 +811,6 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                   'Review and approve new user registrations',
                   Icons.how_to_reg_outlined,
                   () => context.go(AppConstants.adminApprovalRoute),
-                ),
-                _buildActionTile(
-                  'Role Assignment',
-                  'Assign and modify user roles and permissions',
-                  Icons.admin_panel_settings_outlined,
-                  () => _navigateToRoleManagement(),
                 ),
                 _buildActionTile(
                   'Archived Users',
@@ -970,26 +916,8 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
               [
                 _buildActionTile(
                   'File Storage',
-                  'Manage Appwrite Storage buckets and files',
+                  'Manage buckets and files, including audio, PDFs and profile pictures',
                   Icons.folder_outlined,
-                  () => _navigateToStorageAdmin(),
-                ),
-                _buildActionTile(
-                  'Audio Files',
-                  'Upload and manage audio files for podcasts',
-                  Icons.audiotrack_outlined,
-                  () => _navigateToStorageAdmin(),
-                ),
-                _buildActionTile(
-                  'PDF Documents',
-                  'Upload and manage PDF files for tracts',
-                  Icons.picture_as_pdf_outlined,
-                  () => _navigateToStorageAdmin(),
-                ),
-                _buildActionTile(
-                  'Profile Pictures',
-                  'Manage user profile pictures and avatars',
-                  Icons.person_outlined,
                   () => _navigateToStorageAdmin(),
                 ),
               ],
@@ -1002,15 +930,6 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
               'System Settings',
               Icons.settings_outlined,
               [
-                _buildActionTile(
-                  'Admin Claims Preview',
-                  'Preview admin capabilities and role status',
-                  Icons.verified_user_outlined,
-                  () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                        builder: (ctx) => const AdminClaimsPreviewScreen()),
-                  ),
-                ),
                 _buildActionTile(
                   'App Configuration',
                   'Configure app settings and preferences',
@@ -1033,6 +952,19 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildHighlightTile(String title, String value, IconData icon) {
+    final theme = Theme.of(context);
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        dense: true,
+        leading: Icon(icon, color: theme.colorScheme.primary),
+        title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+        trailing: Text(value, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
       ),
     );
   }
