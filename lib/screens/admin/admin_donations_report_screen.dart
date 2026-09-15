@@ -255,6 +255,7 @@ class _AdminDonationsReportScreenState
       appBar: CustomAppBar(
         title: 'Donations & Financial Report',
         showBackButton: true,
+        showDonationButton: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -513,6 +514,11 @@ class _AdminDonationsReportScreenState
                 setState(() => _applyFilters());
               }),
               _buildFilterChip('Pending', 'pending', _statusFilter, (val) {
+                _statusFilter = val;
+                setState(() => _applyFilters());
+              }),
+              _buildFilterChip('Checkout Opened', 'initialized', _statusFilter,
+                  (val) {
                 _statusFilter = val;
                 setState(() => _applyFilters());
               }),

@@ -103,7 +103,7 @@ function getWelcomeEmailHtml(name) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Welcome to ALIVE Nigeria</title>
+  <title>Welcome to ALIVE Nigeria via ALIVE NG App</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #FCFAF5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #17263B;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #FCFAF5; padding: 32px 16px;">

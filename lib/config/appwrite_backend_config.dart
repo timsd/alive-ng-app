@@ -5,7 +5,7 @@ class AppwriteBackendConfig {
   );
   static const String projectId = String.fromEnvironment(
     'APPWRITE_PROJECT_ID',
-    defaultValue: '6a0892be001150fc90ba',
+    defaultValue: '6a3bef53002f5090dedf',
   );
   static const String databaseId = String.fromEnvironment(
     'APPWRITE_DATABASE_ID',

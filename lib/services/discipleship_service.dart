@@ -383,6 +383,28 @@ class DiscipleshipService {
     }
   }
 
+  Future<PrayerRequest> updatePrayerRequestStatus(
+      String requestId, PrayerRequestStatus status) async {
+    try {
+      final document = await _tables.updateRow(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: _prayerRequestsCollection,
+        rowId: requestId,
+        data: {
+          'status': status.name,
+          'date_answered':
+              status == PrayerRequestStatus.answered ? _iso(DateTime.now()) : null,
+          'updated_at': _iso(DateTime.now()),
+        },
+      );
+      return _prayerRequestFromDocument(document);
+    } catch (e) {
+      _logger.error('Failed to update prayer request status', e);
+      throw DatabaseException('Failed to update prayer request status',
+          originalError: e);
+    }
+  }
+
   Future<PrayerRequest> updatePrayerRequest(PrayerRequest request) async {
     try {
       final updatedRequest = PrayerRequest(

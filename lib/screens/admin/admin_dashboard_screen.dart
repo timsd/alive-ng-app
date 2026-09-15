@@ -310,21 +310,14 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
     return Scaffold(
       appBar: CustomAppBar(
         showBackButton: true,
+        showDonationButton: false,
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Theme.of(context).colorScheme.onPrimary,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh dashboard',
             onPressed: _loadDashboardStats,
-          ),
-          IconButton(
-            icon: const Icon(Icons.receipt_long),
-            tooltip: 'Donations & Financial Report',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (ctx) => const AdminDonationsReportScreen(),
-              ),
-            ),
           ),
           IconButton(
             icon: const Icon(Icons.download),
@@ -408,8 +401,8 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.chat_bubble_outline),
-            tooltip: 'Export Chat Backup',
+            icon: const Icon(Icons.chat_outlined),
+            tooltip: 'Export Chat (channels + messages)',
             onPressed: () async {
               try {
                 final data =
@@ -429,7 +422,8 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                           children: [
                             Text('Prefix: ${data['prefix'] ?? ''}'),
                             const SizedBox(height: 8),
-                            Text('Channels exported: ${data['count'] ?? 0}'),
+                            Text(
+                                'Channels exported: ${data['count'] ?? 0}'),
                             const SizedBox(height: 12),
                             if (file != null && file['url'] != null)
                               TextButton(
@@ -442,6 +436,39 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                                 },
                                 child: const Text('Open Download Link'),
                               ),
+                            TextButton(
+                              onPressed: () async {
+                                try {
+                                  final msgData =
+                                      await AppwriteAdminExportService.instance
+                                          .exportChatMessages(
+                                    type: 'messaging',
+                                    limitPerChannel: 500,
+                                  );
+                                  if (!context.mounted) return;
+                                  final files =
+                                      (msgData['files'] as List?) ?? const [];
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                          'Messages exported: ${files.length} channel file(s)'),
+                                    ),
+                                  );
+                                } catch (e) {
+                                  if (!context.mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                          'Chat messages export failed: $e'),
+                                      backgroundColor: Theme.of(context)
+                                          .colorScheme
+                                          .error,
+                                    ),
+                                  );
+                                }
+                              },
+                              child: const Text('Also Export Messages'),
+                            ),
                           ],
                         ),
                         actions: [
@@ -460,80 +487,6 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                     SnackBar(
                       content: Text('Chat export failed: $e'),
                       backgroundColor: Theme.of(context).colorScheme.error,
-                    ),
-                  );
-                }
-              }
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.chat_outlined),
-            tooltip: 'Export Chat Messages',
-            onPressed: () async {
-              try {
-                final data = await AppwriteAdminExportService.instance
-                    .exportChatMessages(
-                  type: 'messaging',
-                  limitPerChannel: 500,
-                );
-                if (context.mounted) {
-                  final files = (data['files'] as List?) ?? const [];
-                  showDialog(
-                    context: context,
-                    builder: (context) {
-                      return AlertDialog(
-                        title: const Text('Chat Messages Exported'),
-                        content: SingleChildScrollView(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Prefix: ${data['prefix'] ?? ''}'),
-                              const SizedBox(height: 12),
-                              for (final item in files)
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 8),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                          'CID: ${item['cid']} (${item['count']} messages)'),
-                                      Text('${item['path']}'),
-                                      if (item['url'] != null)
-                                        TextButton(
-                                          onPressed: () async {
-                                            final url = Uri.parse(item['url']);
-                                            if (await canLaunchUrl(url)) {
-                                              await launchUrl(url,
-                                                  mode: LaunchMode
-                                                      .externalApplication);
-                                            }
-                                          },
-                                          child:
-                                              const Text('Open Download Link'),
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('Close'),
-                          ),
-                        ],
-                      );
-                    },
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Chat messages export failed: $e'),
-                      backgroundColor: Colors.red,
                     ),
                   );
                 }
@@ -833,6 +786,12 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                   'Manage tracts, podcasts, and categories',
                   Icons.article_outlined,
                   () => context.go(AppConstants.tractPodcastAdminRoute),
+                ),
+                _buildActionTile(
+                  'Sample Content (user-facing seeds)',
+                  'Hide or restore sample podcasts & episodes users currently see',
+                  Icons.preview_outlined,
+                  () => context.go(AppConstants.sampleContentAdminRoute),
                 ),
                 _buildActionTile(
                   'Featured Content',

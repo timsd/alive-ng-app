@@ -11,6 +11,7 @@ import '../../widgets/podcast_card.dart';
 import '../../widgets/podcast_episode_card.dart';
 import '../../models/podcast_models.dart';
 import '../../widgets/custom_image.dart';
+import '../../services/sample_content_service.dart';
 
 class PodcastsScreen extends ConsumerStatefulWidget {
   const PodcastsScreen({super.key});
@@ -25,38 +26,27 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _selectedCategory = 'all';
+  final SampleContentService _samples = SampleContentService();
 
-  final List<Map<String, dynamic>> _downloadedEpisodes = [
-    {
-      'id': '1',
-      'title': 'The Power of Prayer in Daily Life',
-      'podcastTitle': 'Daily Devotions with Pastor John',
-      'duration': '25 min',
-      'downloadDate': '2024-01-15',
-      'category': 'devotional',
-    },
-    {
-      'id': '2',
-      'title': 'Understanding Bible Prophecy - Part 1',
-      'podcastTitle': 'Prophecy Unveiled',
-      'duration': '35 min',
-      'downloadDate': '2024-01-14',
-      'category': 'prophecy',
-    },
-    {
-      'id': '3',
-      'title': 'Health Tips for Busy Christians',
-      'podcastTitle': 'Health and Wellness',
-      'duration': '20 min',
-      'downloadDate': '2024-01-13',
-      'category': 'health',
-    },
-  ];
+  List<Map<String, dynamic>> get _downloadedEpisodes =>
+      _samples.visibleEpisodes
+          .map((e) => {
+                'id': e['id'],
+                'title': e['title'],
+                'podcastTitle': e['podcastTitle'],
+                'duration': e['duration'],
+                'downloadDate': e['downloadDate'],
+                'category': e['category'],
+              })
+          .toList();
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _samples.ensureLoaded().then((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
@@ -206,15 +196,28 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
   Widget _buildAllShowsTab() {
     return Consumer(
       builder: (context, ref, child) {
-        final podcasts = ref.watch(podcastProvider);
+        final backendPodcasts = ref.watch(podcastProvider);
+        final samplePodcasts = _samples.visibleSamplePodcasts;
 
-        if (podcasts.isEmpty) {
+        if (backendPodcasts.isEmpty && samplePodcasts.isEmpty) {
           return _buildEmptyPodcastState(context);
         }
 
         return Builder(
           builder: (context) {
-            final filteredPodcasts = podcasts.where((podcast) {
+            final filteredSamplePodcasts =
+                samplePodcasts.where((podcast) {
+              final matchesSearch = _searchQuery.isEmpty ||
+                  podcast.title.toLowerCase().contains(_searchQuery) ||
+                  podcast.description.toLowerCase().contains(_searchQuery) ||
+                  podcast.host.toLowerCase().contains(_searchQuery);
+
+              final matchesCategory = _selectedCategory == 'all' ||
+                  podcast.category.name == _selectedCategory;
+
+              return matchesSearch && matchesCategory;
+            }).toList();
+            final filteredPodcasts = backendPodcasts.where((podcast) {
               final matchesSearch = _searchQuery.isEmpty ||
                   podcast.title.toLowerCase().contains(_searchQuery) ||
                   podcast.description.toLowerCase().contains(_searchQuery) ||
@@ -228,7 +231,8 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
               return matchesSearch && matchesCategory;
             }).toList();
 
-            if (filteredPodcasts.isEmpty) {
+            if (filteredPodcasts.isEmpty &&
+                filteredSamplePodcasts.isEmpty) {
               return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -270,12 +274,21 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
             return ListView.builder(
               padding:
                   ResponsiveUtils.getResponsivePaddingWithBase(context, 16),
-              itemCount: filteredPodcasts.length,
+              itemCount:
+                  filteredSamplePodcasts.length + filteredPodcasts.length,
               itemBuilder: (context, index) {
+                if (index < filteredSamplePodcasts.length) {
+                  final sample = filteredSamplePodcasts[index];
+                  return _SamplePodcastCard(
+                    sample: sample,
+                    onTap: () => _showSamplePodcastDetails(context, sample),
+                  );
+                }
+                final podcast =
+                    filteredPodcasts[index - filteredSamplePodcasts.length];
                 return PodcastCard(
-                  podcast: filteredPodcasts[index],
-                  onTap: () =>
-                      _showPodcastDetails(context, filteredPodcasts[index]),
+                  podcast: podcast,
+                  onTap: () => _showPodcastDetails(context, podcast),
                 );
               },
             );
@@ -791,7 +804,59 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
     };
   }
 
+  void _showSamplePodcastDetails(BuildContext context, Podcast sample) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(sample.title,
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleLarge
+                      ?.copyWith(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              Text('Hosted by ${sample.host}'),
+              const SizedBox(height: 6),
+              Text(sample.description),
+              const SizedBox(height: 10),
+              const Text(
+                  'Sample content. Publish a real podcast with the same title in admin to replace it.'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   String _episodeAudioUrl(Map<String, dynamic> episode) {
     return (episode['audioUrl'] ?? episode['audio_url'] ?? '').toString();
+  }
+}
+
+class _SamplePodcastCard extends StatelessWidget {
+  final Podcast sample;
+  final VoidCallback onTap;
+
+  const _SamplePodcastCard({required this.sample, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        leading: const Icon(Icons.podcasts_outlined),
+        title: Text(sample.title,
+            maxLines: 1, overflow: TextOverflow.ellipsis),
+        subtitle: Text('${sample.host} · SAMPLE',
+            maxLines: 1, overflow: TextOverflow.ellipsis),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: onTap,
+      ),
+    );
   }
 }

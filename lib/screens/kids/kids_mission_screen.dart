@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+
 import '../../services/appwrite_facade.dart';
 import '../../config/appwrite_backend_config.dart';
 import '../../main.dart';
@@ -7,6 +10,8 @@ import '../../widgets/custom_app_bar.dart';
 import '../../utils/responsive_utils.dart';
 import '../../models/kids_missions.dart';
 import '../../utils/error_handler.dart';
+import '../../utils/mission_scoring.dart';
+import '../../services/kids_mission_progress_service.dart';
 
 class KidsMissionScreen extends ConsumerStatefulWidget {
   const KidsMissionScreen({super.key});
@@ -17,6 +22,15 @@ class KidsMissionScreen extends ConsumerStatefulWidget {
 
 class _KidsMissionScreenState extends ConsumerState<KidsMissionScreen> {
   String? _selectedCategory;
+  final KidsMissionProgressService _progress = KidsMissionProgressService();
+
+  @override
+  void initState() {
+    super.initState();
+    _progress.load().then((_) {
+      if (mounted) setState(() {});
+    });
+  }
 
   Stream<List<Mission>> _getMissionsStream() {
     return Stream.fromFuture(TablesDB(appwriteClient).listRows(
@@ -343,7 +357,9 @@ class _KidsMissionScreenState extends ConsumerState<KidsMissionScreen> {
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
             fontWeight: FontWeight.w600,
-            decoration: mission.completed ? TextDecoration.lineThrough : null,
+            decoration: (mission.completed || _progress.isCompleted(mission.id))
+                ? TextDecoration.lineThrough
+                : null,
           ),
         ),
         subtitle: Column(
@@ -371,7 +387,7 @@ class _KidsMissionScreenState extends ConsumerState<KidsMissionScreen> {
             ),
           ],
         ),
-        trailing: mission.completed
+        trailing: (mission.completed || _progress.isCompleted(mission.id))
             ? Icon(Icons.check_circle, color: Colors.green.shade600)
             : const Icon(Icons.arrow_forward_ios, size: 16),
         isThreeLine: true,
@@ -384,7 +400,7 @@ class _KidsMissionScreenState extends ConsumerState<KidsMissionScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(mission.title),
+        title: Text(mission.title, maxLines: 2, overflow: TextOverflow.ellipsis),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -420,16 +436,56 @@ class _KidsMissionScreenState extends ConsumerState<KidsMissionScreen> {
               Text(mission.description),
               const SizedBox(height: 16),
               Text(
-                'Instructions:',
+                'Steps to complete:',
                 style: Theme.of(context)
                     .textTheme
                     .titleSmall
                     ?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              Text(mission.instructions.isNotEmpty
-                  ? mission.instructions.join('\n')
-                  : '1. Read the activity description\n2. Gather required materials\n3. Follow the step-by-step guide\n4. Share your results with friends'),
+              if (mission.instructions.isNotEmpty)
+                ...mission.instructions.asMap().entries.map((entry) {
+                  final index = entry.key + 1;
+                  final step = entry.value;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '$index.',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            step,
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                })
+              else
+                Text(
+                  '1. Read the activity description\n2. Gather required materials\n3. Follow the step-by-step guide\n4. Share your results with friends',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Chip(
+                    label: Text('${mission.points} points'),
+                    avatar: const Icon(Icons.star, size: 18),
+                  ),
+                  const SizedBox(width: 8),
+                  Chip(label: Text(mission.difficulty.displayName)),
+                ],
+              ),
             ],
           ),
         ),
@@ -441,15 +497,29 @@ class _KidsMissionScreenState extends ConsumerState<KidsMissionScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Starting activity: ${mission.title}'),
-                ),
-              );
+              _openMissionFlow(mission);
             },
-            child: const Text('Start Activity'),
+            child: Text(_progress.isCompleted(mission.id)
+                ? 'Completed ✓'
+                : 'Start Activity'),
           ),
         ],
+      ),
+    );
+  }
+
+  /// The real mission activity flow — verification + scoring + reward.
+  void _openMissionFlow(Mission mission) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _MissionActivitySheet(
+        mission: mission,
+        alreadyCompleted: _progress.isCompleted(mission.id),
+        onCompleted: () {
+          if (mounted) setState(() {}); // refresh list badges/points
+        },
       ),
     );
   }
@@ -679,6 +749,504 @@ class _KidsMissionScreenState extends ConsumerState<KidsMissionScreen> {
                       icon: Icons.star_border_rounded,
                     );
                   }
+/// Full-screen activity sheet: verifies and scores the child's response
+/// according to the mission's verification method, then awards points.
+class _MissionActivitySheet extends StatefulWidget {
+  final Mission mission;
+  final bool alreadyCompleted;
+  final VoidCallback onCompleted;
+
+  const _MissionActivitySheet({
+    required this.mission,
+    required this.alreadyCompleted,
+    required this.onCompleted,
+  });
+
+  @override
+  State<_MissionActivitySheet> createState() => _MissionActivitySheetState();
+}
+
+class _MissionActivitySheetState extends State<_MissionActivitySheet> {
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  final TextEditingController _answerController = TextEditingController();
+  final KidsMissionProgressService _progress = KidsMissionProgressService();
+
+  bool _listening = false;
+  bool _speechAvailable = false;
+  String _transcript = '';
+  int? _score;
+  bool _completed = false;
+
+  Mission get _mission => widget.mission;
+  bool get _isRecitation =>
+      _mission.verificationMethod == VerificationMethod.story ||
+      _mission.verificationMethod == VerificationMethod.witness;
+  bool get _isQuiz => _mission.verificationMethod == VerificationMethod.quiz;
+  bool get _isPhoto => _mission.verificationMethod == VerificationMethod.photo;
+
+  /// The passage / expected answer the response is scored against.
+  String get _expectedText {
+    if (_mission.instructions.isNotEmpty) {
+      return _mission.instructions.join(' ');
+    }
+    return _mission.description;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _completed = widget.alreadyCompleted;
+    _initSpeech();
+  }
+
+  @override
+  void dispose() {
+    _answerController.dispose();
+    _speech.stop();
+    super.dispose();
+  }
+
+  Future<void> _initSpeech() async {
+    if (!_isRecitation) return;
+    try {
+      _speechAvailable = await _speech.initialize(
+        onStatus: (status) {
+          if ((status == 'done' || status == 'notListening') &&
+              mounted &&
+              _listening) {
+            setState(() => _listening = false);
+            _scoreRecitation();
+          }
+        },
+        onError: (_) {
+          if (mounted) setState(() => _listening = false);
+        },
+      );
+      if (mounted) setState(() {});
+    } catch (_) {
+      _speechAvailable = false;
+    }
+  }
+
+  Future<void> _toggleListening() async {
+    if (_listening) {
+      await _speech.stop();
+      if (mounted) setState(() => _listening = false);
+      _scoreRecitation();
+      return;
+    }
+    if (!_speechAvailable) {
+      await _initSpeech();
+      if (!_speechAvailable && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text(
+              'Microphone is not available. Please allow mic permission and try again.'),
+        ));
+        return;
+      }
+    }
+    setState(() {
+      _transcript = '';
+      _score = null;
+      _listening = true;
+    });
+    await _speech.listen(
+      localeId: 'en_US',
+      listenOptions: stt.SpeechListenOptions(
+        cancelOnError: true,
+        partialResults: false, // avoids duplicated transcripts
+        listenMode: stt.ListenMode.dictation,
+      ),
+      onResult: (result) {
+        if (!mounted) return;
+        setState(() => _transcript = result.recognizedWords);
+        if (result.finalResult) {
+          setState(() => _listening = false);
+          _scoreRecitation();
+        }
+      },
+    );
+  }
+
+  void _scoreRecitation() {
+    if (_transcript.trim().isEmpty) return;
+    final score = MissionScoring.scoreRecitation(_expectedText, _transcript);
+    setState(() => _score = score);
+    if (score >= MissionScoring.recitationPassThreshold) {
+      _awardPoints(score);
+    } else {
+      _progress.recordAttempt(_mission.id, score);
+    }
+  }
+
+  void _submitQuizAnswer() {
+    final score =
+        MissionScoring.scoreAnswer(_expectedText, _answerController.text);
+    setState(() => _score = score);
+    if (score >= MissionScoring.quizPassThreshold) {
+      _awardPoints(score);
+    } else {
+      _progress.recordAttempt(_mission.id, score);
+    }
+  }
+
+  Future<void> _pickPhoto() async {
+    final picker = ImagePicker();
+    final picked =
+        await picker.pickImage(source: ImageSource.camera, imageQuality: 70);
+    if (picked == null) return;
+    // Photo missions are parent-verified; capture counts as completion.
+    await _awardPoints(100);
+  }
+
+  Future<void> _awardPoints(int score) async {
+    final awarded = await _progress.completeMission(
+        _mission.id, _mission.points,
+        score: score);
+    if (!mounted) return;
+    setState(() => _completed = true);
+    widget.onCompleted();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(awarded
+            ? 'Mission complete! +${_mission.points} points 🎉'
+            : 'Mission already completed — great job!'),
+        backgroundColor: Colors.green.shade600,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.75,
+      maxChildSize: 0.95,
+      minChildSize: 0.5,
+      builder: (context, scrollController) => Container(
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _mission.title,
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView(
+                controller: scrollController,
+                padding: const EdgeInsets.all(16),
+                children: [
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      Chip(
+                        avatar: const Icon(Icons.star, size: 16),
+                        label: Text('${_mission.points} points'),
+                      ),
+                      Chip(
+                          label: Text(
+                              _mission.verificationMethod.displayName)),
+                      Chip(label: Text(_mission.duration)),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(_mission.description,
+                      style: theme.textTheme.bodyMedium),
+                  const SizedBox(height: 16),
+                  if (_completed)
+                    _buildCompletedCard(theme)
+                  else if (_isRecitation)
+                    _buildRecitationCard(theme)
+                  else if (_isQuiz)
+                    _buildQuizCard(theme)
+                  else if (_isPhoto)
+                    _buildPhotoCard(theme)
+                  else
+                    _buildSelfReportCard(theme),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompletedCard(ThemeData theme) {
+    final best = _progress.bestScore(_mission.id);
+    return Card(
+      color: Colors.green.withValues(alpha: 0.1),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: Colors.green.shade300),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Icon(Icons.emoji_events, color: Colors.amber.shade700, size: 44),
+            const SizedBox(height: 8),
+            Text('Mission completed!',
+                style: theme.textTheme.titleMedium
+                    ?.copyWith(fontWeight: FontWeight.bold)),
+            if (best > 0) ...[
+              const SizedBox(height: 4),
+              Text('Best score: $best%',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant)),
+            ],
+            const SizedBox(height: 4),
+            Text('You earned ${_mission.points} points.',
+                style: theme.textTheme.bodyMedium),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecitationCard(ThemeData theme) {
+    final colorScheme = theme.colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Say it out loud',
+            style: theme.textTheme.titleSmall
+                ?.copyWith(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        Text(
+          'Tap the mic and recite the passage in your own words. Aim for at '
+          'least ${MissionScoring.recitationPassThreshold}% of the key words.',
+          style: theme.textTheme.bodySmall
+              ?.copyWith(color: colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: 16),
+        Center(
+          child: Column(
+            children: [
+              GestureDetector(
+                onTap: _toggleListening,
+                child: Container(
+                  width: 84,
+                  height: 84,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _listening ? Colors.red : colorScheme.primary,
+                    boxShadow: [
+                      BoxShadow(
+                        color: (_listening ? Colors.red : colorScheme.primary)
+                            .withValues(alpha: 0.35),
+                        blurRadius: _listening ? 24 : 10,
+                        spreadRadius: _listening ? 6 : 0,
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    _listening ? Icons.stop : Icons.mic,
+                    color: colorScheme.onPrimary,
+                    size: 38,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _listening ? 'Listening… tap to stop' : 'Tap to start reciting',
+                style: theme.textTheme.bodySmall,
+              ),
+            ],
+          ),
+        ),
+        if (_transcript.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text('What we heard:', style: theme.textTheme.labelLarge),
+          const SizedBox(height: 4),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(_transcript,
+                style: theme.textTheme.bodyMedium,
+                textAlign: TextAlign.center),
+          ),
+        ],
+        if (_score != null) ...[
+          const SizedBox(height: 16),
+          _buildScoreCard(theme, _score!),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildQuizCard(ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Your answer',
+            style: theme.textTheme.titleSmall
+                ?.copyWith(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        Text(
+          'Write your answer. You need at least '
+          '${MissionScoring.quizPassThreshold}% to pass.',
+          style: theme.textTheme.bodySmall
+              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _answerController,
+          maxLines: 3,
+          decoration: InputDecoration(
+            hintText: 'Type your answer here…',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            icon: const Icon(Icons.check),
+            label: const Text('Submit Answer'),
+            onPressed: _submitQuizAnswer,
+          ),
+        ),
+        if (_score != null) ...[
+          const SizedBox(height: 16),
+          _buildScoreCard(theme, _score!),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildPhotoCard(ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Show us a photo',
+            style: theme.textTheme.titleSmall
+                ?.copyWith(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        Text(
+          'Take a photo of you doing this mission with a grown-up nearby. '
+          'A parent or leader can verify it later.',
+          style: theme.textTheme.bodySmall
+              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            icon: const Icon(Icons.camera_alt),
+            label: const Text('Take Photo'),
+            onPressed: _pickPhoto,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSelfReportCard(ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Did you complete it?',
+            style: theme.textTheme.titleSmall
+                ?.copyWith(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        Text(
+          'Be honest! God loves a truthful heart. Confirm below once you '
+          'have done this mission.',
+          style: theme.textTheme.bodySmall
+              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            icon: const Icon(Icons.emoji_events),
+            label: const Text('Yes, I did it!'),
+            onPressed: () => _awardPoints(100),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildScoreCard(ThemeData theme, int score) {
+    final passed = score >= (_isQuiz
+        ? MissionScoring.quizPassThreshold
+        : MissionScoring.recitationPassThreshold);
+    return Card(
+      color: passed
+          ? Colors.green.withValues(alpha: 0.12)
+          : Colors.orange.withValues(alpha: 0.12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: passed ? Colors.green : Colors.orange),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Text('$score%',
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: passed
+                      ? Colors.green.shade700
+                      : Colors.orange.shade800,
+                )),
+            const SizedBox(height: 4),
+            Text(MissionScoring.feedbackFor(score),
+                style: theme.textTheme.bodyMedium,
+                textAlign: TextAlign.center),
+            if (!passed && _isRecitation) ...[
+              const SizedBox(height: 8),
+              TextButton.icon(
+                icon: const Icon(Icons.refresh),
+                label: const Text('Try again'),
+                onPressed: () {
+                  setState(() {
+                    _transcript = '';
+                    _score = null;
+                  });
+                  _toggleListening();
+                },
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 
                   return ListView.builder(
                     shrinkWrap: true,

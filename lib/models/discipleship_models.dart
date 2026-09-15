@@ -345,7 +345,7 @@ class PrayerRequest {
     required this.discipleMakerId,
     required this.request,
     this.category,
-    required this.status,
+    this.status = PrayerRequestStatus.active,
     required this.dateRequested,
     this.dateAnswered,
     this.answer,

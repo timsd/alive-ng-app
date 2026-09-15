@@ -379,6 +379,22 @@ class DonationService {
       );
 
       if (paymentMethod == PaymentMethod.paystack) {
+        // Persist a pending row immediately so the admin finance report can
+        // see the attempt even before the Paystack webhook confirms it.
+        // The server webhook later flips status -> completed.
+        try {
+          final data = _appwriteData(donation.toJson());
+          data['reference'] = donation.id;
+          data['amount_kobo'] = (donation.amount * 100).round();
+          await _tables.createRow(
+            databaseId: _databaseId,
+            tableId: _donationsCollectionId,
+            rowId: donation.id,
+            data: data,
+          );
+        } catch (e) {
+          _logger.error('Failed to persist pending paystack donation', e);
+        }
         _checkoutDrafts[donation.id] = donation;
         return donation;
       }
@@ -810,6 +826,21 @@ class DonationService {
 
       _checkoutDrafts.remove(donationId);
       // Only the signed server webhook confirms payment and grants access.
+      // Update the local row to `initialized` so admins can see that checkout
+      // was opened (webhook later flips it to completed/success).
+      try {
+        await _tables.updateRow(
+          databaseId: _databaseId,
+          tableId: _donationsCollectionId,
+          rowId: donationId,
+          data: {
+            'status': 'initialized',
+            'updated_at': DateTime.now().toIso8601String(),
+          },
+        );
+      } catch (e) {
+        _logger.error('Failed to mark donation initialized', e);
+      }
       return {
         'success': false,
         'initialized': paymentResult.initialized || paymentResult.success,

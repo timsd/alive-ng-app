@@ -6,7 +6,6 @@ import '../../services/discipleship_service.dart';
 import '../../services/auth_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/responsive_utils.dart';
-import '../admin/board_reports_screen.dart';
 
 class DiscipleshipScreen extends StatefulWidget {
   const DiscipleshipScreen({super.key});
@@ -108,14 +107,10 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
         foregroundColor: Colors.white,
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: Theme.of(context).colorScheme.primary,
-          labelColor: Theme.of(context).colorScheme.primary,
-          unselectedLabelColor:
-              Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-          labelStyle: Theme.of(context)
-              .textTheme
-              .labelLarge
-              ?.copyWith(fontWeight: FontWeight.bold),
+          indicatorColor: Colors.white,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white.withValues(alpha: 0.7),
+          labelStyle: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold),
           unselectedLabelStyle: Theme.of(context).textTheme.labelLarge,
           isScrollable: true,
           tabs: const [
@@ -552,21 +547,19 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            'View and generate detailed reports on discipleship progress.',
+            'Track your discipleship progress and milestones over time.',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) =>
-                    const BoardReportsScreen(initialCategory: 'discipleship'),
-              ),
-            ),
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Report generation coming soon.')),
+              );
+            },
             icon: const Icon(Icons.assessment),
-            label: const Text('View Discipleship Reports'),
+            label: const Text('Generate Report'),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
@@ -902,7 +895,6 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
     return contact.fullName;
   }
 
-  // Action handlers
   void _handleContactAction(DiscipleshipContact contact, String action) {
     switch (action) {
       case 'view':
@@ -921,31 +913,262 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
   }
 
   void _handlePrayerAction(PrayerRequest prayer, String action) {
-    // Implementation for prayer actions
+    if (action == 'answer') _markPrayerAnswered(prayer);
+    if (action == 'update') _markPrayerAnswered(prayer);
   }
 
-  // Dialog methods
+  void _markPrayerAnswered(PrayerRequest prayer) async {
+    try {
+      await _discipleshipService.updatePrayerRequestStatus(prayer.id, PrayerRequestStatus.answered);
+      _loadData();
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Prayer marked as answered. Amen!')));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not update prayer: $e')));
+    }
+  }
+
   void _showAddContactDialog() {
-    // Implementation for add contact dialog
+    final firstNameController = TextEditingController();
+    final lastNameController = TextEditingController();
+    final emailController = TextEditingController();
+    final phoneController = TextEditingController();
+    var level = DiscipleshipLevel.prospect;
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Add disciple'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: firstNameController, decoration: const InputDecoration(labelText: 'First name')),
+                TextField(controller: lastNameController, decoration: const InputDecoration(labelText: 'Last name')),
+                TextField(controller: emailController, decoration: const InputDecoration(labelText: 'Email (optional)')),
+                TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Phone (optional)')),
+                DropdownButton<DiscipleshipLevel>(
+                  value: level, isExpanded: true,
+                  items: DiscipleshipLevel.values.map((l) => DropdownMenuItem(value: l, child: Text(_getLevelDisplayName(l)))).toList(),
+                  onChanged: (value) { if (value != null) setDialogState(() => level = value); },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () async {
+                final user = _authService.currentUser;
+                if (user == null) return;
+                if (firstNameController.text.trim().isEmpty || lastNameController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('First and last name are required.')));
+                  return;
+                }
+                try {
+                  await _discipleshipService.createContact(DiscipleshipContact(
+                    id: '', discipleMakerId: user.uid,
+                    firstName: firstNameController.text.trim(), lastName: lastNameController.text.trim(),
+                    email: emailController.text.trim().isEmpty ? null : emailController.text.trim(),
+                    phone: phoneController.text.trim().isEmpty ? null : phoneController.text.trim(),
+                    currentLevel: level, firstContact: DateTime.now(), createdAt: DateTime.now(), updatedAt: DateTime.now(),
+                  ));
+                  if (mounted) Navigator.pop(context);
+                  _loadData();
+                } catch (e) {
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not add disciple: $e')));
+                }
+              },
+              child: const Text('Add'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showContactDetails(DiscipleshipContact contact) {
-    // Implementation for contact details
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(contact.fullName),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Level: ${_getLevelDisplayName(contact.currentLevel)}'),
+            if (contact.email != null) Text('Email: ${contact.email}'),
+            if (contact.phone != null) Text('Phone: ${contact.phone}'),
+            Text('First contact: ${DateFormat('MMM dd, yyyy').format(contact.firstContact)}'),
+            if (contact.lastContact != null) Text('Last contact: ${DateFormat('MMM dd, yyyy').format(contact.lastContact!)}'),
+            if (contact.baptismDate != null) Text('Baptized: ${DateFormat('MMM dd, yyyy').format(contact.baptismDate!)}'),
+          ],
+        ),
+        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))],
+      ),
+    );
   }
 
   void _showAddInteractionDialog(DiscipleshipContact contact) {
-    // Implementation for add interaction dialog
+    final titleController = TextEditingController();
+    final descriptionController = TextEditingController();
+    var method = ContactMethod.inPerson;
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text('Log interaction with ${contact.firstName}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Title')),
+              TextField(controller: descriptionController, decoration: const InputDecoration(labelText: 'Notes')),
+              DropdownButton<ContactMethod>(
+                value: method, isExpanded: true,
+                items: ContactMethod.values.map((m) => DropdownMenuItem(value: m, child: Text(m.name))).toList(),
+                onChanged: (value) { if (value != null) setDialogState(() => method = value); },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () async {
+                if (titleController.text.trim().isEmpty) return;
+                final user = _authService.currentUser;
+                if (user == null) return;
+                try {
+                  await _discipleshipService.createInteraction(ContactInteraction(
+                    id: '', contactId: contact.id, discipleMakerId: user.uid, method: method,
+                    title: titleController.text.trim(), description: descriptionController.text.trim(),
+                    date: DateTime.now(), createdAt: DateTime.now(),
+                  ));
+                  if (mounted) Navigator.pop(context);
+                  _loadData();
+                } catch (e) {
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Save failed: $e')));
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showAddStudySessionDialog(DiscipleshipContact contact) {
-    // Implementation for add study session dialog
+    final titleController = TextEditingController();
+    final topicController = TextEditingController();
+    var type = StudyType.bibleStudy;
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text('Study session with ${contact.firstName}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Title')),
+              TextField(controller: topicController, decoration: const InputDecoration(labelText: 'Topic')),
+              DropdownButton<StudyType>(
+                value: type, isExpanded: true,
+                items: StudyType.values.map((t) => DropdownMenuItem(value: t, child: Text(t.name))).toList(),
+                onChanged: (value) { if (value != null) setDialogState(() => type = value); },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () async {
+                if (titleController.text.trim().isEmpty) return;
+                final user = _authService.currentUser;
+                if (user == null) return;
+                try {
+                  await _discipleshipService.createStudySession(StudySession(
+                    id: '', contactId: contact.id, discipleMakerId: user.uid, type: type,
+                    title: titleController.text.trim(), topic: topicController.text.trim(),
+                    date: DateTime.now(), createdAt: DateTime.now(),
+                  ));
+                  if (mounted) Navigator.pop(context);
+                  _loadData();
+                } catch (e) {
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Save failed: $e')));
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showUpdateLevelDialog(DiscipleshipContact contact) {
-    // Implementation for update level dialog
+    var level = contact.currentLevel;
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text('Update ${contact.firstName}\'s level'),
+          content: DropdownButton<DiscipleshipLevel>(
+            value: level, isExpanded: true,
+            items: DiscipleshipLevel.values.map((l) => DropdownMenuItem(value: l, child: Text(_getLevelDisplayName(l)))).toList(),
+            onChanged: (value) { if (value != null) setDialogState(() => level = value); },
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () async {
+                try {
+                  await _discipleshipService.updateContactLevel(contact.id, level);
+                  if (mounted) Navigator.pop(context);
+                  _loadData();
+                } catch (e) {
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Update failed: $e')));
+                }
+              },
+              child: const Text('Update'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showAddPrayerRequestDialog() {
-    // Implementation for add prayer request dialog
+    final requestController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add prayer request'),
+        content: TextField(
+          controller: requestController, maxLines: 3,
+          decoration: const InputDecoration(hintText: 'What would you like prayer for?'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              if (requestController.text.trim().isEmpty) return;
+              final user = _authService.currentUser;
+              if (user == null) return;
+              try {
+                await _discipleshipService.createPrayerRequest(PrayerRequest(
+                  id: '', contactId: '', discipleMakerId: user.uid,
+                  request: requestController.text.trim(), dateRequested: DateTime.now(), createdAt: DateTime.now(),
+                  updatedAt: DateTime.now(),
+                ));
+                if (mounted) Navigator.pop(context);
+                _loadData();
+              } catch (e) {
+                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Save failed: $e')));
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
   }
 }

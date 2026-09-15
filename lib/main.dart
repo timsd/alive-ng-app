@@ -375,7 +375,7 @@ class MainNavigationScreen extends ConsumerWidget {
                 if (canAccessRoleGated) ...[
                   {
                     'icon': Icons.health_and_safety_rounded,
-                    'label': 'health',
+                    'label': 'Health+',
                     'route': AppConstants.enhancedHealthRoute
                   },
                   {
@@ -384,7 +384,7 @@ class MainNavigationScreen extends ConsumerWidget {
                     'route': AppConstants.dailyRoute
                   },
                   {
-                    'icon': Icons.volunteer_activism_rounded,
+                    'icon': Icons.explore_rounded,
                     'label': 'missions',
                     'route': AppConstants.missionsRoute
                   },
@@ -412,11 +412,6 @@ class MainNavigationScreen extends ConsumerWidget {
                     'icon': Icons.video_call_rounded,
                     'label': 'alive_meet',
                     'route': AppConstants.conferenceRoute
-                  },
-                  {
-                    'icon': Icons.restaurant_menu_rounded,
-                    'label': 'recipes',
-                    'route': AppConstants.recipesRoute
                   },
                   {
                     'icon': Icons.shield_rounded,
@@ -472,7 +467,7 @@ class MainNavigationScreen extends ConsumerWidget {
                   'route': AppConstants.testimoniesRoute
                 },
                 {
-                  'icon': Icons.child_care_rounded,
+                  'icon': Icons.emoji_events_rounded,
                   'label': 'kids_mission',
                   'route': AppConstants.kidsMissionRoute
                 },

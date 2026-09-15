@@ -1,3 +1,4 @@
+import 'package:share_plus/share_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:alive_flutter_app/widgets/custom_app_bar.dart';
@@ -821,6 +822,16 @@ class PrayerRequestCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                     ),
                   ),
+                ),
+                SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 8)),
+                IconButton(
+                  tooltip: 'Share prayer',
+                  onPressed: () {
+                    final text = '${request.title}\n\n${request.description}\n\n— Shared from ALIVE NG Prayer';
+                    SharePlus.instance.share(ShareParams(text: text));
+                  },
+                  icon: Icon(Icons.share,
+                      size: ResponsiveUtils.getResponsiveIconSize(context, 18)),
                 ),
               ],
             ),

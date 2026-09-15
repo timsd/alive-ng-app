@@ -804,16 +804,15 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
           final transcript = result.recognizedWords.trim();
           if (transcript.isEmpty) return;
 
-          // Deduplicate repeated sentence fragments from partial STT results
-          final deduped = _deduplicateTranscript(transcript);
-
-          ref.read(bibleGameProvider.notifier).updateUserInput(deduped);
-          _textController.value = TextEditingValue(
-            text: deduped,
-            selection: TextSelection.collapsed(offset: deduped.length),
-          );
-
-          ref.read(bibleGameProvider.notifier).checkPartialMatch(deduped);
+          // Only update when final to avoid duplicate partial results
+          if (result.finalResult) {
+            ref.read(bibleGameProvider.notifier).updateUserInput(transcript);
+            _textController.value = TextEditingValue(
+              text: transcript,
+              selection: TextSelection.collapsed(offset: transcript.length),
+            );
+            ref.read(bibleGameProvider.notifier).checkPartialMatch(transcript);
+          }
 
           final gameState = ref.read(bibleGameProvider);
           if (gameState.showStarAnimation) {
@@ -1139,13 +1138,14 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
         return FadeTransition(opacity: animation, child: child);
       },
       child: gameState.hasCheckedAnswer
-          ? _buildVerseBackCard(gameState)
-          : _buildVersePromptCard(),
+          ? _buildVerseBackCard_REAL(gameState)
+          : _buildVersePromptCard(gameState),
     );
   }
 
-  Widget _buildVersePromptCard() {
+  Widget _buildVersePromptCard(BibleGameState gameState) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final reference = gameState.currentVerse?.reference ?? '';
 
     return InkWell(
       onTap: () => _confirmFlipCard(context),
@@ -1196,61 +1196,71 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
             ),
           ],
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              'Recite the verse aloud from memory',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Tap Record, recite, then Stop to auto-check accuracy',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontStyle: FontStyle.italic,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                    color: Theme.of(context).colorScheme.outlineVariant),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  Icon(
-                    Icons.flip_to_back,
-                    size: 16,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
+                  Icon(Icons.record_voice_over,
+                      color: Theme.of(context).colorScheme.primary, size: 24),
                   const SizedBox(width: 8),
-                  Text(
-                    'Tap card to flip (-2 pts)',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
+                  Expanded(
+                    child: Text(
+                      'Recite the verse aloud (word-perfect)',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(height: 12),
+              Text(
+                reference.isEmpty ? 'Tap card to flip (-2 pts)' : reference,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const Spacer(),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  FilledButton.icon(
+                    onPressed: () => _startListening(),
+                    icon: const Icon(Icons.mic),
+                    label: const Text('Start recitation'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => _confirmFlipCard(context),
+                    icon: const Icon(Icons.flip_to_back),
+                    label: const Text('Flip (-2 pts)'),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildVerseBackCard(BibleGameState gameState) {
+  /* Widget _buildVerseBackCard_BLANK
+                  ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            } // end REMOVED_BLOCK */
+
+  Widget _buildVerseBackCard_REAL(BibleGameState gameState) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(

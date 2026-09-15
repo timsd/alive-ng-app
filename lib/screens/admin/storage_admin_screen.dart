@@ -9,6 +9,7 @@ import '../../services/appwrite_storage_compat_service.dart';
 import '../../utils/toast_utils.dart';
 import '../../utils/logger.dart';
 import '../../services/material_sync_service.dart';
+import '../../widgets/custom_app_bar.dart';
 
 class StorageAdminScreen extends StatefulWidget {
   final String? initialBucket;
@@ -25,7 +26,22 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
   final Logger _logger = Logger('StorageAdminScreen');
   late TabController _tabController;
 
-  // Storage buckets
+  // Storage buckets. These names map to real Appwrite bucket IDs inside
+  // AppwriteStorageCompatService._legacyBucketIds, so they must stay stable.
+  // Canonical aliases are accepted for deep-links / older callers.
+  static const Map<String, String> _bucketAliases = {
+    // canonical -> legacy bucket name (real Appwrite bucket mapping)
+    'audio': 'audio-files',
+    'video': 'video-files',
+    'documents': 'pdf-files',
+    'images': 'profile-pictures',
+    'backups': 'system-backups',
+  };
+
+  /// Maps a canonical alias (or legacy name) to the real storage bucket name.
+  String _resolveBucket(String bucket) => _bucketAliases[bucket] ?? bucket;
+
+  /// Real storage bucket names (each maps to a distinct Appwrite bucket ID).
   final List<String> _buckets = [
     'audio-files',
     'video-files',
@@ -35,7 +51,7 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
     'podcast-covers',
     'meeting-files',
     'system-backups',
-    'app-logs'
+    'app-logs',
   ];
 
   // File lists for each bucket
@@ -47,7 +63,8 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
     super.initState();
     _tabController = TabController(length: _buckets.length, vsync: this);
     if (widget.initialBucket != null) {
-      final index = _buckets.indexOf(widget.initialBucket!);
+      final resolved = _resolveBucket(widget.initialBucket!);
+      final index = _buckets.indexOf(resolved);
       if (index != -1) {
         _tabController.index = index;
       }
@@ -76,12 +93,13 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
   }
 
   Future<void> _loadBucketFiles(String bucket) async {
+    final resolved = _resolveBucket(bucket);
     setState(() {
       _bucketLoading[bucket] = true;
     });
 
     try {
-      final refs = await _storageService.listFiles(bucket);
+      final refs = await _storageService.listFiles(resolved);
       final files = await Future.wait(refs.map((ref) async {
         final md = await ref.getMetadata();
         return {
@@ -122,7 +140,7 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
     try {
       FilePickerResult? result;
       // Different file types for different buckets
-      switch (bucket) {
+      switch (_resolveBucket(bucket)) {
         case 'audio-files':
           result = await FilePicker.platform.pickFiles(
             type: FileType.custom,
@@ -173,6 +191,7 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
 
   Future<void> _processFileUpload(String bucket, PlatformFile file) async {
     if (file.bytes == null) return;
+    final resolved = _resolveBucket(bucket);
     final navigator = Navigator.of(context);
     showDialog(
       context: context,
@@ -190,7 +209,7 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
     );
     try {
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final filePath = '$bucket/${timestamp}_${file.name}';
+      final filePath = '$resolved/${timestamp}_${file.name}';
       await _storageService.uploadFile(
         filePath,
         file.bytes!,
@@ -233,7 +252,7 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
 
     if (confirmed == true) {
       try {
-        await _storageService.deleteFile('$bucket/$fileName');
+        await _storageService.deleteFile('${_resolveBucket(bucket)}/$fileName');
         await _loadBucketFiles(bucket);
         ToastUtils.showSuccess('File deleted successfully');
       } catch (e) {
@@ -323,6 +342,7 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      color: Theme.of(context).colorScheme.surface,
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: _getBucketColor(bucket),
@@ -333,14 +353,33 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
         ),
         title: Text(
           name,
-          style: const TextStyle(fontWeight: FontWeight.w500),
+          style: TextStyle(
+            fontWeight: FontWeight.w500,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Size: ${_formatFileSize(size)}'),
+            Text(
+              'Size: ${_formatFileSize(size)}',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
             if (updated != null)
-              Text('Updated: ${updated.toString().split('.')[0]}'),
+              Text(
+                'Updated: ${updated.toString().split('.')[0]}',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
           ],
         ),
         trailing: PopupMenuButton<String>(
@@ -350,8 +389,8 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
                 _copyPublicUrl(bucket, name);
                 break;
               case 'download':
-                final url =
-                    await _storageService.getDownloadUrl('$bucket/$name');
+                final url = await _storageService
+                    .getDownloadUrl('${_resolveBucket(bucket)}/$name');
                 if (await canLaunchUrl(Uri.parse(url))) {
                   await launchUrl(Uri.parse(url),
                       mode: LaunchMode.externalApplication);
@@ -395,7 +434,7 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
   }
 
   Color _getBucketColor(String bucket) {
-    switch (bucket) {
+    switch (_resolveBucket(bucket)) {
       case 'audio-files':
         return Colors.purple;
       case 'video-files':
@@ -420,7 +459,7 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
   }
 
   IconData _getBucketIcon(String bucket) {
-    switch (bucket) {
+    switch (_resolveBucket(bucket)) {
       case 'audio-files':
         return Icons.audiotrack;
       case 'video-files':
@@ -446,7 +485,8 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
 
   void _copyPublicUrl(String bucket, String fileName) async {
     try {
-      final url = await _storageService.getDownloadUrl('$bucket/$fileName');
+      final resolved = _resolveBucket(bucket);
+      final url = await _storageService.getDownloadUrl('$resolved/$fileName');
       await Clipboard.setData(ClipboardData(text: url));
       ToastUtils.showSuccess('URL copied to clipboard');
     } catch (e) {
@@ -494,10 +534,12 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Storage Management'),
+      appBar: CustomAppBar(
+        title: 'Storage Management',
+        showBackButton: true,
+        showDonationButton: false,
         backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Colors.white,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         actions: [
           Tooltip(
             message: 'Sync Tracts to Materials',
@@ -535,40 +577,41 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
   }
 }
 
-String? _inferContentType(String ext) {
-  switch (ext.toLowerCase()) {
-    case 'jpg':
-    case 'jpeg':
-      return 'image/jpeg';
-    case 'png':
-      return 'image/png';
-    case 'gif':
-      return 'image/gif';
-    case 'webp':
-      return 'image/webp';
-    case 'pdf':
-      return 'application/pdf';
-    case 'mp4':
-      return 'video/mp4';
-    case 'mov':
-      return 'video/quicktime';
-    case 'm4v':
-      return 'video/x-m4v';
-    case 'webm':
-      return 'video/webm';
-    case 'mkv':
-      return 'video/x-matroska';
-    case 'mp3':
-      return 'audio/mpeg';
-    case 'wav':
-      return 'audio/wav';
-    case 'm4a':
-      return 'audio/mp4';
-    case 'aac':
-      return 'audio/aac';
-    case 'ogg':
-      return 'audio/ogg';
-    default:
-      return null;
+  String? _inferContentType(String ext) {
+    switch (ext.toLowerCase()) {
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      case 'gif':
+        return 'image/gif';
+      case 'webp':
+        return 'image/webp';
+      case 'pdf':
+        return 'application/pdf';
+      case 'mp4':
+        return 'video/mp4';
+      case 'mov':
+        return 'video/quicktime';
+      case 'm4v':
+        return 'video/x-m4v';
+      case 'webm':
+        return 'video/webm';
+      case 'mkv':
+        return 'video/x-matroska';
+      case 'mp3':
+        return 'audio/mpeg';
+      case 'wav':
+        return 'audio/wav';
+      case 'm4a':
+        return 'audio/mp4';
+      case 'aac':
+        return 'audio/aac';
+      case 'ogg':
+        return 'audio/ogg';
+      default:
+        return null;
+    }
   }
 }

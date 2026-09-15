@@ -66,6 +66,7 @@ import '../utils/navigation_keys.dart';
 
 // New screen imports
 import '../screens/admin/leadership_archive_screen.dart';
+import '../screens/admin/sample_content_admin_screen.dart';
 import '../screens/profile/profile_completion_screen.dart';
 
 const bool kMinimalRouterMode = false;
@@ -487,16 +488,6 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const EnhancedHealthScreen(),
           ),
 
-          GoRoute(
-            path: AppConstants.recipesRoute,
-            builder: (context, state) => const EnhancedHealthScreen(),
-          ),
-
-          GoRoute(
-            path: '/healthy-recipes',
-            builder: (context, state) => const EnhancedHealthScreen(),
-          ),
-
           // Recipe Submission Route (Auth Required)
           GoRoute(
             path: AppConstants.recipeSubmissionRoute,
@@ -506,11 +497,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           // Kids Mission Route
           GoRoute(
             path: AppConstants.kidsMissionRoute,
-            builder: (context, state) => const KidsMissionScreen(),
-          ),
-
-          GoRoute(
-            path: '/kid-mission',
             builder: (context, state) => const KidsMissionScreen(),
           ),
 
@@ -631,6 +617,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppConstants.leadershipArchiveRoute,
             builder: (context, state) => const LeadershipArchiveScreen(),
+          ),
+
+          // Admin Sample Content management (soft-delete built-in samples)
+          GoRoute(
+            path: AppConstants.sampleContentAdminRoute,
+            builder: (context, state) => const SampleContentAdminScreen(),
           ),
         ],
       ),

@@ -30,6 +30,7 @@ class AppConstants {
   static const String adminApprovalRoute = '/admin-approval';
   static const String adminApprovalLinkRoute = '/admin-approve';
   static const String leadershipArchiveRoute = '/leadership-archive';
+  static const String sampleContentAdminRoute = '/admin-sample-content';
   static const String studyGuideRoute = '/study-guide';
   static const String tractPodcastAdminRoute = '/tract-podcast-admin';
   static const String meetingFileSharingRoute = '/meeting-file-sharing';
@@ -42,7 +43,9 @@ class AppConstants {
   static const String bibleGameRoute = '/bible-game';
   static const String chatRoute = '/chat';
   static const String chaptersRoute = '/chapters';
-  static const String recipesRoute = '/recipes';
+  // Recipes are now part of Health+. Keep the constant pointing at the
+  // enhanced health screen so any older deep-link still resolves.
+  static const String recipesRoute = '/enhanced-health';
   static const String recipeSubmissionRoute = '/recipe-submission';
   static const String enhancedHealthRoute = '/enhanced-health';
   static const String kidsMissionRoute = '/kids-mission';
@@ -66,7 +69,7 @@ class AppConstants {
   static const String nonMonetaryGiftRoute = '/non-monetary-gift';
 
   // Bible Versions
-  static const List<String> bibleVersions = ['KJV', 'NKJV', 'NIV'];
+  static const List<String> bibleVersions = ['KJV', 'NKJV', 'NIV', 'NLT'];
 
   // Supported Languages
   static const Map<String, String> supportedLanguages = {

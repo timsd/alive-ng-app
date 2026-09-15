@@ -75,8 +75,16 @@ android {
         release {
             val hasSigning = keystoreProperties.getProperty("storeFile") != null
             signingConfig = signingConfigs.getByName(if (hasSigning) "release" else "debug")
-            isMinifyEnabled = false
-            isShrinkResources = false
+            // R8 code shrinking + resource shrinking (Play Console "App optimization").
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+            ndk {
+                debugSymbolLevel = "none"
+            }
         }
     }
 }

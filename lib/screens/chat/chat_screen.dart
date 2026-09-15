@@ -392,10 +392,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget _buildChatPane(BuildContext context, bool canStartGeneral, bool isModerator) {
     if (_selectedChannel == null) {
       return Center(
-        child: Text(
-          _channels.isEmpty ? 'No channels yet. Create the first channel.' : 'Select a channel to start chatting',
-          style: Theme.of(context).textTheme.titleMedium,
-          textAlign: TextAlign.center,
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            _channels.isEmpty
+                ? 'No channels yet. Create the first channel.'
+                : 'Select a channel to start chatting',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+            textAlign: TextAlign.center,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
       );
     }

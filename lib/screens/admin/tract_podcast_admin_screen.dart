@@ -10,6 +10,7 @@ import '../../services/appwrite_admin_content_service.dart';
 import '../../services/appwrite_storage_compat_service.dart';
 import '../../services/pdf_extractor_service.dart';
 import '../../widgets/custom_image.dart';
+import '../../widgets/custom_app_bar.dart';
 import 'podcast_episode_form_dialog.dart';
 
 Map<String, dynamic> _podcastPayload(Podcast podcast, {String? category}) {
@@ -76,8 +77,10 @@ class _TractPodcastAdminScreenState extends State<TractPodcastAdminScreen>
     return RoleVisibility(
       allowedRoles: const ['admin', 'super_admin', 'content_manager'],
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Tract & Podcast Management'),
+        appBar: CustomAppBar(
+          title: 'Tract & Podcast Management',
+          showBackButton: true,
+          showDonationButton: false,
           backgroundColor: Colors.green,
           foregroundColor: Colors.white,
           bottom: TabBar(
@@ -1863,6 +1866,8 @@ class _PodcastFormDialogState extends State<_PodcastFormDialog> {
   bool _isFeatured = false;
   Uint8List? _selectedCoverImageBytes;
   String? _selectedCoverImageName;
+  Uint8List? _selectedAudioBytes;
+  String? _selectedAudioName;
   bool _isUploading = false;
 
   @override
@@ -2097,17 +2102,23 @@ class _PodcastFormDialogState extends State<_PodcastFormDialog> {
 
                       // Cover Image Upload
                       Card(
+                        color: Theme.of(context).colorScheme.surface,
                         child: Padding(
                           padding: const EdgeInsets.all(16),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
+                              Text(
                                 'Cover Image',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface,
                                 ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(height: 8),
                               Row(
@@ -2115,19 +2126,93 @@ class _PodcastFormDialogState extends State<_PodcastFormDialog> {
                                   Expanded(
                                     child: Text(
                                       _selectedCoverImageName ??
+                                          widget.podcast?.coverImage ??
                                           'No cover image selected',
                                       style: TextStyle(
                                         color: _selectedCoverImageName != null
-                                            ? Colors.blue
-                                            : Colors.grey[600],
+                                            ? Theme.of(context)
+                                                .colorScheme
+                                                .primary
+                                            : Theme.of(context)
+                                                .colorScheme
+                                                .onSurfaceVariant,
                                       ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
+                                  const SizedBox(width: 8),
                                   ElevatedButton.icon(
-                                    onPressed:
-                                        _isUploading ? null : _selectCoverImage,
+                                    onPressed: _isUploading
+                                        ? null
+                                        : _selectPodcastCoverImage,
                                     icon: const Icon(Icons.image),
                                     label: const Text('Select Image'),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Trailer / intro audio upload (was cover-image only)
+                      Card(
+                        color: Theme.of(context).colorScheme.surface,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Trailer / Intro Audio',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Optional show-level audio. Full episodes live under Manage Episodes.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      _selectedAudioName ??
+                                          widget.podcast?.audioUrl ??
+                                          'No audio selected',
+                                      style: TextStyle(
+                                        color: _selectedAudioName != null
+                                            ? Theme.of(context)
+                                                .colorScheme
+                                                .primary
+                                            : Theme.of(context)
+                                                .colorScheme
+                                                .onSurfaceVariant,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  ElevatedButton.icon(
+                                    onPressed:
+                                        _isUploading ? null : _selectAudioFile,
+                                    icon: const Icon(Icons.audio_file),
+                                    label: const Text('Select Audio'),
                                   ),
                                 ],
                               ),
@@ -2191,9 +2276,10 @@ class _PodcastFormDialogState extends State<_PodcastFormDialog> {
     );
   }
 
-  void _selectCoverImage() async {
+  void _selectPodcastCoverImage() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.image,
+      withData: true,
     );
 
     if (result != null && result.files.single.bytes != null) {
@@ -2201,6 +2287,44 @@ class _PodcastFormDialogState extends State<_PodcastFormDialog> {
         _selectedCoverImageBytes = result.files.single.bytes;
         _selectedCoverImageName = result.files.single.name;
       });
+    }
+  }
+
+  Future<void> _selectAudioFile() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['mp3', 'm4a', 'wav', 'aac', 'ogg'],
+      withData: true,
+    );
+    if (result != null && result.files.single.bytes != null) {
+      final bytes = result.files.single.bytes!;
+      if (bytes.lengthInBytes > 200000000) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Audio file is too large (max 200 MB).')),
+        );
+        return;
+      }
+      setState(() {
+        _selectedAudioBytes = bytes;
+        _selectedAudioName = result.files.single.name;
+      });
+    }
+  }
+
+  String _audioContentType(String fileName) {
+    final ext = fileName.split('.').last.toLowerCase();
+    switch (ext) {
+      case 'm4a':
+        return 'audio/mp4';
+      case 'wav':
+        return 'audio/wav';
+      case 'aac':
+        return 'audio/aac';
+      case 'ogg':
+        return 'audio/ogg';
+      default:
+        return 'audio/mpeg';
     }
   }
 
@@ -2229,6 +2353,18 @@ class _PodcastFormDialogState extends State<_PodcastFormDialog> {
           );
         }
 
+        // Upload trailer / intro audio (show-level audio)
+        String? audioUrl;
+        if (_selectedAudioBytes != null && _selectedAudioName != null) {
+          final timestamp = DateTime.now().millisecondsSinceEpoch;
+          final fileName = '${timestamp}_${_selectedAudioName!}';
+          audioUrl = await storageService.uploadFile(
+            'audio-files/podcasts/$fileName',
+            _selectedAudioBytes!,
+            contentType: _audioContentType(_selectedAudioName!),
+          );
+        }
+
         // Create podcast object with uploaded URL
         final podcast = Podcast(
           id: widget.podcast?.id ??
@@ -2246,7 +2382,7 @@ class _PodcastFormDialogState extends State<_PodcastFormDialog> {
               .where((tag) => tag.isNotEmpty)
               .toList(),
           coverImage: coverImageUrl ?? widget.podcast?.coverImage,
-          audioUrl: widget.podcast?.audioUrl,
+          audioUrl: audioUrl ?? widget.podcast?.audioUrl,
         );
 
         final payload = _podcastPayload(

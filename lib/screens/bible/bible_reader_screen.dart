@@ -9,6 +9,7 @@ import '../../services/offline_bible_service.dart';
 import '../../utils/search_utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'dart:async';
 import '../../config/app_config.dart';
 import '../../services/tts_service.dart';
 import '../../services/user_statistics_service.dart';
@@ -51,6 +52,10 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
   int? _selectedVerseIndex;
   Set<String> _highlightedVerses = {};
   Map<String, Color> _verseHighlightColors = {};
+  // Search-result jump: per-verse layout keys + flash highlight state.
+  final Map<int, GlobalKey> _verseKeys = {};
+  int? _flashVerseNumber;
+  Timer? _flashTimer;
   // Available versions for the current language, loaded from service
   List<String> _versionsForLanguage = [];
 
@@ -76,9 +81,9 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
     _statisticsService.startReadingSession();
     _loadHighlights();
     _loadBooksAndInit();
-    // Pre-build search indexes from assets so search is instant on first use
+    // Prewarm only the default KJV bundle; full search indexes are built
+    // lazily per selected version on first search to keep startup fast.
     _offlineBible.prewarmBundle(language: 'en', version: 'KJV');
-    _offlineBible.prebuildSearchIndexes();
     // Auto-scroll to the form/search section after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToForm();
@@ -99,6 +104,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
 
   @override
   void dispose() {
+    _flashTimer?.cancel();
     _scrollController.dispose();
     _tabController.dispose();
     _searchController.dispose();
@@ -198,7 +204,21 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
 
   Future<List<String>> _resolveVersionsForLanguage(String languageCode) async {
     if (languageCode == 'en') {
-      return ['ASV', 'KJV', 'NASB', 'NIV', 'NKJV'];
+      // Start with NLT so users see it first, then verify which versions
+      // actually have chapters on-device and prefer available ones.
+      const preferredOrder = ['NLT', 'KJV', 'NIV', 'NKJV', 'NASB', 'ASV'];
+      try {
+        final available =
+            await _offlineBible.getAvailableVersionCodesFromAssets('en');
+        if (available.isNotEmpty) {
+          final ordered = [
+            ...preferredOrder.where(available.contains),
+            ...available.where((v) => !preferredOrder.contains(v)),
+          ];
+          return ordered;
+        }
+      } catch (_) {}
+      return preferredOrder;
     }
     if (languageCode == 'ha') {
       return ['HAU'];
@@ -224,14 +244,20 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
 
     final parsedBook = parsed['book'] as String;
     final parsedChapter = parsed['chapter'] as int;
+    final parsedVerse = (parsed['verse'] as int?) ??
+        _parseVerseNumberFromReference(reference) ??
+        1;
     final hasExactBook = _books.any((book) => book.name == parsedBook);
 
+    // Search results / references use English book names. If the current
+    // language cannot resolve the book, fall back to English — then CONTINUE
+    // resolving so the user still lands on the verse (previously this left
+    // them on Genesis 1).
     if (!hasExactBook && _selectedLanguage != 'English') {
       setState(() {
         _selectedLanguage = 'English';
       });
       await _loadBooksAndInit();
-      return true;
     }
 
     final targetIndex = _books.indexWhere(
@@ -248,8 +274,50 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
     });
 
     await _loadChapter();
-    await _loadVerse(reference);
+    if (!mounted) return true;
+
+    // Standard bible-app behaviour: return to the Reader tab and auto-scroll
+    // so the exact verse is in view, briefly flashing it.
+    _tabController.animateTo(0);
+
+    final matches =
+        _chapterVerses.where((v) => v.number == parsedVerse).toList();
+    if (matches.isNotEmpty) {
+      setState(() {
+        _currentVerse =
+            models.BibleVerse(number: parsedVerse, text: matches.first.text);
+      });
+      await _scrollToVerse(parsedVerse);
+    } else {
+      // Verse not present in the loaded chapter (e.g. beyond chapter end) —
+      // fall back to the single-verse loader.
+      await _loadVerse(reference);
+    }
     return true;
+  }
+
+  /// Scrolls the reader so [verseNumber] is in view and flashes it briefly —
+  /// the same pattern YouVersion/Blue Letter Bible use for search jumps.
+  Future<void> _scrollToVerse(int verseNumber) async {
+    // Let the freshly loaded chapter finish laying out first so the verse key
+    // is attached and measurable.
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    final ctx = _verseKeys[verseNumber]?.currentContext;
+    if (ctx != null) {
+      await Scrollable.ensureVisible(
+        ctx,
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.easeInOut,
+        alignment: 0.05,
+      );
+    }
+    if (!mounted) return;
+    _flashTimer?.cancel();
+    setState(() => _flashVerseNumber = verseNumber);
+    _flashTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _flashVerseNumber = null);
+    });
   }
 
   Future<void> _loadChapter() async {
@@ -267,6 +335,17 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
       if (chapter != null) {
         setState(() {
           _chapterVerses = chapter.verses;
+          // Rebuild per-verse keys for the new chapter and clear any
+          // previous search-jump flash.
+          _verseKeys.clear();
+          _flashVerseNumber = null;
+        });
+        // Chapter navigation should start at the top (jump-to-verse, when
+        // requested, repositions afterwards).
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _scrollController.hasClients) {
+            _scrollController.jumpTo(0);
+          }
         });
         _statisticsService.recordChapterRead(_selectedBook, _selectedChapter);
         _statisticsService.recordVersesRead(
@@ -446,40 +525,78 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
 
   void _searchVerses(String query) async {
     final token = ++_searchToken;
-    if (query.trim().isEmpty) {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) {
       setState(() {
         _searchResults = [];
         _fullTextResults = [];
         _isSearching = false;
       });
+      _refreshClearButton();
       return;
     }
 
     final languageCode = _languageCodes[_selectedLanguage] ?? 'en';
 
+    // Instant local corpus results — show immediately, do NOT hide behind
+    // the full-text spinner so typing never blanks the list.
+    List<data_bible.BibleVerse> instant = [];
+    try {
+      instant = BibleSource.instance.search(trimmed);
+    } catch (_) {
+      instant = [];
+    }
     setState(() {
-      // Instant local corpus results (reference/keyword ranked).
-      _searchResults = BibleSource.instance.search(query);
+      _searchResults = instant;
       _isSearching = true;
     });
+    // Refresh the clear-button as the user types.
+    _refreshClearButton();
 
     // Full ranked text search across the offline bundles for this language.
     // "jesus wept" scores its exact phrase first (John 11:35).
     List<BibleTextHit> ranked = [];
     try {
       ranked = await _offlineBible.searchBibleText(
-        query: query,
+        query: trimmed,
         version: _selectedVersion,
         language: languageCode,
         limit: 50,
       );
-    } catch (_) {}
+      // Fall back to KJV bundle when the selected version has no bundle yet
+      // (e.g. NLT chapters ship as per-book JSON but its zip bundle may be
+      // missing). Only do this when the raw query looks like English text.
+      if (ranked.isEmpty &&
+          languageCode == 'en' &&
+          _selectedVersion.toUpperCase() != 'KJV') {
+        try {
+          ranked = await _offlineBible.searchBibleText(
+            query: trimmed,
+            version: 'KJV',
+            language: languageCode,
+            limit: 50,
+          );
+        } catch (_) {}
+      }
+    } catch (_) {
+      ranked = [];
+    }
 
     if (token != _searchToken || !mounted) return;
     setState(() {
       _fullTextResults = ranked;
       _isSearching = false;
     });
+  }
+
+  bool _wasSearchEmpty = true;
+
+  void _refreshClearButton() {
+    final isEmpty = _searchController.text.isEmpty;
+    if (isEmpty != _wasSearchEmpty && mounted) {
+      _wasSearchEmpty = isEmpty;
+      setState(() {});
+    }
   }
 
   @override
@@ -663,22 +780,33 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                                       _showVerseActionSheet(verse, verseKey);
                                     },
                                     child: Container(
+                                      key: _verseKeys.putIfAbsent(
+                                          verse.number, () => GlobalKey()),
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 8, vertical: 6),
                                       decoration: BoxDecoration(
-                                        color: highlightColor?.withValues(
-                                                alpha: 0.2) ??
-                                            (isSelected
-                                                ? colorScheme.primary
-                                                    .withValues(alpha: 0.1)
-                                                : null),
+                                        color: _flashVerseNumber == verse.number
+                                            ? colorScheme.primary
+                                                .withValues(alpha: 0.22)
+                                            : highlightColor?.withValues(
+                                                    alpha: 0.2) ??
+                                                (isSelected
+                                                    ? colorScheme.primary
+                                                        .withValues(alpha: 0.1)
+                                                    : null),
                                         borderRadius: BorderRadius.circular(8),
-                                        border: isSelected
+                                        border: _flashVerseNumber ==
+                                                verse.number
                                             ? Border.all(
-                                                color: colorScheme.primary
-                                                    .withValues(alpha: 0.3),
-                                                width: 1)
-                                            : null,
+                                                color: colorScheme.primary,
+                                                width: 1.5,
+                                              )
+                                            : isSelected
+                                                ? Border.all(
+                                                    color: colorScheme.primary
+                                                        .withValues(alpha: 0.3),
+                                                    width: 1)
+                                                : null,
                                       ),
                                       child: RichText(
                                         text: TextSpan(
@@ -1337,66 +1465,82 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 600;
     final colorScheme = Theme.of(context).colorScheme;
-    final theme = Theme.of(context);
+    final hasSearched = _searchController.text.trim().isNotEmpty;
 
-    return Column(
-      children: [
-        Container(
-          padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-          decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerHighest,
-            border: Border(
-              bottom: BorderSide(
-                color: colorScheme.outlineVariant.withValues(alpha: 0.7),
+    return Container(
+      color: colorScheme.surface,
+      child: Column(
+        children: [
+          Container(
+            padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest,
+              border: Border(
+                bottom: BorderSide(
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.7),
+                ),
               ),
             ),
-          ),
-          child: TextField(
-            controller: _searchController,
-            style: TextStyle(
-              fontSize: isSmallScreen ? 14 : 16,
-              color: theme.textTheme.bodyLarge?.color,
-            ),
-            decoration: InputDecoration(
-              labelText: 'Search verses...',
-              labelStyle: TextStyle(
+            child: TextField(
+              controller: _searchController,
+              style: TextStyle(
                 fontSize: isSmallScreen ? 14 : 16,
-                color: colorScheme.onSurfaceVariant,
+                color: colorScheme.onSurface,
               ),
-              hintText: 'Type a verse, phrase, or keyword',
-              hintStyle: TextStyle(color: colorScheme.onSurfaceVariant),
-              filled: true,
-              fillColor: colorScheme.surface,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(isSmallScreen ? 8 : 12),
-                borderSide: BorderSide(color: colorScheme.outlineVariant),
+              decoration: InputDecoration(
+                labelText: 'Search verses...',
+                labelStyle: TextStyle(
+                  fontSize: isSmallScreen ? 14 : 16,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                hintText: 'Type a verse, phrase, or keyword',
+                hintStyle: TextStyle(color: colorScheme.onSurfaceVariant),
+                filled: true,
+                fillColor: colorScheme.surface,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(isSmallScreen ? 8 : 12),
+                  borderSide: BorderSide(color: colorScheme.outlineVariant),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(isSmallScreen ? 8 : 12),
+                  borderSide: BorderSide(color: colorScheme.outlineVariant),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(isSmallScreen ? 8 : 12),
+                  borderSide:
+                      BorderSide(color: colorScheme.primary, width: 1.4),
+                ),
+                prefixIcon: Icon(
+                  Icons.search,
+                  size: isSmallScreen ? 20 : 24,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                suffixIcon: _searchController.text.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: 'Clear search',
+                        icon: const Icon(Icons.clear),
+                        color: colorScheme.onSurfaceVariant,
+                        onPressed: () {
+                          _searchController.clear();
+                          _searchVerses('');
+                        },
+                      ),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: isSmallScreen ? 12 : 16,
+                  vertical: isSmallScreen ? 8 : 12,
+                ),
               ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(isSmallScreen ? 8 : 12),
-                borderSide: BorderSide(color: colorScheme.outlineVariant),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(isSmallScreen ? 8 : 12),
-                borderSide: BorderSide(color: colorScheme.primary, width: 1.4),
-              ),
-              prefixIcon: Icon(
-                Icons.search,
-                size: isSmallScreen ? 20 : 24,
-                color: colorScheme.onSurfaceVariant,
-              ),
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: isSmallScreen ? 12 : 16,
-                vertical: isSmallScreen ? 8 : 12,
-              ),
+              onChanged: _searchVerses,
+              onSubmitted: (value) {
+                if (value.trim().isNotEmpty) _searchVerses(value);
+              },
             ),
-            onChanged: _searchVerses,
-            onSubmitted: (value) {
-              if (value.trim().isNotEmpty) _searchVerses(value);
-            },
           ),
-        ),
         Expanded(
-          child: _isSearching
+          child: (_isSearching &&
+                  _searchResults.isEmpty &&
+                  _fullTextResults.isEmpty)
               ? const Center(child: CircularProgressIndicator())
               : (_searchResults.isEmpty && _fullTextResults.isEmpty
                   ? Center(
@@ -1406,20 +1550,18 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                           Icon(
                             Icons.search,
                             size: isSmallScreen ? 48 : 64,
-                            color: Theme.of(context)
-                                .iconTheme
-                                .color
-                                ?.withValues(alpha: 0.5),
+                            color: colorScheme.onSurfaceVariant
+                                .withValues(alpha: 0.5),
                           ),
                           SizedBox(height: isSmallScreen ? 12 : 16),
                           Text(
-                            'Search for Bible verses',
+                            hasSearched
+                                ? 'No verses found for "${_searchController.text.trim()}".\nTry a different keyword, phrase or version.'
+                                : 'Search for Bible verses',
+                            textAlign: TextAlign.center,
                             style: TextStyle(
-                              fontSize: isSmallScreen ? 16 : 18,
-                              color: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
-                                  ?.color,
+                              fontSize: isSmallScreen ? 15 : 17,
+                              color: colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -1531,6 +1673,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                     )),
         ),
       ],
+      ),
     );
   }
 

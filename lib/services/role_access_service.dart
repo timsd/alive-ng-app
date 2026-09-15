@@ -148,7 +148,11 @@ class RoleAccessService {
   }
 
   /// Check if user can manage other users
+  /// Admin bypass: admins can manage everything in the app.
+  /// Every granular check below keeps working for non-admins;
+  /// admins return true before those checks run.
   bool canManageUsers() {
+    if (hasRole('admin')) return true;
     return hasRole('leader');
   }
 
@@ -159,9 +163,9 @@ class RoleAccessService {
 
   /// Check if user can access board documents
   bool canAccessBoardDocuments() {
+    if (hasRole('admin')) return true;
     final currentRole = getCurrentUserRole();
-    return currentRole == 'admin' ||
-        currentRole == 'leader' ||
+    return currentRole == 'leader' ||
         currentRole == 'director' ||
         currentRole == 'bod' ||
         currentRole == 'trustee' ||
@@ -170,16 +174,19 @@ class RoleAccessService {
 
   /// Check if user can access financial reports
   bool canAccessFinancialReports() {
+    if (hasRole('admin')) return true;
     return hasRole('leader');
   }
 
   /// Check if user can manage donations
   bool canManageDonations() {
+    if (hasRole('admin')) return true;
     return hasRole('coordinator');
   }
 
   /// Check if user can access user archives
   bool canAccessUserArchives() {
+    if (hasRole('admin')) return true;
     return hasRole('leader');
   }
 
@@ -247,7 +254,10 @@ class RoleAccessService {
   }
 
   /// Check if user can create content (missions, events, announcements)
+  /// Admin bypass: admins can add/edit everywhere.
+  /// Keep the granular checks for non-admins; admins return true early.
   bool canPostHealth() {
+    if (hasRole('admin')) return true;
     final currentRole = getCurrentUserRole();
     if (currentRole == null) return false;
     const allowed = [
@@ -265,6 +275,7 @@ class RoleAccessService {
   }
 
   bool canCreateContent() {
+    if (hasRole('admin')) return true;
     final currentRole = getCurrentUserRole();
     if (currentRole == null) return false;
 

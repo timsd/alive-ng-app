@@ -68,10 +68,9 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
     try {
       final results = await Future.wait([
         _leadershipService.getRecordsByPosition(LeadershipPosition.bod),
-        _leadershipService.getRecordsByPosition(LeadershipPosition.director),
         _leadershipService.getRecordsByPosition(LeadershipPosition.trustee),
       ]);
-      final merged = <LeadershipRecord>[...results[0], ...results[1], ...results[2]];
+      final merged = <LeadershipRecord>[...results[0], ...results[1]];
       merged.sort((a, b) => b.startDate.compareTo(a.startDate));
       if (mounted) setState(() => _records = merged);
     } catch (_) {
@@ -89,6 +88,13 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
     final startYear = record.startDate.year;
     final endYear = end?.year ?? DateTime.now().year;
     return startYear == endYear ? '$startYear' : '$startYear–$endYear';
+  }
+
+  /// Directors serve 2-year terms (not 3). This is used to auto-calculate
+  /// the default end date when an admin creates a new director record.
+  Duration get _directorTerm {
+    const years = 2;
+    return Duration(days: years * 365);
   }
 
   List<LeadershipRecord> _filteredRecords(LeadershipPosition position) {
@@ -162,14 +168,19 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Board of Directors & Trustees'),
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
+        title: const Text(
+          'Board of Directors & Trustees',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         actions: [
           if (_isAdmin)
             IconButton(
               tooltip: 'Add leader',
               icon: const Icon(Icons.person_add),
+              color: Theme.of(context).colorScheme.onPrimary,
               onPressed: () => _showLeaderEditor(),
             ),
         ],
@@ -181,7 +192,7 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
           children: [
             // Welcome Message
             Card(
-              color: Colors.green.shade50,
+              color: Theme.of(context).colorScheme.primaryContainer,
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -189,9 +200,9 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
                   children: [
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.admin_panel_settings,
-                          color: Colors.green,
+                          color: Theme.of(context).colorScheme.primary,
                           size: 28,
                         ),
                         const SizedBox(width: 12),
@@ -208,10 +219,11 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
                             return Expanded(
                               child: Text(
                                 'Welcome, $userEmail',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.green,
+                                  color:
+                                      Theme.of(context).colorScheme.onSurface,
                                 ),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
@@ -222,11 +234,11 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       'This is the exclusive Board of Directors and Trustees portal for ALIVE Nigeria leadership.',
                       style: TextStyle(
                         fontSize: 16,
-                        color: Colors.green,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -263,26 +275,9 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Directors are operational leaders and are not all BOD members.
-            _buildLeadershipSection(
-              'Directors',
-              Icons.supervisor_account,
-              _filteredRecords(LeadershipPosition.director),
-              fallback: [
-                _buildMemberCard(
-                  'Godstime Esuku',
-                  'Director: ALIVE Mission Training Center (AMTC)',
-                  'Overseeing missionary training and development programs',
-                  Icons.school,
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 24),
-
             // Board of Directors Section
             _buildLeadershipSection(
-              'Board of Directors',
+              'Directors',
               Icons.business_center,
               _filteredRecords(LeadershipPosition.bod),
               fallback: [
@@ -405,15 +400,24 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
     List<LeadershipRecord> records, {
     required List<Widget> fallback,
   }) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Icon(icon, color: Colors.green, size: 24),
+            Icon(icon, color: theme.colorScheme.primary, size: 24),
             const SizedBox(width: 8),
             Expanded(
-              child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+              child: Text(
+                title,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),
@@ -424,16 +428,42 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
   }
 
   Widget _buildLeadershipCard(LeadershipRecord record) {
+    final theme = Theme.of(context);
     final dateFormat = DateFormat('MMM yyyy');
     final tenure = _tenureLabel(record);
     final range = '${dateFormat.format(record.startDate)} - ${record.endDate == null ? 'Present' : dateFormat.format(record.endDate!)}';
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
+      color: theme.colorScheme.surface,
       child: ListTile(
-        leading: const CircleAvatar(child: Icon(Icons.person)),
-        title: Text(record.userName, maxLines: 1, overflow: TextOverflow.ellipsis),
-        subtitle: Text('${record.positionTitle}\nTenure: $tenure ($range)', maxLines: 3, overflow: TextOverflow.ellipsis),
-        trailing: _isAdmin ? IconButton(icon: const Icon(Icons.edit), onPressed: () => _showLeaderEditor(record: record)) : null,
+        leading: CircleAvatar(
+          backgroundColor: theme.colorScheme.primary,
+          child: const Icon(Icons.person, color: Colors.white),
+        ),
+        title: Text(
+          record.userName,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: theme.colorScheme.onSurface,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Text(
+          '${record.positionTitle}\nTenure: $tenure ($range)',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          maxLines: 3,
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: _isAdmin
+            ? IconButton(
+                tooltip: 'Edit leader',
+                icon: Icon(Icons.edit, color: theme.colorScheme.primary),
+                onPressed: () => _showLeaderEditor(record: record),
+              )
+            : null,
       ),
     );
   }
@@ -464,13 +494,19 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
                 DropdownButton<LeadershipPosition>(
                   value: position,
                   items: const [
-                    DropdownMenuItem(value: LeadershipPosition.bod, child: Text('BOD member')),
-                    DropdownMenuItem(value: LeadershipPosition.director, child: Text('Director')),
+                    DropdownMenuItem(value: LeadershipPosition.bod, child: Text('Director')),
                     DropdownMenuItem(value: LeadershipPosition.trustee, child: Text('Trustee')),
                   ],
                   onChanged: (value) {
                     if (value != null) setDialogState(() => position = value);
                   },
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Text(
+                    'Directors serve 2-year terms.',
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12),
+                  ),
                 ),
               ],
             ),
