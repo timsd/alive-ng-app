@@ -1,0 +1,12 @@
+{
+  "name": "monthly-donation-reminder",
+  "version": "1.0.0",
+  "description": "Sends multilingual monthly push notifications for ministry support",
+  "main": "src/main.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "node-appwrite": "^22.1.3"
+  }
+}

@@ -11,6 +11,7 @@ import 'chat_input_widget.dart';
 import 'channel_list_widget.dart';
 import '../../providers/appwrite_auth_provider.dart';
 import '../../services/role_access_service.dart';
+import '../../services/tag_parser.dart';
 import '../conference/livekit_meeting_screen.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
@@ -156,6 +157,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         channelId: _selectedChannel!.id,
         content: content.trim(),
         replyToId: replyToId,
+        tags: TagParser.parseUniqueMessage(content),
       );
 
       setState(() {
@@ -199,6 +201,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         content: content.trim(),
         type: type,
         attachments: attachments,
+        tags: TagParser.parseUniqueMessage(content),
       );
 
       setState(() {

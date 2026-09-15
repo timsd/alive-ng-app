@@ -16,6 +16,7 @@ import 'admin_donations_report_screen.dart';
 import 'role_management_screen.dart';
 import 'board_reports_screen.dart';
 import '../../services/appwrite_admin_export_service.dart';
+import '../../services/monthly_reminder_setting_service.dart';
 import '../../utils/responsive_utils.dart';
 
 import 'package:url_launcher/url_launcher.dart';
@@ -794,6 +795,12 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                   () => context.go(AppConstants.sampleContentAdminRoute),
                 ),
                 _buildActionTile(
+                  'Monthly Support Reminder',
+                  'Send on the 1st of each month. Enable to let members opt out themselves.',
+                  Icons.notifications_active_outlined,
+                  () => _showMonthlyReminderControl(),
+                ),
+                _buildActionTile(
                   'Featured Content',
                   'Manage featured content and highlights',
                   Icons.star_outline,
@@ -1033,6 +1040,76 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
     );
   }
 
+  /// Admin control for the monthly ministry-support reminder.
+  /// When enabled, members get an opt-out toggle in their notification
+  /// preferences; when disabled the toggle is greyed out and everyone
+  /// receives the reminder on the 1st of each month.
+  Future<void> _showMonthlyReminderControl() async {
+    final current =
+        await MonthlyReminderSettingService.isUserToggleEnabled();
+    if (!mounted) return;
+
+    var enabled = current;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Monthly Support Reminder'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Sent to all members on the 1st of each month, reminding them '
+                'to support the ministry and honour monthly commitments.',
+              ),
+              const SizedBox(height: 12),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Let members opt out'),
+                subtitle: Text(
+                  enabled
+                      ? 'Members can turn this reminder off themselves'
+                      : 'Everyone receives it (toggle is greyed out for members)',
+                ),
+                value: enabled,
+                onChanged: (value) => setDialogState(() => enabled = value),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
+                final saved = await MonthlyReminderSettingService
+                    .setUserToggleEnabled(enabled);
+                if (!dialogContext.mounted) return;
+                Navigator.of(dialogContext).pop();
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      saved
+                          ? (enabled
+                              ? 'Members can now opt out of the monthly reminder'
+                              : 'Monthly reminder is now admin-managed for everyone')
+                          : 'Could not save the monthly reminder setting',
+                    ),
+                  ),
+                );
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildActionTile(
       String title, String subtitle, IconData icon, VoidCallback onTap) {
     return ListTile(
@@ -1075,10 +1152,6 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
 
   // Navigation methods (placeholder implementations)
   void _navigateToUserManagement() {
-    context.go(AppConstants.roleManagementRoute);
-  }
-
-  void _navigateToRoleManagement() {
     context.go(AppConstants.roleManagementRoute);
   }
 

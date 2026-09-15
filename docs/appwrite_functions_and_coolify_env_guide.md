@@ -7,14 +7,31 @@ This document specifies all required environment variables, configuration keys, 
 
 ## 1. Appwrite Functions Environment Variables Matrix
 
-The repository includes 4 serverless Node.js 20 functions under `appwrite_functions/`:
+The repository includes 5 serverless Node.js 20 functions under `appwrite_functions/`:
 
 | Function Name | Function ID | Runtime | Required Environment Variables | Scopes Needed |
 |---|---|---|---|---|
 | **createLiveKitToken** | `6a08e9010035dc8c1e51` | `node-20.0` | `LIVEKIT_API_KEY`<br>`LIVEKIT_API_SECRET`<br>`APPWRITE_ENDPOINT`<br>`APPWRITE_PROJECT_ID`<br>`APPWRITE_DATABASE_ID`<br>`APPWRITE_USERS_TABLE_ID`<br>`APPWRITE_FUNCTION_API_KEY` | `databases.read`<br>`documents.read` |
 | **paystackPayments** | `paystack_payments` | `node-20.0` | `PAYSTACK_SECRET_KEY`<br>`APPWRITE_ENDPOINT`<br>`APPWRITE_PROJECT_ID`<br>`APPWRITE_DATABASE_ID`<br>`APPWRITE_FUNCTION_API_KEY`<br>`APPWRITE_PAYMENT_LOGS_COLLECTION_ID` | `databases.read`<br>`databases.write` |
-| **paystackWebhook** | `paystack_webhook` | `node-20.0` | `PAYSTACK_SECRET_KEY`<br>`APPWRITE_ENDPOINT`<br>`APPWRITE_PROJECT_ID`<br>`APPWRITE_DATABASE_ID`<br>`APPWRITE_FUNCTION_API_KEY`<br>`APPWRITE_DONATION_RECORDS_COLLECTION_ID`<br>`APPWRITE_PROJECTS_COLLECTION_ID`<br>`APPWRITE_PAYMENT_LOGS_COLLECTION_ID`<br>`RESEND_API_KEY` (for receipts) | `databases.read`<br>`databases.write` |
-| **sendEmail** | `send_email` | `node-20.0` | `RESEND_API_KEY`<br>`RECEIPT_SENDER_EMAIL`<br>`SENDER_EMAIL` | None (external API) |
+| **paystackWebhook** | `paystack_webhook` | `node-20.0` | `PAYSTACK_SECRET_KEY`<br>`APPWRITE_ENDPOINT`<br>`APPWRITE_PROJECT_ID`<br>`APPWRITE_DATABASE_ID`<br>`APPWRITE_FUNCTION_API_KEY`<br>`APPWRITE_DONATION_RECORDS_COLLECTION_ID`<br>`APPWRITE_PROJECTS_COLLECTION_ID`<br>`APPWRITE_PAYMENT_LOGS_COLLECTION_ID`<br>`RESEND_API_KEY` (for receipts)<br>`ALIVE_LOGO_URL` (optional branding) | `databases.read`<br>`databases.write` |
+| **sendEmail** | `send_email` | `node-20.0` | `RESEND_API_KEY`<br>`RECEIPT_SENDER_EMAIL`<br>`SENDER_EMAIL`<br>`ALIVE_LOGO_URL` (optional branding) | None (external API) |
+| **monthlyDonationReminder** | `monthly_donation_reminder` | `node-20.0` | `APPWRITE_ENDPOINT`<br>`APPWRITE_PROJECT_ID`<br>`APPWRITE_FUNCTION_API_KEY`<br>`DONATE_DEEP_LINK` (optional, default `alivenigeria://donate`) | `users.read`<br>`targets.read`<br>`targets.write` |
+
+### Monthly Donation Reminder
+Runs on a monthly schedule (configure a cron trigger for the 1st of each month) and pushes a
+localised reminder to every active member, encouraging support of the ministry and honouring
+monthly commitments. Tapping the notification deep-links to the donation screen.
+
+* Languages: English (`en`), Yoruba (`yo`), Igbo (`ig`), Hausa (`ha`). The user's preferred
+  language is read from `user.prefs.language`; unknown values fall back to English.
+* Message style is deliberately warm and non-pushy, and it fires as a native phone
+  notification (not an in-app banner).
+* The admin can let members opt out from the app: Admin Dashboard →
+  **Content Management → Monthly Support Reminder**. The flag is stored in the
+  `app_settings` collection as document `monthly_reminder` with
+  `value.user_toggle_enabled`. While the flag is `false` (the default) the toggle
+  in *Settings → Notifications* is greyed out and every member receives the reminder.
+* Deployment docs: `appwrite_functions/monthlyDonationReminder/README.md`.
 
 > [!NOTE]
 > **Why `databases.read` / `documents.read` instead of `rows.read`?**

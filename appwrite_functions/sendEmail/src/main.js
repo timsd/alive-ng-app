@@ -1,5 +1,13 @@
 const defaultSender = 'ALIVE Nigeria <app@alivenigeria.org>';
 
+// Branding assets used across all outbound emails.
+// SVG renders in most clients; the text heading below acts as a fallback
+// for clients (e.g. some Gmail clients) that strip SVG images.
+const ALIVE_LOGO_URL =
+  process.env.ALIVE_LOGO_URL ||
+  'https://app.alivenigeria.org/assets/assets/images/alive_logo.svg';
+const ALIVE_APP_URL = process.env.ALIVE_APP_URL || 'https://app.alivenigeria.org';
+
 export default async ({ req, res, log, error }) => {
   try {
     const apiKey = process.env.RESEND_API_KEY;
@@ -113,6 +121,7 @@ function getWelcomeEmailHtml(name) {
           <!-- Header Banner -->
           <tr>
             <td style="background-color: #233E5F; padding: 36px 32px; text-align: center;">
+              <img src="${ALIVE_LOGO_URL}" alt="ALIVE Nigeria" width="96" height="96" style="display: block; margin: 0 auto 16px; width: 96px; height: 96px; border: 0; outline: none; text-decoration: none;" />
               <h1 style="margin: 0; color: #E5B94D; font-size: 26px; font-weight: 800; letter-spacing: 0.5px;">ALIVE Nigeria</h1>
               <p style="margin: 8px 0 0; color: #F7F4EC; font-size: 14px; opacity: 0.9;">Connecting Faith, Fellowship & Mission</p>
             </td>

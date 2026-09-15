@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:file_picker/file_picker.dart';
@@ -39,8 +41,17 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
     widget.controller.addListener(_onTextChanged);
   }
 
+  // --- Discord-style tag autocomplete state (@user, #role/group, !special) ---
+  List<TaggedEntity> _tagSuggestions = [];
+  bool _showTagSuggestions = false;
+  int _activeTagStart = -1;
+  String _activeTagPrefix = '';
+  int _selectedTagIndex = 0;
+  Timer? _tagDebounce;
+
   @override
   void dispose() {
+    _tagDebounce?.cancel();
     widget.controller.removeListener(_onTextChanged);
     super.dispose();
   }
@@ -49,6 +60,172 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
     setState(() {
       _isComposing = widget.controller.text.trim().isNotEmpty;
     });
+    _updateTagSuggestions();
+  }
+
+  /// Detects a trailing tag token (`@`, `#`, `!`) at the caret and loads
+  /// matching suggestions. `@` searches users via [onTagSearch]; `#` and `!`
+  /// resolve locally from ChatConfig roles/special tags.
+  void _updateTagSuggestions() {
+    final text = widget.controller.text;
+    final cursor = widget.controller.selection.baseOffset;
+    if (cursor < 0 || cursor > text.length) {
+      _hideTagSuggestions();
+      return;
+    }
+
+    final beforeCaret = text.substring(0, cursor);
+    final match = RegExp(r'([@#!])([a-zA-Z0-9_]*)$').firstMatch(beforeCaret);
+    if (match == null) {
+      _hideTagSuggestions();
+      return;
+    }
+
+    final prefix = match.group(1)!;
+    final query = match.group(2)!.toLowerCase();
+    _activeTagStart = cursor - query.length - 1;
+    _activeTagPrefix = prefix;
+
+    _tagDebounce?.cancel();
+    _tagDebounce = Timer(const Duration(milliseconds: 120), () async {
+      final results = await _resolveTagSuggestions(prefix, query);
+      if (!mounted) return;
+      setState(() {
+        _tagSuggestions = results;
+        _showTagSuggestions = results.isNotEmpty;
+        _selectedTagIndex = 0;
+      });
+    });
+  }
+
+  Future<List<TaggedEntity>> _resolveTagSuggestions(
+    String prefix,
+    String query,
+  ) async {
+    try {
+      if (prefix == '#') {
+        return ChatConfig.getTaggableRoles()
+            .where((role) => role.toLowerCase().contains(query))
+            .map((role) => TaggedEntity(
+                  id: role,
+                  name: _prettyTagName(role),
+                  type: TagType.role,
+                ))
+            .take(8)
+            .toList();
+      }
+      if (prefix == '!') {
+        return ChatConfig.getSpecialTags()
+            .map((tag) => tag.replaceAll('#', ''))
+            .where((tag) => tag.toLowerCase().contains(query))
+            .map((tag) => TaggedEntity(
+                  id: tag,
+                  name: tag.toUpperCase(),
+                  type: TagType.special,
+                ))
+            .take(8)
+            .toList();
+      }
+      // Users: delegate to the chat screen's search implementation.
+      final users = await widget.onTagSearch(query);
+      return users.take(8).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Replaces the active tag token with the chosen suggestion.
+  void _insertTagSuggestion(TaggedEntity entity) {
+    final text = widget.controller.text;
+    final cursor = widget.controller.selection.baseOffset;
+    if (_activeTagStart < 0 || cursor < 0) return;
+
+    final replacement = '$_activeTagPrefix${entity.id} ';
+    final newText =
+        text.substring(0, _activeTagStart) + replacement + text.substring(cursor);
+
+    widget.controller.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(
+        offset: _activeTagStart + replacement.length,
+      ),
+    );
+    _hideTagSuggestions();
+  }
+
+  void _hideTagSuggestions() {
+    if (!_showTagSuggestions && _tagSuggestions.isEmpty) return;
+    if (!mounted) return;
+    setState(() {
+      _showTagSuggestions = false;
+      _tagSuggestions = [];
+      _selectedTagIndex = 0;
+    });
+  }
+
+  Widget _buildTagSuggestions() {
+    if (!_showTagSuggestions || _tagSuggestions.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final theme = Theme.of(context);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      constraints: const BoxConstraints(maxHeight: 220),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: theme.colorScheme.outline.withValues(alpha: 0.3),
+        ),
+      ),
+      child: ListView.builder(
+        shrinkWrap: true,
+        padding: EdgeInsets.zero,
+        itemCount: _tagSuggestions.length,
+        itemBuilder: (context, index) {
+          final entity = _tagSuggestions[index];
+          final isSelected = index == _selectedTagIndex;
+          return ListTile(
+            dense: true,
+            selected: isSelected,
+            leading: Icon(_tagIcon(entity.type), size: 18),
+            title: Text(
+              entity.name,
+              style: theme.textTheme.bodyMedium,
+              overflow: TextOverflow.ellipsis,
+            ),
+            subtitle: Text(
+              entity.id,
+              style: theme.textTheme.bodySmall,
+              overflow: TextOverflow.ellipsis,
+            ),
+            onTap: () => _insertTagSuggestion(entity),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Converts a raw tag value (`campus_coor`) into a readable label.
+  String _prettyTagName(String value) {
+    return value
+        .split('_')
+        .where((part) => part.isNotEmpty)
+        .map((part) => part[0].toUpperCase() + part.substring(1))
+        .join(' ');
+  }
+
+  IconData _tagIcon(TagType type) {
+    switch (type) {
+      case TagType.user:
+        return Icons.alternate_email;
+      case TagType.role:
+        return Icons.groups;
+      case TagType.special:
+        return Icons.bolt;
+      case TagType.group:
+        return Icons.forum;
+    }
   }
 
   void _handleSubmitted() {
@@ -383,6 +560,8 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
                 ],
               ),
             ),
+          // Discord-style tag suggestions appear above the composer
+          _buildTagSuggestions(),
           Row(
             children: [
               // Attachment button
@@ -396,7 +575,8 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
                 child: TextField(
                   controller: widget.controller,
                   decoration: InputDecoration(
-                    hintText: 'Type a message...',
+                    hintText:
+                        'Type a message... @ to tag people, # for roles, ! for special tags',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.all(Radius.circular(
                           ResponsiveUtils.getResponsiveValue(

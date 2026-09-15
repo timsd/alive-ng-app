@@ -25,7 +25,22 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     
     <!-- Phone permission for emergency contacts -->
-    
+
+    <!--
+      Explicit hardware features marked as NOT required.
+      Android auto-derives required hardware from permissions
+      (CAMERA -> camera, RECORD_AUDIO -> microphone, BLUETOOTH -> bluetooth),
+      which makes Google Play HIDE the app from devices lacking them
+      (tablets, Android TV boxes, some Chromebooks). Marking them optional
+      keeps those devices installable; the app requests the permissions at
+      runtime and degrades gracefully when the hardware is absent.
+    -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+    <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
+    <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
+
     <application
         android:label="ALIVE NG"
         android:name="${applicationName}"
@@ -69,18 +84,20 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
-            <intent-filter android:autoVerify="true">
+            <!-- Launcher entry point.
+                 NOTE: no autoVerify here — it only applies to VIEW intent-filters. -->
+            <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
             
-            <!-- Deep linking support -->
+            <!-- Deep linking support (App Links to the web app) -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https"
-                      android:host="aliveng.com" />
+                      android:host="app.alivenigeria.org" />
             </intent-filter>
         </activity>
 

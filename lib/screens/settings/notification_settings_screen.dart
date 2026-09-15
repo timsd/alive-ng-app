@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/notification_settings.dart';
 import '../../providers/achievement_provider.dart';
 import '../../services/notification_settings_service.dart';
+import '../../services/monthly_reminder_setting_service.dart';
 import '../../services/reminder_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/loading_widget.dart';
@@ -20,10 +21,27 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
   bool _isLoading = true;
   bool _isSaving = false;
 
+  /// Admin-controlled: when false the monthly support reminder toggle is
+  /// greyed out (every member receives it automatically).
+  bool _monthlyToggleVisible = false;
+  bool _monthlyOptedOut = false;
+
   @override
   void initState() {
     super.initState();
     _loadSettings();
+    _loadMonthlyReminderPref();
+  }
+
+  Future<void> _loadMonthlyReminderPref() async {
+    final visible =
+        await MonthlyReminderSettingService.isUserToggleEnabled();
+    final optedOut = await MonthlyReminderSettingService.isUserOptedOut();
+    if (!mounted) return;
+    setState(() {
+      _monthlyToggleVisible = visible;
+      _monthlyOptedOut = optedOut;
+    });
   }
 
   Future<void> _loadSettings() async {
@@ -194,13 +212,14 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
                                 subtitle: const Text('Receive reminders and ministry updates on this device'),
                                 value: _settings!.pushNotificationsEnabled,
                                 onChanged: _isSaving ? null : (value) async {
+                                  final messenger = ScaffoldMessenger.of(context);
                                   if (value) {
                                     setState(() => _isSaving = true);
                                     try {
                                       final granted = await NotificationSettingsService.requestNotificationPermission();
                                       if (!mounted) return;
                                       if (!granted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
+                                        messenger.showSnackBar(
                                           const SnackBar(content: Text('Notifications permission was not granted.')),
                                         );
                                         return;
@@ -312,6 +331,55 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
                                 onChanged: _isSaving ? null : (value) async {
                                   await _updateSetting(_settings!.copyWith(missionReminder: value));
                                 },
+                              ),
+
+                              // Monthly Ministry Support Reminder
+                              // Greyed out for everyone until an admin makes the
+                              // toggle available from the admin dashboard.
+                              SwitchListTile(
+                                secondary: Icon(
+                                  Icons.volunteer_activism,
+                                  color: _monthlyToggleVisible ? null : Theme.of(context).disabledColor,
+                                ),
+                                title: Text(
+                                  'Monthly Ministry Support',
+                                  style: TextStyle(
+                                    color: _monthlyToggleVisible ? null : Theme.of(context).disabledColor,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  _monthlyToggleVisible
+                                      ? 'Reminder on the 1st of each month — turn off to opt out'
+                                      : 'All members receive this reminder. Managed by the ministry admin.',
+                                  style: TextStyle(
+                                    color: _monthlyToggleVisible ? null : Theme.of(context).disabledColor,
+                                  ),
+                                ),
+                                value: _monthlyToggleVisible ? !_monthlyOptedOut : true,
+                                onChanged: _monthlyToggleVisible
+                                    ? (value) async {
+                                        final messenger =
+                                            ScaffoldMessenger.of(context);
+                                        final optedOut = !value;
+                                        final saved = await MonthlyReminderSettingService
+                                            .setUserOptedOut(optedOut);
+                                        if (!mounted) return;
+                                        if (saved) {
+                                          setState(() {
+                                            _monthlyOptedOut = optedOut;
+                                          });
+                                          messenger.showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                optedOut
+                                                    ? 'You will no longer receive the monthly support reminder'
+                                                    : 'Monthly support reminder enabled',
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      }
+                                    : null,
                               ),
                             ],
                           ),

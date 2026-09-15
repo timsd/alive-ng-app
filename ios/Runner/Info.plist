@@ -88,10 +88,9 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>aliveng.com</string>
+			<string>org.alivenigeria.app</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>https</string>
 				<string>aliveng</string>
 				<string>appwrite-callback-6a3bef53002f5090dedf</string>
 			</array>
