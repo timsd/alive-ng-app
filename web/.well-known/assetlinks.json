@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.alive.alivengandroidapp",
+      "sha256_cert_fingerprints": [
+        "B4:9F:C6:7C:7B:5D:46:2C:92:72:13:E9:2B:FB:3A:54:C4:83:F8:8C:A1:B6:EF:B2:F1:12:B4:9F:8B:16:23:E9"
+      ]
+    }
+  }
+]

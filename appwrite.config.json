@@ -139,6 +139,28 @@
                 "databases.read",
                 "documents.read"
             ]
+        },
+        {
+            "$id": "monthly_donation_reminder",
+            "name": "monthlyDonationReminder",
+            "runtime": "node-20.0",
+            "path": "appwrite_functions/monthlyDonationReminder",
+            "entrypoint": "src/main.js",
+            "execute": [
+                "any"
+            ],
+            "enabled": true,
+            "logging": true,
+            "events": [],
+            "schedule": "0 8 1 * *",
+            "timeout": 300,
+            "commands": "npm install",
+            "scopes": [
+                "users.read",
+                "messages.write",
+                "databases.read",
+                "documents.read"
+            ]
         }
     ]
 }

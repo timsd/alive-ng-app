@@ -13,7 +13,8 @@
  */
 
 const sdk = require('node-appwrite');
-const { Client, Users, Messaging, Query } = sdk;
+const { Client, Users, Messaging, Databases, Query, ID } = sdk;
+
 
 // Localized notification content.
 // NOTE: Have a native speaker confirm the Yoruba / Igbo / Hausa wording
@@ -50,3 +51,124 @@ function getLocalizedMessage(languageCode) {
   const code = (languageCode || 'en').toLowerCase().split('-')[0];
   return NOTIFICATION_MESSAGES[code] || NOTIFICATION_MESSAGES.en;
 }
+
+// Main function handler — called by Appwrite runtime on schedule or manual trigger.
+module.exports = async ({ req, res, log, error }) => {
+  const APPWRITE_ENDPOINT = process.env.APPWRITE_ENDPOINT || 'https://api.alivenigeria.org/v1';
+  const APPWRITE_PROJECT_ID = process.env.APPWRITE_PROJECT_ID || '6a3bef53002f5090dedf';
+  const APPWRITE_API_KEY = process.env.APPWRITE_API_KEY;
+  const DATABASE_ID = process.env.APPWRITE_DATABASE_ID || '6a089307002e54291a32';
+  const APP_SETTINGS_COLLECTION_ID = process.env.APP_SETTINGS_COLLECTION_ID || 'app_settings';
+
+  // Deep-link target inside the ALIVE-NG app.
+  const DONATION_DEEP_LINK = 'https://app.alivenigeria.org/donate';
+
+  if (!APPWRITE_API_KEY) {
+    error('APPWRITE_API_KEY is not set. Aborting.');
+    return res.json({ ok: false, message: 'Server misconfiguration: missing API key.' }, 500);
+  }
+
+  const client = new Client()
+    .setEndpoint(APPWRITE_ENDPOINT)
+    .setProject(APPWRITE_PROJECT_ID)
+    .setKey(APPWRITE_API_KEY);
+
+  const users = new Users(client);
+  const messaging = new Messaging(client);
+  const databases = new Databases(client);
+
+  // ── 1. Load opt-out list from app_settings ────────────────────────────────
+  let optedOutUserIds = new Set();
+  try {
+    const settingsDoc = await databases.getDocument(
+      DATABASE_ID,
+      APP_SETTINGS_COLLECTION_ID,
+      'monthly_reminder_optouts',
+    );
+    const raw = settingsDoc?.data?.value;
+    const list = Array.isArray(raw)
+      ? raw
+      : typeof raw === 'string'
+      ? JSON.parse(raw)
+      : [];
+    optedOutUserIds = new Set(list);
+    log(`Loaded ${optedOutUserIds.size} opt-out user(s).`);
+  } catch (e) {
+    // If document does not exist yet, no one has opted out — carry on.
+    if (e?.code !== 404) {
+      error(`Warning: Could not load opt-out list: ${e?.message}`);
+    }
+  }
+
+  // ── 2. Page through all registered users ──────────────────────────────────
+  let cursor = null;
+  let totalSent = 0;
+  let totalSkipped = 0;
+  let totalErrors = 0;
+
+  log('Starting monthly donation reminder dispatch...');
+
+  do {
+    const queries = [Query.limit(100)];
+    if (cursor) queries.push(Query.cursorAfter(cursor));
+
+    const page = await users.list(queries);
+    if (!page.users.length) break;
+
+    for (const user of page.users) {
+      // Skip opted-out users and users without push targets.
+      if (optedOutUserIds.has(user.$id)) {
+        totalSkipped++;
+        continue;
+      }
+
+      // Prefer the user's preferred language; fall back to English.
+      const lang = user.prefs?.language || user.prefs?.locale || 'en';
+      const messages = getLocalizedMessage(lang);
+      const displayName = user.name?.split(' ')[0] || 'Friend';
+
+      try {
+        await messaging.createPush({
+          messageId: ID.unique(),
+          title: messages.title,
+          body: messages.body(displayName),
+          topics: [],
+          users: [user.$id],
+          targets: [],
+          data: {
+            route: '/donate',
+            url: DONATION_DEEP_LINK,
+            action: messages.action,
+          },
+          action: DONATION_DEEP_LINK,
+          icon: '',
+          sound: 'default',
+          color: '',
+          tag: 'monthly_donation_reminder',
+          badge: '',
+          draft: false,
+          scheduledAt: '',
+        });
+        totalSent++;
+      } catch (sendErr) {
+        // Log but don't abort the whole batch for one user failure.
+        error(`Failed to send notification to user ${user.$id}: ${sendErr?.message}`);
+        totalErrors++;
+      }
+    }
+
+    cursor = page.users.at(-1)?.$id ?? null;
+    log(`Processed batch of ${page.users.length}. Sent: ${totalSent}, Skipped: ${totalSkipped}, Errors: ${totalErrors}`);
+  } while (cursor);
+
+  const summary = {
+    ok: true,
+    sent: totalSent,
+    skipped: totalSkipped,
+    errors: totalErrors,
+    timestamp: new Date().toISOString(),
+  };
+  log(`Monthly donation reminder complete: ${JSON.stringify(summary)}`);
+  return res.json(summary);
+};
+
