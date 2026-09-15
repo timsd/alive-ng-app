@@ -99,6 +99,7 @@ bool _isGuestAccessibleRoute(String path) {
     '/resources',
     '/help-support',
     '/donation',
+    '/donate',
     '/gift-in-kind',
     '/non-monetary-gift',
     '/admin-approve',
@@ -589,6 +590,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           // Donation Route
           GoRoute(
             path: AppConstants.donationRoute,
+            builder: (context, state) => const DonationScreen(),
+          ),
+          GoRoute(
+            path: '/donate',
             builder: (context, state) => const DonationScreen(),
           ),
 

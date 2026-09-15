@@ -211,7 +211,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
         final available =
             await _offlineBible.getAvailableVersionCodesFromAssets('en');
         if (available.isNotEmpty) {
-          final ordered = [
+          final List<String> ordered = <String>[
             ...preferredOrder.where(available.contains),
             ...available.where((v) => !preferredOrder.contains(v)),
           ];

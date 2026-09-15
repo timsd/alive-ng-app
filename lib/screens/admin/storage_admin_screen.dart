@@ -575,7 +575,6 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
       ),
     );
   }
-}
 
   String? _inferContentType(String ext) {
     switch (ext.toLowerCase()) {

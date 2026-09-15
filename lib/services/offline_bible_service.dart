@@ -1082,6 +1082,9 @@ class OfflineBibleService {
   }
 
   // Discover version codes from AssetManifest for a language
+  Future<List<String>> getAvailableVersionCodesFromAssets(String language) =>
+      _discoverAvailableVersionCodesFromAssets(language);
+
   Future<List<String>> _discoverAvailableVersionCodesFromAssets(
       String language) async {
     return (_supportedLanguages[language] ?? const <Map<String, String>>[])

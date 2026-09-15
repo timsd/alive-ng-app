@@ -749,6 +749,27 @@ class _KidsMissionScreenState extends ConsumerState<KidsMissionScreen> {
                       icon: Icons.star_border_rounded,
                     );
                   }
+
+
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: filteredMissions.length,
+                    itemBuilder: (context, index) {
+                      return _buildMissionListItem(context, filteredMissions[index]);
+                    },
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
 /// Full-screen activity sheet: verifies and scores the child's response
 /// according to the mission's verification method, then awards points.
 class _MissionActivitySheet extends StatefulWidget {
@@ -1241,25 +1262,6 @@ class _MissionActivitySheetState extends State<_MissionActivitySheet> {
               ),
             ],
           ],
-        ),
-      ),
-    );
-  }
-}
-
-
-                  return ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: filteredMissions.length,
-                    itemBuilder: (context, index) {
-                      return _buildMissionListItem(context, filteredMissions[index]);
-                    },
-                  );
-                },
-              ),
-            ],
-          ),
         ),
       ),
     );

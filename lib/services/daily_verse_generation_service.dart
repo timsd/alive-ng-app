@@ -89,80 +89,14 @@ class DailyVerseGenerationService {
       // date-derived index gives a unique verse per day for ~85 years before
       // any repetition. Falls back to the small static corpus only if the
       // full Bible could not be loaded.
-      List<BibleTextHit>? fullCorpus;
-      try {
-        fullCorpus = await _offlineBible.getAllVerses(
-          version: 'KJV',
-          language: 'en',
-        );
-      } catch (_) {}
-
       verse_data.BibleVerse? selectedVerse;
-      if (fullCorpus != null && fullCorpus.isNotEmpty) {
-        // Deterministic: same date → same verse for every user.
-        final dayNumber =
-            date.toUtc().millisecondsSinceEpoch ~/ Duration.millisecondsPerDay;
-        final hit = fullCorpus[dayNumber % fullCorpus.length];
-
-        if (languageCode == 'en') {
-          selectedVerse = verse_data.BibleVerse(
-            reference: hit.reference,
-            text: {'KJV': hit.text},
-          );
-        } else {
-          // Same scripture position, rendered in the selected language:
-          // map the English book to its canonical order, find the localized
-          // book at that position, then read that exact chapter/verse from
-          // the localized bundle (yo/BM, ha/HAU, ig/IGBOB).
-          try {
-            final canonicalIndex = BibleData.allBooks.indexOf(hit.book);
-            final localVersion =
-                {'yo': 'BM', 'ha': 'HAU', 'ig': 'IGBOB'}[languageCode] ?? 'KJV';
-            final localBooks =
-                await _offlineBible.getBibleBooks(language: languageCode);
-            final localMatches = canonicalIndex >= 0
-                ? localBooks
-                    .where((b) => b.order == canonicalIndex + 1)
-                    .toList()
-                : <dynamic>[];
-            if (localMatches.isNotEmpty) {
-              final localBook = localMatches.first;
-              final localChapter = await _offlineBible.getBibleChapter(
-                book: localBook.name as String,
-                chapter: hit.chapter,
-                version: localVersion,
-                language: languageCode,
-              );
-              String? localText;
-              if (localChapter != null) {
-                final byNumber = localChapter.verses
-                    .where((v) => v.number == hit.verse)
-                    .toList();
-                if (byNumber.isNotEmpty) {
-                  localText = byNumber.first.text;
-                } else if (hit.verse >= 1 &&
-                    hit.verse <= localChapter.verses.length) {
-                  localText = localChapter.verses[hit.verse - 1].text;
-                }
-              }
-              if (localText != null && localText.isNotEmpty) {
-                selectedVerse = verse_data.BibleVerse(
-                  reference: hit.reference,
-                  text: {localVersion: localText},
-                );
-              }
-            }
-          } catch (_) {}
-          // Fall back to the English text if localization is unavailable.
-          selectedVerse ??= verse_data.BibleVerse(
-            reference: hit.reference,
-            text: {'KJV': hit.text},
-          );
-        }
+      final corpus = BibleSource.instance.dailyCorpus;
+      if (corpus.isNotEmpty) {
+        final epochDays = date.toUtc().difference(DateTime.utc(1970, 1, 1)).inDays;
+        selectedVerse = corpus[epochDays % corpus.length];
       }
 
       selectedVerse ??= () {
-        // Fallback: bundled static corpus (always available, offline-safe).
         final daySeed = date.year * 10000 + date.month * 100 + date.day;
         final random = Random(daySeed);
         final staticCorpus = BibleSource.instance.nonGenealogyCorpus;
