@@ -19,3 +19,17 @@
 # lineq-style reflections guards: silence harmless warnings instead of failing the build.
 -dontwarn java.lang.invoke.StringConcatFactory
 -dontwarn org.slf4j.**
+
+# OkHttp / Conscrypt / BouncyCastle / OpenJSSE TLS platform optional dependencies
+-dontwarn org.bouncycastle.jsse.BCSSLParameters
+-dontwarn org.bouncycastle.jsse.BCSSLSocket
+-dontwarn org.bouncycastle.jsse.provider.BouncyCastleJsseProvider
+-dontwarn org.conscrypt.Conscrypt$Version
+-dontwarn org.conscrypt.Conscrypt
+-dontwarn org.conscrypt.ConscryptHostnameVerifier
+-dontwarn okhttp3.**
+-dontwarn io.sentry.**
+-keep class org.webrtc.** { *; }
+-dontwarn org.webrtc.**
+-dontwarn com.livekit.**
+-dontwarn androidx.**

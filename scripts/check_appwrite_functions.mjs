@@ -43,7 +43,7 @@ async function run() {
 
   console.log('Total Functions:', res.data.total);
   for (const f of res.data.functions) {
-    console.log(`\n- ID: ${f.$id} | Name: ${f.name} | Runtime: ${f.runtime} | Active: ${f.deployment || 'none'}`);
+    console.log(`\n- ID: ${f.$id} | Name: ${f.name} | Runtime: ${f.runtime} | Active: ${f.deploymentId || f.deployment || 'none'}`);
     const depRes = await apiGet(`/functions/${f.$id}/deployments`);
     if (depRes.data.deployments && depRes.data.deployments.length > 0) {
       for (const d of depRes.data.deployments) {
