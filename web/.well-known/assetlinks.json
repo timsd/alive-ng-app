@@ -1,13 +1,17 @@
 [
   {
     "relation": [
-      "delegate_permission/common.handle_all_urls"
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.get_login_creds"
     ],
     "target": {
       "namespace": "android_app",
       "package_name": "com.alive.alivengandroidapp",
       "sha256_cert_fingerprints": [
-        "B4:9F:C6:7C:7B:5D:46:2C:92:72:13:E9:2B:FB:3A:54:C4:83:F8:8C:A1:B6:EF:B2:F1:12:B4:9F:8B:16:23:E9"
+        "B4:9F:C6:7C:7B:5D:46:2C:92:72:13:E9:2B:FB:3A:54:C4:83:F8:8C:A1:B6:EF:B2:F1:12:B4:9F:8B:16:23:E9",
+        "56:52:B3:67:5C:76:B5:F0:5A:6B:B2:40:1F:FB:61:03:3F:03:81:9A:67:17:4F:8F:15:9B:9E:A3:8E:7F:78:5F",
+        "48:C6:D4:3A:39:C7:D7:BD:4D:AB:3B:EA:CE:D0:C1:4E:75:A2:DC:74:9E:DD:99:B3:BA:8D:49:21:C9:AD:7A:05",
+        "D8:61:E7:11:17:B7:D8:8A:C1:A6:0B:06:2C:11:7A:FA:6F:D2:42:10:86:4F:5E:6B:50:1E:D8:B0:01:C2:2F:AC"
       ]
     }
   }
