@@ -501,7 +501,7 @@
 
   <script>
     (function () {
-      var APPWRITE_ENDPOINT = 'https://appwrite.alivenigeria.org/v1';
+      var APPWRITE_ENDPOINT = 'https://api.alivenigeria.org/v1';
       var APPWRITE_PROJECT_ID = '6a3bef53002f5090dedf';
       var PAYSTACK_FUNCTION_ID = 'paystack_payments';
       var CALLBACK_URL = window.location.origin + '/donation.html?status=callback';
@@ -766,6 +766,7 @@
               headers: headers,
               body: JSON.stringify({
                 body: JSON.stringify({
+                  action: 'initialize_transaction',
                   email: email,
                   reference: reference,
                   amount: amountMinor,
@@ -796,9 +797,7 @@
             }
             var httpError = '';
             if (response.status === 401 || response.status === 403) {
-              httpError = ' (HTTP ' + response.status + ' — authentication required. A limited API key with functions.read scope must be set in the web donation page. See docs/appwrite_functions_and_coolify_env_guide.md)';
-            } else {
-              httpError = ' (HTTP ' + response.status + ')';
+              httpError = ' (Authentication required. Check Appwrite function permissions)';
             }
             throw new Error(errMsg || ('Checkout initialization failed' + httpError));
           }
@@ -809,16 +808,27 @@
             try { payload = JSON.parse(payload); } catch (_) { payload = {}; }
           }
 
+          if (payload && payload.error) {
+            if (payload.error.toLowerCase().indexOf('currency not supported') !== -1) {
+              throw new Error('USD settlement is currently pending merchant activation. Please switch to NGN (Naira) — international cards are accepted for NGN payments.');
+            }
+            throw new Error(payload.error);
+          }
+
           var authorizationUrl = payload && payload.authorization_url;
           if (!authorizationUrl) {
-            throw new Error((payload && payload.error) || 'Paystack did not return a checkout URL. Please try again.');
+            throw new Error('Paystack did not return a checkout URL. Please try again.');
           }
 
           try { sessionStorage.setItem('selected_project_id', projectId || ''); } catch (_) { }
           setStatus('Redirecting to Paystack secure checkout...', 'success');
           window.location.href = authorizationUrl;
         } catch (err) {
-          setStatus(err.message || 'Something went wrong. Please try again.', 'error');
+          var msg = err.message || 'Something went wrong. Please try again.';
+          if (msg.toLowerCase().indexOf('currency not supported') !== -1) {
+            msg = 'USD settlement is currently pending merchant activation. Please switch to NGN (Naira) — international cards are accepted for NGN payments.';
+          }
+          setStatus(msg, 'error');
           donateBtn.disabled = false;
         }
       });

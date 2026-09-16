@@ -831,6 +831,12 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                   () => context.go(AppConstants.adminStudyGuidesRoute),
                 ),
                 _buildActionTile(
+                  'Health+ Content',
+                  'Manage plant-based recipes, natural remedies, and community discussions',
+                  Icons.health_and_safety_rounded,
+                  () => context.go(AppConstants.adminHealthContentRoute),
+                ),
+                _buildActionTile(
                   'Kids Content (Legacy)',
                   'Manage kids stories, projects, and resources manually',
                   Icons.child_care_outlined,

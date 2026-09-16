@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../models/health_models.dart';
-import '../../services/health_service.dart';
+import '../../services/health_content_service.dart';
 import '../../services/role_access_service.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/language_provider.dart';
 import '../../utils/responsive_utils.dart';
-import '../../utils/layout_fix_utils.dart';
 import '../../widgets/custom_app_bar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -22,13 +19,7 @@ class EnhancedHealthScreen extends ConsumerStatefulWidget {
 class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
     with TickerProviderStateMixin {
   late TabController _tabController;
-  final HealthService _healthService = HealthService();
-
-  List<NigerianMealPlan> _mealPlans = [];
-  List<WholesomeLivingTip> _tips = [];
-  LifestyleTracker? _todayTracker;
-  List<HealthInsight> _insights = [];
-  Map<String, dynamic> _statistics = {};
+  final HealthContentService _contentService = HealthContentService();
 
   bool _isLoading = true;
   String? _error;
@@ -36,7 +27,8 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    // 3 tabs: Recipes, Remedies, Community Q&A
+    _tabController = TabController(length: 3, vsync: this);
     _loadHealthData();
   }
 
@@ -53,24 +45,9 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
         _error = null;
       });
 
-      final currentUser = ref.read(currentUserProvider);
-      final userId = currentUser?.uid ?? '';
-
-      // Load all health data concurrently
-      final results = await Future.wait([
-        _healthService.getFeaturedMealPlans(),
-        _healthService.fetchWholesomeTips(limit: 10),
-        _healthService.getTodayLifestyleTracker(userId),
-        _healthService.generateHealthInsights(userId),
-        _healthService.getHealthStatistics(userId),
-      ]);
+      await _contentService.ensureInitialized();
 
       setState(() {
-        _mealPlans = results[0] as List<NigerianMealPlan>;
-        _tips = results[1] as List<WholesomeLivingTip>;
-        _todayTracker = results[2] as LifestyleTracker?;
-        _insights = results[3] as List<HealthInsight>;
-        _statistics = results[4] as Map<String, dynamic>;
         _isLoading = false;
       });
     } catch (e) {
@@ -83,13 +60,12 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
 
   @override
   Widget build(BuildContext context) {
-    final translate = ref.watch(translationProvider);
     final theme = Theme.of(context);
     final canPost = RoleAccessService.instance.canPostHealth();
     return Scaffold(
       appBar: CustomAppBar(
-        title: translate('health_wellness'),
-        showDonationButton: false,
+        title: 'Health+',
+        showDonationButton: true,
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
@@ -101,8 +77,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
           tabs: const [
             Tab(icon: Icon(Icons.restaurant_menu), text: 'Recipes'),
             Tab(icon: Icon(Icons.spa), text: 'Remedies'),
-            Tab(icon: Icon(Icons.favorite), text: 'NEWSTART Guide'),
-            Tab(icon: Icon(Icons.forum), text: 'Discussion'),
+            Tab(icon: Icon(Icons.forum), text: 'Community Q&A'),
           ],
         ),
       ),
@@ -122,7 +97,6 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                   children: [
                     _buildRecipesTab(),
                     _buildRemediesTab(),
-                    _buildNewstartGuideTab(),
                     _buildCommunityTab(),
                   ],
                 ),
@@ -130,7 +104,6 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
   }
 
   Widget _buildErrorWidget() {
-    final translate = ref.watch(translationProvider);
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -157,415 +130,36 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                   context: context, mobile: 16.0, tablet: 18.0, desktop: 20.0)),
           ElevatedButton(
             onPressed: _loadHealthData,
-            child: Text(translate('retry')),
+            child: const Text('Retry'),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildOverviewTab() {
-    return SingleChildScrollView(
+  // ── Recipes Tab ──────────────────────────────────────────────────────
+  Widget _buildRecipesTab() {
+    final recipes = _contentService.recipes;
+    return ListView(
       padding: context.responsivePadding,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildWelcomeCard(),
-          SizedBox(
-              height: ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 16.0, tablet: 18.0, desktop: 20.0)),
-          _buildQuickStats(),
-          SizedBox(
-              height: ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 16.0, tablet: 18.0, desktop: 20.0)),
-          _buildTodayProgress(),
-          SizedBox(
-              height: ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 16.0, tablet: 18.0, desktop: 20.0)),
-          _buildQuickActions(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWelcomeCard() {
-    return Card(
-      elevation: 4,
-      child: Container(
-        width: double.infinity,
-        padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(
-            context: context, mobile: 20.0, tablet: 24.0, desktop: 28.0)),
-        decoration: BoxDecoration(
-          borderRadius: context.responsiveBorderRadius,
-          gradient: LinearGradient(
-            colors: [
-              Theme.of(context).colorScheme.primaryContainer,
-              Theme.of(context).colorScheme.primary,
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Welcome to Wholesome Living',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.onPrimary,
-              ),
-            ),
-            SizedBox(
-                height: ResponsiveUtils.getResponsiveValue(
-                    context: context,
-                    mobile: 8.0,
-                    tablet: 10.0,
-                    desktop: 12.0)),
-            Text(
-              'Embrace the 8 natural laws of health',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.7),
-              ),
-            ),
-            SizedBox(
-                height: ResponsiveUtils.getResponsiveValue(
-                    context: context,
-                    mobile: 12.0,
-                    tablet: 14.0,
-                    desktop: 16.0)),
-            Text(
-              '"Beloved, I wish above all things that thou mayest prosper and be in health, even as thy soul prospereth." - 3 John 1:2',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontStyle: FontStyle.italic,
-                color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.9),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickStats() {
-    return LayoutFixUtils.safeRow(
       children: [
-        Expanded(
-          child: _buildStatCard(
-            'Tracking Days',
-            '${_statistics['totalDays'] ?? 0}',
-            Icons.calendar_today,
-            Theme.of(context).colorScheme.primary,
-          ),
+        _sectionHeader(
+          'Plant-Based Nigerian Recipes',
+          'Wholesome meals from the Health+ kitchen',
+          Icons.restaurant_menu,
         ),
-        SizedBox(
-            width: ResponsiveUtils.getResponsiveValue(
-                context: context, mobile: 12.0, tablet: 14.0, desktop: 16.0)),
-        Expanded(
-          child: _buildStatCard(
-            'Average Score',
-            '${(_statistics['averageScore'] ?? 0.0).toStringAsFixed(1)}/10',
-            Icons.star,
-            Theme.of(context).colorScheme.secondary,
-          ),
-        ),
-        SizedBox(
-            width: ResponsiveUtils.getResponsiveValue(
-                context: context, mobile: 12.0, tablet: 14.0, desktop: 16.0)),
-        Expanded(
-          child: _buildStatCard(
-            'Current Streak',
-            '${_statistics['streakDays'] ?? 0} days',
-            Icons.local_fire_department,
-            Theme.of(context).colorScheme.error,
-          ),
-        ),
+        const SizedBox(height: 12),
+        if (recipes.isEmpty)
+          _emptyCard('No recipes yet', 'Admins can publish the first recipe from the Admin Dashboard.')
+        else
+          ...recipes.map((recipe) => _buildHealthRecipeCard(recipe)),
       ],
     );
   }
 
-  Widget _buildStatCard(
-      String title, String value, IconData icon, Color color) {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: context.responsivePadding,
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: context.responsiveIconSize(32)),
-            SizedBox(
-                height: ResponsiveUtils.getResponsiveValue(
-                    context: context,
-                    mobile: 8.0,
-                    tablet: 10.0,
-                    desktop: 12.0)),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(
-                height: ResponsiveUtils.getResponsiveValue(
-                    context: context, mobile: 4.0, tablet: 5.0, desktop: 6.0)),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTodayProgress() {
-    if (_todayTracker == null) {
-      return Card(
-        child: Padding(
-          padding: context.responsivePadding,
-          child: Column(
-            children: [
-              Icon(Icons.add_circle_outline,
-                  size: context.responsiveIconSize(48),
-                  color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.75)),
-              SizedBox(
-                  height: ResponsiveUtils.getResponsiveValue(
-                      context: context,
-                      mobile: 8.0,
-                      tablet: 10.0,
-                      desktop: 12.0)),
-              Text(ref.watch(translationProvider)('no_tracking_data_today')),
-              SizedBox(
-                  height: ResponsiveUtils.getResponsiveValue(
-                      context: context,
-                      mobile: 8.0,
-                      tablet: 10.0,
-                      desktop: 12.0)),
-              ElevatedButton(
-                onPressed: () => _tabController.animateTo(3),
-                child: Text(ref.watch(translationProvider)('start_tracking')),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Card(
-      child: Padding(
-        padding: context.responsivePadding,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            LayoutFixUtils.safeRow(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                LayoutFixUtils.safeText(
-                  'Today\'s Progress',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  '${(_todayTracker!.completionPercentage / 10).toStringAsFixed(1)}/10',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: _getScoreColor(
-                        _todayTracker!.completionPercentage / 10),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(
-                height: ResponsiveUtils.getResponsiveValue(
-                    context: context, mobile: 16, tablet: 20, desktop: 24)),
-            _buildProgressIndicator('Nutrition',
-                (_todayTracker!.metrics['nutrition_score'] ?? 0) / 10),
-            _buildProgressIndicator(
-                'Exercise',
-                (_todayTracker!.metrics['exercise_minutes'] ?? 0) >= 30
-                    ? 1.0
-                    : (_todayTracker!.metrics['exercise_minutes'] ?? 0) / 30),
-            _buildProgressIndicator(
-                'Water',
-                (_todayTracker!.metrics['water_glasses'] ?? 0) >= 8
-                    ? 1.0
-                    : (_todayTracker!.metrics['water_glasses'] ?? 0) / 8),
-            _buildProgressIndicator(
-                'Sleep',
-                (_todayTracker!.metrics['sleep_hours'] ?? 0) >= 7
-                    ? 1.0
-                    : (_todayTracker!.metrics['sleep_hours'] ?? 0) / 7),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProgressIndicator(String label, double progress) {
-    return Padding(
-      padding: EdgeInsets.symmetric(
-          vertical: ResponsiveUtils.getResponsiveValue(
-              context: context, mobile: 4, tablet: 6, desktop: 8)),
-      child: LayoutFixUtils.safeRow(
-        children: [
-          SizedBox(
-            width: ResponsiveUtils.getResponsiveValue(
-                context: context, mobile: 80, tablet: 90, desktop: 100),
-            child: LayoutFixUtils.safeText(label,
-                style: Theme.of(context).textTheme.bodySmall),
-          ),
-          Expanded(
-            child: LinearProgressIndicator(
-              value: progress.clamp(0.0, 1.0),
-              backgroundColor:
-                  Theme.of(context).colorScheme.surfaceContainerHighest,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                _getScoreColor(progress * 10),
-              ),
-            ),
-          ),
-          SizedBox(
-              width: ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 8, tablet: 10, desktop: 12)),
-          Text(
-            '${(progress * 100).round()}%',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Color _getScoreColor(double score) {
-    if (score >= 8) return Theme.of(context).colorScheme.tertiary;
-    if (score >= 6) return Theme.of(context).colorScheme.secondary;
-    return Theme.of(context).colorScheme.error;
-  }
-
-  Widget _buildQuickActions() {
-    return Card(
-      child: Padding(
-        padding: context.responsivePadding,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Quick Actions',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold),
-            ),
-            SizedBox(
-                height: ResponsiveUtils.getResponsiveValue(
-                    context: context, mobile: 12, tablet: 16, desktop: 20)),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildActionButton(
-                  'Meal Plans',
-                  Icons.restaurant_menu,
-                  Theme.of(context).colorScheme.tertiary,
-                  () => _tabController.animateTo(1),
-                ),
-                _buildActionButton(
-                  'Daily Tips',
-                  Icons.lightbulb_outline,
-                  Theme.of(context).colorScheme.primary,
-                  () => _tabController.animateTo(2),
-                ),
-                _buildActionButton(
-                  'Track Today',
-                  Icons.add_circle,
-                  Theme.of(context).colorScheme.secondary,
-                  () => _tabController.animateTo(3),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActionButton(
-    String label,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-  ) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Container(
-            padding: context.responsivePadding,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: context.responsiveBorderRadius,
-            ),
-            child:
-                Icon(icon, color: color, size: context.responsiveIconSize(32)),
-          ),
-          SizedBox(
-              height: ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 8, tablet: 10, desktop: 12)),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall,
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMealPlansTab() {
-    return SingleChildScrollView(
-      padding: context.responsivePadding,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Nigerian Vegetarian Meal Plans',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold),
-          ),
-          SizedBox(
-              height: ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 8, tablet: 10, desktop: 12)),
-          Text(
-            'Wholesome meals based on Adventist health principles',
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
-          ),
-          SizedBox(
-              height: ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 16, tablet: 20, desktop: 24)),
-          if (_mealPlans.isEmpty)
-            Center(
-              child: Padding(
-                padding: context.responsivePadding,
-                child: Text(
-                    ref.watch(translationProvider)('no_meal_plans_available')),
-              ),
-            )
-          else
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _mealPlans.length,
-              itemBuilder: (context, index) {
-                final mealPlan = _mealPlans[index];
-                return _buildMealPlanCard(mealPlan);
-              },
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMealPlanCard(NigerianMealPlan mealPlan) {
+  Widget _buildHealthRecipeCard(HealthRecipeItem recipe) {
+    final theme = Theme.of(context);
+    final commentCount = _contentService.getCommentsFor(recipe.id).length;
     return Card(
       margin: EdgeInsets.only(
           bottom: ResponsiveUtils.getResponsiveValue(
@@ -579,9 +173,10 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
               children: [
                 Expanded(
                   child: Text(
-                    mealPlan.title,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    recipe.title,
+                    style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onSurface,
                     ),
                   ),
                 ),
@@ -592,14 +187,14 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                       vertical: ResponsiveUtils.getResponsiveValue(
                           context: context, mobile: 4, tablet: 6, desktop: 8)),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.tertiaryContainer,
+                    color: theme.colorScheme.tertiaryContainer,
                     borderRadius: context.responsiveBorderRadius,
                   ),
                   child: Text(
-                    mealPlan.region.name.toUpperCase(),
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    recipe.category.toUpperCase(),
+                    style: theme.textTheme.labelSmall?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.onTertiaryContainer,
+                      color: theme.colorScheme.onTertiaryContainer,
                     ),
                   ),
                 ),
@@ -609,622 +204,749 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                 height: ResponsiveUtils.getResponsiveValue(
                     context: context, mobile: 8, tablet: 10, desktop: 12)),
             Text(
-              mealPlan.description,
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+              recipe.description,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
             SizedBox(
                 height: ResponsiveUtils.getResponsiveValue(
                     context: context, mobile: 12, tablet: 16, desktop: 20)),
+            // Ingredients preview
+            if (recipe.ingredients.isNotEmpty) ...[
+              Text(
+                'Key Ingredients:',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                recipe.ingredients.take(4).join(' • '),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 8),
+            ],
+            // Metadata row
             Row(
               children: [
                 Icon(Icons.schedule,
                     size: context.responsiveIconSize(16),
-                    color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    color: theme.colorScheme.onSurfaceVariant),
                 SizedBox(
                     width: ResponsiveUtils.getResponsiveValue(
                         context: context, mobile: 4, tablet: 6, desktop: 8)),
                 Text(
-                  '${mealPlan.days.length} days',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  recipe.prepTime,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant),
                 ),
                 SizedBox(
                     width: ResponsiveUtils.getResponsiveValue(
                         context: context, mobile: 16, tablet: 20, desktop: 24)),
-                Icon(Icons.restaurant_menu,
+                Icon(Icons.people,
                     size: context.responsiveIconSize(16),
-                    color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    color: theme.colorScheme.onSurfaceVariant),
                 SizedBox(
                     width: ResponsiveUtils.getResponsiveValue(
                         context: context, mobile: 4, tablet: 6, desktop: 8)),
                 Text(
-                  '${mealPlan.days.length} meals',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  '${recipe.servings} servings',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant),
+                ),
+                const Spacer(),
+                // Comment button
+                TextButton.icon(
+                  onPressed: () => _showCommentSheet(recipe.id, recipe.title),
+                  icon: Icon(Icons.comment_outlined, size: 16, color: theme.colorScheme.primary),
+                  label: Text(
+                    commentCount > 0 ? '$commentCount' : 'Comment',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
                 ),
               ],
             ),
-            if (mealPlan.healthPrinciples.isNotEmpty) ...[
+            if (recipe.healthPrinciples.isNotEmpty) ...[
               SizedBox(
                   height: ResponsiveUtils.getResponsiveValue(
                       context: context, mobile: 8, tablet: 10, desktop: 12)),
               Wrap(
                 spacing: ResponsiveUtils.getResponsiveValue(
                     context: context, mobile: 4, tablet: 6, desktop: 8),
-                children: mealPlan.healthPrinciples
+                children: recipe.healthPrinciples
                     .take(3)
                     .map((principle) => Chip(
                           label: Text(
                             principle,
-                            style: TextStyle(
-                                fontSize: context.responsiveFontSize(10)),
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.onSecondaryContainer,
+                            ),
                           ),
-                          backgroundColor: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.1),
+                          backgroundColor:
+                              theme.colorScheme.secondaryContainer,
                           materialTapTargetSize:
                               MaterialTapTargetSize.shrinkWrap,
                         ))
                     .toList(),
               ),
             ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTipsTab() {
-    return SingleChildScrollView(
-      padding: context.responsivePadding,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Wholesome Living Tips',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold),
-          ),
-          SizedBox(
-              height: ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 8, tablet: 10, desktop: 12)),
-          Text(
-            'Practical guidance for healthy Christian living',
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
-          ),
-          SizedBox(
-              height: ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 16, tablet: 20, desktop: 24)),
-          if (_tips.isEmpty)
-            Center(
-              child: Padding(
-                padding: context.responsivePadding,
-                child:
-                    Text(ref.watch(translationProvider)('no_tips_available')),
-              ),
-            )
-          else
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _tips.length,
-              itemBuilder: (context, index) {
-                final tip = _tips[index];
-                return _buildTipCard(tip);
-              },
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTipCard(WholesomeLivingTip tip) {
-    return Card(
-      margin: EdgeInsets.only(
-          bottom: ResponsiveUtils.getResponsiveValue(
-              context: context, mobile: 12, tablet: 16, desktop: 20)),
-      child: Padding(
-        padding: context.responsivePadding,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: context.responsivePadding,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.2),
-                    borderRadius: context.responsiveBorderRadius,
-                  ),
-                  child: Icon(
-                    Icons.lightbulb,
-                    color: Theme.of(context).colorScheme.primary,
-                    size: context.responsiveIconSize(20),
-                  ),
+            // Expandable detail
+            ExpansionTile(
+              title: Text(
+                'View Full Recipe',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.primary,
                 ),
-                SizedBox(
-                    width: ResponsiveUtils.getResponsiveValue(
-                        context: context, mobile: 12, tablet: 16, desktop: 20)),
-                Expanded(
-                  child: Text(
-                    tip.title,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              ),
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: EdgeInsets.zero,
+              children: [
+                if (recipe.ingredients.isNotEmpty) ...[
+                  _detailSection('Ingredients', recipe.ingredients),
+                  const SizedBox(height: 8),
+                ],
+                if (recipe.instructions.isNotEmpty) ...[
+                  _detailSection('Instructions', recipe.instructions, numbered: true),
+                  const SizedBox(height: 8),
+                ],
+                if (recipe.benefits.isNotEmpty) ...[
+                  Text(
+                    'Health Benefits',
+                    style: theme.textTheme.labelLarge?.copyWith(
                       fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onSurface,
                     ),
                   ),
-                ),
+                  const SizedBox(height: 4),
+                  Text(
+                    recipe.benefits,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.tertiary,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
               ],
             ),
-            SizedBox(
-                height: ResponsiveUtils.getResponsiveValue(
-                    context: context, mobile: 12, tablet: 16, desktop: 20)),
-            Text(
-              tip.content,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.5),
-            ),
-            if (tip.bibleVerse != null) ...[
-              SizedBox(
-                  height: ResponsiveUtils.getResponsiveValue(
-                      context: context, mobile: 12, tablet: 16, desktop: 20)),
-              Container(
-                padding: context.responsivePadding,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.tertiaryContainer.withValues(alpha: 0.1),
-                  borderRadius: context.responsiveBorderRadius,
-                  border: Border.all(color: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.3)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.menu_book,
-                      color: Theme.of(context).colorScheme.tertiary,
-                      size: context.responsiveIconSize(16),
-                    ),
-                    SizedBox(
-                        width: ResponsiveUtils.getResponsiveValue(
-                            context: context,
-                            mobile: 8,
-                            tablet: 10,
-                            desktop: 12)),
-                    Expanded(
-                      child: Text(
-                        tip.bibleVerse!,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontStyle: FontStyle.italic,
-                          color: Theme.of(context).colorScheme.tertiary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            if (tip.tags.isNotEmpty) ...[
-              SizedBox(
-                  height: ResponsiveUtils.getResponsiveValue(
-                      context: context, mobile: 8, tablet: 10, desktop: 12)),
-              Wrap(
-                spacing: ResponsiveUtils.getResponsiveValue(
-                    context: context, mobile: 4, tablet: 6, desktop: 8),
-                children: tip.tags
-                    .take(3)
-                    .map((tag) => Chip(
-                           label: Text(
-                             tag,
-                             style: Theme.of(context).textTheme.labelSmall,
-                           ),
-                          backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                          materialTapTargetSize:
-                              MaterialTapTargetSize.shrinkWrap,
-                        ))
-                    .toList(),
-              ),
-            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTrackerTab() {
-    return SingleChildScrollView(
-      padding: context.responsivePadding,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Lifestyle Tracker',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold),
-          ),
-          SizedBox(
-              height: ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 8, tablet: 10, desktop: 12)),
-          Text(
-            'Track the 8 natural laws of health daily',
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
-          ),
-          SizedBox(
-              height: ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 16, tablet: 20, desktop: 24)),
-          _buildTrackerForm(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTrackerForm() {
-    // This would be a comprehensive form for tracking all 8 natural laws
-    // For brevity, showing a simplified version
-    return Card(
-      child: Padding(
-        padding: context.responsivePadding,
-        child: Column(
-          children: [
-            Text(
-              'Today\'s Health Tracking',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold),
-            ),
-            SizedBox(
-                height: ResponsiveUtils.getResponsiveValue(
-                    context: context, mobile: 16, tablet: 20, desktop: 24)),
-            const Text(
-              'Track your progress in the 8 natural laws of health. This feature will be fully implemented with interactive sliders and input fields.',
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(
-                height: ResponsiveUtils.getResponsiveValue(
-                    context: context, mobile: 16, tablet: 20, desktop: 24)),
-            ElevatedButton(
-              onPressed: () {
-                _showHealthTrackerForm(context, ref.watch(translationProvider));
-              },
-              child: Text(ref.watch(translationProvider)('start_tracking')),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInsightsTab() {
-    return SingleChildScrollView(
-      padding: context.responsivePadding,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Health Insights',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold),
-          ),
-          SizedBox(
-              height: ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 8, tablet: 10, desktop: 12)),
-          Text(
-            'Personalized recommendations for better health',
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
-          ),
-          SizedBox(
-              height: ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 16, tablet: 20, desktop: 24)),
-          if (_insights.isEmpty)
-            Card(
-              child: Padding(
-                padding: context.responsivePadding,
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.insights,
-                      size: context.responsiveIconSize(48),
-                      color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.75),
-                    ),
-                    SizedBox(
-                        height: ResponsiveUtils.getResponsiveValue(
-                            context: context,
-                            mobile: 16,
-                            tablet: 20,
-                            desktop: 24)),
-                    Text(
-                      'No insights available',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    SizedBox(
-                        height: ResponsiveUtils.getResponsiveValue(
-                            context: context,
-                            mobile: 8,
-                            tablet: 10,
-                            desktop: 12)),
-                    const Text(
-                      'Start tracking your health to receive personalized insights',
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _insights.length,
-              itemBuilder: (context, index) {
-                final insight = _insights[index];
-                return _buildInsightCard(insight);
-              },
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInsightCard(HealthInsight insight) {
-    Color priorityColor;
-    IconData priorityIcon;
-
-    // Use category to determine priority color
-    switch (insight.category.toLowerCase()) {
-      case 'urgent':
-      case 'critical':
-        priorityColor = Theme.of(context).colorScheme.error;
-        priorityIcon = Icons.priority_high;
-        break;
-      case 'warning':
-      case 'moderate':
-        priorityColor = Theme.of(context).colorScheme.secondary;
-        priorityIcon = Icons.warning;
-        break;
-      default:
-        priorityColor = Theme.of(context).colorScheme.primary;
-        priorityIcon = Icons.info;
-    }
-
-    return Card(
-      margin: EdgeInsets.only(
-          bottom: ResponsiveUtils.getResponsiveValue(
-              context: context, mobile: 12, tablet: 16, desktop: 20)),
-      child: Padding(
-        padding: context.responsivePadding,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: context.responsivePadding,
-                  decoration: BoxDecoration(
-                    color: priorityColor.withValues(alpha: 0.1),
-                    borderRadius: context.responsiveBorderRadius,
-                  ),
-                  child: Icon(
-                    priorityIcon,
-                    color: priorityColor,
-                    size: context.responsiveIconSize(20),
-                  ),
-                ),
-                SizedBox(
-                    width: ResponsiveUtils.getResponsiveValue(
-                        context: context, mobile: 12, tablet: 16, desktop: 20)),
-                Expanded(
-                  child: Text(
-                    insight.title,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(
-                height: ResponsiveUtils.getResponsiveValue(
-                    context: context, mobile: 12, tablet: 16, desktop: 20)),
-            Text(
-              insight.content,
-            style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            SizedBox(
-                height: ResponsiveUtils.getResponsiveValue(
-                    context: context, mobile: 8, tablet: 10, desktop: 12)),
-            if (insight.recommendations.isNotEmpty)
-              Text(
-                'Recommendations: ${insight.recommendations.join(', ')}',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                  color: Theme.of(context).colorScheme.tertiary,
-                ),
-              ),
-            if (insight.data.containsKey('bibleVerse') &&
-                insight.data['bibleVerse'] != null) ...[
-              SizedBox(
-                  height: ResponsiveUtils.getResponsiveValue(
-                      context: context, mobile: 12, tablet: 16, desktop: 20)),
-              Container(
-                padding: context.responsivePadding,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.1),
-                  borderRadius: context.responsiveBorderRadius,
-                  border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.menu_book,
-                      color: Theme.of(context).colorScheme.primary,
-                      size: context.responsiveIconSize(16),
-                    ),
-                    SizedBox(
-                        width: ResponsiveUtils.getResponsiveValue(
-                            context: context,
-                            mobile: 8,
-                            tablet: 10,
-                            desktop: 12)),
-                    Expanded(
-                      child: Text(
-                        insight.data['bibleVerse'] as String,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontStyle: FontStyle.italic,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showHealthTrackerForm(BuildContext context, Function translate) {
-    final weightController = TextEditingController();
-    final bloodPressureController = TextEditingController();
-    final heartRateController = TextEditingController();
-    final sleepHoursController = TextEditingController();
-    final waterIntakeController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(translate('health_tracker_form')),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: weightController,
-                decoration: InputDecoration(
-                  labelText: '${translate('weight')} (kg)',
-                  border: OutlineInputBorder(
-                    borderRadius: context.responsiveBorderRadius,
-                  ),
-                ),
-                keyboardType: TextInputType.number,
-              ),
-              SizedBox(
-                  height: ResponsiveUtils.getResponsiveValue(
-                      context: context, mobile: 12, tablet: 16, desktop: 20)),
-              TextField(
-                controller: bloodPressureController,
-                decoration: InputDecoration(
-                  labelText: '${translate('blood_pressure')} (120/80)',
-                  border: OutlineInputBorder(
-                    borderRadius: context.responsiveBorderRadius,
-                  ),
-                ),
-              ),
-              SizedBox(
-                  height: ResponsiveUtils.getResponsiveValue(
-                      context: context, mobile: 12, tablet: 16, desktop: 20)),
-              TextField(
-                controller: heartRateController,
-                decoration: InputDecoration(
-                  labelText: '${translate('heart_rate')} (bpm)',
-                  border: OutlineInputBorder(
-                    borderRadius: context.responsiveBorderRadius,
-                  ),
-                ),
-                keyboardType: TextInputType.number,
-              ),
-              SizedBox(
-                  height: ResponsiveUtils.getResponsiveValue(
-                      context: context, mobile: 12, tablet: 16, desktop: 20)),
-              TextField(
-                controller: sleepHoursController,
-                decoration: InputDecoration(
-                  labelText: '${translate('sleep_hours')} (hours)',
-                  border: OutlineInputBorder(
-                    borderRadius: context.responsiveBorderRadius,
-                  ),
-                ),
-                keyboardType: TextInputType.number,
-              ),
-              SizedBox(
-                  height: ResponsiveUtils.getResponsiveValue(
-                      context: context, mobile: 12, tablet: 16, desktop: 20)),
-              TextField(
-                controller: waterIntakeController,
-                decoration: InputDecoration(
-                  labelText: '${translate('water_intake')} (glasses)',
-                  border: OutlineInputBorder(
-                    borderRadius: context.responsiveBorderRadius,
-                  ),
-                ),
-                keyboardType: TextInputType.number,
-              ),
-            ],
+  Widget _detailSection(String title, List<String> items, {bool numbered = false}) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: theme.textTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.onSurface,
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(translate('cancel')),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(translate('health_data_saved')),
-                  backgroundColor: Theme.of(context).colorScheme.tertiary,
-                ),
-              );
-            },
-            child: Text(translate('save')),
-          ),
-        ],
-      ),
+        const SizedBox(height: 4),
+        ...items.asMap().entries.map((entry) {
+          final prefix = numbered ? '${entry.key + 1}. ' : '• ';
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 2),
+            child: Text(
+              '$prefix${entry.value}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                height: 1.5,
+              ),
+            ),
+          );
+        }),
+      ],
     );
   }
 
-  Widget _buildRecipesTab() {
+  // ── Remedies Tab ──────────────────────────────────────────────────────
+  Widget _buildRemediesTab() {
+    final remedies = _contentService.remedies;
     return ListView(
       padding: context.responsivePadding,
       children: [
         _sectionHeader(
-          'Nigerian SDA Recipes',
-          'Plant-based meals with local ingredients.',
-          Icons.restaurant_menu,
+          'Natural Remedies',
+          'Time-tested remedies guided by divine health principles',
+          Icons.spa,
         ),
-        if (_mealPlans.isEmpty)
-          _emptyCard('No recipes yet', 'Admins can publish the first recipe.')
+        const SizedBox(height: 12),
+        if (remedies.isEmpty)
+          _emptyCard('No remedies yet', 'Admins can add natural remedies from the Admin Dashboard.')
         else
-          ..._mealPlans.map(_buildMealPlanCard),
+          ...remedies.map((remedy) => _buildHealthRemedyCard(remedy)),
       ],
     );
   }
 
-  Widget _buildRemediesTab() {
-    return ListView(
-      padding: context.responsivePadding,
-      children: [
-        _sectionHeader('Natural Remedies', 'Remedies with ID photos.', Icons.spa),
-        _infoCard('Include photos, preparation, dosage and precautions.'),
-      ],
+  Widget _buildHealthRemedyCard(HealthRemedyItem remedy) {
+    final theme = Theme.of(context);
+    final commentCount = _contentService.getCommentsFor(remedy.id).length;
+    return Card(
+      margin: EdgeInsets.only(
+          bottom: ResponsiveUtils.getResponsiveValue(
+              context: context, mobile: 12, tablet: 16, desktop: 20)),
+      child: Padding(
+        padding: context.responsivePadding,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.tertiary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.local_florist,
+                      color: theme.colorScheme.tertiary,
+                      size: context.responsiveIconSize(20)),
+                ),
+                SizedBox(
+                    width: ResponsiveUtils.getResponsiveValue(
+                        context: context, mobile: 12, tablet: 16, desktop: 20)),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        remedy.title,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          remedy.ailmentCategory,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.onPrimaryContainer,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveValue(
+                    context: context, mobile: 12, tablet: 16, desktop: 20)),
+            Text(
+              remedy.description,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Dosage & Usage
+            if (remedy.dosageAndUsage.isNotEmpty) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.medication_outlined,
+                        size: 18, color: theme.colorScheme.primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        remedy.dosageAndUsage,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+            // Precautions
+            if (remedy.precautions.isNotEmpty) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.errorContainer.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.warning_amber_rounded,
+                        size: 18, color: theme.colorScheme.error),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '⚠️ ${remedy.precautions}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+            // Biblical principle
+            if (remedy.biblicalPrinciple.isNotEmpty) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.tertiaryContainer.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                      color: theme.colorScheme.tertiary.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.menu_book,
+                        color: theme.colorScheme.tertiary,
+                        size: context.responsiveIconSize(16)),
+                    SizedBox(
+                        width: ResponsiveUtils.getResponsiveValue(
+                            context: context,
+                            mobile: 8,
+                            tablet: 10,
+                            desktop: 12)),
+                    Expanded(
+                      child: Text(
+                        remedy.biblicalPrinciple,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontStyle: FontStyle.italic,
+                          color: theme.colorScheme.tertiary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            // Comment + expand row
+            Row(
+              children: [
+                TextButton.icon(
+                  onPressed: () => _showCommentSheet(remedy.id, remedy.title),
+                  icon: Icon(Icons.comment_outlined, size: 16, color: theme.colorScheme.primary),
+                  label: Text(
+                    commentCount > 0 ? '$commentCount Comments' : 'Comment',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+              ],
+            ),
+            // Expandable preparation steps
+            if (remedy.preparationSteps.isNotEmpty || remedy.ingredients.isNotEmpty)
+              ExpansionTile(
+                title: Text(
+                  'View Preparation Details',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                tilePadding: EdgeInsets.zero,
+                childrenPadding: EdgeInsets.zero,
+                children: [
+                  if (remedy.ingredients.isNotEmpty)
+                    _detailSection('Ingredients', remedy.ingredients),
+                  if (remedy.preparationSteps.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    _detailSection('Preparation', remedy.preparationSteps, numbered: true),
+                  ],
+                ],
+              ),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildNewstartGuideTab() {
-    return ListView(
-      padding: context.responsivePadding,
-      children: [
-        _sectionHeader('NEWSTART Guide', 'SDA lifestyle framework.', Icons.favorite),
-        _infoCard('Nutrition, Exercise, Water, Sunlight, Temperance, Air, Rest, Trust in God.'),
-      ],
-    );
-  }
-
+  // ── Community Q&A Tab ────────────────────────────────────────────────
   Widget _buildCommunityTab() {
     final user = ref.watch(currentUserProvider);
+    final theme = Theme.of(context);
+    final communityComments = _contentService.getCommunityQnA();
+
     return ListView(
       padding: context.responsivePadding,
       children: [
-        _sectionHeader('Discussion', 'Questions and comments.', Icons.forum),
-        _infoCard(user == null ? 'Please sign in to join discussion.' : 'Authenticated members can comment here.'),
+        _sectionHeader(
+          'Community Q&A',
+          'Ask questions, share tips, and encourage one another',
+          Icons.forum,
+        ),
+        const SizedBox(height: 16),
+        // Sign In button for guests
+        if (user == null) ...[
+          Card(
+            color: theme.colorScheme.primaryContainer,
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  Icon(Icons.lock_outline,
+                      size: 40,
+                      color: theme.colorScheme.onPrimaryContainer),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Sign in to join the discussion',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onPrimaryContainer,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Share your health tips, ask questions, and connect with other members.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.8),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: () => context.push(AppConstants.authRoute),
+                    icon: const Icon(Icons.login),
+                    label: const Text('Sign In to Join Discussion'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ] else ...[
+          // Post form for authenticated users
+          _buildPostForm(user),
+          const SizedBox(height: 16),
+        ],
+        // Existing community comments
+        if (communityComments.isEmpty)
+          _emptyCard(
+            'No discussions yet',
+            user != null
+                ? 'Be the first to ask a health question!'
+                : 'Sign in to start a discussion.',
+          )
+        else
+          ...communityComments.map((comment) => _buildCommentCard(comment)),
       ],
     );
   }
 
+  Widget _buildPostForm(AppUser user) {
+    final theme = Theme.of(context);
+    final controller = TextEditingController();
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: theme.colorScheme.primary,
+                  child: Text(
+                    (user.displayName ?? user.email).isNotEmpty
+                        ? (user.displayName ?? user.email)[0].toUpperCase()
+                        : '?',
+                    style: TextStyle(
+                        color: theme.colorScheme.onPrimary,
+                        fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  user.displayName ?? user.email.split('@').first,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              maxLines: 3,
+              decoration: InputDecoration(
+                hintText: 'Ask a health question or share a tip...',
+                hintStyle: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton.icon(
+                onPressed: () async {
+                  final text = controller.text.trim();
+                  if (text.isEmpty) return;
+                  await _contentService.addComment(
+                    targetId: 'general',
+                    authorName: user.displayName ?? user.email.split('@').first,
+                    authorEmail: user.email,
+                    content: text,
+                  );
+                  controller.clear();
+                  setState(() {});
+                },
+                icon: const Icon(Icons.send, size: 18),
+                label: const Text('Post'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCommentCard(HealthCommentItem comment) {
+    final theme = Theme.of(context);
+    final timeAgo = _formatTimeAgo(comment.createdAt);
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: theme.colorScheme.secondaryContainer,
+              child: Text(
+                comment.authorName.isNotEmpty
+                    ? comment.authorName[0].toUpperCase()
+                    : '?',
+                style: TextStyle(
+                  color: theme.colorScheme.onSecondaryContainer,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        comment.authorName,
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        timeAgo,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    comment.content,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurface,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Comment Bottom Sheet ─────────────────────────────────────────────
+  void _showCommentSheet(String targetId, String targetTitle) {
+    final user = ref.read(currentUserProvider);
+    final theme = Theme.of(context);
+    final controller = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            final comments = _contentService.getCommentsFor(targetId);
+            return DraggableScrollableSheet(
+              expand: false,
+              initialChildSize: 0.6,
+              maxChildSize: 0.9,
+              minChildSize: 0.3,
+              builder: (_, scrollController) {
+                return Padding(
+                  padding: EdgeInsets.only(
+                    bottom: MediaQuery.of(ctx).viewInsets.bottom,
+                  ),
+                  child: Column(
+                    children: [
+                      // Handle bar
+                      Container(
+                        width: 40,
+                        height: 4,
+                        margin: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          'Comments on "$targetTitle"',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Expanded(
+                        child: comments.isEmpty
+                            ? Center(
+                                child: Text(
+                                  'No comments yet. Be the first!',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              )
+                            : ListView.builder(
+                                controller: scrollController,
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                itemCount: comments.length,
+                                itemBuilder: (_, i) =>
+                                    _buildCommentCard(comments[i]),
+                              ),
+                      ),
+                      // Input area
+                      if (user != null) ...[
+                        const Divider(height: 1),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: controller,
+                                  decoration: InputDecoration(
+                                    hintText: 'Write a comment...',
+                                    hintStyle: TextStyle(
+                                        color: theme.colorScheme.onSurfaceVariant),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(24),
+                                    ),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 10),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              IconButton.filled(
+                                onPressed: () async {
+                                  final text = controller.text.trim();
+                                  if (text.isEmpty) return;
+                                  await _contentService.addComment(
+                                    targetId: targetId,
+                                    authorName: user.displayName ??
+                                        user.email.split('@').first,
+                                    authorEmail: user.email,
+                                    content: text,
+                                  );
+                                  controller.clear();
+                                  setSheetState(() {});
+                                  setState(() {}); // Update parent counts
+                                },
+                                icon: const Icon(Icons.send, size: 20),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ] else ...[
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: FilledButton.icon(
+                            onPressed: () {
+                              Navigator.of(ctx).pop();
+                              context.push(AppConstants.authRoute);
+                            },
+                            icon: const Icon(Icons.login),
+                            label: const Text('Sign In to Comment'),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ── Shared Widgets ───────────────────────────────────────────────────
   Widget _sectionHeader(String title, String subtitle, IconData icon) {
     final theme = Theme.of(context);
     return ListTile(
@@ -1283,19 +1005,12 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
     );
   }
 
-  Widget _infoCard(String text) {
-    final theme = Theme.of(context);
-    return Card(
-      color: theme.colorScheme.surface,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Text(
-          text,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurface,
-          ),
-        ),
-      ),
-    );
+  String _formatTimeAgo(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 1) return 'just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    if (diff.inDays < 7) return '${diff.inDays}d ago';
+    return '${dt.day}/${dt.month}/${dt.year}';
   }
 }

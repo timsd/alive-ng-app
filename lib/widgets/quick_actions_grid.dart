@@ -35,10 +35,10 @@ class QuickActionsGrid extends ConsumerWidget {
         route: AppConstants.bibleGameRoute,
       ),
       QuickAction(
-        icon: Icons.restaurant_menu_rounded,
-        title: translate('recipes'),
-        color: const Color(0xFFF59E0B), // Amber 500
-        route: AppConstants.recipesRoute,
+        icon: Icons.health_and_safety_rounded,
+        title: 'Health+',
+        color: const Color(0xFF059669), // Emerald 600
+        route: AppConstants.enhancedHealthRoute,
       ),
       QuickAction(
         icon: Icons.public_rounded,

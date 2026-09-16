@@ -820,6 +820,7 @@ class DonationService {
           : await _paymentService.processDonation(
               amount: amount,
               email: email,
+              currency: currency,
               reference: donationId,
               metadata: baseMetadata,
             );

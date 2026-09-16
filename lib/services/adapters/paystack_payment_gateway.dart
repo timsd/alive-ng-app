@@ -86,10 +86,12 @@ class PaystackPaymentGateway implements PaymentGateway {
       _logger.error('Error processing donation: $e');
       String msg = 'Could not initialize payment. Please try again.';
       final eStr = e.toString();
-      if (eStr.contains('Bad state') || eStr.contains('No element')) {
-        msg = 'Payment service unavailable or returned invalid state. Please try again.';
+      if (eStr.toLowerCase().contains('currency not supported')) {
+        msg = 'USD settlement is pending merchant activation on Paystack. Please switch to NGN (Naira) — international cards are accepted for NGN payments.';
       } else if (e is Exception) {
         msg = eStr.replaceFirst('Exception: ', '');
+      } else if (eStr.contains('Bad state') || eStr.contains('No element')) {
+        msg = 'Payment service unavailable or returned invalid state. Please try again.';
       }
       return PaymentResponse.failed(
         message: msg,
@@ -160,9 +162,18 @@ class PaystackPaymentGateway implements PaymentGateway {
       method: appwrite_enums.ExecutionMethod.pOST,
     );
 
-    final data = jsonDecode(execution.responseBody) as Map<String, dynamic>;
+    final bodyStr = execution.responseBody.trim();
+    if (bodyStr.isEmpty) {
+      throw Exception('Payment service returned an empty response. Please check your connection and retry.');
+    }
+
+    final data = jsonDecode(bodyStr) as Map<String, dynamic>;
     if (data['error'] != null) {
-      throw Exception(data['error']);
+      final err = data['error'].toString();
+      if (err.toLowerCase().contains('currency not supported')) {
+        throw Exception('USD settlement is pending merchant activation on Paystack. Please switch to NGN (Naira) — international cards are accepted for NGN payments.');
+      }
+      throw Exception(err);
     }
     return data;
   }

@@ -39,6 +39,7 @@ class AppConstants {
   static const String adminKidsStoriesRoute = '/admin-kids-stories';
   static const String adminKidsMissionsRoute = '/admin-kids-missions';
   static const String adminStudyGuidesRoute = '/admin-study-guides';
+  static const String adminHealthContentRoute = '/admin-health-content';
   static const String conferenceRoute = '/conference';
   static const String bibleGameRoute = '/bible-game';
   static const String chatRoute = '/chat';
