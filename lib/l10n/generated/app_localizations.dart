@@ -2045,6 +2045,324 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Dark Mode'**
   String get dark_mode;
+
+  /// No description provided for @monthly.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly'**
+  String get monthly;
+
+  /// No description provided for @one_time.
+  ///
+  /// In en, this message translates to:
+  /// **'One-Time'**
+  String get one_time;
+
+  /// No description provided for @giving_method.
+  ///
+  /// In en, this message translates to:
+  /// **'Giving Method'**
+  String get giving_method;
+
+  /// No description provided for @enter_amount_monthly.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an amount to give monthly'**
+  String get enter_amount_monthly;
+
+  /// No description provided for @enter_amount_one_time.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an amount to give one time'**
+  String get enter_amount_one_time;
+
+  /// No description provided for @enter_amount.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an amount'**
+  String get enter_amount;
+
+  /// No description provided for @cover_processing_fees.
+  ///
+  /// In en, this message translates to:
+  /// **'Cover processing fees'**
+  String get cover_processing_fees;
+
+  /// No description provided for @custom_amount.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom Amount'**
+  String get custom_amount;
+
+  /// No description provided for @selected_fund_designations.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected Fund Designations'**
+  String get selected_fund_designations;
+
+  /// No description provided for @designated.
+  ///
+  /// In en, this message translates to:
+  /// **'Designated'**
+  String get designated;
+
+  /// No description provided for @split_donation.
+  ///
+  /// In en, this message translates to:
+  /// **'Split Donation'**
+  String get split_donation;
+
+  /// No description provided for @total.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get total;
+
+  /// No description provided for @total_amount.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Amount'**
+  String get total_amount;
+
+  /// No description provided for @start_monthly_giving.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Monthly Giving'**
+  String get start_monthly_giving;
+
+  /// No description provided for @donate_one_time.
+  ///
+  /// In en, this message translates to:
+  /// **'Donate One-Time'**
+  String get donate_one_time;
+
+  /// No description provided for @donation_help_text.
+  ///
+  /// In en, this message translates to:
+  /// **'Your donation helps make the life-changing wisdom of the Bible accessible to all.'**
+  String get donation_help_text;
+
+  /// No description provided for @your_details.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Details'**
+  String get your_details;
+
+  /// No description provided for @email_address.
+  ///
+  /// In en, this message translates to:
+  /// **'Email Address'**
+  String get email_address;
+
+  /// No description provided for @change.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get change;
+
+  /// No description provided for @non_monetary.
+  ///
+  /// In en, this message translates to:
+  /// **'Non-Monetary'**
+  String get non_monetary;
+
+  /// No description provided for @active_projects.
+  ///
+  /// In en, this message translates to:
+  /// **'Active Projects'**
+  String get active_projects;
+
+  /// No description provided for @something_bigger.
+  ///
+  /// In en, this message translates to:
+  /// **'You Can Be a Part of Something Bigger.'**
+  String get something_bigger;
+
+  /// No description provided for @ministry_years_intro.
+  ///
+  /// In en, this message translates to:
+  /// **'For more than {years} years, ALIVE Nigeria Ministries has helped connect thousands of people with God\'s word and established churches around Nigeria.'**
+  String ministry_years_intro(Object years);
+
+  /// No description provided for @ministry_years_outro.
+  ///
+  /// In en, this message translates to:
+  /// **'We can help connect new generations to the life-changing wisdom of the Bible.'**
+  String get ministry_years_outro;
+
+  /// No description provided for @impact_rural_missions.
+  ///
+  /// In en, this message translates to:
+  /// **'Rural Missions'**
+  String get impact_rural_missions;
+
+  /// No description provided for @impact_rural_missions_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Send teams to remote communities with the Gospel and compassionate care.'**
+  String get impact_rural_missions_desc;
+
+  /// No description provided for @impact_campus_missions.
+  ///
+  /// In en, this message translates to:
+  /// **'Campus/City Missions'**
+  String get impact_campus_missions;
+
+  /// No description provided for @impact_campus_missions_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Send teams to Campus/City communities with the Gospel and compassionate care.'**
+  String get impact_campus_missions_desc;
+
+  /// No description provided for @impact_missionary_training.
+  ///
+  /// In en, this message translates to:
+  /// **'Missionary Training'**
+  String get impact_missionary_training;
+
+  /// No description provided for @impact_missionary_training_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Equip and train the next generation of Groundbreakers and Missionaries for effective witness.'**
+  String get impact_missionary_training_desc;
+
+  /// No description provided for @impact_health_evangelism.
+  ///
+  /// In en, this message translates to:
+  /// **'Health Evangelism'**
+  String get impact_health_evangelism;
+
+  /// No description provided for @impact_health_evangelism_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Provide medical care that opens hearts to the transforming power of the Gospel.'**
+  String get impact_health_evangelism_desc;
+
+  /// No description provided for @impact_education.
+  ///
+  /// In en, this message translates to:
+  /// **'Education'**
+  String get impact_education;
+
+  /// No description provided for @impact_education_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Support schools and educational programs that empower communities.'**
+  String get impact_education_desc;
+
+  /// No description provided for @selected_for_gift.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected for this Gift'**
+  String get selected_for_gift;
+
+  /// No description provided for @tap_to_add_to_gift.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to add to gift allocation'**
+  String get tap_to_add_to_gift;
+
+  /// No description provided for @split_donation_multiple.
+  ///
+  /// In en, this message translates to:
+  /// **'Split donation between multiple ministries'**
+  String get split_donation_multiple;
+
+  /// No description provided for @choose_funds.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose Funds'**
+  String get choose_funds;
+
+  /// No description provided for @project_goal.
+  ///
+  /// In en, this message translates to:
+  /// **'Project Goal'**
+  String get project_goal;
+
+  /// No description provided for @progress_made.
+  ///
+  /// In en, this message translates to:
+  /// **'Progress Made'**
+  String get progress_made;
+
+  /// No description provided for @raised_of.
+  ///
+  /// In en, this message translates to:
+  /// **'raised of'**
+  String get raised_of;
+
+  /// No description provided for @explore_project_3d.
+  ///
+  /// In en, this message translates to:
+  /// **'Explore the project in 3D'**
+  String get explore_project_3d;
+
+  /// No description provided for @what_your_giving_has_done.
+  ///
+  /// In en, this message translates to:
+  /// **'What your giving has done'**
+  String get what_your_giving_has_done;
+
+  /// No description provided for @no_designation.
+  ///
+  /// In en, this message translates to:
+  /// **'No specific designation'**
+  String get no_designation;
+
+  /// No description provided for @added_to_gift.
+  ///
+  /// In en, this message translates to:
+  /// **'Added to gift allocation'**
+  String get added_to_gift;
+
+  /// No description provided for @could_not_add_designation.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not add designation'**
+  String get could_not_add_designation;
+
+  /// No description provided for @custom_designation_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Ondo Medical Outreach, Tract printing'**
+  String get custom_designation_hint;
+
+  /// No description provided for @add_fund.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Fund'**
+  String get add_fund;
+
+  /// No description provided for @please_enter_amount.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter an amount'**
+  String get please_enter_amount;
+
+  /// No description provided for @invalid_amount.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a valid amount'**
+  String get invalid_amount;
+
+  /// No description provided for @donation_processing.
+  ///
+  /// In en, this message translates to:
+  /// **'Processing your donation...'**
+  String get donation_processing;
+
+  /// No description provided for @donation_success_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Thank You!'**
+  String get donation_success_title;
+
+  /// No description provided for @donation_success_message.
+  ///
+  /// In en, this message translates to:
+  /// **'Your donation has been processed successfully.'**
+  String get donation_success_message;
 }
 
 class _AppLocalizationsDelegate

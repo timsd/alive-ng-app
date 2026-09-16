@@ -1011,4 +1011,175 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dark_mode => 'Dark Mode';
+
+  @override
+  String get monthly => 'Monthly';
+
+  @override
+  String get one_time => 'One-Time';
+
+  @override
+  String get giving_method => 'Giving Method';
+
+  @override
+  String get enter_amount_monthly => 'Enter an amount to give monthly';
+
+  @override
+  String get enter_amount_one_time => 'Enter an amount to give one time';
+
+  @override
+  String get enter_amount => 'Enter an amount';
+
+  @override
+  String get cover_processing_fees => 'Cover processing fees';
+
+  @override
+  String get custom_amount => 'Custom Amount';
+
+  @override
+  String get selected_fund_designations => 'Selected Fund Designations';
+
+  @override
+  String get designated => 'Designated';
+
+  @override
+  String get split_donation => 'Split Donation';
+
+  @override
+  String get total => 'Total';
+
+  @override
+  String get total_amount => 'Total Amount';
+
+  @override
+  String get start_monthly_giving => 'Start Monthly Giving';
+
+  @override
+  String get donate_one_time => 'Donate One-Time';
+
+  @override
+  String get donation_help_text =>
+      'Your donation helps make the life-changing wisdom of the Bible accessible to all.';
+
+  @override
+  String get your_details => 'Your Details';
+
+  @override
+  String get email_address => 'Email Address';
+
+  @override
+  String get change => 'Change';
+
+  @override
+  String get non_monetary => 'Non-Monetary';
+
+  @override
+  String get active_projects => 'Active Projects';
+
+  @override
+  String get something_bigger => 'You Can Be a Part of Something Bigger.';
+
+  @override
+  String ministry_years_intro(Object years) {
+    return 'For more than $years years, ALIVE Nigeria Ministries has helped connect thousands of people with God\'s word and established churches around Nigeria.';
+  }
+
+  @override
+  String get ministry_years_outro =>
+      'We can help connect new generations to the life-changing wisdom of the Bible.';
+
+  @override
+  String get impact_rural_missions => 'Rural Missions';
+
+  @override
+  String get impact_rural_missions_desc =>
+      'Send teams to remote communities with the Gospel and compassionate care.';
+
+  @override
+  String get impact_campus_missions => 'Campus/City Missions';
+
+  @override
+  String get impact_campus_missions_desc =>
+      'Send teams to Campus/City communities with the Gospel and compassionate care.';
+
+  @override
+  String get impact_missionary_training => 'Missionary Training';
+
+  @override
+  String get impact_missionary_training_desc =>
+      'Equip and train the next generation of Groundbreakers and Missionaries for effective witness.';
+
+  @override
+  String get impact_health_evangelism => 'Health Evangelism';
+
+  @override
+  String get impact_health_evangelism_desc =>
+      'Provide medical care that opens hearts to the transforming power of the Gospel.';
+
+  @override
+  String get impact_education => 'Education';
+
+  @override
+  String get impact_education_desc =>
+      'Support schools and educational programs that empower communities.';
+
+  @override
+  String get selected_for_gift => 'Selected for this Gift';
+
+  @override
+  String get tap_to_add_to_gift => 'Tap to add to gift allocation';
+
+  @override
+  String get split_donation_multiple =>
+      'Split donation between multiple ministries';
+
+  @override
+  String get choose_funds => 'Choose Funds';
+
+  @override
+  String get project_goal => 'Project Goal';
+
+  @override
+  String get progress_made => 'Progress Made';
+
+  @override
+  String get raised_of => 'raised of';
+
+  @override
+  String get explore_project_3d => 'Explore the project in 3D';
+
+  @override
+  String get what_your_giving_has_done => 'What your giving has done';
+
+  @override
+  String get no_designation => 'No specific designation';
+
+  @override
+  String get added_to_gift => 'Added to gift allocation';
+
+  @override
+  String get could_not_add_designation => 'Could not add designation';
+
+  @override
+  String get custom_designation_hint =>
+      'e.g. Ondo Medical Outreach, Tract printing';
+
+  @override
+  String get add_fund => 'Add Fund';
+
+  @override
+  String get please_enter_amount => 'Please enter an amount';
+
+  @override
+  String get invalid_amount => 'Please enter a valid amount';
+
+  @override
+  String get donation_processing => 'Processing your donation...';
+
+  @override
+  String get donation_success_title => 'Thank You!';
+
+  @override
+  String get donation_success_message =>
+      'Your donation has been processed successfully.';
 }

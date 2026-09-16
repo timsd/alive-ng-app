@@ -21,10 +21,10 @@ class AppLocalizationsHa extends AppLocalizations {
   String get prayer => 'Addu\'a';
 
   @override
-  String get profile => 'Bayani';
+  String get profile => 'Bayanai';
 
   @override
-  String get welcome => 'Maraba';
+  String get welcome => 'Barka da Zuwa';
 
   @override
   String get loading => 'Ana Loda...';
@@ -36,7 +36,7 @@ class AppLocalizationsHa extends AppLocalizations {
   String get cancel => 'Soke';
 
   @override
-  String get delete => 'Share';
+  String get delete => 'Goge';
 
   @override
   String get edit => 'Gyara';
@@ -54,7 +54,7 @@ class AppLocalizationsHa extends AppLocalizations {
   String get retry => 'Sake Gwadawa';
 
   @override
-  String get ok => 'To';
+  String get ok => 'Aha';
 
   @override
   String get yes => 'I';
@@ -69,16 +69,16 @@ class AppLocalizationsHa extends AppLocalizations {
   String get sharePrayerRequest => 'Raba Bukatar Addu\'a';
 
   @override
-  String get prayFor => 'Yi Addu\'a';
+  String get prayFor => 'Yi Addu\'a Don';
 
   @override
-  String get prayerRequests => 'Bukatar Addu\'a';
+  String get prayerRequests => 'Bukatun Addu\'a';
 
   @override
-  String get myPrayers => 'Addu\'o\'ina';
+  String get myPrayers => 'Addu\'o'ina';
 
   @override
-  String get addPrayer => 'Kara Addu\'a';
+  String get addPrayer => 'Ƙara Addu\'a';
 
   @override
   String get bibleStudy => 'Karatun Littafi Mai Tsarki';
@@ -93,16 +93,16 @@ class AppLocalizationsHa extends AppLocalizations {
   String get studyProgress => 'Ci Gaban Karatu';
 
   @override
-  String get completedLessons => 'Darussan Da Aka Gama';
+  String get completedLessons => 'Darussan da Aka Kammala';
 
   @override
-  String get healthyLiving => 'Rayuwar Lafiya';
+  String get healthyLiving => 'Rayuwa Mai Lafiya';
 
   @override
-  String get todaysScore => 'Maki Lafiya na Yau';
+  String get todaysScore => 'Makin Lafiya na Yau';
 
   @override
-  String get logWater => 'Rubuta Ruwan Da Ka Sha';
+  String get logWater => 'Rubuta Ruwan da Ka Sha';
 
   @override
   String get waterIntake => 'Shan Ruwa';
@@ -117,22 +117,22 @@ class AppLocalizationsHa extends AppLocalizations {
   String get nutrition => 'Abinci Mai Gina Jiki';
 
   @override
-  String get missionStories => 'Labarun Aiki';
+  String get missionStories => 'Labaran Ayyukan Bishara';
 
   @override
-  String get supportMission => 'Goyi Bayan Wannan Aiki';
+  String get supportMission => 'Taimaka wa Wannan Aiki';
 
   @override
   String get missions => 'Ayyukan Bishara';
 
   @override
-  String get donate => 'Ba da gudummawa';
+  String get donate => 'Ba da Gudummawa';
 
   @override
-  String get volunteer => 'Zama mai ba da gudummawa';
+  String get volunteer => 'Zama Mai Ba da Gudummawa';
 
   @override
-  String get settings => 'Saitunan';
+  String get settings => 'Saituna';
 
   @override
   String get language => 'Harshe';
@@ -141,10 +141,10 @@ class AppLocalizationsHa extends AppLocalizations {
   String get notifications => 'Sanarwa';
 
   @override
-  String get theme => 'Kayan Ado';
+  String get theme => 'Jigon Manhaja';
 
   @override
-  String get account => 'Asusun';
+  String get account => 'Asusu';
 
   @override
   String get privacy => 'Sirri';
@@ -168,19 +168,19 @@ class AppLocalizationsHa extends AppLocalizations {
   String get password => 'Kalmar Sirri';
 
   @override
-  String get confirmPassword => 'Tabbatar da Kalmar sirri';
+  String get confirmPassword => 'Tabbatar da Kalmar Sirri';
 
   @override
-  String get forgotPassword => 'Ka manta da Kalmar sirri?';
+  String get forgotPassword => 'Ka manta kalmar sirri?';
 
   @override
-  String get createAccount => 'Kirkiro Asusun';
+  String get createAccount => 'Ƙirƙiri Asusu';
 
   @override
-  String get alreadyHaveAccount => 'Kana da asusun?';
+  String get alreadyHaveAccount => 'Kana da asusu?';
 
   @override
-  String get dontHaveAccount => 'Ba ka da asusun?';
+  String get dontHaveAccount => 'Ba ka da asusu?';
 
   @override
   String get archived_users => 'Masu amfani da aka ajiye';
@@ -189,7 +189,7 @@ class AppLocalizationsHa extends AppLocalizations {
   String get health => 'Lafiya';
 
   @override
-  String get welcome_message => 'Sakon Maraba';
+  String get welcome_message => 'Saƙon Barka da Zuwa';
 
   @override
   String get good_morning => 'Barka da Safe';
@@ -201,19 +201,19 @@ class AppLocalizationsHa extends AppLocalizations {
   String get good_evening => 'Barka da Yamma';
 
   @override
-  String get daily_verse => 'Aya ta Kullum';
+  String get daily_verse => 'Ayar Ranar';
 
   @override
-  String get quick_actions => 'Ayyuka masu Sauri';
+  String get quick_actions => 'Hanyoyin Sauri';
 
   @override
   String get study_programs => 'Shirye-shiryen Karatu';
 
   @override
-  String get prayer_requests => 'Bukatar Addu\'a';
+  String get prayer_requests => 'Bukatun Addu\'a';
 
   @override
-  String get health_tracking => 'Bin Lafiya';
+  String get health_tracking => 'Binciken Lafiya';
 
   @override
   String get mission_updates => 'Sabuntawar Ayyuka';
@@ -231,31 +231,31 @@ class AppLocalizationsHa extends AppLocalizations {
   String get daily_devotion => 'Ibada ta Kullum';
 
   @override
-  String get interactive_lessons => 'Darussan Hulɗa';
+  String get interactive_lessons => 'Darussan Hira';
 
   @override
-  String get search_lessons => 'Nemo Darussan';
+  String get search_lessons => 'Nemo Darussa...';
 
   @override
-  String get all_lessons => 'Duk Darussan';
+  String get all_lessons => 'Duk Darussa';
 
   @override
   String get in_progress => 'Ana Ci Gaba';
 
   @override
-  String get favorites => 'Abubuwan da Ake So';
+  String get favorites => 'Wadanda Aka Fi So';
 
   @override
-  String get completed => 'An Gama';
+  String get completed => 'An Kammala';
 
   @override
-  String get no_lessons_found => 'Ba a sami darussai ba';
+  String get no_lessons_found => 'Ba a sami darussa ba';
 
   @override
-  String get category => 'Nau\'i';
+  String get category => 'Rukuni';
 
   @override
-  String get level => 'Matakin';
+  String get level => 'Mataki';
 
   @override
   String get duration => 'Tsawon Lokaci';
@@ -270,7 +270,7 @@ class AppLocalizationsHa extends AppLocalizations {
   String get sign_up => 'Yi Rajista';
 
   @override
-  String get sign_in_to_continue => 'Shiga don ci gaba da haɓaka ruhaniyar ku';
+  String get sign_in_to_continue => 'Shiga don ci gaba da haɓaka ruhaniyarka';
 
   @override
   String get sign_out => 'Fita';
@@ -283,18 +283,18 @@ class AppLocalizationsHa extends AppLocalizations {
 
   @override
   String get create_account_message =>
-      'Ƙirƙiri asusun ku don fara tafiyar ruhaniyar ku';
+      'Ƙirƙiri asusunku don fara tafiyarku ta ruhaniya';
 
   @override
   String get welcome_back_message =>
-      'Maraba da dawowa! Shiga don ci gaba da haɓaka ruhaniyar ku';
+      'Barka da dawowa! Shiga don ci gaba da haɓaka ruhaniyarka';
 
   @override
   String get please_enter_full_name =>
-      'Da fatan za a shigar da cikakken sunan ku';
+      'Da fatan za a shigar da cikakken sunanta';
 
   @override
-  String get please_enter_email => 'Da fatan za a shigar da imel ɗin ku';
+  String get please_enter_email => 'Da fatan za a shigar da imel ɗinka';
 
   @override
   String get please_enter_valid_email =>
@@ -302,7 +302,7 @@ class AppLocalizationsHa extends AppLocalizations {
 
   @override
   String get please_enter_password =>
-      'Da fatan za a shigar da kalmar sirrin ku';
+      'Da fatan za a shigar da kalmar sirrinka';
 
   @override
   String get password_min_length =>
@@ -315,16 +315,16 @@ class AppLocalizationsHa extends AppLocalizations {
   String get submit => 'Aika';
 
   @override
-  String get add => 'Kara';
+  String get add => 'Ƙara';
 
   @override
-  String get version => 'Sigar';
+  String get version => 'Babi / Siga';
 
   @override
   String get try_again => 'Sake Gwadawa';
 
   @override
-  String get no_data => 'Babu bayanai';
+  String get no_data => 'Babu bayani';
 
   @override
   String get selection => 'Zaɓi';
@@ -334,16 +334,16 @@ class AppLocalizationsHa extends AppLocalizations {
 
   @override
   String get continue_spiritual_journey =>
-      'Ci gaba da tafiyar ruhaniyar ku yau';
+      'Ci gaba da tafiyarku ta ruhaniya yau';
 
   @override
   String get recent_activity => 'Ayyukan Kwanan Nan';
 
   @override
-  String get your_progress => 'Ci Gaban Ku';
+  String get your_progress => 'Ci Gbanku';
 
   @override
-  String get bible_study_completed => 'Karatun Littafi Mai Tsarki Ya Kare';
+  String get bible_study_completed => 'An Kammala Karatun Littafi Mai Tsarki';
 
   @override
   String get prayer_request_submitted => 'An Aika Bukatar Addu\'a';
@@ -364,10 +364,10 @@ class AppLocalizationsHa extends AppLocalizations {
   String get prayers => 'Addu\'o\'i';
 
   @override
-  String get this_month => 'Wannan wata';
+  String get this_month => 'Wannan watan';
 
   @override
-  String get groups => 'Kungiyoyi';
+  String get groups => 'Ƙungiyoyi';
 
   @override
   String get active => 'Masu Aiki';
@@ -391,7 +391,7 @@ class AppLocalizationsHa extends AppLocalizations {
   String get failed_to_load_verse => 'An kasa loda aya';
 
   @override
-  String get featured_today => 'Abin da ya Fito Yau';
+  String get featured_today => 'Mafi Muhimmanci Yau';
 
   @override
   String get health_message => 'Saƙon Lafiya: Magungunan Halitta';
@@ -405,20 +405,20 @@ class AppLocalizationsHa extends AppLocalizations {
 
   @override
   String get mission_spotlight_desc =>
-      'Karanta labarai masu ban sha\'awa daga aikin mu a duk fadin Najeriya';
+      'Karanta labarai masu ban sha\'awa daga aikinmu a duk fadin Najeriya';
 
   @override
-  String get join_us_spiritual_growth => 'Ku haɗu da mu wajen haɓaka ruhaniya';
+  String get join_us_spiritual_growth => 'Ku haɗu da mu wajen haɓakar ruhaniya';
 
   @override
-  String get about_app => 'Game da App';
+  String get about_app => 'Game da Manhaja';
 
   @override
   String get about_alive => 'Game da ALIVE';
 
   @override
   String get app_tagline =>
-      'Nazarin Littafi Mai Tsarki, addu’a, da hidima a al’umma daya';
+      'Nazarin Littafi Mai Tsarki, addu’a, da hidima a al’umma guda';
 
   @override
   String get resources => 'Albarkatu';
@@ -428,7 +428,7 @@ class AppLocalizationsHa extends AppLocalizations {
 
   @override
   String get resources_subtitle =>
-      'Nazari, addu’a, lafiya, waka, da kayan wa’azi';
+      'Nazari, addu’a, lafiya, waƙa, da kayan wa’azi';
 
   @override
   String get error_loading_reports => 'Kuskure wajen loda rahotanni';
@@ -440,7 +440,7 @@ class AppLocalizationsHa extends AppLocalizations {
   String get status => 'Matsayi';
 
   @override
-  String get create_new_report => 'Kirkiro Sabon Rahoto';
+  String get create_new_report => 'Ƙirƙiri Sabon Rahoto';
 
   @override
   String get report_title => 'Taken Rahoto';
@@ -449,13 +449,13 @@ class AppLocalizationsHa extends AppLocalizations {
   String get description => 'Bayani';
 
   @override
-  String get report_content => 'Abun ciki Rahoto';
+  String get report_content => 'Abun Cikin Rahoto';
 
   @override
-  String get create => 'Kirkira';
+  String get create => 'Ƙirƙira';
 
   @override
-  String get report_created_successfully => 'An kirkiri rahoto cikin nasara';
+  String get report_created_successfully => 'An ƙirƙiri rahoto cikin nasara';
 
   @override
   String get report_submitted_for_review => 'An mika rahoto don dubawa';
@@ -467,10 +467,10 @@ class AppLocalizationsHa extends AppLocalizations {
   String get access_denied => 'An hana shiga';
 
   @override
-  String get admin_dashboard => 'Dashboard Mai Gudanarwa';
+  String get admin_dashboard => 'Babban Shaftin Gudanarwa';
 
   @override
-  String get user_approval => 'Amincewar Masu amfani';
+  String get user_approval => 'Amincewar Masu Amfani';
 
   @override
   String get pending_users => 'Masu amfani masu jira';
@@ -482,10 +482,10 @@ class AppLocalizationsHa extends AppLocalizations {
   String get rejected_users => 'Masu amfani da aka ƙi';
 
   @override
-  String get approve_user => 'Amince da Mai amfani';
+  String get approve_user => 'Amince da Mai Amfani';
 
   @override
-  String get reject_user => 'Ƙi Mai amfani';
+  String get reject_user => 'Ƙi Mai Amfani';
 
   @override
   String get approval_reason => 'Dalilin Amincewa';
@@ -512,7 +512,7 @@ class AppLocalizationsHa extends AppLocalizations {
   String get pending_admin_approval => 'Ana jiran amincewar mai gudanarwa';
 
   @override
-  String get no_pending_users => 'Ba a sami masu amfani masu jira ba';
+  String get no_pending_users => 'Babu masu amfani masu jira';
 
   @override
   String get local_chapter => 'Ƙungiya ta Wuri';
@@ -536,17 +536,17 @@ class AppLocalizationsHa extends AppLocalizations {
   String get commitment_details => 'Bayanan Alƙawari';
 
   @override
-  String get bible_reader => 'Mai Karanta Littafi Mai Tsarki';
+  String get bible_reader => 'Karanta Littafi Mai Tsarki';
 
   @override
   String get enter_bible_reference =>
-      'Shigar da Nassoshi Littafi Mai Tsarki (misali, Yahaya 3:16)';
+      'Shigar da Nassoshin Littafi Mai Tsarki (misali, Yahaya 3:16)';
 
   @override
   String get go => 'Tafi';
 
   @override
-  String get verse_copied_to_clipboard => 'An kwafi aya zuwa clipboard';
+  String get verse_copied_to_clipboard => 'An kwafi aya zuwa ma\'ajin lafazin';
 
   @override
   String get copy => 'Kwafi';
@@ -555,11 +555,11 @@ class AppLocalizationsHa extends AppLocalizations {
   String get search_verses => 'Nemo ayoyi...';
 
   @override
-  String get opening_book => 'Ana buɗewa';
+  String get opening_book => 'Ana buɗewa...';
 
   @override
   String get search_topic_or_reference =>
-      'Nemo jigo ko nassoshi Littafi Mai Tsarki...';
+      'Nemo jigo ko nassoshin Littafi Mai Tsarki...';
 
   @override
   String get searching_for => 'Neman';
@@ -569,37 +569,37 @@ class AppLocalizationsHa extends AppLocalizations {
 
   @override
   String get prayer_auth_message =>
-      'Da fatan za a shiga don samun damar yin bukatun addu\'a da raba bukatun addu\'ar ku.';
+      'Da fatan za a shiga don samun damar mika bukatun addu\'a da raba bukatunku.';
 
   @override
-  String get add_prayer_request => 'Kara Bukatar Addu\'a';
+  String get add_prayer_request => 'Ƙara Bukatar Addu\'a';
 
   @override
   String get reply => 'Amsa';
 
   @override
-  String get message_copied_to_clipboard => 'An kwafi saƙo zuwa clipboard';
+  String get message_copied_to_clipboard => 'An kwafi saƙo zuwa ma\'ajin lafazin';
 
   @override
-  String get create_channel => 'Kirkiro Tashar';
+  String get create_channel => 'Ƙirƙiri Tasha';
 
   @override
-  String get channel_info => 'Bayanan Tashar';
+  String get channel_info => 'Bayanan Tasha';
 
   @override
   String get members => 'Mambobi';
 
   @override
-  String get failed_to_create_channel => 'An kasa kirkiro tashar';
+  String get failed_to_create_channel => 'An kasa ƙirƙirar tasha';
 
   @override
-  String get create_channel_title => 'Kirkiro Tashar';
+  String get create_channel_title => 'Ƙirƙiri Tasha';
 
   @override
-  String get channel_name => 'Sunan Tashar';
+  String get channel_name => 'Sunan Tasha';
 
   @override
-  String get channel_type => 'Nau\'in Tashar';
+  String get channel_type => 'Nau\'in Tasha';
 
   @override
   String get attach_file => 'Haɗa fayil';
@@ -630,7 +630,7 @@ class AppLocalizationsHa extends AppLocalizations {
 
   @override
   String get gik_intro =>
-      'Cika wannan fom don bayar da abubuwa na musamman kamar bas ɗin hidima, ƙasa, wdg.';
+      'Cika wannan fom don bayar da abubuwa na musamman kamar motar hidima, fili, da sauransu.';
 
   @override
   String get item_type => 'Nau\'in Abu';
@@ -639,10 +639,10 @@ class AppLocalizationsHa extends AppLocalizations {
   String get quantity => 'Yawan Abu';
 
   @override
-  String get estimated_value_optional => 'Kimanta Kudi (Zabi)';
+  String get estimated_value_optional => 'Kimanta Kuɗi (Zabi)';
 
   @override
-  String get delivery_preference => 'Zabin Isarwa';
+  String get delivery_preference => 'Zaɓin Isarwa';
 
   @override
   String get location => 'Wuri';
@@ -654,10 +654,10 @@ class AppLocalizationsHa extends AppLocalizations {
   String get helper_additional_details => 'Bayar da ƙarin bayani';
 
   @override
-  String get submit_and_email => 'Mika kuma aikawa ta email';
+  String get submit_and_email => 'Miƙa kuma aika ta imel';
 
   @override
-  String get pickup => 'Dauka';
+  String get pickup => 'Ɗauka';
 
   @override
   String get drop_off => 'Isarwa';
@@ -675,13 +675,13 @@ class AppLocalizationsHa extends AppLocalizations {
   String get help_support => 'Taimako & Tallafi';
 
   @override
-  String get faq => 'FAQ';
+  String get faq => 'Tambayoyi da Ake Yawan Yi';
 
   @override
   String get guides => 'Jagora';
 
   @override
-  String get contact => 'Tuntuɓi';
+  String get contact => 'Tuntuɓa';
 
   @override
   String get feedback => 'Ra’ayi';
@@ -696,7 +696,7 @@ class AppLocalizationsHa extends AppLocalizations {
   String get saturday => 'Asabar';
 
   @override
-  String get closed => 'Rufe';
+  String get closed => 'A Rufe';
 
   @override
   String get copyright => '© 2025 ALIVE Nigeria';
@@ -717,7 +717,7 @@ class AppLocalizationsHa extends AppLocalizations {
   String get search_books_tracts => 'Nemo littattafai da tiraktoci...';
 
   @override
-  String get all_categories => 'Duk Nau’o’i';
+  String get all_categories => 'Duk Rukuni';
 
   @override
   String get category_doctrine => 'Koyarwa';
@@ -766,7 +766,7 @@ class AppLocalizationsHa extends AppLocalizations {
   String get admin_claims_preview => 'Duba Bukatun Gudanarwa';
 
   @override
-  String get more_features => 'Wasu Abubuwa na Musamman';
+  String get more_features => 'Sauran Abubuwan Musamman';
 
   @override
   String get christian_community => 'Al\'ummar Kirista';
@@ -775,7 +775,7 @@ class AppLocalizationsHa extends AppLocalizations {
   String get community => 'Al\'umma';
 
   @override
-  String get main_features => 'Manyan Abubuwan Aiki';
+  String get main_features => 'Manyan Abubuwa';
 
   @override
   String get page_not_found => 'Ba a sami wannan shafin ba';
@@ -799,11 +799,11 @@ class AppLocalizationsHa extends AppLocalizations {
   String get board_meeting_available => 'Taron Hukumar Gudanarwa yana samuwa';
 
   @override
-  String get how_to_join_chapter => 'Ta yaya zan iya shiga ƙungiya ta wurin?';
+  String get how_to_join_chapter => 'Ta yaya zan iya shiga ƙungiya ta wuri?';
 
   @override
   String get join_chapter_answer =>
-      'Za ka iya shiga ƙungiya ta wurin ta hanyar zuwa sashin Ƙungiyoyi a allon Gida, zabar ƙungiyar da ke kusa da kai, sannan danna maɓallin Shiga.';
+      'Za ka iya shiga ƙungiya ta wuri ta hanyar zuwa sashin Ƙungiyoyi a shafin Gida, zaɓar ƙungiyar da ke kusa da kai, sannan danna maɓallin Shiga.';
 
   @override
   String get how_to_submit_prayer_request =>
@@ -811,7 +811,7 @@ class AppLocalizationsHa extends AppLocalizations {
 
   @override
   String get prayer_request_answer =>
-      'Je sashin Addu\'a, danna maɓallin Ƙara Bukata, cika bayananka, sannan zabi Na Jari ko Na Sirri.';
+      'Je sashin Addu\'a, danna maɓallin Ƙara Bukata, cika bayananka, sannan zaɓi Na Jama\'a ko Na Sirri.';
 
   @override
   String get how_to_access_study_materials => 'Ta yaya zan sami kayan karatu?';
@@ -821,36 +821,36 @@ class AppLocalizationsHa extends AppLocalizations {
       'Je sashin Karatu don ganin duk shirye-shiryen karatu da darussa.';
 
   @override
-  String get how_to_track_health => 'Ta yaya zan iya bin lafiyara?';
+  String get how_to_track_health => 'Ta yaya zan iya bin lafiyata?';
 
   @override
   String get health_tracking_answer =>
-      'Yi amfani da maballin Bin Lafiya mai sauri a allon Gida ko kuwa je sashin Lafiya don rubuta ayyukanka.';
+      'Yi amfani da maɓallin Binciken Lafiya a shafin Gida ko je sashin Lafiya don rubuta ayyukanka.';
 
   @override
   String get how_to_reset_password =>
-      'Ta yaya zan iya sake saitata kalmar sirrira?';
+      'Ta yaya zan iya sake saita kalmar sirrina?';
 
   @override
   String get reset_password_answer =>
-      'A allon Shiga, danna Manta da Kalmar Sirri. Za mu aiko maka hanyar sake saitata ta imel.';
+      'A shafin Shiga, danna Manta da Kalmar Sirri. Za mu aiko maka hanyar sake saita ta imel.';
 
   @override
   String get how_to_change_language => 'Ta yaya zan iya canza harshen manhaja?';
 
   @override
   String get change_language_answer =>
-      'Je Furofil > Saituna > Harshe kana zabi harshen da ka fi so.';
+      'Je Furofil > Saituna > Harshe kuma ka zaɓi harshen da ka fi so.';
 
   @override
-  String get search_faq => 'Nemo FAQ...';
+  String get search_faq => 'Nemo Tambayoyi...';
 
   @override
   String get getting_started => 'Fara Aiki';
 
   @override
   String get getting_started_desc =>
-      'Koyi tushe na yin amfani da manhajar ALIVE Nigeria.';
+      'Koyi tushen amfani da manhajar ALIVE Nigeria.';
 
   @override
   String get using_prayer_wall => 'Amfani da Bangon Addu\'a';
@@ -864,14 +864,14 @@ class AppLocalizationsHa extends AppLocalizations {
 
   @override
   String get study_guides_desc =>
-      'Jagora kan-gaba-kan-gaba don kammala darussan karatu.';
+      'Jagora mataki-mataki don kammala darussan karatu.';
 
   @override
-  String get health_tracking_guide => 'Jagoran Bin Lafiya';
+  String get health_tracking_guide => 'Jagoran Binciken Lafiya';
 
   @override
   String get health_tracking_desc =>
-      'Yadda ake amfani da na\'urar bin lafiya don kyakkyawar rayuwa.';
+      'Yadda ake amfani da na\'urar binciken lafiya don kyakkyawar rayuwa.';
 
   @override
   String get chapter_management => 'Sarrafa Ƙungiya';
@@ -888,7 +888,7 @@ class AppLocalizationsHa extends AppLocalizations {
       'Saita faɗakarwa don ayyuka da addu\'a.';
 
   @override
-  String get user_guides => 'Jagororin Masu amfani';
+  String get user_guides => 'Jagororin Masu Amfani';
 
   @override
   String get need_help => 'Kana Bukatar Taimako?';
@@ -907,17 +907,17 @@ class AppLocalizationsHa extends AppLocalizations {
   String get feedback_type => 'Nau\'in Ra\'ayi';
 
   @override
-  String get email_optional => 'Imel (Zabi)';
+  String get email_optional => 'Imel (Zaɓi)';
 
   @override
   String get enter_email => 'Shigar da imel ɗinka';
 
   @override
-  String get feedback_message => 'Sakon Ra\'ayi';
+  String get feedback_message => 'Saƙon Ra\'ayi';
 
   @override
   String get describe_feedback =>
-      'Bayyana ra\'ayinka ko ba da rahotar matsala...';
+      'Bayyana ra\'ayinka ko ba da rahoton matsala...';
 
   @override
   String get submit_feedback => 'Aika Ra\'ayi';
@@ -927,7 +927,7 @@ class AppLocalizationsHa extends AppLocalizations {
 
   @override
   String get biometric_setup_message =>
-      'Kuna so ku kunna sawun yatsa ko gane fuska don samun sauƙi da tsaro a gaba?';
+      'Kuna so ku kunna sawun yatsa ko gane fuska don sauƙi da tsaro a gaba?';
 
   @override
   String get dont_ask_again => 'Kada a sake tambaya';
@@ -952,13 +952,13 @@ class AppLocalizationsHa extends AppLocalizations {
   String get alive_meet => 'Taron ALIVE';
 
   @override
-  String get recipes => 'Girki';
+  String get recipes => 'Girke-girke';
 
   @override
   String get bod_trustees => 'Amintattun BOD';
 
   @override
-  String get events => 'Abubuwan da suka faru';
+  String get events => 'Abubuwan da ke Tafe';
 
   @override
   String get bible_game => 'Wasan Littafi Mai Tsarki';
@@ -973,7 +973,7 @@ class AppLocalizationsHa extends AppLocalizations {
   String get library => 'Laburare';
 
   @override
-  String get podcasts => 'Podcast';
+  String get podcasts => 'Podcasts';
 
   @override
   String get lessons => 'Darussa';
@@ -982,7 +982,7 @@ class AppLocalizationsHa extends AppLocalizations {
   String get testimonies => 'Shaidu';
 
   @override
-  String get kids_stories => 'Labaru na Yara';
+  String get kids_stories => 'Labaran Yara';
 
   @override
   String get kids_mission => 'Aikin Yara';
@@ -994,29 +994,197 @@ class AppLocalizationsHa extends AppLocalizations {
   String get tools_games => 'Kayan Aiki da Wasanni';
 
   @override
-  String get content_tools => 'Kayan Aiki na Abun ciki';
+  String get content_tools => 'Kayan Abun Ciki';
 
   @override
-  String get content_management => 'Sarrafa Abun ciki';
+  String get content_management => 'Sarrafa Abun Ciki';
 
   @override
   String get admin => 'Gudanarwa';
 
   @override
-  String get dashboard => 'Allon Aiki';
+  String get dashboard => 'Shafin Aiki';
 
   @override
-  String get user_archive => 'Rumbun Masu amfani';
+  String get user_archive => 'Rumbun Masu Amfani';
 
   @override
   String get role_management => 'Sarrafa Matsayi';
 
   @override
-  String get auto_theme => 'Jigon Kama da Kai';
+  String get auto_theme => 'Yanayin Kai Tsaye';
 
   @override
-  String get light_mode => 'Yanayin Haskaka';
+  String get light_mode => 'Yanayin Haske';
 
   @override
   String get dark_mode => 'Yanayin Duhu';
+
+  @override
+  String get monthly => 'Kowane Wata';
+
+  @override
+  String get one_time => 'Sau Ɗaya';
+
+  @override
+  String get giving_method => 'Hanyar Bayarwa';
+
+  @override
+  String get enter_amount_monthly => 'Shigar da adadin kowane wata';
+
+  @override
+  String get enter_amount_one_time => 'Shigar da adadin na sau ɗaya';
+
+  @override
+  String get enter_amount => 'Shigar da Adadi';
+
+  @override
+  String get cover_processing_fees => 'Biya kuɗaɗen sarrafawa';
+
+  @override
+  String get custom_amount => 'Wani Adadi na Musamman';
+
+  @override
+  String get selected_fund_designations => 'Ayyukan da Aka Zaɓa';
+
+  @override
+  String get designated => 'An saita';
+
+  @override
+  String get split_donation => 'Rarraba Gudummawa';
+
+  @override
+  String get total => 'Jimilla';
+
+  @override
+  String get total_amount => 'Jimillar Kuɗi';
+
+  @override
+  String get start_monthly_giving => 'Fara Bayarwa na Wata-Wata';
+
+  @override
+  String get donate_one_time => 'Ba da Gudummawa ta Sau Ɗaya';
+
+  @override
+  String get donation_help_text =>
+      'Gudummawarku tana taimakawa wajen ciyar da aikin bishara gaba zuwa ga kowa.';
+
+  @override
+  String get your_details => 'Bayanan Ku';
+
+  @override
+  String get email_address => 'Adireshin Imel';
+
+  @override
+  String get change => 'Canza';
+
+  @override
+  String get non_monetary => 'Ba na Kuɗi ba';
+
+  @override
+  String get active_projects => 'Ayyukan da ke Tafe';
+
+  @override
+  String get something_bigger => 'Kasance tare da mu a cikin babban aiki';
+
+  @override
+  String ministry_years_intro(Object years) {
+    return 'Tsawon shekaru $years, ma\'aikatar ALIVE Nigeria tana taimakawa wajen taba rayuka da yawa.';
+  }
+
+  @override
+  String get ministry_years_outro =>
+      'Muna ci gaba da kai wa mutane da dama dauki.';
+
+  @override
+  String get impact_rural_missions => 'Ayyukan Karaye';
+
+  @override
+  String get impact_rural_missions_desc =>
+      'Taimako da ayyuka a wuraren karkara.';
+
+  @override
+  String get impact_campus_missions => 'Ayyukan Makarantu';
+
+  @override
+  String get impact_campus_missions_desc =>
+      'Taimako da ayyuka a manyan makarantu da birane.';
+
+  @override
+  String get impact_missionary_training => 'Horar da Masu Wa\'azi';
+
+  @override
+  String get impact_missionary_training_desc =>
+      'Koyar da masu wa\'azi a duk fadin duniya.';
+
+  @override
+  String get impact_health_evangelism => 'Bisharar Lafiya';
+
+  @override
+  String get impact_health_evangelism_desc =>
+      'Wa\'azi ta hanyar kiwon lafiya ga kowa.';
+
+  @override
+  String get impact_education => 'Ilimi';
+
+  @override
+  String get impact_education_desc => 'Taimakawa ɓangaren ilimi.';
+
+  @override
+  String get selected_for_gift => 'An zaɓa don kyauta';
+
+  @override
+  String get tap_to_add_to_gift => 'Danna don ƙarawa zuwa kyauta';
+
+  @override
+  String get split_donation_multiple => 'Rarraba gudummawa tsakanin duk aiki';
+
+  @override
+  String get choose_funds => 'Zaɓi kuɗaɗe';
+
+  @override
+  String get project_goal => 'Manufar Aiki';
+
+  @override
+  String get progress_made => 'Ci gaban da aka samu';
+
+  @override
+  String get raised_of => 'an samu daga';
+
+  @override
+  String get explore_project_3d => 'Duba Aiki a 3D';
+
+  @override
+  String get what_your_giving_has_done => 'Abin da gudummawarku ta yi';
+
+  @override
+  String get no_designation => 'Ba a saita komai ba';
+
+  @override
+  String get added_to_gift => 'An ƙara zuwa kyauta';
+
+  @override
+  String get could_not_add_designation => 'Ba za a iya ƙara wannan ba';
+
+  @override
+  String get custom_designation_hint =>
+      'misali: Tallafin ginin ikilisiya';
+
+  @override
+  String get add_fund => 'Ƙara Kuɗaɗe';
+
+  @override
+  String get please_enter_amount => 'Da fatan za a shigar da adadi';
+
+  @override
+  String get invalid_amount => 'Adadi bai dace ba';
+
+  @override
+  String get donation_processing => 'Ana sarrafa gudummawarku...';
+
+  @override
+  String get donation_success_title => 'Muna Godiya!';
+
+  @override
+  String get donation_success_message => 'An samu nasarar karɓar gudummawarku.';
 }

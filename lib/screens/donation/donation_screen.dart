@@ -5,6 +5,7 @@ import 'package:alive_flutter_app/constants/app_constants.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../utils/responsive_utils.dart';
 import '../../providers/payment_provider.dart';
+import '../../providers/language_provider.dart';
 import '../../models/donation_presentation_models.dart';
 import 'widgets/donation_type_card.dart';
 import 'widgets/impact_card.dart';
@@ -43,7 +44,9 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       TextEditingController();
   final List<Project> _fallbackProjects = donationFallbackProjects;
 
-  bool _isMonthlySelected = true;
+  bool? _isMonthlySelected;
+
+  String translate(String key) => ref.read(translationProvider)(key);
   String _selectedCurrency = 'USD';
   double _selectedAmount = 0;
   bool _coverProcessingFees = false;
@@ -70,7 +73,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
   String? _selectedProjectId;
   String? _selectedProjectTitle;
 
-  @override
+    @override
   void initState() {
     super.initState();
     _animationController = AnimationController(
@@ -118,8 +121,9 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
     super.dispose();
   }
 
-  @override
+    @override
   Widget build(BuildContext context) {
+    final translate = ref.watch(translationProvider);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final userAsync = ref.watch(appwriteUserStreamProvider);
@@ -127,8 +131,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: const CustomAppBar(
-        title: 'Support ALIVE',
+      appBar: CustomAppBar(
+        title: translate('support_alive'),
         showBackButton: true,
         showThemeToggle: true,
         showLanguageToggle: true,
@@ -507,8 +511,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
             ),
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-          Text(
-            'You Can Be a Part of Something Bigger.',
+                    Text(
+            translate('something_bigger'),
             style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.bold,
             ),
@@ -516,7 +520,16 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
           Text(
-            'For more than $_ministryYears years, ALIVE Nigeria Ministries has helped connect thousands of people with God\'s word and established churches around Nigeria. We can help connect new generations to the life-changing wisdom of the Bible.',
+            translate('ministry_years_intro')
+                .replaceFirst('{years}', _ministryYears.toString()),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
+          Text(
+            translate('ministry_years_outro'),
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
             ),
@@ -531,8 +544,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Giving Method',
+                Text(
+          translate('giving_method'),
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.bold,
           ),
@@ -540,9 +553,9 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
         SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
         Row(
           children: [
-            Expanded(
+                       Expanded(
               child: DonationTypeCard(
-                title: 'Monthly',
+                title: translate('monthly'),
                 icon: Icons.refresh,
                 isSelected: _isMonthlySelected,
                 onTap: () => setState(() => _isMonthlySelected = true),
@@ -551,7 +564,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
             SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 8)),
             Expanded(
               child: DonationTypeCard(
-                title: 'One-Time',
+                title: translate('one_time'),
                 icon: Icons.favorite,
                 isSelected: !_isMonthlySelected,
                 onTap: () => setState(() => _isMonthlySelected = false),
@@ -572,8 +585,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
           children: [
             Text(
               _isMonthlySelected
-                  ? 'Enter an amount to give monthly'
-                  : 'Enter an amount to give one time',
+                  ? translate('enter_amount_monthly')
+                  : translate('enter_amount_one_time'),
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
               ),

@@ -18,31 +18,42 @@ class DonationTypeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    final bgColor = isSelected ? colors.primary : colors.surface;
+    final borderColor = isSelected ? colors.primary : colors.outline;
     final foreground = isSelected ? colors.onPrimary : colors.onSurface;
+    final iconColor = foreground;
+
     return Semantics(
       selected: isSelected,
       button: true,
       child: Material(
-        color: isSelected ? colors.primary : colors.surface,
+        color: bgColor,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(12),
           side: BorderSide(
-              color: isSelected ? colors.primary : colors.outlineVariant),
+            color: borderColor,
+            width: isSelected ? 2.0 : 1.5,
+          ),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, color: foreground, size: 24),
+                Icon(icon, color: iconColor, size: 26),
                 const SizedBox(height: 6),
-                Text(title,
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.labelLarge
-                        ?.copyWith(color: foreground)),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: foreground,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                  ),
+                ),
               ],
             ),
           ),
