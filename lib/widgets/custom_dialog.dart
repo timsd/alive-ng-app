@@ -472,7 +472,7 @@ class BottomSheetDialog {
       ),
       constraints: BoxConstraints(
         maxHeight: height ?? MediaQuery.of(context).size.height * 0.88,
-        maxWidth: 860,
+        maxWidth: 640,
       ),
       builder: (context) => SafeArea(
         top: false,

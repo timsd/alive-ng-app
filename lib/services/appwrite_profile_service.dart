@@ -260,11 +260,15 @@ class AppwriteProfileService {
   }
 
   Map<String, dynamic> userProfileToAppwriteData(UserProfile profile) {
+    final profileData = Map<String, dynamic>.from(profile.toJson());
+    // Appwrite ignores null values on update, so clear the avatar explicitly
+    // when the picture was removed.
+    profileData['avatar_url'] = profile.avatarUrl ?? '';
     return _buildProfileData(
       email: profile.email,
       fullName: profile.fullName,
       role: profile.role,
-      profileData: profile.toJson(),
+      profileData: profileData,
       includeDefaults: false,
     );
   }

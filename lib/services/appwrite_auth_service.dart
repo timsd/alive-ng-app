@@ -8,8 +8,12 @@ import '../config/appwrite_backend_config.dart';
 import '../main.dart';
 import '../utils/web_launch_params.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/painting.dart';
+// ignore: depend_on_referenced_packages
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'appwrite_profile_service.dart';
 import 'role_access_service.dart';
+import 'storage_service.dart';
 
 /// Provider to access the Appwrite authentication service instance.
 final appwriteAuthServiceProvider = Provider<AppwriteAuthService>((ref) {
@@ -165,6 +169,7 @@ class AppwriteAuthService {
         profileData: profileData,
       );
 
+      await _account.updatePrefs(prefs: {'profile_setup_completed': false});
       return user;
     } catch (e) {
       debugPrint('Appwrite Sign Up Error: $e');
@@ -204,17 +209,48 @@ class AppwriteAuthService {
     }
   }
 
-  /// Log out of the current session.
+  /// Log out of the current session and thoroughly flush all local user data,
+  /// in-memory state caches, and image memory/disk caches.
   Future<void> logout() async {
     try {
       await _account.deleteSession(sessionId: 'current');
-      _sharedCurrentUser = null;
-      if (kIsWeb) {
-        clearAppwriteCookieFallback();
-      }
     } catch (e) {
-      debugPrint('Appwrite Logout Error: $e');
-      rethrow;
+      debugPrint('Appwrite deleteSession notice: $e');
+    }
+
+    _sharedCurrentUser = null;
+
+    if (kIsWeb) {
+      clearAppwriteCookieFallback();
+    }
+
+    // 1. Flush in-memory role & profile cache
+    try {
+      RoleAccessService.instance.clearCache();
+    } catch (e) {
+      debugPrint('Error clearing RoleAccessService cache: $e');
+    }
+
+    // 2. Flush user storage & secure storage (preserves device theme/language/etc.)
+    try {
+      await StorageHelper.clearUserData();
+    } catch (e) {
+      debugPrint('Error clearing StorageHelper user data: $e');
+    }
+
+    // 3. Flush image memory cache so previous user's avatars/media are not retained in memory
+    try {
+      PaintingBinding.instance.imageCache.clear();
+      PaintingBinding.instance.imageCache.clearLiveImages();
+    } catch (e) {
+      debugPrint('Error clearing image memory cache: $e');
+    }
+
+    // 4. Flush disk image cache (cached_network_image)
+    try {
+      await DefaultCacheManager().emptyCache();
+    } catch (e) {
+      debugPrint('Error clearing DefaultCacheManager cache: $e');
     }
   }
 

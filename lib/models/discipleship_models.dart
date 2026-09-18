@@ -324,6 +324,50 @@ class StudySession {
   }
 }
 
+// Prayer history entry model
+class PrayerHistoryEntry {
+  final String id;
+  final String action; // 'created', 'status_updated', 'answered'
+  final PrayerRequestStatus status;
+  final String? note;
+  final String? actorName;
+  final DateTime timestamp;
+
+  const PrayerHistoryEntry({
+    required this.id,
+    required this.action,
+    required this.status,
+    this.note,
+    this.actorName,
+    required this.timestamp,
+  });
+
+  factory PrayerHistoryEntry.fromJson(Map<String, dynamic> json) {
+    return PrayerHistoryEntry(
+      id: json['id'] as String? ?? '',
+      action: json['action'] as String? ?? 'status_updated',
+      status: PrayerRequestStatus.values.firstWhere(
+        (s) => s.name == json['status'],
+        orElse: () => PrayerRequestStatus.active,
+      ),
+      note: json['note'] as String?,
+      actorName: json['actor_name'] as String?,
+      timestamp: json['timestamp'] != null
+          ? DateTime.parse(json['timestamp'] as String)
+          : DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'action': action,
+    'status': status.name,
+    'note': note,
+    'actor_name': actorName,
+    'timestamp': timestamp.toIso8601String(),
+  };
+}
+
 // Prayer request model
 class PrayerRequest {
   final String id;
@@ -336,6 +380,7 @@ class PrayerRequest {
   final DateTime? dateAnswered;
   final String? answer;
   final String? notes;
+  final List<PrayerHistoryEntry> history;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -350,11 +395,48 @@ class PrayerRequest {
     this.dateAnswered,
     this.answer,
     this.notes,
+    this.history = const [],
     required this.createdAt,
     required this.updatedAt,
   });
 
+  PrayerRequest copyWith({
+    String? id,
+    String? contactId,
+    String? discipleMakerId,
+    String? request,
+    String? category,
+    PrayerRequestStatus? status,
+    DateTime? dateRequested,
+    DateTime? dateAnswered,
+    String? answer,
+    String? notes,
+    List<PrayerHistoryEntry>? history,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return PrayerRequest(
+      id: id ?? this.id,
+      contactId: contactId ?? this.contactId,
+      discipleMakerId: discipleMakerId ?? this.discipleMakerId,
+      request: request ?? this.request,
+      category: category ?? this.category,
+      status: status ?? this.status,
+      dateRequested: dateRequested ?? this.dateRequested,
+      dateAnswered: dateAnswered ?? this.dateAnswered,
+      answer: answer ?? this.answer,
+      notes: notes ?? this.notes,
+      history: history ?? this.history,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
   factory PrayerRequest.fromJson(Map<String, dynamic> json) {
+    final historyList = (json['history'] as List<dynamic>?)
+            ?.map((e) => PrayerHistoryEntry.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        const [];
     return PrayerRequest(
       id: json['id'] as String,
       contactId: json['contact_id'] as String,
@@ -371,6 +453,7 @@ class PrayerRequest {
           : null,
       answer: json['answer'] as String?,
       notes: json['notes'] as String?,
+      history: historyList,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );
@@ -388,6 +471,7 @@ class PrayerRequest {
       'date_answered': dateAnswered?.toIso8601String().split('T')[0],
       'answer': answer,
       'notes': notes,
+      'history': history.map((e) => e.toJson()).toList(),
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -454,6 +538,9 @@ class DiscipleshipReport {
   final String id;
   final String discipleMakerId;
   final String? supervisorId;
+  final String? routedOfficerId;
+  final String? routedOfficeTitle;
+  final String? routedOfficerName;
   final DateTime reportPeriodStart;
   final DateTime reportPeriodEnd;
   final int totalContacts;
@@ -466,6 +553,10 @@ class DiscipleshipReport {
   final String? challenges;
   final String? prayerRequests;
   final String? goals;
+  final String? feedback;
+  final String? feedbackOfficerName;
+  final DateTime? feedbackAt;
+  final String status; // 'draft', 'submitted', 'reviewed'
   final ReportFrequency frequency;
   final DateTime createdAt;
   final DateTime? submittedAt;
@@ -474,6 +565,9 @@ class DiscipleshipReport {
     required this.id,
     required this.discipleMakerId,
     this.supervisorId,
+    this.routedOfficerId,
+    this.routedOfficeTitle,
+    this.routedOfficerName,
     required this.reportPeriodStart,
     required this.reportPeriodEnd,
     required this.totalContacts,
@@ -486,16 +580,79 @@ class DiscipleshipReport {
     this.challenges,
     this.prayerRequests,
     this.goals,
+    this.feedback,
+    this.feedbackOfficerName,
+    this.feedbackAt,
+    this.status = 'submitted',
     required this.frequency,
     required this.createdAt,
     this.submittedAt,
   });
+
+  DiscipleshipReport copyWith({
+    String? id,
+    String? discipleMakerId,
+    String? supervisorId,
+    String? routedOfficerId,
+    String? routedOfficeTitle,
+    String? routedOfficerName,
+    DateTime? reportPeriodStart,
+    DateTime? reportPeriodEnd,
+    int? totalContacts,
+    int? activeContacts,
+    int? newContacts,
+    int? baptisms,
+    int? studySessions,
+    int? interactions,
+    String? highlights,
+    String? challenges,
+    String? prayerRequests,
+    String? goals,
+    String? feedback,
+    String? feedbackOfficerName,
+    DateTime? feedbackAt,
+    String? status,
+    ReportFrequency? frequency,
+    DateTime? createdAt,
+    DateTime? submittedAt,
+  }) {
+    return DiscipleshipReport(
+      id: id ?? this.id,
+      discipleMakerId: discipleMakerId ?? this.discipleMakerId,
+      supervisorId: supervisorId ?? this.supervisorId,
+      routedOfficerId: routedOfficerId ?? this.routedOfficerId,
+      routedOfficeTitle: routedOfficeTitle ?? this.routedOfficeTitle,
+      routedOfficerName: routedOfficerName ?? this.routedOfficerName,
+      reportPeriodStart: reportPeriodStart ?? this.reportPeriodStart,
+      reportPeriodEnd: reportPeriodEnd ?? this.reportPeriodEnd,
+      totalContacts: totalContacts ?? this.totalContacts,
+      activeContacts: activeContacts ?? this.activeContacts,
+      newContacts: newContacts ?? this.newContacts,
+      baptisms: baptisms ?? this.baptisms,
+      studySessions: studySessions ?? this.studySessions,
+      interactions: interactions ?? this.interactions,
+      highlights: highlights ?? this.highlights,
+      challenges: challenges ?? this.challenges,
+      prayerRequests: prayerRequests ?? this.prayerRequests,
+      goals: goals ?? this.goals,
+      feedback: feedback ?? this.feedback,
+      feedbackOfficerName: feedbackOfficerName ?? this.feedbackOfficerName,
+      feedbackAt: feedbackAt ?? this.feedbackAt,
+      status: status ?? this.status,
+      frequency: frequency ?? this.frequency,
+      createdAt: createdAt ?? this.createdAt,
+      submittedAt: submittedAt ?? this.submittedAt,
+    );
+  }
 
   factory DiscipleshipReport.fromJson(Map<String, dynamic> json) {
     return DiscipleshipReport(
       id: json['id'] as String,
       discipleMakerId: json['disciple_maker_id'] as String,
       supervisorId: json['supervisor_id'] as String?,
+      routedOfficerId: json['routed_officer_id'] as String?,
+      routedOfficeTitle: json['routed_office_title'] as String?,
+      routedOfficerName: json['routed_officer_name'] as String?,
       reportPeriodStart: DateTime.parse(json['report_period_start'] as String),
       reportPeriodEnd: DateTime.parse(json['report_period_end'] as String),
       totalContacts: json['total_contacts'] as int,
@@ -508,6 +665,12 @@ class DiscipleshipReport {
       challenges: json['challenges'] as String?,
       prayerRequests: json['prayer_requests'] as String?,
       goals: json['goals'] as String?,
+      feedback: json['feedback'] as String?,
+      feedbackOfficerName: json['feedback_officer_name'] as String?,
+      feedbackAt: json['feedback_at'] != null
+          ? DateTime.parse(json['feedback_at'] as String)
+          : null,
+      status: json['status'] as String? ?? 'submitted',
       frequency: ReportFrequency.values.firstWhere(
         (freq) => freq.name == json['frequency'],
         orElse: () => ReportFrequency.monthly,
@@ -524,6 +687,9 @@ class DiscipleshipReport {
       'id': id,
       'disciple_maker_id': discipleMakerId,
       'supervisor_id': supervisorId,
+      'routed_officer_id': routedOfficerId,
+      'routed_office_title': routedOfficeTitle,
+      'routed_officer_name': routedOfficerName,
       'report_period_start': reportPeriodStart.toIso8601String().split('T')[0],
       'report_period_end': reportPeriodEnd.toIso8601String().split('T')[0],
       'total_contacts': totalContacts,
@@ -536,6 +702,10 @@ class DiscipleshipReport {
       'challenges': challenges,
       'prayer_requests': prayerRequests,
       'goals': goals,
+      'feedback': feedback,
+      'feedback_officer_name': feedbackOfficerName,
+      'feedback_at': feedbackAt?.toIso8601String(),
+      'status': status,
       'frequency': frequency.name,
       'created_at': createdAt.toIso8601String(),
       'submitted_at': submittedAt?.toIso8601String(),
@@ -676,4 +846,119 @@ class DiscipleshipStatistics {
 
   static const DiscipleshipStatistics empty = DiscipleshipStatistics();
 }
+
+// Officer office assignment model
+class OfficerOfficeAssignment {
+  final String id;
+  final String officerId;
+  final String officerName;
+  final String officerEmail;
+  final String officeTitle; // e.g. 'Director of Evangelism', 'Zone Coordinator'
+  final String officeType; // 'director' or 'coordinator'
+  final DateTime assignedAt;
+
+  const OfficerOfficeAssignment({
+    required this.id,
+    required this.officerId,
+    required this.officerName,
+    required this.officerEmail,
+    required this.officeTitle,
+    required this.officeType,
+    required this.assignedAt,
+  });
+
+  factory OfficerOfficeAssignment.fromJson(Map<String, dynamic> json) {
+    return OfficerOfficeAssignment(
+      id: json['id'] as String? ?? '',
+      officerId: json['officer_id'] as String? ?? '',
+      officerName: json['officer_name'] as String? ?? '',
+      officerEmail: json['officer_email'] as String? ?? '',
+      officeTitle: json['office_title'] as String? ?? '',
+      officeType: json['office_type'] as String? ?? 'coordinator',
+      assignedAt: json['assigned_at'] != null
+          ? DateTime.parse(json['assigned_at'] as String)
+          : DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'officer_id': officerId,
+    'officer_name': officerName,
+    'officer_email': officerEmail,
+    'office_title': officeTitle,
+    'office_type': officeType,
+    'assigned_at': assignedAt.toIso8601String(),
+  };
+}
+
+// Deletion request status enum
+enum DeletionRequestStatus { pending, approved, rejected }
+
+// Disciple deletion request model
+class DiscipleDeletionRequest {
+  final String id;
+  final String contactId;
+  final String contactName;
+  final String requesterId;
+  final String requesterName;
+  final String requesterRole; // e.g. 'coordinator', 'director'
+  final String reason;
+  final DeletionRequestStatus status;
+  final String? adminReviewNotes;
+  final DateTime createdAt;
+  final DateTime? reviewedAt;
+
+  const DiscipleDeletionRequest({
+    required this.id,
+    required this.contactId,
+    required this.contactName,
+    required this.requesterId,
+    required this.requesterName,
+    required this.requesterRole,
+    required this.reason,
+    this.status = DeletionRequestStatus.pending,
+    this.adminReviewNotes,
+    required this.createdAt,
+    this.reviewedAt,
+  });
+
+  factory DiscipleDeletionRequest.fromJson(Map<String, dynamic> json) {
+    return DiscipleDeletionRequest(
+      id: json['id'] as String? ?? '',
+      contactId: json['contact_id'] as String? ?? '',
+      contactName: json['contact_name'] as String? ?? '',
+      requesterId: json['requester_id'] as String? ?? '',
+      requesterName: json['requester_name'] as String? ?? '',
+      requesterRole: json['requester_role'] as String? ?? 'coordinator',
+      reason: json['reason'] as String? ?? '',
+      status: DeletionRequestStatus.values.firstWhere(
+        (s) => s.name == json['status'],
+        orElse: () => DeletionRequestStatus.pending,
+      ),
+      adminReviewNotes: json['admin_review_notes'] as String?,
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'] as String)
+          : DateTime.now(),
+      reviewedAt: json['reviewed_at'] != null
+          ? DateTime.parse(json['reviewed_at'] as String)
+          : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'contact_id': contactId,
+    'contact_name': contactName,
+    'requester_id': requesterId,
+    'requester_name': requesterName,
+    'requester_role': requesterRole,
+    'reason': reason,
+    'status': status.name,
+    'admin_review_notes': adminReviewNotes,
+    'created_at': createdAt.toIso8601String(),
+    'reviewed_at': reviewedAt?.toIso8601String(),
+  };
+}
+
 

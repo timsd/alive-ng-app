@@ -1,15 +1,21 @@
+import 'dart:typed_data';
+
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../models/app_models.dart';
 import '../../utils/responsive_utils.dart';
 import '../../utils/layout_fix_utils.dart';
 import '../../services/appwrite_storage_service.dart';
+import '../../services/appwrite_profile_service.dart';
 import '../../services/auth_service.dart';
 import '../../utils/toast_utils.dart';
 import '../../widgets/custom_image.dart';
+import '../../widgets/profile_page_cues.dart';
 import '../../widgets/custom_app_bar.dart';
 
-class EditProfileScreen extends StatefulWidget {
+class EditProfileScreen extends ConsumerStatefulWidget {
   final UserProfile userProfile;
 
   const EditProfileScreen({
@@ -18,10 +24,10 @@ class EditProfileScreen extends StatefulWidget {
   });
 
   @override
-  State<EditProfileScreen> createState() => _EditProfileScreenState();
+  ConsumerState<EditProfileScreen> createState() => _EditProfileScreenState();
 }
 
-class _EditProfileScreenState extends State<EditProfileScreen> {
+class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final _pageController = PageController();
 
@@ -49,6 +55,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   // Profile picture upload variables
   String? _profilePictureUrl;
   bool _isUploadingPicture = false;
+
+  /// Local bytes of the most recently uploaded picture. Rendering these keeps
+  /// the new image visible instantly without waiting for a network round trip
+  /// (or an authenticated fetch that a plain HTTP image request cannot make).
+  Uint8List? _pendingPictureBytes;
 
   @override
   void initState() {
@@ -300,6 +311,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       ),
                 ),
               ),
+
+              // Swipe affordance: dots + helper text so it is clear that the
+              // sections are paged horizontally.
+              ProfilePageCues(index: _currentPage, count: 3),
 
               // Page content
               LayoutFixUtils.expanded(
@@ -685,25 +700,31 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             CircleAvatar(
               radius: 40,
               backgroundColor: Theme.of(context).colorScheme.primary,
-              child: _profilePictureUrl != null
+              child: (_pendingPictureBytes != null ||
+                      (_profilePictureUrl != null &&
+                          _profilePictureUrl!.isNotEmpty))
                   ? ClipOval(
-                      child: CustomImage(
-                        imageUrl: _profilePictureUrl!,
-                        width: 80,
-                        height: 80,
-                        fit: BoxFit.cover,
-                        placeholder: Icon(
-                          Icons.person,
-                          size: 40,
-                          color: Theme.of(context).colorScheme.onPrimary,
-                        ),
-                      ),
+                      child: _pendingPictureBytes != null
+                          ? Image.memory(
+                              _pendingPictureBytes!,
+                              key: ValueKey(_profilePictureUrl),
+                              width: 80,
+                              height: 80,
+                              fit: BoxFit.cover,
+                              gaplessPlayback: true,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  _buildPicturePlaceholder(),
+                            )
+                          : CustomImage(
+                              key: ValueKey(_profilePictureUrl),
+                              imageUrl: _profilePictureUrl!,
+                              width: 80,
+                              height: 80,
+                              fit: BoxFit.cover,
+                              placeholder: _buildPicturePlaceholder(),
+                            ),
                     )
-                  : Icon(
-                      Icons.person,
-                      size: 40,
-                      color: Theme.of(context).colorScheme.onPrimary,
-                    ),
+                  : _buildPicturePlaceholder(),
             ),
             SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 16)),
             Expanded(
@@ -766,6 +787,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           return;
         }
 
+        final newPictureBytes = file.bytes!;
         setState(() => _isUploadingPicture = true);
 
         try {
@@ -787,25 +809,45 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             _ => 'image/jpeg',
           };
 
+          final previousUrl = _profilePictureUrl;
           final publicUrl =
               await AppwriteStorageService.instance.uploadProfileFile(
-            bytes: file.bytes!,
+            bytes: newPictureBytes,
             fileName: 'profile-pictures/$fileName',
             contentType: contentType,
           );
 
+          // Persist the new URL immediately (instead of waiting for the Save
+          // button) so the picture is durable and every screen watching the
+          // profile can refresh as soon as the upload succeeds.
+          await ref.read(appwriteProfileServiceProvider).updateUserProfile(
+                userId: widget.userProfile.id,
+                profileData: {'avatar_url': publicUrl},
+              );
+
+          if (!mounted) return;
           setState(() {
             _profilePictureUrl = publicUrl;
+            _pendingPictureBytes = newPictureBytes;
             _hasChanges = true;
           });
 
+          // Drop the cached copy of the previous picture so it can never be
+          // rendered in place of the new one.
+          if (previousUrl != null && previousUrl.isNotEmpty) {
+            await CachedNetworkImageProvider(previousUrl).evict();
+          }
+
           ToastUtils.showSuccess('Profile picture uploaded successfully!');
 
-          if (widget.userProfile.avatarUrl != null &&
-              widget.userProfile.avatarUrl!.isNotEmpty) {
+          // The previous file is deleted only after the new URL is stored, so a
+          // failed upload or save never breaks the picture still in use.
+          if (previousUrl != null &&
+              previousUrl.isNotEmpty &&
+              previousUrl != publicUrl) {
             try {
               await AppwriteStorageService.instance
-                  .deleteFileByUrl(widget.userProfile.avatarUrl!);
+                  .deleteFileByUrl(previousUrl);
             } catch (e) {
               // Ignore errors when deleting old file
             }
@@ -813,7 +855,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         } catch (e) {
           ToastUtils.showError('Failed to upload profile picture: $e');
         } finally {
-          setState(() => _isUploadingPicture = false);
+          if (mounted) setState(() => _isUploadingPicture = false);
         }
       }
     } catch (e) {
@@ -822,11 +864,40 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
-  void _removeProfilePicture() {
+  Widget _buildPicturePlaceholder() => Icon(
+        Icons.person,
+        size: 40,
+        color: Theme.of(context).colorScheme.onPrimary,
+      );
+
+  Future<void> _removeProfilePicture() async {
+    final previousUrl = _profilePictureUrl;
+    if (previousUrl == null || previousUrl.isEmpty) return;
+
     setState(() {
       _profilePictureUrl = null;
+      _pendingPictureBytes = null;
       _hasChanges = true;
     });
-    ToastUtils.showSuccess('Profile picture removed');
+
+    try {
+      // Persist the removal right away. Appwrite skips null values on update,
+      // so an empty string is used to clear the attribute.
+      await ref.read(appwriteProfileServiceProvider).updateUserProfile(
+            userId: widget.userProfile.id,
+            profileData: {'avatar_url': ''},
+          );
+      await CachedNetworkImageProvider(previousUrl).evict();
+      try {
+        await AppwriteStorageService.instance.deleteFileByUrl(previousUrl);
+      } catch (_) {
+        // Ignore storage errors; the profile no longer references the file.
+      }
+      if (mounted) ToastUtils.showSuccess('Profile picture removed');
+    } catch (e) {
+      if (mounted) {
+        ToastUtils.showError('Failed to remove profile picture: $e');
+      }
+    }
   }
 }

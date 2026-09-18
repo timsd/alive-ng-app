@@ -421,15 +421,28 @@ class StorageHelper {
       StorageKeys.buildNumber,
     };
 
-    final allKeys = await _storage.getKeys();
-    for (final key in allKeys) {
-      if (!keysToKeep.contains(key)) {
-        await _storage.remove(key);
+    try {
+      final allKeys = await _storage.getKeys();
+      for (final key in allKeys) {
+        if (!keysToKeep.contains(key)) {
+          await _storage.remove(key);
+        }
       }
-    }
+    } catch (_) {}
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      for (final key in prefs.getKeys()) {
+        if (!keysToKeep.contains(key)) {
+          await prefs.remove(key);
+        }
+      }
+    } catch (_) {}
 
     // Clear secure storage
-    await _storage.clearSecure();
+    try {
+      await _storage.clearSecure();
+    } catch (_) {}
   }
 }
 

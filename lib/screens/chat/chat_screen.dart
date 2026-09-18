@@ -285,6 +285,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     return Scaffold(
       appBar: CustomAppBar(
+        showBackButton: true,
         title: _selectedChannel?.name ?? 'Chat',
         actions: [
           IconButton(

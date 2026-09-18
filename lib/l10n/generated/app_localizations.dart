@@ -2358,6 +2358,12 @@ abstract class AppLocalizations {
   /// **'Thank You!'**
   String get donation_success_title;
 
+  /// No description provided for @select_giving_method.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Giving Method'**
+  String get select_giving_method;
+
   /// No description provided for @donation_success_message.
   ///
   /// In en, this message translates to:

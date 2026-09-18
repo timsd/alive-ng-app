@@ -260,8 +260,13 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
       await _loadBooksAndInit();
     }
 
-    final targetIndex = _books.indexWhere(
+    var targetIndex = _books.indexWhere(
         (book) => book.name.toLowerCase() == parsedBook.toLowerCase());
+    if (targetIndex == -1) {
+      targetIndex = _books.indexWhere((book) =>
+          BibleData.canonicalBookName(book.name)?.toLowerCase() ==
+          parsedBook.toLowerCase());
+    }
     if (targetIndex == -1) {
       await _loadVerse(reference);
       return false;
@@ -612,6 +617,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
     return Scaffold(
       backgroundColor: headerBgColor,
       appBar: CustomAppBar(
+        showBackButton: true,
         title: 'Bible Reader',
         backgroundColor: headerBgColor,
         foregroundColor: headerTextColor,

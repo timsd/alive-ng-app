@@ -1180,6 +1180,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get donation_success_title => 'Thank You!';
 
   @override
+  String get select_giving_method => 'Select Giving Method';
+
+  @override
   String get donation_success_message =>
       'Your donation has been processed successfully.';
 }

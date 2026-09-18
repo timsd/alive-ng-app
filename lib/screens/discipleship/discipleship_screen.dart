@@ -33,9 +33,14 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
     _loadData();
   }
+
+  List<DiscipleshipReport> _userReports = [];
+  List<DiscipleshipReport> _officerReports = [];
+  List<OfficerOfficeAssignment> _officerAssignments = [];
+  OfficerOfficeAssignment? _selectedOfficerOffice;
 
   @override
   void dispose() {
@@ -80,12 +85,29 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
       final statistics =
           await _discipleshipService.getDiscipleshipStatistics(user.uid);
 
+      final userReports =
+          await _discipleshipService.getReports(discipleMakerId: user.uid);
+      final assignments = await _discipleshipService.getOfficerAssignments();
+      _selectedOfficerOffice ??=
+          assignments.isNotEmpty ? assignments.first : null;
+
+      List<DiscipleshipReport> officerReports = [];
+      if (_selectedOfficerOffice != null) {
+        officerReports = await _discipleshipService.getReportsForOfficer(
+          officerId: _selectedOfficerOffice!.officerId,
+          officeTitle: _selectedOfficerOffice!.officeTitle,
+        );
+      }
+
       setState(() {
         _contacts = contacts;
         _recentInteractions = interactions.take(10).toList();
         _recentStudySessions = studySessions.take(10).toList();
         _activePrayerRequests = prayerRequests;
         _statistics = statistics;
+        _userReports = userReports;
+        _officerAssignments = assignments;
+        _officerReports = officerReports;
         _isLoading = false;
       });
     } catch (e) {
@@ -119,6 +141,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
             Tab(text: 'Activities'),
             Tab(text: 'Prayer'),
             Tab(text: 'Reports'),
+            Tab(text: 'Officer Inbox'),
           ],
         ),
         actions: [
@@ -144,6 +167,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                     _buildActivitiesTab(),
                     _buildPrayerTab(),
                     _buildReportsTab(),
+                    _buildOfficerInboxTab(),
                   ],
                 ),
     );
@@ -533,38 +557,371 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
   }
 
   Widget _buildReportsTab() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+    final theme = Theme.of(context);
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
         children: [
-          const Icon(Icons.analytics, size: 64),
-          const SizedBox(height: 16),
-          Text(
-            'Discipleship Reports',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Track your discipleship progress and milestones over time.',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Report generation coming soon.')),
-              );
-            },
-            icon: const Icon(Icons.assessment),
-            label: const Text('Generate Report'),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(Icons.analytics_rounded, color: theme.colorScheme.primary),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Discipleship Reports',
+                              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                            Text(
+                              'Compile and dispatch reports directly to designated Coordinators and Directors.',
+                              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: _showGenerateReportDialog,
+                    icon: const Icon(Icons.send_rounded),
+                    label: const Text('Generate & Dispatch Report'),
+                  ),
+                ],
+              ),
             ),
           ),
+          const SizedBox(height: 16),
+          Text(
+            'Your Submitted Reports (${_userReports.length})',
+            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
+          if (_userReports.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 32),
+                child: Column(
+                  children: [
+                    Icon(Icons.description_outlined, size: 56, color: theme.colorScheme.onSurfaceVariant),
+                    const SizedBox(height: 12),
+                    Text(
+                      'No reports submitted yet.',
+                      style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Tap "Generate & Dispatch Report" to create your first report.',
+                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            ..._userReports.map((report) {
+              final isReviewed = report.status.toLowerCase() == 'reviewed';
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '${DateFormat.yMMMd().format(report.reportPeriodStart)} – ${DateFormat.yMMMd().format(report.reportPeriodEnd)}',
+                              style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: isReviewed ? Colors.green.withValues(alpha: 0.15) : Colors.blue.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              report.status.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: isReviewed ? Colors.green[800] : Colors.blue[800],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Routed To: ${report.routedOfficeTitle ?? 'Leadership Office'}${report.routedOfficerName != null ? ' (${report.routedOfficerName})' : ''}',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 6,
+                        children: [
+                          _buildMetricChip('Contacts', report.totalContacts.toString()),
+                          _buildMetricChip('Active', report.activeContacts.toString()),
+                          _buildMetricChip('Baptisms', report.baptisms.toString()),
+                          _buildMetricChip('Studies', report.studySessions.toString()),
+                          _buildMetricChip('Interactions', report.interactions.toString()),
+                        ],
+                      ),
+                      if (report.highlights != null && report.highlights!.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        Text('Highlights: ${report.highlights}', style: theme.textTheme.bodySmall),
+                      ],
+                      if (report.feedback != null && report.feedback!.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.rate_review_rounded, size: 16, color: Colors.amber),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Feedback from ${report.feedbackOfficerName ?? 'Officer'}:',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(report.feedback!, style: theme.textTheme.bodyMedium),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            }),
         ],
+      ),
+    );
+  }
+
+  Widget _buildOfficerInboxTab() {
+    final theme = Theme.of(context);
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Card(
+            elevation: 1,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Officer Office / Inbox View',
+                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Select your designated office to review dispatched reports and send feedback.',
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: 14),
+                  if (_officerAssignments.isEmpty)
+                    const Text('No officer assignments found. Contact the Administrator.')
+                  else
+                    DropdownButtonFormField<OfficerOfficeAssignment>(
+                      value: _selectedOfficerOffice,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Holding Office',
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      ),
+                      items: _officerAssignments.map((a) {
+                        return DropdownMenuItem(
+                          value: a,
+                          child: Text('${a.officeTitle} (${a.officerName})', overflow: TextOverflow.ellipsis),
+                        );
+                      }).toList(),
+                      onChanged: (val) async {
+                        if (val != null) {
+                          setState(() => _selectedOfficerOffice = val);
+                          final reports = await _discipleshipService.getReportsForOfficer(
+                            officerId: val.officerId,
+                            officeTitle: val.officeTitle,
+                          );
+                          if (mounted) {
+                            setState(() => _officerReports = reports);
+                          }
+                        }
+                      },
+                    ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Received Reports for ${_selectedOfficerOffice?.officeTitle ?? 'Office'} (${_officerReports.length})',
+            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
+          if (_officerReports.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 40),
+                child: Column(
+                  children: [
+                    Icon(Icons.inbox_outlined, size: 56, color: theme.colorScheme.onSurfaceVariant),
+                    const SizedBox(height: 12),
+                    Text(
+                      'No reports dispatched to this office yet.',
+                      style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            ..._officerReports.map((report) {
+              final isReviewed = report.status.toLowerCase() == 'reviewed';
+              return Card(
+                margin: const EdgeInsets.only(bottom: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Period: ${DateFormat.yMMMd().format(report.reportPeriodStart)} – ${DateFormat.yMMMd().format(report.reportPeriodEnd)}',
+                            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: isReviewed ? Colors.green.withValues(alpha: 0.15) : Colors.orange.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              report.status.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: isReviewed ? Colors.green[800] : Colors.orange[800],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 6,
+                        children: [
+                          _buildMetricChip('Total Disciples', report.totalContacts.toString()),
+                          _buildMetricChip('Active', report.activeContacts.toString()),
+                          _buildMetricChip('New', report.newContacts.toString()),
+                          _buildMetricChip('Baptisms', report.baptisms.toString()),
+                          _buildMetricChip('Studies', report.studySessions.toString()),
+                          _buildMetricChip('Interactions', report.interactions.toString()),
+                        ],
+                      ),
+                      if (report.highlights != null && report.highlights!.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text('Highlights: ${report.highlights}', style: theme.textTheme.bodySmall),
+                      ],
+                      if (report.challenges != null && report.challenges!.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text('Challenges: ${report.challenges}', style: theme.textTheme.bodySmall),
+                      ],
+                      if (report.goals != null && report.goals!.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text('Goals: ${report.goals}', style: theme.textTheme.bodySmall),
+                      ],
+                      if (report.feedback != null && report.feedback!.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                          ),
+                          child: Text(
+                            'Your Feedback: "${report.feedback}"',
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed: () => _showSendFeedbackDialog(report),
+                        icon: const Icon(Icons.chat_bubble_outline_rounded),
+                        label: Text(report.feedback != null ? 'Update Feedback' : 'Send Feedback'),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetricChip(String label, String value) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        '$label: $value',
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
       ),
     );
   }
@@ -697,8 +1054,16 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
               child: Text('Add Study Session'),
             ),
             const PopupMenuItem(
+              value: 'prayer',
+              child: Text('Add Prayer Request'),
+            ),
+            const PopupMenuItem(
               value: 'level',
               child: Text('Update Level'),
+            ),
+            const PopupMenuItem(
+              value: 'request_deletion',
+              child: Text('Request Deletion', style: TextStyle(color: Colors.red)),
             ),
           ],
           onSelected: (value) => _handleContactAction(contact, value),
@@ -766,13 +1131,14 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
   }
 
   Widget _buildPrayerRequestCard(PrayerRequest prayer) {
+    final theme = Theme.of(context);
     final contact = _contacts.firstWhere(
       (c) => c.id == prayer.contactId,
       orElse: () => DiscipleshipContact(
         id: '',
         discipleMakerId: '',
-        firstName: 'Unknown',
-        lastName: 'Contact',
+        firstName: prayer.contactId.isEmpty ? 'General' : 'Disciple',
+        lastName: prayer.contactId.isEmpty ? 'Prayer' : 'Contact',
         currentLevel: DiscipleshipLevel.prospect,
         firstContact: DateTime.now(),
         createdAt: DateTime.now(),
@@ -780,32 +1146,123 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
       ),
     );
 
+    final isAnswered = prayer.status == PrayerRequestStatus.answered;
+
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: ListTile(
-        leading: const Icon(Icons.favorite, color: Colors.red),
-        title: Text(prayer.request),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('For: ${contact.fullName}'),
-            Text(
-                'Requested: ${DateFormat('MMM dd, yyyy').format(prayer.dateRequested)}'),
-            if (prayer.category != null) Text('Category: ${prayer.category}'),
-          ],
-        ),
-        trailing: PopupMenuButton(
-          itemBuilder: (context) => [
-            const PopupMenuItem(
-              value: 'answer',
-              child: Text('Mark as Answered'),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: ListTile(
+          leading: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: isAnswered
+                  ? Colors.green.withValues(alpha: 0.15)
+                  : Colors.red.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
             ),
-            const PopupMenuItem(
-              value: 'update',
-              child: Text('Update Status'),
+            child: Icon(
+              isAnswered ? Icons.check_circle_rounded : Icons.favorite_rounded,
+              color: isAnswered ? Colors.green : Colors.red,
             ),
-          ],
-          onSelected: (value) => _handlePrayerAction(prayer, value),
+          ),
+          title: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  prayer.request,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    decoration: isAnswered ? TextDecoration.none : null,
+                  ),
+                ),
+              ),
+              if (isAnswered)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Text(
+                    'ANSWERED',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 4),
+              Text(
+                'For: ${contact.fullName}',
+                style: TextStyle(
+                  fontWeight: FontWeight.w500,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+              Text(
+                'Requested: ${DateFormat('MMM dd, yyyy').format(prayer.dateRequested)}'
+                '${prayer.status != PrayerRequestStatus.active ? ' • Status: ${prayer.status.name.toUpperCase()}' : ''}',
+                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ),
+              if (prayer.category != null)
+                Text('Category: ${prayer.category}', style: theme.textTheme.bodySmall),
+              if (prayer.notes != null && prayer.notes!.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    'Note: ${prayer.notes}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontStyle: FontStyle.italic,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              if (isAnswered && prayer.answer != null && prayer.answer!.isNotEmpty)
+                Container(
+                  margin: const EdgeInsets.only(top: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    'Testimony: ${prayer.answer}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.green,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          trailing: PopupMenuButton(
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'history',
+                child: Text('View Prayer History'),
+              ),
+              if (!isAnswered)
+                const PopupMenuItem(
+                  value: 'answer',
+                  child: Text('Mark as Answered'),
+                ),
+              const PopupMenuItem(
+                value: 'update',
+                child: Text('Update Status & Notes'),
+              ),
+            ],
+            onSelected: (value) => _handlePrayerAction(prayer, value),
+          ),
         ),
       ),
     );
@@ -906,25 +1363,567 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
       case 'study':
         _showAddStudySessionDialog(contact);
         break;
+      case 'prayer':
+        _showAddPrayerRequestDialog(forContact: contact);
+        break;
       case 'level':
         _showUpdateLevelDialog(contact);
+        break;
+      case 'request_deletion':
+        _showRequestDeletionDialog(contact);
         break;
     }
   }
 
   void _handlePrayerAction(PrayerRequest prayer, String action) {
-    if (action == 'answer') _markPrayerAnswered(prayer);
-    if (action == 'update') _markPrayerAnswered(prayer);
+    if (action == 'history') {
+      _showPrayerHistoryDialog(prayer);
+    } else if (action == 'answer') {
+      _showMarkAnsweredDialog(prayer);
+    } else if (action == 'update') {
+      _showUpdatePrayerStatusDialog(prayer);
+    }
   }
 
-  void _markPrayerAnswered(PrayerRequest prayer) async {
-    try {
-      await _discipleshipService.updatePrayerRequestStatus(prayer.id, PrayerRequestStatus.answered);
-      _loadData();
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Prayer marked as answered. Amen!')));
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not update prayer: $e')));
+  void _showMarkAnsweredDialog(PrayerRequest prayer) {
+    final testimonyController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: const Icon(Icons.celebration_rounded, color: Colors.amber, size: 44),
+        title: const Text('Mark Prayer Answered'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Prayer: "${prayer.request}"',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: testimonyController,
+                maxLines: 4,
+                decoration: const InputDecoration(
+                  labelText: 'Testimony / Notes on Answer (Optional)',
+                  hintText: 'Share how God answered this prayer...',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+            onPressed: () async {
+              final user = _authService.currentUser;
+              try {
+                await _discipleshipService.markPrayerAnswered(
+                  requestId: prayer.id,
+                  testimony: testimonyController.text.trim(),
+                  actorName: user?.displayName ?? 'Disciple Maker',
+                );
+                if (mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Prayer marked as answered. Praise the Lord!')),
+                  );
+                  _loadData();
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+                }
+              }
+            },
+            child: const Text('Confirm Answered'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showUpdatePrayerStatusDialog(PrayerRequest prayer) {
+    var status = prayer.status;
+    final notesController = TextEditingController(text: prayer.notes ?? '');
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Update Prayer Status & Notes'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Prayer: "${prayer.request}"', style: const TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<PrayerRequestStatus>(
+                  value: status,
+                  decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),
+                  items: PrayerRequestStatus.values
+                      .map((s) => DropdownMenuItem(
+                            value: s,
+                            child: Text(s.name.toUpperCase()),
+                          ))
+                      .toList(),
+                  onChanged: (val) {
+                    if (val != null) setDialogState(() => status = val);
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: notesController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Progress Notes / Update',
+                    hintText: 'Add ongoing notes or state updates...',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final user = _authService.currentUser;
+                try {
+                  await _discipleshipService.updatePrayerStatusAndNotes(
+                    requestId: prayer.id,
+                    status: status,
+                    note: notesController.text.trim(),
+                    actorName: user?.displayName ?? 'Disciple Maker',
+                  );
+                  if (mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Prayer status updated.')),
+                    );
+                    _loadData();
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+                  }
+                }
+              },
+              child: const Text('Save Status'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showPrayerHistoryDialog(PrayerRequest prayer) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Prayer History & Timeline'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: prayer.history.isEmpty
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.history_rounded, size: 48, color: Colors.grey),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Requested on ${DateFormat('MMM dd, yyyy').format(prayer.dateRequested)}',
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    if (prayer.status == PrayerRequestStatus.answered && prayer.dateAnswered != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          'Answered on ${DateFormat('MMM dd, yyyy').format(prayer.dateAnswered!)}',
+                          style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                  ],
+                )
+              : ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: prayer.history.length,
+                  separatorBuilder: (context, i) => const Divider(),
+                  itemBuilder: (context, i) {
+                    final h = prayer.history[i];
+                    final isAns = h.status == PrayerRequestStatus.answered;
+                    return ListTile(
+                      dense: true,
+                      leading: Icon(
+                        isAns ? Icons.check_circle : Icons.history,
+                        color: isAns ? Colors.green : Colors.blue,
+                      ),
+                      title: Text(
+                        '${h.action.replaceAll('_', ' ').toUpperCase()} • ${h.status.name.toUpperCase()}',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (h.note != null && h.note!.isNotEmpty)
+                            Text(h.note!, style: const TextStyle(fontSize: 12)),
+                          Text(
+                            '${DateFormat('MMM dd, yyyy HH:mm').format(h.timestamp.toLocal())}${h.actorName != null ? ' by ${h.actorName}' : ''}',
+                            style: const TextStyle(fontSize: 11, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRequestDeletionDialog(DiscipleshipContact contact) async {
+    final hasActivity = await _discipleshipService.checkContactHasActivity(contact.id);
+    if (!mounted) return;
+
+    if (hasActivity) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 48),
+          title: const Text('Cannot Delete Disciple'),
+          content: Text(
+            '${contact.fullName} has attached discipleship activities (interactions, Bible study sessions, prayers, or milestones).\n\nOnly disciples with zero attached activity can be nominated for deletion.',
+            style: const TextStyle(height: 1.4),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Understood'),
+            ),
+          ],
+        ),
+      );
+      return;
     }
+
+    final reasonController = TextEditingController();
+    String requesterRole = 'Coordinator';
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          icon: const Icon(Icons.delete_sweep_rounded, color: Colors.red, size: 48),
+          title: const Text('Request Disciple Deletion'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Nominate ${contact.fullName} for deletion. As a Coordinator/Director, this deletion request requires final approval by an Administrator.',
+                  style: const TextStyle(fontSize: 13),
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: requesterRole,
+                  decoration: const InputDecoration(
+                    labelText: 'Your Office / Role *',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'Coordinator', child: Text('Coordinator')),
+                    DropdownMenuItem(value: 'Director', child: Text('Director')),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) setDialogState(() => requesterRole = val);
+                  },
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: reasonController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Reason for deletion *',
+                    hintText: 'e.g. Created duplicate entry with 0 activity',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+              onPressed: () async {
+                final reason = reasonController.text.trim();
+                if (reason.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please enter a reason for deletion.')),
+                  );
+                  return;
+                }
+                final user = _authService.currentUser;
+                try {
+                  await _discipleshipService.requestContactDeletion(
+                    contact: contact,
+                    requesterId: user?.uid ?? '',
+                    requesterName: user?.displayName ?? 'Officer',
+                    requesterRole: requesterRole,
+                    reason: reason,
+                  );
+                  if (mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Deletion request queued for Admin approval.')),
+                    );
+                    _loadData();
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Request failed: $e')));
+                  }
+                }
+              },
+              child: const Text('Submit Request'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showGenerateReportDialog() {
+    var frequency = ReportFrequency.monthly;
+    DateTime startDate = DateTime.now().subtract(const Duration(days: 30));
+    DateTime endDate = DateTime.now();
+    OfficerOfficeAssignment? routedOfficer =
+        _officerAssignments.isNotEmpty ? _officerAssignments.first : null;
+    final highlightsController = TextEditingController();
+    final challengesController = TextEditingController();
+    final goalsController = TextEditingController();
+    final prayerRequestsController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Generate & Dispatch Report'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                DropdownButtonFormField<ReportFrequency>(
+                  value: frequency,
+                  decoration: const InputDecoration(labelText: 'Report Frequency', border: OutlineInputBorder()),
+                  items: ReportFrequency.values
+                      .map((f) => DropdownMenuItem(value: f, child: Text(f.name.toUpperCase())))
+                      .toList(),
+                  onChanged: (val) {
+                    if (val != null) setDialogState(() => frequency = val);
+                  },
+                ),
+                const SizedBox(height: 14),
+                if (_officerAssignments.isNotEmpty)
+                  DropdownButtonFormField<OfficerOfficeAssignment>(
+                    value: routedOfficer,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Dispatch To Officer / Office *',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: _officerAssignments
+                        .map((a) => DropdownMenuItem(
+                              value: a,
+                              child: Text('${a.officeTitle} (${a.officerName})', overflow: TextOverflow.ellipsis),
+                            ))
+                        .toList(),
+                    onChanged: (val) {
+                      if (val != null) setDialogState(() => routedOfficer = val);
+                    },
+                  ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: startDate,
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime.now(),
+                          );
+                          if (picked != null) setDialogState(() => startDate = picked);
+                        },
+                        child: Text('Start: ${DateFormat.MMMd().format(startDate)}'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: endDate,
+                            firstDate: startDate,
+                            lastDate: DateTime.now(),
+                          );
+                          if (picked != null) setDialogState(() => endDate = picked);
+                        },
+                        child: Text('End: ${DateFormat.MMMd().format(endDate)}'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: highlightsController,
+                  maxLines: 2,
+                  decoration: const InputDecoration(labelText: 'Highlights / Victories', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: challengesController,
+                  maxLines: 2,
+                  decoration: const InputDecoration(labelText: 'Challenges / Needs', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: goalsController,
+                  maxLines: 2,
+                  decoration: const InputDecoration(labelText: 'Goals for Next Period', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: prayerRequestsController,
+                  maxLines: 2,
+                  decoration: const InputDecoration(labelText: 'Prayer Requests for Mission', border: OutlineInputBorder()),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.send_rounded),
+              label: const Text('Dispatch Report'),
+              onPressed: () async {
+                final user = _authService.currentUser;
+                if (user == null) return;
+                try {
+                  await _discipleshipService.generateAndSubmitReport(
+                    discipleMakerId: user.uid,
+                    routedOfficerId: routedOfficer?.officerId,
+                    routedOfficeTitle: routedOfficer?.officeTitle,
+                    routedOfficerName: routedOfficer?.officerName,
+                    startDate: startDate,
+                    endDate: endDate,
+                    frequency: frequency,
+                    highlights: highlightsController.text.trim().isEmpty ? null : highlightsController.text.trim(),
+                    challenges: challengesController.text.trim().isEmpty ? null : challengesController.text.trim(),
+                    goals: goalsController.text.trim().isEmpty ? null : goalsController.text.trim(),
+                    prayerRequests: prayerRequestsController.text.trim().isEmpty ? null : prayerRequestsController.text.trim(),
+                  );
+                  if (mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Report dispatched to ${routedOfficer?.officeTitle ?? 'Office'} successfully!')),
+                    );
+                    _loadData();
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+                  }
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showSendFeedbackDialog(DiscipleshipReport report) {
+    final feedbackController = TextEditingController(text: report.feedback ?? '');
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Send Officer Feedback'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Report Period: ${DateFormat.yMMMd().format(report.reportPeriodStart)} – ${DateFormat.yMMMd().format(report.reportPeriodEnd)}',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: feedbackController,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                labelText: 'Officer Feedback & Encouragement *',
+                hintText: 'Write feedback, guidance, or words of encouragement...',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              final text = feedbackController.text.trim();
+              if (text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please enter feedback.')),
+                );
+                return;
+              }
+              try {
+                await _discipleshipService.submitReportFeedback(
+                  reportId: report.id,
+                  feedback: text,
+                  officerName: _selectedOfficerOffice?.officerName ?? 'Officer',
+                );
+                if (mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Feedback sent to disciple maker!')),
+                  );
+                  _loadData();
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+                }
+              }
+            },
+            child: const Text('Send Feedback'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showAddContactDialog() {
@@ -937,19 +1936,43 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Add disciple'),
+          title: const Text('Add Disciple'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(controller: firstNameController, decoration: const InputDecoration(labelText: 'First name')),
-                TextField(controller: lastNameController, decoration: const InputDecoration(labelText: 'Last name')),
-                TextField(controller: emailController, decoration: const InputDecoration(labelText: 'Email (optional)')),
-                TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Phone (optional)')),
-                DropdownButton<DiscipleshipLevel>(
-                  value: level, isExpanded: true,
-                  items: DiscipleshipLevel.values.map((l) => DropdownMenuItem(value: l, child: Text(_getLevelDisplayName(l)))).toList(),
-                  onChanged: (value) { if (value != null) setDialogState(() => level = value); },
+                TextField(controller: firstNameController, decoration: const InputDecoration(labelText: 'First Name *')),
+                const SizedBox(height: 8),
+                TextField(controller: lastNameController, decoration: const InputDecoration(labelText: 'Last Name *')),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    labelText: 'Email Address *',
+                    hintText: 'example@domain.com',
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: phoneController,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(
+                    labelText: 'Phone Number *',
+                    hintText: '+234...',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<DiscipleshipLevel>(
+                  value: level,
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: 'Initial Level'),
+                  items: DiscipleshipLevel.values
+                      .map((l) => DropdownMenuItem(value: l, child: Text(_getLevelDisplayName(l))))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) setDialogState(() => level = value);
+                  },
                 ),
               ],
             ),
@@ -960,25 +1983,58 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
               onPressed: () async {
                 final user = _authService.currentUser;
                 if (user == null) return;
-                if (firstNameController.text.trim().isEmpty || lastNameController.text.trim().isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('First and last name are required.')));
+                final fName = firstNameController.text.trim();
+                final lName = lastNameController.text.trim();
+                final email = emailController.text.trim();
+                final phone = phoneController.text.trim();
+
+                if (fName.isEmpty || lName.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('First and last name are required.')),
+                  );
                   return;
                 }
+                if (email.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Email address is mandatory.')),
+                  );
+                  return;
+                }
+                if (!RegExp(r'^[\w\.-]+@[\w\.-]+\.\w+$').hasMatch(email)) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please enter a valid email address.')),
+                  );
+                  return;
+                }
+                if (phone.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Phone number is mandatory.')),
+                  );
+                  return;
+                }
+
                 try {
                   await _discipleshipService.createContact(DiscipleshipContact(
-                    id: '', discipleMakerId: user.uid,
-                    firstName: firstNameController.text.trim(), lastName: lastNameController.text.trim(),
-                    email: emailController.text.trim().isEmpty ? null : emailController.text.trim(),
-                    phone: phoneController.text.trim().isEmpty ? null : phoneController.text.trim(),
-                    currentLevel: level, firstContact: DateTime.now(), createdAt: DateTime.now(), updatedAt: DateTime.now(),
+                    id: '',
+                    discipleMakerId: user.uid,
+                    firstName: fName,
+                    lastName: lName,
+                    email: email,
+                    phone: phone,
+                    currentLevel: level,
+                    firstContact: DateTime.now(),
+                    createdAt: DateTime.now(),
+                    updatedAt: DateTime.now(),
                   ));
                   if (mounted) Navigator.pop(context);
                   _loadData();
                 } catch (e) {
-                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not add disciple: $e')));
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not add disciple: $e')));
+                  }
                 }
               },
-              child: const Text('Add'),
+              child: const Text('Add Disciple'),
             ),
           ],
         ),
@@ -1136,38 +2192,118 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
     );
   }
 
-  void _showAddPrayerRequestDialog() {
+  void _showAddPrayerRequestDialog({DiscipleshipContact? forContact}) {
     final requestController = TextEditingController();
+    String? selectedContactId =
+        forContact?.id ?? (_contacts.isNotEmpty ? _contacts.first.id : null);
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add prayer request'),
-        content: TextField(
-          controller: requestController, maxLines: 3,
-          decoration: const InputDecoration(hintText: 'What would you like prayer for?'),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () async {
-              if (requestController.text.trim().isEmpty) return;
-              final user = _authService.currentUser;
-              if (user == null) return;
-              try {
-                await _discipleshipService.createPrayerRequest(PrayerRequest(
-                  id: '', contactId: '', discipleMakerId: user.uid,
-                  request: requestController.text.trim(), dateRequested: DateTime.now(), createdAt: DateTime.now(),
-                  updatedAt: DateTime.now(),
-                ));
-                if (mounted) Navigator.pop(context);
-                _loadData();
-              } catch (e) {
-                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Save failed: $e')));
-              }
-            },
-            child: const Text('Save'),
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(forContact != null
+              ? 'Prayer for ${forContact.fullName}'
+              : 'Add Prayer Request'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (forContact == null) ...[
+                  const Text('Select Disciple *',
+                      style:
+                          TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                  const SizedBox(height: 6),
+                  if (_contacts.isEmpty)
+                    const Text(
+                        'No disciples available. Please add a disciple first.',
+                        style:
+                            TextStyle(color: Colors.redAccent, fontSize: 12))
+                  else
+                    DropdownButtonFormField<String>(
+                      value: selectedContactId,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                      items: _contacts.map((c) {
+                        return DropdownMenuItem<String>(
+                          value: c.id,
+                          child: Text(c.fullName),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setDialogState(() => selectedContactId = val);
+                        }
+                      },
+                    ),
+                  const SizedBox(height: 12),
+                ],
+                const Text('Prayer Request *',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: requestController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    hintText: 'What specific prayer need would you like to log?',
+                  ),
+                ),
+              ],
+            ),
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (requestController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text('Please enter prayer request details')),
+                  );
+                  return;
+                }
+                if (selectedContactId == null || selectedContactId!.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content:
+                            Text('Please select a disciple for this prayer')),
+                  );
+                  return;
+                }
+                final user = _authService.currentUser;
+                if (user == null) return;
+                try {
+                  await _discipleshipService.createPrayerRequest(PrayerRequest(
+                    id: '',
+                    contactId: selectedContactId!,
+                    discipleMakerId: user.uid,
+                    request: requestController.text.trim(),
+                    dateRequested: DateTime.now(),
+                    createdAt: DateTime.now(),
+                    updatedAt: DateTime.now(),
+                  ));
+                  if (mounted) Navigator.pop(dialogCtx);
+                  _loadData();
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Save failed: $e')),
+                    );
+                  }
+                }
+              },
+              child: const Text('Save Prayer'),
+            ),
+          ],
+        ),
       ),
     );
   }

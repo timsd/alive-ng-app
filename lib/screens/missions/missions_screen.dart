@@ -453,10 +453,22 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => MissionDetailsSheet(
-        mission: mission,
-        translate: translate,
-        onComplete: _completeMission,
+      builder: (context) => SafeArea(
+        top: true,
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: 640,
+              maxHeight: MediaQuery.of(context).size.height * 0.88,
+            ),
+            child: MissionDetailsSheet(
+              mission: mission,
+              translate: translate,
+              onComplete: _completeMission,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -895,11 +907,8 @@ class MissionDetailsSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: ResponsiveUtils.getResponsiveValue<double>(
-        context: context,
-        mobile: MediaQuery.of(context).size.height * 0.8,
-        tablet: MediaQuery.of(context).size.height * 0.75,
-        desktop: MediaQuery.of(context).size.height * 0.7,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
       ),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
@@ -914,14 +923,12 @@ class MissionDetailsSheet extends StatelessWidget {
         children: [
           // Handle bar
           Container(
-            width: ResponsiveUtils.getResponsiveSpacing(context, 40),
-            height: ResponsiveUtils.getResponsiveSpacing(context, 4),
-            margin: EdgeInsets.symmetric(
-                vertical: ResponsiveUtils.getResponsiveSpacing(context, 12)),
+            width: 44,
+            height: 5,
+            margin: const EdgeInsets.only(top: 12, bottom: 8),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(
-                  ResponsiveUtils.getResponsiveBorderRadiusValue(context, 2)),
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(3),
             ),
           ),
 

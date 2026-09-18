@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:appwrite/appwrite.dart';
+import 'package:appwrite/enums.dart' as appwrite_enums;
 import 'package:appwrite/models.dart' as models;
 import 'package:flutter/material.dart';
 
@@ -826,7 +827,47 @@ class DonationService {
             );
 
       _checkoutDrafts.remove(donationId);
-      // Only the signed server webhook confirms payment and grants access.
+
+      // When the payment gateway confirms success inline (e.g. native SDK
+      // checkout completed or dev-mode simulation), mark the donation as
+      // completed immediately and trigger server-side receipt dispatch.
+      if (paymentResult.success) {
+        try {
+          await updateDonationStatus(
+            donationId,
+            DonationStatus.completed,
+            transactionId: paymentResult.reference,
+          );
+        } catch (e) {
+          _logger.error('Failed to mark donation completed', e);
+        }
+
+        // Trigger server-side verification which also sends the Resend receipt
+        try {
+          final functions = Functions(appwriteClient);
+          await functions.createExecution(
+            functionId: AppwriteBackendConfig.paystackPaymentsFunctionId,
+            body: jsonEncode({
+              'action': 'verify_transaction',
+              'reference': donationId,
+            }),
+            xasync: true,
+            method: appwrite_enums.ExecutionMethod.pOST,
+          );
+        } catch (e) {
+          _logger.error('Failed to trigger server-side verification', e);
+        }
+
+        return {
+          'success': true,
+          'initialized': true,
+          'message': paymentResult.message,
+          'donation_id': donationId,
+          'transaction_id': paymentResult.reference,
+        };
+      }
+
+      // Payment was only initialized (redirect opened, not yet confirmed).
       // Update the local row to `initialized` so admins can see that checkout
       // was opened (webhook later flips it to completed/success).
       try {
@@ -844,12 +885,13 @@ class DonationService {
       }
       return {
         'success': false,
-        'initialized': paymentResult.initialized || paymentResult.success,
-        'message': paymentResult.initialized || paymentResult.success
+        'initialized': paymentResult.initialized,
+        'message': paymentResult.initialized
             ? 'Complete checkout. Your donation will appear after payment is verified.'
             : paymentResult.message,
         'donation_id': donationId,
       };
+
     } catch (e) {
       _logger.error('Error processing Paystack payment', e);
       return {

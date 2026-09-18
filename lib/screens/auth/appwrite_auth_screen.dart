@@ -11,7 +11,6 @@ import '../../providers/guest_provider.dart';
 import '../../constants/app_constants.dart';
 import '../../services/biometric_auth_service.dart';
 import '../../services/admin_notification_service.dart';
-import '../../services/appwrite_profile_service.dart';
 import '../../utils/responsive_utils.dart';
 import '../../models/app_models.dart';
 import '../../models/auth_models.dart';
@@ -1242,25 +1241,12 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
     try {
       await ref.read(signInControllerProvider.notifier).signInWithGoogle();
 
-      // After Google sign-in, check if the profile needs to be completed.
-      // We read the current Appwrite user from the stream provider.
+      // Post sign-in routing is handled centrally by the router's redirect
+      // guard (`routerProvider`), which covers every auth provider and sends
+      // first-time users to the profile setup flow.
       if (!mounted) return;
       final user = ref.read(appwriteUserStreamProvider).value;
       if (user != null) {
-        try {
-          final profileService = ref.read(appwriteProfileServiceProvider);
-          final profile = await profileService.getUserProfileModel(user.uid);
-          final needsCompletion = profile == null ||
-              (profile.phoneNumber == null || profile.phoneNumber!.isEmpty) &&
-                  (profile.localChurch == null || profile.localChurch!.isEmpty);
-          if (!mounted) return;
-          if (needsCompletion) {
-            context.go('/profile-completion');
-            return;
-          }
-        } catch (_) {
-          // Best-effort — fall through to home
-        }
         if (!mounted) return;
         // Show welcome back message
         ScaffoldMessenger.of(context).showSnackBar(

@@ -29,10 +29,31 @@ class NotificationSettings {
       healthTrackingReminder: json['health_tracking_reminder'] ?? true,
       studyReminder: json['study_reminder'] ?? true,
       missionReminder: json['mission_reminder'] ?? true,
-      reminderTime: json['reminder_time'] ?? '07:00',
-      pushNotificationsEnabled: json['push_notifications_enabled'] ?? false,
+      reminderTime: json['reminder_time'] ?? '07:00, 20:00',
+      pushNotificationsEnabled: json['push_notifications_enabled'] ?? true,
       soundEnabled: json['sound_enabled'] ?? true,
     );
+  }
+
+  /// Morning reminder time (defaults to 07:00 / 7:00 AM)
+  String get morningReminderTime {
+    final times = reminderTime.split(RegExp(r'[,|&]|\s+and\s+'));
+    final morning = times.isNotEmpty ? times[0].trim() : '07:00';
+    return morning.isNotEmpty ? morning : '07:00';
+  }
+
+  /// Evening reminder time (defaults to 20:00 / 8:00 PM)
+  String get eveningReminderTime {
+    final times = reminderTime.split(RegExp(r'[,|&]|\s+and\s+'));
+    if (times.length > 1) {
+      final evening = times[1].trim();
+      if (evening.isNotEmpty) return evening;
+    }
+    return '20:00';
+  }
+
+  static String formatDualReminderTime(String morning, String evening) {
+    return '${morning.trim()}, ${evening.trim()}';
   }
 
   Map<String, dynamic> toJson() {

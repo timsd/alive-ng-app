@@ -35,7 +35,7 @@ class QuickActionsGrid extends ConsumerWidget {
         route: AppConstants.bibleGameRoute,
       ),
       QuickAction(
-        icon: Icons.health_and_safety_rounded,
+        icon: Icons.medical_services_rounded,
         title: 'Health+',
         color: const Color(0xFF059669), // Emerald 600
         route: AppConstants.enhancedHealthRoute,

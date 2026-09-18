@@ -1544,6 +1544,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
           // which used to leave a long white area under the last project's
           // donate button.
           constraints: BoxConstraints(
+            maxWidth: 640,
             maxHeight: MediaQuery.of(ctx).size.height * 0.85,
           ),
           child: Container(

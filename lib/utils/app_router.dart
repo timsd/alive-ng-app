@@ -63,6 +63,8 @@ import '../services/appwrite_auth_service.dart';
 import '../constants/app_constants.dart';
 import '../services/onboarding_service.dart';
 import '../utils/web_launch_params.dart';
+import '../providers/auth_provider.dart';
+import '../providers/profile_setup_provider.dart';
 import '../utils/navigation_keys.dart';
 
 // New screen imports
@@ -131,13 +133,18 @@ final routerProvider = Provider<GoRouter>((ref) {
     );
   }
 
+  final refresh = ValueNotifier<int>(0);
+  ref.listen(authStateProvider, (_, __) => refresh.value++);
+  ref.onDispose(refresh.dispose);
+
   return GoRouter(
+    refreshListenable: refresh,
     navigatorKey: rootNavigatorKey,
     // Always start from splash so web/mobile behavior is consistent.
     initialLocation: AppConstants.splashRoute,
     redirect: (context, state) async {
       debugPrint('Router redirect start: ${state.uri.path}');
-      final currentUser = ref.watch(appwriteUserProvider);
+      final currentUser = ref.read(authGatewayProvider).currentUser;
       final isAuthenticated = currentUser != null;
       try {
         debugPrint('Auth state: authenticated=$isAuthenticated');
@@ -179,7 +186,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         return null;
       }
 
-      // Profile-completion checks will be restored against Appwrite profiles.
+      // Check before allowing any main-app route, including post-auth links.
+      if (currentUser != null &&
+          state.uri.path != '/profile-completion') {
+        try {
+          final required = await ref.read(profileSetupRequiredProvider(currentUser.uid).future);
+          if (required) return '/profile-completion';
+        } catch (e) {
+          debugPrint('Profile check failed; open setup for retry: $e');
+          return '/profile-completion';
+        }
+      }
 
       // Authenticated users can access all non-auth routes.
       if (isAuthenticated && !isAuthRoute) {

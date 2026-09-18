@@ -423,7 +423,19 @@ class _ResourcesScreenState extends ConsumerState<ResourcesScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _buildResourceDetailsSheet(context, resource),
+      builder: (context) => SafeArea(
+        top: true,
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: 640,
+              maxHeight: MediaQuery.of(context).size.height * 0.88,
+            ),
+            child: _buildResourceDetailsSheet(context, resource),
+          ),
+        ),
+      ),
     );
   }
 
@@ -431,7 +443,9 @@ class _ResourcesScreenState extends ConsumerState<ResourcesScreen> {
     final translate = ref.watch(languageProvider);
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.7,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
+      ),
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
         borderRadius: BorderRadius.vertical(
@@ -442,17 +456,15 @@ class _ResourcesScreenState extends ConsumerState<ResourcesScreen> {
       child: Column(
         children: [
           Container(
-            width: ResponsiveUtils.getResponsiveSpacing(context, 40),
-            height: ResponsiveUtils.getResponsiveSpacing(context, 4),
-            margin: EdgeInsets.symmetric(
-                vertical: ResponsiveUtils.getResponsiveSpacing(context, 12)),
+            width: 44,
+            height: 5,
+            margin: const EdgeInsets.only(top: 12, bottom: 8),
             decoration: BoxDecoration(
               color: Theme.of(context)
                   .colorScheme
                   .onSurface
                   .withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(
-                  ResponsiveUtils.getResponsiveBorderRadiusValue(context, 2)),
+              borderRadius: BorderRadius.circular(3),
             ),
           ),
           Expanded(

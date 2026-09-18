@@ -53,7 +53,7 @@ class CustomBottomSheet extends StatelessWidget {
         child: ConstrainedBox(
           constraints: constraints ??
               BoxConstraints(
-                maxWidth: 860,
+                maxWidth: 640,
                 maxHeight: height ?? MediaQuery.of(context).size.height * 0.88,
               ),
           child: Container(

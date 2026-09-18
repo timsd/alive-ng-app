@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../providers/appwrite_auth_provider.dart';
 import '../../services/appwrite_profile_service.dart';
+import '../../providers/profile_setup_provider.dart';
+import '../../widgets/profile_page_cues.dart';
 import '../../widgets/custom_app_bar.dart';
 
 /// Shown after Google / social sign-in when the user profile is missing key
@@ -160,6 +162,20 @@ class _ProfileCompletionScreenState
         decoration: _decoration(label, icon),
       );
 
+  /// Marks setup as handled for this account and moves on to the main app.
+  Future<void> _skipProfileSetup() async {
+    try {
+      final user = ref.read(appwriteUserStreamProvider).value;
+      await completeProfileSetup();
+      if (user != null) {
+        ref.invalidate(profileSetupRequiredProvider(user.uid));
+      }
+    } catch (e) {
+      debugPrint('Could not record skipped profile setup: $e');
+    }
+    if (mounted) context.go('/home');
+  }
+
   Future<void> _saveProfile() async {
     setState(() => _isSaving = true);
     try {
@@ -200,6 +216,11 @@ class _ProfileCompletionScreenState
         profileData: profileData,
       );
 
+      // Record completion so the router guard releases the user into the main
+      // app instead of redirecting straight back to this screen.
+      await completeProfileSetup();
+      ref.invalidate(profileSetupRequiredProvider(user.uid));
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -236,7 +257,7 @@ class _ProfileCompletionScreenState
         showBackButton: false,
         actions: [
           TextButton(
-            onPressed: _isSaving ? null : () => context.go('/home'),
+            onPressed: _isSaving ? null : _skipProfileSetup,
             child: Text(
               'Skip',
               style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
@@ -280,6 +301,9 @@ class _ProfileCompletionScreenState
                         theme.colorScheme.primary),
                   ),
                 ),
+                // Horizontal-swipe affordance: dots + hint so users know the
+                // setup steps are paged sideways, not just listed vertically.
+                ProfilePageCues(index: _currentStep, count: steps.length),
               ],
             ),
           ),

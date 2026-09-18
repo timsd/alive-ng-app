@@ -8,6 +8,7 @@
 // 4. Then items containing ANY query word, best scored first.
 // 5. Reference matches (e.g. "John 3") score alongside text matches.
 import 'package:flutter/material.dart';
+import '../constants/bible_data.dart';
 
 class SearchUtils {
   static final RegExp _punct = RegExp(r'[^\p{L}\p{N}\s]', unicode: true);
@@ -41,13 +42,69 @@ class SearchUtils {
     final phrase = normalize(query);
     if (phrase.isEmpty) return 0;
     final tokens = tokensOf(query);
-    final refNorm = reference.toLowerCase();
+    final refNorm = normalize(reference);
     final textNorm = normalize(text);
 
     var score = 0;
 
-    // Reference match, e.g. query "john 3" vs reference "John 3:16".
-    if (phrase.length >= 2 && refNorm.contains(phrase)) score += 500;
+    // Direct reference match, e.g. query "john 3" vs reference "john 3 16".
+    if (refNorm.startsWith(phrase)) {
+      score += 1000;
+    } else if (refNorm.contains(phrase)) {
+      score += 500;
+    }
+
+    // Canonical reference match check using BibleData
+    final parsedQuery = BibleData.parseReference(query);
+    if (parsedQuery['isValid'] == true) {
+      final queryBook = parsedQuery['book'] as String;
+      final queryChapter = parsedQuery['chapter'] as int;
+      final hasVerse = parsedQuery['hasVerse'] as bool;
+      final hasChapter = parsedQuery['hasChapter'] as bool;
+
+      final parsedRef = BibleData.parseReference(reference);
+      if (parsedRef['isValid'] == true) {
+        final refBook = parsedRef['book'] as String;
+        final refChapter = parsedRef['chapter'] as int;
+        final refStartVerse = parsedRef['startVerse'] as int;
+        final refEndVerse = parsedRef['endVerse'] as int;
+
+        if (queryBook.toLowerCase() == refBook.toLowerCase()) {
+          if (hasVerse) {
+            if (refChapter == queryChapter &&
+                parsedQuery['startVerse'] <= refEndVerse &&
+                parsedQuery['endVerse'] >= refStartVerse) {
+              score += 5000;
+            } else if (refChapter == queryChapter) {
+              score += 1200;
+            } else {
+              score += 200;
+            }
+          } else if (hasChapter) {
+            if (refChapter == queryChapter) {
+              score += 3000;
+            } else {
+              score += 400;
+            }
+          } else {
+            score += 2000;
+          }
+        }
+      }
+    }
+
+    // Check token matches across reference
+    var refHits = 0;
+    for (final t in tokens) {
+      if (refNorm.contains(t)) {
+        refHits++;
+      }
+    }
+    if (tokens.isNotEmpty && refHits == tokens.length) {
+      score += 400;
+    } else if (refHits > 0) {
+      score += refHits * 30;
+    }
 
     // Exact phrase in the verse text ("jesus wept").
     final phraseIndex = textNorm.indexOf(phrase);
@@ -68,15 +125,12 @@ class SearchUtils {
         } else if (textNorm.contains(t)) {
           hits++;
         }
-        if (refNorm.contains(t)) score += 5;
       }
       if (hits == tokens.length && tokens.length > 1) {
         // AND match: every word present.
         score += 200 + hits * 10;
       } else if (hits > 0) {
         score += hits * 10;
-      } else if (score == 0) {
-        return 0;
       }
       if (firstPos > 0) score += 500 ~/ (firstPos + 50);
     }

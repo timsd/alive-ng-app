@@ -11,6 +11,19 @@ class AppwriteStorageService {
 
   final Storage _storage = Storage(appwriteClient);
 
+  /// Uploaded media is rendered with plain HTTP requests (e.g.
+  /// `CachedNetworkImage`), which cannot carry the Appwrite session header.
+  /// Without an explicit read permission the returned `/view` URL would 403
+  /// and the freshly uploaded picture would never appear in the UI.
+  static final List<String> _publicReadPermission = [
+    Permission.read(Role.any()),
+  ];
+
+  static bool _isPermissionError(AppwriteException error) {
+    final message = (error.message ?? '').toLowerCase();
+    return message.contains('permission') || message.contains('forbidden');
+  }
+
   Future<String> uploadChatFile({
     required Uint8List bytes,
     required String fileName,
@@ -34,6 +47,7 @@ class AppwriteStorageService {
       bytes: bytes,
       fileName: fileName,
       contentType: contentType,
+      permissions: _publicReadPermission,
     );
   }
 
@@ -74,19 +88,43 @@ class AppwriteStorageService {
     required Uint8List bytes,
     required String fileName,
     required String contentType,
+    List<String>? permissions,
   }) async {
-    final file = await _storage.createFile(
-      bucketId: bucketId,
-      fileId: ID.unique(),
-      file: InputFile.fromBytes(
-        bytes: bytes,
-        filename: fileName,
-        contentType: contentType,
-      ),
-    );
+    InputFile buildInput() => InputFile.fromBytes(
+          bytes: bytes,
+          filename: fileName,
+          contentType: contentType,
+        );
+
+    String fileId;
+    try {
+      final file = await _storage.createFile(
+        bucketId: bucketId,
+        fileId: ID.unique(),
+        file: buildInput(),
+        permissions: permissions,
+      );
+      fileId = file.$id;
+    } on AppwriteException catch (e) {
+      // Buckets with `fileSecurity` disabled reject file level permissions.
+      // Fall back to the bucket defaults instead of failing the upload.
+      if (permissions == null ||
+          permissions.isEmpty ||
+          !_isPermissionError(e)) {
+        rethrow;
+      }
+      debugPrint(
+          'File permissions rejected for bucket $bucketId; retrying with bucket defaults: $e');
+      final file = await _storage.createFile(
+        bucketId: bucketId,
+        fileId: ID.unique(),
+        file: buildInput(),
+      );
+      fileId = file.$id;
+    }
 
     return '${AppwriteBackendConfig.endpoint}/storage/buckets/'
-        '$bucketId/files/${file.$id}/view'
+        '$bucketId/files/$fileId/view'
         '?project=${AppwriteBackendConfig.projectId}';
   }
 }

@@ -9,601 +9,602 @@ class AppLocalizationsYo extends AppLocalizations {
   AppLocalizationsYo([String locale = 'yo']) : super(locale);
 
   @override
-  String get home => 'Ilé';
+  String get home => 'Ile';
 
   @override
-  String get study => 'Ẹ̀kọ́';
+  String get study => 'Ẹkọ';
 
   @override
-  String get daily => 'Ojoojúmọ́';
+  String get daily => 'Ojoojumọ';
 
   @override
-  String get prayer => 'Àdúrà';
+  String get prayer => 'Adura';
 
   @override
-  String get profile => 'Prófáìlì';
+  String get profile => 'Profaili';
 
   @override
   String get welcome => 'Káàbọ̀';
 
   @override
-  String get loading => ' Ń gbé e bọ̀...';
+  String get loading => 'N gbe...';
 
   @override
-  String get save => 'Tọ́jú';
+  String get save => 'Tọju';
 
   @override
-  String get cancel => 'Fagilée';
+  String get cancel => 'Fagilee';
 
   @override
-  String get delete => 'Pa Ẹ́ Rẹ́';
+  String get delete => 'Paarẹ';
 
   @override
-  String get edit => 'Ṣàtúnṣe';
+  String get edit => 'Ṣatunkọ';
 
   @override
-  String get share => 'Apinni';
+  String get share => 'Pin';
 
   @override
-  String get error => 'Àṣìṣe';
+  String get error => 'Aṣiṣe';
 
   @override
-  String get success => 'Àṣeyọrí';
+  String get success => 'Aṣeyọri';
 
   @override
-  String get retry => 'Gbìyànjú Ẹ̀kan Sí i';
+  String get retry => 'Gbìyànjú Lẹ́ẹ̀kan Sí i';
 
   @override
-  String get ok => 'Ó Dára';
+  String get ok => 'O dara';
 
   @override
-  String get yes => 'Bẹ́ẹ̀ ni';
+  String get yes => 'Bẹẹni';
 
   @override
   String get no => 'Rárá';
 
   @override
-  String get prayerWall => 'Banga Adúrà';
+  String get prayerWall => 'Ogiri Adura';
 
   @override
-  String get sharePrayerRequest => 'Apinni Ìbéèrè Adúrà';
+  String get sharePrayerRequest => 'Pin Ibeere Adura';
 
   @override
-  String get prayFor => 'Gba Adúrà Fún';
+  String get prayFor => 'Gbadura Fun';
 
   @override
-  String get prayerRequests => 'Àwọn Ìbéèrè Adúrà';
+  String get prayerRequests => 'Awọn Ibeere Adura';
 
   @override
-  String get myPrayers => 'Àwọn Adúrà Mi';
+  String get myPrayers => 'Awọn Adura Mi';
 
   @override
-  String get addPrayer => 'Fi Adúrà Kún un';
+  String get addPrayer => 'Fi Adura Kun';
 
   @override
-  String get bibleStudy => 'Ìnásà Ìwé Mímọ́';
+  String get bibleStudy => 'Ẹkọ Bíbélì';
 
   @override
-  String get continueLesson => 'Tẹ̀síwájú Ẹ̀kọ́';
+  String get continueLesson => 'Tẹsiwaju Ẹkọ';
 
   @override
-  String get startProgram => 'Bẹ̀rẹ̀ Ètò';
+  String get startProgram => 'Bẹrẹ Eto';
 
   @override
-  String get studyProgress => 'Ìlọsíwájú Ẹ̀kọ́';
+  String get studyProgress => 'Ilọsiwaju Ẹkọ';
 
   @override
-  String get completedLessons => 'Àwọn Ẹ̀kọ́ Tí A Ti Pari';
+  String get completedLessons => 'Awọn Ẹkọ Ti O Ti Pari';
 
   @override
-  String get healthyLiving => 'Ìgbéga Ìlera';
+  String get healthyLiving => 'Igbesi Aye Ilera';
 
   @override
-  String get todaysScore => 'Àmì Ìlera Ti Òní';
+  String get todaysScore => 'Ami Ilera Oni';
 
   @override
-  String get logWater => 'Fi Omi Tí O Mu Sínú';
+  String get logWater => 'Fi Omi Ti O Mu Sinu';
 
   @override
-  String get waterIntake => 'Ìmumi';
+  String get waterIntake => 'Mimu Omi';
 
   @override
-  String get exercise => 'Eré Ìdárayá';
+  String get exercise => 'Ere Idaraya';
 
   @override
   String get sleep => 'Oorun';
 
   @override
-  String get nutrition => 'Oúnjẹ Ìlera';
+  String get nutrition => 'Ounjẹ Ilera';
 
   @override
-  String get missionStories => 'Àwọn Ìtàn Ìṣẹ́ Ìhìnrere';
+  String get missionStories => 'Awọn Itan Iṣẹ Ìhinrere';
 
   @override
-  String get supportMission => 'Stilẹ́yìn Ìṣẹ́ Ìhìnrere Ìyí';
+  String get supportMission => 'Atilẹyin Iṣẹ Ìhinrere Yi';
 
   @override
-  String get missions => 'Ìṣẹ́ Ìhìnrere';
+  String get missions => 'Iṣẹ Ihinrere';
 
   @override
-  String get donate => 'Ṣe Ọrẹ';
+  String get donate => 'Tọrọ Aṣọ / Ṣe Ọrẹ';
 
   @override
-  String get volunteer => 'Ṣe Atìlẹ́yìn Lọ́fẹ̀ẹ́';
+  String get volunteer => 'Ṣe Atilẹyin / Ayyọọda';
 
   @override
-  String get settings => 'Àwọn Ètò';
+  String get settings => 'Awọn Eto';
 
   @override
-  String get language => 'Èdè';
+  String get language => 'Ede';
 
   @override
-  String get notifications => 'Àwọn Ìnàsà';
+  String get notifications => 'Awọn Iwifunni';
 
   @override
-  String get theme => 'Àwọ̀ Ìgbéga';
+  String get theme => 'Aṣa';
 
   @override
-  String get account => 'Àkọ́ọ́lẹ̀';
+  String get account => 'Akọọlẹ';
 
   @override
-  String get privacy => 'Àṣírí';
+  String get privacy => 'Aṣiri';
 
   @override
-  String get about => 'Nípa';
+  String get about => 'Nipa Wa';
 
   @override
-  String get signIn => 'Wọlé';
+  String get signIn => 'Wọle';
 
   @override
-  String get signUp => 'Forúkọsílẹ̀';
+  String get signUp => 'Forukọsilẹ';
 
   @override
-  String get signOut => 'Jádé';
+  String get signOut => 'Jade';
 
   @override
-  String get email => 'Ímeèlì';
+  String get email => 'Imeeli';
 
   @override
-  String get password => 'Ọ̀rọ̀ Ìgbàníwọlé';
+  String get password => 'Ọrọ Igbaniwọle';
 
   @override
-  String get confirmPassword => 'Tẹ́wọ́gba Ọ̀rọ̀ Ìgbàníwọlé';
+  String get confirmPassword => 'Jẹrisi Ọrọ Igbaniwọle';
 
   @override
-  String get forgotPassword => 'Gbàgbé Ọ̀rọ̀ Ìgbàníwọlé?';
+  String get forgotPassword => 'Gbagbe Ọrọ Igbaniwọle?';
 
   @override
-  String get createAccount => 'Ṣẹ̀dá Àkọ́ọ́lẹ̀';
+  String get createAccount => 'Ṣẹda Akọọlẹ';
 
   @override
-  String get alreadyHaveAccount => 'Ní àkọ́ọ́lẹ̀ tẹ́lẹ̀?';
+  String get alreadyHaveAccount => 'Ṣe o ni akọọlẹ tẹlẹ?';
 
   @override
-  String get dontHaveAccount => 'Kò ní àkọ́ọ́lẹ̀?';
+  String get dontHaveAccount => 'Ṣe o ko ni akọọlẹ?';
 
   @override
-  String get archived_users => 'Àwọn Olùlò Tí A Fi Pạmọ́';
+  String get archived_users => 'Awọn olumulo ti a fi pamọ';
 
   @override
-  String get health => 'Ìlera';
+  String get health => 'Ilera';
 
   @override
-  String get welcome_message => 'Ìfihàn Kíní';
+  String get welcome_message => 'Ifiranṣẹ Ikini';
 
   @override
-  String get good_morning => 'Ẹ Káàárọ̀';
+  String get good_morning => 'Ẹ káàrọ̀';
 
   @override
-  String get good_afternoon => 'Ẹ Káàsán';
+  String get good_afternoon => 'Ẹ káàsán';
 
   @override
-  String get good_evening => 'Ẹ Káàlẹ́';
+  String get good_evening => 'Ẹ káàlẹ́';
 
   @override
-  String get daily_verse => 'Ẹsẹ Ti Ojoojúmọ́';
+  String get daily_verse => 'Ẹsẹ Bíbélì Ojoojumọ';
 
   @override
-  String get quick_actions => 'Àwọn Ìṣe Kánkán';
+  String get quick_actions => 'Awọn Iṣẹ Kiakia';
 
   @override
-  String get study_programs => 'Àwọn Ètò Ẹ̀kọ́';
+  String get study_programs => 'Awọn Eto Ẹkọ';
 
   @override
-  String get prayer_requests => 'Àwọn Ìbéèrè Adúrà';
+  String get prayer_requests => 'Awọn Ibeere Adura';
 
   @override
-  String get health_tracking => 'Ìtọpinpin Ìlera';
+  String get health_tracking => 'Itọpinpin Ilera';
 
   @override
-  String get mission_updates => 'Àwọn Ìnásà Ìṣẹ́ Ìhìnrere';
+  String get mission_updates => 'Awọn Imudojuiwọn Iṣẹ Ìhinrere';
 
   @override
   String get bible => 'Bíbélì';
 
   @override
-  String get read_bible => 'Kà Bíbélì';
+  String get read_bible => 'Ka Bíbélì';
 
   @override
-  String get bible_study => 'Ẹ̀kọ́ Bíbélì';
+  String get bible_study => 'Ẹkọ Bíbélì';
 
   @override
-  String get daily_devotion => 'Ìsìn Ojoojúmọ́';
+  String get daily_devotion => 'Isin Ojoojumọ';
 
   @override
-  String get interactive_lessons => 'Àwọn Ẹ̀kọ́ Ìbáradọ́gba';
+  String get interactive_lessons => 'Awọn Ẹkọ Ibaraenisepo';
 
   @override
-  String get search_lessons => 'Wá Àwọn Ẹ̀kọ́';
+  String get search_lessons => 'Wa Awọn Ẹkọ';
 
   @override
-  String get all_lessons => 'Gbogbo Àwọn Ẹ̀kọ́';
+  String get all_lessons => 'Gbogbo Awọn Ẹkọ';
 
   @override
-  String get in_progress => 'Ń Lọ Ọ́';
+  String get in_progress => 'N Lọ Lọwọ';
 
   @override
-  String get favorites => 'Àwọn Ààyò Mi';
+  String get favorites => 'Awọn Ayanfẹ';
 
   @override
-  String get completed => 'Ti Parí';
+  String get completed => 'Ti Pari';
 
   @override
-  String get no_lessons_found => 'Kò sí ẹ̀kọ́ tí a rí';
+  String get no_lessons_found => 'Ko si ẹkọ ti a ri';
 
   @override
-  String get category => 'Ẹ̀ka';
+  String get category => 'Ẹka';
 
   @override
-  String get level => 'Ìpèlé';
+  String get level => 'Ipele';
 
   @override
-  String get duration => 'Àkókò';
+  String get duration => 'Akoko';
 
   @override
-  String get close => 'Tì í';
+  String get close => 'Pa De';
 
   @override
-  String get sign_in => 'Wọlé';
+  String get sign_in => 'Wọle';
 
   @override
-  String get sign_up => 'Forúkọsílẹ̀';
+  String get sign_up => 'Forukọsilẹ';
 
   @override
-  String get sign_in_to_continue => 'Wọlé láti tẹ̀síwájú ìdàgbàsókè ẹ̀mí rẹ';
+  String get sign_in_to_continue => 'Wọle lati tẹsiwaju idagbasoke ẹmi rẹ';
 
   @override
-  String get sign_out => 'Jádé';
+  String get sign_out => 'Jade';
 
   @override
-  String get full_name => 'Orúkọ Kíkún';
+  String get full_name => 'Orukọ Kikun';
 
   @override
-  String get confirm_password => 'Tẹ́wọ́gba Ọ̀rọ̀ Ìgbàníwọlé';
+  String get confirm_password => 'Jẹrisi Ọrọ Igbaniwọle';
 
   @override
   String get create_account_message =>
-      'Ṣẹ̀dá àkọ́ọ́lẹ̀ rẹ láti bẹ̀rẹ̀ ìrin-àjo ẹ̀mí rẹ';
+      'Ṣẹda akọọlẹ rẹ lati bẹrẹ irin-ajo ẹmi rẹ';
 
   @override
   String get welcome_back_message =>
-      'Káàbọ̀ padà! Wọlé láti tẹ̀síwájú ìdàgbàsókè ẹ̀mí rẹ';
+      'Káàbọ̀ pada! Wọle lati tẹsiwaju idagbasoke ẹmi rẹ';
 
   @override
-  String get please_enter_full_name => 'Jọ̀wọ́ tẹ orúkọ kíkún rẹ síbẹ̀';
+  String get please_enter_full_name => 'Jọwọ tẹ orukọ kikun rẹ sinu';
 
   @override
-  String get please_enter_email => 'Jọ̀wọ́ tẹ ímeèlì rẹ síbẹ̀';
+  String get please_enter_email => 'Jọwọ tẹ imeeli rẹ sinu';
 
   @override
-  String get please_enter_valid_email => 'Jọ̀wọ́ tẹ adírẹ́ṣì ímeèlì tí ó tọ́ síbẹ̀';
+  String get please_enter_valid_email => 'Jọwọ tẹ adirẹsi imeeli to tọ sinu';
 
   @override
-  String get please_enter_password => 'Jọ̀wọ́ tẹ ọ̀rọ̀ ìgbàníwọlé rẹ síbẹ̀';
+  String get please_enter_password => 'Jọwọ tẹ ọrọ igbaniwọle rẹ sinu';
 
   @override
   String get password_min_length =>
-      'Ọ̀rọ̀ ìgbàníwọlé gbọ́dọ̀ jẹ́ ó kéré jù àwọn aláfábẹ́ẹ̀tì 6';
+      'Ọrọ igbaniwọle gbọdọ jẹ o kere ju awọn kikọ 6';
 
   @override
-  String get passwords_do_not_match => 'Àwọn ọ̀rọ̀ ìgbàníwọlé ko bámu';
+  String get passwords_do_not_match => 'Awọn ọrọ igbaniwọle ko baamu';
 
   @override
-  String get submit => 'Fi Ránṣẹ́';
+  String get submit => 'Fi Silẹ';
 
   @override
-  String get add => 'Fi Kún un';
+  String get add => 'Fi Kun';
 
   @override
-  String get version => 'Ẹ̀ya';
+  String get version => 'Ẹya';
 
   @override
-  String get try_again => 'Gbìyànjú Ẹ̀kan Sí i';
+  String get try_again => 'Gbiyanju Lẹẹkansi';
 
   @override
-  String get no_data => 'Kò sí áńtání';
+  String get no_data => 'Ko Si Data';
 
   @override
-  String get selection => 'Àyànfẹ́';
+  String get selection => 'Yiyan';
 
   @override
-  String get coming_soon => 'Ń Bọ̀ Láìpẹ́';
+  String get coming_soon => 'N Bọ Laipẹ';
 
   @override
-  String get continue_spiritual_journey => 'Tẹ̀síwájú ìrin-àjo ẹ̀mí rẹ lónìí';
+  String get continue_spiritual_journey => 'Tẹsiwaju irin-ajo ẹmi rẹ loni';
 
   @override
-  String get recent_activity => 'Àwọn Ìṣe Àìpẹ́';
+  String get recent_activity => 'Iṣẹ Aipẹ';
 
   @override
-  String get your_progress => 'Ìlọsíwájú Rẹ';
+  String get your_progress => 'Ilọsiwaju Rẹ';
 
   @override
-  String get bible_study_completed => 'Ẹ̀kọ́ Bíbélì Ti Parí';
+  String get bible_study_completed => 'Ẹkọ Bíbélì Ti Pari';
 
   @override
-  String get prayer_request_submitted => 'Ìbéèrè Adúrà Ti Fi Ránṣẹ́';
+  String get prayer_request_submitted => 'Ibeere Adura Ti Fi Silẹ';
 
   @override
-  String get joined_small_group => 'Darapọ̀ mọ́ Ẹgbẹ́ Kékeré';
+  String get joined_small_group => 'Darapọ mọ Ẹgbẹ Kekere';
 
   @override
-  String get hours_ago => 'wákàtí sẹ́yìn';
+  String get hours_ago => 'wakati sẹhin';
 
   @override
-  String get day_ago => 'ọjọ́ kan sẹ́yìn';
+  String get day_ago => 'ọjọ kan sẹhin';
 
   @override
-  String get studies => 'Àwọn Ẹ̀kọ́';
+  String get studies => 'Awọn Ẹkọ';
 
   @override
-  String get prayers => 'Àwọn Adúrà';
+  String get prayers => 'Awọn Adura';
 
   @override
-  String get this_month => 'Oṣù Ìyí';
+  String get this_month => 'Oṣu Yii';
 
   @override
-  String get groups => 'Àwọn Ẹgbẹ́';
+  String get groups => 'Awọn Ẹgbẹ';
 
   @override
-  String get active => 'Tí Ń Ṣiṣẹ́';
+  String get active => 'Ti n Ṣiṣẹ';
 
   @override
-  String get streak => 'Ìlọsíwájú';
+  String get streak => 'Aṣeyọri Ojoojumọ';
 
   @override
-  String get days => 'Àwọn Ọjọ́';
+  String get days => 'Awọn Ọjọ';
 
   @override
-  String get stop => 'Dúró';
+  String get stop => 'Duro';
 
   @override
-  String get listen => 'Gbọ́';
+  String get listen => 'Gbọ';
 
   @override
-  String get explore => 'Ṣàwárí';
+  String get explore => 'Ṣawari';
 
   @override
-  String get failed_to_load_verse => 'Kùnà láti gbé ẹsẹ jáde';
+  String get failed_to_load_verse => 'Kuna lati gbe ẹsẹ Bíbélì';
 
   @override
-  String get featured_today => 'Pataki Lónìí';
+  String get featured_today => 'Pataki Loni';
 
   @override
-  String get health_message => 'Ìfihàn Ìlera: Àwọn Ẹ̀wọ́sàn Àdayébá';
+  String get health_message => 'Aṣẹ Ilera: Awọn Dokita Adayeba Mẹjọ';
 
   @override
   String get health_message_desc =>
-      'Ṣàwárí ètò Ọlọ́run fún ìgbéga ìlera nípasẹ̀ àwọn dokita mẹ́jọ àdayébá';
+      'Ṣawari eto Ọlọrun fun igbesi aye ilera nipasẹ awọn dokita adayeba mẹjọ';
 
   @override
-  String get mission_spotlight => 'Àfiyèsí Ìṣẹ́ Ìhìnrere: Àríwá Nàìjíríà';
+  String get mission_spotlight => 'Ifojusi Iṣẹ: Ariwa Naijiria';
 
   @override
   String get mission_spotlight_desc =>
-      'Kà àwọn ìtàn àtìlẹ́yìn láti ìṣẹ́ wa ní gbogbo Nàìjíríà';
+      'Ka awọn itan atilẹyin lati iṣẹ wa ni gbogbo Naijiria';
 
   @override
-  String get join_us_spiritual_growth => 'Darapọ̀ mọ́ wa ní ìdàgbàsókè ẹ̀mí';
+  String get join_us_spiritual_growth => 'Darapọ mọ wa ni idagbasoke ẹmi';
 
   @override
-  String get about_app => 'Nípa Àfilọ́lẹ̀';
+  String get about_app => 'Nipa App Yii';
 
   @override
-  String get about_alive => 'Nípa ALIVE';
+  String get about_alive => 'Nipa ALIVE';
 
   @override
-  String get app_tagline => 'Ìwá Bíbélì, adúrà, àti ìṣẹ́ nínú àwùjọ kan';
+  String get app_tagline =>
+      'Ẹkọ Bíbélì, adura, ati iṣẹ ìhinrere ni agbegbe kan';
 
   @override
-  String get resources => 'Àwọn Ohun Ẹ̀kọ́';
+  String get resources => 'Awọn Ohun Elo';
 
   @override
-  String get resources_title => 'Àwọn Ohun Ẹ̀kọ́ Ìṣẹ́ Ìhìnrere';
+  String get resources_title => 'Awọn Ohun Elo Iṣẹ Ìhinrere';
 
   @override
   String get resources_subtitle =>
-      'Ìwá, adúrà, ìlera, orin, àti àwọn ohun ẹ̀kọ́ ìhìnrere';
+      'Ẹkọ, adura, ilera, orin, ati awọn ohun elo ihinrere';
 
   @override
-  String get error_loading_reports => 'Àṣìṣe nínú gbigbé àwọn àbájáde';
+  String get error_loading_reports => 'Aṣiṣe ninu gbigbe awọn ijabọ';
 
   @override
-  String get board_reports => 'Àwọn Àbájáde Ìgbìmọ̀';
+  String get board_reports => 'Awọn Ijabọ Igbimọ';
 
   @override
-  String get status => 'Ìpò';
+  String get status => 'Ipò';
 
   @override
-  String get create_new_report => 'Ṣẹ̀dá Àbájáde Tuntun';
+  String get create_new_report => 'Ṣẹda Ijabọ Tuntun';
 
   @override
-  String get report_title => 'Akọlé Àbájáde';
+  String get report_title => 'Akọlé Ijabọ';
 
   @override
-  String get description => 'Àlàyé';
+  String get description => 'Alaye';
 
   @override
-  String get report_content => 'Àkóónú Àbájáde';
+  String get report_content => 'Akóónú Ijabọ';
 
   @override
-  String get create => 'Ṣẹ̀dá';
+  String get create => 'Ṣẹda';
 
   @override
-  String get report_created_successfully => 'Àbájáde ti ṣẹ̀dá ní àṣeyọrí';
+  String get report_created_successfully => 'Ijabọ ti ṣẹda ni aṣeyọri';
 
   @override
-  String get report_submitted_for_review => 'Àbájáde ti firánṣẹ́ fún àtúnyẹ̀wò';
+  String get report_submitted_for_review => 'Ijabọ ti firanṣẹ fun atunyẹwo';
 
   @override
-  String get error_loading_dashboard => 'Àṣìṣe nínú gbigbé apá ìṣàkóso';
+  String get error_loading_dashboard => 'Aṣiṣe ninu gbigbe dashboard';
 
   @override
-  String get access_denied => 'Wọlé Kọ̀';
+  String get access_denied => 'Wiwọle Kọ';
 
   @override
-  String get admin_dashboard => 'Apá Ìṣàkóso Alábòójútó';
+  String get admin_dashboard => 'Dashboard Alabojuto';
 
   @override
-  String get user_approval => 'Ìfọwọ́sì Olùlò';
+  String get user_approval => 'Ifọwọsi Olumulo';
 
   @override
-  String get pending_users => 'Àwọn Olùlò Tí Ń Duro';
+  String get pending_users => 'Awọn Olumulo Ti n Duro';
 
   @override
-  String get approved_users => 'Àwọn Olùlò Tí A Fọwọ́sì';
+  String get approved_users => 'Awọn Olumulo Ti a Fọwọsi';
 
   @override
-  String get rejected_users => 'Àwọn Olùlò Tí A Kọ̀';
+  String get rejected_users => 'Awọn Olumulo Ti a Kọ';
 
   @override
-  String get approve_user => 'Fọwọ́sì Olùlò';
+  String get approve_user => 'Fọwọsi Olumulo';
 
   @override
-  String get reject_user => 'Kọ̀ Olùlò';
+  String get reject_user => 'Kọ Olumulo';
 
   @override
-  String get approval_reason => 'Ìdí Ìfọwọ́sì';
+  String get approval_reason => 'Idi Ifọwọsi';
 
   @override
-  String get rejection_reason => 'Ìdí Kikọ̀';
+  String get rejection_reason => 'Idi Kikọ';
 
   @override
-  String get user_approved_successfully => 'A ti fọwọ́sì olùlò ní àṣeyọrí';
+  String get user_approved_successfully => 'A ti fọwọsi olumulo ni aṣeyọri';
 
   @override
-  String get user_rejected_successfully => 'A ti kọ̀ olùlò ní àṣeyọrí';
+  String get user_rejected_successfully => 'A ti kọ olumulo ni aṣeyọri';
 
   @override
-  String get account_pending_approval => 'Àkọ́ọ́lẹ̀ Ń Duro Fún Ìfọwọ́sì';
+  String get account_pending_approval => 'Akọọlẹ N Duro Fun Ifọwọsi';
 
   @override
   String get account_under_review =>
-      'Àkọ́ọ́lẹ̀ rẹ wà lábẹ́ àyẹ̀wò. Ìwọ yóò ní wiwọlé kíkún nígbà tí a bá fọwọ́sì.';
+      'Akọọlẹ rẹ wa labẹ ayẹwo. Iwọ yoo ni wiwọle kikun nigbati a ba fọwọsi.';
 
   @override
-  String get pending_admin_approval => 'Ń duro fún ìfọwọ́sì alábòójútó';
+  String get pending_admin_approval => 'N duro fun ifọwọsi alabojuto';
 
   @override
-  String get no_pending_users => 'Kò sí àwọn olùlò tí ń duro';
+  String get no_pending_users => 'Ko si awọn olumulo ti n duro';
 
   @override
-  String get local_chapter => 'Ẹ̀ka Agbègbè';
+  String get local_chapter => 'Ẹka Agbegbe';
 
   @override
-  String get local_church => 'Ìjọ Agbègbè';
+  String get local_church => 'Ijo Agbegbe';
 
   @override
-  String get conference => 'Àpéjọ';
+  String get conference => 'Apejọ';
 
   @override
-  String get commitment_type => 'Irú Àdéhùn';
+  String get commitment_type => 'Iru Adehun';
 
   @override
-  String get financial_commitment => 'Àdéhùn Olowo';
+  String get financial_commitment => 'Adehun Owo';
 
   @override
-  String get verification_details => 'Àwọn Àlàyé Ìjẹ́rìí';
+  String get verification_details => 'Awọn Alaye Ijẹrisi';
 
   @override
-  String get commitment_details => 'Àwọn Àlàyé Àdéhùn';
+  String get commitment_details => 'Awọn Alaye Adehun';
 
   @override
-  String get bible_reader => 'Olùkà Bíbélì';
+  String get bible_reader => 'Oluka Bíbélì';
 
   @override
   String get enter_bible_reference =>
-      'Tẹ Ìtọ́kasí Bíbélì (bi àpẹẹrẹ, Jòhánù 3:16)';
+      'Tẹ Itọkasi Bíbélì (bi apẹẹrẹ, Johanu 3:16)';
 
   @override
   String get go => 'Lọ';
 
   @override
-  String get verse_copied_to_clipboard => 'Ẹsẹ ti a kọ sí apá ìpamọ́';
+  String get verse_copied_to_clipboard => 'Ẹsẹ ti kọ si clipboard';
 
   @override
-  String get copy => 'Ṣàkọsílẹ̀';
+  String get copy => 'Da Kọ';
 
   @override
-  String get search_verses => 'Wá àwọn ẹsẹ...';
+  String get search_verses => 'Wa awọn ẹsẹ...';
 
   @override
-  String get opening_book => 'Ṣíṣí Ìwé';
+  String get opening_book => 'Ṣíṣí...';
 
   @override
-  String get search_topic_or_reference => 'Wá kókó tàbí ìtọ́kasí Bíbélì...';
+  String get search_topic_or_reference => 'Wa koko tabi itọkasi Bíbélì...';
 
   @override
-  String get searching_for => 'Ṣíṣe àwárí fún';
+  String get searching_for => 'Ṣíṣe àwárí fun';
 
   @override
-  String get authentication_required => 'Ìfọwọ́sì Nílò';
+  String get authentication_required => 'Ifọwọsi Nilo';
 
   @override
   String get prayer_auth_message =>
-      'Jọ̀wọ́ wọlé láti rí àwọn ìbéèrè adúrà àti láti pín àwọn ìbéèrè adúrà rẹ.';
+      'Jọwọ wọle lati wọle si awọn ibeere adura ati pin awọn iwulo adura rẹ.';
 
   @override
-  String get add_prayer_request => 'Fi Ìbéèrè Adúrà Kún un';
+  String get add_prayer_request => 'Fi Ibeere Adura Kun';
 
   @override
   String get reply => 'Dáhùn';
 
   @override
-  String get message_copied_to_clipboard => 'Ìrànṣẹ́ ti a kọ sí apá ìpamọ́';
+  String get message_copied_to_clipboard => 'Ìrànṣẹ́ ti kọ si clipboard';
 
   @override
-  String get create_channel => 'Ṣẹ̀dá Kánẹ́lì';
+  String get create_channel => 'Ṣẹda Kanu';
 
   @override
-  String get channel_info => 'Ìfitónilétí Kánẹ́lì';
+  String get channel_info => 'Alaye Kanu';
 
   @override
-  String get members => 'Àwọn Ọmọ Ẹgbẹ́';
+  String get members => 'Awọn Ọmọ Ẹgbẹ';
 
   @override
-  String get failed_to_create_channel => 'Kò ṣée ṣe láti ṣẹ̀dá kánẹ́lì';
+  String get failed_to_create_channel => 'Kò ṣee ṣe lati ṣẹda kanu';
 
   @override
-  String get create_channel_title => 'Ṣẹ̀dá Kánẹ́lì';
+  String get create_channel_title => 'Ṣẹda Kanu';
 
   @override
-  String get channel_name => 'Orúkọ Kánẹ́lì';
+  String get channel_name => 'Orúkọ Kanu';
 
   @override
-  String get channel_type => 'Irú Kánẹ́lì';
+  String get channel_type => 'Iru Kanu';
 
   @override
-  String get attach_file => 'So fáìlì mọ́ ọn';
+  String get attach_file => 'So fáìlì mọ́';
 
   @override
   String get send_message => 'Fi ìrànṣẹ́ ránṣẹ́';
 
   @override
-  String get refresh_channels => 'Sọ àwọn kánẹ́lì duntun';
+  String get refresh_channels => 'Sọ awọn kanu di tuntun';
 
   @override
-  String get search_channels => 'Wá àwọn kánẹ́lì...';
+  String get search_channels => 'Wa awọn kanu...';
 
   @override
   String get go_home => 'Lọ sí Ilé';
@@ -612,71 +613,71 @@ class AppLocalizationsYo extends AppLocalizations {
   String get go_back => 'Padà Sẹ́yìn';
 
   @override
-  String get dismiss => 'Bọ́ Sílẹ̀';
+  String get dismiss => 'Kọ̀ Sílẹ̀';
 
   @override
-  String get gift_in_kind => 'Ẹ̀bùn Ohun Elo';
+  String get gift_in_kind => 'Ẹbun Ohun Elo';
 
   @override
-  String get donate_specific_items => 'Ṣe ọrẹ àwọn ohun kan pàtó';
+  String get donate_specific_items => 'Ṣe ọrẹ awọn ohun kan pato';
 
   @override
   String get gik_intro =>
-      'Kún fọ́ọ̀mù ìyí láti ṣe ọrẹ àwọn ohun kan pàtó bíi ọkọ̀ iṣẹ́, ilẹ̀, àti bẹ́ẹ̀ bẹ́ẹ̀ lọ.';
+      'Kun fọọmu yii lati ṣe ọrẹ awọn ohun kan pato bi ọkọ iṣẹ, ilẹ, ati bẹbẹ lọ.';
 
   @override
-  String get item_type => 'Irú Ohun';
+  String get item_type => 'Iru Ohun';
 
   @override
-  String get quantity => 'Ìwọ̀n/Oshooṣù';
+  String get quantity => 'Iye / Ọpọlọpọ';
 
   @override
-  String get estimated_value_optional => 'Iye Tí Ó Ṣeé Ṣe (Kò Pon dandan)';
+  String get estimated_value_optional => 'Iye Owo Afojusun (Aṣayan)';
 
   @override
-  String get delivery_preference => 'Àyànfẹ́ Ìfijiṣẹ́';
+  String get delivery_preference => 'Ifẹ Ifijiṣẹ';
 
   @override
-  String get location => 'Ibi';
+  String get location => 'Ibi / Agbegbe';
 
   @override
-  String get description_optional => 'Àlàyé (Kò Pon dandan)';
+  String get description_optional => 'Apejuwe (Aṣayan)';
 
   @override
-  String get helper_additional_details => 'Fi eyíkeeyí àlàyé afikun sí i';
+  String get helper_additional_details => 'Pese eyikeyi alaye afikun';
 
   @override
-  String get submit_and_email => 'Fi ránṣẹ́ kí o sì fi ímeèlì ránṣẹ́';
+  String get submit_and_email => 'Fi silẹ ki o fi imeeli ránṣẹ́';
 
   @override
-  String get pickup => 'Gbígbà';
+  String get pickup => 'Gbigba Taa';
 
   @override
-  String get drop_off => 'Ìfijiṣẹ́';
+  String get drop_off => 'Ifijiṣẹ Sii';
 
   @override
   String get guest_user => 'Àlejò';
 
   @override
-  String get no_email => 'Kò sí ímeèlì';
+  String get no_email => 'Kò sí ìmeèlì';
 
   @override
-  String get edit_profile => 'Ṣàtúnṣe Prófáìlì';
+  String get edit_profile => 'Ṣàtúnṣe Profaili';
 
   @override
-  String get help_support => 'Ìrànlọ́wọ́ & Àtìlẹ́yìn';
+  String get help_support => 'Ìrànlọ́wọ́ & Atilẹ́yìn';
 
   @override
-  String get faq => 'Àwọn Ìbéèrè Tí A Ma Ń Beere';
+  String get faq => 'Awon Ibere ati Esi';
 
   @override
   String get guides => 'Ìtọ́nisọ́nà';
 
   @override
-  String get contact => 'Kàn sí wa';
+  String get contact => 'Kan Sí Wa';
 
   @override
-  String get feedback => 'Èrò Ìfọ̀rọ̀wánilẹ́nuwò';
+  String get feedback => 'Afefe Ero / Atunwo';
 
   @override
   String get sunday_thursday => 'Ọjọ́ Àìkú - Ọjọ́bọ̀';
@@ -688,495 +689,499 @@ class AppLocalizationsYo extends AppLocalizations {
   String get saturday => 'Ọjọ́ Àbámẹ́ta';
 
   @override
-  String get closed => 'Tì pa';
+  String get closed => 'Ti Padi';
 
   @override
-  String get copyright => '© 2025 ALIVE Nàìjíríà';
+  String get copyright => '© 2025 ALIVE Naijiria';
 
   @override
-  String get books_and_tracts => 'Àwọn Ìwé & Àwọn Tirakti';
+  String get books_and_tracts => 'Awọn Iwe & Awọn Tirakti';
 
   @override
-  String get books => 'Àwọn Ìwé';
+  String get books => 'Awọn Iwe';
 
   @override
-  String get tracts => 'Àwọn Tirakti';
+  String get tracts => 'Awọn Tirakti';
 
   @override
-  String get downloaded => 'Tí a gba sílẹ̀';
+  String get downloaded => 'Ti a gba silẹ';
 
   @override
-  String get search_books_tracts => 'Wá àwọn ìwé àti tirakti...';
+  String get search_books_tracts => 'Wa awọn iwe ati tirakti...';
 
   @override
-  String get all_categories => 'Gbogbo Ẹ̀ka';
+  String get all_categories => 'Gbogbo Ẹka';
 
   @override
-  String get category_doctrine => 'Ẹ̀kọ́ Ìgbàgbọ́';
+  String get category_doctrine => 'Ẹkọ Isin';
 
   @override
-  String get category_prophecy => 'Àsọtẹ́lẹ̀';
+  String get category_prophecy => 'Asọtẹlẹ';
 
   @override
-  String get category_health => 'Ìlera';
+  String get category_health => 'Ilera';
 
   @override
-  String get category_youth => 'Ọ̀dọ́';
+  String get category_youth => 'Ọdọ';
 
   @override
-  String get category_family => 'Ẹ̀bí';
+  String get category_family => 'Ẹbi';
 
   @override
-  String get category_evangelism => 'Ìhìnrere';
+  String get category_evangelism => 'Ihinrere';
 
   @override
-  String get category_sabbath => 'Ọjọ́ Ìsinmi';
+  String get category_sabbath => 'Ọjọ Isinmi';
 
   @override
-  String get no_tracts_found => 'Kò sí tirakti tí a rí';
+  String get no_tracts_found => 'Ko si tirakti ti a ri';
 
   @override
-  String get no_downloads_yet => 'Kò sí nǹkan tí a gba sílẹ̀ síbẹ̀síbẹ̀';
+  String get no_downloads_yet => 'Ko si nkan ti a gba silẹ sibẹsibẹ';
 
   @override
   String get materials_download_message =>
-      'Àwọn ohun ẹ̀kọ́ tí o bá gba sílẹ̀ yóò hàn níbí';
+      'Awọn ohun elo ti o ba gba silẹ yoo han nibi';
 
   @override
-  String get view_pdf => 'Wò PDF';
+  String get view_pdf => 'Wo PDF';
 
   @override
-  String get administrative => 'Ìṣàkóso';
+  String get administrative => 'Iṣakoso';
 
   @override
-  String get management => 'Ìtọ́jú';
+  String get management => 'Itoju';
 
   @override
-  String get claim_admin_role => 'Béèrè fún Ìpa Alábòójútó';
+  String get claim_admin_role => 'Beere fun Ipa Alabojuto';
 
   @override
-  String get admin_claims_preview => 'Àwòtẹ́lẹ̀ Àwọn Ìpè Alábòójútó';
+  String get admin_claims_preview => 'Awotẹlẹ Awọn Ipe Alabojuto';
 
   @override
-  String get more_features => 'Àwọn Ẹ̀ya Sinsin';
+  String get more_features => 'Awọn ẹya diẹ sii';
 
   @override
-  String get christian_community => 'Àwùjọ Onígbàgbọ́';
+  String get christian_community => 'Agbegbe Kristiẹni';
 
   @override
-  String get community => 'Àwùjọ';
+  String get community => 'Agbegbe';
 
   @override
-  String get main_features => 'Àwọn Ẹ̀ya Pataki';
+  String get main_features => 'Awọn ẹya Pataki';
 
   @override
-  String get page_not_found => 'A kò rí ojú-ewé náà';
+  String get page_not_found => 'A ko ri oju-iwe naa';
 
   @override
   String get admin_role_claimed =>
-      'A ti gba ìpa alábòójútó. Jádé kí o tún wọlé.';
+      'A ti gba ipa alabojuto. Jade ki o tun wọle.';
 
   @override
   String get claim_failed =>
-      'Ìpè kùnà. Jọ̀wọ́ rí i daju pé Cloud Function ti ṣiṣẹ́.';
+      'Ipe kuna. Jọwọ rii daju pe Cloud Function ti ṣiṣẹ.';
 
   @override
-  String get could_not_claim_admin => 'A kò le gba ìpa alábòójútó ní àkókò ìyí.';
+  String get could_not_claim_admin => 'A ko le gba ipa alabojuto ni akoko yii.';
 
   @override
-  String get join => 'Darapọ̀';
+  String get join => 'Darapọ';
 
   @override
-  String get board_meeting_available => 'Ìpàdé Ìgbìmọ̀ Àwọn Olùdarí wà';
+  String get board_meeting_available => 'Ipejọpọ Igbimọ Awọn Oludari wa';
 
   @override
-  String get how_to_join_chapter => 'Báwo ni mo ṣe le darapọ̀ mọ́ ẹ̀ka agbègbè?';
+  String get how_to_join_chapter => 'Bawo ni mo ṣe le darapọ mọ ẹka agbegbe?';
 
   @override
   String get join_chapter_answer =>
-      'O le darapọ̀ mọ́ ẹ̀ka agbègbè nípasẹ̀ lilo apá \"Àwọn Ẹ̀ka\" ní ojú-ewé Ilé, yíyan ẹ̀ka tí ó sunmọ́ ọ, kí o tẹ bọ́tìnì \"Darapọ̀\".';
+      'O le darapọ mọ ẹka agbegbe nipa lilo apakan \"Awọn Ẹka\" ni iboju Ile, yiyan ẹka nitosi rẹ, ki o tẹ bọtini \"Darapọ\".';
 
   @override
   String get how_to_submit_prayer_request =>
-      'Báwo ni mo ṣe le fi ìbéèrè adúrà sílẹ̀?';
+      'Bawo ni mo ṣe le fi ibeere adura silẹ?';
 
   @override
   String get prayer_request_answer =>
-      'Lọ sí apá \"Adúrà\", tẹ bọ́tìnì \"Fi Ìbéèrè Kún un\", kún àwọn àlàyé rẹ, kí o sì yan \"Gbangba\" tàbí \"Ìkọ̀kọ̀\".';
+      'Lọ si taabu \"Adura\", tẹ bọtini \"Fi Ibeere Kun\", kun awọn alaye rẹ, ki o yan \"Gbangba\" tabi \"Ikọkọ\".';
 
   @override
   String get how_to_access_study_materials =>
-      'Báwo ni mo ṣe le wọlé sí àwọn ohun ẹ̀kọ́?';
+      'Bawo ni mo ṣe le wọle si awọn ohun elo ẹkọ?';
 
   @override
   String get study_materials_answer =>
-      'Lọ sí apá \"Ẹ̀kọ́\" láti rí gbogbo àwọn ètò ẹ̀kọ́ Bíbélì àti àwọn ẹ̀kọ́ tí ó wà.';
+      'Lọ si taabu \"Ẹkọ\" lati rii gbogbo awọn eto ẹkọ Bíbélì ati awọn ẹkọ ti o wa.';
 
   @override
   String get how_to_track_health =>
-      'Báwo ni mo ṣe le tọpinpin àwọn ìṣe ìlera mi?';
+      'Bawo ni mo ṣe le tọpinpin awọn iṣẹ ilera mi?';
 
   @override
   String get health_tracking_answer =>
-      'Lò ìṣe kánkán \"Ìtọpinpin Ìlera\" ní ojú-ewé Ilé tàbí lọ sí apá Ìlera láti gbasílẹ̀ àwọn ìṣe rẹ.';
+      'Lo iṣe kiakia \"Itọpinpin Ilera\" ni iboju Ile tabi lọ si taabu Ilera lati gbasilẹ awọn iṣẹ rẹ.';
 
   @override
   String get how_to_reset_password =>
-      'Báwo ni mo ṣe le tún ọ̀rọ̀ ìgbàníwọlé mi ṣe?';
+      'Bawo ni mo ṣe le tunse ọrọ igbaniwọle mi?';
 
   @override
   String get reset_password_answer =>
-      'Ní ojú-ewé Wọlé, tẹ \"Gbàgbé Ọ̀rọ̀ Ìgbàníwọlé\". A ó fi àyàndé àtúnṣe ọ̀rọ̀ ìgbàníwọlé ránṣẹ́ sí ímeèlì rẹ.';
+      'Ni iboju Wọle, tẹ \"Gbagbe Ọrọ Igbaniwọle\". A o fi ọna atunse ọrọ igbaniwọle ranse si imeeli rẹ.';
 
   @override
-  String get how_to_change_language => 'Báwo ni mo ṣe le yi èdè àfilọ́lẹ̀ padà?';
+  String get how_to_change_language => 'Bawo ni mo ṣe le yi ede iṣafihan pada?';
 
   @override
   String get change_language_answer =>
-      'Lọ sí Prófáìlì > Àwọn Ètò > Èdè kí o yan èdè tí o fẹ́ tàbí lò àmì èdè lórí AppBar fún wiwọlé kánkán.';
+      'Lọ si Profaili > Awọn Eto > Ede ki o yan ede ti o fẹ tabi lo aami ede lori AppBar fun wiwọle kiakia.';
 
   @override
-  String get search_faq => 'Wá FAQ...';
+  String get search_faq => 'Wa awọn ibeere ti a n beere loorekoore...';
 
   @override
-  String get getting_started => 'Bẹ̀rẹ̀';
+  String get getting_started => 'Bẹrẹ';
 
   @override
   String get getting_started_desc =>
-      'Kọ́ àwọn ìpìlẹ̀ṣẹ̀ ti lílo àfilọ́lẹ̀ ALIVE Nàìjíríà.';
+      'Kọ awọn ipilẹṣẹ ti lilo iṣafihan ALIVE Naijiria.';
 
   @override
-  String get using_prayer_wall => 'Lílo Banga Adúrà';
+  String get using_prayer_wall => 'Lilo Ogiri Adura';
 
   @override
   String get prayer_wall_guide_desc =>
-      'Ṣàwárí bí o ṣe le pín àwọn ìbéèrè kí o sì gba adúrà fún àwọn mìíràn.';
+      'Ṣawari bi o ṣe le pin awọn ibeere ati gbadura fun awọn miiran.';
 
   @override
-  String get study_guides_tutorial => 'Ìtọ́nisọ́nà Àwọn Ẹ̀kọ́';
+  String get study_guides_tutorial => 'Itọsọna Awọn Ẹkọ';
 
   @override
   String get study_guides_desc =>
-      'Ìtọ́nisọ́nà ìgbésẹ̀-fún-ìgbésẹ̀ láti parí àwọn ẹ̀kọ́.';
+      'Itọsọna igbesẹ-fun-igbesẹ lati pari awọn ẹkọ.';
 
   @override
-  String get health_tracking_guide => 'Ìtọ́nisọ́nà Ìtọpinpin Ìlera';
+  String get health_tracking_guide => 'Itọsọna Itọpinpin Ilera';
 
   @override
   String get health_tracking_desc =>
-      'Bí o ṣe le lò ìtọpinpin ìlera fún ìgbéga ìlera tí ó dára.';
+      'Bi o ṣe le lo itọpinpin ilera fun igbesi aye to dara.';
 
   @override
-  String get chapter_management => 'Ìṣàkóso Ẹ̀ka';
+  String get chapter_management => 'Isakoso Ẹka';
 
   @override
   String get chapter_management_desc =>
-      'Fún àwọn olórí ẹ̀ka lórí bí o ṣe le ṣàkóso àwọn ọmọ ẹgbẹ́.';
+      'Fun awọn olori ẹka lori bi o ṣe le ṣakoso awọn ọmọ ẹgbẹ.';
 
   @override
-  String get notification_settings_guide => 'Àwọn Ètò Ìnásà';
+  String get notification_settings_guide => 'Awọn Eto Iwifunni';
 
   @override
   String get notification_settings_desc =>
-      'Ṣèto àwọn ìtánijí fún àwọn ìṣẹ́ ìhìnrere àti àwọn adúrà.';
+      'Ṣeto awọn itaniji fun awọn iṣẹ ihinrere ati awọn adura.';
 
   @override
-  String get user_guides => 'Àwọn Ìtọ́nisọ́nà Olùlò';
+  String get user_guides => 'Awọn Itọsọna Olumulo';
 
   @override
-  String get need_help => 'Nílò Ìrànlọ́wọ́?';
+  String get need_help => 'Nilo Iranlọwọ?';
 
   @override
   String get contact_us_message =>
-      'Ẹgbẹ́ àtìlẹ́yìn wa wà láti ràn ọ́ lọ́wọ́ pẹ̀lú eyíkeeyí àwọn ìbéèrè tàbí ọ̀rọ̀.';
+      'Ẹgbẹ atilẹyin wa wa lati ran ọ lọwọ pẹlu eyikeyi awọn ibeere tabi awọn ọrọ.';
 
   @override
-  String get office_hours => 'Àwọn Wákàtí Ọ́fíìsì';
+  String get office_hours => 'Awọn Wakati Ọfiisi';
 
   @override
-  String get send_feedback => 'Fi Èrò Ránṣẹ́';
+  String get send_feedback => 'Firanṣẹ Ero';
 
   @override
-  String get feedback_type => 'Irú Èrò';
+  String get feedback_type => 'Iru Ero';
 
   @override
-  String get email_optional => 'Ímeèlì (Kò Pon dandan)';
+  String get email_optional => 'Imeeli (Aṣayan)';
 
   @override
-  String get enter_email => 'Tẹ ímeèlì rẹ síbẹ̀';
+  String get enter_email => 'Tẹ imeeli rẹ sinu';
 
   @override
-  String get feedback_message => 'Ìrànṣẹ́ Èrò';
+  String get feedback_message => 'Ifiranṣẹ Ero';
 
   @override
-  String get describe_feedback => 'Ṣàpèjúwe èrò rẹ tàbí jábọ̀ ọ̀rọ̀ kan...';
+  String get describe_feedback => 'Ṣapejuwe ero rẹ tabi jabo ọrọ kan...';
 
   @override
-  String get submit_feedback => 'Fi Èrò Sílẹ̀';
+  String get submit_feedback => 'Fi Ero Silẹ';
 
   @override
-  String get enable_biometric_auth => 'Mú Wọlé pẹ̀lú Biometric Ṣiṣẹ́';
+  String get enable_biometric_auth => 'Muu Wọle pẹlu Biometric ṣiṣẹ';
 
   @override
   String get biometric_setup_message =>
-      'Ṣe o fẹ́ mú ìka-ọwọ́ tàbí ìdánimọ̀ ojú ṣiṣẹ́ fún wiwọlé yíyára àti ààbò sí i nígbà míràn?';
+      'Ṣe o fẹ mu ika-ọwọ tabi idanimọ oju ṣiṣẹ fun wiwọle yiyara ati aabo diẹ sii nigbamii?';
 
   @override
-  String get dont_ask_again => 'Má ṣe béèrè lẹ́ẹ̀kan sí i';
+  String get dont_ask_again => 'Maṣe beere lẹẹkansi';
 
   @override
   String get biometric_enabled_success =>
-      'Ìdánimọ̀ biometric ti ṣiṣẹ́ ní àṣeyọrí';
+      'Idanimọ biometric ti ṣiṣẹ ni aṣeyọri';
 
   @override
-  String get biometric_setup_failed => 'Kùnà láti mú ìdánimọ̀ biometric ṣiṣẹ́';
+  String get biometric_setup_failed => 'Kuna lati mu idanimọ biometric ṣiṣẹ';
 
   @override
-  String get use_biometric_auth => 'Wọlé pẹ̀lú Biometric';
+  String get use_biometric_auth => 'Wọle pẹlu Biometric';
 
   @override
-  String get skip => 'Fò ó da';
+  String get skip => 'Fojufo';
 
   @override
-  String get enable => 'Mú ṣiṣẹ́';
+  String get enable => 'Muu ṣiṣẹ';
 
   @override
-  String get alive_meet => 'Àpèjọ ALIVE';
+  String get alive_meet => 'Apejọ ALIVE';
 
   @override
-  String get recipes => 'Àwọn Ohun-Oúnjẹ';
+  String get recipes => 'Awọn Ohunelo';
 
   @override
-  String get bod_trustees => 'Àwọn Olùtọ́jú Igbìmọ̀ BOD';
+  String get bod_trustees => 'Awọn Olùtọ́jú Igbimọ (BOD)';
 
   @override
-  String get events => 'Àwọn Ìṣẹ̀lẹ̀';
+  String get events => 'Awọn Iṣẹlẹ';
 
   @override
-  String get bible_game => 'Erẹ́ Bíbélì';
+  String get bible_game => 'Ere Bíbélì';
 
   @override
-  String get chat => 'Ìbáraẹni-sọ̀rọ̀';
+  String get chat => 'Ibaraẹnisọrọ / Nkata';
 
   @override
-  String get chapters => 'Àwọn Ẹ̀ka';
+  String get chapters => 'Awọn Ẹka';
 
   @override
-  String get library => 'Ilé-Ìwé';
+  String get library => 'Ile-Ikawe';
 
   @override
-  String get podcasts => 'Àwọn Podkáàsì';
+  String get podcasts => 'Awọn Podcast';
 
   @override
-  String get lessons => 'Àwọn Ẹ̀kọ́';
+  String get lessons => 'Awọn Ẹkọ';
 
   @override
-  String get testimonies => 'Àwọn Ẹ̀rí';
+  String get testimonies => 'Awọn Ẹri';
 
   @override
-  String get kids_stories => 'Àwọn Ìtàn Àwọn Ọmọdé';
+  String get kids_stories => 'Awọn Itan Awọn Ọmọde';
 
   @override
-  String get kids_mission => 'Ìṣẹ́ Àwọn Ọmọdé';
+  String get kids_mission => 'Iṣẹ Awọn Ọmọde';
 
   @override
-  String get submit_recipe => 'Fi Ohun-Oúnjẹ Sílẹ̀';
+  String get submit_recipe => 'Fi Ohunelo Silẹ';
 
   @override
-  String get tools_games => 'Àwọn Ohun Elo & Àwọn Eré';
+  String get tools_games => 'Awọn Ohun Elo & Awọn Ere';
 
   @override
-  String get content_tools => 'Àwọn Ohun Elo Àkóónú';
+  String get content_tools => 'Awọn Ohun Elo Akoonu';
 
   @override
-  String get content_management => 'Ìṣàkóso Àkóónú';
+  String get content_management => 'Isakoso Akoonu';
 
   @override
-  String get admin => 'Alábòójútó';
+  String get admin => 'Alabojuto';
 
   @override
-  String get dashboard => 'Apá Ìṣàkóso';
+  String get dashboard => 'Dashboard';
 
   @override
-  String get user_archive => 'Ibi-Ìpamọ́ Olùlò';
+  String get user_archive => 'Ibi-Ipamọ Olumulo';
 
   @override
-  String get role_management => 'Ìṣàkóso Ìpa';
+  String get role_management => 'Isakoso Ipa';
 
   @override
-  String get auto_theme => 'Àwọ̀ Àdaṣe';
+  String get auto_theme => 'Aṣa Adaṣe';
 
   @override
-  String get light_mode => 'Ìpò Ìmọ́lẹ̀';
+  String get light_mode => 'Ipo Imọlẹ';
 
   @override
-  String get dark_mode => 'Ìpò Òkunkun';
+  String get dark_mode => 'Ipo Okunkun';
 
   @override
-  String get monthly => 'Lóṣooṣù';
+  String get monthly => 'Oṣooṣu';
 
   @override
-  String get one_time => 'Ẹ̀kan Ṣoṣo';
+  String get one_time => 'Ẹkan Șoṣo';
 
   @override
-  String get giving_method => 'Ọ̀nà Ìfunni';
+  String get giving_method => 'Ọna Ọrẹ Ore / Infunni';
 
   @override
-  String get enter_amount_monthly => 'Tẹ iye owó lóṣooṣù';
+  String get enter_amount_monthly => 'Tẹ iye owo ti wọmọ fun oṣooṣu';
 
   @override
-  String get enter_amount_one_time => 'Tẹ iye owó ẹ̀kan ṣoṣo';
+  String get enter_amount_one_time => 'Tẹ iye owo fun ẹkan ṣoṣo';
 
   @override
-  String get enter_amount => 'Tẹ iye owó';
+  String get enter_amount => 'Tẹ Iye Owo';
 
   @override
-  String get cover_processing_fees => 'San owó ìṣètò';
+  String get cover_processing_fees => 'San owo iṣẹ ṣiṣe pẹlu rẹ';
 
   @override
-  String get custom_amount => 'Iye Owó Ààyò';
+  String get custom_amount => 'Iye Owo Ti Onibara Yàn';
 
   @override
-  String get selected_fund_designations => 'Àwọn Àyànfẹ́ Àpò Owó Tí A Yan';
+  String get selected_fund_designations => 'Awọn Asunmọ Owo Ti A Yan';
 
   @override
-  String get designated => 'Tí A Yàn';
+  String get designated => 'Ti A Yan Sọtọ';
 
   @override
-  String get split_donation => 'Pín Ọrẹ Náà';
+  String get split_donation => 'Pin Ọrẹ Owo Silẹ';
 
   @override
-  String get total => 'Àpapọ̀';
+  String get total => 'Apapọ';
 
   @override
-  String get total_amount => 'Àpapọ̀ Iye Owó';
+  String get total_amount => 'Apapọ Iye Owo';
 
   @override
-  String get start_monthly_giving => 'Bẹ̀rẹ̀ Ìfunni Lóṣooṣù';
+  String get start_monthly_giving => 'Bẹrẹ Ọrẹ Oṣooṣu';
 
   @override
-  String get donate_one_time => 'Ṣe Ọrẹ Ẹ̀kan Ṣoṣo';
+  String get donate_one_time => 'Ṣe Ọrẹ Ẹkan Ṣoṣo';
 
   @override
   String get donation_help_text =>
-      'Ọrẹ rẹ yóò ṣàtìlẹ́yìn fún iṣẹ́ Ọlọ́run nípasẹ̀ ALIVE láti yí gbogbo ènìyàn padà.';
+      'Ọrẹ rẹ yoo ran iṣẹ ọran Ọlọrun lọwọ lati de ọdọ gbogbo eniyan.';
 
   @override
-  String get your_details => 'Àwọn Àlàyé Rẹ';
+  String get your_details => 'Awọn Alaye Rẹ';
 
   @override
-  String get email_address => 'Adírẹ́ṣì Ímeèlì';
+  String get email_address => 'Adirẹsi Imeeli';
 
   @override
-  String get change => 'Ṣàtúnṣe';
+  String get change => 'Yi Pada';
 
   @override
-  String get non_monetary => 'Kì í Ṣe Owó';
+  String get non_monetary => 'Kii Ṣe Ti Owo';
 
   @override
-  String get active_projects => 'Àwọn Àkànṣe Ìṣẹ́ Tí Ń Lọ';
+  String get active_projects => 'Awọn Aṣeṣe Ti N Lọ Lọwọ';
 
   @override
-  String get something_bigger => 'O Lè Jẹ́ Apá Kan Nínú Nǹkan Tí Ó Tóbi Ju Ẹ̀ yí Lọ';
+  String get something_bigger => 'Jẹ apakan ti nkan ti o tobi julo.';
 
   @override
   String ministry_years_intro(Object years) {
-    return 'Fún ọ̀pọ̀lọpọ̀ ọdún $years, Ìṣẹ́ Àpàpọ̀ ALIVE Nàìjíríà ti ń sọ àwọn ẹ̀mí duntun nípasẹ̀ ọ̀rọ̀ Ọlọ́run àti ìdọ̀ti ẹ̀kọ́ ní gbogbo Nàìjíríà.';
+    return 'Lati ọdun $years sẹhin, iṣẹ ALIVE Naijiria ti wa fun idagbasoke awọn eniyan.';
   }
 
   @override
   String get ministry_years_outro =>
-      'A ń tẹ̀síwájú láti ràn wọn lọ́wọ́ nípasẹ̀ àwọn iṣẹ́ ìhìnrere tuntun fún Ọlọ́run.';
+      'A n tẹsiwaju lati tan iṣẹ ihinrere yi kaakiri agbaye.';
 
   @override
-  String get impact_rural_missions => 'Ìṣẹ́ Ìhìnrere Agbègbè Kékeré';
+  String get impact_rural_missions => 'Iṣẹ Ìhinrere ni Agbegbe Karkara/Iletiko';
 
   @override
   String get impact_rural_missions_desc =>
-      'Rán àwọn alájọṣe sí àwọn agbègbè pẹ̀lú Ìhìnrere àti ìrànlọ́wọ́ ọkàn.';
+      'Ran lọwọ lati mu Ìhinrere de awọn agbegbe ti o jinna.';
 
   @override
-  String get impact_campus_missions => 'Ìṣẹ́ Ìhìnrere Ilé-Ẹ̀kọ́ Gíga';
+  String get impact_campus_missions =>
+      'Iṣẹ Ìhinrere ni Awọn Mahadum / Awọn Ilé-Ẹ̀kọ́ Gíga';
 
   @override
   String get impact_campus_missions_desc =>
-      'Rán àwọn alájọṣe sí àwọn ilé-ẹ̀kọ́ gíga pẹ̀lú Ìhìnrere àti ìrànlọ́wọ́ ọkàn.';
+      'Atilẹyin fun iṣẹ ihinrere laarin awọn akẹkọọ ile-ẹkọ giga.';
 
   @override
-  String get impact_missionary_training => 'Ìkẹ́kọ̀ọ́ Àwọn Olùṣèhìnrere';
+  String get impact_missionary_training => 'Itoju Awọn Ojiṣẹ Ọlọrun';
 
   @override
   String get impact_missionary_training_desc =>
-      'Kọ́ kí o sì fi agbára fún àwọn olùṣèhìnrere tuntun láti ṣiṣẹ́ fún Ọlọ́run.';
+      'Muu ati kọ awọn ojiṣẹ tuntun fun iṣẹ ihinrere.';
 
   @override
-  String get impact_health_evangelism => 'Ìhìnrere Nípasẹ̀ Ìlera';
+  String get impact_health_evangelism => 'Iṣẹ Ìhinrere nipasẹ Ilera';
 
   @override
   String get impact_health_evangelism_desc =>
-      'Pèsè ìtọ́jú ìlera fún àwọn ènìyàn kí a sì darí ọkàn wọn sí ọ̀rọ̀ Ọlọ́run.';
+      'Iparapọ ti ihinrere ati atilẹyin ilera ti ara.';
 
   @override
-  String get impact_education => 'Ìmọ̀ Ẹ̀kọ́';
+  String get impact_education => 'Ẹkọ';
 
   @override
   String get impact_education_desc =>
-      'Ṣàtìlẹ́yìn fún àwọn ilé-ẹ̀kọ́ àti àwọn ètò ìmọ̀ ẹ̀kọ́ tí yóò yí ìgbéga àwùjọ padà.';
+      'Atilẹyin fun ẹkọ ati idagbasoke gbogbogbo.';
 
   @override
-  String get selected_for_gift => 'A ti yàn án fún ọrẹ rẹ';
+  String get selected_for_gift => 'Ti a yan fun ọrẹ yii';
 
   @override
-  String get tap_to_add_to_gift => 'Tẹ̀ láti fi kún ọrẹ rẹ';
+  String get tap_to_add_to_gift => 'Tẹ lati fi kun si ọrẹ';
 
   @override
-  String get split_donation_multiple => 'Pín ọrẹ rẹ sí àwọn àpò owó púpọ̀';
+  String get split_donation_multiple => 'Pin ọrẹ owo si awọn iṣẹ pupọ';
 
   @override
-  String get choose_funds => 'Yàn Àwọn Àpò Owó';
+  String get choose_funds => 'Yan Àpò Ọrẹ';
 
   @override
-  String get project_goal => 'Àfojúsùn Àkànṣe Ìṣẹ́';
+  String get project_goal => 'Afojusun Iṣẹ';
 
   @override
-  String get progress_made => 'Ìlọsíwájú Tí Ti Ṣẹ́lẹ̀';
+  String get progress_made => 'Ilọsiwaju Ti A Ṣe';
 
   @override
-  String get raised_of => 'a ti gbà láti inú';
+  String get raised_of => 'ti gba lati inu';
 
   @override
-  String get explore_project_3d => 'Ṣàwárí àkànṣe ìṣẹ́ ní 3D';
+  String get explore_project_3d => 'Wo iṣẹ yii ni 3D';
 
   @override
-  String get what_your_giving_has_done => 'Nǹkan tí ọrẹ rẹ ti ṣse';
+  String get what_your_giving_has_done => 'Awọn Ohun Ti Ọrẹ Rẹ Ti Ṣe';
 
   @override
-  String get no_designation => 'Kò sí àpò owó tí a yàn';
+  String get no_designation => 'Ko si asunmọ pataki ti a yan';
 
   @override
-  String get added_to_gift => 'A ti fi kún ọrẹ';
+  String get added_to_gift => 'A ti fi kun si ọrẹ';
 
   @override
-  String get could_not_add_designation => 'Kò le fi àpò owó kún un';
+  String get could_not_add_designation => 'A ko le fi asunmọ yii kun';
 
   @override
-  String get custom_designation_hint => 'àpẹẹrẹ: Ìṣẹ́ Agbègbè Kékeré, Ìbáradọ́gba';
+  String get custom_designation_hint => 'Apeẹrẹ: Atilẹyin Awọn Ọdọ, Kọ Ijo';
 
   @override
-  String get add_fund => 'Fi Àpò Owó Kún un';
+  String get add_fund => 'Fi Àpò Ọrẹ Kun';
 
   @override
-  String get please_enter_amount => 'Jọ̀wọ́ tẹ iye owó síbẹ̀';
+  String get please_enter_amount => 'Jọwọ tẹ iye owo sinu';
 
   @override
-  String get invalid_amount => 'Jọ̀wọ́ tẹ iye owó tí ó tọ́';
+  String get invalid_amount => 'Jọwọ tẹ iye owo to tọ';
 
   @override
-  String get donation_processing => 'À ń ṣètò ọrẹ rẹ...';
+  String get donation_processing => 'A n ṣe processing ọrẹ rẹ...';
 
   @override
-  String get donation_success_title => 'Ẹ ṣeun púpọ̀!';
+  String get donation_success_title => 'Ẹ ṣeun pupọ!';
 
   @override
-  String get donation_success_message => 'Ọrẹ rẹ ti ṣàṣeyọrí ní kíkún.';
+  String get select_giving_method => 'Yan Ọna Ẹbọ/Ọrẹ';
+
+  @override
+  String get donation_success_message => 'A ti gba ọrẹ rẹ ni aṣeyọri.';
 }

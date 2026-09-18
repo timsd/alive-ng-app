@@ -432,6 +432,40 @@ class AppTheme {
           ),
         ),
       ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: lightCard,
+        surfaceTintColor: Colors.transparent,
+        elevation: 6,
+        textStyle: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          color: lightCardForeground,
+          fontFamily: 'Inter',
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radiusMd),
+          side: const BorderSide(color: lightBorder, width: 1),
+        ),
+      ),
+      dropdownMenuTheme: DropdownMenuThemeData(
+        textStyle: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          color: lightCardForeground,
+          fontFamily: 'Inter',
+        ),
+        menuStyle: MenuStyle(
+          backgroundColor: const WidgetStatePropertyAll(lightCard),
+          surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+          elevation: const WidgetStatePropertyAll(6),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(radiusMd),
+              side: const BorderSide(color: lightBorder, width: 1),
+            ),
+          ),
+        ),
+      ),
 
       fontFamily: 'Inter',
 
@@ -762,6 +796,40 @@ class AppTheme {
           side: BorderSide(
             color: darkBorder,
             width: 1,
+          ),
+        ),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: darkCard,
+        surfaceTintColor: Colors.transparent,
+        elevation: 6,
+        textStyle: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          color: darkCardForeground,
+          fontFamily: 'Inter',
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radiusMd),
+          side: const BorderSide(color: darkBorder, width: 1),
+        ),
+      ),
+      dropdownMenuTheme: DropdownMenuThemeData(
+        textStyle: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          color: darkCardForeground,
+          fontFamily: 'Inter',
+        ),
+        menuStyle: MenuStyle(
+          backgroundColor: const WidgetStatePropertyAll(darkCard),
+          surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+          elevation: const WidgetStatePropertyAll(6),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(radiusMd),
+              side: const BorderSide(color: darkBorder, width: 1),
+            ),
           ),
         ),
       ),

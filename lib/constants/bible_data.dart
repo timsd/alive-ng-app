@@ -98,24 +98,144 @@ class BibleData {
     return bibleBooks[book] ?? 1;
   }
 
+  static String _normalizeAliasKey(String input) {
+    return input
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]'), '')
+        .replaceAll(RegExp(r'^1st'), '1')
+        .replaceAll(RegExp(r'^first'), '1')
+        .replaceAll(RegExp(r'^2nd'), '2')
+        .replaceAll(RegExp(r'^second'), '2')
+        .replaceAll(RegExp(r'^3rd'), '3')
+        .replaceAll(RegExp(r'^third'), '3');
+  }
+
+  static const Map<String, String> _rawAliases = {
+    // Old Testament
+    'gen': 'Genesis', 'ge': 'Genesis', 'gn': 'Genesis', 'genesis': 'Genesis',
+    'ex': 'Exodus', 'exo': 'Exodus', 'exod': 'Exodus', 'exodus': 'Exodus',
+    'lev': 'Leviticus', 'le': 'Leviticus', 'lv': 'Leviticus', 'leviticus': 'Leviticus',
+    'num': 'Numbers', 'nu': 'Numbers', 'nm': 'Numbers', 'nb': 'Numbers', 'numbers': 'Numbers',
+    'deut': 'Deuteronomy', 'dt': 'Deuteronomy', 'de': 'Deuteronomy', 'deuteronomy': 'Deuteronomy',
+    'josh': 'Joshua', 'jos': 'Joshua', 'jsh': 'Joshua', 'joshua': 'Joshua',
+    'judg': 'Judges', 'jdg': 'Judges', 'jg': 'Judges', 'jdgs': 'Judges', 'judges': 'Judges',
+    'rut': 'Ruth', 'rth': 'Ruth', 'ru': 'Ruth', 'ruth': 'Ruth',
+    '1sam': '1 Samuel', '1sa': '1 Samuel', '1s': '1 Samuel', '1samuel': '1 Samuel',
+    '2sam': '2 Samuel', '2sa': '2 Samuel', '2s': '2 Samuel', '2samuel': '2 Samuel',
+    '1kings': '1 Kings', '1kgs': '1 Kings', '1ki': '1 Kings', '1k': '1 Kings',
+    '2kings': '2 Kings', '2kgs': '2 Kings', '2ki': '2 Kings', '2k': '2 Kings',
+    '1chron': '1 Chronicles', '1chr': '1 Chronicles', '1ch': '1 Chronicles', '1chronicles': '1 Chronicles',
+    '2chron': '2 Chronicles', '2chr': '2 Chronicles', '2ch': '2 Chronicles', '2chronicles': '2 Chronicles',
+    'ezr': 'Ezra', 'ez': 'Ezra', 'ezra': 'Ezra',
+    'neh': 'Nehemiah', 'ne': 'Nehemiah', 'nehemiah': 'Nehemiah',
+    'esth': 'Esther', 'est': 'Esther', 'es': 'Esther', 'esther': 'Esther',
+    'job': 'Job', 'jb': 'Job',
+    'psalm': 'Psalms', 'psalms': 'Psalms', 'ps': 'Psalms', 'psa': 'Psalms', 'psm': 'Psalms', 'pss': 'Psalms',
+    'prov': 'Proverbs', 'pro': 'Proverbs', 'prv': 'Proverbs', 'pr': 'Proverbs', 'proverbs': 'Proverbs',
+    'eccl': 'Ecclesiastes', 'ecc': 'Ecclesiastes', 'ec': 'Ecclesiastes', 'qoh': 'Ecclesiastes', 'qoheleth': 'Ecclesiastes', 'ecclesiastes': 'Ecclesiastes',
+    'song': 'Song of Solomon', 'songs': 'Song of Solomon', 'songofsongs': 'Song of Solomon', 'sos': 'Song of Solomon',
+    'canticle': 'Song of Solomon', 'canticles': 'Song of Solomon', 'songofsolomon': 'Song of Solomon',
+    'isa': 'Isaiah', 'is': 'Isaiah', 'isaiah': 'Isaiah',
+    'jer': 'Jeremiah', 'je': 'Jeremiah', 'jr': 'Jeremiah', 'jeremiah': 'Jeremiah',
+    'lam': 'Lamentations', 'la': 'Lamentations', 'lamentations': 'Lamentations',
+    'ezek': 'Ezekiel', 'eze': 'Ezekiel', 'ezk': 'Ezekiel', 'ezekiel': 'Ezekiel',
+    'dan': 'Daniel', 'da': 'Daniel', 'dn': 'Daniel', 'daniel': 'Daniel',
+    'hos': 'Hosea', 'ho': 'Hosea', 'hosea': 'Hosea',
+    'joe': 'Joel', 'jl': 'Joel', 'joel': 'Joel',
+    'am': 'Amos', 'amo': 'Amos', 'amos': 'Amos',
+    'obad': 'Obadiah', 'oba': 'Obadiah', 'ob': 'Obadiah', 'obadiah': 'Obadiah',
+    'jon': 'Jonah', 'jnh': 'Jonah', 'jonah': 'Jonah',
+    'mic': 'Micah', 'mc': 'Micah', 'micah': 'Micah',
+    'nah': 'Nahum', 'na': 'Nahum', 'nahum': 'Nahum',
+    'hab': 'Habakkuk', 'hb': 'Habakkuk', 'habakkuk': 'Habakkuk',
+    'zeph': 'Zephaniah', 'zep': 'Zephaniah', 'zp': 'Zephaniah', 'zephaniah': 'Zephaniah',
+    'hag': 'Haggai', 'hg': 'Haggai', 'haggai': 'Haggai',
+    'zech': 'Zechariah', 'zec': 'Zechariah', 'zc': 'Zechariah', 'zechariah': 'Zechariah',
+    'mal': 'Malachi', 'ml': 'Malachi', 'malachi': 'Malachi',
+
+    // New Testament
+    'matt': 'Matthew', 'mt': 'Matthew', 'mat': 'Matthew', 'matthew': 'Matthew',
+    'mk': 'Mark', 'mrk': 'Mark', 'mar': 'Mark', 'mark': 'Mark',
+    'lk': 'Luke', 'luk': 'Luke', 'lu': 'Luke', 'luke': 'Luke',
+    'jn': 'John', 'jhn': 'John', 'joh': 'John', 'john': 'John',
+    'act': 'Acts', 'ac': 'Acts', 'acts': 'Acts',
+    'rom': 'Romans', 'ro': 'Romans', 'rm': 'Romans', 'roman': 'Romans', 'romans': 'Romans',
+    '1cor': '1 Corinthians', '1co': '1 Corinthians', '1corinthians': '1 Corinthians',
+    '2cor': '2 Corinthians', '2co': '2 Corinthians', '2corinthians': '2 Corinthians',
+    'gal': 'Galatians', 'ga': 'Galatians', 'galatians': 'Galatians',
+    'eph': 'Ephesians', 'ep': 'Ephesians', 'ephesians': 'Ephesians',
+    'phil': 'Philippians', 'php': 'Philippians', 'pp': 'Philippians', 'philippians': 'Philippians',
+    'col': 'Colossians', 'co': 'Colossians', 'colossians': 'Colossians',
+    '1thess': '1 Thessalonians', '1th': '1 Thessalonians', '1thes': '1 Thessalonians', '1thessalonians': '1 Thessalonians',
+    '2thess': '2 Thessalonians', '2th': '2 Thessalonians', '2thes': '2 Thessalonians', '2thessalonians': '2 Thessalonians',
+    '1tim': '1 Timothy', '1ti': '1 Timothy', '1timothy': '1 Timothy',
+    '2tim': '2 Timothy', '2ti': '2 Timothy', '2timothy': '2 Timothy',
+    'tit': 'Titus', 'ti': 'Titus', 'titus': 'Titus',
+    'philem': 'Philemon', 'phm': 'Philemon', 'pm': 'Philemon', 'philemon': 'Philemon',
+    'heb': 'Hebrews', 'he': 'Hebrews', 'hebrews': 'Hebrews',
+    'jas': 'James', 'jm': 'James', 'jam': 'James', 'james': 'James',
+    '1pet': '1 Peter', '1pe': '1 Peter', '1pt': '1 Peter', '1p': '1 Peter', '1peter': '1 Peter',
+    '2pet': '2 Peter', '2pe': '2 Peter', '2pt': '2 Peter', '2p': '2 Peter', '2peter': '2 Peter',
+    '1jn': '1 John', '1joh': '1 John', '1j': '1 John', '1john': '1 John',
+    '2jn': '2 John', '2joh': '2 John', '2j': '2 John', '2john': '2 John',
+    '3jn': '3 John', '3joh': '3 John', '3j': '3 John', '3john': '3 John',
+    'jud': 'Jude', 'jd': 'Jude', 'jude': 'Jude',
+    'rev': 'Revelation', 'revelation': 'Revelation', 'revelations': 'Revelation', 'rv': 'Revelation', 'apoc': 'Revelation',
+  };
+
+  /// Map of normalized alias keys to canonical English book names.
+  static final Map<String, String> _aliasMap = () {
+    final map = <String, String>{};
+    for (final book in allBooks) {
+      map[_normalizeAliasKey(book)] = book;
+    }
+    for (final entry in _rawAliases.entries) {
+      map[_normalizeAliasKey(entry.key)] = entry.value;
+    }
+    return map;
+  }();
+
+  /// Resolves any book name, abbreviation, or alias to canonical English book name.
+  /// E.g. "Psalm" -> "Psalms", "1cor" -> "1 Corinthians", "Gen" -> "Genesis", "Song of Songs" -> "Song of Solomon".
+  static String? canonicalBookName(String input) {
+    if (input.trim().isEmpty) return null;
+    final key = _normalizeAliasKey(input);
+    return _aliasMap[key];
+  }
+
+  /// Returns all recognized aliases/tokens for a given canonical book name.
+  static Set<String> aliasesForBook(String canonicalName) {
+    final canon = canonicalBookName(canonicalName) ?? canonicalName;
+    final results = <String>{};
+    for (final entry in _rawAliases.entries) {
+      if (entry.value.toLowerCase() == canon.toLowerCase()) {
+        results.add(entry.key);
+      }
+    }
+    results.add(canon.toLowerCase());
+    return results;
+  }
+
   static bool isValidBook(String book) {
-    return bibleBooks.containsKey(book);
+    return canonicalBookName(book) != null;
   }
 
   static bool isValidChapter(String book, int chapter) {
-    final maxChapter = bibleBooks[book];
+    final canon = canonicalBookName(book) ?? book;
+    final maxChapter = bibleBooks[canon];
     return maxChapter != null && chapter >= 1 && chapter <= maxChapter;
   }
 
   static String? getNextChapter(String book, int chapter) {
-    final maxChapter = bibleBooks[book];
+    final canon = canonicalBookName(book) ?? book;
+    final maxChapter = bibleBooks[canon];
     if (maxChapter == null) return null;
     
     if (chapter < maxChapter) {
-      return '$book ${chapter + 1}';
+      return '$canon ${chapter + 1}';
     } else {
       // Move to next book
-      final currentIndex = allBooks.indexOf(book);
+      final currentIndex = allBooks.indexOf(canon);
       if (currentIndex != -1 && currentIndex < allBooks.length - 1) {
         final nextBook = allBooks[currentIndex + 1];
         return '$nextBook 1';
@@ -125,11 +245,12 @@ class BibleData {
   }
 
   static String? getPreviousChapter(String book, int chapter) {
+    final canon = canonicalBookName(book) ?? book;
     if (chapter > 1) {
-      return '$book ${chapter - 1}';
+      return '$canon ${chapter - 1}';
     } else {
       // Move to previous book
-      final currentIndex = allBooks.indexOf(book);
+      final currentIndex = allBooks.indexOf(canon);
       if (currentIndex > 0) {
         final previousBook = allBooks[currentIndex - 1];
         final lastChapter = bibleBooks[previousBook] ?? 1;
@@ -139,44 +260,93 @@ class BibleData {
     return null;
   }
 
+  /// Parses reference strings such as:
+  /// "John 3:16", "John 3 16", "1 Corinthians 13:4-7", "1Cor 13:4", "Psalm 23", "Genesis 1", "Revelation"
   static Map<String, dynamic> parseReference(String reference) {
-    // Parse references like "John 3:16", "1 Corinthians 13:4-7", "Genesis 1"
-    final regex = RegExp(r'^(\d*\s*\w+)\s*(\d+)?(?::(\d+)(?:-(\d+))?)?$');
-    final match = regex.firstMatch(reference.trim());
-    
-    if (match != null) {
-      final book = match.group(1)?.trim() ?? '';
-      final chapter = int.tryParse(match.group(2) ?? '1') ?? 1;
-      final startVerse = int.tryParse(match.group(3) ?? '1') ?? 1;
-      final endVerse = int.tryParse(match.group(4) ?? match.group(3) ?? '1') ?? startVerse;
-      
+    final trimmed = reference.trim();
+    if (trimmed.isEmpty) {
       return {
-        'book': book,
-        'chapter': chapter,
-        'startVerse': startVerse,
-        'endVerse': endVerse,
-        'isValid': isValidBook(book) && isValidChapter(book, chapter),
+        'book': '',
+        'chapter': 1,
+        'startVerse': 1,
+        'endVerse': 1,
+        'hasChapter': false,
+        'hasVerse': false,
+        'isValid': false,
       };
     }
-    
+
+    // Pattern matching:
+    // Group 1: Book name with optional leading digit (e.g. "1 Corinthians", "Song of Solomon", "John", "1Cor", "Psalm")
+    // Group 2: Chapter number
+    // Group 3: Verse number (after colon or dot)
+    // Group 4: End verse (after dash)
+    // Group 5: Verse number (space-separated after chapter e.g. "John 3 16")
+    final refRegex = RegExp(
+      r'^((?:[1-3]\s*)?[a-zA-Z]+(?:\s+[a-zA-Z]+)*)\s*(\d+)?(?:\s*[:.]\s*(\d+)(?:\s*-\s*(\d+))?|\s+(\d+))?$',
+    );
+    final match = refRegex.firstMatch(trimmed);
+    if (match != null) {
+      final rawBook = match.group(1)?.trim() ?? '';
+      final canonicalBook = canonicalBookName(rawBook);
+      if (canonicalBook != null) {
+        final chapterStr = match.group(2);
+        final chapter = chapterStr != null ? (int.tryParse(chapterStr) ?? 1) : 1;
+        final startVerseStr = match.group(3) ?? match.group(5);
+        final startVerse = startVerseStr != null ? (int.tryParse(startVerseStr) ?? 1) : 1;
+        final endVerseStr = match.group(4);
+        final endVerse = endVerseStr != null ? (int.tryParse(endVerseStr) ?? startVerse) : startVerse;
+
+        return {
+          'book': canonicalBook,
+          'chapter': chapter,
+          'verse': startVerse,
+          'startVerse': startVerse,
+          'endVerse': endVerse,
+          'hasChapter': chapterStr != null,
+          'hasVerse': startVerseStr != null,
+          'isValid': isValidChapter(canonicalBook, chapter),
+        };
+      }
+    }
+
+    // Direct check for book name only (e.g., "Genesis", "Revelation", "psalm")
+    final directCanon = canonicalBookName(trimmed);
+    if (directCanon != null) {
+      return {
+        'book': directCanon,
+        'chapter': 1,
+        'verse': 1,
+        'startVerse': 1,
+        'endVerse': 1,
+        'hasChapter': false,
+        'hasVerse': false,
+        'isValid': true,
+      };
+    }
+
     return {
       'book': '',
       'chapter': 1,
+      'verse': 1,
       'startVerse': 1,
       'endVerse': 1,
+      'hasChapter': false,
+      'hasVerse': false,
       'isValid': false,
     };
   }
 
   static String formatReference(String book, int chapter, {int? verse, int? endVerse}) {
+    final canon = canonicalBookName(book) ?? book;
     if (verse != null) {
       if (endVerse != null && endVerse != verse) {
-        return '$book $chapter:$verse-$endVerse';
+        return '$canon $chapter:$verse-$endVerse';
       } else {
-        return '$book $chapter:$verse';
+        return '$canon $chapter:$verse';
       }
     } else {
-      return '$book $chapter';
+      return '$canon $chapter';
     }
   }
 }

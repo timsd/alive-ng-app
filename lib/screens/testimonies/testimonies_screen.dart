@@ -70,6 +70,7 @@ class _TestimoniesScreenState extends ConsumerState<TestimoniesScreen>
       isScrollControlled: true,
       showDragHandle: true,
       backgroundColor: theme.colorScheme.surface,
+      constraints: const BoxConstraints(maxWidth: 640),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
             top: Radius.circular(

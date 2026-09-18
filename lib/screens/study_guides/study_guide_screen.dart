@@ -4,6 +4,7 @@ import '../../services/study_guide_service.dart';
 import '../../services/auth_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/responsive_utils.dart';
+import '../../widgets/custom_app_bar.dart';
 
 class StudyGuideScreen extends StatefulWidget {
   const StudyGuideScreen({super.key});
@@ -74,8 +75,9 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Study Guides'),
+      appBar: CustomAppBar(
+        title: 'Study Guides',
+        showBackButton: true,
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
@@ -823,6 +825,9 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: Text(
             'Study Guide: ${guide.title}',
             style: Theme.of(context).textTheme.titleLarge,

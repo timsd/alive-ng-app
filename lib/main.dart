@@ -10,9 +10,9 @@ import 'utils/app_theme.dart';
 import 'package:go_router/go_router.dart';
 import 'constants/app_constants.dart';
 import 'providers/auth_provider.dart';
+import 'providers/appwrite_auth_provider.dart';
 import 'services/role_access_service.dart';
 import 'utils/responsive_utils.dart';
-import 'widgets/role_guard.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'services/in_app_update_service.dart';
 import 'dart:async';
@@ -155,23 +155,16 @@ class MainNavigationScreen extends ConsumerWidget {
     final currentLocation =
         GoRouter.of(context).routerDelegate.currentConfiguration.uri.path;
     debugPrint('Current location: $currentLocation');
-    final authState = ref.watch(authStateProvider);
-    debugPrint('authStateProvider watched');
-    final isAuthenticated = authState.when(
-      data: (user) => user != null,
-      loading: () => false,
-      error: (_, __) => false,
-    );
+    ref.watch(authStateProvider);
     final translator = ref.watch(languageProvider);
-    debugPrint('isAuthenticated=$isAuthenticated');
 
     return Scaffold(
+      drawerEnableOpenDragGesture: false,
       body: Stack(
         children: [
           child,
         ],
       ),
-      drawer: _buildNavigationDrawer(context, isAuthenticated),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         currentIndex: _getCurrentIndex(currentLocation),
@@ -241,7 +234,6 @@ class MainNavigationScreen extends ConsumerWidget {
       case AppConstants.bibleGameRoute:
       case AppConstants.chatRoute:
       case AppConstants.chaptersRoute:
-      case AppConstants.recipesRoute:
       case AppConstants.recipeSubmissionRoute:
         return 4;
       default:
@@ -290,6 +282,7 @@ class MainNavigationScreen extends ConsumerWidget {
               Navigator.of(dialogCtx).pop();
               try {
                 await ref.read(authGatewayProvider).signOut();
+                ref.invalidate(currentUserProfileProvider);
                 if (context.mounted) {
                   context.go(AppConstants.authRoute);
                 }
@@ -303,14 +296,22 @@ class MainNavigationScreen extends ConsumerWidget {
   }
 
   void _showMoreBottomSheet(BuildContext context, WidgetRef ref) {
-    final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(top: topPadding),
-        child: _buildMoreBottomSheet(context, ref),
+      builder: (context) => SafeArea(
+        top: true,
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: 640,
+              maxHeight: MediaQuery.of(context).size.height * 0.88,
+            ),
+            child: _buildMoreBottomSheet(context, ref),
+          ),
+        ),
       ),
     );
   }
@@ -324,13 +325,37 @@ class MainNavigationScreen extends ConsumerWidget {
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.18),
+            blurRadius: 20,
+            offset: const Offset(0, -4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Center(
+            child: Container(
+              width: 44,
+              height: 5,
+              margin: const EdgeInsets.only(top: 12, bottom: 4),
+              decoration: BoxDecoration(
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.25),
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+          ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
             child: Text(
               translate('more_features'),
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -374,7 +399,7 @@ class MainNavigationScreen extends ConsumerWidget {
               final items = <Map<String, dynamic>>[
                 if (canAccessRoleGated) ...[
                   {
-                    'icon': Icons.health_and_safety_rounded,
+                    'icon': Icons.medical_services_rounded,
                     'label': 'Health+',
                     'route': AppConstants.enhancedHealthRoute
                   },
@@ -627,324 +652,6 @@ class MainNavigationScreen extends ConsumerWidget {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildNavigationDrawer(BuildContext context, bool isAuthenticated) {
-    return Consumer(
-      builder: (context, ref, _) {
-        final translate = ref.watch(languageProvider);
-        final roleService = RoleAccessService.instance;
-        final canAccessRoleGated = roleService.canAccessRoleGatedFeatures();
-
-        return Drawer(
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              DrawerHeader(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Theme.of(context).colorScheme.primary,
-                      Theme.of(context)
-                          .colorScheme
-                          .primary
-                          .withValues(alpha: 204 / 255.0),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    CircleAvatar(
-                      radius: context.responsiveIconSize(30),
-                      backgroundColor: Theme.of(context).colorScheme.surface,
-                      child: Icon(
-                        Icons.person,
-                        size: context.responsiveIconSize(35),
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                    SizedBox(
-                        height: context.getResponsiveValue(
-                            mobile: 8.0, tablet: 12.0, desktop: 16.0)),
-                    Text(
-                      'ALIVE Nigeria',
-                      style:
-                          Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                color: Theme.of(context).colorScheme.onPrimary,
-                                fontWeight: FontWeight.bold,
-                                fontSize: context.responsiveFontSize(20),
-                              ),
-                    ),
-                    Text(
-                      translate('christian_community'),
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onPrimary
-                                .withValues(alpha: 230 / 255.0),
-                            fontSize: context.responsiveFontSize(14),
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-              // Show approval status for unapproved users
-              if (isAuthenticated && !canAccessRoleGated) ...[
-                Container(
-                  margin: context.responsiveMargin,
-                  padding: context.responsivePadding,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.errorContainer,
-                    borderRadius: context.responsiveBorderRadius,
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.pending_actions,
-                        color: Theme.of(context).colorScheme.onErrorContainer,
-                        size: context.responsiveIconSize(24),
-                      ),
-                      SizedBox(
-                          width: ResponsiveUtils.getResponsiveValue(
-                        context: context,
-                        mobile: 8.0,
-                        tablet: 10.0,
-                        desktop: 12.0,
-                      )),
-                      Expanded(
-                        child: Text(
-                          translate('pending_admin_approval'),
-                          style: TextStyle(
-                            color:
-                                Theme.of(context).colorScheme.onErrorContainer,
-                            fontWeight: FontWeight.w500,
-                            fontSize: context.responsiveFontSize(14),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-              _buildDrawerSection(context, translate('main_features'), [
-                _buildDrawerItem(
-                    context, Icons.home, translate('home'), AppConstants.homeRoute),
-                if (canAccessRoleGated) ...[
-                  _buildDrawerItem(
-                      context, Icons.book, translate('study'), AppConstants.studyRoute),
-                  _buildDrawerItem(context, Icons.favorite, translate('prayer'),
-                      AppConstants.prayerRoute),
-                  _buildDrawerItem(context, Icons.health_and_safety, translate('health'),
-                      AppConstants.healthRoute),
-                  _buildDrawerItem(context, Icons.calendar_today, translate('daily'),
-                      AppConstants.dailyRoute),
-                ],
-              ]),
-              if (canAccessRoleGated) ...[
-                const Divider(),
-                _buildDrawerSection(context, translate('community'), [
-                  _buildDrawerItem(context, Icons.volunteer_activism,
-                      translate('missions'), AppConstants.missionsRoute),
-                  _buildDrawerItem(
-                      context, Icons.chat, translate('chat'), AppConstants.chatRoute),
-                  _buildDrawerItem(context, Icons.groups, translate('chapters'),
-                      AppConstants.chaptersRoute),
-                  _buildDrawerItem(context, Icons.video_call, translate('alive_meet'),
-                      AppConstants.conferenceRoute),
-                ]),
-                const Divider(),
-                _buildDrawerSection(context, translate('tools_games'), [
-                  _buildDrawerItem(context, Icons.games, translate('bible_game'),
-                      AppConstants.bibleGameRoute),
-                  _buildDrawerItem(context, Icons.restaurant, translate('recipes'),
-                      AppConstants.recipesRoute),
-                  _buildDrawerItem(context, Icons.add_circle, translate('submit_recipe'),
-                      AppConstants.recipeSubmissionRoute),
-                ]),
-              ],
-              if (isAuthenticated && canAccessRoleGated) ...[
-                const Divider(),
-                if (roleService.canCreateContent())
-                  _buildDrawerSection(context, translate('content_tools'), [
-                    _buildDrawerItem(
-                      context,
-                      Icons.edit_note,
-                      translate('content_management'),
-                      AppConstants.contentManagementRoute,
-                    ),
-                  ]),
-                if (roleService.canCreateContent()) const Divider(),
-                RoleVisibility(
-                  allowedRoles: const ['admin'],
-                  child: _buildDrawerSection(context, translate('admin'), [
-                    _buildDrawerItem(context, Icons.admin_panel_settings,
-                        translate('dashboard'), AppConstants.adminRoute),
-                    _buildDrawerItem(context, Icons.approval, translate('user_approval'),
-                        AppConstants.adminApprovalRoute),
-                    _buildDrawerItem(context, Icons.people, translate('bod_trustees'),
-                        AppConstants.bodTrusteesRoute),
-                    _buildDrawerItem(context, Icons.archive, translate('user_archive'),
-                        AppConstants.userArchiveRoute),
-                    _buildDrawerItem(context, Icons.security, translate('role_management'),
-                        AppConstants.roleManagementRoute),
-                  ]),
-                ),
-              ],
-              const Divider(),
-              _buildDrawerSection(context, translate('about'), [
-                _buildDrawerItem(context, Icons.info, translate('about_app'),
-                    AppConstants.aboutAppRoute),
-                _buildDrawerItem(context, Icons.info_outline, translate('about_alive'),
-                    AppConstants.aboutAliveRoute),
-                _buildDrawerItem(context, Icons.person, translate('profile'),
-                    AppConstants.profileRoute),
-              ]),
-              const Divider(),
-              _buildDrawerSection(context, translate('settings'), [
-                _buildThemeToggleDrawerItem(context, ref),
-                _buildLanguageToggleDrawerItem(context, ref),
-              ]),
-              if (!isAuthenticated) ...[
-                const Divider(),
-                _buildDrawerSection(context, translate('account'), [
-                  _buildDrawerItem(
-                      context, Icons.login, translate('sign_in'), AppConstants.authRoute),
-                ]),
-              ],
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildDrawerSection(
-      BuildContext context, String title, List<Widget> items) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: context.responsivePadding * 0.75,
-          child: Text(
-            title,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
-                  fontWeight: FontWeight.bold,
-                  fontSize: context.responsiveFontSize(16.0) * 0.9,
-                ),
-          ),
-        ),
-        ...items,
-      ],
-    );
-  }
-
-  Widget _buildDrawerItem(
-      BuildContext context, IconData icon, String title, String route) {
-    final currentLocation =
-        GoRouter.of(context).routerDelegate.currentConfiguration.uri.path;
-    final isSelected = currentLocation == route;
-
-    return ListTile(
-      leading: Icon(
-        icon,
-        size: context.responsiveIconSize(24.0),
-        color: isSelected
-            ? Theme.of(context).colorScheme.primary
-            : Theme.of(context)
-                .colorScheme
-                .onSurface
-                .withValues(alpha: 179 / 255.0),
-      ),
-      title: Text(
-        title,
-        style: TextStyle(
-          color: isSelected
-              ? Theme.of(context).colorScheme.primary
-              : Theme.of(context).colorScheme.onSurface,
-          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-          fontSize: context.responsiveFontSize(16.0),
-        ),
-      ),
-      selected: isSelected,
-      selectedTileColor:
-          Theme.of(context).colorScheme.primary.withValues(alpha: 26 / 255.0),
-      onTap: () {
-        Navigator.pop(context);
-        context.go(route);
-      },
-    );
-  }
-
-  Widget _buildThemeToggleDrawerItem(BuildContext context, WidgetRef ref) {
-    final themeMode = ref.watch(themeModeProvider);
-    final translate = ref.watch(languageProvider);
-
-    IconData themeIcon;
-    String themeText;
-
-    switch (themeMode) {
-      case ThemeMode.system:
-        themeIcon = Icons.brightness_auto;
-        themeText = translate('auto_theme');
-        break;
-      case ThemeMode.light:
-        themeIcon = Icons.light_mode;
-        themeText = translate('light_mode');
-        break;
-      case ThemeMode.dark:
-        themeIcon = Icons.dark_mode;
-        themeText = translate('dark_mode');
-        break;
-    }
-
-    return ListTile(
-      leading: Icon(
-        themeIcon,
-        size: context.responsiveIconSize(24.0),
-        color: Theme.of(context)
-            .colorScheme
-            .onSurface
-            .withValues(alpha: 179 / 255.0),
-      ),
-      title: Text(
-        themeText,
-        style: TextStyle(
-          color: Theme.of(context).colorScheme.onSurface,
-          fontSize: context.responsiveFontSize(16.0),
-        ),
-      ),
-      onTap: () {
-        Navigator.pop(context);
-      },
-    );
-  }
-
-  Widget _buildLanguageToggleDrawerItem(BuildContext context, WidgetRef ref) {
-    final translate = ref.watch(languageProvider);
-    return ListTile(
-      leading: Icon(
-        Icons.language,
-        size: context.responsiveIconSize(24.0),
-        color: Theme.of(context)
-            .colorScheme
-            .onSurface
-            .withValues(alpha: 179 / 255.0),
-      ),
-      title: Text(
-        translate('language'),
-        style: TextStyle(
-          color: Theme.of(context).colorScheme.onSurface,
-          fontSize: context.responsiveFontSize(16.0),
-        ),
-      ),
-      onTap: () {
-        Navigator.pop(context);
-      },
     );
   }
 }

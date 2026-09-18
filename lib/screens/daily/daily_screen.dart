@@ -81,7 +81,7 @@ final dailyTasksProvider = StateProvider<List<DailyTask>>((ref) {
       icon: Icons.health_and_safety,
       completed: false,
       category: 'Health',
-      route: AppConstants.enhancedHealthRoute,
+      route: AppConstants.healthRoute,
     ),
     const DailyTask(
       id: '4',
@@ -133,6 +133,7 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
 
     return Scaffold(
       appBar: CustomAppBar(
+        showBackButton: true,
         title: translate('daily'),
         elevation: 0,
         backgroundColor: Theme.of(context).colorScheme.secondary,

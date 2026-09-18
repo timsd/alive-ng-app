@@ -371,6 +371,7 @@ class ReminderService {
   }
 
   Future<void> clearReminder(String type) async {
+    await initialize();
     // Cancel scheduled notification
     await _flutterLocalNotificationsPlugin.cancel(type.hashCode);
 
@@ -383,6 +384,7 @@ class ReminderService {
   }
 
   Future<void> clearAllReminders() async {
+    await initialize();
     // Cancel all scheduled notifications
     await _flutterLocalNotificationsPlugin.cancelAll();
 
@@ -435,6 +437,7 @@ class ReminderService {
   }
 
   Future<void> scheduleAllReminders(List<ReminderConfig> reminders) async {
+    await initialize();
     await clearAllReminders();
 
     for (final reminder in reminders) {

@@ -34,6 +34,7 @@ class StudyScreen extends ConsumerWidget {
     return Scaffold(
       appBar: CustomAppBar(
         title: l10n.study,
+        showBackButton: true,
         elevation: 0,
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Theme.of(context).colorScheme.onPrimary,
@@ -54,17 +55,12 @@ class StudyScreen extends ConsumerWidget {
               // Header section
               Container(
                 width: double.infinity,
-                padding:
-                    ResponsiveUtils.getResponsivePaddingWithBase(context, 20),
+                padding: ResponsiveUtils.getResponsivePadding(context),
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.primary,
-                  borderRadius: BorderRadius.only(
-                    bottomLeft: Radius.circular(
-                        ResponsiveUtils.getResponsiveBorderRadiusValue(
-                            context, 24)),
-                    bottomRight: Radius.circular(
-                        ResponsiveUtils.getResponsiveBorderRadiusValue(
-                            context, 24)),
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(24),
+                    bottomRight: Radius.circular(24),
                   ),
                 ),
                 child: Column(
@@ -76,6 +72,8 @@ class StudyScreen extends ConsumerWidget {
                           Theme.of(context).textTheme.headlineMedium?.copyWith(
                                 color: Theme.of(context).colorScheme.onPrimary,
                                 fontWeight: FontWeight.bold,
+                                fontSize: ResponsiveUtils.getResponsiveFontSize(
+                                    context, 24),
                               ),
                     ),
                     SizedBox(
@@ -85,6 +83,8 @@ class StudyScreen extends ConsumerWidget {
                       TextFormatter.formatText('grow_in_faith'),
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                             color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.9),
+                            fontSize: ResponsiveUtils.getResponsiveFontSize(
+                                context, 16),
                           ),
                     ),
                   ],
@@ -477,6 +477,9 @@ class StudyScreen extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
         title: Text(program.title ?? 'Study Program'),
         content: SingleChildScrollView(
           child: Column(
@@ -592,7 +595,7 @@ class StudyProgramCard extends StatelessWidget {
                 children: [
                   Container(
                     padding: ResponsiveUtils.getResponsivePaddingWithBase(
-                        context, 8),
+                        context, 12),
                     decoration: BoxDecoration(
                       color: Theme.of(context)
                           .colorScheme
@@ -600,12 +603,12 @@ class StudyProgramCard extends StatelessWidget {
                           .withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(
                           ResponsiveUtils.getResponsiveBorderRadiusValue(
-                              context, 8)),
+                              context, 12)),
                     ),
                     child: Icon(
                       Icons.menu_book,
                       color: Theme.of(context).colorScheme.primary,
-                      size: ResponsiveUtils.getResponsiveIconSize(context, 24),
+                      size: ResponsiveUtils.getResponsiveIconSize(context, 32),
                     ),
                   ),
                   SizedBox(

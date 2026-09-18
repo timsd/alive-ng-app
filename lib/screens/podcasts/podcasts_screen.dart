@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../utils/responsive_utils.dart';
-import '../../utils/layout_fix_utils.dart';
 import '../../providers/podcast_provider.dart';
 import 'package:just_audio/just_audio.dart';
 import '../../widgets/podcast_search_bar.dart';
@@ -436,43 +435,39 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-            top: Radius.circular(
-                ResponsiveUtils.getResponsiveSpacing(context, 20))),
-      ),
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.7,
-        maxChildSize: 0.9,
-        minChildSize: 0.5,
-        expand: false,
-        builder: (context, scrollController) {
-          return LayoutFixUtils.fixBottomOverflow(
-            padding: EdgeInsets.zero,
-            maxHeight: MediaQuery.of(context).size.height * 0.9,
-            child: Column(
-              children: [
-                // Handle
-                Container(
-                  width: ResponsiveUtils.getResponsiveValue<double>(
-                    context: context,
-                    mobile: 40,
-                    tablet: 40 * 1.2,
-                    desktop: 40 * 1.4,
+      backgroundColor: Colors.transparent,
+      builder: (context) => SafeArea(
+        top: true,
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: 640,
+              maxHeight: MediaQuery.of(context).size.height * 0.88,
+            ),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Handle
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 5,
+                      margin: const EdgeInsets.only(top: 12, bottom: 8),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
                   ),
-                  height: ResponsiveUtils.getResponsiveSpacing(context, 4),
-                  margin: EdgeInsets.symmetric(
-                      vertical:
-                          ResponsiveUtils.getResponsiveSpacing(context, 8)),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(
-                        ResponsiveUtils.getResponsiveSpacing(context, 2)),
-                  ),
-                ),
 
                 // Podcast Header
                 Padding(
@@ -577,7 +572,6 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
                           ref.watch(podcastEpisodesProvider(podcast.id));
                       return episodesAsync.when(
                         data: (episodes) => ListView.builder(
-                          controller: scrollController,
                           padding: EdgeInsets.symmetric(
                               horizontal: ResponsiveUtils.getResponsiveSpacing(
                                   context, 16)),
@@ -627,45 +621,76 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
                 ),
               ],
             ),
-          );
-        },
+          ),
+        ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   void _showEpisodeOptions(BuildContext context, Map<String, dynamic> episode) {
     showModalBottomSheet(
       context: context,
-      builder: (context) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.play_arrow),
-            title: const Text('Play Episode'),
-            onTap: () {
-              Navigator.pop(context);
-              _playEpisode(context, episode);
-            },
+      backgroundColor: Colors.transparent,
+      builder: (context) => SafeArea(
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 640),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 5,
+                      margin: const EdgeInsets.only(top: 12, bottom: 8),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.play_arrow),
+                    title: const Text('Play Episode'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _playEpisode(context, episode);
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.download),
+                    title: const Text('Download Episode'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _downloadEpisode(context, episode);
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.share),
+                    title: const Text('Share Episode'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Sharing: ${episode['title']}')),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ),
+            ),
           ),
-          ListTile(
-            leading: const Icon(Icons.download),
-            title: const Text('Download Episode'),
-            onTap: () {
-              Navigator.pop(context);
-              _downloadEpisode(context, episode);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.share),
-            title: const Text('Share Episode'),
-            onTap: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Sharing: ${episode['title']}')),
-              );
-            },
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -807,26 +832,51 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
   void _showSamplePodcastDetails(BuildContext context, Podcast sample) {
     showModalBottomSheet(
       context: context,
+      backgroundColor: Colors.transparent,
       builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(sample.title,
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleLarge
-                      ?.copyWith(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 6),
-              Text('Hosted by ${sample.host}'),
-              const SizedBox(height: 6),
-              Text(sample.description),
-              const SizedBox(height: 10),
-              const Text(
-                  'Sample content. Publish a real podcast with the same title in admin to replace it.'),
-            ],
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 640),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 5,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                  ),
+                  Text(sample.title,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleLarge
+                          ?.copyWith(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 6),
+                  Text('Hosted by ${sample.host}'),
+                  const SizedBox(height: 6),
+                  Text(sample.description),
+                  const SizedBox(height: 10),
+                  const Text(
+                      'Sample content. Publish a real podcast with the same title in admin to replace it.'),
+                ],
+              ),
+            ),
           ),
         ),
       ),

@@ -202,7 +202,7 @@ class _AdminKidsMissionsScreenState extends State<AdminKidsMissionsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Text(
-                              'Zero-Code Mission Extractor',
+                              'Mission Extractor',
                               style: Theme.of(context)
                                   .textTheme
                                   .titleMedium

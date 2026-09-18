@@ -376,5 +376,6 @@
   "invalid_amount": "Please enter a valid amount",
   "donation_processing": "Processing your donation...",
   "donation_success_title": "Thank You!",
+  "select_giving_method": "Select Giving Method",
   "donation_success_message": "Your donation has been processed successfully."
 }

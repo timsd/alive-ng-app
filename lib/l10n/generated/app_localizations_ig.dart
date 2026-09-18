@@ -1175,4 +1175,7 @@ class AppLocalizationsIg extends AppLocalizations {
 
   @override
   String get donation_success_message => 'Ewetara onyinye gị nke ọma.';
+
+  @override
+  String get select_giving_method => 'Họrọ Usoro Inye Onyinye';
 }

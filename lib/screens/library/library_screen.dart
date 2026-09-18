@@ -23,54 +23,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   final AppwriteLibraryService _libraryService =
       AppwriteLibraryService.instance;
 
-  // Sample data with categories for proper indexing
+  // Single mockup/placeholder item per category
   final List<Map<String, dynamic>> _allBooks = [
-    {
-      'title': 'The Great Controversy',
-      'author': 'Ellen G. White',
-      'category': 'Bible',
-      'language': 'en'
-    },
     {
       'title': 'Steps to Christ',
       'author': 'Ellen G. White',
       'category': 'Devotional',
-      'language': 'en'
-    },
-    {
-      'title': 'The Desire of Ages',
-      'author': 'Ellen G. White',
-      'category': 'Bible',
-      'language': 'en'
-    },
-    {
-      'title': 'Patriarchs and Prophets',
-      'author': 'Ellen G. White',
-      'category': 'Bible',
-      'language': 'en'
-    },
-    {
-      'title': 'The Acts of the Apostles',
-      'author': 'Ellen G. White',
-      'category': 'Bible',
-      'language': 'en'
-    },
-    {
-      'title': 'Prophets and Kings',
-      'author': 'Ellen G. White',
-      'category': 'Bible',
-      'language': 'en'
-    },
-    {
-      'title': 'Education',
-      'author': 'Ellen G. White',
-      'category': 'Youth',
-      'language': 'en'
-    },
-    {
-      'title': 'Ministry of Healing',
-      'author': 'Ellen G. White',
-      'category': 'Health',
       'language': 'en'
     },
   ];
@@ -78,20 +36,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   final List<Map<String, dynamic>> _allArticles = [
     {
       'title': 'Understanding Bible Prophecy',
-      'author': 'John Doe',
+      'author': 'ALIVE Ministry',
       'category': 'Bible',
-      'language': 'en'
-    },
-    {
-      'title': 'Health and Wellness Tips',
-      'author': 'Jane Smith',
-      'category': 'Health',
-      'language': 'en'
-    },
-    {
-      'title': 'Youth Ministry Guidelines',
-      'author': 'David Johnson',
-      'category': 'Youth',
       'language': 'en'
     },
   ];
@@ -99,14 +45,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   final List<Map<String, dynamic>> _allAudio = [
     {
       'title': 'Daily Devotional Podcast',
-      'author': 'Speaker One',
+      'author': 'ALIVE Audio',
       'category': 'Devotional',
-      'language': 'en'
-    },
-    {
-      'title': 'Bible Study Series',
-      'author': 'Speaker Two',
-      'category': 'Bible',
       'language': 'en'
     },
   ];
@@ -114,14 +54,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   final List<Map<String, dynamic>> _allVideos = [
     {
       'title': 'Bible Study Methods',
-      'author': 'Teacher One',
-      'category': 'bible',
-      'language': 'en'
-    },
-    {
-      'title': 'Health Cooking Series',
-      'author': 'Chef Two',
-      'category': 'health',
+      'author': 'ALIVE Media',
+      'category': 'Bible',
       'language': 'en'
     },
   ];

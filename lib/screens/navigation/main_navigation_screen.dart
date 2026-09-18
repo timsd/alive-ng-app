@@ -149,7 +149,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
       const _MoreItem('Missions', Icons.public_rounded, AppConstants.missionsRoute, color: Color(0xFF0EA5E9)),
       const _MoreItem('Kids Missions', Icons.child_care_rounded, AppConstants.kidsMissionRoute, color: Color(0xFFF43F5E)),
       const _MoreItem('Kids Stories', Icons.auto_stories_rounded, AppConstants.kidsStoriesRoute, color: Color(0xFFFB7185)),
-      const _MoreItem('Health+', Icons.health_and_safety_rounded, AppConstants.enhancedHealthRoute, color: Color(0xFF059669)),
+      const _MoreItem('Health+', Icons.medical_services_rounded, AppConstants.enhancedHealthRoute, color: Color(0xFF059669)),
       const _MoreItem('Prayer Wall', Icons.favorite_rounded, AppConstants.prayerWallRoute, color: Color(0xFFEC4899)),
       const _MoreItem('Testimonies', Icons.record_voice_over_rounded, AppConstants.testimoniesRoute, color: Color(0xFF8B5CF6)),
       const _MoreItem('Chapters', Icons.location_city_rounded, AppConstants.chaptersRoute, color: Color(0xFF3B82F6)),

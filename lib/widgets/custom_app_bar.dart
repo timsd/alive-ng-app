@@ -9,6 +9,7 @@ import '../l10n/supported_language.dart';
 import 'donation_button.dart';
 import 'custom_image.dart';
 import '../constants/app_constants.dart';
+import '../utils/responsive_utils.dart';
 
 class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
   final String? title;
@@ -225,7 +226,11 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
     final TextStyle? resolvedTitleStyle = (titleTextStyle ??
             theme.appBarTheme.titleTextStyle ??
             theme.textTheme.titleLarge)
-        ?.copyWith(color: resolvedForeground);
+        ?.copyWith(
+          color: resolvedForeground,
+          fontWeight: FontWeight.bold,
+          fontSize: ResponsiveUtils.getResponsiveFontSize(context, 20),
+        );
     final ShapeBorder resolvedShape = shape ??
         Border(
           bottom: BorderSide(
@@ -233,6 +238,23 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
             width: 1,
           ),
         );
+
+    final PreferredSizeWidget? effectiveBottom = bottom != null
+        ? PreferredSize(
+            preferredSize: bottom!.preferredSize,
+            child: Theme(
+              data: theme.copyWith(
+                tabBarTheme: theme.tabBarTheme.copyWith(
+                  labelColor: resolvedForeground,
+                  unselectedLabelColor:
+                      resolvedForeground.withValues(alpha: 0.7),
+                  indicatorColor: resolvedForeground,
+                ),
+              ),
+              child: bottom!,
+            ),
+          )
+        : null;
 
     return AppBar(
       title: titleWidget ??
@@ -256,7 +278,7 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
       leadingWidth: leadingWidth,
       systemOverlayStyle:
           systemOverlayStyle ?? theme.appBarTheme.systemOverlayStyle,
-      bottom: bottom,
+      bottom: effectiveBottom,
       shape: resolvedShape,
       toolbarHeight: toolbarHeight,
     );
@@ -339,27 +361,64 @@ class SliverCustomAppBar extends StatelessWidget {
       );
     }
 
+    // Resolve colors to ensure icon/text contrast across any background
+    final Color resolvedBackground = backgroundColor ??
+        theme.appBarTheme.backgroundColor ??
+        theme.colorScheme.primary;
+
+    Color computedContrast;
+    if (resolvedBackground.toARGB32() == theme.colorScheme.primary.toARGB32()) {
+      computedContrast = theme.colorScheme.onPrimary;
+    } else {
+      final double luminance = resolvedBackground.computeLuminance();
+      computedContrast = luminance > 0.5 ? Colors.black : Colors.white;
+    }
+
+    final Color resolvedForeground = foregroundColor ??
+        theme.appBarTheme.foregroundColor ??
+        computedContrast;
+
+    final PreferredSizeWidget? effectiveBottom = bottom != null
+        ? PreferredSize(
+            preferredSize: bottom!.preferredSize,
+            child: Theme(
+              data: theme.copyWith(
+                tabBarTheme: theme.tabBarTheme.copyWith(
+                  labelColor: resolvedForeground,
+                  unselectedLabelColor:
+                      resolvedForeground.withValues(alpha: 0.7),
+                  indicatorColor: resolvedForeground,
+                ),
+              ),
+              child: bottom!,
+            ),
+          )
+        : null;
+
     return SliverAppBar(
       title: titleWidget ??
           (title != null
               ? LayoutFixUtils.responsiveText(
                   title!,
                   context: context,
-                  style: titleTextStyle ?? theme.appBarTheme.titleTextStyle,
+                  style: titleTextStyle ??
+                      theme.appBarTheme.titleTextStyle?.copyWith(
+                        color: resolvedForeground,
+                      ),
                 )
               : null),
       actions: actions,
       leading: effectiveLeading,
       automaticallyImplyLeading: automaticallyImplyLeading,
-      backgroundColor: backgroundColor ?? theme.appBarTheme.backgroundColor,
-      foregroundColor: foregroundColor ?? theme.appBarTheme.foregroundColor,
+      backgroundColor: resolvedBackground,
+      foregroundColor: resolvedForeground,
       elevation: elevation ?? theme.appBarTheme.elevation,
       centerTitle: centerTitle ?? theme.appBarTheme.centerTitle,
       titleSpacing: titleSpacing,
       leadingWidth: leadingWidth,
       systemOverlayStyle:
           systemOverlayStyle ?? theme.appBarTheme.systemOverlayStyle,
-      bottom: bottom,
+      bottom: effectiveBottom,
       shape: shape,
       toolbarHeight: toolbarHeight,
       pinned: pinned,

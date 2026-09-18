@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_exception.dart';
 import '../models/bible_models.dart';
+import '../constants/bible_data.dart';
 import '../utils/search_utils.dart';
 import 'bible_database_helper.dart';
 import '../utils/logger.dart';
@@ -327,6 +328,31 @@ class OfflineBibleService {
 
     final tokens = SearchUtils.tokensOf(query);
 
+    // Check if query is an explicit reference (e.g. "John 3", "Psalm 23", "Genesis 1", "John 3:16")
+    final refParsed = BibleData.parseReference(query);
+    final Set<int> refCandidateIndices = {};
+    if (refParsed['isValid'] == true) {
+      final targetBook = (refParsed['book'] as String).toLowerCase();
+      final targetChapter = refParsed['chapter'] as int;
+      final hasChapter = refParsed['hasChapter'] as bool;
+      final hasVerse = refParsed['hasVerse'] as bool;
+      final targetStartVerse = refParsed['startVerse'] as int;
+      final targetEndVerse = refParsed['endVerse'] as int;
+
+      for (int i = 0; i < index.entries.length; i++) {
+        final e = index.entries[i];
+        if (e.book.toLowerCase() == targetBook) {
+          if (!hasChapter) {
+            refCandidateIndices.add(i);
+          } else if (e.chapter == targetChapter) {
+            if (!hasVerse || (e.verse >= targetStartVerse && e.verse <= targetEndVerse)) {
+              refCandidateIndices.add(i);
+            }
+          }
+        }
+      }
+    }
+
     // Candidate narrowing: verses containing the rarest query tokens first.
     // This avoids scoring all ~31k verses on every keystroke.
     Set<int>? candidates;
@@ -345,6 +371,15 @@ class OfflineBibleService {
         if (candidates.length < 4000) break;
       }
     }
+
+    if (refCandidateIndices.isNotEmpty) {
+      if (candidates == null) {
+        candidates = refCandidateIndices;
+      } else {
+        candidates.addAll(refCandidateIndices);
+      }
+    }
+
     // Phrase queries fall back to a windowed scan only when the index
     // produced no candidates (e.g. heavy punctuation variants).
     final pool = (candidates == null || candidates.isEmpty)
@@ -373,7 +408,17 @@ class OfflineBibleService {
       }
     }
 
-    scored.sort((a, b) => b.value.compareTo(a.value));
+    scored.sort((a, b) {
+      final comp = b.value.compareTo(a.value);
+      if (comp != 0) return comp;
+      if (a.key.book == b.key.book) {
+        if (a.key.chapter == b.key.chapter) {
+          return a.key.verse.compareTo(b.key.verse);
+        }
+        return a.key.chapter.compareTo(b.key.chapter);
+      }
+      return 0;
+    });
     final result = scored.take(limit).map((e) => e.key).toList();
     if (_searchCache.length > 200) _searchCache.clear();
     _searchCache[cacheKey] = result;
@@ -423,6 +468,13 @@ class OfflineBibleService {
       final entries = <_IndexedVerse>[];
       final postings = <String, List<int>>{};
       for (final book in books) {
+        final bookTokens = <String>{
+          ...SearchUtils.tokensOf(book.name),
+          ...SearchUtils.tokensOf(book.abbreviation),
+          ...BibleData.aliasesForBook(book.name),
+          if (book.translations != null)
+            for (final t in book.translations!.values) ...SearchUtils.tokensOf(t),
+        };
         for (int chapter = 1; chapter <= book.chapters; chapter++) {
           BibleChapter? chapterData;
           try {
@@ -436,16 +488,24 @@ class OfflineBibleService {
             continue;
           }
           if (chapterData == null) continue;
+          final chapterStr = chapter.toString();
           for (final verse in chapterData.verses) {
             final idx = entries.length;
+            final ref = '${book.name} $chapter:${verse.number}';
             entries.add(_IndexedVerse(
               book: book.name,
               chapter: chapter,
               verse: verse.number,
-              reference: '${book.name} $chapter:${verse.number}',
+              reference: ref,
               text: verse.text,
             ));
-            for (final token in SearchUtils.tokensOf(verse.text).toSet()) {
+            final verseTokens = <String>{
+              ...bookTokens,
+              chapterStr,
+              verse.number.toString(),
+              ...SearchUtils.tokensOf(verse.text),
+            };
+            for (final token in verseTokens) {
               (postings[token] ??= []).add(idx);
             }
           }

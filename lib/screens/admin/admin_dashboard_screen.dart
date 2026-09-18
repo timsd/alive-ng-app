@@ -18,6 +18,9 @@ import 'board_reports_screen.dart';
 import '../../services/appwrite_admin_export_service.dart';
 import '../../services/monthly_reminder_setting_service.dart';
 import '../../utils/responsive_utils.dart';
+import '../../models/discipleship_models.dart';
+import '../../services/discipleship_service.dart';
+import 'package:intl/intl.dart';
 
 import 'package:url_launcher/url_launcher.dart';
 
@@ -813,19 +816,19 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                   () => _navigateToContentManagement('announcements'),
                 ),
                 _buildActionTile(
-                  'Zero-Code Kids Stories',
+                  'Kids Stories',
                   'Upload PDF to extract text or type in content and upload media (choose which to use)',
                   Icons.auto_stories,
                   () => context.go(AppConstants.adminKidsStoriesRoute),
                 ),
                 _buildActionTile(
-                  'Zero-Code Kids Missions',
+                  'Kids Missions',
                   'Upload PDF to extract text or type in content and upload media (choose which to use)',
                   Icons.assignment_turned_in,
                   () => context.go(AppConstants.adminKidsMissionsRoute),
                 ),
                 _buildActionTile(
-                  'Zero-Code Study Guides',
+                  'Study Guides',
                   'Upload PDF to extract text or type in content and upload media (choose which to use)',
                   Icons.menu_book,
                   () => context.go(AppConstants.adminStudyGuidesRoute),
@@ -875,6 +878,28 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                   'Review chapter activity reports',
                   Icons.assessment_outlined,
                   () => _navigateToChapterReports(),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // Discipleship Operations
+            _buildManagementSection(
+              'Discipleship Operations',
+              Icons.people_outline,
+              [
+                _buildActionTile(
+                  'Report Officers & Routing',
+                  'Map Coordinators and Directors to receive dispatched discipleship reports',
+                  Icons.mark_email_read_outlined,
+                  () => _showOfficerRoutingDialog(),
+                ),
+                _buildActionTile(
+                  'Disciple Deletion Requests',
+                  'Review and approve or reject disciple deletion requests',
+                  Icons.person_remove_outlined,
+                  () => _showDeletionRequestsDialog(),
                 ),
               ],
             ),
@@ -1239,5 +1264,536 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
             const StorageAdminScreen(initialBucket: 'app-logs'),
       ),
     );
+  }
+
+  // Discipleship Officer Mapping & Report Routing Dialog
+  void _showOfficerRoutingDialog() {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final theme = Theme.of(context);
+            final colorScheme = theme.colorScheme;
+            return AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.mark_email_read_outlined,
+                      color: colorScheme.primary),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text('Discipleship Report Officers'),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: 550,
+                child: FutureBuilder<List<OfficerOfficeAssignment>>(
+                  future: DiscipleshipService.instance.getOfficerAssignments(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(32),
+                          child: CircularProgressIndicator(),
+                        ),
+                      );
+                    }
+                    final assignments = snapshot.data ?? [];
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Designate Coordinators and Directors to receive dispatched reports from disciple makers:',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        if (assignments.isEmpty)
+                          Container(
+                            padding: const EdgeInsets.all(24),
+                            alignment: Alignment.center,
+                            child: Column(
+                              children: [
+                                Icon(Icons.person_off_outlined,
+                                    size: 40,
+                                    color: colorScheme.onSurfaceVariant
+                                        .withValues(alpha: 0.5)),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'No officers assigned yet',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          Flexible(
+                            child: ListView.separated(
+                              shrinkWrap: true,
+                              itemCount: assignments.length,
+                              separatorBuilder: (_, __) =>
+                                  const Divider(height: 1),
+                              itemBuilder: (context, index) {
+                                final a = assignments[index];
+                                final isDirector =
+                                    a.officeType.toLowerCase() == 'director';
+                                return ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  leading: CircleAvatar(
+                                    backgroundColor: isDirector
+                                        ? colorScheme.primary
+                                            .withValues(alpha: 0.15)
+                                        : colorScheme.secondary
+                                            .withValues(alpha: 0.15),
+                                    child: Icon(
+                                      isDirector
+                                          ? Icons.shield_outlined
+                                          : Icons.co_present_outlined,
+                                      color: isDirector
+                                          ? colorScheme.primary
+                                          : colorScheme.secondary,
+                                    ),
+                                  ),
+                                  title: Text(
+                                    a.officeTitle,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                  subtitle: Text(
+                                    '${a.officerName}\n${a.officerEmail}',
+                                    style: theme.textTheme.bodySmall,
+                                  ),
+                                  isThreeLine: true,
+                                  trailing: IconButton(
+                                    icon: const Icon(Icons.delete_outline,
+                                        color: Colors.redAccent),
+                                    tooltip: 'Remove office assignment',
+                                    onPressed: () async {
+                                      final confirm = await showDialog<bool>(
+                                        context: context,
+                                        builder: (c) => AlertDialog(
+                                          title: const Text('Remove Officer?'),
+                                          content: Text(
+                                              'Remove ${a.officerName} from ${a.officeTitle}?'),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(c, false),
+                                              child: const Text('Cancel'),
+                                            ),
+                                            ElevatedButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(c, true),
+                                              child: const Text('Remove'),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                      if (confirm == true) {
+                                        await DiscipleshipService.instance
+                                            .removeOfficerAssignment(a.id);
+                                        setDialogState(() {});
+                                      }
+                                    },
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogCtx),
+                  child: const Text('Close'),
+                ),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.add),
+                  label: const Text('Assign Officer'),
+                  onPressed: () => _showAddOfficerDialog(setDialogState),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showAddOfficerDialog(void Function(void Function()) parentSetState) {
+    final titleController = TextEditingController();
+    final nameController = TextEditingController();
+    final emailController = TextEditingController();
+    final idController = TextEditingController();
+    String officeType = 'coordinator';
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setSubState) {
+            return AlertDialog(
+              title: const Text('Assign Report Officer'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: titleController,
+                      decoration: const InputDecoration(
+                        labelText: 'Office / Role Title *',
+                        hintText: 'e.g. Zonal Director, District Coordinator',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: officeType,
+                      decoration: const InputDecoration(labelText: 'Office Type *'),
+                      items: const [
+                        DropdownMenuItem(
+                            value: 'coordinator', child: Text('Coordinator')),
+                        DropdownMenuItem(
+                            value: 'director', child: Text('Director')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) setSubState(() => officeType = val);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Officer Full Name *',
+                        hintText: 'e.g. Pastor John Doe',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: const InputDecoration(
+                        labelText: 'Officer Email *',
+                        hintText: 'e.g. pastor.john@aliveng.org',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: idController,
+                      decoration: const InputDecoration(
+                        labelText: 'User ID (Optional)',
+                        hintText: 'Leave empty to auto-generate',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (titleController.text.trim().isEmpty ||
+                        nameController.text.trim().isEmpty ||
+                        emailController.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Please fill all required fields')),
+                      );
+                      return;
+                    }
+                    final officerId = idController.text.trim().isEmpty
+                        ? emailController.text.trim().toLowerCase()
+                        : idController.text.trim();
+                    await DiscipleshipService.instance.assignOfficerToOffice(
+                      officeTitle: titleController.text.trim(),
+                      officeType: officeType,
+                      officerName: nameController.text.trim(),
+                      officerEmail: emailController.text.trim(),
+                      officerId: officerId,
+                    );
+                    if (ctx.mounted) Navigator.pop(ctx);
+                    parentSetState(() {});
+                  },
+                  child: const Text('Save Assignment'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // Disciple Deletion Requests Approval Queue
+  void _showDeletionRequestsDialog() {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (context, setQueueState) {
+            final theme = Theme.of(context);
+            final colorScheme = theme.colorScheme;
+            return AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.person_remove_outlined,
+                      color: colorScheme.primary),
+                  const SizedBox(width: 8),
+                  const Expanded(child: Text('Disciple Deletion Requests')),
+                ],
+              ),
+              content: SizedBox(
+                width: 600,
+                child: FutureBuilder<List<DiscipleDeletionRequest>>(
+                  future: DiscipleshipService.instance.getDeletionRequests(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(32),
+                          child: CircularProgressIndicator(),
+                        ),
+                      );
+                    }
+                    final requests = snapshot.data ?? [];
+                    if (requests.isEmpty) {
+                      return Container(
+                        padding: const EdgeInsets.all(32),
+                        alignment: Alignment.center,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.check_circle_outline,
+                                size: 48,
+                                color: Colors.green.withValues(alpha: 0.7)),
+                            const SizedBox(height: 12),
+                            Text(
+                              'No deletion requests pending',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Coordinators and Directors can request deletion of disciples who have zero activity records.',
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    return Flexible(
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: requests.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final req = requests[index];
+                          final isPending =
+                              req.status == DeletionRequestStatus.pending;
+                          final isApproved =
+                              req.status == DeletionRequestStatus.approved;
+
+                          final statusColor = isPending
+                              ? Colors.orange
+                              : (isApproved ? Colors.green : Colors.red);
+
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        req.contactName,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: statusColor.withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                            color: statusColor.withValues(alpha: 0.5)),
+                                      ),
+                                      child: Text(
+                                        req.status.name.toUpperCase(),
+                                        style: TextStyle(
+                                          color: statusColor,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Requested by: ${req.requesterName} (${req.requesterRole}) · ${DateFormat.yMMMd().format(req.createdAt)}',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                                if (req.reason.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Reason: ${req.reason}',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                ],
+                                if (req.adminReviewNotes != null &&
+                                    req.adminReviewNotes!.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Admin Note: ${req.adminReviewNotes}',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: colorScheme.primary,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                                if (isPending) ...[
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      OutlinedButton(
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor: Colors.red,
+                                          side: const BorderSide(
+                                              color: Colors.red),
+                                        ),
+                                        onPressed: () => _handleRejectDeletion(
+                                            req, setQueueState),
+                                        child: const Text('Reject'),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.redAccent,
+                                          foregroundColor: Colors.white,
+                                        ),
+                                        onPressed: () => _handleApproveDeletion(
+                                            req, setQueueState),
+                                        child: const Text('Approve Deletion'),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogCtx),
+                  child: const Text('Close'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _handleApproveDeletion(DiscipleDeletionRequest req,
+      void Function(void Function()) parentSetState) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Confirm Permanent Deletion'),
+        content: Text(
+            'Are you sure you want to approve deletion for "${req.contactName}"? This will permanently remove the contact record from the system.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(c, true),
+            child: const Text('Delete Permanently'),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      await DiscipleshipService.instance
+          .approveDeletionRequest(req.id, adminNotes: 'Approved by admin');
+      parentSetState(() {});
+    }
+  }
+
+  Future<void> _handleRejectDeletion(DiscipleDeletionRequest req,
+      void Function(void Function()) parentSetState) async {
+    final noteController = TextEditingController();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Reject Deletion Request'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Provide a reason for rejecting the deletion of "${req.contactName}":'),
+            const SizedBox(height: 12),
+            TextField(
+              controller: noteController,
+              decoration: const InputDecoration(
+                labelText: 'Rejection Reason *',
+                hintText: 'e.g. Please archive or reassign instead.',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c, null),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () =>
+                Navigator.pop(c, noteController.text.trim()),
+            child: const Text('Submit Rejection'),
+          ),
+        ],
+      ),
+    );
+    if (reason != null && reason.isNotEmpty) {
+      await DiscipleshipService.instance
+          .rejectDeletionRequest(req.id, reason: reason);
+      parentSetState(() {});
+    }
   }
 }

@@ -219,7 +219,7 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Text(
-                              'Zero-Code Document Extractor',
+                              'Document Extractor',
                               style: Theme.of(context)
                                   .textTheme
                                   .titleMedium

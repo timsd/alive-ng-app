@@ -52,6 +52,15 @@ const REQUIRED_APPWRITE_ENV = {
   '_APP_DOMAIN_TARGET': 'api.alivenigeria.org',
   '_APP_ENV': 'production',
   '_APP_OPTIONS_FORCE_HTTPS': 'enabled',
+  '_APP_SMTP_HOST': 'smtp.resend.com',
+  '_APP_SMTP_PORT': '587',
+  '_APP_SMTP_USERNAME': 'resend',
+  '_APP_SMTP_PASSWORD': process.env.RESEND_API_KEY || '',
+  '_APP_SMTP_SECURE': 'tls',
+  '_APP_SYSTEM_EMAIL_NAME': 'ALIVE NG App',
+  '_APP_SYSTEM_EMAIL_ADDRESS': 'app@alivenigeria.org',
+  '_APP_SYSTEM_RESPONSE_EMAIL': 'app@alivenigeria.org',
+  '_APP_SYSTEM_TEAM_EMAIL': 'app@alivenigeria.org',
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────

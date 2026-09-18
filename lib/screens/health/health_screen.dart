@@ -102,6 +102,7 @@ class HealthScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: CustomAppBar(
+        showBackButton: true,
         title: translate('health'),
         elevation: 0,
         backgroundColor: Colors.green,

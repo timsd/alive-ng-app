@@ -65,15 +65,18 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
     return Scaffold(
       appBar: CustomAppBar(
         title: 'Health+',
+        showBackButton: true,
         showDonationButton: true,
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
-          indicatorColor: theme.colorScheme.onPrimary,
+          indicatorColor: theme.colorScheme.primary,
           indicatorWeight: 3,
-          labelColor: theme.colorScheme.onPrimary,
+          labelColor: theme.colorScheme.primary,
           unselectedLabelColor:
-              theme.colorScheme.onPrimary.withValues(alpha: 0.72),
+              theme.colorScheme.onSurface.withValues(alpha: 0.7),
+          labelStyle: const TextStyle(fontWeight: FontWeight.bold),
+          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500),
           tabs: const [
             Tab(icon: Icon(Icons.restaurant_menu), text: 'Recipes'),
             Tab(icon: Icon(Icons.spa), text: 'Remedies'),
@@ -206,7 +209,8 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
             Text(
               recipe.description,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.88),
+                height: 1.5,
               ),
             ),
             SizedBox(
@@ -225,7 +229,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
               Text(
                 recipe.ingredients.take(4).join(' • '),
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.82),
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -237,28 +241,30 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
               children: [
                 Icon(Icons.schedule,
                     size: context.responsiveIconSize(16),
-                    color: theme.colorScheme.onSurfaceVariant),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.75)),
                 SizedBox(
                     width: ResponsiveUtils.getResponsiveValue(
                         context: context, mobile: 4, tablet: 6, desktop: 8)),
                 Text(
                   recipe.prepTime,
                   style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
+                      fontWeight: FontWeight.w500),
                 ),
                 SizedBox(
                     width: ResponsiveUtils.getResponsiveValue(
                         context: context, mobile: 16, tablet: 20, desktop: 24)),
                 Icon(Icons.people,
                     size: context.responsiveIconSize(16),
-                    color: theme.colorScheme.onSurfaceVariant),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.75)),
                 SizedBox(
                     width: ResponsiveUtils.getResponsiveValue(
                         context: context, mobile: 4, tablet: 6, desktop: 8)),
                 Text(
                   '${recipe.servings} servings',
                   style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
+                      fontWeight: FontWeight.w500),
                 ),
                 const Spacer(),
                 // Comment button
@@ -269,6 +275,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                     commentCount > 0 ? '$commentCount' : 'Comment',
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                   style: TextButton.styleFrom(
@@ -293,6 +300,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                             principle,
                             style: theme.textTheme.labelSmall?.copyWith(
                               color: theme.colorScheme.onSecondaryContainer,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                           backgroundColor:
@@ -335,8 +343,11 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                   Text(
                     recipe.benefits,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.tertiary,
+                      color: theme.brightness == Brightness.dark
+                          ? theme.colorScheme.onTertiaryContainer
+                          : theme.colorScheme.tertiary,
                       fontStyle: FontStyle.italic,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
@@ -368,7 +379,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
             child: Text(
               '$prefix${entry.value}',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.88),
                 height: 1.5,
               ),
             ),
@@ -426,33 +437,12 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                     width: ResponsiveUtils.getResponsiveValue(
                         context: context, mobile: 12, tablet: 16, desktop: 20)),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        remedy.title,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          remedy.ailmentCategory,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.onPrimaryContainer,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    remedy.title,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onSurface,
+                    ),
                   ),
                 ),
               ],
@@ -463,18 +453,62 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
             Text(
               remedy.description,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.88),
                 height: 1.5,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveValue(
+                    context: context, mobile: 12, tablet: 16, desktop: 20)),
+            // Metadata row matching Recipes: category on left, comment button on right
+            Row(
+              children: [
+                Icon(Icons.spa_outlined,
+                    size: context.responsiveIconSize(16),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.75)),
+                SizedBox(
+                    width: ResponsiveUtils.getResponsiveValue(
+                        context: context, mobile: 4, tablet: 6, desktop: 8)),
+                Text(
+                  remedy.ailmentCategory,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const Spacer(),
+                // Comment button
+                TextButton.icon(
+                  onPressed: () => _showCommentSheet(remedy.id, remedy.title),
+                  icon: Icon(Icons.comment_outlined, size: 16, color: theme.colorScheme.primary),
+                  label: Text(
+                    commentCount > 0 ? '$commentCount' : 'Comment',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
             // Dosage & Usage
             if (remedy.dosageAndUsage.isNotEmpty) ...[
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                  color: theme.brightness == Brightness.dark
+                      ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4)
+                      : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
                   borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+                  ),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -487,6 +521,8 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                         remedy.dosageAndUsage,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurface,
+                          fontWeight: FontWeight.w500,
+                          height: 1.4,
                         ),
                       ),
                     ),
@@ -495,13 +531,18 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
               ),
               const SizedBox(height: 8),
             ],
-            // Precautions
+            // Precautions (warning section: cleaned of duplicated badges, icons, and emojis)
             if (remedy.precautions.isNotEmpty) ...[
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.errorContainer.withValues(alpha: 0.3),
+                  color: theme.brightness == Brightness.dark
+                      ? theme.colorScheme.error.withValues(alpha: 0.15)
+                      : theme.colorScheme.errorContainer.withValues(alpha: 0.45),
                   borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: theme.colorScheme.error.withValues(alpha: 0.35),
+                  ),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -511,9 +552,17 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        '⚠️ ${remedy.precautions}',
+                        remedy.precautions
+                            .replaceAll(RegExp(r'^[⚠️🚨❗\s]+'), '')
+                            .replaceAll(RegExp(r'^(warning|caution|precaution|precautions)\s*[:\-]\s*', caseSensitive: false), '')
+                            .replaceAll(RegExp(r'^\[(warning|caution|precaution)\]\s*', caseSensitive: false), '')
+                            .trim(),
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface,
+                          color: theme.brightness == Brightness.dark
+                              ? const Color(0xFFFFB4AB)
+                              : theme.colorScheme.onErrorContainer,
+                          fontWeight: FontWeight.w500,
+                          height: 1.4,
                         ),
                       ),
                     ),
@@ -527,10 +576,12 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.tertiaryContainer.withValues(alpha: 0.3),
+                  color: theme.brightness == Brightness.dark
+                      ? theme.colorScheme.tertiaryContainer.withValues(alpha: 0.25)
+                      : theme.colorScheme.tertiaryContainer.withValues(alpha: 0.45),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                      color: theme.colorScheme.tertiary.withValues(alpha: 0.3)),
+                      color: theme.colorScheme.tertiary.withValues(alpha: 0.35)),
                 ),
                 child: Row(
                   children: [
@@ -548,34 +599,18 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
                         remedy.biblicalPrinciple,
                         style: theme.textTheme.bodySmall?.copyWith(
                           fontStyle: FontStyle.italic,
-                          color: theme.colorScheme.tertiary,
+                          color: theme.brightness == Brightness.dark
+                              ? theme.colorScheme.onTertiaryContainer
+                              : theme.colorScheme.onSurface,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(height: 8),
             ],
-            // Comment + expand row
-            Row(
-              children: [
-                TextButton.icon(
-                  onPressed: () => _showCommentSheet(remedy.id, remedy.title),
-                  icon: Icon(Icons.comment_outlined, size: 16, color: theme.colorScheme.primary),
-                  label: Text(
-                    commentCount > 0 ? '$commentCount Comments' : 'Comment',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                ),
-              ],
-            ),
             // Expandable preparation steps
             if (remedy.preparationSteps.isNotEmpty || remedy.ingredients.isNotEmpty)
               ExpansionTile(
@@ -819,6 +854,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      constraints: const BoxConstraints(maxWidth: 640),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -971,7 +1007,8 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
       subtitle: Text(
         subtitle,
         style: theme.textTheme.bodyMedium?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.78),
+          fontWeight: FontWeight.w500,
         ),
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
@@ -996,7 +1033,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
         subtitle: Text(
           subtitle,
           style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.78),
           ),
           maxLines: 3,
           overflow: TextOverflow.ellipsis,

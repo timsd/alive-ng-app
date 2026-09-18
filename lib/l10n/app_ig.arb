@@ -381,5 +381,6 @@
   "invalid_amount": "Tinye adadi ego ziri ezi",
   "donation_processing": "A na-asụtọ / gudanar da onyinye gị...",
   "donation_success_title": "Daalụ Unu!",
-  "donation_success_message": "Enyere onyinye gị nke ọma na nasara."
+  "select_giving_method": "Họrọ Usoro Inye Onyinye",
+  "donation_success_message": "Enyere onyinye gị nke ọma."
 }

@@ -41,8 +41,8 @@ class NotificationSettingsService {
           healthTrackingReminder: true,
           studyReminder: true,
           missionReminder: true,
-          reminderTime: '07:00',
-          pushNotificationsEnabled: false,
+          reminderTime: '07:00, 20:00',
+          pushNotificationsEnabled: true,
         );
 
         await _tables.createRow(

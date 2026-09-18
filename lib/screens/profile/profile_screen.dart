@@ -65,6 +65,7 @@ class ProfileScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: CustomAppBar(
+        showBackButton: true,
         title: translate('profile'),
       ),
       body: SafeArea(
@@ -255,8 +256,11 @@ class ProfileScreen extends ConsumerWidget {
         builder: (context) => EditProfileScreen(userProfile: profile),
       ),
     );
+    // Always refresh: the edit screen may have uploaded a new profile picture
+    // (persisted immediately) even when the user left without saving.
+    ref.invalidate(userProfileProvider);
     if (result != null) {
-      ref.invalidate(userProfileProvider);
+      ref.invalidate(currentUserProfileProvider);
     }
   }
 
@@ -314,6 +318,7 @@ class ProfileScreen extends ConsumerWidget {
               Navigator.pop(ctx);
               try {
                 await AuthService.instance.signOut();
+                ref.invalidate(currentUserProfileProvider);
                 if (context.mounted) {
                   context.go(AppConstants.authRoute);
                 }

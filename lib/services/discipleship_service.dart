@@ -8,10 +8,12 @@ import '../main.dart';
 import '../models/discipleship_models.dart';
 import '../utils/app_exception.dart';
 import '../utils/logger.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class DiscipleshipService {
   static final DiscipleshipService _instance = DiscipleshipService._internal();
   factory DiscipleshipService() => _instance;
+  static DiscipleshipService get instance => _instance;
   DiscipleshipService._internal();
 
   final Uuid _uuid = const Uuid();
@@ -351,9 +353,35 @@ class DiscipleshipService {
     }
   }
 
-  Future<PrayerRequest> createPrayerRequest(PrayerRequest request) async {
+  Future<PrayerRequest> getPrayerRequestById(String requestId) async {
+    try {
+      final document = await _tables.getRow(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: _prayerRequestsCollection,
+        rowId: requestId,
+      );
+      return _prayerRequestFromDocument(document);
+    } catch (e) {
+      _logger.error('Failed to get prayer request by id', e);
+      throw DatabaseException('Failed to get prayer request', originalError: e);
+    }
+  }
+
+  Future<PrayerRequest> createPrayerRequest(PrayerRequest request, {String? creatorName}) async {
     try {
       final now = DateTime.now().toUtc();
+      final initialHistory = request.history.isNotEmpty
+          ? request.history
+          : [
+              PrayerHistoryEntry(
+                id: _uuid.v4(),
+                action: 'created',
+                status: request.status,
+                note: 'Prayer request created',
+                actorName: creatorName,
+                timestamp: now,
+              ),
+            ];
       final newRequest = PrayerRequest(
         id: request.id.isNotEmpty ? request.id : _uuid.v4(),
         contactId: request.contactId,
@@ -365,6 +393,7 @@ class DiscipleshipService {
         dateAnswered: request.dateAnswered,
         answer: request.answer,
         notes: request.notes,
+        history: initialHistory,
         createdAt: now,
         updatedAt: now,
       );
@@ -384,41 +413,83 @@ class DiscipleshipService {
   }
 
   Future<PrayerRequest> updatePrayerRequestStatus(
-      String requestId, PrayerRequestStatus status) async {
+      String requestId, PrayerRequestStatus status, {String? note, String? actorName}) async {
+    return updatePrayerStatusAndNotes(
+      requestId: requestId,
+      status: status,
+      note: note,
+      actorName: actorName,
+    );
+  }
+
+  Future<PrayerRequest> markPrayerAnswered({
+    required String requestId,
+    required String testimony,
+    String? actorName,
+  }) async {
     try {
-      final document = await _tables.updateRow(
-        databaseId: AppwriteBackendConfig.databaseId,
-        tableId: _prayerRequestsCollection,
-        rowId: requestId,
-        data: {
-          'status': status.name,
-          'date_answered':
-              status == PrayerRequestStatus.answered ? _iso(DateTime.now()) : null,
-          'updated_at': _iso(DateTime.now()),
-        },
+      final current = await getPrayerRequestById(requestId);
+      final now = DateTime.now().toUtc();
+      final newHistory = List<PrayerHistoryEntry>.from(current.history)
+        ..add(PrayerHistoryEntry(
+          id: _uuid.v4(),
+          action: 'answered',
+          status: PrayerRequestStatus.answered,
+          note: testimony.isNotEmpty ? testimony : 'Marked as answered',
+          actorName: actorName,
+          timestamp: now,
+        ));
+      final updated = current.copyWith(
+        status: PrayerRequestStatus.answered,
+        dateAnswered: now,
+        answer: testimony,
+        history: newHistory,
+        updatedAt: now,
       );
-      return _prayerRequestFromDocument(document);
+      return await updatePrayerRequest(updated);
     } catch (e) {
-      _logger.error('Failed to update prayer request status', e);
-      throw DatabaseException('Failed to update prayer request status',
-          originalError: e);
+      _logger.error('Failed to mark prayer answered', e);
+      throw DatabaseException('Failed to mark prayer answered', originalError: e);
+    }
+  }
+
+  Future<PrayerRequest> updatePrayerStatusAndNotes({
+    required String requestId,
+    required PrayerRequestStatus status,
+    String? note,
+    String? actorName,
+  }) async {
+    try {
+      final current = await getPrayerRequestById(requestId);
+      final now = DateTime.now().toUtc();
+      final newHistory = List<PrayerHistoryEntry>.from(current.history)
+        ..add(PrayerHistoryEntry(
+          id: _uuid.v4(),
+          action: 'status_updated',
+          status: status,
+          note: note,
+          actorName: actorName,
+          timestamp: now,
+        ));
+      final updated = current.copyWith(
+        status: status,
+        notes: (note != null && note.isNotEmpty) ? note : current.notes,
+        dateAnswered: status == PrayerRequestStatus.answered
+            ? (current.dateAnswered ?? now)
+            : current.dateAnswered,
+        history: newHistory,
+        updatedAt: now,
+      );
+      return await updatePrayerRequest(updated);
+    } catch (e) {
+      _logger.error('Failed to update prayer status and notes', e);
+      throw DatabaseException('Failed to update prayer status', originalError: e);
     }
   }
 
   Future<PrayerRequest> updatePrayerRequest(PrayerRequest request) async {
     try {
-      final updatedRequest = PrayerRequest(
-        id: request.id,
-        contactId: request.contactId,
-        discipleMakerId: request.discipleMakerId,
-        request: request.request,
-        category: request.category,
-        status: request.status,
-        dateRequested: request.dateRequested,
-        dateAnswered: request.dateAnswered,
-        answer: request.answer,
-        notes: request.notes,
-        createdAt: request.createdAt,
+      final updatedRequest = request.copyWith(
         updatedAt: DateTime.now().toUtc(),
       );
 
@@ -588,6 +659,331 @@ class DiscipleshipService {
     }
   }
 
+  Future<DiscipleshipReport> generateAndSubmitReport({
+    required String discipleMakerId,
+    String? supervisorId,
+    String? routedOfficerId,
+    String? routedOfficeTitle,
+    String? routedOfficerName,
+    required DateTime startDate,
+    required DateTime endDate,
+    required ReportFrequency frequency,
+    String? highlights,
+    String? challenges,
+    String? prayerRequests,
+    String? goals,
+  }) async {
+    try {
+      final contacts = await getContacts(discipleMakerId: discipleMakerId);
+      final interactions = await getInteractions(
+        discipleMakerId: discipleMakerId,
+        startDate: startDate,
+        endDate: endDate,
+      );
+      final studySessions = await getStudySessions(
+        discipleMakerId: discipleMakerId,
+        startDate: startDate,
+        endDate: endDate,
+      );
+
+      final endInclusive = endDate.add(const Duration(days: 1));
+      final now = DateTime.now().toUtc();
+      final report = DiscipleshipReport(
+        id: _uuid.v4(),
+        discipleMakerId: discipleMakerId,
+        supervisorId: supervisorId,
+        routedOfficerId: routedOfficerId,
+        routedOfficeTitle: routedOfficeTitle,
+        routedOfficerName: routedOfficerName,
+        reportPeriodStart: startDate,
+        reportPeriodEnd: endDate,
+        totalContacts: contacts.length,
+        activeContacts: contacts.where((c) => c.isActive).length,
+        newContacts: contacts
+            .where((c) =>
+                c.firstContact.isAfter(startDate) &&
+                c.firstContact.isBefore(endInclusive))
+            .length,
+        baptisms: contacts
+            .where((c) =>
+                c.baptismDate != null &&
+                c.baptismDate!.isAfter(startDate) &&
+                c.baptismDate!.isBefore(endInclusive))
+            .length,
+        studySessions: studySessions.length,
+        interactions: interactions.length,
+        highlights: highlights,
+        challenges: challenges,
+        prayerRequests: prayerRequests,
+        goals: goals,
+        status: 'submitted',
+        frequency: frequency,
+        createdAt: now,
+        submittedAt: now,
+      );
+
+      final document = await _tables.createRow(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: _reportsCollection,
+        rowId: report.id,
+        data: _reportData(report),
+      );
+      return _reportFromDocument(document);
+    } catch (e) {
+      _logger.error('Failed to generate and submit report', e);
+      throw DatabaseException('Failed to generate and submit report',
+          originalError: e);
+    }
+  }
+
+  Future<List<DiscipleshipReport>> getReportsForOfficer({
+    required String officerId,
+    String? officeTitle,
+  }) async {
+    try {
+      final allReports = await getReports();
+      return allReports.where((r) =>
+          r.routedOfficerId == officerId ||
+          r.supervisorId == officerId ||
+          (officeTitle != null && r.routedOfficeTitle == officeTitle)).toList();
+    } catch (e) {
+      _logger.error('Failed to fetch officer reports', e);
+      return [];
+    }
+  }
+
+  Future<DiscipleshipReport> submitReportFeedback({
+    required String reportId,
+    required String feedback,
+    required String officerName,
+  }) async {
+    try {
+      final now = DateTime.now().toUtc();
+      final document = await _tables.updateRow(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: _reportsCollection,
+        rowId: reportId,
+        data: {
+          'feedback': feedback,
+          'feedback_officer_name': officerName,
+          'feedback_at': _iso(now),
+          'status': 'reviewed',
+        },
+      );
+      return _reportFromDocument(document);
+    } catch (e) {
+      _logger.error('Failed to submit report feedback', e);
+      throw DatabaseException('Failed to submit report feedback',
+          originalError: e);
+    }
+  }
+
+  // Officer Office Assignment mapping
+  static const _officerAssignmentsKey = 'alive_officer_office_assignments';
+
+  Future<List<OfficerOfficeAssignment>> getOfficerAssignments() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getStringList(_officerAssignmentsKey);
+      if (raw != null && raw.isNotEmpty) {
+        return raw
+            .map((s) => OfficerOfficeAssignment.fromJson(
+                jsonDecode(s) as Map<String, dynamic>))
+            .toList();
+      }
+      final defaults = [
+        OfficerOfficeAssignment(
+          id: 'def-dir-evang',
+          officerId: 'dir-evang',
+          officerName: 'Pastor David Adebayo',
+          officerEmail: 'evangelism@aliveng.org',
+          officeTitle: 'Director of Evangelism',
+          officeType: 'director',
+          assignedAt: DateTime.now().toUtc(),
+        ),
+        OfficerOfficeAssignment(
+          id: 'def-nat-coord',
+          officerId: 'nat-coord',
+          officerName: 'Elder Samuel Okafor',
+          officerEmail: 'coordinator@aliveng.org',
+          officeTitle: 'National Coordinator',
+          officeType: 'coordinator',
+          assignedAt: DateTime.now().toUtc(),
+        ),
+        OfficerOfficeAssignment(
+          id: 'def-sw-zone',
+          officerId: 'sw-zone',
+          officerName: 'Sister Grace Danladi',
+          officerEmail: 'sw_coordinator@aliveng.org',
+          officeTitle: 'South-West Zone Coordinator',
+          officeType: 'coordinator',
+          assignedAt: DateTime.now().toUtc(),
+        ),
+      ];
+      await _saveOfficerAssignments(defaults);
+      return defaults;
+    } catch (e) {
+      _logger.error('Failed to get officer assignments', e);
+      return [];
+    }
+  }
+
+  Future<void> _saveOfficerAssignments(
+      List<OfficerOfficeAssignment> list) async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = list.map((e) => jsonEncode(e.toJson())).toList();
+    await prefs.setStringList(_officerAssignmentsKey, raw);
+  }
+
+  Future<OfficerOfficeAssignment> assignOfficerToOffice({
+    required String officerId,
+    required String officerName,
+    required String officerEmail,
+    required String officeTitle,
+    required String officeType,
+  }) async {
+    final list = await getOfficerAssignments();
+    final updatedList =
+        list.where((a) => a.officeTitle != officeTitle).toList();
+    final newAssignment = OfficerOfficeAssignment(
+      id: _uuid.v4(),
+      officerId: officerId,
+      officerName: officerName,
+      officerEmail: officerEmail,
+      officeTitle: officeTitle,
+      officeType: officeType,
+      assignedAt: DateTime.now().toUtc(),
+    );
+    updatedList.add(newAssignment);
+    await _saveOfficerAssignments(updatedList);
+    return newAssignment;
+  }
+
+  Future<void> removeOfficerAssignment(String assignmentId) async {
+    final list = await getOfficerAssignments();
+    final updatedList = list.where((a) => a.id != assignmentId).toList();
+    await _saveOfficerAssignments(updatedList);
+  }
+
+  // Disciple Deletion Request Queue
+  static const _deletionRequestsKey = 'alive_disciple_deletion_requests';
+
+  Future<bool> checkContactHasActivity(String contactId) async {
+    try {
+      final interactions = await getInteractions(contactId: contactId);
+      if (interactions.isNotEmpty) return true;
+      final studySessions = await getStudySessions(contactId: contactId);
+      if (studySessions.isNotEmpty) return true;
+      final prayers = await getPrayerRequests(contactId: contactId);
+      if (prayers.isNotEmpty) return true;
+      final milestones = await getProgressMilestones(contactId);
+      if (milestones.isNotEmpty) return true;
+      return false;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  Future<List<DiscipleDeletionRequest>> getDeletionRequests() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getStringList(_deletionRequestsKey);
+      if (raw != null) {
+        return raw
+            .map((s) => DiscipleDeletionRequest.fromJson(
+                jsonDecode(s) as Map<String, dynamic>))
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      _logger.error('Failed to get deletion requests', e);
+      return [];
+    }
+  }
+
+  Future<void> _saveDeletionRequest(DiscipleDeletionRequest req) async {
+    final requests = await getDeletionRequests();
+    final idx = requests.indexWhere((r) => r.id == req.id);
+    if (idx >= 0) {
+      requests[idx] = req;
+    } else {
+      requests.insert(0, req);
+    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(
+      _deletionRequestsKey,
+      requests.map((r) => jsonEncode(r.toJson())).toList(),
+    );
+  }
+
+  Future<DiscipleDeletionRequest> requestContactDeletion({
+    required DiscipleshipContact contact,
+    required String requesterId,
+    required String requesterName,
+    required String requesterRole,
+    required String reason,
+  }) async {
+    final hasActivity = await checkContactHasActivity(contact.id);
+    if (hasActivity) {
+      throw ValidationException(
+          'Cannot request deletion: Disciple has attached activity records.');
+    }
+    final req = DiscipleDeletionRequest(
+      id: _uuid.v4(),
+      contactId: contact.id,
+      contactName: contact.fullName,
+      requesterId: requesterId,
+      requesterName: requesterName,
+      requesterRole: requesterRole,
+      reason: reason,
+      status: DeletionRequestStatus.pending,
+      createdAt: DateTime.now().toUtc(),
+    );
+    await _saveDeletionRequest(req);
+    return req;
+  }
+
+  Future<void> approveDeletionRequest(String requestId,
+      {String? adminNotes}) async {
+    final requests = await getDeletionRequests();
+    final req = requests.firstWhere((r) => r.id == requestId);
+    await deleteContact(req.contactId);
+    final updated = DiscipleDeletionRequest(
+      id: req.id,
+      contactId: req.contactId,
+      contactName: req.contactName,
+      requesterId: req.requesterId,
+      requesterName: req.requesterName,
+      requesterRole: req.requesterRole,
+      reason: req.reason,
+      status: DeletionRequestStatus.approved,
+      adminReviewNotes: adminNotes,
+      createdAt: req.createdAt,
+      reviewedAt: DateTime.now().toUtc(),
+    );
+    await _saveDeletionRequest(updated);
+  }
+
+  Future<void> rejectDeletionRequest(String requestId,
+      {required String reason}) async {
+    final requests = await getDeletionRequests();
+    final req = requests.firstWhere((r) => r.id == requestId);
+    final updated = DiscipleDeletionRequest(
+      id: req.id,
+      contactId: req.contactId,
+      contactName: req.contactName,
+      requesterId: req.requesterId,
+      requesterName: req.requesterName,
+      requesterRole: req.requesterRole,
+      reason: req.reason,
+      status: DeletionRequestStatus.rejected,
+      adminReviewNotes: reason,
+      createdAt: req.createdAt,
+      reviewedAt: DateTime.now().toUtc(),
+    );
+    await _saveDeletionRequest(updated);
+  }
+
   Future<DiscipleshipStatistics> getDiscipleshipStatistics(
       String discipleMakerId) async {
     try {
@@ -676,7 +1072,13 @@ class DiscipleshipService {
   }
 
   PrayerRequest _prayerRequestFromDocument(dynamic document) {
-    return PrayerRequest.fromJson(_documentData(document));
+    final data = _documentData(document);
+    if (data['history'] is String && (data['history'] as String).isNotEmpty) {
+      try {
+        data['history'] = jsonDecode(data['history'] as String);
+      } catch (_) {}
+    }
+    return PrayerRequest.fromJson(data);
   }
 
   ProgressMilestone _milestoneFromDocument(dynamic document) {
@@ -756,6 +1158,7 @@ class DiscipleshipService {
       'date_answered': _nullableIso(request.dateAnswered),
       'answer': request.answer,
       'notes': request.notes,
+      'history': jsonEncode(request.history.map((e) => e.toJson()).toList()),
       'created_at': _iso(request.createdAt),
       'updated_at': _iso(request.updatedAt),
     });
@@ -777,6 +1180,9 @@ class DiscipleshipService {
     return _stripNulls({
       'disciple_maker_id': report.discipleMakerId,
       'supervisor_id': report.supervisorId,
+      'routed_officer_id': report.routedOfficerId,
+      'routed_office_title': report.routedOfficeTitle,
+      'routed_officer_name': report.routedOfficerName,
       'report_period_start': _iso(report.reportPeriodStart),
       'report_period_end': _iso(report.reportPeriodEnd),
       'total_contacts': report.totalContacts,
@@ -789,6 +1195,10 @@ class DiscipleshipService {
       'challenges': report.challenges,
       'prayer_requests': report.prayerRequests,
       'goals': report.goals,
+      'feedback': report.feedback,
+      'feedback_officer_name': report.feedbackOfficerName,
+      'feedback_at': _nullableIso(report.feedbackAt),
+      'status': report.status,
       'frequency': report.frequency.name,
       'created_at': _iso(report.createdAt),
       'submitted_at': _nullableIso(report.submittedAt),
