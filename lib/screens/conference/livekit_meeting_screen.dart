@@ -10,6 +10,7 @@ import '../../providers/meeting_provider.dart';
 import '../../services/ports/meeting_gateway.dart';
 import '../../services/role_access_service.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../admin/leader_meeting_transcription_screen.dart';
 
 class LiveKitMeetingScreen extends ConsumerStatefulWidget {
   final MeetingType? meetingType;
@@ -144,6 +145,22 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       appBar: CustomAppBar(
         title: widget.meetingType?.displayName ?? 'ALIVE Meet',
         showBackButton: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.note_alt_outlined),
+            tooltip: 'Scribe & Notes',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => LeaderMeetingTranscriptionScreen(
+                    initialMeetingTitle:
+                        widget.meetingType?.displayName ?? _roomController.text,
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),

@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../../models/board_models.dart';
 import '../../services/appwrite_board_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/role_access_service.dart';
 
 class BoardDecisionsScreen extends StatefulWidget {
   const BoardDecisionsScreen({super.key});
@@ -50,6 +51,71 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
       }
     } finally {
       setState(() => _isLoading = false);
+    }
+  }
+
+  bool get _isAdmin => RoleAccessService.instance.canAccessAdmin();
+
+  Future<void> _confirmDeleteDecision(BoardDecision decision,
+      {bool popDialogFirst = false}) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        final colorScheme = Theme.of(ctx).colorScheme;
+        return AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.red),
+              SizedBox(width: 8),
+              Text('Delete Decision'),
+            ],
+          ),
+          content: Text(
+            'Are you sure you want to delete "${decision.title}"? This action cannot be undone.',
+            style: TextStyle(color: colorScheme.onSurface),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: FilledButton.styleFrom(
+                backgroundColor: colorScheme.error,
+                foregroundColor: colorScheme.onError,
+              ),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true && mounted) {
+      if (popDialogFirst && Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+      try {
+        final success = await _boardService.deleteBoardDecision(decision.id);
+        if (success && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Decision deleted successfully')),
+          );
+          _loadDecisions();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error deleting decision: $e'),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -248,6 +314,13 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                         ],
                       ),
                     ),
+                    if (_isAdmin)
+                      IconButton(
+                        icon: Icon(Icons.delete_outline_rounded,
+                            color: colorScheme.error),
+                        tooltip: 'Delete Decision',
+                        onPressed: () => _confirmDeleteDecision(decision),
+                      ),
                   ],
                 ),
                 const SizedBox(height: 20),
@@ -500,6 +573,17 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
             ),
           ),
           actions: [
+            if (_isAdmin)
+              TextButton.icon(
+                onPressed: () => _confirmDeleteDecision(
+                  decision,
+                  popDialogFirst: true,
+                ),
+                icon: Icon(Icons.delete_outline_rounded,
+                    color: colorScheme.error, size: 18),
+                label: Text('Delete',
+                    style: TextStyle(color: colorScheme.error)),
+              ),
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: const Text('Close'),

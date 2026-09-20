@@ -194,14 +194,13 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
         _MoreItem('Role Management', Icons.manage_accounts_rounded, AppConstants.roleManagementRoute, color: Color(0xFFC026D3)),
         _MoreItem('Content Admin', Icons.post_add_rounded, AppConstants.contentManagementRoute, color: Color(0xFF7C3AED)),
         _MoreItem('Media Admin', Icons.library_add_rounded, AppConstants.tractPodcastAdminRoute, color: Color(0xFF2563EB)),
-        _MoreItem('Kids Admin', Icons.smart_toy_rounded, AppConstants.kidsContentAdminRoute, color: Color(0xFFE11D48)),
         _MoreItem('User Archive', Icons.archive_rounded, AppConstants.userArchiveRoute, color: Color(0xFF64748B)),
       ]);
     }
 
     // Role-based items for Board of Trustees (BOD)
     if (canSeeBod) {
-      items.insertAll(canSeeAdmin ? 8 : 0, const [
+      items.insertAll(canSeeAdmin ? 7 : 0, const [
         _MoreItem('BOD Trustees', Icons.groups_rounded, AppConstants.bodTrusteesRoute, color: Color(0xFF4F46E5)),
       ]);
     }

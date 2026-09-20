@@ -224,7 +224,7 @@ class _AdminStudyGuidesScreenState extends State<AdminStudyGuidesScreen> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Text(
-                              'Zero-Code Lesson Extractor',
+                              'Lesson Extractor',
                               style: Theme.of(context)
                                   .textTheme
                                   .titleMedium

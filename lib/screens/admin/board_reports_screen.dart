@@ -3,8 +3,7 @@ import 'package:intl/intl.dart';
 import '../../models/board_models.dart';
 import '../../services/appwrite_board_service.dart';
 import '../../services/auth_service.dart';
-import '../../config/meeting_links_config.dart';
-import '../conference/livekit_meeting_screen.dart';
+import '../../widgets/custom_app_bar.dart';
 
 class BoardReportsScreen extends StatefulWidget {
   final String? initialCategory;
@@ -96,11 +95,9 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Board Reports'),
-        centerTitle: true,
-        backgroundColor: colorScheme.surface,
-        foregroundColor: colorScheme.onSurface,
+      appBar: CustomAppBar(
+        title: 'Board Reports',
+        showBackButton: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.add_chart),
@@ -111,40 +108,6 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
       ),
       body: Column(
         children: [
-          // BOD quick-join banner
-          Container(
-            padding: const EdgeInsets.all(12),
-            color: colorScheme.surfaceContainerHighest,
-            child: Row(
-              children: [
-                Icon(Icons.video_call, color: colorScheme.tertiary),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text(
-                    'Board Meeting Now Active',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const LiveKitMeetingScreen(
-                          meetingType: MeetingType.board,
-                          isModerator: true,
-                        ),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: colorScheme.tertiary,
-                    foregroundColor: colorScheme.onTertiary,
-                  ),
-                  child: const Text('Join'),
-                ),
-              ],
-            ),
-          ),
           // Filters
           Padding(
             padding: const EdgeInsets.all(16),

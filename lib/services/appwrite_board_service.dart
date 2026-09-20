@@ -60,6 +60,21 @@ class AppwriteBoardService {
     return true;
   }
 
+  Future<bool> deleteBoardDecision(String decisionId) async {
+    try {
+      await _tables.deleteRow(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: AppwriteBackendConfig.boardDecisionsCollectionId,
+        rowId: decisionId,
+      );
+      return true;
+    } catch (e) {
+      _logger.error('Failed to delete board decision', e);
+      throw DatabaseException('Failed to delete board decision',
+          originalError: e);
+    }
+  }
+
   Future<bool> castBoardVote(
     String decisionId,
     Map<String, dynamic> voteData,

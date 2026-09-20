@@ -128,7 +128,7 @@ class LeadershipService {
       final data = _recordToAppwriteData(record.copyWith(
         id: id,
         userId: currentUserId,
-        status: ServiceStatus.pending,
+        status: record.status,
         createdAt: now,
         updatedAt: now,
         createdBy: record.createdBy ?? currentUserId,

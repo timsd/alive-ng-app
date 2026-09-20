@@ -10,6 +10,7 @@ import '../../services/role_access_service.dart';
 import '../../utils/responsive_utils.dart';
 import '../../widgets/loading_widget.dart';
 import '../../utils/toast_utils.dart';
+import 'leader_meeting_transcription_screen.dart';
 
 class MeetingFileSharingScreen extends StatefulWidget {
   const MeetingFileSharingScreen({super.key});
@@ -96,6 +97,17 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
         backgroundColor: colorScheme.primary,
         foregroundColor: colorScheme.onPrimary,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.mic_none_outlined),
+            tooltip: 'Leader Scribe & Notes',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const LeaderMeetingTranscriptionScreen(),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadFiles,

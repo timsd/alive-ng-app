@@ -3,7 +3,7 @@ import 'package:syncfusion_flutter_pdf/pdf.dart';
 import 'package:flutter/foundation.dart';
 
 /// Service responsible for extracting text from files (PDF, TXT) locally
-/// without needing to upload them to a server. This powers the Zero-Code CMS.
+/// without needing to upload them to a server. This powers the Lesson Extractor CMS.
 class PdfExtractorService {
   
   /// Extracts text from the provided file bytes.
