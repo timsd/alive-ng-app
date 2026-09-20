@@ -1,3 +1,18 @@
+import 'dart:convert';
+
+Map<String, dynamic> _parseSettings(dynamic value) {
+  if (value == null) return const {};
+  if (value is Map<String, dynamic>) return value;
+  if (value is Map) return Map<String, dynamic>.from(value);
+  if (value is String && value.trim().isNotEmpty) {
+    try {
+      final decoded = jsonDecode(value);
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    } catch (_) {}
+  }
+  return const {};
+}
+
 DateTime _parseDateTime(dynamic value) {
   if (value is String) {
     return DateTime.parse(value);
@@ -172,7 +187,7 @@ class ChatChannel {
       lastMessage: json['last_message'] as String?,
       unreadCount: json['unread_count'] as int? ?? 0,
       isArchived: json['is_archived'] as bool? ?? false,
-      settings: Map<String, dynamic>.from(json['settings'] ?? {}),
+      settings: _parseSettings(json['settings']),
     );
   }
 

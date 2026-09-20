@@ -46,6 +46,9 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   String _commitmentType = 'both';
+  String _selectedCategory = 'member'; // 'member', 'coordinator', 'guest'
+  String _coordinatorRole = 'coordinator'; // 'coordinator', 'leader'
+  int _currentStage = 0;
   bool _isBiometricAvailable = false;
   bool _isBiometricEnabled = false;
   /// Tracks whether the current sign-in flow was email/password (vs Google/guest)
@@ -431,7 +434,10 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
           GestureDetector(
             onTap: _isLoading
                 ? null
-                : () => setState(() => _isSignUp = !_isSignUp),
+                : () => setState(() {
+                    _isSignUp = !_isSignUp;
+                    _currentStage = 0;
+                  }),
             child: Text(
               _isSignUp ? translate('sign_in') : translate('sign_up'),
               style: TextStyle(
@@ -445,6 +451,8 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
     );
   }
 
+  int get _totalStages => _selectedCategory == 'guest' ? 2 : 3;
+
   Widget _buildAuthForm(
     BuildContext context,
     String Function(String) translate,
@@ -453,178 +461,66 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
     return Form(
       key: _formKey,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Name field (only for sign up)
-          if (_isSignUp) ...[
+          if (!_isSignUp) ...[
+            // ── SIGN IN MODE ──
             TextFormField(
-              controller: _nameController,
+              controller: _emailController,
+              keyboardType: TextInputType.emailAddress,
               decoration: InputDecoration(
-                labelText: translate('full_name'),
-                prefixIcon: const Icon(Icons.person_outline),
+                labelText: translate('email'),
+                prefixIcon: const Icon(Icons.email_outlined),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
                 filled: true,
-                fillColor: Theme.of(
-                  context,
-                ).colorScheme.surfaceContainerHighest,
+                fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
               ),
               validator: (value) {
-                if (_isSignUp && (value == null || value.trim().isEmpty)) {
-                  return translate('name_required');
+                if (value == null || value.trim().isEmpty) {
+                  return translate('email_required');
+                }
+                if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                  return translate('invalid_email');
                 }
                 return null;
               },
             ),
-            SizedBox(
-              height: ResponsiveUtils.getResponsiveValue(
-                context: context,
-                mobile: 16.0,
-                tablet: 18.0,
-                desktop: 20.0,
-              ),
-            ),
-            _buildSignUpProfileFields(context),
-            SizedBox(
-              height: ResponsiveUtils.getResponsiveValue(
-                context: context,
-                mobile: 16.0,
-                tablet: 18.0,
-                desktop: 20.0,
-              ),
-            ),
-          ],
-
-          // Email field
-          TextFormField(
-            controller: _emailController,
-            keyboardType: TextInputType.emailAddress,
-            decoration: InputDecoration(
-              labelText: translate('email'),
-              prefixIcon: const Icon(Icons.email_outlined),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              filled: true,
-              fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-            ),
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return translate('email_required');
-              }
-              if (!RegExp(
-                r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-              ).hasMatch(value)) {
-                return translate('invalid_email');
-              }
-              return null;
-            },
-          ),
-
-          SizedBox(
-            height: ResponsiveUtils.getResponsiveValue(
-              context: context,
-              mobile: 16.0,
-              tablet: 18.0,
-              desktop: 20.0,
-            ),
-          ),
-
-          // Password field
-          TextFormField(
-            controller: _passwordController,
-            obscureText: _obscurePassword,
-            decoration: InputDecoration(
-              labelText: translate('password'),
-              prefixIcon: const Icon(Icons.lock_outline),
-              suffixIcon: IconButton(
-                icon: Icon(
-                  _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                ),
-                onPressed: () =>
-                    setState(() => _obscurePassword = !_obscurePassword),
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              filled: true,
-              fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-            ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return translate('password_required');
-              }
-              if (_isSignUp && value.length < 6) {
-                return translate('password_too_short');
-              }
-              return null;
-            },
-          ),
-
-          // Confirm password field (only for sign up)
-          if (_isSignUp) ...[
-            SizedBox(
-              height: ResponsiveUtils.getResponsiveValue(
-                context: context,
-                mobile: 16.0,
-                tablet: 18.0,
-                desktop: 20.0,
-              ),
-            ),
+            const SizedBox(height: 16),
             TextFormField(
-              controller: _confirmPasswordController,
-              obscureText: _obscureConfirmPassword,
+              controller: _passwordController,
+              obscureText: _obscurePassword,
               decoration: InputDecoration(
-                labelText: translate('confirm_password'),
+                labelText: translate('password'),
                 prefixIcon: const Icon(Icons.lock_outline),
                 suffixIcon: IconButton(
                   icon: Icon(
-                    _obscureConfirmPassword
-                        ? Icons.visibility
-                        : Icons.visibility_off,
+                    _obscurePassword ? Icons.visibility : Icons.visibility_off,
                   ),
-                  onPressed: () => setState(
-                    () => _obscureConfirmPassword = !_obscureConfirmPassword,
-                  ),
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
                 ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
                 filled: true,
-                fillColor: Theme.of(
-                  context,
-                ).colorScheme.surfaceContainerHighest,
+                fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
               ),
               validator: (value) {
-                if (_isSignUp && value != _passwordController.text) {
-                  return translate('passwords_dont_match');
+                if (value == null || value.isEmpty) {
+                  return translate('password_required');
                 }
                 return null;
               },
             ),
-          ],
-
-          if (!_isSignUp) ...[
             const SizedBox(height: 6),
             _buildForgotPasswordButton(context, translate),
-          ],
-
-          SizedBox(
-            height: ResponsiveUtils.getResponsiveValue(
-              context: context,
-              mobile: 20.0,
-              tablet: 24.0,
-              desktop: 28.0,
-            ),
-          ),
-
-          // Primary Submit Button (Sign In or Sign Up directly below inputs)
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
               onPressed: _isLoading || signInState.isLoading
                   ? null
-                  : (_isSignUp ? _handleDirectSignUp : _handleDirectSignIn),
+                  : _handleDirectSignIn,
               icon: _isLoading || signInState.isLoading
                   ? const SizedBox(
                       width: 20,
@@ -634,43 +530,649 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
                         color: Colors.white,
                       ),
                     )
-                  : Icon(_isSignUp ? Icons.person_add : Icons.login),
+                  : const Icon(Icons.login),
               label: Text(
                 _isLoading || signInState.isLoading
                     ? 'Please wait...'
-                    : (_isSignUp ? translate('sign_up') : translate('sign_in')),
-                style: TextStyle(
-                  fontSize: ResponsiveUtils.getResponsiveValue(
-                    context: context,
-                    mobile: 16.0,
-                    tablet: 18.0,
-                    desktop: 20.0,
-                  ),
-                  fontWeight: FontWeight.w600,
-                ),
+                    : translate('sign_in'),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                padding: EdgeInsets.symmetric(
-                  vertical: ResponsiveUtils.getResponsiveValue(
-                    context: context,
-                    mobile: 16.0,
-                    tablet: 18.0,
-                    desktop: 20.0,
-                  ),
-                ),
+                padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
                 elevation: 2,
               ),
             ),
-          ),
+          ] else ...[
+            // ── SIGN UP MODE (CATEGORIZED & STAGED) ──
+            _buildCategorySelector(context),
+            const SizedBox(height: 18),
+            _buildStageIndicator(context),
+            const SizedBox(height: 18),
 
-          // Mode toggle prompt (Don't have an account? Sign Up)
+            if (_currentStage == 0)
+              _buildStageZeroFields(context, translate)
+            else if (_currentStage == 1)
+              _buildStageOneFields(context, translate)
+            else
+              _buildStageTwoFields(context, translate),
+
+            const SizedBox(height: 22),
+            _buildStageNavigationButtons(context, translate, signInState),
+          ],
+
           _buildModeTogglePrompt(context, translate),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCategorySelector(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final categories = [
+      {
+        'id': 'member',
+        'title': 'Member',
+        'subtitle': 'ALIVE Member',
+        'icon': Icons.person_outline,
+      },
+      {
+        'id': 'coordinator',
+        'title': 'Staff/Coord',
+        'subtitle': 'Staff / Leader',
+        'icon': Icons.badge_outlined,
+      },
+      {
+        'id': 'guest',
+        'title': 'Non-Member',
+        'subtitle': 'Guest Access',
+        'icon': Icons.explore_outlined,
+      },
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Registration Category',
+          style: theme.textTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: categories.map((cat) {
+            final isSelected = _selectedCategory == cat['id'];
+            return Expanded(
+              child: GestureDetector(
+                onTap: _isLoading
+                    ? null
+                    : () {
+                        setState(() {
+                          _selectedCategory = cat['id'] as String;
+                          if (_currentStage >= _totalStages) {
+                            _currentStage = _totalStages - 1;
+                          }
+                        });
+                      },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? theme.colorScheme.primary.withValues(alpha: isDark ? 0.25 : 0.12)
+                        : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.outline.withValues(alpha: 0.2),
+                      width: isSelected ? 2.0 : 1.0,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        cat['icon'] as IconData,
+                        size: 22,
+                        color: isSelected
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        cat['title'] as String,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                          color: isSelected
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.onSurface,
+                        ),
+                      ),
+                      Text(
+                        cat['subtitle'] as String,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: isSelected
+                              ? theme.colorScheme.primary.withValues(alpha: 0.8)
+                              : theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStageIndicator(BuildContext context) {
+    final theme = Theme.of(context);
+    final stages = _selectedCategory == 'guest'
+        ? ['Credentials', 'Profile & Welcome']
+        : ['Credentials', 'Church & Details', 'Commitment'];
+
+    return Column(
+      children: [
+        Row(
+          children: List.generate(stages.length * 2 - 1, (index) {
+            if (index.isOdd) {
+              final stepBefore = index ~/ 2;
+              final isDone = _currentStage > stepBefore;
+              return Expanded(
+                child: Container(
+                  height: 2,
+                  color: isDone
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.outline.withValues(alpha: 0.3),
+                ),
+              );
+            }
+            final stepIndex = index ~/ 2;
+            final isActive = _currentStage == stepIndex;
+            final isPassed = _currentStage > stepIndex;
+
+            return Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isPassed
+                    ? theme.colorScheme.primary
+                    : isActive
+                        ? theme.colorScheme.primaryContainer
+                        : theme.colorScheme.surfaceContainerHighest,
+                border: Border.all(
+                  color: isActive || isPassed
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.outline.withValues(alpha: 0.3),
+                  width: 2,
+                ),
+              ),
+              child: Center(
+                child: isPassed
+                    ? Icon(Icons.check, size: 16, color: theme.colorScheme.onPrimary)
+                    : Text(
+                        '${stepIndex + 1}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: isActive
+                              ? theme.colorScheme.onPrimaryContainer
+                              : theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                        ),
+                      ),
+              ),
+            );
+          }),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: stages.asMap().entries.map((entry) {
+            final idx = entry.key;
+            final title = entry.value;
+            final isActive = _currentStage == idx;
+            return Text(
+              title,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                color: isActive
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.onSurface.withValues(alpha: 0.5),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStageZeroFields(BuildContext context, String Function(String) translate) {
+    return Column(
+      children: [
+        TextFormField(
+          controller: _nameController,
+          decoration: _signupDecoration(context, translate('full_name'), Icons.person_outline),
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return translate('name_required');
+            }
+            return null;
+          },
+        ),
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: _emailController,
+          keyboardType: TextInputType.emailAddress,
+          decoration: _signupDecoration(context, translate('email'), Icons.email_outlined),
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return translate('email_required');
+            }
+            if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+              return translate('invalid_email');
+            }
+            return null;
+          },
+        ),
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: _phoneController,
+          keyboardType: TextInputType.phone,
+          decoration: _signupDecoration(
+            context,
+            _selectedCategory == 'guest' ? 'Phone Number (Optional)' : 'Phone Number *',
+            Icons.phone_outlined,
+          ),
+          validator: (value) {
+            if (_selectedCategory != 'guest' && (value == null || value.trim().isEmpty)) {
+              return 'Phone number is required';
+            }
+            return null;
+          },
+        ),
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: _locationController,
+          decoration: _signupDecoration(context, 'Location (City / State)', Icons.location_on_outlined),
+        ),
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: _passwordController,
+          obscureText: _obscurePassword,
+          decoration: InputDecoration(
+            labelText: translate('password'),
+            prefixIcon: const Icon(Icons.lock_outline),
+            suffixIcon: IconButton(
+              icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off),
+              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            filled: true,
+            fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+          ),
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return translate('password_required');
+            }
+            if (value.length < 6) {
+              return translate('password_too_short');
+            }
+            return null;
+          },
+        ),
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: _confirmPasswordController,
+          obscureText: _obscureConfirmPassword,
+          decoration: InputDecoration(
+            labelText: translate('confirm_password'),
+            prefixIcon: const Icon(Icons.lock_outline),
+            suffixIcon: IconButton(
+              icon: Icon(_obscureConfirmPassword ? Icons.visibility : Icons.visibility_off),
+              onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            filled: true,
+            fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+          ),
+          validator: (value) {
+            if (value != _passwordController.text) {
+              return translate('passwords_dont_match');
+            }
+            return null;
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStageOneFields(BuildContext context, String Function(String) translate) {
+    final theme = Theme.of(context);
+
+    if (_selectedCategory == 'guest') {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.info_outline, color: theme.colorScheme.primary, size: 22),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Welcome to ALIVE Nigeria! As a guest, you will have access to daily verses, Bible study, health lessons, library, podcasts, testimonies, and books.',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onPrimaryContainer,
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _localChurchController,
+            decoration: _signupDecoration(context, 'Local Church (Optional)', Icons.church_outlined),
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _occupationController,
+            decoration: _signupDecoration(context, 'Occupation / Interest (Optional)', Icons.work_outline),
+          ),
+        ],
+      );
+    }
+
+    // Member & Staff Stage 1
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_selectedCategory == 'coordinator') ...[
+          DropdownButtonFormField<String>(
+            initialValue: _coordinatorRole,
+            decoration: _signupDecoration(context, 'Staff / Coordinator Role', Icons.admin_panel_settings_outlined),
+            items: const [
+              DropdownMenuItem(value: 'coordinator', child: Text('Chapter Coordinator')),
+              DropdownMenuItem(value: 'leader', child: Text('Ministry Staff / Leader')),
+            ],
+            onChanged: (val) => setState(() => _coordinatorRole = val ?? 'coordinator'),
+          ),
+          const SizedBox(height: 12),
+        ],
+        TextFormField(
+          controller: _localChurchController,
+          decoration: _signupDecoration(context, 'Local Church *', Icons.church_outlined),
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'Local church name is required';
+            }
+            return null;
+          },
+        ),
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: _tojoinChapterController,
+          decoration: _signupDecoration(
+            context,
+            'To Join Chapter (Optional)',
+            Icons.group_add_outlined,
+            helperText: 'Optional: Leave empty if you serve generally or across chapters',
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: _previouslocalChapterController,
+          decoration: _signupDecoration(context, 'Previous Local Chapter (Optional)', Icons.groups_outlined),
+        ),
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: _occupationController,
+          decoration: _signupDecoration(context, 'Occupation (Optional)', Icons.work_outline),
+        ),
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: _skillsController,
+          decoration: _signupDecoration(context, 'Skills / Ministry Gifts (Optional)', Icons.handyman_outlined),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStageTwoFields(BuildContext context, String Function(String) translate) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Commitment to ALIVE Mission',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Select how you would like to actively support ALIVE Nigeria ministry.',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+          ),
+        ),
+        const SizedBox(height: 14),
+        DropdownButtonFormField<String>(
+          initialValue: _commitmentType,
+          decoration: _signupDecoration(context, 'Commitment Type', Icons.volunteer_activism_outlined),
+          items: const [
+            DropdownMenuItem(value: 'both', child: Text('Both Financial & Active Availability')),
+            DropdownMenuItem(value: 'financial', child: Text('Financial Commitment')),
+            DropdownMenuItem(value: 'active_availability', child: Text('Active Availability Commitment')),
+          ],
+          onChanged: (value) => setState(() => _commitmentType = value ?? 'both'),
+        ),
+        const SizedBox(height: 14),
+        if (_commitmentType == 'financial' || _commitmentType == 'both') ...[
+          TextFormField(
+            controller: _financialCommitmentController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: _signupDecoration(
+              context,
+              'Monthly Financial Commitment (NGN or USD)',
+              Icons.payments_outlined,
+            ),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Please enter your monthly financial commitment';
+              }
+              if (double.tryParse(value.trim()) == null) {
+                return 'Please enter a valid amount';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 14),
+        ],
+        if (_commitmentType == 'active_availability' || _commitmentType == 'both') ...[
+          TextFormField(
+            controller: _availabilityController,
+            decoration: _signupDecoration(
+              context,
+              'Availability Commitment (hours or ministry areas)',
+              Icons.schedule_outlined,
+            ),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Please specify your ministry availability';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 14),
+        ],
+        if (_selectedCategory == 'coordinator') ...[
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.amber.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.amber.shade700.withValues(alpha: 0.4)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.verified_outlined, color: Colors.amber.shade800, size: 22),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Administrative Approval: Staff and Coordinator registrations will go through review before coordinator privileges are unlocked. You can access member features immediately.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      height: 1.35,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildStageNavigationButtons(
+    BuildContext context,
+    String Function(String) translate,
+    AsyncValue<void> signInState,
+  ) {
+    final isLastStage = _currentStage == _totalStages - 1;
+
+    return Row(
+      children: [
+        if (_currentStage > 0) ...[
+          Expanded(
+            flex: 1,
+            child: OutlinedButton.icon(
+              onPressed: _isLoading ? null : () => setState(() => _currentStage--),
+              icon: const Icon(Icons.arrow_back, size: 18),
+              label: const Text('Back'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+        ],
+        Expanded(
+          flex: 2,
+          child: ElevatedButton.icon(
+            onPressed: _isLoading || signInState.isLoading
+                ? null
+                : () {
+                    if (isLastStage) {
+                      _handleDirectSignUp();
+                    } else {
+                      _advanceStage(translate);
+                    }
+                  },
+            icon: _isLoading || signInState.isLoading
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
+                : Icon(isLastStage ? Icons.check_circle_outline : Icons.arrow_forward),
+            label: Text(
+              _isLoading || signInState.isLoading
+                  ? 'Please wait...'
+                  : (isLastStage
+                      ? (_selectedCategory == 'guest'
+                          ? 'Create Guest Account'
+                          : 'Complete Registration')
+                      : 'Continue'),
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              elevation: 2,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _advanceStage(String Function(String) translate) {
+    if (_currentStage == 0) {
+      if (_nameController.text.trim().isEmpty) {
+        _showFormError(translate('name_required'));
+        return;
+      }
+      final email = _emailController.text.trim();
+      if (email.isEmpty) {
+        _showFormError(translate('email_required'));
+        return;
+      }
+      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+        _showFormError(translate('invalid_email'));
+        return;
+      }
+      if (_selectedCategory != 'guest' && _phoneController.text.trim().isEmpty) {
+        _showFormError('Phone number is required');
+        return;
+      }
+      if (_passwordController.text.length < 6) {
+        _showFormError(translate('password_too_short'));
+        return;
+      }
+      if (_confirmPasswordController.text != _passwordController.text) {
+        _showFormError(translate('passwords_dont_match'));
+        return;
+      }
+      setState(() => _currentStage = 1);
+    } else if (_currentStage == 1) {
+      if (_selectedCategory != 'guest' && _localChurchController.text.trim().isEmpty) {
+        _showFormError('Local church name is required');
+        return;
+      }
+      setState(() => _currentStage = 2);
+    }
+  }
+
+  void _showFormError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Theme.of(context).colorScheme.error,
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }
@@ -702,203 +1204,15 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
     );
   }
 
-  Widget _buildSignUpProfileFields(BuildContext context) {
-    return Column(
-      children: [
-        TextFormField(
-          controller: _phoneController,
-          keyboardType: TextInputType.phone,
-          decoration: _signupDecoration(
-            context,
-            'Phone Number',
-            Icons.phone_outlined,
-          ),
-        ),
-        SizedBox(
-          height: ResponsiveUtils.getResponsiveValue(
-            context: context,
-            mobile: 12.0,
-            tablet: 14.0,
-            desktop: 16.0,
-          ),
-        ),
-        TextFormField(
-          controller: _locationController,
-          decoration: _signupDecoration(
-            context,
-            'Location',
-            Icons.location_on_outlined,
-          ),
-        ),
-        SizedBox(
-          height: ResponsiveUtils.getResponsiveValue(
-            context: context,
-            mobile: 12.0,
-            tablet: 14.0,
-            desktop: 16.0,
-          ),
-        ),
-        TextFormField(
-          controller: _localChurchController,
-          decoration: _signupDecoration(
-            context,
-            'Local Church',
-            Icons.church_outlined,
-          ),
-        ),
-        SizedBox(
-          height: ResponsiveUtils.getResponsiveValue(
-            context: context,
-            mobile: 12.0,
-            tablet: 14.0,
-            desktop: 16.0,
-          ),
-        ),
-        TextFormField(
-          controller: _occupationController,
-          decoration: _signupDecoration(
-            context,
-            'Occupation',
-            Icons.work_outline,
-          ),
-        ),
-        SizedBox(
-          height: ResponsiveUtils.getResponsiveValue(
-            context: context,
-            mobile: 12.0,
-            tablet: 14.0,
-            desktop: 16.0,
-          ),
-        ),
-        TextFormField(
-          controller: _skillsController,
-          decoration: _signupDecoration(
-            context,
-            'Skills',
-            Icons.handyman_outlined,
-          ),
-        ),
-        SizedBox(
-          height: ResponsiveUtils.getResponsiveValue(
-            context: context,
-            mobile: 12.0,
-            tablet: 14.0,
-            desktop: 16.0,
-          ),
-        ),
-        TextFormField(
-          controller: _previouslocalChapterController,
-          decoration: _signupDecoration(
-            context,
-            'Previous Local Chapter',
-            Icons.groups_outlined,
-          ),
-        ),
-        SizedBox(
-          height: ResponsiveUtils.getResponsiveValue(
-            context: context,
-            mobile: 12.0,
-            tablet: 14.0,
-            desktop: 16.0,
-          ),
-        ),
-        TextFormField(
-          controller: _tojoinChapterController,
-          decoration: _signupDecoration(
-            context,
-            'To Join Chapter',
-            Icons.group_add_outlined,
-          ),
-        ),
-        SizedBox(
-          height: ResponsiveUtils.getResponsiveValue(
-            context: context,
-            mobile: 12.0,
-            tablet: 14.0,
-            desktop: 16.0,
-          ),
-        ),
-        DropdownButtonFormField<String>(
-          initialValue: _commitmentType,
-          decoration: _signupDecoration(
-            context,
-            'Commitment Type',
-            Icons.volunteer_activism_outlined,
-          ),
-          items: [
-            DropdownMenuItem(
-              value: 'financial',
-              child: Text(
-                'Financial',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ),
-            DropdownMenuItem(
-              value: 'active_availability',
-              child: Text(
-                'Active Availability',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ),
-            DropdownMenuItem(
-              value: 'both',
-              child: Text(
-                'Both',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ),
-          ],
-          onChanged: (value) =>
-              setState(() => _commitmentType = value ?? 'both'),
-        ),
-        SizedBox(
-          height: ResponsiveUtils.getResponsiveValue(
-            context: context,
-            mobile: 12.0,
-            tablet: 14.0,
-            desktop: 16.0,
-          ),
-        ),
-        if (_commitmentType == 'financial' || _commitmentType == 'both') ...[
-          TextFormField(
-            controller: _financialCommitmentController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: _signupDecoration(
-              context,
-              'Financial Commitment (Optional)',
-              Icons.payments_outlined,
-            ),
-          ),
-          SizedBox(
-            height: ResponsiveUtils.getResponsiveValue(
-              context: context,
-              mobile: 12.0,
-              tablet: 14.0,
-              desktop: 16.0,
-            ),
-          ),
-        ],
-        if (_commitmentType == 'active_availability' ||
-            _commitmentType == 'both')
-          TextFormField(
-            controller: _availabilityController,
-            decoration: _signupDecoration(
-              context,
-              'Availability Commitment (Optional)',
-              Icons.schedule_outlined,
-            ),
-          ),
-      ],
-    );
-  }
-
   InputDecoration _signupDecoration(
     BuildContext context,
     String label,
-    IconData icon,
-  ) {
+    IconData icon, {
+    String? helperText,
+  }) {
     return InputDecoration(
       labelText: label,
+      helperText: helperText,
       prefixIcon: Icon(icon),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       filled: true,
@@ -1128,11 +1442,89 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
     if (!_isSignUp) {
       setState(() {
         _isSignUp = true;
+        _currentStage = 0;
       });
       return;
     }
 
-    if (!_formKey.currentState!.validate()) return;
+    final category = _selectedCategory;
+    final translate = ref.read(translationProvider);
+
+    // Validate Stage 0 credentials
+    if (_nameController.text.trim().isEmpty) {
+      setState(() => _currentStage = 0);
+      _showFormError(translate('name_required'));
+      return;
+    }
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      setState(() => _currentStage = 0);
+      _showFormError(translate('email_required'));
+      return;
+    }
+    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+      setState(() => _currentStage = 0);
+      _showFormError(translate('invalid_email'));
+      return;
+    }
+    if (category != 'guest' && _phoneController.text.trim().isEmpty) {
+      setState(() => _currentStage = 0);
+      _showFormError('Phone number is required');
+      return;
+    }
+    if (_passwordController.text.length < 6) {
+      setState(() => _currentStage = 0);
+      _showFormError(translate('password_too_short'));
+      return;
+    }
+    if (_confirmPasswordController.text != _passwordController.text) {
+      setState(() => _currentStage = 0);
+      _showFormError(translate('passwords_dont_match'));
+      return;
+    }
+
+    // Validate Stage 1 credentials
+    if (category != 'guest' && _localChurchController.text.trim().isEmpty) {
+      setState(() => _currentStage = 1);
+      _showFormError('Local church name is required');
+      return;
+    }
+
+    // Validate Stage 2 credentials for Member/Staff
+    if (category != 'guest') {
+      if ((_commitmentType == 'financial' || _commitmentType == 'both') &&
+          _financialCommitmentController.text.trim().isEmpty) {
+        setState(() => _currentStage = 2);
+        _showFormError('Please enter your monthly financial commitment');
+        return;
+      }
+      if ((_commitmentType == 'active_availability' || _commitmentType == 'both') &&
+          _availabilityController.text.trim().isEmpty) {
+        setState(() => _currentStage = 2);
+        _showFormError('Please specify your ministry availability');
+        return;
+      }
+    }
+
+    String role;
+    String? requestedRole;
+    bool isApproved;
+    String approvalStatus;
+
+    if (category == 'guest') {
+      role = 'guest';
+      isApproved = true;
+      approvalStatus = 'approved';
+    } else if (category == 'coordinator') {
+      role = _coordinatorRole;
+      requestedRole = _coordinatorRole;
+      isApproved = false; // Requires administrator review and approval!
+      approvalStatus = 'pending';
+    } else {
+      role = 'member';
+      isApproved = true;
+      approvalStatus = 'approved';
+    }
 
     setState(() {
       _isLoading = true;
@@ -1169,24 +1561,25 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
           tojoinChapter: _tojoinChapterController.text.trim().isNotEmpty
               ? _tojoinChapterController.text.trim()
               : null,
-          commitmentType: _commitmentType,
-          financialCommitment:
-              (_commitmentType == 'financial' || _commitmentType == 'both') &&
-                      _financialCommitmentController.text.trim().isNotEmpty
-                  ? double.tryParse(
-                      _financialCommitmentController.text.trim(),
-                    )
-                  : null,
-          availabilityCommitment:
-              (_commitmentType == 'active_availability' ||
-                          _commitmentType == 'both') &&
-                      _availabilityController.text.trim().isNotEmpty
-                  ? _availabilityController.text.trim()
-                  : null,
+          commitmentType: category == 'guest' ? 'none' : _commitmentType,
+          financialCommitment: (category != 'guest' &&
+                  (_commitmentType == 'financial' || _commitmentType == 'both') &&
+                  _financialCommitmentController.text.trim().isNotEmpty)
+              ? double.tryParse(_financialCommitmentController.text.trim())
+              : null,
+          availabilityCommitment: (category != 'guest' &&
+                  (_commitmentType == 'active_availability' || _commitmentType == 'both') &&
+                  _availabilityController.text.trim().isNotEmpty)
+              ? _availabilityController.text.trim()
+              : null,
+          role: role,
+          requestedRole: requestedRole,
+          isApproved: isApproved,
+          approvalStatus: approvalStatus,
         ),
       );
 
-      // Notify admin of new signup + send welcome email (best-effort)
+      // Notify admin of new signup + send welcome notification (best-effort)
       try {
         final newProfile = UserProfile(
           id: '',
@@ -1194,7 +1587,11 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
           fullName: _nameController.text.trim(),
           phoneNumber: _phoneController.text.trim(),
           localChurch: _localChurchController.text.trim(),
-          commitmentType: _commitmentType,
+          commitmentType: category == 'guest' ? 'none' : _commitmentType,
+          role: role,
+          requestedRole: requestedRole,
+          isApproved: isApproved,
+          approvalStatus: approvalStatus,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         );
@@ -1211,14 +1608,22 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
         // Best-effort — don't fail signup
       }
 
-      // Show in-app welcome SnackBar
+      // Show customized in-app welcome SnackBar
       if (mounted) {
         final name = _nameController.text.trim().isNotEmpty
             ? _nameController.text.trim()
             : _emailController.text.split('@').first;
+        String welcomeMsg;
+        if (category == 'coordinator') {
+          welcomeMsg = 'Welcome to ALIVE Nigeria, $name! Your ${requestedRole == 'leader' ? 'Staff' : 'Coordinator'} registration has been submitted for admin approval.';
+        } else if (category == 'guest') {
+          welcomeMsg = 'Welcome to ALIVE Nigeria, $name! You now have access to the ALIVE guest area.';
+        } else {
+          welcomeMsg = 'Welcome to ALIVE Nigeria, $name! 🎉';
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Welcome to ALIVE Nigeria, $name! 🎉'),
+            content: Text(welcomeMsg),
             backgroundColor: Theme.of(context).colorScheme.primary,
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 4),

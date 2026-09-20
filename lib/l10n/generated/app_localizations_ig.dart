@@ -42,7 +42,7 @@ class AppLocalizationsIg extends AppLocalizations {
   String get edit => 'Dezie';
 
   @override
-  String get share => 'Kee';
+  String get share => 'Kesaa';
 
   @override
   String get error => 'Njehie';
@@ -81,10 +81,10 @@ class AppLocalizationsIg extends AppLocalizations {
   String get addPrayer => 'Tinye Ekpere';
 
   @override
-  String get bibleStudy => 'Ọmụmụ Baịbụl';
+  String get bibleStudy => 'Ọmụmụ Akwụkwọ Nsọ';
 
   @override
-  String get continueLesson => 'Gaa n\'ihu';
+  String get continueLesson => 'Gaa n\'Ihu na Nkuzi';
 
   @override
   String get startProgram => 'Malite Mmemme';
@@ -93,7 +93,7 @@ class AppLocalizationsIg extends AppLocalizations {
   String get studyProgress => 'Ọganihu Ọmụmụ';
 
   @override
-  String get completedLessons => 'Ihe Ọmụmụ Emechara';
+  String get completedLessons => 'Nkuzi Emechara';
 
   @override
   String get healthyLiving => 'Ndụ Ahụike';
@@ -102,7 +102,7 @@ class AppLocalizationsIg extends AppLocalizations {
   String get todaysScore => 'Akara Ahụike Taa';
 
   @override
-  String get logWater => 'Kọọ Mmiri Inụrụ';
+  String get logWater => 'Dekọọ Mmiri';
 
   @override
   String get waterIntake => 'Ịṅụ Mmiri';
@@ -123,7 +123,7 @@ class AppLocalizationsIg extends AppLocalizations {
   String get supportMission => 'Kwado Ozi A';
 
   @override
-  String get missions => 'Ozi Ọma';
+  String get missions => 'Ayyukan Ozi Ọma';
 
   @override
   String get donate => 'Nye Onyinye';
@@ -141,7 +141,7 @@ class AppLocalizationsIg extends AppLocalizations {
   String get notifications => 'Ọkwa';
 
   @override
-  String get theme => 'Ụdịdị Ngwa';
+  String get theme => 'Ụdịdị';
 
   @override
   String get account => 'Akaụntụ';
@@ -150,7 +150,7 @@ class AppLocalizationsIg extends AppLocalizations {
   String get privacy => 'Nzuzo';
 
   @override
-  String get about => 'Banyere';
+  String get about => 'Banyere Anyị';
 
   @override
   String get signIn => 'Banye';
@@ -162,7 +162,7 @@ class AppLocalizationsIg extends AppLocalizations {
   String get signOut => 'Pụọ';
 
   @override
-  String get email => 'Imel';
+  String get email => 'Ozi Eletrọnịkị';
 
   @override
   String get password => 'Okwu Nzuzo';
@@ -186,7 +186,7 @@ class AppLocalizationsIg extends AppLocalizations {
   String get archived_users => 'Ndị Ọrụ Echekwara';
 
   @override
-  String get health => 'Ahụ Ike';
+  String get health => 'Ahụike';
 
   @override
   String get welcome_message => 'Ozi Nnọọ';
@@ -201,7 +201,7 @@ class AppLocalizationsIg extends AppLocalizations {
   String get good_evening => 'Mgbede Ọma';
 
   @override
-  String get daily_verse => 'Okwu Kwa Ụbọchị';
+  String get daily_verse => 'Akwụkwọ Nsọ Kwa Ụbọchị';
 
   @override
   String get quick_actions => 'Omume Ngwa Ngwa';
@@ -213,31 +213,31 @@ class AppLocalizationsIg extends AppLocalizations {
   String get prayer_requests => 'Arịrịọ Ekpere';
 
   @override
-  String get health_tracking => 'Nlekọta Ahụ Ike';
+  String get health_tracking => 'Nlekọta Ahụike';
 
   @override
-  String get mission_updates => 'Mmelite Ozi';
+  String get mission_updates => 'Mmelite Ozi Ọma';
 
   @override
-  String get bible => 'Baịbụl';
+  String get bible => 'Akwụkwọ Nsọ';
 
   @override
-  String get read_bible => 'Gụọ Baịbụl';
+  String get read_bible => 'Gụọ Akwụkwọ Nsọ';
 
   @override
-  String get bible_study => 'Ọmụmụ Baịbụl';
+  String get bible_study => 'Ọmụmụ Akwụkwọ Nsọ';
 
   @override
   String get daily_devotion => 'Ofufe Kwa Ụbọchị';
 
   @override
-  String get interactive_lessons => 'Ihe Ọmụmụ Mmekọrịta';
+  String get interactive_lessons => 'Nkuzi Mmekọrịta';
 
   @override
-  String get search_lessons => 'Chọọ Ihe Ọmụmụ';
+  String get search_lessons => 'Chọọ Nkuzi';
 
   @override
-  String get all_lessons => 'Ihe Ọmụmụ Niile';
+  String get all_lessons => 'Nkuzi Niile';
 
   @override
   String get in_progress => 'Na-aga N\'ihu';
@@ -249,7 +249,7 @@ class AppLocalizationsIg extends AppLocalizations {
   String get completed => 'Emechara';
 
   @override
-  String get no_lessons_found => 'Achọtaghị ihe ọmụmụ ọ bụla';
+  String get no_lessons_found => 'Achọtaghị nkuzi ọ bụla';
 
   @override
   String get category => 'Ụdị';
@@ -293,11 +293,11 @@ class AppLocalizationsIg extends AppLocalizations {
   String get please_enter_full_name => 'Biko tinye aha zuru ezu gị';
 
   @override
-  String get please_enter_email => 'Biko tinye imel gị';
+  String get please_enter_email => 'Biko tinye ozi eletrọnịkị gị';
 
   @override
   String get please_enter_valid_email =>
-      'Biko tinye adreesị imel ziri ezi';
+      'Biko tinye adreesị ozi eletrọnịkị ziri ezi';
 
   @override
   String get please_enter_password => 'Biko tinye okwu nzuzo gị';
@@ -340,7 +340,7 @@ class AppLocalizationsIg extends AppLocalizations {
   String get your_progress => 'Ọganihu Gị';
 
   @override
-  String get bible_study_completed => 'Ọmụmụ Baịbụl Mechara';
+  String get bible_study_completed => 'Ọmụmụ Akwụkwọ Nsọ Mechara';
 
   @override
   String get prayer_request_submitted => 'Arịrịọ Ekpere Ezigara';
@@ -370,7 +370,7 @@ class AppLocalizationsIg extends AppLocalizations {
   String get active => 'Na-arụ Ọrụ';
 
   @override
-  String get streak => 'Usoro A Na-akwụsịghị';
+  String get streak => 'Usoro Ci Gaba';
 
   @override
   String get days => 'Ụbọchị';
@@ -391,11 +391,11 @@ class AppLocalizationsIg extends AppLocalizations {
   String get featured_today => 'Ihe Pụtara Taa';
 
   @override
-  String get health_message => 'Ozi Ahụ Ike: Ọgwụ Okike';
+  String get health_message => 'Ozi Ahụike: Ọgwụ Okike';
 
   @override
   String get health_message_desc =>
-      'Chọpụta atụmatụ Chineke maka ndụ ahụ ike site na ndị dọkịta asatọ okike';
+      'Chọpụta atụmatụ Chineke maka ndụ ahụike site na ndị dọkịta asatọ okike';
 
   @override
   String get mission_spotlight => 'Nleba Anya Ozi: Ugwu Naịjirịa';
@@ -414,7 +414,8 @@ class AppLocalizationsIg extends AppLocalizations {
   String get about_alive => 'Banyere ALIVE';
 
   @override
-  String get app_tagline => 'Ọmụmụ Baịbụl, ekpere, na ije-ozi n’otu obodo';
+  String get app_tagline =>
+      'Ọmụmụ Akwụkwọ Nsọ, ekpere, na ije ozi n\'otu obodo';
 
   @override
   String get resources => 'Akụrụngwa';
@@ -424,7 +425,7 @@ class AppLocalizationsIg extends AppLocalizations {
 
   @override
   String get resources_subtitle =>
-      'Ihe ọmụmụ, ekpere, ahụike, egwu, na ihe mgbasa ozi';
+      'Ọmụmụ, ekpere, ahụike, egwu, na ihe mgbasa ozi';
 
   @override
   String get error_loading_reports => 'Njehie na-ebu akụkọ';
@@ -530,11 +531,11 @@ class AppLocalizationsIg extends AppLocalizations {
   String get commitment_details => 'Nkọwa Nkwa';
 
   @override
-  String get bible_reader => 'Onye Na-agụ Baịbụl';
+  String get bible_reader => 'Onye Na-agụ Akwụkwọ Nsọ';
 
   @override
   String get enter_bible_reference =>
-      'Tinye Ntụaka Baịbụl (dịka, Jọn 3:16)';
+      'Tinye Ntụaka Akwụkwọ Nsọ (dịka, Jọn 3:16)';
 
   @override
   String get go => 'Gaa';
@@ -553,17 +554,17 @@ class AppLocalizationsIg extends AppLocalizations {
 
   @override
   String get search_topic_or_reference =>
-      'Chọọ isiokwu ma ọ bụ ntụaka Baịbụl...';
+      'Chọọ isiokwu ma ọ bụ ntụaka Akwụkwọ Nsọ...';
 
   @override
   String get searching_for => 'Na-achọ';
 
   @override
-  String get authentication_required => 'A na-achọ Nkwenye';
+  String get authentication_required => 'Ana-achọ Nkwenye';
 
   @override
   String get prayer_auth_message =>
-      'Biko banye iji nweta arịrịọ ekpere na kekọrịta ekpere gị.';
+      'Biko banye iji nweta arịrịọ ekpere ma kesaa nke gị.';
 
   @override
   String get add_prayer_request => 'Tinye Arịrịọ Ekpere';
@@ -608,7 +609,7 @@ class AppLocalizationsIg extends AppLocalizations {
   String get search_channels => 'Chọọ ọwa...';
 
   @override
-  String get go_home => 'Gaa Ụlọ';
+  String get go_home => 'Koma Gida';
 
   @override
   String get go_back => 'Laghachi Azụ';
@@ -617,14 +618,14 @@ class AppLocalizationsIg extends AppLocalizations {
   String get dismiss => 'Wepụ';
 
   @override
-  String get gift_in_kind => 'Onyinye Ihe Onwunwe';
+  String get gift_in_kind => 'Onyinye Kayan Aiki';
 
   @override
   String get donate_specific_items => 'Nyefe ihe pụrụ iche';
 
   @override
   String get gik_intro =>
-      'Jupụta fọm a ka i nyefe ihe pụrụ iche dịka bọs ọrụ, ala, wdg.';
+      'Jupụta fọm a ka ị nyefe ihe pụrụ iche dịka bọs ọrụ, ala, na ihe ndị ọzọ.';
 
   @override
   String get item_type => 'Ụdị Ihe';
@@ -633,31 +634,31 @@ class AppLocalizationsIg extends AppLocalizations {
   String get quantity => 'Ọnụọgụ';
 
   @override
-  String get estimated_value_optional => 'Ọnụ Ahịa A Tụlere (Nhọrọ)';
+  String get estimated_value_optional => 'Ọnụ Ahịa A Tụlere (Na-abụghị Iwu)';
 
   @override
-  String get delivery_preference => 'Họrọ Nnyefe';
+  String get delivery_preference => 'Zaɓin Isarwa';
 
   @override
-  String get location => 'Obodo/Ọnọdụ';
+  String get location => 'Ebe/Ọnọdụ';
 
   @override
-  String get description_optional => 'Nkọwa (Nhọrọ)';
+  String get description_optional => 'Nkọwa (Na-abụghị Iwu)';
 
   @override
-  String get helper_additional_details => 'Kọwaa nkọwa ndị ọzọ ọ bụla';
+  String get helper_additional_details => 'Kọwaa nkọwa ndị ọzọ';
 
   @override
-  String get submit_and_email => 'Ziga ma zipu imel';
+  String get submit_and_email => 'Ziga ma zipu ta imel';
 
   @override
   String get pickup => 'Ịnakọta';
 
   @override
-  String get drop_off => 'Nnyefe';
+  String get drop_off => 'Isarwa';
 
   @override
-  String get guest_user => 'Onye Ọbịa';
+  String get guest_user => 'Ọbịa';
 
   @override
   String get no_email => 'Enweghị imel';
@@ -669,16 +670,16 @@ class AppLocalizationsIg extends AppLocalizations {
   String get help_support => 'Enyemaka & Nkwado';
 
   @override
-  String get faq => 'Ajụjụ Ndị A Na-ajụ Mgbe Niile';
+  String get faq => 'Mụta Maka FAQ';
 
   @override
   String get guides => 'Ndụmọdụ';
 
   @override
-  String get contact => 'Kpọtụrụ';
+  String get contact => 'Kpọtụrụ Mu';
 
   @override
-  String get feedback => 'Nzaghachi';
+  String get feedback => 'Ra\'ayi / Nzaghachi';
 
   @override
   String get sunday_thursday => 'Sọnde - Tọzdee';
@@ -687,7 +688,7 @@ class AppLocalizationsIg extends AppLocalizations {
   String get friday => 'Fraịdee';
 
   @override
-  String get saturday => 'Sọterdee';
+  String get saturday => 'Sọdee';
 
   @override
   String get closed => 'Emechiri';
@@ -720,7 +721,7 @@ class AppLocalizationsIg extends AppLocalizations {
   String get category_prophecy => 'Amụma';
 
   @override
-  String get category_health => 'Ahụ Ike';
+  String get category_health => 'Ahụike';
 
   @override
   String get category_youth => 'Ndị Na-eto Eto';
@@ -729,16 +730,16 @@ class AppLocalizationsIg extends AppLocalizations {
   String get category_family => 'Ezinụlọ';
 
   @override
-  String get category_evangelism => 'Ozi Ọma';
+  String get category_evangelism => 'Eziokwu Ozi Ọma';
 
   @override
-  String get category_sabbath => 'Nọmbam Ụbọchị Izụike';
+  String get category_sabbath => 'Ụbọchị Izumịne';
 
   @override
   String get no_tracts_found => 'Achọtaghị tracts ọ bụla';
 
   @override
-  String get no_downloads_yet => 'Enweghị nbudata ọ bụla';
+  String get no_downloads_yet => 'Enweghị nbudata ọ bụla tukuna';
 
   @override
   String get materials_download_message => 'Ihe ị budatara ga-apụta ebe a';
@@ -753,13 +754,13 @@ class AppLocalizationsIg extends AppLocalizations {
   String get management => 'Nlekọta';
 
   @override
-  String get claim_admin_role => 'Tinye maka Ọrụ Nchịkwa';
+  String get claim_admin_role => 'Nemi Matsayin Gudanarwa';
 
   @override
   String get admin_claims_preview => 'Nlebanya Nkwupụta Nchịkwa';
 
   @override
-  String get more_features => 'Njirimara Ndị Ọzọ';
+  String get more_features => 'Njirimara ndị ọzọ';
 
   @override
   String get christian_community => 'Obodo Ndị Kraịst';
@@ -786,10 +787,10 @@ class AppLocalizationsIg extends AppLocalizations {
       'Enweghị ike ịzọrọ ọrụ onye nchịkwa ugbu a.';
 
   @override
-  String get join => 'Sonye';
+  String get join => 'Sonye na Mu';
 
   @override
-  String get board_meeting_available => 'Nzukọ nke Bọọdụ Nduzi dị';
+  String get board_meeting_available => 'Nzukọ nke Board of Directors dị';
 
   @override
   String get how_to_join_chapter => 'Olee otu m ga-esi sonye òtù mpaghara?';
@@ -812,7 +813,7 @@ class AppLocalizationsIg extends AppLocalizations {
 
   @override
   String get study_materials_answer =>
-      'Gaa na taab Ọmụmụ iji hụ mmemme ọmụmụ Baịbụl na ihe ọmụmụ niile.';
+      'Gaa na taab Ọmụmụ iji hụ mmemme ọmụmụ Akwụkwọ Nsọ na nkuzi niile.';
 
   @override
   String get how_to_track_health => 'Olee otu m ga-esi soro ahụike m?';
@@ -839,7 +840,7 @@ class AppLocalizationsIg extends AppLocalizations {
   String get search_faq => 'Chọọ FAQ...';
 
   @override
-  String get getting_started => 'Ịmalite';
+  String get getting_started => 'Ịmalite Aiki';
 
   @override
   String get getting_started_desc => 'Mụta isi nke iji ngwa ALIVE Nigeria.';
@@ -852,13 +853,13 @@ class AppLocalizationsIg extends AppLocalizations {
       'Chọpụta otu esi ekesa arịrịọ na ekpere maka ndị ọzọ.';
 
   @override
-  String get study_guides_tutorial => 'Ntuziaka Ọmụmụ';
+  String get study_guides_tutorial => 'Ntuzi Ọmụmụ';
 
   @override
-  String get study_guides_desc => 'Ntuziaka maka ịmecha ihe ọmụmụ.';
+  String get study_guides_desc => 'Ntuzi daki-daki maka ịmecha nkuzi ọmụmụ.';
 
   @override
-  String get health_tracking_guide => 'Ntuziaka Ahụike';
+  String get health_tracking_guide => 'Ntuzi Ahụike';
 
   @override
   String get health_tracking_desc =>
@@ -872,13 +873,13 @@ class AppLocalizationsIg extends AppLocalizations {
       'Maka ndị ndú òtù ka ha ga-esi jikwaa ndị otu.';
 
   @override
-  String get notification_settings_guide => 'Ntọala Ọkwa';
+  String get notification_settings_guide => 'Ntọala Ngosi';
 
   @override
-  String get notification_settings_desc => 'Hazie ọkwa maka ozi na ekpere.';
+  String get notification_settings_desc => 'Hazie ngosi maka ozi na ekpere.';
 
   @override
-  String get user_guides => 'Ntuziaka Ndị Ọrụ';
+  String get user_guides => 'Ntuzi Ndị Ọrụ';
 
   @override
   String get need_help => 'Ị Chọrọ Enyemaka?';
@@ -897,7 +898,7 @@ class AppLocalizationsIg extends AppLocalizations {
   String get feedback_type => 'Ụdị Echiche';
 
   @override
-  String get email_optional => 'Imel (Nhọrọ)';
+  String get email_optional => 'Imel (Na-abụghị Iwu)';
 
   @override
   String get enter_email => 'Tinye imel gị';
@@ -912,7 +913,7 @@ class AppLocalizationsIg extends AppLocalizations {
   String get submit_feedback => 'Ziga Echiche';
 
   @override
-  String get enable_biometric_auth => 'Mee Ka Nbanye Biometric Rụọ Ọrụ';
+  String get enable_biometric_auth => 'Mee Ka Nbanye Biometric rụọ ọrụ';
 
   @override
   String get biometric_setup_message =>
@@ -923,7 +924,7 @@ class AppLocalizationsIg extends AppLocalizations {
 
   @override
   String get biometric_enabled_success =>
-      'Enyere nkwado biometric n\'ụzọ gara nke ọma';
+      'E nyere nkwado biometric n\'ụzọ gara nke ọma';
 
   @override
   String get biometric_setup_failed =>
@@ -942,16 +943,16 @@ class AppLocalizationsIg extends AppLocalizations {
   String get alive_meet => 'Nzukọ ALIVE';
 
   @override
-  String get recipes => 'Ntụziaka Nri';
+  String get recipes => 'Esi Nri';
 
   @override
-  String get bod_trustees => 'Ndị Mụrụ Ahụ Bọọdụ (Trustees)';
+  String get bod_trustees => 'Amintattun Hukuma (BOD)';
 
   @override
-  String get events => 'Ihe Omume';
+  String get events => 'Abubuwan da Ke Tafe / Ihe Omume';
 
   @override
-  String get bible_game => 'Egwuregwu Baịbụl';
+  String get bible_game => 'Egwuregwu Akwụkwọ Nsọ';
 
   @override
   String get chat => 'Nkata';
@@ -966,7 +967,7 @@ class AppLocalizationsIg extends AppLocalizations {
   String get podcasts => 'Podcasts';
 
   @override
-  String get lessons => 'Ihe Ọmụmụ';
+  String get lessons => 'Nkuzi';
 
   @override
   String get testimonies => 'Akaebe';
@@ -978,22 +979,22 @@ class AppLocalizationsIg extends AppLocalizations {
   String get kids_mission => 'Ozi Ụmụaka';
 
   @override
-  String get submit_recipe => 'Ziga Ntụziaka Nri';
+  String get submit_recipe => 'Ziga Esi Nri';
 
   @override
   String get tools_games => 'Ngwá Ọrụ na Egwuregwu';
 
   @override
-  String get content_tools => 'Ngwá Ọrụ Ọdịnaya';
+  String get content_tools => 'Ngwá Ọrụ Ọdịnà';
 
   @override
-  String get content_management => 'Njikwa Ọdịnaya';
+  String get content_management => 'Njikwa Ọdịnà';
 
   @override
   String get admin => 'Ọchịchị';
 
   @override
-  String get dashboard => 'Dashboard';
+  String get dashboard => 'Ihe Ngosịpụta';
 
   @override
   String get user_archive => 'Ebe Nchekwa Ndị Ọrụ';
@@ -1002,65 +1003,65 @@ class AppLocalizationsIg extends AppLocalizations {
   String get role_management => 'Njikwa Ọkwa';
 
   @override
-  String get auto_theme => 'Isiokwu Akpọrọ Onwe Ya';
+  String get auto_theme => 'Isiokwu Akpaka';
 
   @override
   String get light_mode => 'Ụdị Ihè';
 
   @override
-  String get dark_mode => 'Ụdị Ọchịchịrị';
+  String get dark_mode => 'Ụdị Ọchịchị';
 
   @override
   String get monthly => 'Kwa Ọnwa';
 
   @override
-  String get one_time => 'Mtu Taa Mgbe Kotọ';
+  String get one_time => 'Otu Ugboro';
 
   @override
-  String get giving_method => 'Usoro Onyinye';
+  String get giving_method => 'Usoro Inye Onyinye';
 
   @override
-  String get enter_amount_monthly => 'Tinye ọnụọgụ ego kwa ọnwa';
+  String get enter_amount_monthly => 'Tinye adadi ị ga-enye kwa ọnwa';
 
   @override
-  String get enter_amount_one_time => 'Tinye ọnụọgụ ego maka otu ugboro';
+  String get enter_amount_one_time => 'Tinye adadi onyinye nke otu ugboro';
 
   @override
-  String get enter_amount => 'Tinye ọnụọgụ ego';
+  String get enter_amount => 'Tinye Adadi Kuɗi / Ego';
 
   @override
-  String get cover_processing_fees => 'Kpuchie ụgwọ nhazi transaction';
+  String get cover_processing_fees => 'Haɗa kuɗin gudanarwa / Borogwu ego';
 
   @override
-  String get custom_amount => 'Ọnụọgụ Ego Masịrị Gị';
+  String get custom_amount => 'Adadi nke Onwe Gị';
 
   @override
-  String get selected_fund_designations => 'Ebe Ego A Nhọrọ Ga-aga';
+  String get selected_fund_designations => 'Manufofin Ego E Zaɓara';
 
   @override
-  String get designated => 'Ekenyere Ihe Pụrụ Iche';
+  String get designated => 'E debere n\'iche';
 
   @override
-  String get split_donation => 'Wekọta Onyinye';
+  String get split_donation => 'Raba Onyinye';
 
   @override
-  String get total => 'Ihe Niile Nsọ';
+  String get total => 'Jimilla / Jimbo';
 
   @override
-  String get total_amount => 'Ọnụọgụ Ego Niile';
+  String get total_amount => 'Jimillar Ego';
 
   @override
-  String get start_monthly_giving => 'Malite Onyinye Kwa Ọnwa';
+  String get start_monthly_giving => 'Fara Onyinye na Wata-Wata';
 
   @override
   String get donate_one_time => 'Nye Onyinye Otu Ugboro';
 
   @override
   String get donation_help_text =>
-      'Onyinye gị ga-enyere aka gbasaa ozi ọma ma kpalite ndụ ọtụtụ ndị.';
+      'Onyinye gị ga-enyere aka na gbakwunye ozi a na kụba mmadụ niile.';
 
   @override
-  String get your_details => 'Nkọwa Gị';
+  String get your_details => 'Bayananka / Nkọwa Gị';
 
   @override
   String get email_address => 'Adreesị Imel';
@@ -1069,113 +1070,114 @@ class AppLocalizationsIg extends AppLocalizations {
   String get change => 'Gbanwe';
 
   @override
-  String get non_monetary => 'Ihe Na-abụghị Ego';
+  String get non_monetary => 'Bụghị Ego';
 
   @override
-  String get active_projects => 'Pụrojektị Na-aga N\'ihu';
+  String get active_projects => 'Ayyukan da Ke Gudana / Ayyuka Nọ Na-aga';
 
   @override
-  String get something_bigger => 'Ihe Karịrị Nke A';
+  String get something_bigger => 'Bụrụ akụkụ nke ihe ka ukwuu.';
 
   @override
   String ministry_years_intro(Object years) {
-    return 'Mgbe $years afọ gasịrị, ALIVE Nigeria nọgidere na-enwe mmetụta dị mma.';
+    return 'Maka $years afọ, hidima ALIVE Nigeria enyela aka na uto nke ndị mmadụ.';
   }
 
   @override
   String get ministry_years_outro =>
-      'Anyị nwere ike ime karịa maka ọrụ Chineke n\'ịkọkọ aka ọnụ.';
+      'Anyị na-aga n\'ihu na-agbasa ozi a gburugburu ụwa.';
 
   @override
-  String get impact_rural_missions => 'Ozi Mpaghara Ndị Dị N\'ime Mpaghara';
+  String get impact_rural_missions => 'Ayyukan Ƙauye / Ozi Na Karkara';
 
   @override
   String get impact_rural_missions_desc =>
-      'Inyere ụmụaka na obodo aka site na Ozi Ọma.';
+      'Gudummawa na ọrụ na mpaghara karkara.';
 
   @override
-  String get impact_campus_missions => 'Ozi Mahadum Na Obodo Ukwu';
+  String get impact_campus_missions => 'Ozi na Mahadum';
 
   @override
   String get impact_campus_missions_desc =>
-      'Inyere ụmụ akwụkwọ mahadum na obodo ukwu aka site na Ozi Ọma.';
+      'Gudummawa na ayyukan hidima na mahadum gburugburu.';
 
   @override
-  String get impact_missionary_training => 'Ọzụzụ Ndị Ozi Ọma';
+  String get impact_missionary_training => 'Mkpọsa Ndị Aikin Ozi Ọma';
 
   @override
   String get impact_missionary_training_desc =>
-      'Ịzụ ndị ozi ọma maka ebe dị iche iche.';
+      'Horar da ma\'aikata maka ozi ọma gburugburu ụwa.';
 
   @override
-  String get impact_health_evangelism => 'Ozi Ọma Ahụ Ike';
+  String get impact_health_evangelism => 'Ozi Ọma na Ahụike';
 
   @override
-  String get impact_health_evangelism_desc => 'Inye mmadụ niile enyemaka ahụ ike.';
+  String get impact_health_evangelism_desc =>
+      'Haɗa bishara na ọrụ inganta ahụike.';
 
   @override
-  String get impact_education => 'Mmụta';
+  String get impact_education => 'Ilimi';
 
   @override
-  String get impact_education_desc => 'Inye agụmakwụkwọ kwesịrị ekwesị.';
+  String get impact_education_desc => 'Taimakawa na haɓaka ilimi n\'ozuzu.';
 
   @override
-  String get selected_for_gift => 'Ahọpụtara maka onyinye a';
+  String get selected_for_gift => 'E zaɓara maka onyinye a';
 
   @override
-  String get tap_to_add_to_gift => 'Pịa ka i tinye na onyinye';
+  String get tap_to_add_to_gift => 'Danna iji tinye na onyinye';
 
   @override
-  String get split_donation_multiple => 'Kewa onyinye gị gaa n\'ọtụtụ ebe';
+  String get split_donation_multiple => 'Raba onyinye maka ihe karịrị otu';
 
   @override
-  String get choose_funds => 'Họrọ Akpa Ego';
+  String get choose_funds => 'Zaɓi Asusun Onyinye';
 
   @override
-  String get project_goal => 'Ebumnuche Pụrojektị';
+  String get project_goal => 'Manufar Ase';
 
   @override
-  String get progress_made => 'Ọganihu Emere';
+  String get progress_made => 'Ọganihu E nwetara';
 
   @override
-  String get raised_of => 'enwetara n\'ime';
+  String get raised_of => 'enwetara site na';
 
   @override
-  String get explore_project_3d => 'Nyochaa pụrojektị na 3D';
+  String get explore_project_3d => 'Duba aikin na 3D';
 
   @override
-  String get what_your_giving_has_done => 'Ihe onyinye gị mezuworo';
+  String get what_your_giving_has_done => 'Abin da Onyinye Gị Merenụ';
 
   @override
-  String get no_designation => 'Enweghị nhọrọ pụrụ iche';
+  String get no_designation => 'Enweghị takamaiman ma\'auni';
 
   @override
-  String get added_to_gift => ' Etinyere na onyinye';
+  String get added_to_gift => 'Etinyela na onyinye';
 
   @override
-  String get could_not_add_designation => 'Enweghị ike itinye nhọrọ a';
+  String get could_not_add_designation => 'Enweghị ike ịtinye manufa a';
 
   @override
-  String get custom_designation_hint => 'Dịka: Ọkụ eletrik, Mmiri';
+  String get custom_designation_hint => 'dịka: Tallafin Matasa, Ginin Ụka';
 
   @override
-  String get add_fund => 'Tinye Akpa Ego';
+  String get add_fund => 'Tinye Asusun Onyinye';
 
   @override
-  String get please_enter_amount => 'Biko tinye ọnụọgụ ego';
+  String get please_enter_amount => 'Biko tinye adadi ego';
 
   @override
-  String get invalid_amount => 'Biko tinye ọnụọgụ ego ziri ezi';
+  String get invalid_amount => 'Tinye adadi ego ziri ezi';
 
   @override
-  String get donation_processing => 'A na-azi onyinye gị...';
+  String get donation_processing => 'A na-asụtọ / gudanar da onyinye gị...';
 
   @override
-  String get donation_success_title => 'Daalụ!';
-
-  @override
-  String get donation_success_message => 'Ewetara onyinye gị nke ọma.';
+  String get donation_success_title => 'Daalụ Unu!';
 
   @override
   String get select_giving_method => 'Họrọ Usoro Inye Onyinye';
+
+  @override
+  String get donation_success_message => 'Enyere onyinye gị nke ọma.';
 }

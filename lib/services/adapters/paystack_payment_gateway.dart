@@ -54,10 +54,14 @@ class PaystackPaymentGateway implements PaymentGateway {
 
       final ref = request.reference ?? generateReference();
 
-      // In development/test, simulate a successful payment to allow end-to-end testing
-      if (!kReleaseMode) {
+      // Optional simulation only when explicitly enabled via --dart-define=PAYSTACK_SIMULATE_PAYMENT=true
+      const simulatePayment = bool.fromEnvironment(
+        'PAYSTACK_SIMULATE_PAYMENT',
+        defaultValue: false,
+      );
+      if (simulatePayment) {
         _logger.info(
-            'Simulating payment success in development for reference: $ref');
+            'Simulating payment success via PAYSTACK_SIMULATE_PAYMENT for reference: $ref');
         return PaymentResponse.success(
           reference: ref,
           message: 'Simulated payment successful (development mode)',
@@ -87,7 +91,7 @@ class PaystackPaymentGateway implements PaymentGateway {
       String msg = 'Could not initialize payment. Please try again.';
       final eStr = e.toString();
       if (eStr.toLowerCase().contains('currency not supported')) {
-        msg = 'USD settlement is pending merchant activation on Paystack. Please switch to NGN (Naira) — international cards are accepted for NGN payments.';
+        msg = 'USD payment could not be processed with current settings. Please try NGN or contact support.';
       } else if (e is Exception) {
         msg = eStr.replaceFirst('Exception: ', '');
       } else if (eStr.contains('Bad state') || eStr.contains('No element')) {
@@ -118,9 +122,13 @@ class PaystackPaymentGateway implements PaymentGateway {
         );
       }
 
-      if (!kReleaseMode) {
+      const simulatePayment = bool.fromEnvironment(
+        'PAYSTACK_SIMULATE_PAYMENT',
+        defaultValue: false,
+      );
+      if (simulatePayment) {
         _logger.info(
-            'Simulating recurring monthly payment in development for reference: $ref');
+            'Simulating recurring monthly payment via PAYSTACK_SIMULATE_PAYMENT for reference: $ref');
         return PaymentResponse.success(
           reference: ref,
           message: 'Simulated monthly donation successful (development mode)',
@@ -171,7 +179,7 @@ class PaystackPaymentGateway implements PaymentGateway {
     if (data['error'] != null) {
       final err = data['error'].toString();
       if (err.toLowerCase().contains('currency not supported')) {
-        throw Exception('USD settlement is pending merchant activation on Paystack. Please switch to NGN (Naira) — international cards are accepted for NGN payments.');
+        throw Exception('USD payment could not be processed with current settings. Please try NGN or contact support.');
       }
       throw Exception(err);
     }

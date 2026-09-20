@@ -44,12 +44,16 @@ class LiveKitMeetingService extends ChangeNotifier implements MeetingGateway {
     required String userId,
     required String userName,
     required String meetingType,
+    bool notifyMembers = false,
+    String? meetingTitle,
   }) {
     return _gateway.executionAndJoin(
       roomName: roomName,
       userId: userId,
       userName: userName,
       meetingType: meetingType,
+      notifyMembers: notifyMembers,
+      meetingTitle: meetingTitle,
     );
   }
 

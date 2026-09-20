@@ -37,6 +37,8 @@ abstract class MeetingGateway {
     required String userId,
     required String userName,
     required String meetingType,
+    bool notifyMembers = false,
+    String? meetingTitle,
   });
 
   /// Joins a meeting room directly using a pre-fetched [roomToken].

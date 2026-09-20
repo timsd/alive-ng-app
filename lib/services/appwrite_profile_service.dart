@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/models.dart' as models;
 import 'package:flutter/foundation.dart';
@@ -143,11 +144,15 @@ class AppwriteProfileService {
     final existing = await getUserProfile(userId);
     if (existing != null) return existing;
 
+    final resolvedRole = (profileData != null && profileData['role'] != null)
+        ? profileData['role'].toString()
+        : role;
+
     return createUserProfile(
       userId: userId,
       email: email,
       fullName: fullName,
-      role: role,
+      role: resolvedRole,
       profileData: profileData,
     );
   }
@@ -206,6 +211,19 @@ class AppwriteProfileService {
   }) {
     final data = document.data;
 
+    Map<String, dynamic>? additionalProfile;
+    final rawAdditional = data['additional_profile'];
+    if (rawAdditional is Map<String, dynamic>) {
+      additionalProfile = rawAdditional;
+    } else if (rawAdditional is String && rawAdditional.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(rawAdditional);
+        if (decoded is Map<String, dynamic>) {
+          additionalProfile = decoded;
+        }
+      } catch (_) {}
+    }
+
     return UserProfile(
       id: document.$id,
       email: _stringValue(data, 'email') ?? fallbackEmail,
@@ -231,14 +249,18 @@ class AppwriteProfileService {
       approvedAt: _dateValue(data, 'approved_at'),
       approvalStatus: _stringValue(data, 'approval_status') ?? 'approved',
       rejectionReason: _stringValue(data, 'rejection_reason'),
+      requestedRole: _stringValue(data, 'requested_role') ??
+          (additionalProfile != null ? _stringValue(additionalProfile, 'requested_role') : null),
       location: _stringValue(data, 'location'),
       localChurch: _stringValue(data, 'local_church'),
       occupation: _stringValue(data, 'occupation'),
-      skills: _stringValue(data, 'skills'),
+      skills: _stringValue(data, 'skills') ??
+          (additionalProfile != null ? _stringValue(additionalProfile, 'skills') : null),
       workContact: _stringValue(data, 'work_contact'),
       homeContact: _stringValue(data, 'home_contact'),
       generalInfo: _stringValue(data, 'general_info'),
-      localChapter: _stringValue(data, 'local_chapter'),
+      localChapter: _stringValue(data, 'local_chapter') ??
+          (additionalProfile != null ? _stringValue(additionalProfile, 'to_join_chapter') : null),
       isChapterVerified: _boolValue(data, 'is_chapter_verified') ?? false,
       isChurchVerified: _boolValue(data, 'is_church_verified') ?? false,
       commitmentType: _stringValue(data, 'commitment_type'),

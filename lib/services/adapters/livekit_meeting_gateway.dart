@@ -204,6 +204,8 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
     required String userId,
     required String userName,
     required String meetingType,
+    bool notifyMembers = false,
+    String? meetingTitle,
   }) async {
     try {
       _currentSession = _currentSession.copyWith(
@@ -220,6 +222,8 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
           'identity': userId,
           'participantName': userName,
           'meetingType': meetingType,
+          if (notifyMembers) 'notifyMembers': true,
+          if (meetingTitle != null) 'meetingTitle': meetingTitle,
         }),
         xasync: false,
         method: appwrite_enums.ExecutionMethod.pOST,

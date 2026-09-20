@@ -206,6 +206,31 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
       ]);
     }
 
+    // If the user has guest role (non-member), only show guest-accessible areas
+    if (role == 'guest') {
+      const guestRoutes = {
+        AppConstants.dailyRoute,
+        AppConstants.bibleRoute,
+        AppConstants.bibleGameRoute,
+        AppConstants.studyRoute,
+        AppConstants.interactiveLessonsRoute,
+        AppConstants.kidsMissionRoute,
+        AppConstants.kidsStoriesRoute,
+        AppConstants.enhancedHealthRoute,
+        AppConstants.testimoniesRoute,
+        AppConstants.resourcesRoute,
+        AppConstants.libraryRoute,
+        AppConstants.podcastsRoute,
+        AppConstants.booksTractsRoute,
+        AppConstants.donationRoute,
+        AppConstants.profileRoute,
+        AppConstants.helpSupportRoute,
+        AppConstants.aboutAppRoute,
+        AppConstants.aboutAliveRoute,
+      };
+      items.retainWhere((item) => item.route == null || guestRoutes.contains(item.route));
+    }
+
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -397,10 +422,14 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
           statusColor = theme.colorScheme.outline;
           statusIcon = Icons.person_outline;
           statusText = 'Not Signed In';
+        } else if (userRole == 'guest') {
+          statusColor = Colors.blue.shade700;
+          statusIcon = Icons.visibility_outlined;
+          statusText = 'Guest (Non-Member)';
         } else if (isLoading || approvalStatus == null) {
           statusColor = theme.colorScheme.outline;
           statusIcon = Icons.sync;
-          statusText = 'Checkingâ€¦';
+          statusText = 'Checking…';
         } else {
           switch (approvalStatus) {
             case 'pending':

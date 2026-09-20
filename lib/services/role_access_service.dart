@@ -20,6 +20,7 @@ class RoleAccessService {
 
   /// User roles in hierarchical order (lowest to highest privilege)
   static const List<String> _roleHierarchy = [
+    'guest',
     'member',
     'coordinator',
     'leader',
@@ -47,7 +48,39 @@ class RoleAccessService {
         AppwriteBackendConfig.isSuperAdminEmail(profile.email)) {
       return 'admin';
     }
-    return _normalizeRole(profile?.role);
+
+    if (profile != null) {
+      final normalized = _normalizeRole(profile.role);
+      // If a staff or coordinator role is pending approval, user operates
+      // with standard member permissions until an admin approves the role.
+      if (!profile.isApproved || profile.approvalStatus != 'approved') {
+        const elevatedRoles = {
+          'coordinator',
+          'leader',
+          'director',
+          'bod',
+          'trustee',
+          'admin'
+        };
+        if (elevatedRoles.contains(normalized)) {
+          return 'member';
+        }
+      }
+      return normalized;
+    }
+
+    return null;
+  }
+
+  /// Whether the current user is registered as a guest (non-member)
+  bool isGuest() {
+    final role = getCurrentUserRole();
+    return role == 'guest';
+  }
+
+  /// Whether the current user is a full ALIVE member or higher
+  bool isMemberOrHigher() {
+    return hasRole('member');
   }
 
   /// Get cached user profile or fetch from database
@@ -135,6 +168,11 @@ class RoleAccessService {
     }
 
     return hasRole('admin');
+  }
+
+  /// Check if user can create chat channels (strictly admin-only)
+  bool canCreateChannels() {
+    return canAccessAdmin();
   }
 
   /// Check if user can access leadership features

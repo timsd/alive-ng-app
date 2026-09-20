@@ -7,7 +7,7 @@ final List<Project> donationFallbackProjects = [
     description:
         'A central hub for training, discipleship, and community engagement.',
     targetAmount: 35000000.0,
-    raisedAmount: 8000000.0,
+    raisedAmount: 8384400.0,
     currency: 'NGN',
     status: 'active',
     priority: 1,

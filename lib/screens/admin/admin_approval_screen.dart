@@ -112,17 +112,26 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
   Future<void> _approveUser(UserProfile user) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
+      final targetRole = (user.requestedRole != null && user.requestedRole!.trim().isNotEmpty)
+          ? user.requestedRole!.trim()
+          : user.role;
+
+      final updateData = <String, dynamic>{
+        'is_approved': true,
+        'approval_status': 'approved',
+        'approved_by': _currentUserId,
+        'approved_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+      if (targetRole.isNotEmpty) {
+        updateData['role'] = targetRole;
+      }
+
       await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.usersCollectionId,
         rowId: user.id,
-        data: {
-          'is_approved': true,
-          'approval_status': 'approved',
-          'approved_by': _currentUserId,
-          'approved_at': DateTime.now().toIso8601String(),
-          'updated_at': DateTime.now().toIso8601String(),
-        },
+        data: updateData,
       );
 
       await _loadUsers();
@@ -130,7 +139,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
       if (mounted) {
         messenger.showSnackBar(
           SnackBar(
-            content: Text('${user.fullName ?? 'User'} approved successfully'),
+            content: Text('${user.fullName ?? 'User'} approved successfully as ${targetRole.toUpperCase()}'),
             backgroundColor: Theme.of(context).colorScheme.tertiary,
           ),
         );
@@ -201,6 +210,9 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
               _buildDetailRow('Phone', user.phoneNumber ?? 'Not provided'),
               _buildDetailRow('Address', user.address ?? 'Not provided'),
               _buildDetailRow('Bio', user.bio ?? 'Not provided'),
+              if (user.requestedRole != null && user.requestedRole!.trim().isNotEmpty)
+                _buildDetailRow('Requested Role', user.requestedRole!.toUpperCase()),
+              _buildDetailRow('Current Role', user.role.toUpperCase()),
               const SizedBox(height: 16),
               Text('Verification Details:',
                   style: Theme.of(context)
@@ -378,6 +390,24 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
                     fontSize: 12,
                   ),
                 ),
+                if (user.requestedRole != null && user.requestedRole!.trim().isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      'Requested: ${user.requestedRole!.toUpperCase()}',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
             if (user.localChapter != null || user.localChurch != null)

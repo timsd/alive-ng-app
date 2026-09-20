@@ -24,6 +24,7 @@ class UserProfile {
   final DateTime? approvedAt;
   final String approvalStatus; // pending, approved, rejected
   final String? rejectionReason;
+  final String? requestedRole; // Role requested during registration (e.g. coordinator, leader)
 
   // Enhanced profile fields for admin approval
   final String? location; // City, State, Country
@@ -81,6 +82,7 @@ class UserProfile {
     this.approvedAt,
     this.approvalStatus = 'pending',
     this.rejectionReason,
+    this.requestedRole,
 
     // Enhanced profile fields
     this.location,
@@ -145,6 +147,7 @@ class UserProfile {
           : null,
       approvalStatus: json['approval_status'] as String? ?? 'pending',
       rejectionReason: json['rejection_reason'] as String?,
+      requestedRole: json['requested_role'] as String?,
 
       // Enhanced profile fields
       location: json['location'] as String?,
@@ -205,6 +208,7 @@ class UserProfile {
       'approved_at': approvedAt?.toIso8601String(),
       'approval_status': approvalStatus,
       'rejection_reason': rejectionReason,
+      'requested_role': requestedRole,
 
       // Enhanced profile fields
       'location': location,

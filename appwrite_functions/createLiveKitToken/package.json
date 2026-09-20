@@ -5,6 +5,7 @@
   "type": "module",
   "main": "src/main.js",
   "dependencies": {
-    "livekit-server-sdk": "^2.13.1"
+    "livekit-server-sdk": "^2.13.1",
+    "node-appwrite": "^14.1.0"
   }
 }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/models.dart' as models;
@@ -246,16 +247,14 @@ class AppwriteChatService extends ChangeNotifier {
           'name': name,
           'description': description,
           'type': type.name,
-          'created_by': user.$id,
+          'created_by': user.uid,
           'created_at': now,
           'updated_at': now,
           'is_archived': false,
           'members': allMembers,
           'admins': allAdmins,
-          'last_message': null,
           'last_message_at': now,
-          'last_message_sender_id': null,
-          'settings': <String, dynamic>{},
+          'settings': jsonEncode(<String, dynamic>{}),
         },
       );
 

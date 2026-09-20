@@ -487,6 +487,10 @@
             <label for="donation-amount">Amount</label>
             <input id="donation-amount" name="amount" type="number" min="100" step="any" inputmode="decimal"
               placeholder="e.g. 5,000 (Min. ₦100)" required>
+            <div id="preset-amounts" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;"></div>
+            <div id="currency-conversion-info"
+              style="margin-top:8px;padding:8px 12px;border-radius:8px;font-size:13px;line-height:1.4;display:none;">
+            </div>
           </div>
           <div class="actions">
             <button id="donate-now" class="primary-button" type="submit">Donate Now</button>
@@ -510,10 +514,10 @@
         impact_hub_center: {
           title: 'Impact Hub Center',
           copy: 'Community discipleship and outreach facility.',
-          raised: 'Raised: NGN 8,000,000',
+          raised: 'Raised: NGN ₦ 8,384,400',
           goal: 'Goal: NGN 35,000,000',
           progress: 23,
-          raisedNum: 8000000,
+          raisedNum: 8384400,
           goalNum: 35000000
         },
         vehicle_purchase: {
@@ -545,6 +549,69 @@
       var minAmounts = { NGN: 100, USD: 1 };
       var currencySymbols = { NGN: '₦', USD: '$' };
 
+      var presets = {
+        NGN: [2000, 5000, 20000, 50000, 100000],
+        USD: [10, 25, 50, 100, 250]
+      };
+      var exchangeRate = 1650;
+
+      var conversionEl = document.getElementById('currency-conversion-info');
+      var presetsEl = document.getElementById('preset-amounts');
+
+      async function fetchExchangeRate() {
+        try {
+          var res = await fetch(APPWRITE_ENDPOINT + '/tablesdb/6a089307002e54291a32/tables/app_settings/rows/usd_to_ngn_rate', {
+            headers: { 'X-Appwrite-Project': APPWRITE_PROJECT_ID }
+          });
+          if (res.ok) {
+            var data = await res.json();
+            var val = Number(data.value || data.setting_value);
+            if (val > 0) {
+              exchangeRate = val;
+              updateConversionDisplay();
+            }
+          }
+        } catch (_) { }
+      }
+      fetchExchangeRate();
+
+      function updateConversionDisplay() {
+        if (!conversionEl) return;
+        var val = Number(amountInputEl.value);
+        if (selectedCurrency === 'USD') {
+          conversionEl.style.display = 'block';
+          conversionEl.style.background = '#fef3c7';
+          conversionEl.style.border = '1px solid #fde68a';
+          conversionEl.style.color = '#92400e';
+          if (Number.isFinite(val) && val > 0) {
+            var approxNgn = Math.round(val * exchangeRate);
+            conversionEl.innerHTML = '<strong>$' + val.toLocaleString() + ' USD ≈ ₦' + approxNgn.toLocaleString() + ' NGN</strong><br><span style="font-size:12px;color:#78350f;">Processed securely via Paystack (₦' + exchangeRate.toLocaleString() + '/$1). All international Visa, Mastercard & Amex cards accepted.</span>';
+          } else {
+            conversionEl.innerHTML = '<span style="font-size:12px;color:#78350f;">Billed in Naira equivalent (₦' + exchangeRate.toLocaleString() + '/$1) via Paystack. All international cards accepted.</span>';
+          }
+        } else {
+          conversionEl.style.display = 'none';
+        }
+      }
+
+      function renderPresets() {
+        if (!presetsEl) return;
+        presetsEl.innerHTML = '';
+        var list = presets[selectedCurrency] || [];
+        var sym = currencySymbols[selectedCurrency] || '';
+        list.forEach(function (amt) {
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.textContent = sym + amt.toLocaleString();
+          btn.style.cssText = 'padding:6px 12px;font-size:13px;font-weight:600;border-radius:6px;border:1px solid #cbd5e1;background:#fff;color:#1e293b;cursor:pointer;transition:all 0.15s;';
+          btn.addEventListener('click', function () {
+            amountInputEl.value = amt;
+            updateConversionDisplay();
+          });
+          presetsEl.appendChild(btn);
+        });
+      }
+
       // Currency toggle handlers
       var btnNGN = document.getElementById('btn-cur-ngn');
       var btnUSD = document.getElementById('btn-cur-usd');
@@ -561,10 +628,15 @@
         amountInputEl.min = min;
         amountInputEl.step = 'any';
         amountInputEl.placeholder = isNGN ? 'e.g. 5,000 (Min. ₦100)' : 'e.g. 25 (Min. $1)';
+        renderPresets();
+        updateConversionDisplay();
       }
 
       if (btnNGN) btnNGN.addEventListener('click', function () { setCurrency('NGN'); });
       if (btnUSD) btnUSD.addEventListener('click', function () { setCurrency('USD'); });
+      if (amountInputEl) amountInputEl.addEventListener('input', updateConversionDisplay);
+
+      renderPresets();
 
       // Shows the interactive 3D viewer only for the Impact Hub project
       function updateProjectViewer(id) {
@@ -622,7 +694,7 @@
         var modal = document.createElement('div');
         modal.id = 'payment-success-modal';
         modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.85);backdrop-filter:blur(6px);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
-        
+
         var countdown = 6;
         modal.innerHTML = '<div style="background:#fff;border-radius:24px;max-width:460px;width:100%;padding:32px 28px;text-align:center;box-shadow:0 25px 50px -12px rgba(0,0,0,0.3);position:relative;animation:popIn 0.3s ease-out;">'
           + '<div style="width:72px;height:72px;background:#ecfdf5;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;color:#10b981;font-size:38px;">✓</div>'
@@ -657,7 +729,7 @@
       async function handlePaymentReturn(ref) {
         statusEl.textContent = 'Verifying your donation with Paystack...';
         statusEl.className = 'status-message';
-        
+
         if (!ref) {
           statusEl.textContent = 'Payment completed. Thank you for your generous support!';
           statusEl.className = 'status-message success';
@@ -692,8 +764,14 @@
           if (payload && (payload.status === 'success' || payload.success)) {
             var amountVal = payload.amount || 0;
             var cur = payload.currency || 'NGN';
-            var sym = currencySymbols[cur] || cur;
-            var amtStr = sym + ' ' + Number(amountVal).toLocaleString();
+            var amtStr;
+            if (payload.metadata && (payload.metadata.original_currency === 'USD' || payload.metadata.currency === 'USD')) {
+              var origUsd = Number(payload.metadata.original_amount || (amountVal / exchangeRate));
+              amtStr = '$' + origUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' USD (₦' + Number(amountVal).toLocaleString() + ' NGN)';
+            } else {
+              var sym = currencySymbols[cur] || cur;
+              amtStr = sym + ' ' + Number(amountVal).toLocaleString();
+            }
 
             // Increment the counter on the page
             var selProjId = (projectSelectEl ? projectSelectEl.value : projectId) || 'impact_hub_center';
@@ -746,11 +824,12 @@
         }
 
         var reference = makeReference();
-        var amountMinor = Math.round(amountValue * 100);
+        var isUSD = selectedCurrency === 'USD';
+        var billingCurrency = isUSD ? 'USD' : 'NGN';
+        var billedNgnAmount = isUSD ? Math.round(amountValue * exchangeRate) : amountValue;
+        var amountMinor = Math.round(amountValue * 100); // minor units: cents for USD, kobo for NGN
 
         donateBtn.disabled = true;
-        // The Appwrite Paystack function expects amount in kobo (minor units).
-        // We keep amount_minor in metadata for server-side validation.
         setStatus('Initializing secure checkout...', '');
 
         try {
@@ -770,7 +849,7 @@
                   email: email,
                   reference: reference,
                   amount: amountMinor,
-                  currency: selectedCurrency,
+                  currency: billingCurrency,
                   callback_url: CALLBACK_URL,
                   metadata: {
                     donor_name: name,
@@ -778,8 +857,12 @@
                     project_id: (projectSelectEl ? projectSelectEl.value : projectId) || 'general_mission_fund',
                     donation_type: 'generalSupport',
                     source: 'web_donation_page',
-                    amount: amountValue,
                     currency: selectedCurrency,
+                    original_currency: selectedCurrency,
+                    original_amount: amountValue,
+                    exchange_rate: isUSD ? exchangeRate : 1,
+                    billed_currency: billingCurrency,
+                    billed_amount_ngn: billedNgnAmount,
                     amount_minor: amountMinor
                   }
                 }),
@@ -809,9 +892,6 @@
           }
 
           if (payload && payload.error) {
-            if (payload.error.toLowerCase().indexOf('currency not supported') !== -1) {
-              throw new Error('USD settlement is currently pending merchant activation. Please switch to NGN (Naira) — international cards are accepted for NGN payments.');
-            }
             throw new Error(payload.error);
           }
 
@@ -825,9 +905,6 @@
           window.location.href = authorizationUrl;
         } catch (err) {
           var msg = err.message || 'Something went wrong. Please try again.';
-          if (msg.toLowerCase().indexOf('currency not supported') !== -1) {
-            msg = 'USD settlement is currently pending merchant activation. Please switch to NGN (Naira) — international cards are accepted for NGN payments.';
-          }
           setStatus(msg, 'error');
           donateBtn.disabled = false;
         }

@@ -110,7 +110,7 @@ export default async ({ req, res, log, error }) => {
       payload.amount = Math.round(amount);
     }
 
-    const paystackResponse = await fetch('https://api.paystack.co/transaction/initialize', {
+    let paystackResponse = await fetch('https://api.paystack.co/transaction/initialize', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${secret}`,
@@ -118,7 +118,34 @@ export default async ({ req, res, log, error }) => {
       },
       body: JSON.stringify(payload),
     });
-    const json = await paystackResponse.json();
+    let json = await paystackResponse.json();
+
+    // If Paystack rejects USD (unsupported_currency), fallback seamlessly to NGN conversion
+    if (!json?.status && (payload.currency === 'USD' || (json?.message && json.message.toLowerCase().includes('currency')))) {
+      const exchangeRate = Number(process.env.USD_TO_NGN_RATE || 1650);
+      const usdAmount = (payload.amount || 0) / 100;
+      const ngnAmountMinor = Math.round(usdAmount * exchangeRate * 100);
+      log(`Paystack rejected USD currency. Converting $${usdAmount} USD to ₦${ngnAmountMinor / 100} NGN at rate ${exchangeRate}`);
+      payload.currency = 'NGN';
+      payload.amount = ngnAmountMinor;
+      payload.metadata = {
+        ...payload.metadata,
+        original_currency: 'USD',
+        original_amount: usdAmount,
+        exchange_rate: exchangeRate,
+        converted_to_ngn: true,
+      };
+
+      paystackResponse = await fetch('https://api.paystack.co/transaction/initialize', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${secret}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+      json = await paystackResponse.json();
+    }
 
     await writePaymentLog({
       event: action,

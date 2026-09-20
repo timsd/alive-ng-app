@@ -244,6 +244,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   void _showCreateChannelDialog() {
+    final isAdmin = RoleAccessService.instance.canAccessAdmin();
+    if (!isAdmin) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Only admins can create channels'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (context) => _CreateChannelDialog(
@@ -608,9 +619,13 @@ class _CreateChannelDialogState extends State<_CreateChannelDialog> {
     });
 
     try {
+      final isAdmin = RoleAccessService.instance.canAccessAdmin();
+      if (!isAdmin) {
+        throw Exception('Only admins can create channels');
+      }
       final userId = widget.currentUserId;
       if (userId == null || userId.isEmpty) {
-        throw Exception('Please sign in as an admin/leader to create a channel.');
+        throw Exception('Please sign in as an admin to create a channel.');
       }
       final channel = await ChatService().createChannel(
         name: _nameController.text.trim(),
@@ -644,11 +659,14 @@ class _CreateChannelDialogState extends State<_CreateChannelDialog> {
 
   String _friendlyChannelError(Object e) {
     final text = e.toString().toLowerCase();
+    if (text.contains('only admins can create channels')) {
+      return 'Only admins can create channels';
+    }
     if (text.contains('not authenticated') || text.contains('sign in')) {
-      return 'Please sign in as an admin/leader to create a channel.';
+      return 'Please sign in as an admin to create a channel.';
     }
     if (text.contains('permission') || text.contains('unauthorized') || text.contains('403')) {
-      return 'Your role cannot create channels yet. Ask an admin to grant access.';
+      return 'Only admins can create channels';
     }
     return 'Channel could not be created. Check your connection and try again.';
   }

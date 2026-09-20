@@ -29,6 +29,7 @@ import '../screens/admin/bod_trustees_screen.dart';
 import '../screens/admin/user_archive_screen.dart';
 import '../screens/admin/role_management_screen.dart';
 import '../services/role_access_service.dart';
+import '../providers/guest_provider.dart';
 import '../screens/conference/conference_platform_screen.dart';
 import '../screens/bible/bible_game_screen.dart';
 import '../screens/bible/bible_reader_screen.dart';
@@ -198,8 +199,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         }
       }
 
-      // Authenticated users can access all non-auth routes.
+      // Authenticated users can access non-auth routes.
       if (isAuthenticated && !isAuthRoute) {
+        // Enforce guest restrictions: non-members only have access to guest area
+        final userRole = RoleAccessService.instance.getCurrentUserRole();
+        final isGuest = userRole == 'guest' || ref.read(isGuestModeProvider);
+        if (isGuest && !isGuestAccessibleRoute) {
+          debugPrint('Guest user restricted from protected route: ${state.uri.path}, redirecting to home');
+          return AppConstants.homeRoute;
+        }
         debugPrint('Authenticated; allow route: ${state.uri.path}');
         return null;
       }

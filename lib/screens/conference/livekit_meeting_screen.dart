@@ -8,6 +8,7 @@ import '../../models/meeting_models.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/meeting_provider.dart';
 import '../../services/ports/meeting_gateway.dart';
+import '../../services/role_access_service.dart';
 import '../../widgets/custom_app_bar.dart';
 
 class LiveKitMeetingScreen extends ConsumerStatefulWidget {
@@ -31,6 +32,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   late final TextEditingController _roomController;
   bool _isJoining = false;
   bool _isBroadcasting = false;
+  bool _notifyMembers = true;
   String? _activeEgressId;
 
   @override
@@ -79,11 +81,14 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
 
     setState(() => _isJoining = true);
     try {
+      final isAdmin = RoleAccessService.instance.canAccessAdmin() || widget.isModerator;
       await gateway.executionAndJoin(
         roomName: roomName,
         userId: user.uid,
         userName: user.displayNameOrFallback,
         meetingType: widget.meetingType?.name ?? 'general',
+        notifyMembers: isAdmin && _notifyMembers,
+        meetingTitle: roomName,
       );
     } catch (e) {
       // Extract user-friendly error message
@@ -133,6 +138,8 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     final isAudioMuted = session.isAudioMuted;
     final isVideoMuted = session.isVideoMuted;
 
+    final isAdmin = RoleAccessService.instance.canAccessAdmin() || widget.isModerator;
+
     return Scaffold(
       appBar: CustomAppBar(
         title: widget.meetingType?.displayName ?? 'ALIVE Meet',
@@ -149,9 +156,18 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                 labelText: 'ALIVE Meet room',
                 border: OutlineInputBorder(),
               ),
-              readOnly:
-                  widget.meetingType != null || widget.customRoomName != null,
+              readOnly: !isAdmin && (widget.meetingType != null || widget.customRoomName != null),
             ),
+            if (isAdmin && !connected) ...[
+              const SizedBox(height: 8),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Notify members via push notification'),
+                subtitle: const Text('Sends a background push notification when meeting starts'),
+                value: _notifyMembers,
+                onChanged: (val) => setState(() => _notifyMembers = val),
+              ),
+            ],
             const SizedBox(height: 12),
             ElevatedButton.icon(
               onPressed: _isJoining || connected
@@ -168,7 +184,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                   ? 'Joining...'
                   : connected
                       ? 'Connected'
-                      : 'Join ALIVE Meet'),
+                      : (isAdmin ? 'Start / Join ALIVE Meet' : 'Join ALIVE Meet')),
             ),
             // Connection status banner
             if (session.status == RoomStatus.connecting ||

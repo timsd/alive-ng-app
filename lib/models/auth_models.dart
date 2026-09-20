@@ -7,6 +7,8 @@
 /// to a concrete backend.
 library;
 
+import 'dart:convert';
+
 /// Represents an authenticated user in the ALIVE Nigeria app domain.
 ///
 /// This is our *owned* type — a thin, immutable value object that the rest of
@@ -162,7 +164,7 @@ class SignupProfile {
   /// The local ALIVE chapter the member wants to join.
   final String? tojoinChapter;
 
-  /// Commitment type: `financial`, `active_availability`, or `both`.
+  /// Commitment type: `financial`, `active_availability`, `both`, or `none`.
   final String commitmentType;
 
   /// Monthly financial commitment amount (when [commitmentType]
@@ -172,6 +174,18 @@ class SignupProfile {
   /// Availability commitment description (when [commitmentType]
   /// includes `active_availability`).
   final String? availabilityCommitment;
+
+  /// The registered account role: `member`, `coordinator`, `leader`, `guest`.
+  final String role;
+
+  /// When registering as a coordinator/staff, the elevated role being requested.
+  final String? requestedRole;
+
+  /// Whether the account is approved (false for pending staff/coordinator).
+  final bool isApproved;
+
+  /// Approval status: `pending`, `approved`, `rejected`.
+  final String approvalStatus;
 
   const SignupProfile({
     this.phoneNumber,
@@ -184,11 +198,27 @@ class SignupProfile {
     this.commitmentType = 'active_availability',
     this.financialCommitment,
     this.availabilityCommitment,
+    this.role = 'member',
+    this.requestedRole,
+    this.isApproved = true,
+    this.approvalStatus = 'approved',
   });
 
   /// Converts this domain object into the wire-format map consumed by the
   /// backend profile service. Only non-empty values are included.
   Map<String, dynamic> toMap() {
+    final additionalProfileData = <String, dynamic>{
+      if (requestedRole != null && requestedRole!.trim().isNotEmpty)
+        'requested_role': requestedRole!.trim(),
+      if (tojoinChapter != null && tojoinChapter!.trim().isNotEmpty)
+        'to_join_chapter': tojoinChapter!.trim(),
+      if (previouslocalChapter != null && previouslocalChapter!.trim().isNotEmpty)
+        'previous_local_chapter': previouslocalChapter!.trim(),
+      if (skills != null && skills!.trim().isNotEmpty)
+        'skills': skills!.trim(),
+      'registered_category': role,
+    };
+
     return {
       if (phoneNumber != null && phoneNumber!.trim().isNotEmpty)
         'phone_number': phoneNumber!.trim(),
@@ -213,8 +243,10 @@ class SignupProfile {
           availabilityCommitment != null &&
           availabilityCommitment!.trim().isNotEmpty)
         'availability_commitment': availabilityCommitment!.trim(),
-      'is_approved': true,
-      'approval_status': 'approved',
+      'role': role,
+      'is_approved': isApproved,
+      'approval_status': approvalStatus,
+      'additional_profile': jsonEncode(additionalProfileData),
     };
   }
 }
