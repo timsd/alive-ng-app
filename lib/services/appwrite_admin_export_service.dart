@@ -170,6 +170,9 @@ class AppwriteAdminExportService {
         baseQueries: queries,
       );
 
+      // Pre-load project titles so we can resolve project_id → title
+      final projectTitleCache = await _loadProjectTitleCache();
+
       // Filter by date client-side to ensure robustness across timestamp schema variations
       final rows = rawRows.where((r) {
         final dateStr = r['created_at'] ?? r['\$createdAt'];
@@ -195,11 +198,15 @@ class AppwriteAdminExportService {
         final currency = (r['currency']?.toString().toUpperCase()) ?? 'NGN';
         final rowStatus =
             (r['status']?.toString().toLowerCase()) ?? 'completed';
-        final purpose = r['mission_purpose']?.toString() ??
-            r['purpose']?.toString() ??
-            r['project_title']?.toString() ??
-            r['project_id']?.toString() ??
-            'General Donation';
+
+        // --- Resolve donor name from multiple sources ---
+        // Priority: explicit fields → embedded metadata payload → fallback
+        final donorName = _resolveDonorName(r);
+
+        // --- Resolve purpose / category ---
+        // Priority: mission_purpose → purpose → project_title from metadata →
+        //           project_id resolved via cache → fallback
+        final purpose = _resolvePurpose(r, projectTitleCache);
 
         if (rowStatus == 'success' || rowStatus == 'completed') {
           successfulCount++;
@@ -217,18 +224,18 @@ class AppwriteAdminExportService {
         purposeBreakdown[purpose] = (purposeBreakdown[purpose] ?? 0) + 1;
 
         return {
+          'Transaction Date': r['created_at'] ?? r['\$createdAt'] ?? '',
           'Reference': r['reference'] ?? r['transaction_id'] ?? r['id'] ?? '',
-          'Donor Name': r['donor_name'] ?? r['name'] ?? 'Anonymous Donor',
-          'Donor Email': r['donor_email'] ?? r['email'] ?? 'N/A',
+          'Donor Name': donorName,
+          'Donor Email': r['donor_email'] ?? r['user_email'] ?? r['email'] ?? 'N/A',
           'Donor Phone': r['donor_phone'] ?? r['phone'] ?? 'N/A',
           'Amount': amountNum.toStringAsFixed(2),
           'Currency': currency,
           'Purpose / Category': purpose,
           'Payment Gateway': r['gateway'] ?? r['channel'] ?? 'Paystack',
           'Status': rowStatus.toUpperCase(),
-          'Transaction Date': r['created_at'] ?? r['\$createdAt'] ?? '',
           'Completed At': r['completed_at'] ?? '',
-          'Custom Purpose Notes': r['notes'] ?? r['custom_purpose'] ?? '',
+          'Notes': r['notes'] ?? r['custom_purpose'] ?? '',
         };
       }).toList();
 
@@ -249,7 +256,7 @@ class AppwriteAdminExportService {
           'donations': formattedRows,
         });
       } else {
-        content = _toCsv(formattedRows);
+        content = _toBankStatementCsv(formattedRows);
       }
 
       final file = await _uploadExport(
@@ -476,6 +483,152 @@ class AppwriteAdminExportService {
       );
     }
     return buffer.toString();
+  }
+
+  /// Bank-statement-style CSV with fixed column order for donation reports
+  String _toBankStatementCsv(List<Map<String, dynamic>> rows) {
+    // Standard bank statement column ordering
+    const bankColumns = [
+      'Transaction Date',
+      'Reference',
+      'Donor Name',
+      'Donor Email',
+      'Donor Phone',
+      'Amount',
+      'Currency',
+      'Purpose / Category',
+      'Payment Gateway',
+      'Status',
+      'Completed At',
+      'Notes',
+    ];
+
+    final buffer = StringBuffer()
+      ..writeln(bankColumns.map(_csvCell).join(','));
+
+    for (final row in rows) {
+      buffer.writeln(
+        bankColumns.map((key) => _csvCell(row[key])).join(','),
+      );
+    }
+    return buffer.toString();
+  }
+
+  /// Resolve the real donor name from multiple data sources.
+  /// Checks explicit fields, then embedded metadata/Paystack payload.
+  String _resolveDonorName(Map<String, dynamic> r) {
+    // 1. Explicit top-level donor fields
+    for (final key in [
+      'user_name',
+      'donor_name',
+      'name',
+    ]) {
+      final val = r[key]?.toString().trim();
+      if (val != null && val.isNotEmpty && val != 'Anonymous Donor') {
+        return val;
+      }
+    }
+
+    // 2. Embedded in metadata JSON (Paystack stores donor_name here)
+    final meta = _parseMetadataField(r['metadata']);
+    if (meta != null) {
+      for (final key in ['donor_name', 'customer_name', 'name']) {
+        final val = meta[key]?.toString().trim();
+        if (val != null && val.isNotEmpty && val != 'Anonymous Donor') {
+          return val;
+        }
+      }
+    }
+
+    // 3. Derive from email if available
+    final email = (r['donor_email'] ?? r['user_email'] ?? r['email'])
+        ?.toString()
+        .trim();
+    if (email != null && email.isNotEmpty && email.contains('@')) {
+      return email.split('@').first;
+    }
+
+    return 'Anonymous Donor';
+  }
+
+  /// Resolve donation purpose / category, mapping project IDs to real titles.
+  String _resolvePurpose(
+    Map<String, dynamic> r,
+    Map<String, String> projectTitleCache,
+  ) {
+    // 1. Explicit purpose fields
+    for (final key in [
+      'mission_purpose',
+      'purpose',
+      'material_title',
+    ]) {
+      final val = r[key]?.toString().trim();
+      if (val != null && val.isNotEmpty) return val;
+    }
+
+    // 2. Check metadata for project_title
+    final meta = _parseMetadataField(r['metadata']);
+    if (meta != null) {
+      final metaTitle = meta['project_title']?.toString().trim();
+      if (metaTitle != null && metaTitle.isNotEmpty) return metaTitle;
+
+      // Resolve project_id from metadata
+      final metaProjectId = meta['project_id']?.toString().trim();
+      if (metaProjectId != null && metaProjectId.isNotEmpty) {
+        final resolved = projectTitleCache[metaProjectId];
+        if (resolved != null && resolved.isNotEmpty) return resolved;
+      }
+    }
+
+    // 3. Top-level project_title / project_id
+    final topTitle = r['project_title']?.toString().trim();
+    if (topTitle != null && topTitle.isNotEmpty) return topTitle;
+
+    final topProjectId = r['project_id']?.toString().trim();
+    if (topProjectId != null && topProjectId.isNotEmpty) {
+      final resolved = projectTitleCache[topProjectId];
+      if (resolved != null && resolved.isNotEmpty) return resolved;
+      return topProjectId; // Return raw ID if we can't resolve
+    }
+
+    return 'General Donation';
+  }
+
+  /// Parse metadata field that could be a JSON string or a Map.
+  Map<String, dynamic>? _parseMetadataField(dynamic value) {
+    if (value == null) return null;
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) return Map<String, dynamic>.from(value);
+    if (value is String && value.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(value);
+        if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  /// Load project titles from Appwrite projects collection for ID → title resolution.
+  Future<Map<String, String>> _loadProjectTitleCache() async {
+    try {
+      final rows = await _listAllDocuments(
+        AppwriteBackendConfig.projectsCollectionId,
+      );
+      final cache = <String, String>{};
+      for (final row in rows) {
+        final id = row['id']?.toString();
+        final title = row['title']?.toString();
+        if (id != null && title != null && title.isNotEmpty) {
+          cache[id] = title;
+        }
+      }
+      return cache;
+    } catch (e) {
+      _logger.error('Failed to load project title cache', e);
+      return {};
+    }
   }
 
   String _csvCell(Object? value) {

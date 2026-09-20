@@ -262,39 +262,6 @@ class _AdminDonationsReportScreenState
             tooltip: 'Refresh',
             onPressed: _loadDonations,
           ),
-          PopupMenuButton<String>(
-            icon: _isExporting
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.download),
-            tooltip: 'Export Report',
-            onSelected: (fmt) => _exportReport(fmt),
-            itemBuilder: (ctx) => [
-              const PopupMenuItem(
-                value: 'csv',
-                child: Row(
-                  children: [
-                    Icon(Icons.table_chart, size: 20),
-                    SizedBox(width: 8),
-                    Text('Export as CSV (Excel)'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'json',
-                child: Row(
-                  children: [
-                    Icon(Icons.code, size: 20),
-                    SizedBox(width: 8),
-                    Text('Export as JSON Data'),
-                  ],
-                ),
-              ),
-            ],
-          ),
         ],
       ),
       body: _isLoading
