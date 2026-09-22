@@ -127,7 +127,7 @@ class AppUpdateService {
       builder: (ctx) => AlertDialog(
         title: const Text('Update Available'),
         content: Text(
-          'A new version ($newVersion) of ALIVE-NG is available. Please '
+          'A new version ($newVersion) of ALIVE Nigeria is available. Please '
           'update to continue getting the best experience.',
         ),
         actions: [

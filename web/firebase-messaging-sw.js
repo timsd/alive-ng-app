@@ -17,7 +17,7 @@ const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
   const notification = payload.notification || {};
-  const title = notification.title || 'ALIVE-NG';
+  const title = notification.title || 'ALIVE Nigeria';
   const options = {
     body: notification.body || 'You have a new notification',
     icon: '/icons/Icon-192.png',

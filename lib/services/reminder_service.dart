@@ -226,7 +226,7 @@ class ReminderService {
         AndroidNotificationDetails(
       'reminder_channel',
       'Reminders',
-      channelDescription: 'Daily reminders for ALIVE-NG app',
+      channelDescription: 'Daily reminders for ALIVE Nigeria app',
       importance: Importance.high,
       priority: Priority.high,
       showWhen: true,
@@ -305,7 +305,7 @@ class ReminderService {
         AndroidNotificationDetails(
       'reminder_channel',
       'Reminders',
-      channelDescription: 'Daily reminders for ALIVE-NG app',
+      channelDescription: 'Daily reminders for ALIVE Nigeria app',
       importance: Importance.high,
       priority: Priority.high,
       autoCancel: true,
@@ -454,7 +454,7 @@ class ReminderService {
     final config = ReminderConfig(
       type: type,
       title: 'Test Reminder',
-      body: 'This is a test notification from ALIVE-NG',
+      body: 'This is a test notification from ALIVE Nigeria',
       time: const TimeOfDay(hour: 0, minute: 0),
       enabled: true,
     );

@@ -120,7 +120,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
       case AppConstants.donationRoute:
         return translate('donation');
       default:
-        return 'ALIVE-NG';
+        return 'ALIVE Nigeria';
     }
   }
 

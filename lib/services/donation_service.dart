@@ -768,17 +768,25 @@ class DonationService {
     required String currency,
     required String email,
     bool isRecurringMonthly = false,
+    double? exchangeRateUsdNgn,
   }) async {
     try {
       // Get the donation record
       var donation = _checkoutDrafts[donationId];
       if (donation == null) {
-        final row = await _tables.getRow(
-          databaseId: _databaseId,
-          tableId: _donationsCollectionId,
-          rowId: donationId,
-        );
-        donation = DonationRecord.fromJson(_rowData(row));
+        try {
+          final row = await _tables.getRow(
+            databaseId: _databaseId,
+            tableId: _donationsCollectionId,
+            rowId: donationId,
+          );
+          donation = DonationRecord.fromJson(_rowData(row));
+        } catch (e) {
+          // APK guest checkouts may use an in-memory draft when the earlier
+          // TablesDB write was denied; never block Paystack on this lookup.
+          _logger.error('Donation draft lookup failed; using fallback', e);
+          donation = null;
+        }
       }
 
       // Ensure context is still valid before using it across async boundary
@@ -790,26 +798,33 @@ class DonationService {
         };
       }
       // Use PaymentService to process the payment
-      final donorName = donation.metadata?['donor_name'] as String? ??
-          (donation.userName.isNotEmpty ? donation.userName : null) ??
-          donation.userEmail;
+      final donorName = donation?.metadata?['donor_name'] as String? ??
+          ((donation?.userName.isNotEmpty ?? false)
+              ? donation!.userName
+              : null) ??
+          donation?.userEmail ??
+          email;
       final baseMetadata = {
         'donation_id': donationId,
-        'appwrite_user_id': donation.userId,
-        'donation_type': donation.type.name,
-        'material_title': donation.materialTitle,
+        'appwrite_user_id': donation?.userId ?? 'guest',
+        'donation_type': donation?.type.name ?? 'generalSupport',
+        'material_title': donation?.materialTitle,
         'donor_name': donorName,
-        'donor_email': donation.userEmail,
+        'donor_email': donation?.userEmail ?? email,
         'amount': amount,
         'amount_minor': (amount * 100).round(),
         if (currency.toUpperCase() == 'NGN') 'amount_ngn': amount,
-        if (donation.metadata?['project_title'] != null)
-          'project_title': donation.metadata!['project_title'],
-        if (donation.metadata?['project_id'] != null)
-          'project_id': donation.metadata!['project_id'],
+        if (donation?.metadata?['project_title'] != null)
+          'project_title': donation!.metadata!['project_title'],
+        if (donation?.metadata?['project_id'] != null)
+          'project_id': donation!.metadata!['project_id'],
         'currency': currency,
         'recurring': isRecurringMonthly,
-        if (donation.materialId != null) 'material_id': donation.materialId,
+        if (donation?.materialId != null) 'material_id': donation!.materialId,
+        // Fresh display rate so the server bills the donor-visible USD->NGN
+        // conversion instead of a stale hardcoded value.
+        if (exchangeRateUsdNgn != null)
+          'exchange_rate_usd_ngn': exchangeRateUsdNgn,
       };
       final paymentResult = isRecurringMonthly
           ? await _paymentService.processMonthlyDonation(
@@ -849,7 +864,8 @@ class DonationService {
             functionId: AppwriteBackendConfig.paystackPaymentsFunctionId,
             body: jsonEncode({
               'action': 'verify_transaction',
-              'reference': donationId,
+              // Paystack verifies by ITS reference, not our local donation id.
+              'reference': paymentResult.reference ?? donationId,
             }),
             xasync: true,
             method: appwrite_enums.ExecutionMethod.pOST,
@@ -886,9 +902,7 @@ class DonationService {
       return {
         'success': false,
         'initialized': paymentResult.initialized,
-        'message': paymentResult.initialized
-            ? 'Complete checkout. Your donation will appear after payment is verified.'
-            : paymentResult.message,
+        'message': paymentResult.message,
         'donation_id': donationId,
       };
 
@@ -896,7 +910,9 @@ class DonationService {
       _logger.error('Error processing Paystack payment', e);
       return {
         'success': false,
-        'message': 'We could not open checkout. Please try again.',
+        // Surface the real reason (e.g. Paystack init error) so APK failures
+        // are diagnosable instead of a generic "could not open checkout".
+        'message': '$e'.replaceFirst('Exception: ', ''),
         'donation_id': donationId,
         'initialized': false,
       };

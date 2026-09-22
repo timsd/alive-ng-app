@@ -1,6 +1,6 @@
 # CHANGELOG
 
-All notable changes to the ALIVE-NG App are documented here.
+All notable changes to the ALIVE Nigeria App are documented here.
 Format: [Semantic Versioning](https://semver.org) - `MAJOR.MINOR.PATCH+BUILD`
 
 ---

@@ -1,4 +1,4 @@
-# Paystack Webhook Function (ALIVE NG)
+# Paystack Webhook Function (ALIVE Nigeria)
 
 Updates the `donation_records` collection when Paystack confirms a payment.
 The Flutter app deliberately does **not** trust client-side payment results —

@@ -1,4 +1,4 @@
-// Live diagnostic for the ALIVE-NG Appwrite backend.
+// Live diagnostic for the ALIVE Nigeria Appwrite backend.
 //
 // Unlike `npm run appwrite:dry-run` (which only logs intended actions), this
 // script CONNECTS to the live Appwrite server using APPWRITE_API_KEY and

@@ -26,7 +26,7 @@ PAYSTACK_PROJECTS_PUBLIC_KEY=pk_live_yyyyyyyyy
 ```
 
 > [!TIP]
-> If you collect all funds into one Paystack account but want separate internal bookkeeping, you do **not** need separate Paystack accounts: the ALIVE-NG system automatically tags every transaction with the `project_id` and `fund_designation` metadata!
+> If you collect all funds into one Paystack account but want separate internal bookkeeping, you do **not** need separate Paystack accounts: the ALIVE Nigeria system automatically tags every transaction with the `project_id` and `fund_designation` metadata!
 
 ---
 

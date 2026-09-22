@@ -71,16 +71,29 @@ class PaystackPaymentGateway implements PaymentGateway {
       final payload = {
         'action': 'initialize_transaction',
         'amount': request.amountMinor,
-        'currency': (request.metadata != null &&
-                request.metadata!['currency'] is String)
-            ? request.metadata!['currency']
-            : request.currency,
+        // Currency priority: explicit metadata override (e.g. Paystack-only
+        // NGN billing) -> request.currency -> NGN default. Never let a null /
+        // non-string currency leak into the function payload, which would make
+        // the server reject the init and the APK show "not working".
+        'currency': (() {
+          final metaCur = request.metadata?['currency'];
+          if (metaCur is String && metaCur.trim().isNotEmpty) {
+            return metaCur.trim().toUpperCase();
+          }
+          final reqCur = request.currency;
+          if (reqCur.trim().isNotEmpty) return reqCur.trim().toUpperCase();
+          return 'NGN';
+        })(),
         'email': request.email,
         'reference': ref,
         if (request.metadata?['appwrite_user_id'] is String)
           'appwrite_user_id': request.metadata!['appwrite_user_id'],
         'callback_url': PaymentConfig.paystackCallbackUrl,
-        'channels': PaymentConfig.paystackChannels,
+        // Only sent when explicitly configured. Paystack rejects the whole
+        // initialization if any listed channel is unavailable, and the working
+        // web page omits this field entirely.
+        if (PaymentConfig.paystackChannels != null)
+          'channels': PaymentConfig.paystackChannels,
         if (request.metadata != null) 'metadata': request.metadata,
       };
 
@@ -144,7 +157,10 @@ class PaystackPaymentGateway implements PaymentGateway {
           'appwrite_user_id': request.metadata!['appwrite_user_id'],
         'planCode': planCode,
         'callback_url': PaymentConfig.paystackCallbackUrl,
-        'channels': PaymentConfig.paystackChannels,
+        // Same rule as one-time donations: omit unless explicitly configured,
+        // otherwise Paystack rejects the whole initialization.
+        if (PaymentConfig.paystackChannels != null)
+          'channels': PaymentConfig.paystackChannels,
         if (request.metadata != null) 'metadata': request.metadata,
       };
 

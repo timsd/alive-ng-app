@@ -3,7 +3,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 // Removed dart:io import for web compatibility
 
-/// Firebase Cloud Messaging configuration for ALIVE-NG App.
+/// Firebase Cloud Messaging configuration for ALIVE Nigeria App.
 ///
 /// Firebase is retained only as the Android/Web push delivery bridge used by
 /// Appwrite Messaging providers. Product analytics are stored in Appwrite, and

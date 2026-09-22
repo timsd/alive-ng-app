@@ -1,8 +1,8 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ALIVE-NG | First plan in 3D</title>
+<title>ALIVE Nigeria | First plan in 3D</title>
 <style>
     * {
         box-sizing: border-box
@@ -328,7 +328,7 @@
 </style>
 <header>
         <div>
-        <h1>ALIVE-NG IMPACT HUB</h1>
+        <h1>ALIVE Nigeria IMPACT HUB</h1>
         <p>BABAMOGBA, AKINYELE LGA, IBADAN · PROPOSED PLAN / THREE-DIMENSIONAL STUDY</p>
     </div><span class="badge">CONCEPT</span>
       <a href="donation.html?projectId=impact_hub_center" class="viewer-donate" target="_blank" rel="noopener">
@@ -416,8 +416,8 @@
     $('zoomIn').onclick = () => { state.zoom = Math.min(8, state.zoom * 1.2); dirty = true }; $('zoomOut').onclick = () => { state.zoom = Math.max(.3, state.zoom / 1.2); dirty = true };
     canvas.addEventListener('wheel', e => { e.preventDefault(); state.zoom = Math.max(.3, Math.min(8, state.zoom * Math.exp(-e.deltaY * .001))); dirty = true }, { passive: false });
     let pointers = new Map(), pinch = 0; canvas.onpointerdown = e => { canvas.setPointerCapture(e.pointerId); pointers.set(e.pointerId, [e.clientX, e.clientY]); drag = [e.clientX, e.clientY]; state.spin = false; $('spin').textContent = 'Start 360° rotation'; }; canvas.onpointermove = e => { if (!pointers.has(e.pointerId)) return; pointers.set(e.pointerId, [e.clientX, e.clientY]); if (pointers.size === 2) { let a = [...pointers.values()], dist = Math.hypot(a[0][0] - a[1][0], a[0][1] - a[1][1]); if (pinch) state.zoom = Math.max(.3, Math.min(8, state.zoom * dist / pinch)); pinch = dist } else if (drag) { state.angle -= (e.clientX - drag[0]) * .009; state.elevation = Math.max(.02, Math.min(Math.PI / 2, state.elevation + (e.clientY - drag[1]) * .008)) } drag = [e.clientX, e.clientY]; dirty = true }; function end(e) { pointers.delete(e.pointerId); drag = null; pinch = 0 } canvas.onpointerup = end; canvas.onpointercancel = end;
-    function image() { draw(); let c = document.createElement('canvas'); c.width = canvas.width; c.height = canvas.height + 100; let x = c.getContext('2d'); x.fillStyle = '#193e36'; x.fillRect(0, 0, c.width, c.height); x.drawImage(canvas, 0, 0); x.fillStyle = '#f6efdc'; x.font = '24px system-ui'; x.fillText('ALIVE-NG | ' + $('title').textContent, 25, canvas.height + 37); x.font = '17px system-ui'; x.fillText('FIRST PLAN · CONCEPTUAL HEIGHTS & FINISHES ·', 25, canvas.height + 72); return c.toDataURL('image/png') }
-    $('save').onclick = () => { let a = document.createElement('a'); a.download = 'ALIVE-NG_' + (MODEL.buildings[state.selected]?.name || 'Facilities').replaceAll(' ', '_') + '.png'; a.href = image(); a.click() };
+    function image() { draw(); let c = document.createElement('canvas'); c.width = canvas.width; c.height = canvas.height + 100; let x = c.getContext('2d'); x.fillStyle = '#193e36'; x.fillRect(0, 0, c.width, c.height); x.drawImage(canvas, 0, 0); x.fillStyle = '#f6efdc'; x.font = '24px system-ui'; x.fillText('ALIVE Nigeria | ' + $('title').textContent, 25, canvas.height + 37); x.font = '17px system-ui'; x.fillText('FIRST PLAN · CONCEPTUAL HEIGHTS & FINISHES ·', 25, canvas.height + 72); return c.toDataURL('image/png') }
+    $('save').onclick = () => { let a = document.createElement('a'); a.download = 'ALIVE Nigeria_' + (MODEL.buildings[state.selected]?.name || 'Facilities').replaceAll(' ', '_') + '.png'; a.href = image(); a.click() };
     function tick(t) { if (state.spin) { state.angle += (t - last) * .00012; dirty = true } last = t; if (dirty) draw(); requestAnimationFrame(tick) } requestAnimationFrame(tick);
     window.viewer = { state, focus, preset, draw, image, model: MODEL };
 </script>

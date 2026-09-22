@@ -87,7 +87,7 @@ class EmailService {
     final lines = <String>[
       '<h2>Donation Receipt</h2>',
       '<p>Dear ${htmlEscape.convert(record.userName)},</p>',
-      '<p>Thank you for supporting ALIVE-NG ministry. Here are your receipt details:</p>',
+      '<p>Thank you for supporting ALIVE Nigeria ministry. Here are your receipt details:</p>',
       '<ul>',
       '<li><strong>Amount:</strong> ${record.formattedAmount} ${htmlEscape.convert(record.currency)}</li>',
       '<li><strong>Type:</strong> ${htmlEscape.convert(record.typeDisplayName)}</li>',
@@ -97,7 +97,7 @@ class EmailService {
         '<li><strong>Transaction ID:</strong> ${htmlEscape.convert(record.transactionId!)}</li>',
       '</ul>',
       '<p>Date: ${record.createdAt.toIso8601String()}</p>',
-      '<p>— ALIVE-NG Treasury</p>',
+      '<p>— ALIVE Nigeria Treasury</p>',
     ];
     return '<html><body>${lines.join()}</body></html>';
   }

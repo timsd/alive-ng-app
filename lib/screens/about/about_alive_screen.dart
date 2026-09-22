@@ -238,7 +238,7 @@ class AboutAliveScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        'The ALIVE-NG app extends the ministry beyond physical gatherings. It helps members access study materials, testimonies, events, prayer support, donation options, conference participation, and resources from one organized place.',
+                        'The ALIVE Nigeria app extends the ministry beyond physical gatherings. It helps members access study materials, testimonies, events, prayer support, donation options, conference participation, and resources from one organized place.',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                           height: 1.65,
@@ -254,7 +254,7 @@ class AboutAliveScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Contact ALIVE-NG',
+                        'Contact ALIVE Nigeria',
                         style: theme.textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),

@@ -42,7 +42,7 @@ async function sendDonationReceipt(paymentData) {
         body: JSON.stringify({
           from: sender,
           to: [email],
-          subject: 'Your ALIVE-NG Donation Receipt - ' + reference,
+          subject: 'Your ALIVE Nigeria Donation Receipt - ' + reference,
           html: receiptHtml
         })
       });

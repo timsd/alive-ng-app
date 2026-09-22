@@ -4,8 +4,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Donate - ALIVE-NG</title>
-  <!-- Inter Font (consistent with ALIVE-NG design system) -->
+  <title>Donate - ALIVE Nigeria</title>
+  <!-- Inter Font (consistent with ALIVE Nigeria design system) -->
   <style>
     :root {
       --slate-50: #FCFAF5;
@@ -414,7 +414,7 @@
         <span>ALIVE Nigeria</span>
       </div>
       <div class="eyebrow">Secure Giving</div>
-      <h1>Your donation supports ALIVE-NG's missions across Nigeria.</h1>
+      <h1>Your donation supports ALIVE Nigeria's missions across Nigeria.</h1>
       <p>
         Your seed funds mission outreach, projects, discipleship,
         training, and community development.
@@ -446,7 +446,7 @@
             <strong>See the real project</strong>
             <span>Explore the Impact Hub facilities in interactive 3D &mdash; drag to orbit, scroll to zoom.</span>
           </div>
-          <iframe id="project-viewer-frame" title="ALIVE-NG Impact Hub interactive 3D viewer"
+          <iframe id="project-viewer-frame" title="ALIVE Nigeria Impact Hub interactive 3D viewer"
             src="alive_ng_3d_viewer.html" loading="lazy"></iframe>
           <a class="viewer-open" href="alive_ng_3d_viewer.html" target="_blank" rel="noopener">Open the 3D viewer full
             screen</a>
@@ -553,31 +553,167 @@
         NGN: [2000, 5000, 20000, 50000, 100000],
         USD: [10, 25, 50, 100, 250]
       };
-      var exchangeRate = 1650;
+      // Live rate resolution order: server function (live market rate, admin
+      // override aware) -> Appwrite setting -> public FX API -> session cache ->
+      // 1380 constant. The constant is ONLY the last resort so checkout never
+      // blocks; in practice the live rate always wins.
+      var FALLBACK_RATE = 1380;
+      var exchangeRate = FALLBACK_RATE;
+      var exchangeRateLive = false;
+      var exchangeRateSource = 'fallback';
+      var exchangeRateUpdatedAt = null;
 
       var conversionEl = document.getElementById('currency-conversion-info');
       var presetsEl = document.getElementById('preset-amounts');
 
-      async function fetchExchangeRate() {
+      function validRate(val) {
+        var n = Number(val);
+        return (Number.isFinite(n) && n > 100 && n < 100000) ? n : null;
+      }
+
+      function rememberRate(rate, source) {
+        var parsed = validRate(rate);
+        if (!parsed) return false;
+        exchangeRate = parsed;
+        exchangeRateLive = source !== 'fallback' && source !== 'cache';
+        exchangeRateSource = source || 'live';
+        exchangeRateUpdatedAt = new Date().toISOString();
         try {
-          var res = await fetch(APPWRITE_ENDPOINT + '/tablesdb/6a089307002e54291a32/tables/app_settings/rows/usd_to_ngn_rate', {
-            headers: { 'X-Appwrite-Project': APPWRITE_PROJECT_ID }
-          });
-          if (res.ok) {
-            var data = await res.json();
-            var val = Number(data.value || data.setting_value);
-            if (val > 0) {
-              exchangeRate = val;
-              updateConversionDisplay();
+          sessionStorage.setItem('usd_to_ngn_rate', String(parsed));
+          sessionStorage.setItem('usd_to_ngn_rate_at', exchangeRateUpdatedAt);
+          sessionStorage.setItem('usd_to_ngn_rate_source', exchangeRateSource);
+        } catch (_) { }
+        updateConversionDisplay();
+        return true;
+      }
+
+      async function fetchExchangeRate() {
+        // 0. Fast path: reuse a rate cached earlier this session.
+        try {
+          var cached = Number(sessionStorage.getItem('usd_to_ngn_rate'));
+          if (validRate(cached)) {
+            exchangeRate = cached;
+            exchangeRateLive = false;
+            exchangeRateSource = 'cache';
+            updateConversionDisplay();
+            // Continue in background to refresh it.
+          }
+        } catch (_) { }
+
+        // 1. Ask our own server function (live market rate + admin override).
+        try {
+          var execRes = await fetch(
+            APPWRITE_ENDPOINT + '/functions/' + PAYSTACK_FUNCTION_ID + '/executions',
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Appwrite-Project': APPWRITE_PROJECT_ID
+              },
+              body: JSON.stringify({
+                body: JSON.stringify({ action: 'get_exchange_rate' }),
+                async: false
+              })
+            }
+          );
+          if (execRes.ok) {
+            var execJson = await execRes.json().catch(function () { return {}; });
+            var execPayload = execJson.responseBody !== undefined ? execJson.responseBody : execJson.response;
+            if (typeof execPayload === 'string') {
+              try { execPayload = JSON.parse(execPayload); } catch (_) { execPayload = {}; }
+            }
+            if (execPayload && validRate(execPayload.rate)) {
+              rememberRate(execPayload.rate, 'server (' + (execPayload.source || 'live') + ')');
+              return;
             }
           }
         } catch (_) { }
+
+        // 2. Admin-pinned Appwrite setting via TablesDB list endpoint.
+        // (Single-row GET needs row-level read permission, so prefer the list
+        // endpoint with an equality query.)
+        var settingKeys = ['usd_to_ngn', 'usd_to_ngn_rate', 'exchange_rate_usd_ngn'];
+        for (var i = 0; i < settingKeys.length; i++) {
+          try {
+            var queryStr = encodeURIComponent('equal("key", ["' + settingKeys[i] + '"])');
+            var res = await fetch(
+              APPWRITE_ENDPOINT + '/tablesdb/6a089307002e54291a32/tables/app_settings/rows?queries[]=' + queryStr + '&limit=1',
+              { headers: { 'X-Appwrite-Project': APPWRITE_PROJECT_ID } }
+            );
+            if (res.ok) {
+              var data = await res.json();
+              var rows = data.rows || data.documents || [];
+              if (rows.length > 0) {
+                var row = rows[0];
+                var val = validRate(row.value !== undefined ? row.value : row.setting_value);
+                if (val) {
+                  rememberRate(val, 'app_settings:' + settingKeys[i]);
+                  return;
+                }
+              }
+            }
+          } catch (_) { }
+        }
+
+        // 3. Public FX APIs (no key required). Each entry carries the JSON path
+        //    that holds the NGN rate. frankfurter.app is excluded on purpose:
+        //    it serves the ECB set, which does not publish the Naira (always
+        //    404), so it only delayed the next provider.
+        var fxProviders = [
+          { url: 'https://open.er-api.com/v6/latest/USD', path: ['rates', 'NGN'] },
+          { url: 'https://api.exchangerate-api.com/v4/latest/USD', path: ['rates', 'NGN'] },
+          {
+            url: 'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json',
+            path: ['usd', 'ngn']
+          }
+        ];
+        for (var f = 0; f < fxProviders.length; f++) {
+          try {
+            var provider = fxProviders[f];
+            var fxRes = await fetch(provider.url);
+            if (!fxRes.ok) continue;
+            var fxJson = await fxRes.json();
+            var value = fxJson;
+            for (var s = 0; s < provider.path.length; s++) {
+              value = (value === null || value === undefined) ? null : value[provider.path[s]];
+            }
+            var fxRate = validRate(value);
+            if (fxRate) {
+              rememberRate(fxRate, 'live FX (' + provider.url.replace(/^https?:\/\//, '').split('/')[0] + ')');
+              return;
+            }
+          } catch (_) { }
+        }
+
+        // 4. Nothing fresh — keep fallback (or session cache) and label it.
+        try {
+          var stillCached = Number(sessionStorage.getItem('usd_to_ngn_rate'));
+          if (validRate(stillCached)) {
+            exchangeRate = stillCached;
+            exchangeRateSource = 'cache';
+            exchangeRateLive = false;
+          } else {
+            exchangeRate = FALLBACK_RATE;
+            exchangeRateSource = 'fallback';
+            exchangeRateLive = false;
+          }
+        } catch (_) {
+          exchangeRate = FALLBACK_RATE;
+          exchangeRateSource = 'fallback';
+          exchangeRateLive = false;
+        }
+        updateConversionDisplay();
       }
       fetchExchangeRate();
 
       function updateConversionDisplay() {
         if (!conversionEl) return;
         var val = Number(amountInputEl.value);
+        var rateLabel = '₦' + exchangeRate.toLocaleString() + '/$1';
+        var liveNote = exchangeRateLive
+          ? '<span style="font-size:11px;color:#15803d;"> ● live rate' +
+          (exchangeRateSource ? ' (' + exchangeRateSource + ')' : '') + '</span>'
+          : '<span style="font-size:11px;color:#b45309;"> ● indicative rate — final charge uses the live rate at checkout</span>';
         if (selectedCurrency === 'USD') {
           conversionEl.style.display = 'block';
           conversionEl.style.background = '#fef3c7';
@@ -585,9 +721,9 @@
           conversionEl.style.color = '#92400e';
           if (Number.isFinite(val) && val > 0) {
             var approxNgn = Math.round(val * exchangeRate);
-            conversionEl.innerHTML = '<strong>$' + val.toLocaleString() + ' USD ≈ ₦' + approxNgn.toLocaleString() + ' NGN</strong><br><span style="font-size:12px;color:#78350f;">Processed securely via Paystack (₦' + exchangeRate.toLocaleString() + '/$1). All international Visa, Mastercard & Amex cards accepted.</span>';
+            conversionEl.innerHTML = '<strong>$' + val.toLocaleString() + ' USD ≈ ₦' + approxNgn.toLocaleString() + ' NGN</strong><br><span style="font-size:12px;color:#78350f;">Processed securely via Paystack (' + rateLabel + '). All international Visa, Mastercard & Amex cards accepted.</span><br>' + liveNote;
           } else {
-            conversionEl.innerHTML = '<span style="font-size:12px;color:#78350f;">Billed in Naira equivalent (₦' + exchangeRate.toLocaleString() + '/$1) via Paystack. All international cards accepted.</span>';
+            conversionEl.innerHTML = '<span style="font-size:12px;color:#78350f;">Billed in Naira equivalent (' + rateLabel + ') via Paystack. All international cards accepted.</span><br>' + liveNote;
           }
         } else {
           conversionEl.style.display = 'none';

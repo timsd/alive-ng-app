@@ -1087,7 +1087,7 @@ class MissionDetailsSheet extends StatelessWidget {
                   child: OutlinedButton(
                     onPressed: () {
                       final shareText =
-                          '${mission.title}\n\n${mission.description}\n\nLocation: ${mission.location}\nDate: ${mission.startDate.day}/${mission.startDate.month}/${mission.startDate.year}\n\nJoin us in this mission! Download the ALIVE NG app to participate.';
+                          '${mission.title}\n\n${mission.description}\n\nLocation: ${mission.location}\nDate: ${mission.startDate.day}/${mission.startDate.month}/${mission.startDate.year}\n\nJoin us in this mission! Download the ALIVE Nigeria app to participate.';
 
                       // Show share dialog
                       showDialog(

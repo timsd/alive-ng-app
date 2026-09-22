@@ -60,7 +60,7 @@ const documentData = {
   value: JSON.stringify(appVersionPayload),
   type: 'json',
   category: 'system',
-  description: 'Controls ALIVE-NG app update prompts on Android, web and iOS.',
+  description: 'Controls ALIVE Nigeria app update prompts on Android, web and iOS.',
   is_public: true,
   updated_at: now,
 };

@@ -25,7 +25,7 @@ class AdminNotificationService {
     try {
       _logger.info(
           'Sending admin notification for new user: ${userProfile.email}');
-      const emailSubject = 'New User Registration - ALIVE-NG App';
+      const emailSubject = 'New User Registration - ALIVE Nigeria App';
       final recipients = ['alivenigeria2011@gmail.com']; // Fallback super admin
       final token = await ApprovalLinkService.instance
           .generateToken(userId: userProfile.id);
@@ -130,7 +130,7 @@ class AdminNotificationService {
     final buffer = StringBuffer();
 
     buffer.writeln(
-        'A new user has registered for the ALIVE-NG App and requires approval.');
+        'A new user has registered for the ALIVE Nigeria App and requires approval.');
     buffer.writeln('');
     buffer.writeln('User Details:');
     buffer.writeln('=============');
@@ -177,7 +177,7 @@ class AdminNotificationService {
         'Please review this user\'s information and approve or reject their access to the platform.');
     buffer.writeln('');
     buffer.writeln(
-        'To manage user approvals, please log into the ALIVE-NG Admin Dashboard.');
+        'To manage user approvals, please log into the ALIVE Nigeria Admin Dashboard.');
 
     return buffer.toString();
   }
@@ -193,7 +193,7 @@ class AdminNotificationService {
       final html = '<pre>${htmlEscape.convert(body)}</pre>';
       await EmailService.instance.sendCustomEmail(
         toEmail: to,
-        toName: 'ALIVE-NG Admin',
+        toName: 'ALIVE Nigeria Admin',
         subject: subject,
         html: html,
       );
@@ -219,7 +219,7 @@ class AdminNotificationService {
     required String? reason,
   }) async {
     try {
-      const subject = 'User Approval Status Changed - ALIVE-NG App';
+      const subject = 'User Approval Status Changed - ALIVE Nigeria App';
       final body =
           _buildApprovalChangeEmailBody(userProfile, newStatus, reason);
       final recipients = ['alivenigeria2011@gmail.com']; // Fallback super admin
@@ -261,7 +261,7 @@ class AdminNotificationService {
     final buffer = StringBuffer();
 
     buffer
-        .writeln('User approval status has been changed in the ALIVE-NG App.');
+        .writeln('User approval status has been changed in the ALIVE Nigeria App.');
     buffer.writeln('');
     buffer.writeln('User: ${userProfile.fullName} (${userProfile.email})');
     buffer.writeln('New Status: $newStatus');
@@ -273,7 +273,7 @@ class AdminNotificationService {
 
     buffer.writeln('');
     buffer.writeln(
-        'This is an automated notification from the ALIVE-NG Admin System.');
+        'This is an automated notification from the ALIVE Nigeria Admin System.');
 
     return buffer.toString();
   }

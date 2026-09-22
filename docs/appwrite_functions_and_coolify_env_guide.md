@@ -1,7 +1,7 @@
 # Appwrite Functions, Coolify Deployment, and Administration Guide
 
 ## Overview
-This document specifies all required environment variables, configuration keys, and operational procedures for **Appwrite Functions**, **Coolify Hosting**, and **Role Management (Admin & Content Managers)** for ALIVE-NG.
+This document specifies all required environment variables, configuration keys, and operational procedures for **Appwrite Functions**, **Coolify Hosting**, and **Role Management (Admin & Content Managers)** for ALIVE Nigeria.
 
 ---
 
@@ -79,7 +79,7 @@ When deploying the Web App or Appwrite instances on Coolify:
 
 ### Do Admin and Content Managers need to be invited or can they log in directly?
 **Answer**: They can register and log in directly with their email and password!
-- When a user signs up on ALIVE-NG, their default role is `member`.
+- When a user signs up on ALIVE Nigeria, their default role is `member`.
 - **Assigning Admin & Content Manager privileges**:
   1. **Primary Admin Account**: The email `alivenigeria2011@gmail.com` is automatically recognized by the system as the Root Administrator.
   2. **Inviting / Promoting Staff**:
@@ -148,11 +148,11 @@ Appwrite blocks any OAuth redirect if the calling platform is not explicitly reg
    - **Name**: `ALIVE Web App`
    - **Hostname**: `app.alivenigeria.org` (and `localhost` for local dev)
 2. **Android Platform**:
-   - **Name**: `ALIVE NG`
+   - **Name**: `ALIVE Nigeria`
    - **Package Name**: `com.alive.alivengandroidapp`
    *(This matches `android/app/build.gradle.kts` and the callback scheme `appwrite-callback-6a3bef53002f5090dedf` configured in `AndroidManifest.xml`).*
 3. **Apple Platform** (for iOS):
-   - **Name**: `ALIVE NG`
+   - **Name**: `ALIVE Nigeria`
    - **Bundle ID**: `com.alive.alivengandroidapp`
 
 ### Checkpoint 4: Coolify Appwrite Server `.env`

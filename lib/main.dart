@@ -120,7 +120,7 @@ class AliveApp extends ConsumerWidget {
     });
 
     return MaterialApp.router(
-      title: 'ALIVE-NG APP',
+      title: 'ALIVE Nigeria',
       debugShowCheckedModeBanner: false,
 
       theme: AppTheme.lightTheme,

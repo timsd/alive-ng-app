@@ -64,10 +64,10 @@ class AboutAppScreen extends ConsumerWidget {
               ),
               children: [
                 _HeroCard(
-                  title: 'ALIVE-NG App',
+                  title: 'ALIVE Nigeria App',
                   subtitle: 'Bible study, prayer, and ministry community',
                   description:
-                      'ALIVE-NG brings Bible study, prayer, resources, testimonies, podcasts, events, and discipleship tools into one clear experience for the ministry community.',
+                      'ALIVE Nigeria brings Bible study, prayer, resources, testimonies, podcasts, events, and discipleship tools into one clear experience for the ministry community.',
                   chips: const [
                     'Daily verse',
                     'Prayer support',

@@ -60,7 +60,7 @@ module.exports = async ({ req, res, log, error }) => {
   const DATABASE_ID = process.env.APPWRITE_DATABASE_ID || '6a089307002e54291a32';
   const APP_SETTINGS_COLLECTION_ID = process.env.APP_SETTINGS_COLLECTION_ID || 'app_settings';
 
-  // Deep-link target inside the ALIVE-NG app.
+  // Deep-link target inside the ALIVE Nigeria app.
   const DONATION_DEEP_LINK = 'https://app.alivenigeria.org/donate';
 
   if (!APPWRITE_API_KEY) {

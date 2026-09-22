@@ -1,7 +1,7 @@
 {
   "name": "paystack-webhook",
   "version": "1.0.0",
-  "description": "Paystack webhook receiver for ALIVE NG — verifies signature and updates donation_records",
+  "description": "Paystack webhook receiver for ALIVE Nigeria — verifies signature and updates donation_records",
   "main": "src/main.js",
   "type": "module",
   "engines": { "node": ">=18.0.0" },

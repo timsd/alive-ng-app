@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// ALIVE-NG Design System - Spiritual, warm colors reflecting faith and Nigerian culture
+/// ALIVE Nigeria Design System - Spiritual, warm colors reflecting faith and Nigerian culture
 ///
 /// Design tokens derived from the Lovable reference design system (shadcn/ui).
 /// These tokens are the single source of truth for visual consistency

@@ -633,7 +633,7 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
         )),
 
         Text(
-          'Copyright © ALIVE-NG, ALIVE by the Truth',
+          'Copyright © ALIVE Nigeria, ALIVE by the Truth',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
                 fontStyle: FontStyle.italic,
@@ -879,7 +879,7 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Consider making a donation to support ALIVE-NG ministry.',
+              'Consider making a donation to support ALIVE Nigeria ministry.',
               style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
                     fontStyle: FontStyle.italic,
                   ),
@@ -915,9 +915,9 @@ Check out this amazing tract: "${widget.tract.title}" by ${widget.tract.author}
 
 ${widget.tract.description}
 
-Download it from ALIVE-NG App: https://app.alivenigeria.org
+Download it from ALIVE Nigeria App: https://app.alivenigeria.org
 
-#ALIVE-NG #Gospel #ChristianTract
+#ALIVENigeria #Gospel #ChristianTract
       '''
           .trim();
 

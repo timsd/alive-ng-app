@@ -24,7 +24,7 @@ android {
     }
 
     defaultConfig {
-        // Application ID for Alive NG Android App
+        // Application ID for the ALIVE Nigeria Android app
         applicationId = "com.alive.alivengandroidapp"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.

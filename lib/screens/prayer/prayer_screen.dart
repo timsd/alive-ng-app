@@ -827,7 +827,7 @@ class PrayerRequestCard extends StatelessWidget {
                 IconButton(
                   tooltip: 'Share prayer',
                   onPressed: () {
-                    final text = '${request.title}\n\n${request.description}\n\n— Shared from ALIVE NG Prayer';
+                    final text = '${request.title}\n\n${request.description}\n\n— Shared from ALIVE Nigeria Prayer';
                     SharePlus.instance.share(ShareParams(text: text));
                   },
                   icon: Icon(Icons.share,

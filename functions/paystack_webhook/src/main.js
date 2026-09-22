@@ -2,7 +2,7 @@ import { Client, Databases } from 'node-appwrite';
 import crypto from 'node:crypto';
 
 /**
- * Paystack webhook receiver for ALIVE NG donations.
+ * Paystack webhook receiver for ALIVE Nigeria donations.
  *
  * Appwrite injects these env vars automatically at runtime:
  *   APPWRITE_FUNCTION_API_ENDPOINT, APPWRITE_FUNCTION_PROJECT_ID, APPWRITE_FUNCTION_API_KEY

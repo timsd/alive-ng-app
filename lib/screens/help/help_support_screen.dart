@@ -864,7 +864,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
     final Uri emailUri = Uri(
       scheme: 'mailto',
       path: email,
-      query: 'subject=ALIVE NG App Support',
+      query: 'subject=ALIVE Nigeria App Support',
     );
     if (await canLaunchUrl(emailUri)) {
       await launchUrl(emailUri);

@@ -18,6 +18,7 @@ import '../../config/donation_defaults.dart';
 import '../../utils/web_launch_params.dart';
 import '../../providers/appwrite_auth_provider.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../services/exchange_rate_service.dart';
 
 class DonationScreen extends ConsumerStatefulWidget {
   const DonationScreen({super.key});
@@ -94,22 +95,27 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
     _fetchExchangeRate();
   }
 
-  double _exchangeRate = 1650.0; // Default fallback
+  double _exchangeRate = ExchangeRateService.fallbackRate;
+  bool _exchangeRateLive = false;
   Future<void> _fetchExchangeRate() async {
     try {
-      final value = await ref
-          .read(donationServiceProvider)
-          .getAppSettingValue('usd_to_ngn_rate');
-      final rate = double.tryParse(value ?? '');
-      if (rate != null && rate > 0) {
-        setState(() => _exchangeRate = rate);
-        debugPrint('Using Appwrite exchange rate: $_exchangeRate');
-        return;
-      }
+      final rate = await ExchangeRateService.instance
+          .getUsdToNgn()
+          .timeout(const Duration(seconds: 10),
+              onTimeout: () => ExchangeRateService.fallbackRate);
+      if (!mounted) return;
+      setState(() {
+        _exchangeRate = rate;
+        final source = ExchangeRateService.instance.rateSource;
+        _exchangeRateLive =
+            !source.startsWith('fallback') && !source.startsWith('cache');
+      });
+      debugPrint(
+          'Using USD->NGN rate: $_exchangeRate (live: $_exchangeRateLive, '
+          'source: ${ExchangeRateService.instance.rateSource})');
     } catch (e) {
-      debugPrint('Appwrite exchange rate fetch failed: $e');
+      debugPrint('Using fallback exchange rate: $_exchangeRate ($e)');
     }
-    debugPrint('Using hardcoded fallback Exchange Rate: $_exchangeRate');
   }
 
   @override
@@ -845,6 +851,70 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
               ),
             ),
           ),
+        // Live USD -> NGN conversion notice (parity with the web donation page
+        // so donors always see the rate they will actually be billed at).
+        if (isEnabled && _selectedCurrency == 'USD')
+          Padding(
+            padding: EdgeInsets.only(
+                bottom: ResponsiveUtils.getResponsiveSpacing(context, 12)),
+            child: Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(
+                  ResponsiveUtils.getResponsiveSpacing(context, 10)),
+              decoration: BoxDecoration(
+                color:
+                    isDark ? const Color(0xFF3B2F0B) : const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: isDark
+                      ? const Color(0xFF6B530F)
+                      : const Color(0xFFFDE68A),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '\$${_selectedAmount.toStringAsFixed(2)} USD ≈ '
+                    '₦${(_selectedAmount * _exchangeRate).round()} NGN',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: isDark
+                          ? const Color(0xFFFDE68A)
+                          : const Color(0xFF92400E),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Processed securely via Paystack '
+                    '(₦${_exchangeRate.round()}/\$1). All international Visa, '
+                    'Mastercard & Amex cards accepted.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: isDark
+                          ? const Color(0xFFE7C86B)
+                          : const Color(0xFF78350F),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _exchangeRateLive
+                        ? '● Live rate (${ExchangeRateService.instance.rateSource})'
+                        : '● Indicative rate — final charge uses the live rate '
+                            'at checkout',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: _exchangeRateLive
+                          ? (isDark
+                              ? const Color(0xFF86EFAC)
+                              : const Color(0xFF15803D))
+                          : (isDark
+                              ? const Color(0xFFFCD34D)
+                              : const Color(0xFFB45309)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         SizedBox(
           width: double.infinity,
           height: ResponsiveUtils.getResponsiveValue(
@@ -1355,6 +1425,9 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
 
       // Process payment via Paystack
       if (!rootCtx.mounted) return;
+      // Pass the fresh on-screen FX rate so USD APK checkouts bill at the
+      // live rate (server still re-resolves live if this is missing/stale).
+      final liveRate = currency == 'USD' ? _exchangeRate : null;
       final paymentResult = await donationService.processPaystackPayment(
         context: rootCtx,
         donationId: donation.id,
@@ -1362,6 +1435,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
         currency: currency,
         email: donation.userEmail,
         isRecurringMonthly: isMonthly,
+        exchangeRateUsdNgn: liveRate,
       );
 
       final checkoutInitialized = paymentResult['initialized'] == true;

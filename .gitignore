@@ -68,7 +68,8 @@ node_modules
  
 # Development-only tools and tests
 /tool/
-/test/
+/test/*
+!test/exchange_rate_service_test.dart
  
 # Android keystore properties (do not commit)
 /android/key.properties
