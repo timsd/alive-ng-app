@@ -5,6 +5,23 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { rmSync } from 'node:fs';
 
+// Compatibility fix: node-appwrite 22.x + Node 26 Undici dispatcher mismatch
+const _originalPrepareRequest =
+  Client.prototype && typeof Client.prototype.prepareRequest === 'function'
+    ? Client.prototype.prepareRequest
+    : null;
+
+if (_originalPrepareRequest) {
+  Client.prototype.prepareRequest = function (...args) {
+    const result = _originalPrepareRequest.apply(this, args);
+    if (result && result.options) {
+      delete result.options.dispatcher;
+      delete result.options.agent;
+    }
+    return result;
+  };
+}
+
 function loadDotEnv(filePath = resolve(process.cwd(), '.env')) {
   if (!existsSync(filePath)) return;
 
