@@ -13,6 +13,7 @@ import '../../providers/appwrite_auth_provider.dart';
 import '../../services/role_access_service.dart';
 import '../../services/tag_parser.dart';
 import '../conference/livekit_meeting_screen.dart';
+import '../../config/appwrite_backend_config.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final String? channelId;
