@@ -959,12 +959,20 @@ class _MissionActivitySheetState extends State<_MissionActivitySheet> {
   bool get _isQuiz => _mission.verificationMethod == VerificationMethod.quiz;
   bool get _isPhoto => _mission.verificationMethod == VerificationMethod.photo;
 
-  /// The passage / expected answer the response is scored against.
+    /// The passage / expected answer the response is scored against.
+  ///
+  /// For recitation/story missions we score against the mission's own
+  /// description (the task the child is actually performing), NOT the joined
+  /// step list. Previously scoring against the instructions caused the
+  /// evaluation to mismatch the activity's task.
   String get _expectedText {
+    if (_mission.description.isNotEmpty) {
+      return _mission.description;
+    }
     if (_mission.instructions.isNotEmpty) {
       return _mission.instructions.join(' ');
     }
-    return _mission.description;
+    return _mission.title;
   }
 
   @override

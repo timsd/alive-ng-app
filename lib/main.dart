@@ -23,6 +23,7 @@ import 'l10n/widget_localizations.dart';
 import 'config/appwrite_backend_config.dart';
 import 'services/analytics_service.dart';
 import 'services/crash_reporting_service.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'services/notification_service.dart';
 
 // Global Appwrite service instances for provider access.
@@ -35,6 +36,15 @@ void main() {
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
     await CrashReportingService.instance.initialize();
+
+    if (!kIsWeb) {
+      try {
+        await Firebase.initializeApp();
+        debugPrint('Firebase initialized successfully for push transport.');
+      } catch (e) {
+        debugPrint('Firebase initialization failed: $e');
+      }
+    }
 
     // Restore the preference before the first frame; ARB messages are compiled.
     try {

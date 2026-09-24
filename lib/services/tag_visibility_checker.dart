@@ -431,16 +431,6 @@ class TagVisibilityChecker {
     }
   }
 
-  /// Compatibility no-op for old Firebase cache callers.
-  static Future<void> cacheTagVisibilityInfo(
-    String userId,
-    List<String> visibleTags,
-  ) async {
-    _logger.info(
-      'Tag visibility cache skipped for $userId; Appwrite checks are live.',
-    );
-  }
-
   static Future<Map<String, dynamic>> _getUserProfile(String userId) async {
     final user = await _tables.getRow(
       databaseId: AppwriteBackendConfig.databaseId,

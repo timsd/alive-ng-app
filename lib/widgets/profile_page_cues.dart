@@ -34,10 +34,10 @@ class ProfilePageCues extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.swipe, color: colors.onSurfaceVariant, size: 20),
+                            Icon(Icons.swipe, color: colors.onSurfaceVariant, size: 20),
               const SizedBox(width: 8),
               Flexible(child: Text(
-                index < count - 1 ? 'Swipe to next or tap Next' : 'Swipe back to review',
+                index < count - 1 ? 'Swipe' : 'Review your steps',
                 style: TextStyle(color: colors.onSurfaceVariant),
               )),
             ],

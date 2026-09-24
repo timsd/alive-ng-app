@@ -26,6 +26,17 @@ class AppwritePushService {
       return null;
     }
 
+    // Appwrite Messaging requires a real device token issued by the delivery
+    // transport (the Appwrite push provider). Without one, creating a target
+    // would register a broken identifier that can never receive a push, so we
+    // skip registration and fall back to in-app (Realtime) notifications.
+    if (token.trim().isEmpty) {
+      _logger.warning(
+        'No push token available; skipping Appwrite push target registration',
+      );
+      return null;
+    }
+
     final targetId = _targetIdFor(user.uid, token);
     final providerId = AppwriteBackendConfig.fcmProviderId.trim();
 

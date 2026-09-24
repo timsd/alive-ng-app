@@ -1,6 +1,6 @@
 # Appwrite, Coolify, and LiveKit Setup
 
-This project is in the final live-deployment stage of the Firebase-to-Appwrite migration. Appwrite is the active backend target. Firebase remains only for FCM push delivery compatibility until Appwrite Messaging has a verified FCM provider.
+This project is in the final live-deployment stage of the Firebase-to-Appwrite migration. Appwrite is the active backend target, and the client app no longer bundles any Firebase SDK. Push targets and subscriptions go through Appwrite Messaging; analytics and data live in Appwrite TablesDB.
 
 ## Appwrite Dashboard
 
@@ -127,15 +127,6 @@ The Android app package ID is:
 ```text
 com.alive.alivengandroidapp
 ```
-
-The Android Firebase/FCM client values come from `android/app/google-services.json`:
-
-```text
-FIREBASE_ANDROID_API_KEY=<current_key from google-services.json>
-FIREBASE_ANDROID_APP_ID=<mobilesdk_app_id from google-services.json>
-```
-
-These are used only for the FCM client bridge on Android. Appwrite remains the backend.
 
 The release signing keystore is local at `android/app/alive-release.keystore`. It is used to sign release APK/AAB builds for Play Store. Keep the keystore and passwords out of git. Build/signing env vars:
 
@@ -283,24 +274,34 @@ If the server rejects the key, confirm the matching public key was pasted into O
 - Add the same defines to Android release build commands.
 - After deployment, confirm a test event arrives in the GlitchTip project before public launch.
 
-## FCM Provider
+## Push Provider (server-side only)
 
-Use Firebase only as the push transport provider for Appwrite Messaging.
+Appwrite Messaging delivers push. The provider credentials live **only** in
+Appwrite Console / server env — nothing is bundled in the app.
 
-To create/verify the provider automatically:
+To create/verify the provider:
 
-1. Open Firebase Console > project `alive-ng-flutter-app`.
-2. Go to Project settings > Service accounts.
-3. Generate a new private key and save it outside git, for example `E:\gradle-cache-alive-ng\secrets\firebase-fcm-service-account.json`.
-4. In local `.env`, set:
+1. In Appwrite Console, open **Messaging > Providers**.
+2. Create a push provider for each platform you ship.
+3. In local `.env`, set the provider ID:
 
 ```bash
 APPWRITE_FCM_PROVIDER_ID=6a0cbd1600215f960c03
-APPWRITE_FCM_SERVICE_ACCOUNT_PATH=E:\gradle-cache-alive-ng\secrets\firebase-fcm-service-account.json
 ```
 
-5. Run `npm run appwrite:providers`.
-6. Keep `APPWRITE_FCM_PROVIDER_ID` in Coolify `FLUTTER_BUILD_ARGS`.
+4. Run `npm run appwrite:providers`.
+5. Keep `APPWRITE_FCM_PROVIDER_ID` in Coolify `FLUTTER_BUILD_ARGS`.
+
+> [!IMPORTANT]
+> Google Play requires FCM as the Android push transport, so an Android push
+> provider needs FCM **service-account credentials uploaded to Appwrite**, never
+> committed or shipped in the app. FCM is free; Firebase billing charges come
+> from other products (Cloud Functions, Firestore, Extensions, Hosting), so keep
+> the Firebase project on the **Spark (no-cost)** plan.
+>
+> With `APPWRITE_FCM_PROVIDER_ID` blank, the app skips push-target registration
+> and falls back to Appwrite Realtime in-app notifications. Locally scheduled
+> reminders (daily verse, prayer, study, mission) keep working either way.
 
 ## Current Migration Notes
 
@@ -311,4 +312,4 @@ APPWRITE_FCM_SERVICE_ACCOUNT_PATH=E:\gradle-cache-alive-ng\secrets\firebase-fcm-
 - `https://api.alivenigeria.org/v1/health` is reachable and returns Appwrite.
 - `https://livekit.alivenigeria.org` currently presents a self-signed certificate; fix SSL before production calls.
 - Firebase Hosting was disabled for project `alive-ng-flutter-app` on 2026-05-18; Coolify is now the intended web deployment path.
-- Do not remove active FCM platform config until Appwrite Messaging push is verified end to end.
+- The Firebase client SDK has been removed from the app. Only a **server-side** Appwrite push provider (if you enable Android push) needs FCM credentials, and those stay in Appwrite Console.

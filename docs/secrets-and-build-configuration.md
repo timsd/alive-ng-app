@@ -21,8 +21,8 @@ wrong one is the most common mistake.
 - Use ONLY for public / non-sensitive values (public keys, endpoints, project IDs).
 
 ### Path B - Web HTML placeholders (`scripts/configure_web.dart`)
-- Replaces `{{PLACEHOLDER}}` tokens in `web/index.html`, `web/donation.html`, and
-  `web/firebase-messaging-sw.js` at Docker build time.
+- Replaces `{{PLACEHOLDER}}` tokens in `web/index.html` and `web/donation.html`
+  at Docker build time.
 - `configure_web.dart` reads **process environment variables** (and `.env` when run
   locally). Inside Docker, `.env` is excluded, so values must come from build-time env.
 - **Coolify:** add a **Build Time Environment Variable** (Coolify passes these to
@@ -42,11 +42,17 @@ wrong one is the most common mistake.
 |---|---|
 | Appwrite endpoint, project ID, database ID, collection/bucket/function IDs | Appwrite API key (`standard_...`) |
 | Paystack PUBLIC key (`pk_live_...`) | Paystack SECRET key (`sk_live_...`) |
-| Firebase web config (`apiKey`, appId, etc.) | Resend API key (`re_...`) |
-| reCAPTCHA SITE key | LiveKit API secret, Coolify API token, FCM service account |
+| reCAPTCHA SITE key | Resend API key (`re_...`) |
+| — | LiveKit API secret, Coolify API token |
 
-Firebase **web** API keys and reCAPTCHA **site** keys are public by design (Google
-documents this); their security comes from Firebase Rules / App Check, not secrecy.
+reCAPTCHA **site** keys are public by design (Google documents this); their
+security comes from reCAPTCHA / App Check verification, not secrecy.
+
+> [!NOTE]
+> Firebase has been removed from the client app. All push notification targets and
+> analytics now go through Appwrite Messaging / Appwrite TablesDB, and crash
+> reporting is handled by GlitchTip (Sentry-compatible). If a push provider is ever
+> configured in Appwrite Console, keep its service-account JSON server-side only.
 
 ---
 

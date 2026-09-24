@@ -322,7 +322,11 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
       state = state.copyWith(
         showAnswer: autoShowHint,
         hasCheckedAnswer: autoShowHint,
-        showHint: autoShowHint,
+        // Offer the hint (so the Submit button surfaces the 2-pt deduction
+        // popup on its next press) WITHOUT auto-revealing the blanks yet.
+        // `showHint` only becomes true when the player confirms the popup,
+        // which is what actually fills the blanks and arms the advance timer.
+        showHint: false,
         attemptCount: attempts,
         showHintButton: attempts >= 3 && !isVoice,
       );
@@ -578,9 +582,24 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
   }
 
   Future<void> _confirmFlipCard(BuildContext context) async {
-    final currentScore = ref.read(bibleGameProvider).score;
+        final currentScore = ref.read(bibleGameProvider).score;
     if (currentScore <= 0) {
-      _checkGameOver();
+      final gs = ref.read(bibleGameProvider);
+      // No score has been earned yet on this verse: rather than blocking the
+      // child or triggering game-over, treat it as "start over" and deal a
+      // fresh verse. Deductions are only valid against an existing score.
+      if (gs.completedVerses.isEmpty && gs.attemptCount == 0) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No score yet — here’s a new verse to try!'),
+            ),
+          );
+          ref.read(bibleGameProvider.notifier).loadNewVerse();
+        }
+      } else {
+        _checkGameOver();
+      }
       return;
     }
     if (currentScore < 2) {
@@ -1168,7 +1187,8 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
   Widget _buildVersePromptCard(BibleGameState gameState) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final reference = gameState.currentVerse?.reference ?? '';
-    final canFlip = gameState.attemptCount >= 3;
+        final canFlip = gameState.attemptCount >= 3;
+    final isListening = gameState.isListening;
 
     return InkWell(
       onTap: canFlip ? () => _confirmFlipCard(context) : null,
@@ -1223,36 +1243,44 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
           padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.record_voice_over,
-                      color: Theme.of(context).colorScheme.primary, size: 24),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Recite the verse aloud (word-perfect)',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
+                        children: [
               Text(
-                reference,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
+                'Recite the verse aloud (word-perfect)',
+                textAlign: TextAlign.justify,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
                       color: Theme.of(context).colorScheme.primary,
                     ),
-                maxLines: 2,
+              ),
+              const SizedBox(height: 8),
+              // Bible reference kept here (removed from the top-left of card).
+              Text(
+                reference,
+                textAlign: TextAlign.justify,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.tertiary,
+                    ),
+                maxLines: 3,
                 overflow: TextOverflow.ellipsis,
               ),
-              const Spacer(),
+              const SizedBox(height: 16),
+              // Clickable mic that captures the recitation.
+              if (_speechEnabled) _buildVoiceMicButton(isListening: isListening),
+              if (_speechEnabled) const SizedBox(height: 16),
+              // Note: the card only flips once 3 attempts have been used.
+              if (!canFlip)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Text(
+                    'Flip the card after 3 attempts to reveal the verse',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontStyle: FontStyle.italic,
+                        ),
+                  ),
+                ),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -1305,6 +1333,41 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
             ),
             const SizedBox(height: 8),
             } // end REMOVED_BLOCK */
+
+    /// Circular mic button on the prompt-card face in Voice mode to capture
+  /// the recitation.
+  /// Wires into the same `_startListening` / `_stopListening` handlers.
+  Widget _buildVoiceMicButton({required bool isListening}) {
+    final cs = Theme.of(context).colorScheme;
+    return Center(
+      child: GestureDetector(
+        onTap: _speechEnabled
+            ? (isListening ? _stopListening : _startListening)
+            : null,
+        child: Container(
+          width: 84,
+          height: 84,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: isListening ? cs.error : cs.primary,
+            boxShadow: [
+              BoxShadow(
+                color: (isListening ? cs.error : cs.primary)
+                    .withValues(alpha: 0.35),
+                blurRadius: isListening ? 24 : 10,
+                spreadRadius: isListening ? 6 : 0,
+              ),
+            ],
+          ),
+          child: Icon(
+            isListening ? Icons.stop : Icons.mic,
+            color: cs.onPrimary,
+            size: 38,
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _buildVerseBackCard_REAL(BibleGameState gameState) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -1670,15 +1733,30 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
                   ),
             ),
             const SizedBox(height: 16),
+            const Text(
+              'A hint or auto-fill appears after 3 attempts (-2 pts).',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+            const SizedBox(height: 16),
             Row(
               children: [
                 Expanded(
                   child: SizedBox(
                     height: 56,
                     child: ElevatedButton(
-                      onPressed: gameState.showHint
-                          ? _onNextAfterAutofill
-                          : _submitFillGaps,
+                      onPressed: () {
+                        if (gameState.showHint) {
+                          _onNextAfterAutofill();
+                        } else if (!gameState.showHint &&
+                            gameState.showHintButton) {
+                          _confirmFillGapsHint(context, gameState);
+                        } else {
+                          _submitFillGaps();
+                        }
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: gameState.showHint
                             ? Theme.of(context).colorScheme.tertiary
@@ -1704,48 +1782,6 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
                           ],
                         ],
                       ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: SizedBox(
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: (!gameState.showHint && gameState.showHintButton)
-                          ? () => _confirmFillGapsHint(context, gameState)
-                          : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).colorScheme.tertiary,
-                        foregroundColor: Theme.of(context).colorScheme.onTertiary,
-                      ),
-                      child: gameState.showHintButton
-                          ? const Text(
-                              'Hint (-2 pts)',
-                              textAlign: TextAlign.center,
-                            )
-                          : Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                const Text(
-                                  'Hint',
-                                  textAlign: TextAlign.center,
-                                ),
-                                Text(
-                                  '(3 attempts)',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontStyle: FontStyle.italic,
-                                    fontSize: Theme.of(context)
-                                            .textTheme
-                                            .labelSmall
-                                            ?.fontSize ??
-                                        10,
-                                  ),
-                                ),
-                              ],
-                            ),
                     ),
                   ),
                 ),
@@ -1946,3 +1982,4 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
     );
   }
 }
+

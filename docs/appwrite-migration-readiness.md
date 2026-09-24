@@ -50,20 +50,37 @@ Use this safer sequence for remaining migration:
 3. Deploy functions one group at a time after dashboard env vars are set.
 4. Run any remaining historical Firebase data migration per collection/bucket
    only after each Appwrite target is verified.
-5. Keep only the FCM bridge files needed for Android/Web push delivery.
+5. Push targets are Appwrite-native; no Firebase bridge files are needed in the app.
 
-## Firebase Files
+## Firebase Removal
 
-Firebase is now intentionally limited to the FCM bridge:
+Firebase has been **fully removed from the client app**. There is no Firebase
+dependency, config file, or service worker left in the repository.
 
-- `firebase_core` and `firebase_messaging` in Flutter.
-- `lib/config/firebase_config.dart` and `lib/services/firebase_messaging_base.dart`.
+### Deleted
+- `firebase_core` and `firebase_messaging` from `pubspec.yaml` (and `pubspec.lock`).
+- `lib/config/firebase_config.dart`.
+- `lib/services/firebase_messaging_base.dart`.
 - `web/firebase-messaging-sw.js`.
-- local, uncommitted platform credentials such as `android/app/google-services.json`.
+- `"gcm_sender_id"` from `web/manifest.json`.
+- `android/app/google-services.json` and `ios/Runner/GoogleService-Info.plist`.
+- The `com.google.gms.google-services` Gradle plugin (project + app level) and the
+  `firebase-bom` / `firebase-messaging` Android dependencies.
+- `FirebaseApp.configure()` and the Firebase imports in `ios/Runner/AppDelegate.swift`.
+- Firebase `messaging` meta-data from `android/app/src/main/AndroidManifest.xml`.
+- `FIREBASE_*` placeholders from `scripts/configure_web.dart`.
+
+### Replacement
+- **Push targets/subscriptions:** `lib/services/appwrite_push_service.dart`
+  (Appwrite `Account.createPushTarget` + `Messaging.createSubscriber`).
+- **Local/device notifications:** `flutter_local_notifications`, driven by
+  `lib/services/notification_service.dart`.
+- **Analytics:** `lib/services/analytics_service.dart` (Appwrite TablesDB).
+- **Crash reporting:** `lib/services/crash_reporting_service.dart` (GlitchTip/Sentry).
 
 Firebase Hosting config, Firestore rules/indexes, legacy Firebase Functions,
 static Firebase donation/project pages, old archived service copies, and the old
-Express/Firebase Admin sidecar have been removed from the active repository.
+Express/Firebase Admin sidecar had already been removed from the active repository.
 
 ## Current Appwrite Client Migration
 
@@ -71,7 +88,7 @@ Express/Firebase Admin sidecar have been removed from the active repository.
 - **Hexagonal Architecture Decoupling**: All direct Appwrite SDK model types (`models.User`, etc.) have been completely removed from UI screens and controllers. Auth is encapsulated behind `AuthGateway` (`lib/services/ports/auth_gateway.dart`) and implemented via `AppwriteAuthGateway` (`lib/services/adapters/appwrite_auth_gateway.dart`), returning owned `AppUser` domain models.
 - **SDK Upgrade**: The Appwrite Dart SDK has been upgraded to `^26.1.0` in `pubspec.yaml`, with breaking API changes resolved exclusively inside the adapter layer without touching UI screens.
 - Bible game flow has been stabilized locally: nullable state reset works, multiple-choice options are stable per verse, blank generation avoids fragile words, and the daily verse corpus is no longer shuffled globally.
-- Push notification delivery still uses Firebase Messaging compatibility while Appwrite Messaging provider/target QA is completed.
+- Push notification delivery is Appwrite-native (`AppwritePushService` + Appwrite Messaging), with locally scheduled reminders via `flutter_local_notifications`.
 - `DonationService` no longer imports Firebase; downloadable material URLs should now be Appwrite/external URLs, not Firebase Storage URLs.
 - The old `FirebaseStorageService` facade has been renamed to `AppwriteStorageCompatService`; it remains a temporary compatibility layer for board and tract storage methods.
 - Legacy service copies under `oldfirebasedelete/` were deleted after Appwrite replacements passed analysis.

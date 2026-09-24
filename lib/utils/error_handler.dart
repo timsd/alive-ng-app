@@ -56,7 +56,7 @@ class ErrorHandler {
 
   static bool _isBackendException(dynamic error) {
     final typeName = error.runtimeType.toString();
-    return typeName == 'FirebaseException' || typeName == 'AppwriteException';
+    return typeName == 'AppwriteException';
   }
 
   static String? _errorCode(dynamic error) {

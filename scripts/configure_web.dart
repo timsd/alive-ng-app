@@ -3,13 +3,6 @@ import 'dart:io';
 void main() async {
   // Define the keys we need to replace
   final keys = [
-    'FIREBASE_API_KEY',
-    'FIREBASE_AUTH_DOMAIN',
-    'FIREBASE_PROJECT_ID',
-    'FIREBASE_STORAGE_BUCKET',
-    'FIREBASE_MESSAGING_SENDER_ID',
-    'FIREBASE_APP_ID',
-    'FIREBASE_MEASUREMENT_ID',
     'RECAPTCHA_SITE_KEY',
   ];
 
@@ -33,16 +26,7 @@ void main() async {
   bool missingKeys = false;
 
   for (final key in keys) {
-    // Support both FIREBASE_* and FIREBASE_WEB_* env naming
     String? value = Platform.environment[key] ?? envMap[key];
-    if (value == null || value.isEmpty) {
-      final webKey = key.startsWith('FIREBASE_')
-          ? 'FIREBASE_WEB_${key.substring('FIREBASE_'.length)}'
-          : null;
-      if (webKey != null) {
-        value = Platform.environment[webKey] ?? envMap[webKey];
-      }
-    }
     if (value == null || value.isEmpty) {
       stderr.writeln('Warning: Environment variable $key (or WEB variant) is not set.');
       missingKeys = true;
@@ -62,7 +46,6 @@ void main() async {
   final files = [
     'web/index.html',
     'web/donation.html',
-    'web/firebase-messaging-sw.js',
   ];
 
   for (final filePath in files) {

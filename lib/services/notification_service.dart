@@ -4,7 +4,6 @@ import 'package:appwrite/appwrite.dart' hide Locale;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
@@ -15,9 +14,15 @@ import '../utils/logger.dart';
 import '../utils/app_exception.dart';
 import '../utils/navigation_keys.dart';
 import 'auth_service.dart';
-import 'firebase_messaging_base.dart';
+import 'appwrite_push_service.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
-class NotificationService extends FirebaseMessagingBase {
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // Handled automatically by system notification tray when notification payload exists
+}
+
+class NotificationService {
   static NotificationService? _instance;
   static NotificationService get instance =>
       _instance ??= NotificationService._();
@@ -28,10 +33,15 @@ class NotificationService extends FirebaseMessagingBase {
   final Logger _logger = Logger('NotificationService');
   final TablesDB _tables = TablesDB(appwriteClient);
 
+  // Local notifications plugin (no Firebase dependency)
+  final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
+
   // Global navigator key for navigation from background contexts
   static GlobalKey<NavigatorState> get navigatorKey => rootNavigatorKey;
 
   bool _isInitialized = false;
+  String? _currentToken;
 
   // Initialize notification service
   Future<void> initialize() async {
@@ -40,34 +50,36 @@ class NotificationService extends FirebaseMessagingBase {
     try {
       tz.initializeTimeZones();
 
-      // Initialize Firebase
-      await FirebaseMessagingBase.initializeFirebase();
-
-      // Initialize local notifications with custom handler
-      await FirebaseMessagingBase.initializeLocalNotifications(
-        onNotificationTapped: _onNotificationTapped,
+      // Initialize local notifications
+      const androidSettings =
+          AndroidInitializationSettings('@mipmap/ic_launcher');
+      const iosSettings = DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+      );
+      const settings = InitializationSettings(
+        android: androidSettings,
+        iOS: iosSettings,
+      );
+      await _localNotifications.initialize(
+        settings,
+        onDidReceiveNotificationResponse: _onNotificationTapped,
       );
 
-      // Request permissions
-      final hasPermission =
-          await FirebaseMessagingBase.requestNotificationPermissions();
-      if (!hasPermission) {
-        _logger.warning('Notification permissions not granted');
-        return;
-      }
+      // Request notification permissions
+      await _requestPermissions();
 
-      // Get and save FCM token
-      await FirebaseMessagingBase.getAndSaveToken();
+      // Register push token with Appwrite via FCM transport
+      await _registerPushToken();
 
-      // Setup message handlers with custom callbacks
-      FirebaseMessagingBase.setupMessageHandlers(
-        onForegroundMessage: _handleForegroundMessage,
-        onBackgroundMessage: _handleBackgroundMessage,
-        onMessageOpenedApp: _handleMessageOpenedApp,
-      );
-
-      // Setup token refresh listener
-      FirebaseMessagingBase.setupTokenRefreshListener();
+      // Listen for auth state changes so newly logged-in users get their push target registered
+      _authService.authStateChanges.listen((user) {
+        if (user != null && _currentToken != null && _currentToken!.isNotEmpty) {
+          _logger.info('User authenticated; registering push token for ${user.uid}');
+          AppwritePushService.instance.registerToken(_currentToken!);
+        }
+      });
 
       _isInitialized = true;
     } catch (e) {
@@ -75,79 +87,182 @@ class NotificationService extends FirebaseMessagingBase {
     }
   }
 
-  // Handle foreground messages with custom logic
-  void _handleForegroundMessage(RemoteMessage message) {
-    _logger.info('Received foreground message: ${message.messageId}');
+  // --- Permission handling (Appwrite-native) ---
 
-    if (message.notification != null) {
-      final title = message.notification!.title ?? 'Alive App';
-      final body = message.notification!.body ?? '';
+  Future<bool> _requestPermissions() async {
+    final android =
+        await _localNotifications
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >()
+            ?.requestNotificationsPermission();
+    final ios =
+        await _localNotifications
+            .resolvePlatformSpecificImplementation<
+              IOSFlutterLocalNotificationsPlugin
+            >()
+            ?.requestPermissions(
+              alert: true,
+              badge: true,
+              sound: true,
+            );
+    final granted = (android == true || ios == true);
+    if (!granted) {
+      _logger.warning('Notification permissions not granted');
+    }
+    return granted;
+  }
 
-      // Show local notification for foreground messages
-      FirebaseMessagingBase.showLocalNotification(
-        id: message.hashCode,
-        title: title,
-        body: body,
-        payload: message.data.toString(),
+  // --- Push token registration (Appwrite via FCM transport) ---
+
+  Future<String?> registerPushToken() => _registerPushToken();
+
+  Future<String?> _registerPushToken() async {
+    if (kIsWeb) {
+      _logger.info('Web push uses Service Worker/Realtime; skipping FCM mobile registration');
+      return null;
+    }
+
+    try {
+      final fcm = FirebaseMessaging.instance;
+
+      // Register background handler
+      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+      // Request notification permissions via FCM (critical on iOS & Android 13+)
+      final notifSettings = await fcm.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+        provisional: false,
       );
-    }
-  }
+      _logger.info('FCM authorization status: ${notifSettings.authorizationStatus}');
 
-  // Handle background messages with custom logic
-  Future<void> _handleBackgroundMessage(RemoteMessage message) async {
-    _logger.info('Received background message: ${message.messageId}');
-
-    // Process background message
-    if (message.data.isNotEmpty) {
-      _logger.info('Background message data: ${message.data}');
-
-      // Process different types of background data
-      final type = message.data['type'];
-      switch (type) {
-        case 'sync_data':
-          // Trigger data synchronization
-          _logger.info('Triggering data sync from background message');
-          break;
-        case 'cache_update':
-          // Update local cache
-          _logger.info('Updating cache from background message');
-          break;
-        case 'prayer_request_update':
-          // Update prayer request data
-          _logger.info('Updating prayer request data');
-          break;
-        case 'mission_update':
-          // Update mission data
-          _logger.info('Updating mission data');
-          break;
-        default:
-          _logger.info('Processing general background message');
-          break;
+      // On iOS, wait for APNs token if needed
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        final apnsToken = await fcm.getAPNSToken();
+        _logger.info('APNs token status: ${apnsToken != null ? "obtained" : "pending"}');
       }
-    }
-  }
 
-  // Handle message when app is opened from background with custom logic
-  void _handleMessageOpenedApp(RemoteMessage message) {
-    _logger.info('Message opened app: ${message.messageId}');
+      final token = await fcm.getToken();
+      if (token != null && token.isNotEmpty) {
+        _currentToken = token;
+        _logger.info('FCM token acquired: ${token.substring(0, token.length > 8 ? 8 : token.length)}...');
+        final targetId = await AppwritePushService.instance.registerToken(token);
 
-    final data = message.data;
-    if (data.containsKey('screen')) {
-      _logger.info('Navigating to: ${data['screen']}');
+        // Listen for token refreshes
+        fcm.onTokenRefresh.listen((newToken) async {
+          _logger.info('FCM token refreshed');
+          _currentToken = newToken;
+          await AppwritePushService.instance.registerToken(newToken);
+        });
 
-      // Use the global navigator key to navigate
-      final context = navigatorKey.currentContext;
-      if (context != null) {
-        final screen = data['screen'] as String;
-        context.go(screen.startsWith('/') ? screen : '/$screen');
+        // Listen for foreground FCM messages
+        FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+          _logger.info('Foreground FCM message received: ${message.messageId}');
+          final notification = message.notification;
+          final data = message.data;
+          final title = notification?.title ?? (data['title'] as String?) ?? 'ALIVE Nigeria';
+          final body = notification?.body ?? (data['body'] as String?) ?? '';
+          showNotification(
+            id: message.hashCode,
+            title: title,
+            body: body,
+            payload: jsonEncode(data),
+          );
+        });
+
+        // Listen for notification open events from background
+        FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+          _logger.info('Notification tapped in background: ${message.messageId}');
+          handleMessageOpenedApp(message.data);
+        });
+
+        // Check if launched from terminated state via notification click
+        final initialMessage = await fcm.getInitialMessage();
+        if (initialMessage != null) {
+          _logger.info('Launched from terminated state by push notification: ${initialMessage.messageId}');
+          handleMessageOpenedApp(initialMessage.data);
+        }
+
+        return targetId;
       } else {
-        _logger.warning(
-            'Navigation context not available for direct screen navigation');
+        _logger.warning('FCM getToken returned null or empty');
+        return null;
       }
+    } catch (e) {
+      _logger.error('Failed to register push token with Appwrite via FCM', e);
+      return null;
+    }
+  }
+
+  // --- Foreground / background message handling (Appwrite push payloads) ---
+
+  void handleForegroundMessage(Map<String, dynamic> data) {
+    _logger.info('Received foreground push: ${data.keys.toList()}');
+    final title = data['title'] as String? ?? 'ALIVE Nigeria';
+    final body = data['body'] as String? ?? '';
+    showNotification(
+      id: data.hashCode,
+      title: title,
+      body: body,
+      payload: jsonEncode(data),
+    );
+  }
+
+  // Show a local notification immediately
+  Future<void> showNotification({
+    required int id,
+    required String title,
+    required String body,
+    String? payload,
+    String channelId = 'default',
+  }) async {
+    const androidDetails = AndroidNotificationDetails(
+      'default',
+      'Default',
+      channelDescription: 'Default notification channel',
+      importance: Importance.high,
+      priority: Priority.high,
+    );
+
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    const details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    await _localNotifications.show(
+      id,
+      title,
+      body,
+      details,
+      payload: payload,
+    );
+  }
+
+  /// Called by the host (main.dart) when an Appwrite push arrives in background.
+  static Future<void> handleBackgroundMessage(
+    Map<String, dynamic> data,
+  ) async {
+    // Background pushes are displayed by the system tray on Android /
+    // Notification Service on iOS. No additional handling needed here.
     }
 
-    // Handle navigation based on notification data
-    _navigateFromNotification(message.data);
+  void handleMessageOpenedApp(Map<String, dynamic> data) {
+    _logger.info('Notification opened: ${data.keys.toList()}');
+    // Navigate based on the data payload — check route first, otherwise check type/id
+    final route = data['route'] as String?;
+    if (route != null && navigatorKey.currentState != null) {
+      navigatorKey.currentState!.context.go(route);
+    } else {
+      _navigateFromNotification(data);
+    }
   }
 
   // Handle local notification tap with custom logic
@@ -270,7 +385,7 @@ class NotificationService extends FirebaseMessagingBase {
       iOS: iosDetails,
     );
 
-    await FirebaseMessagingBase.localNotifications.zonedSchedule(
+    await _localNotifications.zonedSchedule(
       id,
       title,
       body,
@@ -376,18 +491,17 @@ class NotificationService extends FirebaseMessagingBase {
 
   // Cancel notification
   Future<void> cancelNotification(int id) async {
-    await FirebaseMessagingBase.localNotifications.cancel(id);
+    await _localNotifications.cancel(id);
   }
 
   // Cancel all notifications
   Future<void> cancelAllNotifications() async {
-    await FirebaseMessagingBase.localNotifications.cancelAll();
+    await _localNotifications.cancelAll();
   }
 
   // Get pending notifications
   Future<List<PendingNotificationRequest>> getPendingNotifications() async {
-    return await FirebaseMessagingBase.localNotifications
-        .pendingNotificationRequests();
+    return await _localNotifications.pendingNotificationRequests();
   }
 
   // Update notification settings
@@ -585,13 +699,13 @@ class NotificationService extends FirebaseMessagingBase {
     }
   }
 
-  // Get FCM token
-  String? get fcmToken => FirebaseMessagingBase.fcmToken;
+  // Get push token
+  String? get pushToken => _currentToken;
 
   // Check if notifications are enabled
   Future<bool> areNotificationsEnabled() async {
     // Try Android-specific implementation first
-    final androidImplementation = FirebaseMessagingBase.localNotifications
+    final androidImplementation = _localNotifications
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
     if (androidImplementation != null) {
@@ -599,7 +713,7 @@ class NotificationService extends FirebaseMessagingBase {
     }
 
     // Fallback to iOS-specific implementation
-    final iosImplementation = FirebaseMessagingBase.localNotifications
+    final iosImplementation = _localNotifications
         .resolvePlatformSpecificImplementation<
             IOSFlutterLocalNotificationsPlugin>();
     if (iosImplementation != null) {
@@ -623,7 +737,7 @@ class NotificationService extends FirebaseMessagingBase {
 
   // Request notification permissions
   Future<bool> requestPermissions() async {
-    return await FirebaseMessagingBase.requestNotificationPermissions();
+    return await _requestPermissions();
   }
 }
 

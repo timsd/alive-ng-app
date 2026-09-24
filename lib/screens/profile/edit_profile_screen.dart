@@ -9,7 +9,7 @@ import '../../utils/responsive_utils.dart';
 import '../../utils/layout_fix_utils.dart';
 import '../../services/appwrite_storage_service.dart';
 import '../../services/appwrite_profile_service.dart';
-import '../../services/auth_service.dart';
+import '../../providers/appwrite_auth_provider.dart';
 import '../../utils/toast_utils.dart';
 import '../../widgets/custom_image.dart';
 import '../../widgets/profile_page_cues.dart';
@@ -178,10 +178,18 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         updatedAt: DateTime.now(),
       );
 
-      // Save updated profile to database
-      await AuthService.instance.updateUserProfile(updatedProfile);
+      // Save updated profile to database via AppwriteProfileService
+      final profileService = ref.read(appwriteProfileServiceProvider);
+      await profileService.updateUserProfile(
+        userId: updatedProfile.id,
+        profileData: profileService.userProfileToAppwriteData(updatedProfile),
+      );
+
+      // Invalidate current user profile provider so all screens reflect updates
+      ref.invalidate(currentUserProfileProvider);
 
       if (mounted) {
+        setState(() => _hasChanges = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Profile updated successfully!'),
@@ -791,18 +799,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         setState(() => _isUploadingPicture = true);
 
         try {
-          final authService = AuthService.instance;
-          final user = authService.currentUser;
-
-          if (user == null) {
-            ToastUtils.showError('User not authenticated');
-            return;
-          }
+          final userId = widget.userProfile.id;
 
           // Generate unique filename
           final timestamp = DateTime.now().millisecondsSinceEpoch;
           final extension = file.extension ?? 'jpg';
-          final fileName = 'profile_${user.uid}_$timestamp.$extension';
+          final fileName = 'profile_${userId}_$timestamp.$extension';
           final contentType = switch (extension.toLowerCase()) {
             'png' => 'image/png',
             'webp' => 'image/webp',

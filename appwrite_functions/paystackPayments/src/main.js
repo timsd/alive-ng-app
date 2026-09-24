@@ -1,4 +1,4 @@
-import { Client, Databases, ID, Query } from 'node-appwrite';
+﻿import { Client, Databases, ID, Query } from 'node-appwrite';
 
 const databaseId = process.env.APPWRITE_DATABASE_ID || '6a089307002e54291a32';
 const paymentLogsCollectionId = process.env.APPWRITE_PAYMENT_LOGS_COLLECTION_ID || 'payment_logs';
@@ -14,12 +14,27 @@ const appSettingsCollectionId =
 //   web/donation.html                        -> FALLBACK_RATE
 const FALLBACK_USD_TO_NGN = Number(process.env.USD_TO_NGN_RATE || 1380);
 
-const MIN_VALID_RATE = 100;
-const MAX_VALID_RATE = 100000;
+const MIN_VALID_RATE = 500;   // outer sanity floor (USD->NGN)
+const MAX_VALID_RATE = 5000;  // outer sanity ceiling (USD->NGN)
+const MAX_DEVIATION = 0.30;   // ±30% of the trusted reference rate
 
-function isValidRate(value) {
+// Two-stage guard against API errors over-charging donors:
+//   1. Hard bounds reject obviously broken values (inverted
+//      rates like 50, or spikes like 50 000).
+//   2. A ±30% deviation band around the trusted fallback rejects
+//      anything further afield than ~â‚¦966 / â‚¦1 794 today.
+// The deviation band is intentionally wider than 20% because the
+// Naira is volatile â€” the 2023 float crisis still stayed under
+// â‚¦2 000. If a legitimate rate is ever rejected, widen this
+// band or refresh USD_TO_NGN_RATE rather than removing the check.
+function isValidRate(value, referenceRate = FALLBACK_USD_TO_NGN) {
   const n = Number(value);
-  return Number.isFinite(n) && n > MIN_VALID_RATE && n < MAX_VALID_RATE;
+  if (!Number.isFinite(n) || n < MIN_VALID_RATE || n > MAX_VALID_RATE) {
+    return false;
+  }
+  const min = referenceRate * (1 - MAX_DEVIATION);
+  const max = referenceRate * (1 + MAX_DEVIATION);
+  return n >= min && n <= max;
 }
 
 async function fetchJsonWithTimeout(url, { timeoutMs = 7000, headers } = {}) {
@@ -40,7 +55,7 @@ async function fetchJsonWithTimeout(url, { timeoutMs = 7000, headers } = {}) {
 // to maintain, so the rate a donor is quoted is the live market rate at
 // checkout time rather than a number somebody has to remember to update.
 //
-// NOTE: `api.frankfurter.app` was removed deliberately — it serves the ECB
+// NOTE: `api.frankfurter.app` was removed deliberately â€” it serves the ECB
 // reference set, which does not include the Naira, so it always answered 404
 // and just delayed the next provider.
 const FX_PROVIDERS = [
@@ -65,7 +80,7 @@ async function getLiveUsdToNgnRate() {
   for (const provider of FX_PROVIDERS) {
     const json = await fetchJsonWithTimeout(provider.url);
     const rate = provider.pick(json);
-    if (isValidRate(rate)) {
+    if (isValidRate(rate, FALLBACK_USD_TO_NGN)) {
       return { rate: Number(rate), source: provider.name };
     }
   }
@@ -77,12 +92,12 @@ async function getLiveUsdToNgnRate() {
 //
 // Priority is deliberately "live first": the quoted rate is the market rate at
 // checkout time, so nobody has to keep a constant up to date.
-//   1. Admin pin  — only when USD_TO_NGN_PIN_RATE=true is set explicitly.
+//   1. Admin pin  â€” only when USD_TO_NGN_PIN_RATE=true is set explicitly.
 //   2. Live market rate (free key-less providers, see FX_PROVIDERS).
-//   3. Appwrite `app_settings` row — last known good rate the admin owns,
+//   3. Appwrite `app_settings` row â€” last known good rate the admin owns,
 //      updatable without redeploying the function.
 //   4. USD_TO_NGN_RATE env value, if configured.
-//   5. FALLBACK_USD_TO_NGN — last resort only, so checkout never blocks.
+//   5. FALLBACK_USD_TO_NGN â€” last resort only, so checkout never blocks.
 async function getConfiguredUsdToNgnRate(log) {
   const envRate = Number(process.env.USD_TO_NGN_RATE);
   const pinned =
@@ -156,8 +171,8 @@ export default async ({ req, res, log, error }) => {
 
     const action = body.action || 'initialize_transaction';
 
-    // ── Public rate lookup (no Paystack call). Lets web + Flutter show a
-    // ── live "$1 ≈ ₦X" label from the market rate instead of a constant. ──
+    // â”€â”€ Public rate lookup (no Paystack call). Lets web + Flutter show a
+    // â”€â”€ live "$1 â‰ˆ â‚¦X" label from the market rate instead of a constant. â”€â”€
     if (action === 'get_exchange_rate') {
       const { rate, source } = await getConfiguredUsdToNgnRate(log);
       return res.json({
@@ -169,7 +184,7 @@ export default async ({ req, res, log, error }) => {
       });
     }
 
-    // ── Direct verification flow (from client return or webhook fallback) ──
+    // â”€â”€ Direct verification flow (from client return or webhook fallback) â”€â”€
     if (action === 'verify_transaction') {
       const ref = body.reference || body.trxref;
       if (!ref) {
@@ -261,7 +276,7 @@ export default async ({ req, res, log, error }) => {
     });
     let json = await paystackResponse.json();
 
-    // ── Channel rejection recovery ──────────────────────────────────────────
+    // â”€â”€ Channel rejection recovery â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // Paystack fails the WHOLE initialization when `channels` contains one it
     // cannot use for this account/currency (e.g. "mobile_money is not a valid
     // channel" / "channel_not_supported"). The web donation page never sends
@@ -296,7 +311,7 @@ export default async ({ req, res, log, error }) => {
     // If Paystack rejects USD (unsupported_currency), fallback seamlessly to NGN conversion
     if (!json?.status && (payload.currency === 'USD' || (json?.message && json.message.toLowerCase().includes('currency')))) {
       // Prefer a client-supplied fresh rate, else resolve live on the server
-      // so the donor is billed at the current market rate — never stale.
+      // so the donor is billed at the current market rate â€” never stale.
       // Web sends `exchange_rate`, the Flutter app sends
       // `exchange_rate_usd_ngn`; accept either.
       const clientRate = Number(
@@ -311,7 +326,7 @@ export default async ({ req, res, log, error }) => {
       }
       const usdAmount = (payload.amount || 0) / 100;
       const ngnAmountMinor = Math.round(usdAmount * exchangeRate * 100);
-      log(`Paystack rejected USD currency. Converting $${usdAmount} USD to ₦${ngnAmountMinor / 100} NGN at rate ${exchangeRate} (${rateSource})`);
+      log(`Paystack rejected USD currency. Converting $${usdAmount} USD to â‚¦${ngnAmountMinor / 100} NGN at rate ${exchangeRate} (${rateSource})`);
       payload.currency = 'NGN';
       payload.amount = ngnAmountMinor;
       payload.metadata = {
@@ -542,3 +557,6 @@ async function handleVerifiedPayment(paystackData, log) {
     if (log) log(`handleVerifiedPayment error: ${err.message}`);
   }
 }
+
+
+

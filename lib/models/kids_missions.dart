@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class Mission {
   final String id;
   final String title;
@@ -48,7 +50,7 @@ class Mission {
         (e) => e.name == json['category'],
       ),
       completed: json['completed'] as bool,
-      instructions: List<String>.from(json['instructions'] as List),
+            instructions: _instructionsFromJson(json['instructions']),
       verificationMethod: VerificationMethod.values.firstWhere(
         (e) => e.name == json['verificationMethod'],
       ),
@@ -79,6 +81,32 @@ class Mission {
       'unlockedBy': unlockedBy,
       'mediaUrl': mediaUrl,
     };
+    }
+
+  /// Decodes the `instructions` field, which Appwrite stores as a JSON-encoded
+  /// string (e.g. '["1","2"]'). Without this decode the entire
+  /// array was rendered as a single step, which is why you saw the
+  /// `[",", ...]` blob. This helper splits it back into a proper, ordered
+  /// list of steps. It also tolerates an already-decoded list (from local
+  /// sources) and degrades gracefully on anything unparseable.
+  static List<String> _instructionsFromJson(dynamic raw) {
+    if (raw == null) return const <String>[];
+    if (raw is List) return List<String>.from(raw);
+    if (raw is String) {
+      final trimmed = raw.trim();
+      if (trimmed.isEmpty) return const <String>[];
+      // The stored value is a JSON array string like ["a","b"].
+      try {
+        final decoded = jsonDecode(trimmed);
+        if (decoded is List) {
+          return List<String>.from(decoded).whereType<String>().toList();
+        }
+      } catch (_) {
+        // Not valid JSON — fall through and keep the whole string.
+      }
+      return <String>[trimmed];
+    }
+    return const <String>[];
   }
 
   Mission copyWith({

@@ -162,7 +162,7 @@ class _ProfileCompletionScreenState
         decoration: _decoration(label, icon),
       );
 
-  /// Marks setup as handled for this account and moves on to the main app.
+        /// Marks setup as handled for this account and moves on to the main app.
   Future<void> _skipProfileSetup() async {
     try {
       final user = ref.read(appwriteUserStreamProvider).value;
@@ -174,6 +174,110 @@ class _ProfileCompletionScreenState
       debugPrint('Could not record skipped profile setup: $e');
     }
     if (mounted) context.go('/home');
+  }
+
+  // Pre-fill fields from any existing profile data so returning users (e.g.
+  // after Google sign-in with partial data) don't see a blank form.
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadExistingProfile();
+    });
+  }
+
+  Future<void> _loadExistingProfile() async {
+    final user = ref.read(appwriteUserStreamProvider).value;
+    if (user == null) return;
+    final profileService = ref.read(appwriteProfileServiceProvider);
+    UserProfile? profile;
+    try {
+      profile = await profileService.getUserProfileModel(user.uid);
+    } catch (e) {
+      debugPrint('ProfileCompletion: could not load existing profile: $e');
+    }
+    if (profile == null || !mounted) return;
+    if (_phoneController.text.isEmpty) {
+      _phoneController.text = profile.phoneNumber ?? '';
+    }
+    if (_locationController.text.isEmpty) {
+      _locationController.text = profile.location ?? '';
+    }
+    if (_localChurchController.text.isEmpty) {
+      _localChurchController.text = profile.localChurch ?? '';
+    }
+    if (_chapterController.text.isEmpty) {
+      _chapterController.text = profile.localChapter ?? '';
+    }
+    if (_occupationController.text.isEmpty) {
+      _occupationController.text = profile.occupation ?? '';
+    }
+    if (_skillsController.text.isEmpty) {
+      _skillsController.text = profile.skills ?? '';
+    }
+    if (profile.commitmentType != null &&
+        ['financial', 'active_availability', 'both'].contains(profile.commitmentType)) {
+      _commitmentType = profile.commitmentType!;
+    }
+    if (_financialController.text.isEmpty &&
+        profile.financialCommitment != null) {
+      _financialController.text = profile.financialCommitment!.toStringAsFixed(0);
+    }
+    if (_availabilityController.text.isEmpty) {
+      _availabilityController.text = profile.availabilityCommitment ?? '';
+    }
+    if (mounted) setState(() {});
+  }
+
+  /// Auto-advances to the next step once the current step's required fields are
+  /// filled, or saves on the final step. Shows a hint if required fields are
+  /// empty so the flow can never be completed with blank required sections.
+    void _advanceOrSave() {
+    if (!mounted) return;
+    final steps = _buildSteps(context);
+    final isLastStep = _currentStep == steps.length - 1;
+    final currentValid = _isStepComplete(_currentStep);
+    if (isLastStep) {
+      _saveProfile();
+    } else if (currentValid) {
+      setState(() => _currentStep++);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_nextRequiredField(_currentStep)),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
+  }
+
+  /// Fields each step is considered "complete" for auto-advance. Steps 0–2 are
+  /// the required-data steps; step 3 (Commitment) is always valid to advance.
+  bool _isStepComplete(int step) {
+    if (step >= 3) return true;
+    switch (step) {
+      case 0:
+        return _phoneController.text.trim().isNotEmpty;
+      case 1:
+        return _localChurchController.text.trim().isNotEmpty ||
+            _chapterController.text.trim().isNotEmpty;
+      case 2:
+        return _occupationController.text.trim().isNotEmpty;
+    }
+    return false;
+  }
+
+  String _nextRequiredField(int step) {
+    switch (step) {
+      case 0:
+        return 'Please enter a phone number to continue.';
+      case 1:
+        return 'Please enter a local church or chapter to continue.';
+      case 2:
+        return 'Please enter your occupation to continue.';
+      default:
+        return 'Complete the required fields to continue.';
+    }
   }
 
   Future<void> _saveProfile() async {
@@ -319,16 +423,8 @@ class _ProfileCompletionScreenState
                   padding: const EdgeInsets.only(top: 20),
                   child: Row(
                     children: [
-                      FilledButton(
-                        onPressed: _isSaving
-                            ? null
-                            : () async {
-                                if (isLastStep) {
-                                  await _saveProfile();
-                                } else {
-                                  setState(() => _currentStep++);
-                                }
-                              },
+                                            FilledButton(
+                        onPressed: _isSaving ? null : _advanceOrSave,
                         child: _isSaving
                             ? const SizedBox(
                                 width: 18,
