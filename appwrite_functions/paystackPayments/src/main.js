@@ -1,4 +1,4 @@
-﻿import { Client, Databases, ID, Query } from 'node-appwrite';
+import { Client, Databases, ID, Query } from 'node-appwrite';
 
 const databaseId = process.env.APPWRITE_DATABASE_ID || '6a089307002e54291a32';
 const paymentLogsCollectionId = process.env.APPWRITE_PAYMENT_LOGS_COLLECTION_ID || 'payment_logs';
