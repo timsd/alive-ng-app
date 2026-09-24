@@ -5,9 +5,7 @@ import '../constants/bible_verses.dart' as verse_data;
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';
 import '../models/app_models.dart' show DailyVerse;
-import 'offline_bible_service.dart';
 import 'bible_source.dart';
-import '../constants/bible_data.dart';
 import '../utils/logger.dart';
 import 'daily_verse_repository.dart';
 
@@ -31,7 +29,6 @@ class DailyVerseGenerationService {
 
   final Logger _logger = Logger('DailyVerseGenerationService');
   final DailyVerseRepository _repo;
-  final OfflineBibleService _offlineBible = OfflineBibleService();
   final TablesDB _tables = TablesDB(appwriteClient);
 
   /// Initialize the verse generation system

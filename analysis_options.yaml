@@ -30,3 +30,4 @@ analyzer:
   exclude:
     - lib/**.g.dart
     - oldfirebasedelete/**
+    - tool/**
