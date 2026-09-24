@@ -343,10 +343,26 @@ class NotificationService {
         context.go('/prayer');
         _logger.info('Navigated to prayer screen');
         break;
-      case 'mission_reminder':
+                        case 'mission_reminder':
         // Navigate to missions screen
         context.go('/missions');
         _logger.info('Navigated to missions screen');
+        break;
+      case 'meeting_started':
+        // Navigate to the LiveKit meeting room when the host starts a meeting.
+        final meetingId = id ?? data['roomName'] ?? data['room'];
+        if (meetingId != null && meetingId.toString().isNotEmpty) {
+          context.go('/meet/$meetingId');
+          _logger.info('Navigated to meeting: $meetingId');
+        } else {
+          context.go('/home');
+          _logger.info('No meeting id in notification; navigated to home');
+        }
+        break;
+      case 'board_decision':
+        // Navigate to the board decisions list for admins/BOD.
+        context.go('/admin/board-decisions');
+        _logger.info('Navigated to board decisions');
         break;
       default:
         // Navigate to home

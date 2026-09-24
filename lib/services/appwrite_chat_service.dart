@@ -236,8 +236,8 @@ class AppwriteChatService extends ChangeNotifier {
       if (user == null) throw AuthException('User not authenticated');
 
       final now = DateTime.now().toIso8601String();
-      final allMembers = <String>{user.$id, ...members}.toList();
-      final allAdmins = <String>{user.$id, ...admins}.toList();
+      final allMembers = <String>{user.uid, ...members}.toList();
+      final allAdmins = <String>{user.uid, ...admins}.toList();
 
       final row = await _tables.createRow(
         databaseId: databaseId,

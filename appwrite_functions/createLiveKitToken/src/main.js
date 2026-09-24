@@ -60,13 +60,14 @@ export default async ({ req, res, log, error }) => {
   if (req.method !== 'POST') return res.json({ error: 'Method not allowed. Use POST.' }, 405);
 
   try {
-    const authenticatedUserId = req.headers['x-appwrite-user-id'];
+    const isInternal = Boolean(req.headers['x-appwrite-key']);
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+    const authenticatedUserId = req.headers['x-appwrite-user-id'] || (isInternal ? body.identity : null);
     const { roomName, participantName, identity, meetingType = 'general', notifyMembers = false } = body;
 
     if (!authenticatedUserId) return res.json({ error: 'Authentication is required.' }, 401);
     if (!roomName || !identity) return res.json({ error: 'Invalid ALIVE Meet request.' }, 400);
-    if (identity !== authenticatedUserId) return res.json({ error: 'Cannot create a token for another user.' }, 403);
+    if (identity !== authenticatedUserId && !isInternal) return res.json({ error: 'Cannot create a token for another user.' }, 403);
 
     const targetRoom = String(roomName).trim();
     const policy = roomPolicies[meetingType] || roomPolicies.custom;

@@ -251,7 +251,7 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
   }
 
   void flipCardWithDeduction() {
-    if (state.score < 2 || state.hasCheckedAnswer) return;
+    if (state.hasCheckedAnswer) return;
     deductPoints(2);
     state = state.copyWith(hasCheckedAnswer: true, showAnswer: true);
   }
@@ -817,15 +817,13 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
           final transcript = result.recognizedWords.trim();
           if (transcript.isEmpty) return;
 
-          // Only update when final to avoid duplicate partial results
-          if (result.finalResult) {
-            ref.read(bibleGameProvider.notifier).updateUserInput(transcript);
-            _textController.value = TextEditingValue(
-              text: transcript,
-              selection: TextSelection.collapsed(offset: transcript.length),
-            );
-            ref.read(bibleGameProvider.notifier).checkPartialMatch(transcript);
-          }
+          // Always update live recognized words so user sees real-time transcription
+          ref.read(bibleGameProvider.notifier).updateUserInput(transcript);
+          _textController.value = TextEditingValue(
+            text: transcript,
+            selection: TextSelection.collapsed(offset: transcript.length),
+          );
+          ref.read(bibleGameProvider.notifier).checkPartialMatch(transcript);
 
           final gameState = ref.read(bibleGameProvider);
           if (gameState.showStarAnimation) {
@@ -1179,7 +1177,7 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
         return FadeTransition(opacity: animation, child: child);
       },
       child: gameState.hasCheckedAnswer
-          ? _buildVerseBackCard_REAL(gameState)
+          ? _buildVerseBackCardReal(gameState)
           : _buildVersePromptCard(gameState),
     );
   }
@@ -1369,7 +1367,7 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
     );
   }
 
-  Widget _buildVerseBackCard_REAL(BibleGameState gameState) {
+  Widget _buildVerseBackCardReal(BibleGameState gameState) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
