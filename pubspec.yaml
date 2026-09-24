@@ -124,9 +124,5 @@ flutter:
     - assets/icons/
     - assets/data/
     - assets/bible/
-    - assets/bible/en/NLT/
-    - assets/bible_bundles/en/
-    - assets/bible_bundles/ha/
-    - assets/bible_bundles/ig/
-    - assets/bible_bundles/yo/
+
 

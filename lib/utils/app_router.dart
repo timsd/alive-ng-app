@@ -19,7 +19,6 @@ import '../screens/about/about_app_screen.dart';
 import '../screens/about/about_alive_screen.dart';
 import '../screens/admin/admin_dashboard_screen.dart';
 import '../screens/admin/content_management_screen.dart';
-import '../screens/admin/kids_content_admin_screen.dart';
 import '../screens/admin/admin_kids_stories_screen.dart';
 import '../screens/admin/admin_kids_missions_screen.dart';
 import '../screens/admin/admin_study_guides_screen.dart';
@@ -671,17 +670,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
 
-      GoRoute(
-        path: AppConstants.kidsContentAdminRoute,
-        builder: (context, state) => const KidsContentAdminScreen(),
-        redirect: (context, state) {
-          final roleService = RoleAccessService.instance;
-          if (!roleService.canAccessAdmin()) {
-            return '/home';
-          }
-          return null;
-        },
-      ),
       GoRoute(
         path: AppConstants.adminKidsStoriesRoute,
         builder: (context, state) => const AdminKidsStoriesScreen(),

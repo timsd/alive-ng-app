@@ -34,8 +34,6 @@ class AppConstants {
   static const String studyGuideRoute = '/study-guide';
   static const String tractPodcastAdminRoute = '/tract-podcast-admin';
   static const String meetingFileSharingRoute = '/meeting-file-sharing';
-  // New Kids Content Admin route
-  static const String kidsContentAdminRoute = '/kids-content-admin';
   static const String adminKidsStoriesRoute = '/admin-kids-stories';
   static const String adminKidsMissionsRoute = '/admin-kids-missions';
   static const String adminStudyGuidesRoute = '/admin-study-guides';

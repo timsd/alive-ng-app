@@ -29,6 +29,39 @@ class SearchUtils {
       .where((t) => t.isNotEmpty && (t.length > 1 || _digits.hasMatch(t)))
       .toList();
 
+  /// Stem English words for biblical search (inflections like kill/killed, die/died/dead, weep/wept).
+  static String stem(String word) {
+    if (word.length <= 2) return word;
+    final lower = word.toLowerCase();
+    // Common biblical irregulars
+    if (lower == 'died' || lower == 'dead' || lower == 'dying') return 'die';
+    if (lower == 'wept' || lower == 'weeping' || lower == 'weeps') return 'weep';
+    if (lower == 'killed' || lower == 'killing' || lower == 'kills') return 'kill';
+    if (lower == 'rose' || lower == 'risen' || lower == 'rising') return 'rise';
+    if (lower == 'spoke' || lower == 'spoken' || lower == 'speaking') return 'speak';
+    if (lower == 'came' || lower == 'coming') return 'come';
+    if (lower == 'went' || lower == 'gone' || lower == 'going') return 'go';
+    if (lower == 'saw' || lower == 'seen' || lower == 'seeing') return 'see';
+    if (lower == 'knew' || lower == 'known' || lower == 'knowing') return 'know';
+
+    if (lower.endsWith('ies') && lower.length > 4) {
+      return '${lower.substring(0, lower.length - 3)}y';
+    }
+    if (lower.endsWith('ing') && lower.length > 5) {
+      return lower.substring(0, lower.length - 3);
+    }
+    if (lower.endsWith('ed') && lower.length > 4) {
+      return lower.substring(0, lower.length - 2);
+    }
+    if (lower.endsWith('es') && lower.length > 4) {
+      return lower.substring(0, lower.length - 2);
+    }
+    if (lower.endsWith('s') && !lower.endsWith('ss') && lower.length > 3) {
+      return lower.substring(0, lower.length - 1);
+    }
+    return lower;
+  }
+
   static bool containsWord(String normalizedHaystack, String token) =>
       RegExp('\\b${RegExp.escape(token)}\\b').hasMatch(normalizedHaystack);
 
@@ -49,9 +82,9 @@ class SearchUtils {
 
     // Direct reference match, e.g. query "john 3" vs reference "john 3 16".
     if (refNorm.startsWith(phrase)) {
-      score += 1000;
+      score += 5000;
     } else if (refNorm.contains(phrase)) {
-      score += 500;
+      score += 2500;
     }
 
     // Canonical reference match check using BibleData
@@ -74,20 +107,20 @@ class SearchUtils {
             if (refChapter == queryChapter &&
                 parsedQuery['startVerse'] <= refEndVerse &&
                 parsedQuery['endVerse'] >= refStartVerse) {
-              score += 5000;
+              score += 10000;
             } else if (refChapter == queryChapter) {
-              score += 1200;
+              score += 3000;
             } else {
-              score += 200;
+              score += 500;
             }
           } else if (hasChapter) {
             if (refChapter == queryChapter) {
-              score += 3000;
+              score += 6000;
             } else {
-              score += 400;
+              score += 1000;
             }
           } else {
-            score += 2000;
+            score += 4000;
           }
         }
       }
@@ -101,38 +134,51 @@ class SearchUtils {
       }
     }
     if (tokens.isNotEmpty && refHits == tokens.length) {
-      score += 400;
+      score += 1000;
     } else if (refHits > 0) {
-      score += refHits * 30;
+      score += refHits * 100;
     }
 
-    // Exact phrase in the verse text ("jesus wept").
+    // Exact phrase in the verse text (e.g. "jesus wept").
     final phraseIndex = textNorm.indexOf(phrase);
     if (phraseIndex >= 0 && phrase.contains(' ')) {
-      score += 300 + (1000 ~/ (phraseIndex + 10));
+      score += 8000 + (1000 ~/ (phraseIndex + 10));
     } else if (phraseIndex >= 0) {
-      score += 150;
+      score += 1500;
     }
 
     if (tokens.isNotEmpty) {
       var hits = 0;
+      var exactHits = 0;
       var firstPos = -1;
       for (final t in tokens) {
-        final m = RegExp('\\b${RegExp.escape(t)}\\b').firstMatch(textNorm);
-        if (m != null) {
+        final st = stem(t);
+        final exactMatch = RegExp('\\b${RegExp.escape(t)}\\b').firstMatch(textNorm);
+        final stemMatch = st != t ? RegExp('\\b${RegExp.escape(st)}[a-z]*\\b').firstMatch(textNorm) : null;
+        final substrMatch = textNorm.contains(t) || (st != t && textNorm.contains(st));
+
+        if (exactMatch != null) {
           hits++;
-          if (firstPos < 0) firstPos = m.start;
-        } else if (textNorm.contains(t)) {
+          exactHits++;
+          score += 200;
+          if (firstPos < 0 || exactMatch.start < firstPos) firstPos = exactMatch.start;
+        } else if (stemMatch != null) {
           hits++;
+          score += 150;
+          if (firstPos < 0 || stemMatch.start < firstPos) firstPos = stemMatch.start;
+        } else if (substrMatch) {
+          hits++;
+          score += 80;
         }
       }
+
       if (hits == tokens.length && tokens.length > 1) {
-        // AND match: every word present.
-        score += 200 + hits * 10;
+        // AND match: ALL query words present in the verse!
+        score += 3000 + (exactHits == tokens.length ? 1000 : 0);
       } else if (hits > 0) {
-        score += hits * 10;
+        score += hits * 50;
       }
-      if (firstPos > 0) score += 500 ~/ (firstPos + 50);
+      if (firstPos >= 0) score += 500 ~/ (firstPos + 50);
     }
 
     return score;
@@ -175,18 +221,26 @@ class SearchUtils {
     return [...exact, ...allWords, ...anyWord];
   }
 
-  /// Builds text spans with every query token highlighted.
+  /// Builds text spans with every query token and stem highlighted.
   static List<TextSpan> highlightSpans(
     String text,
     String query,
     TextStyle normal,
     TextStyle highlight,
   ) {
-    final tokens =
+    final rawTokens =
         tokensOf(query).where((t) => t.length >= 2).toList();
-    if (tokens.isEmpty) return [TextSpan(text: text, style: normal)];
+    if (rawTokens.isEmpty) return [TextSpan(text: text, style: normal)];
+
+    final matchTerms = <String>{};
+    for (final t in rawTokens) {
+      matchTerms.add(t);
+      final st = stem(t);
+      if (st.length >= 3) matchTerms.add(st);
+    }
+
     final pattern = RegExp(
-      '(${tokens.map(RegExp.escape).join('|')})',
+      '(${matchTerms.map(RegExp.escape).join('|')})',
       caseSensitive: false,
     );
     final spans = <TextSpan>[];

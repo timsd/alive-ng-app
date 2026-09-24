@@ -806,6 +806,9 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
   }
 
   void _startListening() async {
+    if (!_speechReady || !_speechEnabled) {
+      _initializeSpeech();
+    }
     if (_speechEnabled && _speechReady) {
       ref.read(bibleGameProvider.notifier).resetVoicePrompt();
       ref.read(bibleGameProvider.notifier).setListening(true);
@@ -1194,7 +1197,7 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
       child: Container(
         key: const ValueKey('prompt'),
         width: double.infinity,
-        height: 200,
+        constraints: const BoxConstraints(minHeight: 200),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
@@ -1844,7 +1847,11 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      isListening ? 'Listening… Tap to stop' : 'Tap to start recording',
+                      isListening
+                          ? 'Listening… Tap to stop'
+                          : (_speechEnabled
+                              ? 'Tap to start recording'
+                              : 'Initializing speech recognition…'),
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: isListening ? cs.error : cs.onSurfaceVariant,
                             fontWeight: FontWeight.w500,
@@ -1854,6 +1861,20 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
                 ),
               ),
             ),
+            if (gameState.attemptCount >= 3 && !gameState.hasCheckedAnswer) ...[
+              const SizedBox(height: 12),
+              ElevatedButton.icon(
+                onPressed: () => _confirmFlipCard(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green.shade600,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 12),
+                ),
+                icon: const Icon(Icons.flip_to_back),
+                label: const Text('Flip Card to Reveal (-2 pts)'),
+              ),
+            ],
             if (gameState.userInput.isNotEmpty) ...[
               const SizedBox(height: 12),
               _buildVoiceTranscriptBox(gameState),

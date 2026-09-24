@@ -10,11 +10,13 @@ import '../../widgets/custom_app_bar.dart';
 import '../../constants/chapters.dart';
 import '../../constants/app_constants.dart';
 import 'content_management_screen.dart';
+import 'admin_announcements_screen.dart';
+import 'admin_chapters_screen.dart';
+import 'chapter_reports_screen.dart';
+import 'app_settings_screen.dart';
 import '../../models/podcast_models.dart';
 import 'storage_admin_screen.dart';
 import 'admin_donations_report_screen.dart';
-import 'role_management_screen.dart';
-import 'board_reports_screen.dart';
 import '../../services/appwrite_admin_export_service.dart';
 import '../../services/monthly_reminder_setting_service.dart';
 import '../../utils/responsive_utils.dart';
@@ -733,7 +735,12 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                   'Announcements',
                   'Create and manage app announcements',
                   Icons.campaign_outlined,
-                  () => _navigateToContentManagement('announcements'),
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AdminAnnouncementsScreen(),
+                    ),
+                  ),
                 ),
                 _buildActionTile(
                   'Kids Stories',
@@ -775,12 +782,6 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                   'View all chapters and their statistics',
                   Icons.dashboard_outlined,
                   () => _navigateToChapterManagement(),
-                ),
-                _buildActionTile(
-                  'Coordinator Assignment',
-                  'Assign coordinators to chapters',
-                  Icons.assignment_ind_outlined,
-                  () => _navigateToCoordinatorAssignment(),
                 ),
                 _buildActionTile(
                   'Leadership Archive',
@@ -1127,17 +1128,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) =>
-            const ContentManagementScreen(contentType: 'chapters'),
-      ),
-    );
-  }
-
-  void _navigateToCoordinatorAssignment() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const RoleManagementScreen(),
+        builder: (context) => const AdminChaptersScreen(),
       ),
     );
   }
@@ -1146,7 +1137,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const BoardReportsScreen(),
+        builder: (context) => const ChapterReportsScreen(),
       ),
     );
   }
@@ -1155,8 +1146,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) =>
-            const ContentManagementScreen(contentType: 'settings'),
+        builder: (context) => const AppSettingsScreen(),
       ),
     );
   }

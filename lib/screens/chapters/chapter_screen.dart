@@ -318,7 +318,7 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
             crossAxisCount: crossAxisCount,
             crossAxisSpacing: 10,
             mainAxisSpacing: 10,
-            childAspectRatio: 2.0,
+            childAspectRatio: constraints.maxWidth > 600 ? 1.8 : 1.4,
             children: [
               _buildStatCard(
                 'Chapters',
@@ -379,6 +379,8 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
               textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),

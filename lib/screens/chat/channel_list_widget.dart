@@ -8,6 +8,7 @@ class ChannelListWidget extends StatefulWidget {
   final Function(ChatChannel) onChannelSelected;
   final VoidCallback? onRefresh;
   final Function(ChatChannel)? onChannelLongPress;
+  final VoidCallback? onCollapse;
 
   const ChannelListWidget({
     super.key,
@@ -16,6 +17,7 @@ class ChannelListWidget extends StatefulWidget {
     required this.onChannelSelected,
     this.onRefresh,
     this.onChannelLongPress,
+    this.onCollapse,
   });
 
   @override
@@ -94,18 +96,27 @@ class _ChannelListWidgetState extends State<ChannelListWidget> {
                 // Title and refresh button
                 Row(
                   children: [
+                    const Icon(Icons.tag_rounded, size: 20),
+                    const SizedBox(width: 6),
                     Text(
                       'Channels',
-                      style: theme.textTheme.titleLarge?.copyWith(
+                      style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const Spacer(),
                     if (widget.onRefresh != null)
                       IconButton(
-                        icon: const Icon(Icons.refresh),
+                        icon: const Icon(Icons.refresh, size: 20),
                         onPressed: widget.onRefresh,
                         tooltip: 'Refresh channels',
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    if (widget.onCollapse != null)
+                      IconButton(
+                        icon: const Icon(Icons.view_sidebar_rounded, size: 20),
+                        onPressed: widget.onCollapse,
+                        tooltip: 'Collapse channels',
                         visualDensity: VisualDensity.compact,
                       ),
                   ],

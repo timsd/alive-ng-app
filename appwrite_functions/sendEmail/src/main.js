@@ -1,4 +1,4 @@
-const defaultSender = 'ALIVE Nigeria <app@alivenigeria.org>';
+const defaultSender = 'ALIVE Nigeria App <msg@app.alivenigeria.org>';
 
 // Branding assets used across all outbound emails.
 // SVG renders in most clients; the text heading below acts as a fallback
@@ -17,7 +17,18 @@ export default async ({ req, res, log, error }) => {
     }
 
     const event = req.headers['x-appwrite-event'] || '';
-    const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+
+    // Robust body parsing: Appwrite runtimes may deliver req.body as a
+    // pre-parsed object, a JSON string, or (via bodyRaw) a raw string.
+    let body;
+    const raw = typeof req.bodyRaw === 'string' ? req.bodyRaw : null;
+    if (req.body !== null && typeof req.body === 'object') {
+      body = req.body;
+    } else {
+      const src = raw || (typeof req.body === 'string' ? req.body : '{}');
+      log(`[debug] body type=${typeof req.body}, raw type=${typeof req.bodyRaw}, src=${src.substring(0, 120)}`);
+      body = JSON.parse(src || '{}');
+    }
     const from = process.env.RECEIPT_SENDER_EMAIL || process.env.SENDER_EMAIL || defaultSender;
 
     // 1. Handle automatic Welcome Email on user registration / creation event

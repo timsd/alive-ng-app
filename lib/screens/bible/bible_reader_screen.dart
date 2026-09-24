@@ -45,10 +45,10 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
 
   // Search-related state
   bool _isSpeaking = false;
-  List<data_bible.BibleVerse> _searchResults = [];
   List<BibleTextHit> _fullTextResults = [];
   bool _isSearching = false;
   int _searchToken = 0;
+  Timer? _searchDebounceTimer;
   int? _selectedVerseIndex;
   Set<String> _highlightedVerses = {};
   Map<String, Color> _verseHighlightColors = {};
@@ -105,6 +105,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
   @override
   void dispose() {
     _flashTimer?.cancel();
+    _searchDebounceTimer?.cancel();
     _scrollController.dispose();
     _tabController.dispose();
     _searchController.dispose();
@@ -528,61 +529,46 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
     }
   }
 
-  void _searchVerses(String query) async {
-    final token = ++_searchToken;
+  void _searchVerses(String query, {bool immediate = false}) {
+    _searchDebounceTimer?.cancel();
     final trimmed = query.trim();
+    _refreshClearButton();
+
     if (trimmed.isEmpty) {
       setState(() {
-        _searchResults = [];
         _fullTextResults = [];
         _isSearching = false;
       });
-      _refreshClearButton();
       return;
     }
 
-    final languageCode = _languageCodes[_selectedLanguage] ?? 'en';
-
-    // Instant local corpus results — show immediately, do NOT hide behind
-    // the full-text spinner so typing never blanks the list.
-    List<data_bible.BibleVerse> instant = [];
-    try {
-      instant = BibleSource.instance.search(trimmed);
-    } catch (_) {
-      instant = [];
-    }
     setState(() {
-      _searchResults = instant;
       _isSearching = true;
     });
-    // Refresh the clear-button as the user types.
-    _refreshClearButton();
 
-    // Full ranked text search across the offline bundles for this language.
-    // "jesus wept" scores its exact phrase first (John 11:35).
+    if (immediate) {
+      _executeSearch(trimmed);
+    } else {
+      _searchDebounceTimer = Timer(const Duration(milliseconds: 250), () {
+        _executeSearch(trimmed);
+      });
+    }
+  }
+
+  Future<void> _executeSearch(String query) async {
+    final token = ++_searchToken;
+    final languageCode = _languageCodes[_selectedLanguage] ?? 'en';
+
+    // Full ranked text search across ALL bundled chapters (~31,000 verses)
+    // for the currently selected version.
     List<BibleTextHit> ranked = [];
     try {
       ranked = await _offlineBible.searchBibleText(
-        query: trimmed,
+        query: query,
         version: _selectedVersion,
         language: languageCode,
         limit: 50,
       );
-      // Fall back to KJV bundle when the selected version has no bundle yet
-      // (e.g. NLT chapters ship as per-book JSON but its zip bundle may be
-      // missing). Only do this when the raw query looks like English text.
-      if (ranked.isEmpty &&
-          languageCode == 'en' &&
-          _selectedVersion.toUpperCase() != 'KJV') {
-        try {
-          ranked = await _offlineBible.searchBibleText(
-            query: trimmed,
-            version: 'KJV',
-            language: languageCode,
-            limit: 50,
-          );
-        } catch (_) {}
-      }
     } catch (_) {
       ranked = [];
     }
@@ -1537,83 +1523,103 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                   vertical: isSmallScreen ? 8 : 12,
                 ),
               ),
-              onChanged: _searchVerses,
+              onChanged: (val) => _searchVerses(val),
               onSubmitted: (value) {
-                if (value.trim().isNotEmpty) _searchVerses(value);
+                if (value.trim().isNotEmpty) _searchVerses(value, immediate: true);
               },
             ),
           ),
         Expanded(
-          child: (_isSearching &&
-                  _searchResults.isEmpty &&
-                  _fullTextResults.isEmpty)
-              ? const Center(child: CircularProgressIndicator())
-              : (_searchResults.isEmpty && _fullTextResults.isEmpty
+          child: (_isSearching && _fullTextResults.isEmpty)
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const CircularProgressIndicator(),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Searching all ~31,000 verses in $_selectedVersion...',
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 14 : 15,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : (_fullTextResults.isEmpty
                   ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.search,
-                            size: isSmallScreen ? 48 : 64,
-                            color: colorScheme.onSurfaceVariant
-                                .withValues(alpha: 0.5),
-                          ),
-                          SizedBox(height: isSmallScreen ? 12 : 16),
-                          Text(
-                            hasSearched
-                                ? 'No verses found for "${_searchController.text.trim()}".\nTry a different keyword, phrase or version.'
-                                : 'Search for Bible verses',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: isSmallScreen ? 15 : 17,
-                              color: colorScheme.onSurfaceVariant,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.search,
+                              size: isSmallScreen ? 48 : 64,
+                              color: colorScheme.onSurfaceVariant
+                                  .withValues(alpha: 0.5),
                             ),
-                          ),
-                        ],
+                            SizedBox(height: isSmallScreen ? 12 : 16),
+                            Text(
+                              hasSearched
+                                  ? 'No verses found for "${_searchController.text.trim()}" in $_selectedVersion ($_selectedLanguage).\nTry another keyword, phrase, or reference.'
+                                  : 'Search across all ~31,000 verses in $_selectedVersion\nType a phrase (e.g. "jesus wept", "cain kill abel", "lazarus died") or reference ("John 3:16")',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: isSmallScreen ? 14 : 16,
+                                color: colorScheme.onSurfaceVariant,
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     )
                   : ListView(
                       padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
                       children: [
-                        if (_fullTextResults.isNotEmpty) ...[
-                          Text(
-                            'From $_selectedVersion · $_selectedLanguage',
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12, left: 4),
+                          child: Text(
+                            '${_fullTextResults.length} matches found in $_selectedVersion · $_selectedLanguage',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: isSmallScreen ? 14 : 15,
+                              fontSize: isSmallScreen ? 13 : 14,
                               color: colorScheme.primary,
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          ..._fullTextResults.map((hit) {
-                            final hits = SearchUtils.highlightSpans(
-                              hit.text,
-                              _searchController.text,
-                              TextStyle(
-                                color: colorScheme.onSurface,
-                                fontSize: isSmallScreen ? 14 : 15,
-                                height: 1.35,
-                              ),
-                              TextStyle(
-                                color: colorScheme.primary,
-                                fontWeight: FontWeight.bold,
-                                backgroundColor: colorScheme.primary
-                                    .withValues(alpha: 0.15),
-                              ),
-                            );
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              child: ListTile(
-                                title: Text(
-                                  hit.reference,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: isSmallScreen ? 14 : 16,
-                                    color: colorScheme.onSurface,
-                                  ),
+                        ),
+                        ..._fullTextResults.map((hit) {
+                          final hits = SearchUtils.highlightSpans(
+                            hit.text,
+                            _searchController.text,
+                            TextStyle(
+                              color: colorScheme.onSurface,
+                              fontSize: isSmallScreen ? 14 : 15,
+                              height: 1.35,
+                            ),
+                            TextStyle(
+                              color: colorScheme.primary,
+                              fontWeight: FontWeight.bold,
+                              backgroundColor: colorScheme.primary
+                                  .withValues(alpha: 0.15),
+                            ),
+                          );
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            child: ListTile(
+                              title: Text(
+                                hit.reference,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: isSmallScreen ? 14 : 16,
+                                  color: colorScheme.primary,
                                 ),
-                                subtitle: RichText(
+                              ),
+                              subtitle: Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: RichText(
                                   text: TextSpan(
                                     style: TextStyle(
                                       color: colorScheme.onSurface,
@@ -1622,55 +1628,19 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                                     ),
                                     children: hits,
                                   ),
-                                  maxLines: 3,
+                                  maxLines: 4,
                                   overflow: TextOverflow.ellipsis,
                                   softWrap: true,
                                 ),
-                                onTap: () {
-                                  _openReference(hit.reference);
-                                },
                               ),
-                            );
-                          }),
-                          const SizedBox(height: 8),
-                          if (_searchResults.isNotEmpty)
-                            Text(
-                              'More matches',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: isSmallScreen ? 14 : 15,
-                                color: colorScheme.primary,
-                              ),
-                            ),
-                        ],
-                        ..._searchResults
-                            .where((verse) => !_fullTextResults.any(
-                                (h) => h.reference == verse.reference))
-                            .map((verse) {
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            child: ListTile(
-                              title: Text(
-                                verse.reference,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: isSmallScreen ? 14 : 16,
-                                  color: colorScheme.onSurface,
-                                ),
-                              ),
-                              subtitle: Text(
-                                verse.text[_selectedVersion] ??
-                                    verse.text.values.first,
-                                maxLines: 3,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: colorScheme.onSurface,
-                                  fontSize: isSmallScreen ? 14 : 15,
-                                  height: 1.35,
-                                ),
+                              trailing: Icon(
+                                Icons.arrow_forward_ios,
+                                size: 14,
+                                color: colorScheme.onSurfaceVariant
+                                    .withValues(alpha: 0.6),
                               ),
                               onTap: () {
-                                _openReference(verse.reference);
+                                _openReference(hit.reference);
                               },
                             ),
                           );

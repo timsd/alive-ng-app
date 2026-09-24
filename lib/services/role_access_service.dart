@@ -101,6 +101,12 @@ class RoleAccessService {
     return _cachedUserProfile;
   }
 
+  /// Update cached profile directly (e.g. from Riverpod provider)
+  void updateCachedUserProfile(UserProfile profile) {
+    _cachedUserProfile = profile;
+    _cacheTimestamp = DateTime.now();
+  }
+
   /// Refresh user profile cache
   Future<void> _refreshUserProfileCache() async {
     try {

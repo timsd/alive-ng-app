@@ -342,8 +342,8 @@ class NotificationService {
         // Navigate to prayer screen
         context.go('/prayer');
         _logger.info('Navigated to prayer screen');
-        break;
-                        case 'mission_reminder':
+                break;
+      case 'mission_reminder':
         // Navigate to missions screen
         context.go('/missions');
         _logger.info('Navigated to missions screen');

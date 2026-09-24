@@ -26,6 +26,7 @@ class ChatScreen extends ConsumerStatefulWidget {
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final ChatService _chatService = ChatService();
   final ScrollController _scrollController = ScrollController();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController _messageController = TextEditingController();
   bool _channelsExpanded = true;
 
@@ -244,7 +245,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   void _showCreateChannelDialog() {
-    final isAdmin = RoleAccessService.instance.canAccessAdmin();
+    final profile = ref.read(currentUserProfileProvider).value;
+    if (profile != null) {
+      RoleAccessService.instance.updateCachedUserProfile(profile);
+    }
+    final role = (profile?.role ?? '').toLowerCase();
+    final isAdmin = ['admin', 'bod', 'director', 'trustee'].contains(role) ||
+        RoleAccessService.instance.canAccessAdmin() ||
+        (profile != null && AppwriteBackendConfig.isSuperAdminEmail(profile.email));
+
     if (!isAdmin) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -259,6 +268,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       context: context,
       builder: (context) => _CreateChannelDialog(
         currentUserId: AuthService.instance.currentUser?.uid,
+        isAdmin: true,
         onChannelCreated: (channel) {
           setState(() {
             _channels.insert(0, channel);
@@ -294,113 +304,258 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       isModerator = moderatorRoles.contains(role);
     }
 
-    return Scaffold(
-      appBar: CustomAppBar(
-        showBackButton: true,
-        title: _selectedChannel?.name ?? 'Chat',
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: _showCreateChannelDialog,
-            tooltip: 'Create Channel',
-          ),
-          IconButton(
-            icon: const Icon(Icons.info_outline),
-            onPressed: _selectedChannel != null ? _showChannelInfo : null,
-            tooltip: 'Channel Info',
-          ),
-        ],
-      ),
-      body: _isLoading
-          ? const LoadingWidget()
-          : _error != null
-              ? AppErrorWidget(
-                  message: _error!,
-                  onAction: _loadChannels,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= 720;
+
+        return Scaffold(
+          key: _scaffoldKey,
+          drawer: isWide
+              ? null
+              : Drawer(
+                  width: 300,
+                  child: SafeArea(
+                    child: ChannelListWidget(
+                      channels: _channels,
+                      selectedChannel: _selectedChannel,
+                      onChannelSelected: (channel) {
+                        _selectChannel(channel);
+                        Navigator.of(context).pop();
+                      },
+                      onRefresh: _loadChannels,
+                      onCollapse: () => Navigator.of(context).pop(),
+                    ),
+                  ),
+                ),
+          appBar: CustomAppBar(
+            showBackButton: true,
+            titleWidget: InkWell(
+              onTap: isWide
+                  ? null
+                  : () => _scaffoldKey.currentState?.openDrawer(),
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.tag_rounded, size: 20),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        _selectedChannel?.name ?? 'Chat',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (!isWide) ...[
+                      const SizedBox(width: 4),
+                      const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              if (isWide)
+                IconButton(
+                  icon: Icon(_channelsExpanded
+                      ? Icons.view_sidebar_rounded
+                      : Icons.view_sidebar_outlined),
+                  tooltip: _channelsExpanded
+                      ? 'Collapse Channels'
+                      : 'Expand Channels',
+                  onPressed: () =>
+                      setState(() => _channelsExpanded = !_channelsExpanded),
                 )
-              : LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isWide = constraints.maxWidth >= 720;
-                    final channelPane = _channelsExpanded
-                        ? ChannelListWidget(
-                            channels: _channels,
-                            selectedChannel: _selectedChannel,
-                            onChannelSelected: (channel) {
-                              _selectChannel(channel);
-                              if (!isWide) {
-                                setState(() => _channelsExpanded = false);
-                              }
-                            },
-                            onRefresh: _loadChannels,
-                          )
-                        : const SizedBox.shrink();
-                    if (!isWide) {
-                      return Column(
-                        children: [
-                          ListTile(
-                            leading: Icon(_channelsExpanded ? Icons.expand_less : Icons.expand_more),
-                            title: Text(
-                              _selectedChannel?.name ?? 'Channels (${_channels.length})',
-                              style: Theme.of(context).textTheme.titleMedium,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            trailing: TextButton.icon(
-                              onPressed: () => setState(() => _channelsExpanded = !_channelsExpanded),
-                              icon: Icon(_channelsExpanded ? Icons.visibility_off : Icons.forum),
-                              label: Text(_channelsExpanded ? 'Hide' : 'Show'),
-                            ),
-                            onTap: () => setState(() => _channelsExpanded = !_channelsExpanded),
-                          ),
-                          const Divider(height: 1),
-                          if (_channelsExpanded)
-                            Expanded(child: channelPane)
-                          else
-                            Expanded(child: _buildChatPane(context, canStartGeneral, isModerator)),
-                          if (_channelsExpanded)
-                            Padding(
-                              padding: const EdgeInsets.all(12),
-                              child: SizedBox(
-                                width: double.infinity,
-                                child: FilledButton.icon(
-                                  onPressed: _selectedChannel == null
-                                      ? null
-                                      : () => setState(() => _channelsExpanded = false),
-                                  icon: const Icon(Icons.chat),
-                                  label: Text(_selectedChannel == null ? 'Select a channel above' : 'Open ${_selectedChannel!.name}'),
+              else
+                IconButton(
+                  icon: const Icon(Icons.tag_rounded),
+                  tooltip: 'View Channels',
+                  onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                ),
+              IconButton(
+                icon: const Icon(Icons.add),
+                onPressed: _showCreateChannelDialog,
+                tooltip: 'Create Channel',
+              ),
+              IconButton(
+                icon: const Icon(Icons.info_outline),
+                onPressed: _selectedChannel != null ? _showChannelInfo : null,
+                tooltip: 'Channel Info',
+              ),
+            ],
+          ),
+          body: _isLoading
+              ? const LoadingWidget()
+              : _error != null
+                  ? AppErrorWidget(
+                      message: _error!,
+                      onAction: _loadChannels,
+                    )
+                  : Row(
+                      children: [
+                        if (isWide)
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 220),
+                            curve: Curves.easeInOutCubic,
+                            width: _channelsExpanded ? 280 : 68,
+                            decoration: BoxDecoration(
+                              border: Border(
+                                right: BorderSide(
+                                  color: Theme.of(context).dividerColor,
                                 ),
                               ),
                             ),
-                        ],
-                      );
-                    }
-                    return Row(
+                            child: _channelsExpanded
+                                ? ChannelListWidget(
+                                    channels: _channels,
+                                    selectedChannel: _selectedChannel,
+                                    onChannelSelected: _selectChannel,
+                                    onRefresh: _loadChannels,
+                                    onCollapse: () => setState(
+                                        () => _channelsExpanded = false),
+                                  )
+                                : _buildDiscordMiniRail(context),
+                          ),
+                        Expanded(
+                          child: _buildChatPane(
+                            context,
+                            canStartGeneral,
+                            isModerator,
+                          ),
+                        ),
+                      ],
+                    ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDiscordMiniRail(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    return Container(
+      width: 68,
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLowest,
+        border: Border(
+          right: BorderSide(
+            color: cs.outlineVariant.withValues(alpha: 0.3),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 8),
+          Tooltip(
+            message: 'Expand channels',
+            child: IconButton(
+              icon: const Icon(Icons.menu_open_rounded),
+              onPressed: () => setState(() => _channelsExpanded = true),
+              style: IconButton.styleFrom(
+                foregroundColor: cs.onSurfaceVariant,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            child: Divider(
+              height: 1,
+              color: cs.outlineVariant.withValues(alpha: 0.3),
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              itemCount: _channels.length,
+              itemBuilder: (context, index) {
+                final channel = _channels[index];
+                final isSelected = _selectedChannel?.id == channel.id;
+                final initials = channel.name.trim().isNotEmpty
+                    ? (channel.name.trim().length >= 2
+                        ? channel.name.trim().substring(0, 2).toUpperCase()
+                        : channel.name.trim().toUpperCase())
+                    : '#';
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Tooltip(
+                    message: '# ${channel.name}',
+                    preferBelow: false,
+                    child: Stack(
+                      alignment: Alignment.centerLeft,
                       children: [
                         AnimatedContainer(
-                          duration: const Duration(milliseconds: 220),
-                          width: _channelsExpanded ? 300 : 56,
+                          duration: const Duration(milliseconds: 200),
+                          width: 4,
+                          height: isSelected ? 28 : 0,
                           decoration: BoxDecoration(
-                            border: Border(
-                              right: BorderSide(color: Theme.of(context).dividerColor),
+                            color: isSelected ? cs.primary : Colors.transparent,
+                            borderRadius: const BorderRadius.horizontal(
+                              right: Radius.circular(4),
                             ),
                           ),
-                          child: _channelsExpanded
-                              ? channelPane
-                              : Column(
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(Icons.chevron_right),
-                                      tooltip: 'Show channels',
-                                      onPressed: () => setState(() => _channelsExpanded = true),
-                                    ),
-                                  ],
-                                ),
                         ),
-                        Expanded(child: _buildChatPane(context, canStartGeneral, isModerator)),
+                        Center(
+                          child: InkWell(
+                            onTap: () => _selectChannel(channel),
+                            borderRadius:
+                                BorderRadius.circular(isSelected ? 12 : 20),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? cs.primary
+                                    : cs.surfaceContainerHighest,
+                                borderRadius: BorderRadius.circular(
+                                  isSelected ? 12 : 20,
+                                ),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? cs.primary
+                                      : cs.outlineVariant.withValues(alpha: 0.3),
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  initials,
+                                  style: theme.textTheme.labelMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: isSelected
+                                        ? cs.onPrimary
+                                        : cs.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                       ],
-                    );
-                  },
-                ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12, top: 4),
+            child: Tooltip(
+              message: 'Create Channel',
+              child: IconButton.filledTonal(
+                icon: const Icon(Icons.add_rounded, size: 20),
+                onPressed: _showCreateChannelDialog,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -587,10 +742,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 class _CreateChannelDialog extends StatefulWidget {
   final Function(ChatChannel) onChannelCreated;
   final String? currentUserId;
+  final bool isAdmin;
 
   const _CreateChannelDialog({
     required this.onChannelCreated,
     required this.currentUserId,
+    this.isAdmin = false,
   });
 
   @override
@@ -619,7 +776,9 @@ class _CreateChannelDialogState extends State<_CreateChannelDialog> {
     });
 
     try {
-      final isAdmin = RoleAccessService.instance.canAccessAdmin();
+      final isAdmin = widget.isAdmin ||
+          RoleAccessService.instance.canAccessAdmin() ||
+          AppwriteBackendConfig.isSuperAdminEmail(AuthService.instance.currentUser?.email);
       if (!isAdmin) {
         throw Exception('Only admins can create channels');
       }
