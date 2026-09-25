@@ -74,6 +74,13 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
   String? _selectedProjectId;
   String? _selectedProjectTitle;
 
+  /// Administrative purpose chosen by the donor (App Maintenance, Volunteers,
+  /// ...). Null means "no specific destination" -> General Support.
+  ///
+  /// This is what gives `DonationType.appMaintenance` a real entry point, and it
+  /// is echoed on the receipt as the gift's Purpose.
+  String? _selectedPurposeId;
+
     @override
   void initState() {
     super.initState();
@@ -448,6 +455,10 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                     SizedBox(
                         height:
                             ResponsiveUtils.getResponsiveSpacing(context, 24)),
+                    _buildPurposeSelector(context, theme),
+                    SizedBox(
+                        height:
+                            ResponsiveUtils.getResponsiveSpacing(context, 24)),
                     _buildAmountSelector(context, theme),
                     SizedBox(
                         height:
@@ -574,6 +585,44 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                 icon: Icons.favorite,
                 isSelected: !_isMonthlySelected,
                 onTap: () => setState(() => _isMonthlySelected = false),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// Lets the donor direct the gift at an administrative purpose when it is not
+  /// aimed at one of the capital projects.
+  Widget _buildPurposeSelector(BuildContext context, ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Where should this go?',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            ChoiceChip(
+              label: Text(kGeneralSupportPurpose.label),
+              selected: _selectedPurposeId == null,
+              onSelected: (_) => setState(() => _selectedPurposeId = null),
+            ),
+            ...kAdministrativePurposes.map(
+              (purpose) => ChoiceChip(
+                label: Text(purpose.label),
+                selected: _selectedPurposeId == purpose.id,
+                onSelected: (selected) => setState(() {
+                  _selectedPurposeId = selected ? purpose.id : null;
+                }),
+                tooltip: purpose.description,
               ),
             ),
           ],
@@ -1326,11 +1375,23 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       return;
     }
 
-    // Determine donation type:
-    // Project gifts are recorded as 'generalSupport'; what they were FOR is
-    // carried by the `project_id` / `project_title` / `fund_designation`
-    // metadata below (and echoed on the receipt as its Purpose).
-    const DonationType type = DonationType.generalSupport;
+    // Donation type:
+    //  * "App Maintenance" has its own type, so those gifts stay separable in
+    //    the finance report instead of being buried in General Support.
+    //  * Everything else that carries a purpose (a project OR an
+    //    administrative designation) is recorded as generalSupport and
+    //    identified by its purpose, which the receipt prints.
+    //  * A gift with no destination at all is plain generalSupport.
+    final DonationType type = _selectedPurposeId == 'app_maintenance'
+        ? DonationType.appMaintenance
+        : DonationType.generalSupport;
+    final selectedPurpose =
+        _selectedPurposeId == null ? null : donationPurposeById(_selectedPurposeId!);
+    // The receipt shows exactly one destination, so a project and an
+    // administrative purpose are never both attached.
+    final purposeLabel = _selectedProjectTitle ?? selectedPurpose?.label;
+    final purposeId =
+        _selectedProjectId ?? _selectedPurposeId;
 
     // Validate minimums
     final donationService = ref.read(donationServiceProvider);
@@ -1365,7 +1426,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
         amount: totalAmount,
         currency: currency,
         paymentMethod: PaymentMethod.paystack,
-        materialTitle: _selectedProjectTitle ?? designationSummary,
+        materialTitle: purposeLabel ?? designationSummary,
         notes: isMonthly
             ? 'Monthly giving${designationSummary != null ? ' - $designationSummary' : ''}'
             : 'One-time donation${designationSummary != null ? ' - $designationSummary' : ''}',
@@ -1373,9 +1434,13 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
           'recurring': isMonthly,
           'currency': currency,
           'source': 'donation_screen_v2',
+          // The single destination for this gift, whether it came from a
+          // project selection or the "Where should this go?" chips. The
+          // server resolves this into the receipt's Purpose line.
+          if (purposeId != null) 'purpose_id': purposeId,
           if (_selectedProjectId != null) 'project_id': _selectedProjectId,
-          if (_selectedProjectTitle != null)
-            'project_title': _selectedProjectTitle,
+          if (purposeLabel != null) 'project_title': purposeLabel,
+          if (selectedPurpose != null) 'fund_designation': selectedPurpose.label,
           if (designations.isNotEmpty) ...{
             'fund_designation': designationSummary,
             'fund_designations': designations,

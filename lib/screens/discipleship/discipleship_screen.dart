@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../models/discipleship_models.dart';
 import '../../services/discipleship_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/role_access_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/responsive_utils.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -93,7 +94,11 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
           assignments.isNotEmpty ? assignments.first : null;
 
       List<DiscipleshipReport> officerReports = [];
-      if (_selectedOfficerOffice != null) {
+      // Only resolve an inbox for an officer/coordinator. Loading it for a
+      // plain member put them on the first office by default, which is the
+      // data leak the Officer Inbox tab gate now prevents.
+      if (_selectedOfficerOffice != null &&
+          RoleAccessService.instance.hasRole('coordinator')) {
         officerReports = await _discipleshipService.getReportsForOfficer(
           officerId: _selectedOfficerOffice!.officerId,
           officeTitle: _selectedOfficerOffice!.officeTitle,
@@ -154,17 +159,18 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
             ],
           ),
         ),
+        // The "+" moved to a floating action button. Keeping it in the app bar
+        // put a permanent "add" affordance next to the title on every tab,
+        // which invited adding records on tabs where it does not apply (e.g.
+        // Officer Inbox, which is read/review only).
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () => _showAddContactDialog(),
-          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadData,
           ),
         ],
       ),
+      floatingActionButton: _buildAddFab(),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _authService.currentUser == null
@@ -180,6 +186,22 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                     _buildOfficerInboxTab(),
                   ],
                 ),
+    );
+  }
+
+  /// Context-aware FAB. It is hidden where adding makes no sense (Reports and
+  /// Officer Inbox are review-only) so a single "+" never implies an action
+  /// the current tab cannot perform.
+  Widget _buildAddFab() {
+    // Never show a "create" affordance to a signed-out visitor.
+    if (_authService.currentUser == null) return const SizedBox.shrink();
+    if (_tabController.index == 4 || _tabController.index == 5) {
+      return const SizedBox.shrink();
+    }
+    return FloatingActionButton(
+      onPressed: _showAddContactDialog,
+      tooltip: 'Add contact',
+      child: const Icon(Icons.add),
     );
   }
 
@@ -747,6 +769,47 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
 
   Widget _buildOfficerInboxTab() {
     final theme = Theme.of(context);
+    final roleService = RoleAccessService.instance;
+
+    // Officer/coordinator+ only. Previously this tab was visible to every
+    // signed-in member and defaulted to the FIRST office in a device-local
+    // list, so any user could read (and reply to) reports addressed to an
+    // officer they were not.
+    if (!roleService.hasRole('coordinator')) {
+      return Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.lock_outline,
+                  size: 48,
+                  color: theme.colorScheme.outline,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Officer inbox',
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Only coordinators, directors and administrators can review '
+                  'and respond to dispatched reports.',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return RefreshIndicator(
       onRefresh: _loadData,
       child: ListView(
