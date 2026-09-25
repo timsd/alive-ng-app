@@ -42,13 +42,19 @@ class _AdminHealthContentScreenState
     final theme = Theme.of(context);
     final roleService = RoleAccessService.instance;
 
-    if (!roleService.canAccessAdmin()) {
+    // `canManageHealthContent` (not `canAccessAdmin`) so a narrow
+    // `healthContributor` can add recipes/remedies without being a full admin.
+    if (!roleService.canManageHealthContent()) {
       return Scaffold(
         appBar: const CustomAppBar(title: 'Access Restricted'),
         body: Center(
-          child: Text(
-            'Admin privileges are required to manage health content.',
-            style: theme.textTheme.bodyLarge,
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              'Health+ content privileges are required to manage recipes and remedies.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyLarge,
+            ),
           ),
         ),
       );

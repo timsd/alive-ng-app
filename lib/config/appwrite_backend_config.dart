@@ -32,6 +32,7 @@ class AppwriteBackendConfig {
   static const String paystackPaymentsFunctionId = 'paystack_payments';
   static const String paystackWebhookFunctionId = 'paystack_webhook';
   static const String sendEmailFunctionId = 'send_email';
+  static const String deleteAccountFunctionId = 'delete_account';
   static const String adminTeamId = '6a098ba2001455c27fdb';
   static const String approvalTokensCollectionId = 'approval_tokens';
   static const String donationRecordsCollectionId = 'donation_records';
@@ -118,6 +119,14 @@ class AppwriteBackendConfig {
       'https://app.alivenigeria.org/#/reset-password';
   static const String oauthSuccessUrl = 'https://app.alivenigeria.org/#/home';
   static const String oauthFailureUrl = 'https://app.alivenigeria.org/#/auth';
+
+  /// Monitored support mailbox. Every transactional email sent through the
+  /// `send_email` Appwrite Function is configured with this address as its
+  /// Reply-To so donor/member replies reach a human inbox.
+  ///
+  /// NOTE: only `app.alivenigeria.org` is verified for *sending* in Resend, so
+  /// this address must never be used as a `From` value.
+  static const String supportEmail = 'app@alivenigeria.org';
 
   static const String _superAdminEmailsRaw = String.fromEnvironment(
     'APPWRITE_SUPER_ADMIN_EMAILS',

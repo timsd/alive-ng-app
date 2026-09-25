@@ -9,6 +9,65 @@ const ALIVE_LOGO_URL =
   'https://app.alivenigeria.org/assets/assets/images/alive_logo.svg';
 const ALIVE_APP_URL = process.env.ALIVE_APP_URL || 'https://app.alivenigeria.org';
 
+// Display names for the client's `DonationType` enum values, used as the
+// receipt fallback when a donor gives without picking a project.
+// Keep in sync with `DonationType.typeDisplayName` in
+// lib/models/donation_models.dart and DONATION_TYPE_LABELS in
+// paystackPayments/src/main.js.
+//
+// 'ministrySupport' is intentionally absent (retired; see the other map).
+const DONATION_TYPE_LABELS = {
+  tractProduction: 'Tract Production',
+  generalSupport: 'General Support',
+  appMaintenance: 'App Maintenance',
+};
+
+/**
+ * Escapes text destined for an HTML email body. The purpose string can come
+ * from donor/admin supplied metadata, so it must never be interpolated raw.
+ */
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
+ * Resolves the donation's purpose (what the gift was designated toward).
+ *
+ * Shared by the receipt email and the stored donation record so the two can
+ * never disagree. Mirrors the precedence in `paystackPayments` and in
+ * `appwrite_admin_export_service.dart` (`_resolvePurpose`).
+ */
+function resolvePurposeFromMetadata(meta) {
+  const m = meta || {};
+  const text = (v) => (typeof v === 'string' ? v.trim() : '');
+
+  const split = Array.isArray(m.fund_designations)
+    ? m.fund_designations.map(text).filter(Boolean)
+    : [];
+  if (split.length > 1) return 'Split donation: ' + split.join(', ');
+  if (split.length === 1) return split[0];
+
+  const designation = text(m.fund_designation);
+  if (designation && !/^split:/i.test(designation)) return designation;
+
+  const projectTitle = text(m.project_title);
+  if (projectTitle) return projectTitle;
+
+  const typeLabel = DONATION_TYPE_LABELS[text(m.donation_type)];
+  if (typeLabel) return typeLabel;
+
+  const projectId = text(m.project_id);
+  // Last resort: prettify the slug so it is still meaningful.
+  return projectId
+    ? projectId.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+    : 'General Support';
+}
+
 async function sendDonationReceipt(paymentData) {
   const email = paymentData.customer && paymentData.customer.email;
   if (!email) return;
@@ -24,15 +83,53 @@ async function sendDonationReceipt(paymentData) {
         ? paymentData.customer.first_name
         : 'Donor');
   const paymentMethod = paymentData.channel || 'card';
-  const projectName = (paymentData.metadata && paymentData.metadata.project_id)
-    ? paymentData.metadata.project_id.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-    : 'General Mission Fund';
 
-  const receiptHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Donation Receipt - ALIVE Nigeria</title></head><body style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1a202c;"><div style="text-align: center; border-bottom: 3px solid #1a365d; padding-bottom: 20px; margin-bottom: 20px;"><img src="' + ALIVE_LOGO_URL + '" alt="ALIVE Nigeria" width="88" height="88" style="display:block;margin:0 auto 12px;border:0;outline:none;" /><h1 style="color: #1a365d; margin: 0;">ALIVE Nigeria</h1><p style="color: #666; margin: 4px 0;">Official Donation Receipt</p><p style="color: #999; font-size: 12px; margin: 4px 0;">Valid for tax filing purposes</p></div><div style="padding: 10px 0;"><p>Dear ' + donorName + ',</p><p>Thank you for your generous donation to ALIVE Nigeria. Your contribution is making a difference. Below are the details of your donation:</p><table style="width: 100%; border-collapse: collapse; margin: 20px 0;"><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Donor Name</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + donorName + '</td></tr><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Amount</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + currency + ' ' + amount + '</td></tr><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Reference</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + reference + '</td></tr><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Date</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + date + '</td></tr><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Payment Method</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + paymentMethod + '</td></tr><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Project</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + projectName + '</td></tr></table><p style="color: #4a5568; font-size: 14px;">This receipt confirms your donation to ALIVE Nigeria. Please retain this for your tax records. If you have any questions, contact us at <a href="mailto:app@alivenigeria.org">app@alivenigeria.org</a>.</p></div><div style="text-align: center; border-top: 1px solid #e2e8f0; padding-top: 20px; color: #999; font-size: 12px;"><p>ALIVE Nigeria &mdash; Thank you for your generosity.</p></div></body></html>';
+  // Resolve the donation's purpose the same way `paystack_payments` does, so
+  // both receipts agree. Previously this just prettified the raw project_id
+  // slug (e.g. "impact_hub_center" -> "Impact Hub Center") and fell back to
+  // "General Mission Fund", which ignored the donor's actual designation.
+  const meta = paymentData.metadata || {};
+  const splitDesignations = Array.isArray(meta.fund_designations)
+    ? meta.fund_designations.map(d => String(d || '').trim()).filter(Boolean)
+    : [];
+  const designation = String(meta.fund_designation || '').trim();
+  const projectTitle = String(meta.project_title || '').trim();
+  const projectId = String(meta.project_id || '').trim();
+  const typeLabel = DONATION_TYPE_LABELS[String(meta.donation_type || '').trim()];
+
+  let projectName;
+  if (splitDesignations.length > 1) {
+    projectName = 'Split donation: ' + splitDesignations.join(', ');
+  } else if (splitDesignations.length === 1) {
+    projectName = splitDesignations[0];
+  } else if (designation && !/^split:/i.test(designation)) {
+    projectName = designation;
+  } else if (projectTitle) {
+    projectName = projectTitle;
+  } else if (typeLabel) {
+    projectName = typeLabel;
+  } else {
+    // Last resort: prettify the slug so it is still meaningful on the receipt.
+    projectName = projectId
+      ? projectId.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+      : 'General Support';
+  }
+
+  // This value can originate in donor/admin supplied metadata.
+  const safeProjectName = escapeHtml(projectName);
+  const safeDonorName = escapeHtml(donorName);
+  const safeCurrency = escapeHtml(currency);
+  const safeAmount = escapeHtml(amount);
+  const safeReference = escapeHtml(reference);
+  const safeDate = escapeHtml(date);
+  const safePaymentMethod = escapeHtml(paymentMethod);
+
+  const receiptHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Donation Receipt - ALIVE Nigeria</title></head><body style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1a202c;"><div style="text-align: center; border-bottom: 3px solid #1a365d; padding-bottom: 20px; margin-bottom: 20px;"><img src="' + ALIVE_LOGO_URL + '" alt="ALIVE Nigeria" width="88" height="88" style="display:block;margin:0 auto 12px;border:0;outline:none;" /><h1 style="color: #1a365d; margin: 0;">ALIVE Nigeria</h1><p style="color: #666; margin: 4px 0;">Official Donation Receipt</p><p style="color: #999; font-size: 12px; margin: 4px 0;">Valid for tax filing purposes</p></div><div style="padding: 10px 0;"><p>Dear ' + safeDonorName + ',</p><p>Thank you for your generous donation to ALIVE Nigeria. Your contribution is making a difference. Your gift of <strong>' + safeCurrency + ' ' + safeAmount + '</strong> was designated to <strong>' + safeProjectName + '</strong>. Below are the details of your donation:</p><table style="width: 100%; border-collapse: collapse; margin: 20px 0;"><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Donor Name</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + safeDonorName + '</td></tr><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Purpose</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + safeProjectName + '</td></tr><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Amount</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + safeCurrency + ' ' + safeAmount + '</td></tr><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Reference</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + safeReference + '</td></tr><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Date</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + safeDate + '</td></tr><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Payment Method</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + safePaymentMethod + '</td></tr><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Project</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + safeProjectName + '</td></tr></table><p style="color: #4a5568; font-size: 14px;">This receipt confirms your donation to ALIVE Nigeria. Please retain this for your tax records. If you have any questions, contact us at <a href="mailto:app@alivenigeria.org">app@alivenigeria.org</a>.</p></div><div style="text-align: center; border-top: 1px solid #e2e8f0; padding-top: 20px; color: #999; font-size: 12px;"><p>ALIVE Nigeria &mdash; Thank you for your generosity.</p></div></body></html>';
   
   try {
     if (process.env.RESEND_API_KEY) {
-      const sender = process.env.RECEIPT_SENDER_EMAIL || process.env.SENDER_EMAIL || 'ALIVE Nigeria <app@alivenigeria.org>';
+      const sender = process.env.RECEIPT_SENDER_EMAIL || process.env.SENDER_EMAIL || 'ALIVE Nigeria App <receipts@app.alivenigeria.org>';
+      const replyTo = process.env.REPLY_TO_EMAIL || 'app@alivenigeria.org';
       const emailRes = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -42,12 +139,17 @@ async function sendDonationReceipt(paymentData) {
         body: JSON.stringify({
           from: sender,
           to: [email],
+          cc: [replyTo],
+          reply_to: replyTo,
           subject: 'Your ALIVE Nigeria Donation Receipt - ' + reference,
           html: receiptHtml
         })
       });
       const resText = await emailRes.text();
       console.log('Resend receipt status:', emailRes.status, 'Response:', resText);
+      if (!emailRes.ok) {
+        console.error('Resend receipt FAILED for', email, '->', emailRes.status, resText);
+      }
     } else {
       console.log('Receipt generated (no email service configured):', email, reference);
     }
@@ -102,9 +204,14 @@ export default async ({ req, res, log, error }) => {
     };
 
     if (type === 'charge.success') {
+      // Store the same purpose string the receipt shows, so the donation
+      // record, the receipt and the admin export all agree.
+      const purpose = resolvePurposeFromMetadata(metadata);
       await updateDonation(databases, reference, {
         status: 'completed',
         transaction_id: data.id?.toString(),
+        purpose,
+        project_title: purpose,
         completed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         metadata: JSON.stringify(metadata),

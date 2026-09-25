@@ -198,7 +198,7 @@ class _TractManagementTabState extends State<_TractManagementTab> {
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('${tract.author} â€¢ ${tract.pages} pages'),
+                          Text('${tract.author} — ${tract.pages} pages'),
                           Text(
                             tract.category.tractDisplayName,
                             style: const TextStyle(
@@ -1196,7 +1196,7 @@ class _PodcastManagementTabState extends State<_PodcastManagementTab> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                              '${podcast.host} â€¢ ${podcast.episodes} episodes'),
+                              '${podcast.host} — ${podcast.episodes} episodes'),
                           Text(
                             podcast.category.displayName,
                             style: const TextStyle(

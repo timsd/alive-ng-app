@@ -12,6 +12,7 @@ import 'edit_profile_screen.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../constants/app_constants.dart';
 import '../../widgets/custom_image.dart';
+import 'subscriptions_sheet.dart';
 
 // Provider for user profile — gracefully falls back to session data on error
 final userProfileProvider = FutureProvider<UserProfile?>((ref) async {
@@ -200,6 +201,22 @@ class ProfileScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
 
+          // ── Recurring Giving ──
+          _SectionCard(
+            title: 'Recurring Giving',
+            icon: Icons.autorenew_rounded,
+            children: [
+              _ActionTile(
+                icon: Icons.card_membership_rounded,
+                iconColor: const Color(0xFF10B981),
+                title: 'Monthly Donations',
+                subtitle: 'View or cancel your recurring donations',
+                onTap: () => _showSubscriptionsSheet(context, profile),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
           // ── Account & Security ──
           _SectionCard(
             title: 'Account & Security',
@@ -340,6 +357,26 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
+  void _showSubscriptionsSheet(BuildContext context, UserProfile profile) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.7,
+        minChildSize: 0.4,
+        maxChildSize: 0.95,
+        builder: (ctx, controller) => SubscriptionsSheet(
+          email: profile.email ?? '',
+          scrollController: controller,
+        ),
+      ),
+    );
+  }
+
   void _showDeleteAccountDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
@@ -361,29 +398,54 @@ class ProfileScreen extends ConsumerWidget {
           FilledButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              // Second confirmation
+              // Second confirmation — the user must actually type DELETE.
+              final deleteController = TextEditingController();
               final confirmed = await showDialog<bool>(
                 context: context,
-                builder: (ctx2) => AlertDialog(
-                  title: const Text('Final Confirmation'),
-                  content: const Text(
-                    'Type DELETE to confirm account deletion.',
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx2, false),
-                      child: const Text('Cancel'),
+                builder: (ctx2) => StatefulBuilder(
+                  builder: (ctx2, setState) => AlertDialog(
+                    title: const Text('Final Confirmation'),
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Type DELETE below to confirm account deletion. '
+                          'A confirmation email will be sent to your inbox.',
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: deleteController,
+                          autofocus: true,
+                          textCapitalization: TextCapitalization.characters,
+                          decoration: const InputDecoration(
+                            labelText: 'Type DELETE',
+                            border: OutlineInputBorder(),
+                          ),
+                          onChanged: (_) => setState(() {}),
+                        ),
+                      ],
                     ),
-                    FilledButton(
-                      onPressed: () => Navigator.pop(ctx2, true),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: Theme.of(context).colorScheme.error,
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx2, false),
+                        child: const Text('Cancel'),
                       ),
-                      child: const Text('Delete Forever'),
-                    ),
-                  ],
+                      FilledButton(
+                        onPressed: deleteController.text.trim().toUpperCase() ==
+                                'DELETE'
+                            ? () => Navigator.pop(ctx2, true)
+                            : null,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Theme.of(context).colorScheme.error,
+                        ),
+                        child: const Text('Delete Forever'),
+                      ),
+                    ],
+                  ),
                 ),
               );
+              deleteController.dispose();
               if (confirmed == true) {
                 try {
                   await AuthService.instance.deleteAccount();

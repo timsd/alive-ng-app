@@ -5,7 +5,6 @@ import 'package:equatable/equatable.dart';
 enum DonationType {
   tractProduction,
   generalSupport,
-  ministrySupport,
   appMaintenance,
 }
 
@@ -70,12 +69,17 @@ class DonationRecord extends Equatable {
       userEmail: json['user_email'] as String,
       type: DonationType.values.firstWhere(
         (e) => e.name == json['type'],
-        // Legacy types ('tractReprint', 'materialDownload') were merged
-        // into 'tractProduction' — map old persisted records accordingly.
-        orElse: () =>
-            json['type'] == 'tractReprint' || json['type'] == 'materialDownload'
-                ? DonationType.tractProduction
-                : DonationType.generalSupport,
+        // Legacy types are mapped onto the surviving ones:
+        //   'tractReprint' / 'materialDownload' -> 'tractProduction'
+        //   'ministrySupport'                    -> 'generalSupport'
+        // 'ministrySupport' was retired because it only ever meant "a gift
+        // aimed at a specific project", which is now carried by
+        // `project_id`/`project_title` (and the receipt's Purpose) instead of
+        // by a separate donation type.
+        orElse: () => switch (json['type']) {
+          'tractReprint' || 'materialDownload' => DonationType.tractProduction,
+          _ => DonationType.generalSupport,
+        },
       ),
       amount: (json['amount'] as num).toDouble(),
       currency: json['currency'] as String,
@@ -172,8 +176,6 @@ class DonationRecord extends Equatable {
         return 'Tract Production';
       case DonationType.generalSupport:
         return 'General Support';
-      case DonationType.ministrySupport:
-        return 'Ministry Support';
       case DonationType.appMaintenance:
         return 'App Maintenance';
     }
@@ -520,14 +522,10 @@ class DonationConstants {
   static const Map<String, double> tractDonationByRegion = {
     'US': 12.0,
     'NG': 7500.0, // Nigerian Naira
-    'UK': 10.0, // British Pounds
-    'CA': 15.0, // Canadian Dollars
   };
 
   static const Map<String, String> currencyByRegion = {
     'US': 'USD',
     'NG': 'NGN',
-    'UK': 'GBP',
-    'CA': 'CAD',
   };
 }

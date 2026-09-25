@@ -195,6 +195,14 @@ const functionConfigs = [
       envVariable('APPWRITE_FUNCTION_API_ENDPOINT', { secret: false }),
       envVariable('APPWRITE_FUNCTION_PROJECT_ID', { secret: false }),
       literalVariable('APPWRITE_PAYMENT_LOGS_COLLECTION_ID', 'payment_logs'),
+      literalVariable('APPWRITE_DONATION_RECORDS_COLLECTION_ID', 'donation_records'),
+      literalVariable('APPWRITE_PROJECTS_COLLECTION_ID', 'projects'),
+      // Receipt delivery: requires the Resend key plus a verified-domain From
+      // address (only `app.alivenigeria.org` is verified for sending).
+      envVariable('RESEND_API_KEY', { secret: true }),
+      envVariable('RECEIPT_SENDER_EMAIL', { secret: false }),
+      envVariable('SENDER_EMAIL', { secret: false }),
+      envVariable('REPLY_TO_EMAIL', { secret: false }),
     ],
     create: {
       runtime: 'node-20.0',
@@ -217,11 +225,34 @@ const functionConfigs = [
       literalVariable('APPWRITE_DONATION_RECORDS_COLLECTION_ID', 'donation_records'),
       literalVariable('APPWRITE_PROJECTS_COLLECTION_ID', 'projects'),
       literalVariable('APPWRITE_PAYMENT_LOGS_COLLECTION_ID', 'payment_logs'),
+      envVariable('RESEND_API_KEY', { secret: true }),
+      envVariable('RECEIPT_SENDER_EMAIL', { secret: false }),
+      envVariable('SENDER_EMAIL', { secret: false }),
+      envVariable('REPLY_TO_EMAIL', { secret: false }),
     ],
     create: {
       runtime: 'node-20.0',
       execute: ['any'],
       scopes: ['databases.read', 'databases.write'],
+    },
+  },
+  {
+    id: 'delete_account',
+    name: 'deleteAccount',
+    path: 'appwrite_functions/deleteAccount',
+    variables: [
+      literalVariable('APPWRITE_ENDPOINT', endpoint),
+      literalVariable('APPWRITE_PROJECT_ID', projectId),
+      // users.write scope is required so the function can remove the caller's
+      // own auth account server-side (the Flutter SDK has no Account.delete()).
+      envVariable('APPWRITE_FUNCTION_API_KEY', { required: true, secret: true }),
+      envVariable('APPWRITE_FUNCTION_API_ENDPOINT', { secret: false }),
+      envVariable('APPWRITE_FUNCTION_PROJECT_ID', { secret: false }),
+    ],
+    create: {
+      runtime: 'node-20.0',
+      execute: ['users'],
+      scopes: ['users.write'],
     },
   },
   {
@@ -232,6 +263,7 @@ const functionConfigs = [
       envVariable('RESEND_API_KEY', { required: true, secret: true }),
       envVariable('RECEIPT_SENDER_EMAIL', { secret: false }),
       envVariable('SENDER_EMAIL', { secret: false }),
+      envVariable('REPLY_TO_EMAIL', { secret: false }),
     ],
     create: {
       runtime: 'node-20.0',

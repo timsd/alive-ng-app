@@ -12,9 +12,10 @@ The repository includes 5 serverless Node.js 20 functions under `appwrite_functi
 | Function Name | Function ID | Runtime | Required Environment Variables | Scopes Needed |
 |---|---|---|---|---|
 | **createLiveKitToken** | `6a08e9010035dc8c1e51` | `node-20.0` | `LIVEKIT_API_KEY`<br>`LIVEKIT_API_SECRET`<br>`APPWRITE_ENDPOINT`<br>`APPWRITE_PROJECT_ID`<br>`APPWRITE_DATABASE_ID`<br>`APPWRITE_USERS_TABLE_ID`<br>`APPWRITE_FUNCTION_API_KEY` | `databases.read`<br>`documents.read` |
-| **paystackPayments** | `paystack_payments` | `node-20.0` | `PAYSTACK_SECRET_KEY`<br>`APPWRITE_ENDPOINT`<br>`APPWRITE_PROJECT_ID`<br>`APPWRITE_DATABASE_ID`<br>`APPWRITE_FUNCTION_API_KEY`<br>`APPWRITE_PAYMENT_LOGS_COLLECTION_ID` | `databases.read`<br>`databases.write` |
-| **paystackWebhook** | `paystack_webhook` | `node-20.0` | `PAYSTACK_SECRET_KEY`<br>`APPWRITE_ENDPOINT`<br>`APPWRITE_PROJECT_ID`<br>`APPWRITE_DATABASE_ID`<br>`APPWRITE_FUNCTION_API_KEY`<br>`APPWRITE_DONATION_RECORDS_COLLECTION_ID`<br>`APPWRITE_PROJECTS_COLLECTION_ID`<br>`APPWRITE_PAYMENT_LOGS_COLLECTION_ID`<br>`RESEND_API_KEY` (for receipts)<br>`ALIVE_LOGO_URL` (optional branding) | `databases.read`<br>`databases.write` |
-| **sendEmail** | `send_email` | `node-20.0` | `RESEND_API_KEY`<br>`RECEIPT_SENDER_EMAIL`<br>`SENDER_EMAIL`<br>`ALIVE_LOGO_URL` (optional branding) | None (external API) |
+| **paystackPayments** | `paystack_payments` | `node-20.0` | `PAYSTACK_SECRET_KEY`<br>`APPWRITE_ENDPOINT`<br>`APPWRITE_PROJECT_ID`<br>`APPWRITE_DATABASE_ID`<br>`APPWRITE_FUNCTION_API_KEY`<br>`APPWRITE_PAYMENT_LOGS_COLLECTION_ID`<br>`RESEND_API_KEY` (for receipts)<br>`RECEIPT_SENDER_EMAIL`<br>`SENDER_EMAIL`<br>`REPLY_TO_EMAIL` | `databases.read`<br>`databases.write` |
+| **paystackWebhook** | `paystack_webhook` | `node-20.0` | `PAYSTACK_SECRET_KEY`<br>`APPWRITE_ENDPOINT`<br>`APPWRITE_PROJECT_ID`<br>`APPWRITE_DATABASE_ID`<br>`APPWRITE_FUNCTION_API_KEY`<br>`APPWRITE_DONATION_RECORDS_COLLECTION_ID`<br>`APPWRITE_PROJECTS_COLLECTION_ID`<br>`APPWRITE_PAYMENT_LOGS_COLLECTION_ID`<br>`RESEND_API_KEY` (for receipts)<br>`RECEIPT_SENDER_EMAIL`<br>`SENDER_EMAIL`<br>`REPLY_TO_EMAIL`<br>`ALIVE_LOGO_URL` (optional branding) | `databases.read`<br>`databases.write` |
+| **sendEmail** | `send_email` | `node-20.0` | `RESEND_API_KEY`<br>`RECEIPT_SENDER_EMAIL`<br>`SENDER_EMAIL`<br>`REPLY_TO_EMAIL`<br>`ALIVE_LOGO_URL` (optional branding) | None (external API) |
+| **deleteAccount** | `delete_account` | `node-20.0` | `APPWRITE_ENDPOINT`<br>`APPWRITE_PROJECT_ID`<br>`APPWRITE_FUNCTION_API_KEY` (must include `users.write`)<br>`APPWRITE_FUNCTION_API_ENDPOINT`<br>`APPWRITE_FUNCTION_PROJECT_ID` | `users.write` |
 | **monthlyDonationReminder** | `monthly_donation_reminder` | `node-20.0` | `APPWRITE_ENDPOINT`<br>`APPWRITE_PROJECT_ID`<br>`APPWRITE_FUNCTION_API_KEY`<br>`DONATE_DEEP_LINK` (optional, default `alivenigeria://donate`) | `users.read`<br>`targets.read`<br>`targets.write` |
 
 ### Monthly Donation Reminder
@@ -42,6 +43,45 @@ All variables above can be updated and synchronized in bulk directly from your l
 ```bash
 node scripts/upsert_appwrite_function_variables.mjs
 ```
+
+### Transactional Email Delivery Rules (Resend)
+
+> [!IMPORTANT]
+> **Only `app.alivenigeria.org` is verified for sending in Resend.**
+> A `From` address on the bare `alivenigeria.org` domain (e.g. `app@alivenigeria.org`)
+> is rejected by Resend with:
+> `403 validation_error — "The alivenigeria.org domain is not verified."`
+> This silently broke donation receipts and welcome emails in production, so keep the
+> rule below in mind whenever email configuration changes.
+
+| Setting | Value in this project | Notes |
+|---|---|---|
+| `SENDER_EMAIL` | `ALIVE Nigeria App <msg@app.alivenigeria.org>` | Default `From` for `send_email`. Must stay on a verified domain. |
+| `RECEIPT_SENDER_EMAIL` | `ALIVE Nigeria App <receipts@app.alivenigeria.org>` | `From` for donation receipts (all three functions). Must stay on a verified domain. |
+| `REPLY_TO_EMAIL` | `app@alivenigeria.org` | Added as `reply_to` to **every** outbound email so member/donor replies reach a monitored inbox. Reply-To does **not** need to be a verified domain. |
+
+* Verify the current state at any time:
+  ```bash
+  node scripts/check_resend_domains.mjs          # which domains are verified
+  node scripts/verify_email_delivery.mjs         # sends a probe + prints reply_to
+  node scripts/test_send_email.mjs you@example.com   # end-to-end function test
+  ```
+* Redeploy only the email/account functions (also repairs the `users.*.create`
+  trigger that powers automatic welcome emails):
+  ```bash
+  node scripts/deploy_email_functions.mjs
+  ```
+* Full recurring-donation + email smoke test (NGN **and** USD):
+  ```bash
+  node scripts/smoke_test_payments.mjs
+  ```
+* `paystack_payments` **must** have `RESEND_API_KEY`: without it the
+  `if (process.env.RESEND_API_KEY && customerEmail)` guard skips receipt
+  delivery entirely (this was a second, independent cause of missing receipts).
+* Receipt dispatch is now logged explicitly. Look for either
+  `Receipt email dispatched to <email>: status 200` or
+  `Receipt email FAILED for <email> (<status>): <resend response>` in the
+  function execution logs on `api.alivenigeria.org`.
 
 ---
 

@@ -125,15 +125,6 @@ class PaystackPaymentGateway implements PaymentGateway {
       }
 
       final ref = request.reference ?? generateReference();
-      final planCode =
-          PaymentConfig.monthlyPlanCodeForCurrency(request.currency);
-      if (planCode.trim().isEmpty) {
-        return PaymentResponse.failed(
-          reference: ref,
-          message:
-              'Monthly plan code is not configured. Set PAYSTACK_MONTHLY_PLAN_CODE_${request.currency.toUpperCase()}.',
-        );
-      }
 
       const simulatePayment = bool.fromEnvironment(
         'PAYSTACK_SIMULATE_PAYMENT',
@@ -148,14 +139,16 @@ class PaystackPaymentGateway implements PaymentGateway {
         );
       }
 
+      // The server always creates a dynamic plan for the donor's chosen
+      // amount — there are no pre-configured monthly plans to send.
       final payload = {
         'action': 'initialize_subscription',
         'currency': request.currency,
+        'amount': request.amountMinor,
         'email': request.email,
         'reference': ref,
         if (request.metadata?['appwrite_user_id'] is String)
           'appwrite_user_id': request.metadata!['appwrite_user_id'],
-        'planCode': planCode,
         'callback_url': PaymentConfig.paystackCallbackUrl,
         // Same rule as one-time donations: omit unless explicitly configured,
         // otherwise Paystack rejects the whole initialization.
@@ -172,6 +165,56 @@ class PaystackPaymentGateway implements PaymentGateway {
         message: 'Error processing monthly donation: $e',
         reference: request.reference,
       );
+    }
+  }
+
+  @override
+  Future<List<RecurringSubscription>> listMonthlySubscriptions({
+    required String email,
+  }) async {
+    final data = await _executePaystackFunction({
+      'action': 'list_subscriptions',
+      'email': email,
+    });
+    final raw = data['subscriptions'];
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map>()
+        .map((item) => RecurringSubscription.fromJson(
+            Map<String, dynamic>.from(item)))
+        .toList();
+  }
+
+  @override
+  Future<PaymentResponse> cancelMonthlySubscription({
+    required String email,
+    String? subscriptionCode,
+  }) async {
+    try {
+      if (!_initialized) {
+        await initialize();
+      }
+
+      final data = await _executePaystackFunction({
+        'action': 'cancel_subscription',
+        'email': email,
+        if (subscriptionCode != null && subscriptionCode.isNotEmpty)
+          'subscription_code': subscriptionCode,
+      });
+
+      final cancelled = data['cancelled'] == true;
+      final message = (data['message'] ?? 'Subscription updated.').toString();
+      if (cancelled) {
+        return PaymentResponse.success(
+          reference: (data['subscription_code'] as String?),
+          message: message,
+        );
+      }
+      return PaymentResponse.failed(message: message);
+    } catch (e) {
+      _logger.error('Error cancelling monthly subscription: $e');
+      final message = e.toString().replaceFirst('Exception: ', '');
+      return PaymentResponse.failed(message: message);
     }
   }
 
@@ -261,10 +304,7 @@ class PaystackPaymentGateway implements PaymentGateway {
               message: response.message,
             );
           }
-          return PaymentResponse.failed(
-            reference: useRef,
-            message: response.message,
-          );
+          _logger.warning('Paystack SDK returned non-success (${response.status}: ${response.message}), falling back to authUrl');
         } else {
           _logger.warning('Paystack SDK init failed, falling back to authUrl');
         }

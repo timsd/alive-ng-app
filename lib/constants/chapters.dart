@@ -37,8 +37,15 @@ class ChapterConstants {
     'Calabar': 'ALIVE Nigeria Calabar Chapter',
   };
 
+  /// Roles an admin can assign from Role Management.
+  ///
+  /// `healthContributor` is a deliberately narrow, non-administrative role: it
+  /// exists so a trusted member can add/edit Health+ recipes and remedies
+  /// WITHOUT being made a full admin. It sits directly above `member` in the
+  /// privilege hierarchy, so it unlocks nothing else.
   static const List<String> userRoles = [
     'member',
+    'healthContributor',
     'coordinator',
     'leader',
     'director',
@@ -46,6 +53,19 @@ class ChapterConstants {
     'trustee',
     'admin',
   ];
+
+  /// Roles that grant the Health+ content editor (recipes + remedies) but no
+  /// other admin surface. Kept here so Role Management and the Health+ screen
+  /// agree on exactly who qualifies.
+  static const Set<String> healthContentRoles = {
+    'healthContributor',
+    'coordinator',
+    'leader',
+    'director',
+    'bod',
+    'trustee',
+    'admin',
+  };
 
   static const List<String> teamTypes = [
     'Field Workers',

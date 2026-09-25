@@ -356,7 +356,8 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
     if (userAnswer.contains('__blank__')) {
       return false;
     }
-    return _isAnswerCorrect(userAnswer, correctAnswer);
+    // Fill in the gap requires exact word-for-word spelling of that Bible version
+    return _normalizeText(userAnswer) == _normalizeText(correctAnswer);
   }
 
   void hideStarAnimation() {
@@ -378,58 +379,40 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
   bool _isAnswerCorrect(String userAnswer, String correctAnswer) {
     final normalizedUser = _normalizeText(userAnswer);
     final normalizedCorrect = _normalizeText(correctAnswer);
-    // Exact match (typed answers in fill-gap mode are exact)
+    // Exact match
     if (normalizedUser == normalizedCorrect) return true;
-    // For voice recitation: use fuzzy word-similarity to accommodate
-    // non-English accents/intonation. Require >=80% word matches.
-    return _fuzzyMatch(normalizedUser, normalizedCorrect);
+    if (state.gameMode == GameMode.fillInTheGap) {
+      return false;
+    }
+    // For voice recitation: sequential word-for-word match against selected version (KJV/NIV/NKJV)
+    return _fuzzyMatch(normalizedUser, normalizedCorrect, threshold: 0.85);
   }
 
-  /// Checks if at least [threshold] fraction of words in [correct] appear
-  /// in [user] (order-insensitive, handles accent-caused substitutions).
-  bool _fuzzyMatch(String user, String correct, {double threshold = 0.80}) {
-    final correctWords = correct.split(' ');
+  /// Checks if the spoken words match the target verse in sequence and content.
+  /// Matches word-for-word against the selected Bible version (KJV, NIV, etc.).
+  bool _fuzzyMatch(String user, String correct, {double threshold = 0.85}) {
+    final correctWords =
+        correct.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
     if (correctWords.isEmpty) return false;
-    final userWords = user.split(' ').toSet();
+    final userWords =
+        user.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    if (userWords.isEmpty) return false;
+
     int matches = 0;
-    for (final word in correctWords) {
-      if (userWords.contains(word)) {
-        matches++;
-      } else {
-        // Allow 1-character edit distance for small words to handle accent errors
-        for (final uw in userWords) {
-          if (_editDistance(word, uw) <= 1) {
-            matches++;
-            break;
-          }
+    int uIdx = 0;
+    for (final cWord in correctWords) {
+      final maxLookahead = (uIdx + 3).clamp(0, userWords.length);
+      for (int i = uIdx; i < maxLookahead; i++) {
+        final uWord = userWords[i];
+        if (cWord == uWord ||
+            _levenshteinDistance(cWord, uWord) <= (cWord.length > 4 ? 1 : 0)) {
+          matches++;
+          uIdx = i + 1;
+          break;
         }
       }
     }
-    return matches / correctWords.length >= threshold;
-  }
-
-  /// Levenshtein edit distance between two strings.
-  int _editDistance(String a, String b) {
-    if (a == b) return 0;
-    if (a.isEmpty) return b.length;
-    if (b.isEmpty) return a.length;
-    final dp = List.generate(a.length + 1, (i) => List.filled(b.length + 1, 0));
-    for (int i = 0; i <= a.length; i++) {
-      dp[i][0] = i;
-    }
-    for (int j = 0; j <= b.length; j++) {
-      dp[0][j] = j;
-    }
-    for (int i = 1; i <= a.length; i++) {
-      for (int j = 1; j <= b.length; j++) {
-        dp[i][j] = a[i - 1] == b[j - 1]
-            ? dp[i - 1][j - 1]
-            : 1 +
-                [dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]]
-                    .reduce((x, y) => x < y ? x : y);
-      }
-    }
-    return dp[a.length][b.length];
+    return (matches / correctWords.length) >= threshold;
   }
 
   String _normalizeText(String text) {
@@ -445,8 +428,28 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
   }
 
   void changeVersion(String version) {
-    state = state.copyWith(selectedVersion: version);
-    loadNewVerse();
+    if (state.currentVerse != null) {
+      final current = state.currentVerse!;
+      final newVersionText = current.text[version] ?? current.text.values.first;
+      final blankedWords = _generateBlankedWords(newVersionText);
+      final multipleChoiceOptions =
+          _generateMultipleChoiceOptions(current, version);
+      state = state.copyWith(
+        selectedVersion: version,
+        blankedWords: blankedWords,
+        multipleChoiceOptions: multipleChoiceOptions,
+        userInput: '',
+        showHint: false,
+        hasCheckedAnswer: false,
+        clearSelectedChoiceIndex: true,
+        showAnswer: false,
+        attemptCount: 0,
+        showHintButton: false,
+      );
+    } else {
+      state = state.copyWith(selectedVersion: version);
+      loadNewVerse();
+    }
   }
 
   void selectChoice(int index) {
@@ -492,6 +495,78 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
   }
 }
 
+/// Clean and deduplicate voice transcript tokens from Speech-to-Text.
+/// Fixes run-together words (e.g. "JesusJesusJesus"), consecutive repeated words,
+/// and repeated phrases without UI glitches.
+String _cleanVoiceTranscript(String text) {
+  if (text.trim().isEmpty) return '';
+
+  // 1. Separate run-together capitalized words, e.g. "JesusJesusJesus" -> "Jesus Jesus Jesus"
+  String cleaned = text.replaceAllMapped(
+    RegExp(r'([a-z])([A-Z])'),
+    (m) => '${m.group(1)} ${m.group(2)}',
+  );
+
+  // 2. Remove consecutive duplicate words (e.g. "Jesus Jesus Jesus loves me" -> "Jesus loves me")
+  final rawWords = cleaned.split(RegExp(r'\s+'));
+  final dedupedWords = <String>[];
+  for (final word in rawWords) {
+    if (word.isEmpty) continue;
+    if (dedupedWords.isEmpty ||
+        dedupedWords.last.toLowerCase() != word.toLowerCase()) {
+      dedupedWords.add(word);
+    }
+  }
+  cleaned = dedupedWords.join(' ');
+
+  // 3. Remove repeated multi-word phrases (e.g. "for God so loved the world for God so loved the world")
+  final tokens = cleaned.split(' ');
+  if (tokens.length >= 4) {
+    for (int phraseLen = tokens.length ~/ 2; phraseLen >= 2; phraseLen--) {
+      for (int i = 0; i <= tokens.length - 2 * phraseLen; i++) {
+        final phrase1 =
+            tokens.sublist(i, i + phraseLen).join(' ').toLowerCase();
+        final phrase2 = tokens
+            .sublist(i + phraseLen, i + 2 * phraseLen)
+            .join(' ')
+            .toLowerCase();
+        if (phrase1 == phrase2) {
+          tokens.removeRange(i + phraseLen, i + 2 * phraseLen);
+          cleaned = tokens.join(' ');
+          break;
+        }
+      }
+    }
+  }
+
+  return cleaned.trim();
+}
+
+/// Levenshtein edit distance between two strings.
+int _levenshteinDistance(String a, String b) {
+  if (a == b) return 0;
+  if (a.isEmpty) return b.length;
+  if (b.isEmpty) return a.length;
+  final dp =
+      List.generate(a.length + 1, (i) => List.filled(b.length + 1, 0));
+  for (int i = 0; i <= a.length; i++) {
+    dp[i][0] = i;
+  }
+  for (int j = 0; j <= b.length; j++) {
+    dp[0][j] = j;
+  }
+  for (int i = 1; i <= a.length; i++) {
+    for (int j = 1; j <= b.length; j++) {
+      dp[i][j] = a[i - 1] == b[j - 1]
+          ? dp[i - 1][j - 1]
+          : 1 +
+              [dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]]
+                  .reduce((x, y) => x < y ? x : y);
+    }
+  }
+  return dp[a.length][b.length];
+}
+
 class BibleGameScreen extends ConsumerStatefulWidget {
   const BibleGameScreen({super.key});
 
@@ -506,6 +581,7 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
   final TextEditingController _textController = TextEditingController();
   final Map<int, TextEditingController> _blankControllers = {};
   String _blankControllerKey = '';
+  String _bufferedTranscript = '';
   bool _speechEnabled = false;
   bool _speechReady = false;
   bool _ttsReady = false;
@@ -810,28 +886,18 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
       _initializeSpeech();
     }
     if (_speechEnabled && _speechReady) {
+      _bufferedTranscript = '';
       ref.read(bibleGameProvider.notifier).resetVoicePrompt();
+      ref.read(bibleGameProvider.notifier).updateUserInput('');
       ref.read(bibleGameProvider.notifier).setListening(true);
       if (_ttsReady) {
         await _tts.stop();
       }
       await _speech.listen(
         onResult: (result) {
-          final transcript = result.recognizedWords.trim();
-          if (transcript.isEmpty) return;
-
-          // Always update live recognized words so user sees real-time transcription
-          ref.read(bibleGameProvider.notifier).updateUserInput(transcript);
-          _textController.value = TextEditingValue(
-            text: transcript,
-            selection: TextSelection.collapsed(offset: transcript.length),
-          );
-          ref.read(bibleGameProvider.notifier).checkPartialMatch(transcript);
-
-          final gameState = ref.read(bibleGameProvider);
-          if (gameState.showStarAnimation) {
-            _speech.cancel();
-            ref.read(bibleGameProvider.notifier).setListening(false);
+          _bufferedTranscript = result.recognizedWords;
+          if (result.finalResult) {
+            _stopListening();
           }
         },
         // Uses best available: en-NG → en-GB → en-US
@@ -839,8 +905,8 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
           partialResults: true,
           cancelOnError: false,
           listenMode: stt.ListenMode.dictation,
-          listenFor: const Duration(seconds: 30),
-          pauseFor: const Duration(seconds: 3),
+          listenFor: const Duration(seconds: 45),
+          pauseFor: const Duration(seconds: 4),
           localeId: _resolvedSttLocale,
         ),
       );
@@ -853,8 +919,14 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
     }
     ref.read(bibleGameProvider.notifier).setListening(false);
     final gameState = ref.read(bibleGameProvider);
-    if (gameState.gameMode == GameMode.voiceRecitation &&
-        gameState.userInput.trim().isNotEmpty) {
+    if (gameState.gameMode == GameMode.voiceRecitation) {
+      final cleaned = _cleanVoiceTranscript(_bufferedTranscript);
+      if (cleaned.isEmpty) return;
+      ref.read(bibleGameProvider.notifier).updateUserInput(cleaned);
+      _textController.value = TextEditingValue(
+        text: cleaned,
+        selection: TextSelection.collapsed(offset: cleaned.length),
+      );
       ref.read(bibleGameProvider.notifier).checkAnswer();
       final updated = ref.read(bibleGameProvider);
       if (!updated.showStarAnimation) {
@@ -1085,6 +1157,7 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
   }
 
   Widget _buildVerseCard(BibleGameState gameState) {
+    final isVoice = gameState.gameMode == GameMode.voiceRecitation;
     return Card(
       elevation: 2,
       child: Padding(
@@ -1092,18 +1165,17 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  gameState.currentVerse!.reference,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                ),
-                if (gameState.gameMode != GameMode.voiceRecitation ||
-                    gameState.hasCheckedAnswer)
+            if (!isVoice || gameState.hasCheckedAnswer) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    gameState.currentVerse!.reference,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                  ),
                   IconButton(
                     onPressed: () => _speakVerse(
                       gameState.currentVerse!.text[gameState.selectedVersion] ??
@@ -1112,9 +1184,10 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
                     icon: const Icon(Icons.volume_up),
                     tooltip: 'Listen to verse',
                   ),
-              ],
-            ),
-            const SizedBox(height: 12),
+                ],
+              ),
+              const SizedBox(height: 12),
+            ],
             if (gameState.gameMode == GameMode.fillInTheGap)
               _buildFillInTheGapText(gameState)
             else if (gameState.gameMode == GameMode.voiceRecitation)
@@ -1243,11 +1316,11 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
               Text(
                 'Recite the verse aloud (word-perfect)',
-                textAlign: TextAlign.justify,
+                textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                       color: Theme.of(context).colorScheme.primary,
@@ -1257,8 +1330,8 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
               // Bible reference kept here (removed from the top-left of card).
               Text(
                 reference,
-                textAlign: TextAlign.justify,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: Theme.of(context).colorScheme.tertiary,
                     ),
@@ -1268,7 +1341,7 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
               const SizedBox(height: 16),
               // Clickable mic that captures the recitation.
               if (_speechEnabled) _buildVoiceMicButton(isListening: isListening),
-              if (_speechEnabled) const SizedBox(height: 16),
+              if (_speechEnabled) const SizedBox(height: 12),
               // Note: the card only flips once 3 attempts have been used.
               if (!canFlip)
                 Padding(
@@ -1282,44 +1355,41 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
                         ),
                   ),
                 ),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: canFlip ? () => _confirmFlipCard(context) : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: canFlip
-                          ? Colors.green.shade600
-                          : Theme.of(context)
-                              .colorScheme
-                              .surfaceContainerHighest
-                              .withValues(alpha: 0.5),
-                      foregroundColor: canFlip
-                          ? Colors.white
-                          : Theme.of(context)
-                              .colorScheme
-                              .onSurfaceVariant
-                              .withValues(alpha: 0.5),
-                      disabledBackgroundColor: Theme.of(context)
-                          .colorScheme
-                          .surfaceContainerHighest
-                          .withValues(alpha: 0.5),
-                      disabledForegroundColor: Theme.of(context)
-                          .colorScheme
-                          .onSurfaceVariant
-                          .withValues(alpha: 0.5),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
-                    ),
-                    icon: const Icon(Icons.flip_to_back),
-                    label: Text(
-                      canFlip
-                          ? 'Flip (-2 pts)'
-                          : 'Flip (${3 - gameState.attemptCount} attempts left)',
-                    ),
+              const SizedBox(height: 4),
+              Center(
+                child: ElevatedButton.icon(
+                  onPressed: canFlip ? () => _confirmFlipCard(context) : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: canFlip
+                        ? Colors.green.shade600
+                        : Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest
+                            .withValues(alpha: 0.5),
+                    foregroundColor: canFlip
+                        ? Colors.white
+                        : Theme.of(context)
+                            .colorScheme
+                            .onSurfaceVariant
+                            .withValues(alpha: 0.5),
+                    disabledBackgroundColor: Theme.of(context)
+                        .colorScheme
+                        .surfaceContainerHighest
+                        .withValues(alpha: 0.5),
+                    disabledForegroundColor: Theme.of(context)
+                        .colorScheme
+                        .onSurfaceVariant
+                        .withValues(alpha: 0.5),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
                   ),
-                ],
+                  icon: const Icon(Icons.flip_to_back),
+                  label: Text(
+                    canFlip
+                        ? 'Flip (-2 pts)'
+                        : 'Flip (${3 - gameState.attemptCount} attempts left)',
+                  ),
+                ),
               ),
             ],
           ),
@@ -1328,14 +1398,7 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
     );
   }
 
-  /* Widget _buildVerseBackCard_BLANK
-                  ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            } // end REMOVED_BLOCK */
-
-    /// Circular mic button on the prompt-card face in Voice mode to capture
+  /// Circular mic button on the prompt-card face in Voice mode to capture
   /// the recitation.
   /// Wires into the same `_startListening` / `_stopListening` handlers.
   Widget _buildVoiceMicButton({required bool isListening}) {
@@ -1346,8 +1409,8 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
             ? (isListening ? _stopListening : _startListening)
             : null,
         child: Container(
-          width: 84,
-          height: 84,
+          width: 64,
+          height: 64,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: isListening ? cs.error : cs.primary,
@@ -1355,15 +1418,15 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
               BoxShadow(
                 color: (isListening ? cs.error : cs.primary)
                     .withValues(alpha: 0.35),
-                blurRadius: isListening ? 24 : 10,
-                spreadRadius: isListening ? 6 : 0,
+                blurRadius: isListening ? 20 : 8,
+                spreadRadius: isListening ? 4 : 0,
               ),
             ],
           ),
           child: Icon(
             isListening ? Icons.stop : Icons.mic,
             color: cs.onPrimary,
-            size: 38,
+            size: 30,
           ),
         ),
       ),
@@ -1607,52 +1670,62 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
     return input.toLowerCase().replaceAll(RegExp(r'[^\w\s]'), '').trim();
   }
 
-  /// Deduplicate repeated sentence fragments from STT partial results.
-  /// e.g. "the Lord is good the Lord is good" → "the Lord is good"
-  String _deduplicateTranscript(String text) {
-    final words = text.split(RegExp(r'\s+'));
-    if (words.length < 4) return text;
-
-    // Try progressively larger prefix lengths to find a repeated block
-    for (int prefixLen = (words.length ~/ 2); prefixLen >= 3; prefixLen--) {
-      final prefix = words.sublist(0, prefixLen).join(' ').toLowerCase();
-      final rest =
-          words.sublist(prefixLen).join(' ').toLowerCase().trimLeft();
-      if (rest.startsWith(prefix)) {
-        // The first half repeated — return only the first occurrence
-        return words.sublist(0, prefixLen).join(' ');
-      }
-    }
-    return text;
-  }
-
-  /// Compact voice transcript box: shows max 2 lines + a similarity score
-  /// so users (especially non-English speakers) know how close they are.
+  /// Compact voice transcript box: shows accurate sequential similarity
+  /// matching word-for-word against the selected Bible version.
   Widget _buildVoiceTranscriptBox(BibleGameState gameState) {
     final correctText =
         gameState.currentVerse?.text[gameState.selectedVersion] ?? '';
-    final userText = _deduplicateTranscript(gameState.userInput);
+    final rawUserText = gameState.userInput;
+    final isListening = gameState.isListening;
+    final userText = _cleanVoiceTranscript(rawUserText);
 
-    // Calculate similarity 0-100%
+    // Calculate similarity 0-100% against selected Bible version
     final normalizedUser = _normalizeText(userText);
     final normalizedCorrect = _normalizeText(correctText);
-    final correctWords = normalizedCorrect.split(' ');
-    final userWords = normalizedUser.split(' ').toSet();
+    final correctWords = normalizedCorrect
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .toList();
+    final userWords = normalizedUser
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .toList();
+
     int matchCount = 0;
-    for (final word in correctWords) {
-      if (userWords.contains(word)) matchCount++;
+    int uIdx = 0;
+    for (final cWord in correctWords) {
+      final maxLookahead = (uIdx + 3).clamp(0, userWords.length);
+      for (int i = uIdx; i < maxLookahead; i++) {
+        if (cWord == userWords[i] ||
+            _levenshteinDistance(cWord, userWords[i]) <=
+                (cWord.length > 4 ? 1 : 0)) {
+          matchCount++;
+          uIdx = i + 1;
+          break;
+        }
+      }
     }
-    final similarity = correctWords.isEmpty
+    final similarity = correctWords.isEmpty || userWords.isEmpty
         ? 0
-        : ((matchCount / correctWords.length) * 100).round();
+        : ((matchCount / correctWords.length) * 100).round().clamp(0, 100);
 
     Color simColor;
-    if (similarity >= 80) {
+    if (similarity >= 85) {
       simColor = Theme.of(context).colorScheme.tertiary;
     } else if (similarity >= 50) {
       simColor = Theme.of(context).colorScheme.secondary;
     } else {
       simColor = Theme.of(context).colorScheme.error;
+    }
+
+    String displayText;
+    if (isListening) {
+      displayText =
+          'Listening... Recite the verse aloud and tap the mic when finished.';
+    } else if (userText.isNotEmpty) {
+      displayText = userText;
+    } else {
+      displayText = 'Tap the microphone icon above and recite the verse.';
     }
 
     return Container(
@@ -1661,7 +1734,12 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: simColor.withValues(alpha: 0.4),
+          color: (isListening
+                  ? Theme.of(context).colorScheme.primary
+                  : (userText.isNotEmpty
+                      ? simColor
+                      : Theme.of(context).colorScheme.outline))
+              .withValues(alpha: 0.4),
         ),
       ),
       child: Column(
@@ -1677,30 +1755,68 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: simColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '$similarity% match',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: simColor,
+              if (isListening)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .error
+                        .withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
                       ),
+                      const SizedBox(width: 5),
+                      Text(
+                        'Recording…',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                      ),
+                    ],
+                  ),
+                )
+              else if (userText.isNotEmpty)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: simColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '$similarity% match',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: simColor,
+                        ),
+                  ),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 6),
           Text(
-            userText,
+            displayText,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontStyle: FontStyle.italic,
-                  color: Theme.of(context).colorScheme.onSurface,
+                  fontStyle:
+                      userText.isNotEmpty ? FontStyle.normal : FontStyle.italic,
+                  color: userText.isNotEmpty
+                      ? Theme.of(context).colorScheme.onSurface
+                      : Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
-            maxLines: 3,
+            maxLines: 4,
             overflow: TextOverflow.ellipsis,
           ),
         ],
@@ -1735,7 +1851,7 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
             ),
             const SizedBox(height: 16),
             const Text(
-              'A hint or auto-fill appears after 3 attempts (-2 pts).',
+              '3 wrong attempts unlocks hint (-2 pts)',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontStyle: FontStyle.italic,
@@ -1795,90 +1911,13 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
   }
 
   Widget _buildVoiceRecitationInput(BibleGameState gameState) {
-    final cs = Theme.of(context).colorScheme;
-    final isListening = gameState.isListening;
-
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'Recite the verse aloud (word-perfect):',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 16),
-            // Recording box — tap to start/stop recording
-            InkWell(
-              onTap: _speechEnabled
-                  ? (isListening ? _stopListening : _startListening)
-                  : null,
-              borderRadius: BorderRadius.circular(12),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                padding: const EdgeInsets.symmetric(vertical: 20),
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: isListening
-                        ? cs.error
-                        : cs.primary.withValues(alpha: 0.4),
-                    width: isListening ? 2 : 1.5,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  color: isListening
-                      ? cs.error.withValues(alpha: 0.06)
-                      : cs.surfaceContainerHighest.withValues(alpha: 0.4),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Mic / Stop icon inside the box
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 200),
-                      child: Icon(
-                        isListening ? Icons.stop_circle_rounded : Icons.mic_rounded,
-                        key: ValueKey(isListening),
-                        size: 40,
-                        color: isListening ? cs.error : cs.primary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      isListening
-                          ? 'Listening… Tap to stop'
-                          : (_speechEnabled
-                              ? 'Tap to start recording'
-                              : 'Initializing speech recognition…'),
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: isListening ? cs.error : cs.onSurfaceVariant,
-                            fontWeight: FontWeight.w500,
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            if (gameState.attemptCount >= 3 && !gameState.hasCheckedAnswer) ...[
-              const SizedBox(height: 12),
-              ElevatedButton.icon(
-                onPressed: () => _confirmFlipCard(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green.shade600,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 12),
-                ),
-                icon: const Icon(Icons.flip_to_back),
-                label: const Text('Flip Card to Reveal (-2 pts)'),
-              ),
-            ],
-            if (gameState.userInput.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              _buildVoiceTranscriptBox(gameState),
-            ],
+            _buildVoiceTranscriptBox(gameState),
           ],
         ),
       ),

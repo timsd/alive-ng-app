@@ -3,8 +3,10 @@ import 'dart:async';
 import '../models/app_models.dart';
 import '../models/auth_models.dart';
 import '../utils/app_exception.dart';
+import '../utils/logger.dart';
 import 'appwrite_auth_service.dart';
 import 'appwrite_profile_service.dart';
+import 'email_service.dart';
 
 export '../models/auth_models.dart' show AppUser;
 
@@ -17,6 +19,8 @@ class AuthService {
 
   final AppwriteAuthService _appwriteAuth;
   final AppwriteProfileService _profileService;
+  final EmailService _emailService = EmailService.instance;
+  static final Logger _logger = Logger('AuthService');
   final StreamController<AppUser?> _authStateController =
       StreamController<AppUser?>.broadcast();
 
@@ -211,13 +215,34 @@ class AuthService {
     }
   }
 
+  /// Sends a password-reset link to [email].
+  ///
+  /// Two deliveries happen: Appwrite mints the recovery token and sends its
+  /// own invite, and we additionally send the same working link through our
+  /// branded Resend template so the member always receives a working email
+  /// from our verified address.
   Future<bool> resetPassword(String email) async {
-    try {
-      await _appwriteAuth.sendPasswordRecovery(email);
-      return true;
-    } catch (e) {
-      throw AuthException('Unable to send password reset. Please check your email and try again.', originalError: e);
+    final normalized = email.trim();
+    if (normalized.isEmpty) {
+      throw AuthException('Please enter your email address.');
     }
+
+    final token = await _appwriteAuth.sendPasswordRecovery(normalized);
+
+    final displayName =
+        currentUser?.displayName ?? normalized.split('@').first;
+    try {
+      await _emailService.sendPasswordResetEmail(
+        toEmail: normalized,
+        toName: displayName,
+        userId: token.userId,
+        secret: token.secret,
+      );
+    } catch (e) {
+      _logger.warning('Branded password-reset email failed for $normalized: $e');
+    }
+
+    return true;
   }
 
   Future<bool> completePasswordRecovery({
@@ -272,12 +297,49 @@ class AuthService {
     }
   }
 
+  /// Permanently deletes the signed-in member's profile data.
+  ///
+  /// A confirmation email is dispatched to the member *before* the profile is
+  /// removed (the address lives on the profile). Email delivery is best-effort:
+  /// a mail failure must never block the deletion the user explicitly asked for.
   Future<void> deleteAccount() async {
     final user = currentUser;
-    if (user != null) {
-      await _profileService.deleteUserProfile(user.uid);
-      await signOut();
+    if (user == null) return;
+
+    UserProfile? profile;
+    try {
+      profile = await getCurrentUserProfile();
+    } catch (e) {
+      _logger.warning('Could not load profile before account deletion: $e');
     }
+
+    final recipientEmail = profile?.email ?? user.email;
+    final recipientName = profile?.fullName ?? user.displayName ?? '';
+
+    if (recipientEmail.trim().isNotEmpty) {
+      try {
+        await _emailService.sendAccountDeletionEmail(
+          toEmail: recipientEmail.trim(),
+          toName: recipientName,
+        );
+        _logger.info('Account deletion email sent to $recipientEmail');
+      } catch (e) {
+        _logger.warning('Account deletion email failed for $recipientEmail: $e');
+      }
+    }
+
+    await _profileService.deleteUserProfile(user.uid);
+
+    // Remove the Appwrite auth account so a stale session / lingering user row
+    // can never make the "deleted" account reappear.
+    try {
+      await _appwriteAuth.deleteAuthAccount();
+      _logger.info('Auth account removed for ${user.uid}');
+    } catch (e) {
+      _logger.warning('Auth account removal skipped for ${user.uid}: $e');
+    }
+
+    await signOut();
   }
 
   Future<UserProfile?> getCurrentUserProfile() async {

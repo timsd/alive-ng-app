@@ -1081,7 +1081,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String ministry_years_intro(Object years) {
-    return 'For more than $years years, ALIVE Nigeria Ministries has helped connect thousands of people with God\'s word and established churches around Nigeria.';
+    return 'For more than $years years, ALIVE Nigeria has helped connect thousands of people with God\'s word and established churches around Nigeria.';
   }
 
   @override
@@ -1131,7 +1131,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get split_donation_multiple =>
-      'Split donation between multiple ministries';
+      'Split donation between multiple purposes';
 
   @override
   String get choose_funds => 'Choose Funds';

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/enums.dart' as appwrite_enums;
 import 'package:appwrite/models.dart' as models;
@@ -264,6 +266,38 @@ class AppwriteAuthService {
   }
 
   Future<void> signOut() => logout();
+
+  /// Deletes the caller's own Appwrite auth account.
+  ///
+  /// The Flutter `appwrite` SDK (26.x) has no `Account.delete()`, so this runs
+  /// the `delete_account` Appwrite Function: Appwrite authenticates the
+  /// execution as the session user (the `x-appwrite-user-id` header), the
+  /// function verifies that the target matches the caller, and removes the
+  /// user row server-side using its `users.write` scoped key.
+  Future<void> deleteAuthAccount() async {
+    final user = _sharedCurrentUser;
+    if (user == null) return;
+
+    final functions = Functions(appwriteClient);
+    final execution = await functions.createExecution(
+      functionId: AppwriteBackendConfig.deleteAccountFunctionId,
+      body: jsonEncode({'user_id': user.$id}),
+      xasync: false,
+      method: appwrite_enums.ExecutionMethod.pOST,
+    );
+
+    final raw = execution.responseBody.trim();
+    if (raw.isNotEmpty) {
+      final data = jsonDecode(raw) as Map<String, dynamic>;
+      if (data['error'] != null) {
+        throw AppwriteException(
+          data['error'].toString(),
+          data['code'] ?? 500,
+          'delete_account_failed',
+        );
+      }
+    }
+  }
 
   Future<models.Token> sendPasswordRecovery(String email) {
     return _account.createRecovery(

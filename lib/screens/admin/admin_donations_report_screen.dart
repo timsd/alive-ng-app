@@ -5,18 +5,35 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../services/appwrite_admin_export_service.dart';
 import '../../models/donation_report_models.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../widgets/role_guard.dart';
 import '../../utils/responsive_utils.dart';
 
-class AdminDonationsReportScreen extends StatefulWidget {
+class AdminDonationsReportScreen extends StatelessWidget {
   const AdminDonationsReportScreen({super.key});
 
   @override
-  State<AdminDonationsReportScreen> createState() =>
-      _AdminDonationsReportScreenState();
+  Widget build(BuildContext context) {
+    // Financial data is leadership-gated: it exposes every donor's name, email
+    // and amounts. This screen previously had no guard at all, so any signed-in
+    // user who could reach the route could read the whole giving history.
+    return const RoleProtectedScreen(
+      requiredRole: 'leader',
+      screenName: 'Donation Reports',
+      child: _AdminDonationsReportContent(),
+    );
+  }
 }
 
-class _AdminDonationsReportScreenState
-    extends State<AdminDonationsReportScreen> {
+class _AdminDonationsReportContent extends StatefulWidget {
+  const _AdminDonationsReportContent();
+
+  @override
+  State<_AdminDonationsReportContent> createState() =>
+      _AdminDonationsReportContentState();
+}
+
+class _AdminDonationsReportContentState
+    extends State<_AdminDonationsReportContent> {
   final _currencyFormat = NumberFormat.currency(symbol: '₦', decimalDigits: 2);
   final _usdFormat = NumberFormat.currency(symbol: '\$', decimalDigits: 2);
   final _dateFormat = DateFormat('dd MMM yyyy, HH:mm');

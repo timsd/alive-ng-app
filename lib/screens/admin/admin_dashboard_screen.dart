@@ -800,6 +800,23 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
 
             const SizedBox(height: 16),
 
+            // Donations & Finance
+            _buildManagementSection(
+              'Donations & Finance',
+              Icons.savings_outlined,
+              [
+                _buildActionTile(
+                  'Donation Reports',
+                  'Search, filter and export every gift, including the purpose '
+                      'each donation was designated toward',
+                  Icons.receipt_long_outlined,
+                  () => context.go(AppConstants.adminDonationsReportRoute),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
             // Discipleship Operations
             _buildManagementSection(
               'Discipleship Operations',

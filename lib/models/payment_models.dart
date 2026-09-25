@@ -76,6 +76,55 @@ class PaymentRequest {
       'reference: $reference, recurring: $isRecurringMonthly)';
 }
 
+/// Represents a recurring monthly donation subscription on Paystack.
+class RecurringSubscription {
+  /// Paystack subscription identifier.
+  final String subscriptionCode;
+
+  /// Subscription status as reported by Paystack (e.g. `active`).
+  final String status;
+
+  /// Amount in minor units (kobo/cents).
+  final int amountMinor;
+
+  /// ISO currency code of the underlying plan.
+  final String? currency;
+
+  /// Human-readable plan name.
+  final String? planName;
+
+  /// Next scheduled charge date, when known.
+  final DateTime? nextPaymentDate;
+
+  const RecurringSubscription({
+    required this.subscriptionCode,
+    required this.status,
+    required this.amountMinor,
+    this.currency,
+    this.planName,
+    this.nextPaymentDate,
+  });
+
+  /// Amount in display units.
+  double get amount => amountMinor / 100;
+
+  factory RecurringSubscription.fromJson(Map<String, dynamic> json) {
+    DateTime? next;
+    final rawNext = json['next_payment_date'];
+    if (rawNext is String && rawNext.isNotEmpty) {
+      next = DateTime.tryParse(rawNext);
+    }
+    return RecurringSubscription(
+      subscriptionCode: (json['subscription_code'] ?? '').toString(),
+      status: (json['status'] ?? 'active').toString(),
+      amountMinor: (json['amount'] as num?)?.round() ?? 0,
+      currency: json['currency'] as String?,
+      planName: json['plan'] as String?,
+      nextPaymentDate: next,
+    );
+  }
+}
+
 /// Response returned by the payment gateway following processing or initialization.
 class PaymentResponse {
   /// Status of the payment operation.

@@ -409,7 +409,13 @@ class AppTheme {
         backgroundColor: lightCard,
         surfaceTintColor: Colors.transparent,
         modalBackgroundColor: lightCard,
-        showDragHandle: true,
+        // Deliberately false. Almost every sheet in this app draws its own
+        // handle inside its own card, so a theme-level handle produced a
+        // second "grabber" floating above the real one (plus the theme's shape
+        // border painting a ghost card behind a `Colors.transparent` sheet).
+        // Sheets that want Material's handle opt in by passing
+        // `showDragHandle: true` to `showModalBottomSheet` directly.
+        showDragHandle: false,
         constraints: BoxConstraints(maxWidth: 860),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
@@ -776,7 +782,8 @@ class AppTheme {
         backgroundColor: darkCard,
         surfaceTintColor: Colors.transparent,
         modalBackgroundColor: darkCard,
-        showDragHandle: true,
+        // See the light theme above for why this is false.
+        showDragHandle: false,
         constraints: BoxConstraints(maxWidth: 860),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),

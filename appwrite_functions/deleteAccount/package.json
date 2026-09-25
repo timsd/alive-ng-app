@@ -1,0 +1,8 @@
+{
+  "name": "delete-account",
+  "version": "1.0.0",
+  "description": "Safely deletes the caller's own Appwrite auth account for ALIVE Nigeria",
+  "type": "module",
+  "main": "src/main.js",
+  "dependencies": {}
+}

@@ -59,6 +59,7 @@ class PaymentService {
 
   /// Process recurring monthly donation
   Future<PaymentResult> processMonthlyDonation({
+    required double amount,
     required String email,
     required String currency,
     String? reference,
@@ -66,7 +67,7 @@ class PaymentService {
   }) async {
     final response = await _gateway.processMonthlyDonation(
       PaymentRequest(
-        amount: 0,
+        amount: amount,
         email: email,
         currency: currency,
         reference: reference,
@@ -76,6 +77,22 @@ class PaymentService {
     );
     return PaymentResult.fromResponse(response);
   }
+
+  /// Lists the signed-in donor's active recurring monthly subscriptions.
+  Future<List<RecurringSubscription>> listMonthlySubscriptions({
+    required String email,
+  }) =>
+      _gateway.listMonthlySubscriptions(email: email);
+
+  /// Cancels a recurring monthly donation subscription.
+  Future<PaymentResponse> cancelMonthlySubscription({
+    required String email,
+    String? subscriptionCode,
+  }) =>
+      _gateway.cancelMonthlySubscription(
+        email: email,
+        subscriptionCode: subscriptionCode,
+      );
 }
 
 /// Result of a payment operation (legacy compatibility model).

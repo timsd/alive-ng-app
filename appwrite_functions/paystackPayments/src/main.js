@@ -18,14 +18,52 @@ const MIN_VALID_RATE = 500;   // outer sanity floor (USD->NGN)
 const MAX_VALID_RATE = 5000;  // outer sanity ceiling (USD->NGN)
 const MAX_DEVIATION = 0.30;   // ±30% of the trusted reference rate
 
+// Branding asset embedded at the top of outbound receipts. Matches the asset
+// the `send_email` function already uses so every ALIVE email is branded the
+// same way.
+const ALIVE_LOGO_URL =
+  process.env.ALIVE_LOGO_URL ||
+  'https://app.alivenigeria.org/assets/assets/images/alive_logo.svg';
+
+// Display names for the client's `DonationType` enum values. Used as the
+// receipt/report fallback when a donor gives without picking a project.
+// Keep in sync with `DonationType.typeDisplayName` in
+// lib/models/donation_models.dart.
+//
+// 'ministrySupport' is intentionally absent: it was retired because a gift
+// aimed at a specific project is identified by project_id/project_title, not
+// by a separate donation type. Historic rows still carrying that value fall
+// through to 'General Support'.
+const DONATION_TYPE_LABELS = {
+  tractProduction: 'Tract Production',
+  generalSupport: 'General Support',
+  appMaintenance: 'App Maintenance',
+};
+
+/**
+ * Escapes text destined for an HTML email body.
+ *
+ * The purpose string can contain a donor- or admin-supplied project title, so
+ * it must never be interpolated raw -- an unescaped "&" or "<" would break the
+ * receipt markup.
+ */
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // Two-stage guard against API errors over-charging donors:
 //   1. Hard bounds reject obviously broken values (inverted
 //      rates like 50, or spikes like 50 000).
 //   2. A ±30% deviation band around the trusted fallback rejects
-//      anything further afield than ~â‚¦966 / â‚¦1 794 today.
+//      anything further afield than ~₦966 / ₦1 794 today.
 // The deviation band is intentionally wider than 20% because the
-// Naira is volatile â€” the 2023 float crisis still stayed under
-// â‚¦2 000. If a legitimate rate is ever rejected, widen this
+// Naira is volatile — the 2023 float crisis still stayed under
+// ₦2 000. If a legitimate rate is ever rejected, widen this
 // band or refresh USD_TO_NGN_RATE rather than removing the check.
 function isValidRate(value, referenceRate = FALLBACK_USD_TO_NGN) {
   const n = Number(value);
@@ -55,7 +93,7 @@ async function fetchJsonWithTimeout(url, { timeoutMs = 7000, headers } = {}) {
 // to maintain, so the rate a donor is quoted is the live market rate at
 // checkout time rather than a number somebody has to remember to update.
 //
-// NOTE: `api.frankfurter.app` was removed deliberately â€” it serves the ECB
+// NOTE: `api.frankfurter.app` was removed deliberately — it serves the ECB
 // reference set, which does not include the Naira, so it always answered 404
 // and just delayed the next provider.
 const FX_PROVIDERS = [
@@ -92,12 +130,12 @@ async function getLiveUsdToNgnRate() {
 //
 // Priority is deliberately "live first": the quoted rate is the market rate at
 // checkout time, so nobody has to keep a constant up to date.
-//   1. Admin pin  â€” only when USD_TO_NGN_PIN_RATE=true is set explicitly.
+//   1. Admin pin  — only when USD_TO_NGN_PIN_RATE=true is set explicitly.
 //   2. Live market rate (free key-less providers, see FX_PROVIDERS).
-//   3. Appwrite `app_settings` row â€” last known good rate the admin owns,
+//   3. Appwrite `app_settings` row — last known good rate the admin owns,
 //      updatable without redeploying the function.
 //   4. USD_TO_NGN_RATE env value, if configured.
-//   5. FALLBACK_USD_TO_NGN â€” last resort only, so checkout never blocks.
+//   5. FALLBACK_USD_TO_NGN — last resort only, so checkout never blocks.
 async function getConfiguredUsdToNgnRate(log) {
   const envRate = Number(process.env.USD_TO_NGN_RATE);
   const pinned =
@@ -171,8 +209,8 @@ export default async ({ req, res, log, error }) => {
 
     const action = body.action || 'initialize_transaction';
 
-    // â”€â”€ Public rate lookup (no Paystack call). Lets web + Flutter show a
-    // â”€â”€ live "$1 â‰ˆ â‚¦X" label from the market rate instead of a constant. â”€â”€
+    // ── Public rate lookup (no Paystack call). Lets web + Flutter show a
+    // ── live "$1 ≈ ₦X" label from the market rate instead of a constant. ──
     if (action === 'get_exchange_rate') {
       const { rate, source } = await getConfiguredUsdToNgnRate(log);
       return res.json({
@@ -184,7 +222,7 @@ export default async ({ req, res, log, error }) => {
       });
     }
 
-    // â”€â”€ Direct verification flow (from client return or webhook fallback) â”€â”€
+    // ── Direct verification flow (from client return or webhook fallback) ──
     if (action === 'verify_transaction') {
       const ref = body.reference || body.trxref;
       if (!ref) {
@@ -213,6 +251,107 @@ export default async ({ req, res, log, error }) => {
         paid_at: pData.paid_at,
         customer: pData.customer,
         metadata: pData.metadata,
+      });
+    }
+
+    // ── Manage a recurring subscription (list / cancel) ──
+    if (action === 'list_subscriptions' || action === 'cancel_subscription') {
+      const fnError = (message, status = 400) => res.json({ error: message }, status);
+      const paystack = async (path, { method = 'GET', payload = null } = {}) => {
+        const resp = await fetch(`https://api.paystack.co${path}`, {
+          method,
+          headers: {
+            Authorization: `Bearer ${secret}`,
+            'Content-Type': 'application/json',
+          },
+          ...(payload ? { body: JSON.stringify(payload) } : {}),
+        });
+        const json = await resp.json().catch(() => ({}));
+        if (!json?.status) {
+          throw new Error(json?.message || 'Paystack request failed.');
+        }
+        return json.data;
+      };
+
+      // The donor's email is the only reliable key: find their live
+      // (non-cancelled) subscriptions and filter by match below.
+      const donorEmail =
+        typeof body.email === 'string' && body.email.trim()
+          ? body.email.trim().toLowerCase()
+          : (typeof body.metadata?.donor_email === 'string'
+              ? body.metadata.donor_email.trim().toLowerCase()
+              : '');
+      if (!donorEmail) {
+        return fnError('Missing donor email.');
+      }
+
+      let subscriptions;
+      try {
+        subscriptions = await paystack('/subscription?perPage=100');
+      } catch (listErr) {
+        return fnError(`Could not list subscriptions: ${listErr.message}`, 502);
+      }
+
+      const owned = (Array.isArray(subscriptions) ? subscriptions : []).filter(
+        (sub) =>
+          typeof sub?.customer?.email === 'string' &&
+          sub.customer.email.trim().toLowerCase() === donorEmail &&
+          String(sub?.status || '').toLowerCase() !== 'cancelled',
+      );
+
+      if (action === 'list_subscriptions') {
+        return res.json({
+          ok: true,
+          email: donorEmail,
+          count: owned.length,
+          subscriptions: owned.map((sub) => ({
+            subscription_code: sub.subscription_code,
+            email_token: sub.email_token,
+            status: sub.status,
+            amount: sub.amount,
+            currency: sub.plan?.currency || null,
+            plan: sub.plan?.name || null,
+            plan_code: sub.plan?.plan_code || null,
+            next_payment_date: sub.next_payment_date || null,
+          })),
+        });
+      }
+
+      // cancel_subscription: pin down exactly ONE subscription.
+      const code =
+        typeof body.subscription_code === 'string' && body.subscription_code.trim()
+          ? body.subscription_code.trim()
+          : typeof body.email_token === 'string' && body.email_token.trim()
+            ? body.email_token.trim()
+            : '';
+      let target = owned.find(
+        (sub) => sub.subscription_code === code || sub.email_token === code,
+      );
+      if (!target && owned.length === 1 && !code) {
+        target = owned[0];
+      }
+      if (!target) {
+        if (owned.length === 0) {
+          return res.json({ ok: true, cancelled: false, count: 0, message: 'No active subscriptions found.' });
+        }
+        return fnError('Multiple active subscriptions found. Please choose which one to cancel.', 409);
+      }
+
+      try {
+        await paystack('/subscription/disable', {
+          method: 'POST',
+          payload: { code: target.subscription_code, token: target.email_token },
+        });
+      } catch (cancelErr) {
+        return fnError(`Cancellation failed: ${cancelErr.message}`, 502);
+      }
+
+      return res.json({
+        ok: true,
+        cancelled: true,
+        subscription_code: target.subscription_code,
+        plan: target.plan?.name || null,
+        message: 'Your monthly donation has been cancelled.',
       });
     }
 
@@ -247,23 +386,92 @@ export default async ({ req, res, log, error }) => {
       metadata,
     };
 
+    const amount = Number(body.amount);
+    if (Number.isFinite(amount) && amount > 0) {
+      payload.amount = Math.round(amount);
+    } else if (action !== 'initialize_subscription') {
+      return res.json({ error: 'Invalid amount.' }, 400);
+    }
+
+    // Paystack plan facts, verified live against the API (see
+    // scripts/probe_plan_api.mjs):
+    //   * `amount` is in the SMALLEST unit (kobo), e.g. 10000 = N100.
+    //   * It must be a JSON number (a stringified "1000" is rejected) and
+    //     Paystack enforces a hard floor of N100 => 10000 kobo.
+    //   * `currency: "USD"` is rejected outright: "USD not a supported currency".
+    //     There is no USD plan, so a USD monthly gift must be converted to its
+    //     NGN equivalent BEFORE the plan is created -- waiting for the
+    //     transaction call to fail first meant the plan was already dead.
+    const MIN_PLAN_KOBO = 10000;
+
     if (action === 'initialize_subscription') {
-      const planCode = typeof body.planCode === 'string' ? body.planCode.trim() : '';
-      if (!planCode) {
-        return res.json({ error: 'Missing Paystack monthly plan code.' }, 400);
-      }
-      payload.plan = planCode;
-      payload.metadata = {
-        ...payload.metadata,
-        recurring: true,
-        plan_code: planCode,
-      };
-    } else {
-      const amount = Number(body.amount);
-      if (!Number.isFinite(amount) || amount <= 0) {
+      // Dynamic plans only: the donor's own amount becomes a fresh Paystack
+      // plan every time. There is intentionally NO static/env plan fallback
+      // (the plans those env vars pointed at were deleted).
+      if (!payload.amount || !(payload.amount > 0)) {
         return res.json({ error: 'Invalid amount.' }, 400);
       }
-      payload.amount = Math.round(amount);
+
+      // USD monthly gifts are billed as the NGN equivalent of the quoted USD
+      // amount, so the donor still pays the monthly amount they picked.
+      let planCurrency = payload.currency || 'NGN';
+      let planAmountKobo = payload.amount;
+      let conversion = null;
+      if (planCurrency.toUpperCase() === 'USD') {
+        const clientRate = Number(
+          body?.metadata?.exchange_rate_usd_ngn ?? body?.metadata?.exchange_rate,
+        );
+        let exchangeRate = clientRate;
+        let rateSource = 'client';
+        if (!Number.isFinite(exchangeRate) || exchangeRate <= 100) {
+          const resolved = await getConfiguredUsdToNgnRate(log);
+          exchangeRate = resolved.rate;
+          rateSource = resolved.source;
+        }
+        const usdAmount = planAmountKobo / 100;
+        planAmountKobo = Math.round(usdAmount * exchangeRate * 100);
+        planCurrency = 'NGN';
+        conversion = {
+          original_currency: 'USD',
+          original_amount: usdAmount,
+          exchange_rate: exchangeRate,
+          exchange_rate_source: rateSource,
+          converted_to_ngn: true,
+        };
+        log(
+          `Converting monthly $${usdAmount} USD to N${planAmountKobo / 100} NGN ` +
+            `at rate ${exchangeRate} (${rateSource}) before creating the plan.`,
+        );
+      }
+
+      if (planAmountKobo < MIN_PLAN_KOBO) {
+        return res.json({
+          error:
+            `Recurring donations must be at least N${MIN_PLAN_KOBO / 100} per month.` +
+            (conversion ? ' Increase the amount or choose a one-time donation.' : ''),
+        }, 400);
+      }
+
+      const planName = makeDynamicPlanName(planCurrency, planAmountKobo, Boolean(conversion));
+      const planCode = await createDynamicPlan({ secret, log, name: planName, amount: planAmountKobo, currency: planCurrency });
+      if (!planCode) {
+        return res.json({ error: 'Could not create a recurring plan. Please try a one-time donation.' }, 400);
+      }
+
+      payload.plan = planCode;
+      // When using a plan, Paystack ignores the `amount` field and uses
+      // the plan's amount instead, so we remove it to avoid confusion.
+      delete payload.amount;
+      payload.currency = planCurrency;
+      payload.metadata = {
+        ...payload.metadata,
+        ...(conversion || {}),
+        recurring: true,
+        plan_code: planCode,
+        requested_amount: body.amount,
+        plan_amount_kobo: planAmountKobo,
+        plan_name: planName,
+      };
     }
 
     let paystackResponse = await fetch('https://api.paystack.co/transaction/initialize', {
@@ -276,7 +484,7 @@ export default async ({ req, res, log, error }) => {
     });
     let json = await paystackResponse.json();
 
-    // â”€â”€ Channel rejection recovery â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Channel rejection recovery ──────────────────────────────────────────
     // Paystack fails the WHOLE initialization when `channels` contains one it
     // cannot use for this account/currency (e.g. "mobile_money is not a valid
     // channel" / "channel_not_supported"). The web donation page never sends
@@ -309,9 +517,11 @@ export default async ({ req, res, log, error }) => {
     }
 
     // If Paystack rejects USD (unsupported_currency), fallback seamlessly to NGN conversion
-    if (!json?.status && (payload.currency === 'USD' || (json?.message && json.message.toLowerCase().includes('currency')))) {
+    // One-time USD gifts only. Recurring gifts are already converted to NGN and
+    // carry a plan by this point, so there is no amount left to re-convert here.
+    if (!json?.status && action !== 'initialize_subscription' && (payload.currency === 'USD' || (json?.message && json.message.toLowerCase().includes('currency')))) {
       // Prefer a client-supplied fresh rate, else resolve live on the server
-      // so the donor is billed at the current market rate â€” never stale.
+      // so the donor is billed at the current market rate — never stale.
       // Web sends `exchange_rate`, the Flutter app sends
       // `exchange_rate_usd_ngn`; accept either.
       const clientRate = Number(
@@ -326,7 +536,7 @@ export default async ({ req, res, log, error }) => {
       }
       const usdAmount = (payload.amount || 0) / 100;
       const ngnAmountMinor = Math.round(usdAmount * exchangeRate * 100);
-      log(`Paystack rejected USD currency. Converting $${usdAmount} USD to â‚¦${ngnAmountMinor / 100} NGN at rate ${exchangeRate} (${rateSource})`);
+      log(`Paystack rejected USD currency. Converting $${usdAmount} USD to ₦${ngnAmountMinor / 100} NGN at rate ${exchangeRate} (${rateSource})`);
       payload.currency = 'NGN';
       payload.amount = ngnAmountMinor;
       payload.metadata = {
@@ -447,6 +657,107 @@ async function writePaymentLog({ event, reference, status, payload, log }) {
   }
 }
 
+// ── Dynamic subscription plans ───────────────────────────────────────────
+// There is intentionally NO static/pre-configured plan fallback: every monthly
+// donation creates its own plan for the donor's exact amount (NGN or the NGN
+// equivalent of a USD amount), because the plans the env vars used to point
+// at have been deleted from the Paystack dashboard.
+function makeDynamicPlanName(currency, amountMinor, fromUsd = false) {
+  const major = amountMinor / 100;
+  const money = Number.isInteger(major) ? String(major) : major.toFixed(2);
+  const stamp = Date.now().toString(36).toUpperCase();
+  const suffix = fromUsd ? ' (from USD)' : '';
+  return `ALIVE Monthly ${currency} ${money}${suffix} ${stamp}`;
+}
+
+async function createDynamicPlan({ secret, log, name, amount, currency }) {
+  try {
+    const createPlanRes = await fetch('https://api.paystack.co/plan', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${secret}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name,
+        interval: 'monthly',
+        amount,
+        currency,
+      }),
+    });
+    const planJson = await createPlanRes.json();
+    if (planJson?.status && planJson?.data?.plan_code) {
+      if (log) log(`Created dynamic plan: ${planJson.data.plan_code} (${name})`);
+      return planJson.data.plan_code;
+    }
+    if (log) log(`Dynamic plan creation failed: ${planJson?.message || 'unknown'}`);
+    return null;
+  } catch (planErr) {
+    if (log) log(`Dynamic plan creation error: ${planErr.message}`);
+    return null;
+  }
+}
+
+/**
+ * Works out what a completed gift was FOR, as a short human-readable phrase.
+ *
+ * The receipt is the donor's proof of what they gave toward, and the finance
+ * team needs the same string on the stored record, so both use this. The
+ * precedence intentionally mirrors `appwrite_admin_export_service.dart`
+ * (`_resolvePurpose`) so the email, the CSV export and the in-app reports never
+ * disagree about the same donation.
+ */
+async function resolveDonationPurpose({ databases, projectsCollectionId, metadata, donationType }) {
+  const meta = metadata || {};
+
+  const text = (v) => (typeof v === 'string' ? v.trim() : '');
+
+  // 1. A split across several designations is the most specific answer, so it
+  //    wins over everything else the donor picked.
+  const split = Array.isArray(meta.fund_designations)
+    ? meta.fund_designations.map(text).filter(Boolean)
+    : [];
+  if (split.length > 1) {
+    return `Split donation: ${split.join(', ')}`;
+  }
+  if (split.length === 1) {
+    return split[0];
+  }
+
+  const designation = text(meta.fund_designation);
+  if (designation && !/^split:/i.test(designation)) {
+    return designation;
+  }
+
+  // 2. Title of the project the donor selected on screen.
+  const projectTitle = text(meta.project_title);
+  if (projectTitle) return projectTitle;
+
+  // 3. Same thing, but resolved from the projects collection so receipts stay
+  //    correct even if the client did not send a title.
+  const projectId = text(meta.project_id);
+  if (projectId && databases && projectsCollectionId) {
+    try {
+      const project = await databases.getDocument(databaseId, projectsCollectionId, projectId);
+      const name =
+        text(project.title) ||
+        text(project.name) ||
+        text(project.project_name) ||
+        text(project.purpose) ||
+        text(project.description);
+      if (name) return name;
+    } catch (_) {
+      // A missing project must never block the receipt.
+    }
+  }
+
+  // 4. Otherwise fall back to the donation category the donor chose.
+  const typeLabel = DONATION_TYPE_LABELS[text(donationType)];
+  if (typeLabel) return typeLabel;
+
+  return 'General Support';
+}
+
 async function handleVerifiedPayment(paystackData, log) {
   try {
     const apiKey = process.env.APPWRITE_FUNCTION_API_KEY || process.env.APPWRITE_API_KEY;
@@ -473,11 +784,29 @@ async function handleVerifiedPayment(paystackData, log) {
       paid_at: paystackData.paid_at,
     };
 
+    // Resolve what this gift was FOR, so the receipt and the stored record are
+    // both traceable. Priority mirrors the admin export service
+    // (`_resolvePurpose`) so the receipt, the CSV export and the in-app
+    // reports all agree on the wording:
+    //   1. an explicit purpose/designation chosen by the donor
+    //   2. the selected project's title
+    //   3. the project's human-readable name looked up in the DB
+    //   4. the donation type (e.g. "Tract Production")
+    //   5. "General Support"
+    const purpose = await resolveDonationPurpose({
+      databases,
+      projectsCollectionId,
+      metadata,
+      donationType: paystackData.metadata?.donation_type || '',
+    });
+
     // 1. Update or create donation record
     try {
       await databases.updateDocument(databaseId, donationsCollectionId, reference, {
         status: 'completed',
         transaction_id: String(paystackData.id || ''),
+        purpose,
+        project_title: purpose,
         completed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         metadata: JSON.stringify(metadata),
@@ -488,6 +817,8 @@ async function handleVerifiedPayment(paystackData, log) {
           reference,
           status: 'completed',
           processor: 'paystack',
+          purpose,
+          project_title: purpose,
           amount_kobo: Math.round(amountKobo),
           amount,
           currency: paystackData.currency || 'NGN',
@@ -531,9 +862,18 @@ async function handleVerifiedPayment(paystackData, log) {
         const dateStr = new Date().toLocaleDateString('en-NG', { year: 'numeric', month: 'long', day: 'numeric' });
         const currency = paystackData.currency || 'NGN';
         const formattedAmount = amount.toLocaleString();
-        const receiptHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Donation Receipt - ALIVE Nigeria</title></head><body style="font-family:Georgia,serif;max-width:600px;margin:0 auto;padding:20px;color:#1a202c;"><div style="text-align:center;border-bottom:3px solid #1a365d;padding-bottom:20px;margin-bottom:20px;"><h1 style="color:#1a365d;margin:0;">ALIVE Nigeria Ministries</h1><p style="color:#666;margin:4px 0;">Official Donation Receipt</p></div><div style="padding:10px 0;"><p>Dear ${donorName},</p><p>Thank you for your generous donation to ALIVE Nigeria Ministries. Your support empowers gospel ministry across Nigeria.</p><table style="width:100%;border-collapse:collapse;margin:20px 0;"><tr><td style="padding:10px;border:1px solid #e2e8f0;background:#f7fafc;"><strong>Donor Name</strong></td><td style="padding:10px;border:1px solid #e2e8f0;">${donorName}</td></tr><tr><td style="padding:10px;border:1px solid #e2e8f0;background:#f7fafc;"><strong>Amount</strong></td><td style="padding:10px;border:1px solid #e2e8f0;">${currency} ${formattedAmount}</td></tr><tr><td style="padding:10px;border:1px solid #e2e8f0;background:#f7fafc;"><strong>Reference</strong></td><td style="padding:10px;border:1px solid #e2e8f0;">${reference}</td></tr><tr><td style="padding:10px;border:1px solid #e2e8f0;background:#f7fafc;"><strong>Date</strong></td><td style="padding:10px;border:1px solid #e2e8f0;">${dateStr}</td></tr></table><p style="color:#4a5568;font-size:14px;">Please retain this receipt for your records. Contact us at <a href="mailto:app@alivenigeria.org">app@alivenigeria.org</a> for any inquiries.</p></div><div style="text-align:center;border-top:1px solid #e2e8f0;padding-top:20px;color:#999;font-size:12px;"><p>ALIVE Nigeria Ministries &mdash; Thank you for your generosity.</p></div></body></html>`;
+        // Purpose and donor name can originate from metadata, so both are
+        // escaped before going into the HTML body.
+        const safePurpose = escapeHtml(purpose);
+        const safeDonorName = escapeHtml(donorName);
+        const safeReference = escapeHtml(reference);
+        const isRecurring = Boolean(metadata?.recurring);
+        const purposeRow = `<tr><td style="padding:10px;border:1px solid #e2e8f0;background:#f7fafc;"><strong>Purpose</strong></td><td style="padding:10px;border:1px solid #e2e8f0;">${safePurpose}</td></tr>`;
+        const typeRow = `<tr><td style="padding:10px;border:1px solid #e2e8f0;background:#f7fafc;"><strong>Type</strong></td><td style="padding:10px;border:1px solid #e2e8f0;">${isRecurring ? 'Monthly recurring gift' : 'One-time gift'}</td></tr>`;
+        const receiptHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Donation Receipt - ALIVE Nigeria</title></head><body style="font-family:Georgia,serif;max-width:600px;margin:0 auto;padding:20px;color:#1a202c;"><div style="text-align:center;border-bottom:3px solid #1a365d;padding-bottom:20px;margin-bottom:20px;"><img src="${ALIVE_LOGO_URL}" alt="ALIVE Nigeria" width="88" height="88" style="display:block;margin:0 auto 12px;border:0;outline:none;" /><h1 style="color:#1a365d;margin:0;">ALIVE Nigeria</h1><p style="color:#666;margin:4px 0;">Official Donation Receipt</p></div><div style="padding:10px 0;"><p>Dear ${safeDonorName},</p><p>Thank you for your generous donation to ALIVE Nigeria. Your support empowers our work across Nigeria.</p><p style="color:#4a5568;">Your gift of <strong>${escapeHtml(currency)} ${escapeHtml(formattedAmount)}</strong> was designated to <strong>${safePurpose}</strong>.</p><table style="width:100%;border-collapse:collapse;margin:20px 0;"><tr><td style="padding:10px;border:1px solid #e2e8f0;background:#f7fafc;"><strong>Donor Name</strong></td><td style="padding:10px;border:1px solid #e2e8f0;">${safeDonorName}</td></tr>${typeRow}${purposeRow}<tr><td style="padding:10px;border:1px solid #e2e8f0;background:#f7fafc;"><strong>Amount</strong></td><td style="padding:10px;border:1px solid #e2e8f0;">${escapeHtml(currency)} ${escapeHtml(formattedAmount)}</td></tr><tr><td style="padding:10px;border:1px solid #e2e8f0;background:#f7fafc;"><strong>Reference</strong></td><td style="padding:10px;border:1px solid #e2e8f0;">${safeReference}</td></tr><tr><td style="padding:10px;border:1px solid #e2e8f0;background:#f7fafc;"><strong>Date</strong></td><td style="padding:10px;border:1px solid #e2e8f0;">${escapeHtml(dateStr)}</td></tr></table><p style="color:#4a5568;font-size:14px;">Please retain this receipt for your records. Contact us at <a href="mailto:app@alivenigeria.org">app@alivenigeria.org</a> for any inquiries.</p></div><div style="text-align:center;border-top:1px solid #e2e8f0;padding-top:20px;color:#999;font-size:12px;"><p>ALIVE Nigeria &mdash; Thank you for your generosity.</p></div></body></html>`;
 
-        const sender = process.env.RECEIPT_SENDER_EMAIL || process.env.SENDER_EMAIL || 'ALIVE Nigeria <app@alivenigeria.org>';
+        const sender = process.env.RECEIPT_SENDER_EMAIL || process.env.SENDER_EMAIL || 'ALIVE Nigeria App <receipts@app.alivenigeria.org>';
+        const replyTo = process.env.REPLY_TO_EMAIL || 'app@alivenigeria.org';
         const emailRes = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
@@ -543,12 +883,18 @@ async function handleVerifiedPayment(paystackData, log) {
           body: JSON.stringify({
             from: sender,
             to: [customerEmail],
+            cc: [replyTo],
+            reply_to: replyTo,
             subject: `Your ALIVE Nigeria Donation Receipt - ${reference}`,
             html: receiptHtml,
           }),
         });
         const resText = await emailRes.text();
-        if (log) log(`Receipt email dispatched to ${customerEmail}: status ${emailRes.status}`);
+        if (emailRes.ok) {
+          if (log) log(`Receipt email dispatched to ${customerEmail}: status ${emailRes.status}`);
+        } else if (log) {
+          log(`Receipt email FAILED for ${customerEmail} (${emailRes.status}): ${resText}`);
+        }
       } catch (mailErr) {
         if (log) log(`Receipt email error: ${mailErr.message}`);
       }

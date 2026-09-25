@@ -745,7 +745,6 @@ class DonationService {
         return DonationConstants.tractDonationByRegion[regionCode] ??
             DonationConstants.minimumTractDonation;
       case DonationType.generalSupport:
-      case DonationType.ministrySupport:
       case DonationType.appMaintenance:
         switch (currency.toUpperCase()) {
           case 'NGN':
@@ -828,6 +827,7 @@ class DonationService {
       };
       final paymentResult = isRecurringMonthly
           ? await _paymentService.processMonthlyDonation(
+              amount: amount,
               email: email,
               currency: currency,
               reference: donationId,

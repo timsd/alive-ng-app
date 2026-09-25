@@ -1,4 +1,11 @@
+// IMPORTANT: the Resend account only has `app.alivenigeria.org` verified for
+// sending. Addresses on the bare `alivenigeria.org` domain (e.g.
+// `app@alivenigeria.org`) are rejected with 403 "domain is not verified".
+// So the From address MUST live under `app.alivenigeria.org`, while
+// `app@alivenigeria.org` is used as the Reply-To so replies reach the
+// monitored mailbox.
 const defaultSender = 'ALIVE Nigeria App <msg@app.alivenigeria.org>';
+const defaultReplyTo = 'app@alivenigeria.org';
 
 // Branding assets used across all outbound emails.
 // SVG renders in most clients; the text heading below acts as a fallback
@@ -30,6 +37,18 @@ export default async ({ req, res, log, error }) => {
       body = JSON.parse(src || '{}');
     }
     const from = process.env.RECEIPT_SENDER_EMAIL || process.env.SENDER_EMAIL || defaultSender;
+    // Every outbound email replies to the monitored support mailbox unless the
+    // caller explicitly overrides it in the execution body.
+    const replyTo =
+      (typeof body.reply_to === 'string' && body.reply_to.trim()) ||
+      (typeof body.replyTo === 'string' && body.replyTo.trim()) ||
+      process.env.REPLY_TO_EMAIL ||
+      defaultReplyTo;
+    // Every outbound email is also CC'd to the support mailbox unless the
+    // caller overrides it, so there is a complete copy of all correspondence.
+    const ccAddress =
+      (typeof body.cc === 'string' && body.cc.trim()) ||
+      replyTo;
 
     // 1. Handle automatic Welcome Email on user registration / creation event
     const isUserCreateEvent = event.startsWith('users.') && event.endsWith('.create');
@@ -57,6 +76,8 @@ export default async ({ req, res, log, error }) => {
         body: JSON.stringify({
           from,
           to: [recipientEmail],
+          cc: [ccAddress],
+          reply_to: replyTo,
           subject: welcomeSubject,
           html: welcomeHtml,
         }),
@@ -97,6 +118,8 @@ export default async ({ req, res, log, error }) => {
       body: JSON.stringify({
         from,
         to: [to],
+        cc: [ccAddress],
+        reply_to: replyTo,
         subject,
         html,
       }),
@@ -122,7 +145,7 @@ function getWelcomeEmailHtml(name) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Welcome to ALIVE Nigeria</title>
+  <title>Welcome to ALIVE Nigeria App</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #FCFAF5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #17263B;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #FCFAF5; padding: 32px 16px;">

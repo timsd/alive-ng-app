@@ -2181,7 +2181,7 @@ abstract class AppLocalizations {
   /// No description provided for @ministry_years_intro.
   ///
   /// In en, this message translates to:
-  /// **'For more than {years} years, ALIVE Nigeria Ministries has helped connect thousands of people with God\'s word and established churches around Nigeria.'**
+  /// **'For more than {years} years, ALIVE Nigeria has helped connect thousands of people with God\'s word and established churches around Nigeria.'**
   String ministry_years_intro(Object years);
 
   /// No description provided for @ministry_years_outro.
@@ -2265,7 +2265,7 @@ abstract class AppLocalizations {
   /// No description provided for @split_donation_multiple.
   ///
   /// In en, this message translates to:
-  /// **'Split donation between multiple ministries'**
+  /// **'Split donation between multiple purposes'**
   String get split_donation_multiple;
 
   /// No description provided for @choose_funds.

@@ -6,6 +6,7 @@ import '../../services/discipleship_service.dart';
 import '../../services/auth_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/responsive_utils.dart';
+import '../../widgets/custom_app_bar.dart';
 
 class DiscipleshipScreen extends StatefulWidget {
   const DiscipleshipScreen({super.key});
@@ -123,26 +124,35 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Discipleship Tracker'),
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: Colors.white,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white.withValues(alpha: 0.7),
-          labelStyle: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold),
-          unselectedLabelStyle: Theme.of(context).textTheme.labelLarge,
-          isScrollable: true,
-          tabs: const [
-            Tab(text: 'Overview'),
-            Tab(text: 'Contacts'),
-            Tab(text: 'Activities'),
-            Tab(text: 'Prayer'),
-            Tab(text: 'Reports'),
-            Tab(text: 'Officer Inbox'),
-          ],
+      // CustomAppBar (like the other top-level screens) so the back arrow is
+      // always present. The previous plain AppBar relied on
+      // `automaticallyImplyLeading`, which renders nothing when this route is
+      // reached by a root-level `context.go(...)` with no stack to pop.
+      appBar: CustomAppBar(
+        title: 'Discipleship Tracker',
+        showBackButton: true,
+        // This screen has its own add/refresh actions below.
+        showDonationButton: false,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(kTextTabBarHeight),
+          child: TabBar(
+            controller: _tabController,
+            indicatorColor: Colors.white,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white.withValues(alpha: 0.7),
+            labelStyle:
+                Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold),
+            unselectedLabelStyle: Theme.of(context).textTheme.labelLarge,
+            isScrollable: true,
+            tabs: const [
+              Tab(text: 'Overview'),
+              Tab(text: 'Contacts'),
+              Tab(text: 'Activities'),
+              Tab(text: 'Prayer'),
+              Tab(text: 'Reports'),
+              Tab(text: 'Officer Inbox'),
+            ],
+          ),
         ),
         actions: [
           IconButton(

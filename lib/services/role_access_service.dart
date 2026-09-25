@@ -3,6 +3,7 @@ import '../utils/logger.dart';
 import 'auth_service.dart';
 import '../config/development_config.dart';
 import '../config/appwrite_backend_config.dart';
+import '../constants/chapters.dart';
 
 /// Service for managing role-based access control throughout the app
 class RoleAccessService {
@@ -19,9 +20,15 @@ class RoleAccessService {
   DateTime? _cacheTimestamp;
 
   /// User roles in hierarchical order (lowest to highest privilege)
+  ///
+  /// `healthContributor` sits directly above `member`: it is the lowest
+  /// elevated role and exists purely to unlock the Health+ content editor
+  /// (recipes + remedies). Being second-lowest means it cannot reach any other
+  /// gated feature, including the admin dashboard.
   static const List<String> _roleHierarchy = [
     'guest',
     'member',
+    'healthcontributor',
     'coordinator',
     'leader',
     'director',
@@ -174,6 +181,19 @@ class RoleAccessService {
     }
 
     return hasRole('admin');
+  }
+
+  /// Check if the user may add/edit Health+ content (recipes and remedies).
+  ///
+  /// Deliberately WIDER than [canAccessAdmin] but NARROWER than
+  /// [canAccessLeadership]: a `healthContributor` gets the Health+ editor and
+  /// nothing else. Admins and the leadership roles keep their existing access.
+  bool canManageHealthContent() {
+    if (DevelopmentConfig.shouldBypassRoleGuards) return true;
+
+    final role = _normalizeRole(getCurrentUserRole());
+    if (role == null) return false;
+    return ChapterConstants.healthContentRoles.contains(role);
   }
 
   /// Check if user can create chat channels (strictly admin-only)

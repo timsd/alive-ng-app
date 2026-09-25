@@ -146,7 +146,14 @@ class CustomBottomSheet extends StatelessWidget {
       isDismissible: isDismissible,
       enableDrag: enableDrag,
       backgroundColor: Colors.transparent,
-      shape: shape,
+      // The route is invisible; the `CustomBottomSheet` below draws the one real
+      // card. An explicit empty shape plus zero elevation stops the theme's
+      // `bottomSheetTheme` shape (a bordered rounded rectangle) from being
+      // painted onto the transparent route -- that was the faint "ghost card"
+      // showing behind the modal.
+
+      shape: shape ?? const RoundedRectangleBorder(),
+      elevation: 0,
       clipBehavior: clipBehavior,
       constraints: constraints,
       isScrollControlled: true,

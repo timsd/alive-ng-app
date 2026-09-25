@@ -522,6 +522,8 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
         return colorScheme.tertiary;
       case 'coordinator':
         return colorScheme.primary;
+      case 'healthContributor':
+        return colorScheme.tertiary;
       case 'member':
       default:
         return colorScheme.secondary;
@@ -601,10 +603,23 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
       case 'admin':
         newRole = 'leader';
         break;
+      case 'trustee':
+        newRole = 'bod';
+        break;
+      case 'bod':
+        newRole = 'director';
+        break;
+      case 'director':
+        newRole = 'leader';
+        break;
       case 'leader':
         newRole = 'coordinator';
         break;
       case 'coordinator':
+        newRole = 'member';
+        break;
+      // Health+ contributors drop straight back to a plain member.
+      case 'healthContributor':
         newRole = 'member';
         break;
       default:

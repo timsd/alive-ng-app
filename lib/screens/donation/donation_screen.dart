@@ -851,8 +851,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
               ),
             ),
           ),
-        // Live USD -> NGN conversion notice (parity with the web donation page
-        // so donors always see the rate they will actually be billed at).
+        // USD payment notice
         if (isEnabled && _selectedCurrency == 'USD')
           Padding(
             padding: EdgeInsets.only(
@@ -860,7 +859,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
             child: Container(
               width: double.infinity,
               padding: EdgeInsets.all(
-                  ResponsiveUtils.getResponsiveSpacing(context, 10)),
+                  ResponsiveUtils.getResponsiveSpacing(context, 12)),
               decoration: BoxDecoration(
                 color:
                     isDark ? const Color(0xFF3B2F0B) : const Color(0xFFFEF3C7),
@@ -871,47 +870,14 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                       : const Color(0xFFFDE68A),
                 ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '\$${_selectedAmount.toStringAsFixed(2)} USD ≈ '
-                    '₦${(_selectedAmount * _exchangeRate).round()} NGN',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: isDark
-                          ? const Color(0xFFFDE68A)
-                          : const Color(0xFF92400E),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Processed securely via Paystack '
-                    '(₦${_exchangeRate.round()}/\$1). All international Visa, '
-                    'Mastercard & Amex cards accepted.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: isDark
-                          ? const Color(0xFFE7C86B)
-                          : const Color(0xFF78350F),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _exchangeRateLive
-                        ? '● Live rate (${ExchangeRateService.instance.rateSource})'
-                        : '● Indicative rate — final charge uses the live rate '
-                            'at checkout',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: _exchangeRateLive
-                          ? (isDark
-                              ? const Color(0xFF86EFAC)
-                              : const Color(0xFF15803D))
-                          : (isDark
-                              ? const Color(0xFFFCD34D)
-                              : const Color(0xFFB45309)),
-                    ),
-                  ),
-                ],
+              child: Text(
+                'Processed securely via Paystack. All local and international Visa, Mastercard & Amex cards accepted.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: isDark
+                      ? const Color(0xFFFDE68A)
+                      : const Color(0xFF92400E),
+                ),
               ),
             ),
           ),
@@ -1361,10 +1327,10 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
     }
 
     // Determine donation type:
-    // Route project donations through existing donation channel with metadata
-    final DonationType type = _selectedProjectId != null
-        ? DonationType.ministrySupport
-        : DonationType.generalSupport;
+    // Project gifts are recorded as 'generalSupport'; what they were FOR is
+    // carried by the `project_id` / `project_title` / `fund_designation`
+    // metadata below (and echoed on the receipt as its Purpose).
+    const DonationType type = DonationType.generalSupport;
 
     // Validate minimums
     final donationService = ref.read(donationServiceProvider);

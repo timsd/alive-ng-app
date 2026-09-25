@@ -309,7 +309,14 @@ class MainNavigationScreen extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      // The route is a transparent carrier only. The card is drawn once, in
+      // `_buildMoreBottomSheet` below. Passing an empty shape + zero elevation
+      // stops the global `bottomSheetTheme` shape from painting a second,
+      // bordered container behind this one (the "ghost card"), and the theme
+      // drag handle is disabled so there is only ever one grabber.
       backgroundColor: Colors.transparent,
+      shape: const RoundedRectangleBorder(),
+      elevation: 0,
       builder: (context) => SafeArea(
         top: true,
         child: Align(
