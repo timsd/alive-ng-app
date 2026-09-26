@@ -758,6 +758,59 @@ async function resolveDonationPurpose({ databases, projectsCollectionId, metadat
   return 'General Support';
 }
 
+/**
+ * The credit marker lives on the donation row rather than in memory, so it
+ * survives across the two independent executions that can see one payment:
+ * the donor's `verify_transaction` call and Paystack's webhook.
+ */
+const PROJECT_CREDIT_FIELD = 'project_credited_at';
+
+/**
+ * True when this reference has already been added to a project target.
+ * A missing donation row is treated as "not yet credited" so the payment is
+ * never silently dropped just because the record write lost a race.
+ */
+async function hasProjectCredit(databases, collectionId, reference) {
+  if (!databases || !collectionId || !reference) return false;
+  try {
+    const donation = await databases.getDocument(databaseId, collectionId, reference);
+    return Boolean(donation && donation[PROJECT_CREDIT_FIELD]);
+  } catch (_) {
+    return false;
+  }
+}
+
+/** Records that this reference has been added to a project target. */
+async function markProjectCredited(databases, collectionId, reference) {
+  if (!databases || !collectionId || !reference) return;
+  try {
+    await databases.updateDocument(databaseId, collectionId, reference, {
+      [PROJECT_CREDIT_FIELD]: new Date().toISOString(),
+    });
+  } catch (_) {
+    // The counter is already correct; failing to stamp the marker is not
+    // worth failing the whole payment over.
+  }
+}
+
+/**
+ * Adds to a project's raised total.
+ *
+ * `??` rather than `||` matters here: a brand-new project has `raised === 0`,
+ * and `||` would read that as "unset" and fall through to `amount_raised`.
+ */
+async function addToProjectRaised({ databases, projectsCollectionId, projectId, amount }) {
+  const project = await databases.getDocument(databaseId, projectsCollectionId, projectId);
+  const current = Number(project.raised ?? project.amount_raised ?? 0);
+  const next = current + amount;
+  await databases.updateDocument(databaseId, projectsCollectionId, projectId, {
+    raised: next,
+    amount_raised: next,
+    updated_at: new Date().toISOString(),
+  });
+  return next;
+}
+
 async function handleVerifiedPayment(paystackData, log) {
   try {
     const apiKey = process.env.APPWRITE_FUNCTION_API_KEY || process.env.APPWRITE_API_KEY;
@@ -838,19 +891,47 @@ async function handleVerifiedPayment(paystackData, log) {
       }
     }
 
-    // 2. Increment project raised counter
+    // 2. Increment project raised counter.
+    //
+    // This used to be a plain read-modify-write with two defects:
+    //   a) it ran on BOTH the verify_transaction call and the Paystack webhook
+    //      for the same donation, so one gift could be counted twice;
+    //   b) `project.raised || project.amount_raised` treated a legitimate 0 as
+    //      "missing" and fell through to the other field.
+    // A per-reference credit marker on the donation row makes it idempotent,
+    // and `??` keeps a real 0 intact.
     const projId = String(paystackData.metadata?.project_id || '').trim();
-    if (projId && projId !== 'general_mission_fund') {
+    const NON_PROJECT_IDS = new Set(['general_mission_fund', 'general_support', '']);
+    if (projId && !NON_PROJECT_IDS.has(projId)) {
       try {
-        const project = await databases.getDocument(databaseId, projectsCollectionId, projId);
-        const currentRaised = Number(project.raised || project.amount_raised || 0);
-        const newRaised = currentRaised + amount;
-        await databases.updateDocument(databaseId, projectsCollectionId, projId, {
-          raised: newRaised,
-          amount_raised: newRaised,
-          updated_at: new Date().toISOString(),
-        });
-        if (log) log(`Updated project ${projId} raised total to ${newRaised}`);
+        const alreadyCredited = await hasProjectCredit(
+          databases,
+          donationsCollectionId,
+          reference,
+        );
+        if (alreadyCredited) {
+          if (log) {
+            log(`Project ${projId} already credited for ${reference}; not double counting`);
+          }
+        } else {
+          // Only NGN may raise an NGN-denominated target. A charge that
+          // settled in another currency would otherwise be added as naira.
+          const settled = String(paystackData.currency || 'NGN').toUpperCase();
+          if (settled !== 'NGN') {
+            if (log) {
+              log(`Not crediting project ${projId}: settled in ${settled}, target is NGN`);
+            }
+          } else {
+            await addToProjectRaised({
+              databases,
+              projectsCollectionId,
+              projectId: projId,
+              amount,
+            });
+            if (log) log(`Credited project ${projId} by ${amount}`);
+            await markProjectCredited(databases, donationsCollectionId, reference);
+          }
+        }
       } catch (projErr) {
         if (log) log(`Skipping project raised update: ${projErr.message}`);
       }

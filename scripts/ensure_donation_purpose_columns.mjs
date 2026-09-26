@@ -106,6 +106,10 @@ console.log(`Existing ${kind}: ${[...existingKeys].join(', ')}\n`);
 const WANTED = [
   { key: 'purpose', size: 512, required: false },
   { key: 'project_title', size: 512, required: false },
+  // Stamped by the payment handlers once a gift has been added to a project
+  // target, so the same charge is never counted twice across the verify call
+  // and the Paystack webhook. See `PROJECT_CREDIT_FIELD` in the two functions.
+  { key: 'project_credited_at', size: 64, required: false },
 ];
 
 const isAttributes = kind === 'collections/attributes';

@@ -1105,10 +1105,50 @@ class OfflineBibleService {
 
   Future<List<String>> _discoverAvailableVersionCodesFromAssets(
       String language) async {
-    return (_supportedLanguages[language] ?? const <Map<String, String>>[])
+    // What the app is willing to offer for this language.
+    final configured = (_supportedLanguages[language] ?? const <Map<String, String>>[])
         .map((version) => version['code'])
         .whereType<String>()
         .toList();
+    if (configured.isEmpty) return configured;
+
+    // Cross-check against the bundled database.
+    //
+    // The configured list above is a wish list, not a record of what shipped.
+    // bible.db currently carries chapters for KJV/NIV/ASV/NASB/NKJV/BM/IGBOB
+    // but none for NLT or HAU, and offering those produced a blank reader
+    // rather than an honest "unavailable". Filtering by what is actually
+    // present keeps the picker honest and survives the data changing.
+    final bundled = await _versionsPresentInDatabase();
+    if (bundled.isEmpty) return configured; // Can't tell -- don't hide anything.
+
+    final available = configured.where(bundled.contains).toList();
+    if (available.length != configured.length) {
+      final missing = configured.where((c) => !bundled.contains(c)).toList();
+      _logger.info(
+        'Hiding Bible version(s) with no bundled text: ${missing.join(', ')}',
+      );
+    }
+    return available.isEmpty ? configured : available;
+  }
+
+  /// Version codes that actually have chapters in the bundled database.
+  Future<Set<String>> _versionsPresentInDatabase() async {
+    try {
+      final db = await _dbHelper.database;
+      final rows = await db.rawQuery(
+        'SELECT DISTINCT version FROM bible_chapters',
+      );
+      return rows
+          .map((r) => r['version'])
+          .whereType<String>()
+          .where((v) => v.isNotEmpty)
+          .toSet();
+    } catch (_) {
+      // If the database cannot be read, fall back to the configured list so
+      // the reader is not emptied out by a transient failure.
+      return const <String>{};
+    }
   }
   // ---- BibleReadingPlan / BibleReadingDay integration ----
 

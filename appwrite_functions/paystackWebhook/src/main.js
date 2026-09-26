@@ -216,7 +216,10 @@ export default async ({ req, res, log, error }) => {
         updated_at: new Date().toISOString(),
         metadata: JSON.stringify(metadata),
       }, data);
-      await incrementProjectRaised(databases, metadata, log);
+      // The reference and settled currency are what make the credit
+      // idempotent -- the same charge can reach us from Paystack more than
+      // once, and the donor's own verify call increments too.
+      await incrementProjectRaised(databases, metadata, log, reference, data?.currency);
       await sendDonationReceipt(data);
     } else if (type === 'charge.failed' || type === 'charge.abandoned') {
       await updateDonation(databases, reference, {
@@ -282,19 +285,83 @@ async function updateDonation(databases, reference, data, paystackData) {
   }
 }
 
-async function incrementProjectRaised(databases, metadata, log) {
+// The credit marker lives on the donation row so the same payment cannot be
+// counted twice, no matter which of the two independent handlers sees it
+// first. `paystackPayments` writes the same field, and both functions read it.
+const PROJECT_CREDIT_FIELD = 'project_credited_at';
+
+// Giving toward these does not raise a project target.
+const NON_PROJECT_IDS = new Set(['general_mission_fund', 'general_support', '']);
+
+async function hasProjectCredit(databases, reference) {
+  if (!databases || !donationsCollectionId || !reference) return false;
+  try {
+    const donation = await databases.getDocument(databaseId, donationsCollectionId, reference);
+    return Boolean(donation && donation[PROJECT_CREDIT_FIELD]);
+  } catch (_) {
+    // No row yet means not yet credited -- never drop a real payment.
+    return false;
+  }
+}
+
+async function markProjectCredited(databases, reference) {
+  if (!databases || !donationsCollectionId || !reference) return;
+  try {
+    await databases.updateDocument(databaseId, donationsCollectionId, reference, {
+      [PROJECT_CREDIT_FIELD]: new Date().toISOString(),
+    });
+  } catch (_) {
+    // The total is already correct; not worth failing the webhook over.
+  }
+}
+
+/**
+ * Adds to a project's raised total.
+ *
+ * `??` rather than `||` matters: a new project has `raised === 0`, and `||`
+ * reads that as "unset" and falls through to `amount_raised`.
+ */
+async function addToProjectRaised({ databases, projectId, amount }) {
+  const project = await databases.getDocument(databaseId, projectsCollectionId, projectId);
+  const current = Number(project.raised ?? project.amount_raised ?? 0);
+  const next = current + amount;
+  await databases.updateDocument(databaseId, projectsCollectionId, projectId, {
+    raised: next,
+    amount_raised: next,
+    updated_at: new Date().toISOString(),
+  });
+  return next;
+}
+
+/**
+ * Credits a project's raised counter, at most once per payment reference.
+ *
+ * Paystack can deliver the same transaction more than once, and the donor's
+ * `verify_transaction` call also touches the same counter. The guard is on
+ * the stored reference, not on this run, so a retry is a no-op.
+ */
+async function incrementProjectRaised(databases, metadata, log, reference, currency) {
   const projectId = String(metadata.project_id || '').trim();
   const amount = Number(metadata.amount_ngn || metadata.amount || 0);
-  if (!projectId || !Number.isFinite(amount) || amount <= 0) return;
+  if (NON_PROJECT_IDS.has(projectId) || !Number.isFinite(amount) || amount <= 0) return;
 
   try {
-    const project = await databases.getDocument(databaseId, projectsCollectionId, projectId);
-    const raised = Number(project.raised || project.amount_raised || 0) + amount;
-    await databases.updateDocument(databaseId, projectsCollectionId, projectId, {
-      raised,
-      amount_raised: raised,
-      updated_at: new Date().toISOString(),
-    });
+    if (await hasProjectCredit(databases, reference)) {
+      log(`Project ${projectId} already credited for ${reference}; not double counting`);
+      return;
+    }
+
+    // A target is denominated in naira, so a charge that settled in another
+    // currency must not be added as if it were naira.
+    const settled = String(currency || 'NGN').toUpperCase();
+    if (settled !== 'NGN') {
+      log(`Not crediting project ${projectId}: settled in ${settled}, target is NGN`);
+      return;
+    }
+
+    const raised = await addToProjectRaised({ databases, projectId, amount });
+    log(`Credited project ${projectId} to ${raised}`);
+    await markProjectCredited(databases, reference);
   } catch (err) {
     log(`Skipping project raised update: ${err.message}`);
   }
