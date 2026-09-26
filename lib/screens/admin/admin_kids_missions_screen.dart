@@ -29,6 +29,13 @@ class _AdminKidsMissionsScreenState extends State<AdminKidsMissionsScreen> {
   final TextEditingController _pointsController =
       TextEditingController(text: '100');
   final TextEditingController _instructionsController = TextEditingController();
+  // The passage a child's answer is scored against. Kept separate from
+  // `description`, which is the task label shown on screen and is not
+  // something the child can say.
+  final TextEditingController _expectedResponseController =
+      TextEditingController();
+  final TextEditingController _expectedResponseModeController =
+      TextEditingController(text: 'recite');
 
   MissionDifficulty _selectedDifficulty = MissionDifficulty.easy;
   MissionCategory _selectedCategory = MissionCategory.learning;
@@ -48,6 +55,8 @@ class _AdminKidsMissionsScreenState extends State<AdminKidsMissionsScreen> {
     _durationController.dispose();
     _pointsController.dispose();
     _instructionsController.dispose();
+    _expectedResponseController.dispose();
+    _expectedResponseModeController.dispose();
     super.dispose();
   }
 
@@ -142,6 +151,16 @@ class _AdminKidsMissionsScreenState extends State<AdminKidsMissionsScreen> {
         'completed': false,
         'instructions': jsonEncode(instructionsList),
         'verification_method': _selectedVerification.name,
+        // Only a scored activity has a passage. A photo or witness mission
+        // is confirmed by a person, so storing text for it would invite the
+        // app to grade the child's own words against something they never
+        // said.
+        'expected_response': _expectedResponseController.text.trim().isEmpty
+            ? null
+            : _expectedResponseController.text.trim(),
+        'expected_response_mode': _expectedResponseController.text.trim().isEmpty
+            ? null
+            : _expectedResponseModeController.text.trim(),
         'prerequisite_mission_ids': const <String>[],
         'is_locked': false,
         'media_url': uploadedMediaUrl,
@@ -368,6 +387,39 @@ class _AdminKidsMissionsScreenState extends State<AdminKidsMissionsScreen> {
                             'Extract via PDF or type them out separated by returns.',
                       ),
                       maxLines: 8,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _expectedResponseController,
+                      decoration: InputDecoration(
+                        labelText: 'Expected Response (passage to recite)',
+                        alignLabelWithHint: true,
+                        border: const OutlineInputBorder(),
+                        helperText:
+                            'The exact words a child should say, e.g. the '
+                            'Beatitudes. Leave empty for photo or witness '
+                            'activities, which a person confirms.',
+                        helperMaxLines: 3,
+                        hintText:
+                            'Leave empty unless this activity is scored by '
+                            'speech or by a typed answer.',
+                      ),
+                      maxLines: 6,
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: _expectedResponseModeController.text,
+                      decoration: const InputDecoration(
+                        labelText: 'Scoring Mode',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'recite', child: Text('Recite (spoken)')),
+                        DropdownMenuItem(value: 'quiz', child: Text('Quiz (typed answer)')),
+                      ],
+                      onChanged: (v) {
+                        if (v != null) _expectedResponseModeController.text = v;
+                      },
                     ),
                     const SizedBox(height: 32),
                     SizedBox(
