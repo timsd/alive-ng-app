@@ -17,6 +17,19 @@ class Mission {
   final String? unlockedBy; // ID of the mission that unlocked this one
   final String? mediaUrl; // Optional image or video for the mission
 
+  /// The text a child's response is actually scored against.
+  ///
+  /// [description] is the task label shown on screen ("Learn and recite the
+  /// Beatitudes from Matthew 5:3-12") and is NOT sayable. Scoring used it
+  /// directly, so reciting the Beatitudes perfectly scored zero while saying
+  /// the label aloud scored full marks. This holds the passage or reference
+  /// instead. Null means the activity is not scored word-for-word.
+  final String? expectedResponse;
+
+  /// How the child's answer is checked, when there is an expected response.
+  /// 'recite' for a passage, 'quiz' for a typed answer.
+  final String? expectedResponseMode;
+
   const Mission({
     required this.id,
     required this.title,
@@ -33,6 +46,8 @@ class Mission {
     this.isLocked = false,
     this.unlockedBy,
     this.mediaUrl,
+    this.expectedResponse,
+    this.expectedResponseMode,
   });
 
   factory Mission.fromJson(Map<String, dynamic> json) {
@@ -60,6 +75,8 @@ class Mission {
       isLocked: json['isLocked'] as bool? ?? false,
       unlockedBy: json['unlockedBy'] as String?,
       mediaUrl: json['mediaUrl'] as String?,
+      expectedResponse: json['expectedResponse'] as String?,
+      expectedResponseMode: json['expectedResponseMode'] as String?,
     );
   }
 
@@ -80,6 +97,8 @@ class Mission {
       'isLocked': isLocked,
       'unlockedBy': unlockedBy,
       'mediaUrl': mediaUrl,
+      'expectedResponse': expectedResponse,
+      'expectedResponseMode': expectedResponseMode,
     };
     }
 
@@ -125,6 +144,8 @@ class Mission {
     bool? isLocked,
     String? unlockedBy,
     String? mediaUrl,
+    String? expectedResponse,
+    String? expectedResponseMode,
   }) {
     return Mission(
       id: id ?? this.id,
@@ -142,6 +163,8 @@ class Mission {
       isLocked: isLocked ?? this.isLocked,
       unlockedBy: unlockedBy ?? this.unlockedBy,
       mediaUrl: mediaUrl ?? this.mediaUrl,
+      expectedResponse: expectedResponse ?? this.expectedResponse,
+      expectedResponseMode: expectedResponseMode ?? this.expectedResponseMode,
     );
   }
 }

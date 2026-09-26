@@ -55,11 +55,26 @@ class MissionScoring {
         continue;
       }
       // Simple singular/plural + prefix tolerance (kids drop endings).
-      if (spokenSet.any((s) =>
-          s == '${word}s' ||
-          s == '${word}es' ||
-          (word.length > 3 && s.startsWith(word)) ||
-          (s.length > 3 && word.startsWith(s)))) {
+      //
+      // The match MUST consume the word it used. Without that, one spoken
+      // word could satisfy several expected words at once -- saying "heaven"
+      // scored both "heaven" and "heavens" -- letting a child reach 100%
+      // without having said the passage.
+      String? consumed;
+      for (final s in spokenSet) {
+        final isMatch =
+            s == '${word}s' ||
+            s == '${word}es' ||
+            (word.length > 3 && s.startsWith(word)) ||
+            (s.length > 3 && word.startsWith(s));
+        if (!isMatch) continue;
+        // Only claim an occurrence that has not already been spent.
+        if ((spokenBag[s] ?? 0) <= 0) continue;
+        consumed = s;
+        break;
+      }
+      if (consumed != null) {
+        spokenBag[consumed] = spokenBag[consumed]! - 1;
         matched++;
       }
     }

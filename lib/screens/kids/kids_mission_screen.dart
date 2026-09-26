@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -162,6 +164,8 @@ class _KidsMissionScreenState extends ConsumerState<KidsMissionScreen> {
       'completed': data['completed'] ?? false,
       'instructions': _stringList(data['instructions']),
       'verificationMethod': _verificationMethod(data['verification_method']),
+      'expectedResponse': data['expected_response'] as String?,
+      'expectedResponseMode': data['expected_response_mode'] as String?,
       'prerequisiteMissionIds': _stringList(data['prerequisite_mission_ids']),
       'isLocked': data['is_locked'] ?? false,
       'unlockedBy': data['unlocked_by'],
@@ -169,10 +173,28 @@ class _KidsMissionScreenState extends ConsumerState<KidsMissionScreen> {
     };
   }
 
+  /// Appwrite stores list fields as JSON-encoded strings (e.g. '["a","b"]').
+  ///
+  /// This used to return such a string as a single element, so the whole
+  /// array rendered as one step with visible brackets -- the `["...","..."]`
+  /// children saw in the activity list. Decode it, and still tolerate a real
+  /// list (from local/fallback data) or a plain string.
   List<String> _stringList(dynamic value) {
     if (value is List) return value.map((item) => item.toString()).toList();
-    if (value is String && value.isNotEmpty) return [value];
-    return const [];
+    if (value is! String) return const [];
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return const [];
+    if (trimmed.startsWith('[')) {
+      try {
+        final decoded = jsonDecode(trimmed);
+        if (decoded is List) {
+          return decoded.map((item) => item.toString()).toList();
+        }
+      } catch (_) {
+        // Not valid JSON -- fall through and keep the raw value.
+      }
+    }
+    return [trimmed];
   }
 
   String _missionDifficulty(dynamic value) {
@@ -319,14 +341,11 @@ class _KidsMissionScreenState extends ConsumerState<KidsMissionScreen> {
     );
   }
 
-  Widget _buildMissionListItem(BuildContext context, Mission mission) {
-    final categoryIcons = {
-      MissionCategory.evangelism: Icons.campaign,
-      MissionCategory.service: Icons.volunteer_activism,
-      MissionCategory.learning: Icons.psychology,
-      MissionCategory.sharing: Icons.share,
-      MissionCategory.prayer: Icons.favorite,
-    };
+  Widget _buildMissionListItem(
+    BuildContext context,
+    Mission mission, {
+    required int number,
+  }) {
     final categoryColors = {
       MissionCategory.evangelism: Theme.of(context).colorScheme.primary,
       MissionCategory.service: Theme.of(context).colorScheme.secondary,
@@ -345,14 +364,25 @@ class _KidsMissionScreenState extends ConsumerState<KidsMissionScreen> {
         borderRadius: BorderRadius.circular(12),
       ),
       child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: (categoryColors[mission.category] ??
-                  Theme.of(context).primaryColor)
-              .withValues(alpha: 0.15),
-          child: Icon(
-            categoryIcons[mission.category] ?? Icons.star,
-            color: categoryColors[mission.category] ??
-                Theme.of(context).primaryColor,
+        // The activity number is what children refer to ("activity 3"), so it
+        // is the leading element. A plain numeral reads faster than an icon.
+        leading: Container(
+          width: 34,
+          height: 34,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: (categoryColors[mission.category] ??
+                    Theme.of(context).primaryColor)
+                .withValues(alpha: 0.15),
+            shape: BoxShape.circle,
+          ),
+          child: Text(
+            '$number',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: categoryColors[mission.category] ??
+                  Theme.of(context).primaryColor,
+            ),
           ),
         ),
         title: Text(
@@ -910,7 +940,13 @@ class _KidsMissionScreenState extends ConsumerState<KidsMissionScreen> {
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: filteredMissions.length,
                     itemBuilder: (context, index) {
-                      return _buildMissionListItem(context, filteredMissions[index]);
+                      return _buildMissionListItem(
+            context,
+            filteredMissions[index],
+            // Numbered by position in the full roster, not the filtered
+            // view, so a filter never renumbers the activities.
+            number: allMissions.indexOf(filteredMissions[index]) + 1,
+          );
                     },
                   );
                 },
@@ -953,27 +989,43 @@ class _MissionActivitySheetState extends State<_MissionActivitySheet> {
   bool _completed = false;
 
   Mission get _mission => widget.mission;
+  /// Whether the child speaks the answer aloud.
+  ///
+  /// `witness` is deliberately excluded. A witness activity is confirmed by
+  /// another person, so asking the child to recite the prompt was both
+  /// semantically wrong and, since the prompt is not a passage, unscoreable.
   bool get _isRecitation =>
-      _mission.verificationMethod == VerificationMethod.story ||
-      _mission.verificationMethod == VerificationMethod.witness;
+      _mission.verificationMethod == VerificationMethod.story &&
+      _isScorable;
   bool get _isQuiz => _mission.verificationMethod == VerificationMethod.quiz;
   bool get _isPhoto => _mission.verificationMethod == VerificationMethod.photo;
 
     /// The passage / expected answer the response is scored against.
   ///
-  /// For recitation/story missions we score against the mission's own
-  /// description (the task the child is actually performing), NOT the joined
-  /// step list. Previously scoring against the instructions caused the
-  /// evaluation to mismatch the activity's task.
-  String get _expectedText {
-    if (_mission.description.isNotEmpty) {
-      return _mission.description;
-    }
-    if (_mission.instructions.isNotEmpty) {
-      return _mission.instructions.join(' ');
-    }
-    return _mission.title;
+  /// This used to fall back to [Mission.description], which is the task label
+  /// shown on screen ("Learn and recite the Beatitudes from Matthew 5:3-12")
+  /// rather than anything the child can say. A perfect recitation therefore
+  /// scored near zero, while reciting the label aloud scored full marks.
+  ///
+  /// Only `expectedResponse` -- the passage stored with the mission -- is
+  /// scoreable. Activities that are not word-for-word checkable (the child's
+  /// own story, a prayer, a witness) leave it null and are not scored at all;
+  /// see `_isScorable`.
+  String? get _expectedText {
+    final passage = _mission.expectedResponse?.trim();
+    if (passage == null || passage.isEmpty) return null;
+    return passage;
   }
+
+  /// Whether this activity can be graded automatically at all.
+  ///
+  /// Requires a passage to compare against. A mission verified by photo or
+  /// witness is confirmed by a person, so there is nothing to score, and
+  /// scoring its instruction text would only manufacture a wrong answer.
+  bool get _isScorable =>
+      _expectedText != null &&
+      _mission.verificationMethod != VerificationMethod.photo &&
+      _mission.verificationMethod != VerificationMethod.witness;
 
   @override
   void initState() {
@@ -1053,7 +1105,9 @@ class _MissionActivitySheetState extends State<_MissionActivitySheet> {
 
   void _scoreRecitation() {
     if (_transcript.trim().isEmpty) return;
-    final score = MissionScoring.scoreRecitation(_expectedText, _transcript);
+    final expected = _expectedText;
+    if (expected == null) return;
+    final score = MissionScoring.scoreRecitation(expected, _transcript);
     setState(() => _score = score);
     if (score >= MissionScoring.recitationPassThreshold) {
       _awardPoints(score);
@@ -1063,8 +1117,9 @@ class _MissionActivitySheetState extends State<_MissionActivitySheet> {
   }
 
   void _submitQuizAnswer() {
-    final score =
-        MissionScoring.scoreAnswer(_expectedText, _answerController.text);
+    final expected = _expectedText;
+    if (expected == null) return;
+    final score = MissionScoring.scoreAnswer(expected, _answerController.text);
     setState(() => _score = score);
     if (score >= MissionScoring.quizPassThreshold) {
       _awardPoints(score);
