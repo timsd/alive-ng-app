@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../providers/language_provider.dart';
 import '../../config/org_structure.dart';
+import '../../services/role_access_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/responsive_utils.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -195,21 +196,30 @@ class AboutAliveScreen extends ConsumerWidget {
                       // new office is one list entry instead of a code change,
                       // and each office stands on its own even where a single
                       // person currently holds several of them.
-                      ...kOrgOffices.map(
-                        (office) => Padding(
+                      ...kOrgOffices.map((office) {
+                        // Offices flagged `namesRestrictedToLeadership` (the
+                        // Board of Trustees) are still listed, so members can
+                        // see the structure exists, but the people behind them
+                        // are only revealed to leaders and above.
+                        final canSeeNames = !office.namesRestrictedToLeadership ||
+                            RoleAccessService.instance.canAccessLeadership();
+
+                        return Padding(
                           padding: const EdgeInsets.only(bottom: 10),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _LeaderTile(
-                                name: office.holderName ?? 'Vacant',
+                                name: canSeeNames
+                                    ? (office.holderName ?? 'Vacant')
+                                    : 'Leadership team',
                                 role: office.title,
                                 icon: _officeIcon(office.iconName),
                               ),
                               // A body with several members (the Board) lists
                               // them under the chair rather than repeating the
                               // office once per person.
-                              if (office.memberNames.length > 1)
+                              if (canSeeNames && office.memberNames.length > 1)
                                 Padding(
                                   padding: const EdgeInsets.only(
                                     left: 56,
@@ -219,7 +229,8 @@ class AboutAliveScreen extends ConsumerWidget {
                                     spacing: 6,
                                     runSpacing: 6,
                                     children: [
-                                      for (final member in office.memberNames.skip(1))
+                                      for (final member
+                                          in office.memberNames.skip(1))
                                         Chip(
                                           label: Text(member),
                                           visualDensity:
@@ -232,8 +243,8 @@ class AboutAliveScreen extends ConsumerWidget {
                                 ),
                             ],
                           ),
-                        ),
-                      ),
+                        );
+                      }),
                     ],
                   ),
                 ),

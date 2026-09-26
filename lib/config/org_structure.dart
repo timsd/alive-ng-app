@@ -27,6 +27,11 @@ class OrgOffice {
   /// Who currently holds it. A person may appear under several offices.
   final String? holderName;
 
+  /// When true, the people behind this office are shown to leadership only.
+  /// The office itself is still listed publicly, so members can see that the
+  /// structure exists -- just not who fills it.
+  final bool namesRestrictedToLeadership;
+
   /// Everyone serving in this office, when the office has more than one
   /// holder (a board, for example). [holderName] is the chair/lead.
   final List<String> memberNames;
@@ -37,6 +42,7 @@ class OrgOffice {
     required this.iconName,
     this.reportsTo,
     this.holderName,
+    this.namesRestrictedToLeadership = false,
     this.memberNames = const [],
   });
 }
@@ -56,6 +62,9 @@ const List<OrgOffice> kOrgOffices = [
     iconName: 'shield',
     reportsTo: null,
     holderName: 'Jerry Kwarba',
+    // Trustee names are not shown to members or the public -- only to
+    // leadership and above. The office is still listed, just not its people.
+    namesRestrictedToLeadership: true,
     // Everyone serving on the board. The first entry is the chair shown above.
     memberNames: [
       'Jerry Kwarba',
@@ -76,8 +85,8 @@ const List<OrgOffice> kOrgOffices = [
     iconName: 'verified_user',
     reportsTo: 'board_of_trustees',
     holderName: 'Jerry Kwarba',
+    namesRestrictedToLeadership: true,
   ),
-   
 
   // ── Executive ────────────────────────────────────────────────────────────
   OrgOffice(
