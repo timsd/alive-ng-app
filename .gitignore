@@ -71,6 +71,7 @@ node_modules
 /test/*
 !test/exchange_rate_service_test.dart
 !test/notification_service_test.dart
+!test/org_structure_test.dart
  
 # Android keystore properties (do not commit)
 /android/key.properties
