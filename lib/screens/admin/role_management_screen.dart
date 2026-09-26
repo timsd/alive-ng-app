@@ -522,7 +522,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
         return colorScheme.tertiary;
       case 'coordinator':
         return colorScheme.primary;
-      case 'healthContributor':
+      case 'dietist':
         return colorScheme.tertiary;
       case 'member':
       default:
@@ -619,7 +619,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
         newRole = 'member';
         break;
       // Health+ contributors drop straight back to a plain member.
-      case 'healthContributor':
+      case 'dietist':
         newRole = 'member';
         break;
       default:

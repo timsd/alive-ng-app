@@ -43,7 +43,7 @@ class _AdminHealthContentScreenState
     final roleService = RoleAccessService.instance;
 
     // `canManageHealthContent` (not `canAccessAdmin`) so a narrow
-    // `healthContributor` can add recipes/remedies without being a full admin.
+    // `dietist` can add recipes/remedies without being a full admin.
     if (!roleService.canManageHealthContent()) {
       return Scaffold(
         appBar: const CustomAppBar(title: 'Access Restricted'),

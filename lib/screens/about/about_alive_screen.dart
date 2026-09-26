@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../providers/language_provider.dart';
+import '../../config/org_structure.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/responsive_utils.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -190,35 +191,19 @@ class AboutAliveScreen extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: 14),
-                      const _LeaderTile(
-                        name: 'Nwoko Patience Mfon',
-                        role: 'Executive President',
-                        icon: Icons.person_rounded,
-                      ),
-                      const SizedBox(height: 10),
-                      const _LeaderTile(
-                        name: 'Caleb Peters',
-                        role: 'Secretary and Communication Director',
-                        icon: Icons.chat_rounded,
-                      ),
-                      const SizedBox(height: 10),
-                      const _LeaderTile(
-                        name: 'Godstime Esuku',
-                        role:
-                            'Speaker and Director, ALIVE Mission Training Center (AMTC)',
-                        icon: Icons.school_rounded,
-                      ),
-                      const SizedBox(height: 10),
-                      const _LeaderTile(
-                        name: 'Timothy Olodude',
-                        role: 'Treasurer and Director of Logistics',
-                        icon: Icons.account_balance_wallet_rounded,
-                      ),
-                      const SizedBox(height: 10),
-                      const _LeaderTile(
-                        name: 'Emenike Ekechi',
-                        role: 'Director, Evangelism, Programming, and Health',
-                        icon: Icons.health_and_safety_rounded,
+                      // Rendered from kOrgOffices rather than hard-coded, so a
+                      // new office is one list entry instead of a code change,
+                      // and each office stands on its own even where a single
+                      // person currently holds several of them.
+                      ...kOrgOffices.map(
+                        (office) => Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _LeaderTile(
+                            name: office.holderName ?? 'Vacant',
+                            role: office.title,
+                            icon: _officeIcon(office.iconName),
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -649,6 +634,42 @@ class _PillarCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Maps an office's icon key from `kOrgOffices` to a Material icon.
+///
+/// The registry stores a string rather than an `IconData` so it can be mirrored
+/// into the `org_offices` table by scripts/seed_org_offices.mjs without
+/// dragging a Flutter dependency into Node.
+IconData _officeIcon(String name) {
+  switch (name) {
+    case 'shield':
+      return Icons.shield_rounded;
+    case 'verified_user':
+      return Icons.verified_user_rounded;
+    case 'person':
+      return Icons.person_rounded;
+    case 'description':
+      return Icons.description_rounded;
+    case 'chat':
+      return Icons.chat_rounded;
+    case 'record_voice_over':
+      return Icons.record_voice_over_rounded;
+    case 'school':
+      return Icons.school_rounded;
+    case 'account_balance_wallet':
+      return Icons.account_balance_wallet_rounded;
+    case 'local_shipping':
+      return Icons.local_shipping_rounded;
+    case 'campaign':
+      return Icons.campaign_rounded;
+    case 'event_note':
+      return Icons.event_note_rounded;
+    case 'health_and_safety':
+      return Icons.health_and_safety_rounded;
+    default:
+      return Icons.badge_rounded;
   }
 }
 

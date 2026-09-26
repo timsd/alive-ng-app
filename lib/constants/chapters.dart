@@ -39,13 +39,14 @@ class ChapterConstants {
 
   /// Roles an admin can assign from Role Management.
   ///
-  /// `healthContributor` is a deliberately narrow, non-administrative role: it
-  /// exists so a trusted member can add/edit Health+ recipes and remedies
-  /// WITHOUT being made a full admin. It sits directly above `member` in the
-  /// privilege hierarchy, so it unlocks nothing else.
+  /// `dietist` is a deliberately narrow, non-administrative role sitting under
+  /// the Health+ coordinator/director line. It exists so a trusted member can
+  /// add and edit Health+ recipes and remedies WITHOUT being made a full
+  /// admin. It sits directly above `member` in the privilege hierarchy, so it
+  /// unlocks nothing else.
   static const List<String> userRoles = [
     'member',
-    'healthContributor',
+    'dietist',
     'coordinator',
     'leader',
     'director',
@@ -58,7 +59,7 @@ class ChapterConstants {
   /// other admin surface. Kept here so Role Management and the Health+ screen
   /// agree on exactly who qualifies.
   static const Set<String> healthContentRoles = {
-    'healthContributor',
+    'dietist',
     'coordinator',
     'leader',
     'director',
