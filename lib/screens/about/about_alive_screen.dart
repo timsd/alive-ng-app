@@ -19,6 +19,9 @@ class AboutAliveScreen extends ConsumerWidget {
     final t = ref.watch(translationProvider);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    // Trustee names are for leaders and above only. Everyone else sees the
+    // board as a single "Leadership team" row.
+    final canSeeLeadership = RoleAccessService.instance.canAccessLeadership();
     final horizontalPadding = ResponsiveUtils.getResponsiveValue<double>(
       context: context,
       mobile: 16,
@@ -192,59 +195,54 @@ class AboutAliveScreen extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: 14),
-                      // Rendered from kOrgOffices rather than hard-coded, so a
-                      // new office is one list entry instead of a code change,
-                      // and each office stands on its own even where a single
-                      // person currently holds several of them.
-                      ...kOrgOffices.map((office) {
-                        // Offices flagged `namesRestrictedToLeadership` (the
-                        // Board of Trustees) are still listed, so members can
-                        // see the structure exists, but the people behind them
-                        // are only revealed to leaders and above.
-                        final canSeeNames = !office.namesRestrictedToLeadership ||
-                            RoleAccessService.instance.canAccessLeadership();
-
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _LeaderTile(
-                                name: canSeeNames
-                                    ? (office.holderName ?? 'Vacant')
-                                    : 'Leadership team',
-                                role: office.title,
-                                icon: _officeIcon(office.iconName),
-                              ),
-                              // A body with several members (the Board) lists
-                              // them under the chair rather than repeating the
-                              // office once per person.
-                              if (canSeeNames && office.memberNames.length > 1)
-                                Padding(
-                                  padding: const EdgeInsets.only(
-                                    left: 56,
-                                    top: 6,
-                                  ),
-                                  child: Wrap(
-                                    spacing: 6,
-                                    runSpacing: 6,
-                                    children: [
-                                      for (final member
-                                          in office.memberNames.skip(1))
-                                        Chip(
-                                          label: Text(member),
-                                          visualDensity:
-                                              VisualDensity.compact,
-                                          materialTapTargetSize:
-                                              MaterialTapTargetSize.shrinkWrap,
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                            ],
+                      // Grouped by PERSON, not by office. Several people hold
+                      // more than one office, and listing an office per row
+                      // printed the same name two or three times. Each person
+                      // now appears once, with their offices underneath.
+                      ...leadershipPeople
+                          .where((p) => p.isRestricted == canSeeLeadership)
+                          .map(
+                        (person) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _LeaderTile(
+                            name: person.name,
+                            role: person.offices
+                                .map((o) => o.title)
+                                .join(' • '),
+                            icon: _officeIcon(
+                              person.isBoardChair
+                                  ? 'shield'
+                                  : person.offices.first.iconName,
+                            ),
                           ),
-                        );
-                      }),
+                        ),
+                      ),
+                      // The board is one office held by several people, so it
+                      // is registered once. The people are shown above, one
+                      // row each; this is the office itself.
+                      if (canSeeLeadership)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4, bottom: 12),
+                          child: Text(
+                            'The Board of Trustees oversees every other '
+                            'office below.',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ),
+                      // Members never see trustee names, but they should still
+                      // see that the board exists.
+                      if (!canSeeLeadership)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _LeaderTile(
+                            name: 'Leadership team',
+                            role: 'Board of Trustees',
+                            icon: _officeIcon('shield'),
+                          ),
+                        ),
                     ],
                   ),
                 ),

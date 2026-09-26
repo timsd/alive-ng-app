@@ -171,6 +171,79 @@ OrgOffice? orgOfficeById(String id) {
   return null;
 }
 
+/// A person, and every office they hold.
+///
+/// [kOrgOffices] is keyed on one row per office because routing and the seed
+/// script both depend on a unique `office_id`. But a person may hold several
+/// offices, and showing "Timothy Olodude" twice -- once as Treasurer, once as
+/// Director of Logistics -- reads as duplicated people. This view groups the
+/// offices under one name instead. The office registry stays untouched; this
+/// is only how the About page presents it.
+class OrgPerson {
+  final String name;
+
+  /// Every office this person holds, in reporting order.
+  final List<OrgOffice> offices;
+
+  const OrgPerson({required this.name, required this.offices});
+
+  bool get isRestricted =>
+      offices.every((o) => o.namesRestrictedToLeadership);
+
+  /// The chair of the board is the first named member, and is called out
+  /// rather than being lost among the other trustees.
+  bool get isBoardChair => offices.any((o) => o.id == 'board_of_trustees');
+}
+
+/// The leadership roster, one entry per person, grouped from [kOrgOffices].
+///
+/// Order follows the registry, so the board chair comes first and each
+/// person's offices stay in the order they were declared.
+final List<OrgPerson> leadershipPeople = _buildLeadershipPeople();
+
+List<OrgPerson> _buildLeadershipPeople() {
+  final people = <String, List<OrgOffice>>{};
+
+  void add(String name, OrgOffice office) {
+    if (name.trim().isEmpty) return;
+    // A person cannot hold the same office twice.
+    final list = people.putIfAbsent(name, () => <OrgOffice>[]);
+    if (!list.any((o) => o.id == office.id)) list.add(office);
+  }
+
+  for (final office in kOrgOffices) {
+    if (office.holderName != null) {
+      add(office.holderName!, office);
+    }
+    if (office.memberNames.isEmpty) continue;
+
+    // A member of a multi-member body (the board) who is not already the
+    // named holder is listed against the trustee office, so each trustee
+    // appears once holding one office rather than a row per person.
+    final trusteeOffice = office.id == 'board_of_trustees'
+        ? orgOfficeById('trustee')
+        : null;
+    for (final member in office.memberNames) {
+      if (member == office.holderName) continue; // added above
+      add(
+        member,
+        trusteeOffice ??
+            OrgOffice(
+              id: 'trustee',
+              title: 'Trustee (Board Member)',
+              iconName: 'verified_user',
+              reportsTo: office.id,
+              namesRestrictedToLeadership: office.namesRestrictedToLeadership,
+            ),
+      );
+    }
+  }
+
+  return people.entries
+      .map((e) => OrgPerson(name: e.key, offices: e.value))
+      .toList(growable: false);
+}
+
 /// Asserts the registry is internally consistent. Routing and the seed script
 /// are both keyed on `office_id`, so a duplicate id would silently break which
 /// office a report or room resolves to.
