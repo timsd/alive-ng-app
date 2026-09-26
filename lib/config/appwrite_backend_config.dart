@@ -17,6 +17,10 @@ class AppwriteBackendConfig {
   );
   static const String usersCollectionId = '6a08943100226f5b4963';
   static const String chatChannelsCollectionId = '6a08f1c70032affbc00d';
+  /// One row per person per office. The server-side source of truth for
+  /// office-based access control (see OfficeAccessService).
+  static const String orgOfficeHoldersCollectionId = 'org_office_holders';
+  static const String orgOfficesCollectionId = 'org_offices';
   static const String chatMessagesCollectionId = '6a08e25e0034f79fcd2f';
   static const String messageTagsCollectionId = '6a08f391001a5c02aaa9';
   static const String generalChatRoomId = '6a08e02b000b15bb588b';

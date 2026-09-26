@@ -13,6 +13,7 @@ import '../screens/profile/profile_screen.dart';
 import '../screens/health/health_screen.dart';
 import '../screens/missions/missions_screen.dart';
 import '../screens/auth/appwrite_auth_screen.dart';
+import '../services/office_access_service.dart';
 import '../screens/auth/reset_password_screen.dart';
 import '../main.dart';
 import '../screens/about/about_app_screen.dart';
@@ -479,12 +480,26 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppConstants.adminDonationsReportRoute,
             builder: (context, state) => const AdminDonationsReportScreen(),
-            redirect: (context, state) {
+            // Hiding the dashboard tile is not enough on its own: the route
+            // is reachable by URL. The report exposes every gift, so it is
+            // guarded on the same financial office as the section that links
+            // to it. An admin passes, since they may need it to repair data.
+            redirect: (context, state) async {
               final roleService = RoleAccessService.instance;
-              if (!roleService.canAccessAdmin()) {
+              if (!roleService.canAccessAdmin()) return '/home';
+              if (roleService.hasRole('admin')) return null;
+
+              final user = ref.read(authGatewayProvider).currentUser;
+              if (user == null) return '/home';
+              try {
+                final allowed = await OfficeAccessService.instance
+                    .canAccessFinance(userId: user.uid, email: user.email);
+                return allowed ? null : '/home';
+              } catch (_) {
+                // Fail closed: an unreadable office table must not open the
+                // finance report.
                 return '/home';
               }
-              return null;
             },
           ),
 

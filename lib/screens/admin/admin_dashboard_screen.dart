@@ -5,6 +5,7 @@ import '../../config/appwrite_backend_config.dart';
 import '../../main.dart';
 import '../../services/auth_service.dart';
 import '../../services/role_access_service.dart';
+import '../../services/office_access_service.dart';
 import '../../widgets/role_guard.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../constants/chapters.dart';
@@ -58,6 +59,15 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
   bool _hasAccess = false;
   AppUser? _currentUser;
 
+  /// Whether the signed-in person may see Donations & Finance.
+  ///
+  /// This is gated on the OFFICE (Treasurer or Executive President) held in
+  /// `org_office_holders`, not on the role ladder -- `treasurer` and
+  /// `president` are offices, and the role hierarchy has no such entries.
+  /// An admin always passes. Defaults to false so the section stays hidden
+  /// until the office has actually been confirmed.
+  bool _canAccessFinance = false;
+
   // Dashboard stats
   int _totalUsers = 0;
   int _totalChapters = 0;
@@ -75,12 +85,38 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
     _loadDashboardData();
   }
 
+  /// Resolves whether this person holds a financial office.
+  ///
+  /// Fails closed: any error, or a user the office table cannot be matched
+  /// to, leaves the section hidden. An admin bypasses the lookup, because an
+  /// administrator must still be able to reach finance to repair data.
+  Future<void> _resolveFinanceAccess() async {
+    final user = _currentUser;
+    if (user == null) {
+      _canAccessFinance = false;
+      return;
+    }
+    if (_roleService.hasRole('admin')) {
+      _canAccessFinance = true;
+      return;
+    }
+    try {
+      _canAccessFinance = await OfficeAccessService.instance.canAccessFinance(
+        userId: user.uid,
+        email: user.email,
+      );
+    } catch (_) {
+      _canAccessFinance = false;
+    }
+  }
+
   Future<void> _loadDashboardData() async {
     try {
       _currentUser = AuthService.instance.currentUser;
       if (_currentUser != null) {
         _hasAccess = _roleService.hasRole('admin');
       }
+      await _resolveFinanceAccess();
       await _loadDashboardStats();
     } catch (e) {
       if (mounted) {
@@ -801,19 +837,24 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
             const SizedBox(height: 16),
 
             // Donations & Finance
-            _buildManagementSection(
-              'Donations & Finance',
-              Icons.savings_outlined,
-              [
-                _buildActionTile(
-                  'Donation Reports',
-                  'Search, filter and export every gift, including the purpose '
-                      'each donation was designated toward',
-                  Icons.receipt_long_outlined,
-                  () => context.go(AppConstants.adminDonationsReportRoute),
-                ),
-              ],
-            ),
+            //
+            // Restricted to the Treasurer and Executive President. Previously
+            // this section had no check of its own, so anyone who could reach
+            // the dashboard at all also saw every gift and the finance report.
+            if (_canAccessFinance)
+              _buildManagementSection(
+                'Donations & Finance',
+                Icons.savings_outlined,
+                [
+                  _buildActionTile(
+                    'Donation Reports',
+                    'Search, filter and export every gift, including the purpose '
+                        'each donation was designated toward',
+                    Icons.receipt_long_outlined,
+                    () => context.go(AppConstants.adminDonationsReportRoute),
+                  ),
+                ],
+              ),
 
             const SizedBox(height: 16),
 
