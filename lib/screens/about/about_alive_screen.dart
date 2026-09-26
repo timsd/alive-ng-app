@@ -198,10 +198,39 @@ class AboutAliveScreen extends ConsumerWidget {
                       ...kOrgOffices.map(
                         (office) => Padding(
                           padding: const EdgeInsets.only(bottom: 10),
-                          child: _LeaderTile(
-                            name: office.holderName ?? 'Vacant',
-                            role: office.title,
-                            icon: _officeIcon(office.iconName),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _LeaderTile(
+                                name: office.holderName ?? 'Vacant',
+                                role: office.title,
+                                icon: _officeIcon(office.iconName),
+                              ),
+                              // A body with several members (the Board) lists
+                              // them under the chair rather than repeating the
+                              // office once per person.
+                              if (office.memberNames.length > 1)
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                    left: 56,
+                                    top: 6,
+                                  ),
+                                  child: Wrap(
+                                    spacing: 6,
+                                    runSpacing: 6,
+                                    children: [
+                                      for (final member in office.memberNames.skip(1))
+                                        Chip(
+                                          label: Text(member),
+                                          visualDensity:
+                                              VisualDensity.compact,
+                                          materialTapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
                       ),

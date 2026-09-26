@@ -27,12 +27,17 @@ class OrgOffice {
   /// Who currently holds it. A person may appear under several offices.
   final String? holderName;
 
+  /// Everyone serving in this office, when the office has more than one
+  /// holder (a board, for example). [holderName] is the chair/lead.
+  final List<String> memberNames;
+
   const OrgOffice({
     required this.id,
     required this.title,
     required this.iconName,
     this.reportsTo,
     this.holderName,
+    this.memberNames = const [],
   });
 }
 
@@ -41,19 +46,38 @@ class OrgOffice {
 /// A director is supervised by a trustee.
 const List<OrgOffice> kOrgOffices = [
   // ── Board of Trustees ────────────────────────────────────────────────────
+  // A Board is ONE office held by SEVERAL people, so the board is modelled
+  // once and the trustees are listed as its members. Giving each trustee their
+  // own `id` would duplicate the office and break routing, which is keyed on
+  // `office_id`.
   OrgOffice(
     id: 'board_of_trustees',
     title: 'Board of Trustees',
     iconName: 'shield',
-    holderName: 'Emenike Ekechi',
+    reportsTo: null,
+    holderName: 'Jerry Kwarba',
+    // Everyone serving on the board. The first entry is the chair shown above.
+    memberNames: [
+      'Jerry Kwarba',
+      'Okey Elechi',
+      'Imoh Imeh',
+      'Ajibade Ayodeji',
+      'Fatola Samson',
+      'Bassey Etido',
+      'Joshua Umahi',
+      'Frank A',
+      'Emeka Okoro',
+      'Nancy Elechi',
+    ],
   ),
   OrgOffice(
     id: 'trustee',
-    title: 'Trustee',
+    title: 'Trustee (Board Member)',
     iconName: 'verified_user',
     reportsTo: 'board_of_trustees',
-    holderName: 'Emenike Ekechi',
+    holderName: 'Jerry Kwarba',
   ),
+   
 
   // ── Executive ────────────────────────────────────────────────────────────
   OrgOffice(
@@ -136,6 +160,36 @@ OrgOffice? orgOfficeById(String id) {
     if (office.id == id) return office;
   }
   return null;
+}
+
+/// Asserts the registry is internally consistent. Routing and the seed script
+/// are both keyed on `office_id`, so a duplicate id would silently break which
+/// office a report or room resolves to.
+void assertOrgOfficesAreConsistent() {
+  assert(
+    () {
+      final seen = <String>{};
+      for (final office in kOrgOffices) {
+        assert(
+          seen.add(office.id),
+          'Duplicate office id "${office.id}". Every office needs a unique id; '
+          'a body with several holders belongs in memberNames, not in a '
+          'repeated office entry.',
+        );
+      }
+      // Every reportsTo must point at an office that actually exists.
+      for (final office in kOrgOffices) {
+        final target = office.reportsTo;
+        if (target == null) continue;
+        assert(
+          seen.contains(target),
+          'Office "${office.id}" reports into "$target", which is not a known '
+            'office.',
+        );
+      }
+      return true;
+    }(),
+  );
 }
 
 /// The offices held by one person, in declaration order.

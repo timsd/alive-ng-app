@@ -63,9 +63,25 @@ async function api(method, path, body) {
 
 // ── The registry, mirroring lib/config/org_structure.dart ───────────────────
 // Chain: Board of Trustees -> President -> the director-level offices.
+// A body with several holders is ONE office with a members list: routing and
+// the org_offices key are both `office_id`, so a repeated id would break them.
 const OFFICES = [
-  { id: 'board_of_trustees', title: 'Board of Trustees', reportsTo: null, holder: 'Emenike Ekechi' },
-  { id: 'trustee', title: 'Trustee', reportsTo: 'board_of_trustees', holder: 'Emenike Ekechi' },
+  {
+    id: 'board_of_trustees',
+    title: 'Board of Trustees',
+    reportsTo: null,
+    holder: 'Jerry Kwarba',
+    members: [
+      'Jerry Kwarba', 'Okey Elechi', 'Imoh Imeh', 'Ajibade Ayodeji',
+      'Fatola Samson', 'Bassey Etido', 'Joshua Umahi', 'Frank A', 'Emeka', 'Nancy Elechi',
+    ],
+  },
+  {
+    id: 'trustee',
+    title: 'Trustee (Board Member)',
+    reportsTo: 'board_of_trustees',
+    holder: 'Jerry Kwarba',
+  },
   { id: 'executive_president', title: 'Executive President', reportsTo: 'board_of_trustees', holder: 'Nwoko Patience Mfon' },
   { id: 'secretary', title: 'Secretary', reportsTo: 'executive_president', holder: 'Caleb Peters' },
   { id: 'communication_director', title: 'Communication Director', reportsTo: 'executive_president', holder: 'Caleb Peters' },
@@ -102,6 +118,8 @@ for (const office of OFFICES) {
     chapter_id: '',
     office_type: office.id.includes('director') ? 'director' : 'office',
     holder_name: office.holder,
+    // Comma-separated, so a body with several holders stays one office row.
+    notes: (office.members ?? []).join(', '),
     holder_email: '',
     holder_user_id: '',
     // Directors report to the President but are SUPERVISED by a trustee.
