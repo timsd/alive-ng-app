@@ -492,6 +492,18 @@
               style="margin-top:8px;padding:8px 12px;border-radius:8px;font-size:13px;line-height:1.4;display:none;">
             </div>
           </div>
+          <div class="field">
+            <label>Donation Frequency</label>
+            <div id="frequency-toggle" style="display:flex;gap:8px;">
+              <button type="button" id="btn-freq-once" class="freq-btn active" data-freq="once"
+                style="flex:1;padding:10px;border:2px solid #d4af37;border-radius:8px;background:#d4af37;color:#0f172a;font-weight:700;cursor:pointer;transition:all .15s;">One-time</button>
+              <button type="button" id="btn-freq-monthly" class="freq-btn" data-freq="monthly"
+                style="flex:1;padding:10px;border:2px solid #e2e8f0;border-radius:8px;background:#fff;color:#0f172a;font-weight:700;cursor:pointer;transition:all .15s;">Monthly</button>
+            </div>
+            <div id="monthly-info" style="display:none;margin-top:8px;padding:8px 12px;border-radius:8px;background:#ecfdf5;border:1px solid #a7f3d0;font-size:13px;color:#065f46;line-height:1.4;">
+              🔄 You'll be charged this amount every month. You can cancel any time from your Paystack dashboard.
+            </div>
+          </div>
           <div class="actions">
             <button id="donate-now" class="primary-button" type="submit">Donate Now</button>
             <a class="secondary-button" href="/">Back to the App</a>
@@ -546,6 +558,7 @@
       var statusEl = document.getElementById('donation-status');
       var donateBtn = document.getElementById('donate-now');
       var selectedCurrency = 'NGN';
+      var selectedFrequency = 'once'; // 'once' or 'monthly'
       var minAmounts = { NGN: 100, USD: 1 };
       var currencySymbols = { NGN: '₦', USD: '$' };
 
@@ -708,23 +721,12 @@
 
       function updateConversionDisplay() {
         if (!conversionEl) return;
-        var val = Number(amountInputEl.value);
-        var rateLabel = '₦' + exchangeRate.toLocaleString() + '/$1';
-        var liveNote = exchangeRateLive
-          ? '<span style="font-size:11px;color:#15803d;"> ● live rate' +
-          (exchangeRateSource ? ' (' + exchangeRateSource + ')' : '') + '</span>'
-          : '<span style="font-size:11px;color:#b45309;"> ● indicative rate — final charge uses the live rate at checkout</span>';
         if (selectedCurrency === 'USD') {
           conversionEl.style.display = 'block';
           conversionEl.style.background = '#fef3c7';
           conversionEl.style.border = '1px solid #fde68a';
           conversionEl.style.color = '#92400e';
-          if (Number.isFinite(val) && val > 0) {
-            var approxNgn = Math.round(val * exchangeRate);
-            conversionEl.innerHTML = '<strong>$' + val.toLocaleString() + ' USD ≈ ₦' + approxNgn.toLocaleString() + ' NGN</strong><br><span style="font-size:12px;color:#78350f;">Processed securely via Paystack (' + rateLabel + '). All international Visa, Mastercard & Amex cards accepted.</span><br>' + liveNote;
-          } else {
-            conversionEl.innerHTML = '<span style="font-size:12px;color:#78350f;">Billed in Naira equivalent (' + rateLabel + ') via Paystack. All international cards accepted.</span><br>' + liveNote;
-          }
+          conversionEl.innerHTML = '<span style="font-size:13px;color:#78350f;font-weight:600;">Processed securely via Paystack. All local and international Visa, Mastercard & Amex cards accepted.</span>';
         } else {
           conversionEl.style.display = 'none';
         }
@@ -771,6 +773,25 @@
       if (btnNGN) btnNGN.addEventListener('click', function () { setCurrency('NGN'); });
       if (btnUSD) btnUSD.addEventListener('click', function () { setCurrency('USD'); });
       if (amountInputEl) amountInputEl.addEventListener('input', updateConversionDisplay);
+
+      // Frequency toggle handlers
+      var btnOnce = document.getElementById('btn-freq-once');
+      var btnMonthly = document.getElementById('btn-freq-monthly');
+      var monthlyInfoEl = document.getElementById('monthly-info');
+
+      function setFrequency(freq) {
+        selectedFrequency = freq;
+        var isOnce = freq === 'once';
+        btnOnce.style.background = isOnce ? '#d4af37' : '#fff';
+        btnOnce.style.borderColor = isOnce ? '#d4af37' : '#e2e8f0';
+        btnMonthly.style.background = isOnce ? '#fff' : '#d4af37';
+        btnMonthly.style.borderColor = isOnce ? '#e2e8f0' : '#d4af37';
+        monthlyInfoEl.style.display = isOnce ? 'none' : 'block';
+        donateBtn.textContent = isOnce ? 'Donate Now' : 'Start Monthly Donation';
+      }
+
+      if (btnOnce) btnOnce.addEventListener('click', function () { setFrequency('once'); });
+      if (btnMonthly) btnMonthly.addEventListener('click', function () { setFrequency('monthly'); });
 
       renderPresets();
 
@@ -969,6 +990,9 @@
         setStatus('Initializing secure checkout...', '');
 
         try {
+          var isMonthly = selectedFrequency === 'monthly';
+          var actionType = isMonthly ? 'initialize_subscription' : 'initialize_transaction';
+
           var headers = {
             'Content-Type': 'application/json',
             'X-Appwrite-Project': APPWRITE_PROJECT_ID
@@ -981,7 +1005,7 @@
               headers: headers,
               body: JSON.stringify({
                 body: JSON.stringify({
-                  action: 'initialize_transaction',
+                  action: actionType,
                   email: email,
                   reference: reference,
                   amount: amountMinor,
@@ -999,7 +1023,8 @@
                     exchange_rate: isUSD ? exchangeRate : 1,
                     billed_currency: billingCurrency,
                     billed_amount_ngn: billedNgnAmount,
-                    amount_minor: amountMinor
+                    amount_minor: amountMinor,
+                    recurring: isMonthly
                   }
                 }),
                 async: false

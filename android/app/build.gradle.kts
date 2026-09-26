@@ -34,7 +34,12 @@ android {
         versionName = flutter.versionName
         multiDexEnabled = true
     }
-    ndkVersion = "28.2.13676358"
+
+    packaging {
+        jniLibs {
+            keepDebugSymbols.add("**/*.so")
+        }
+    }
 
     val keystoreProperties = Properties()
     val keystorePropertiesFile = rootProject.file("key.properties")

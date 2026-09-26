@@ -102,6 +102,25 @@
             ]
         },
         {
+            "$id": "delete_account",
+            "name": "deleteAccount",
+            "runtime": "node-20.0",
+            "path": "appwrite_functions/deleteAccount",
+            "entrypoint": "src/main.js",
+            "execute": [
+                "users"
+            ],
+            "enabled": true,
+            "logging": true,
+            "events": [],
+            "schedule": "",
+            "timeout": 15,
+            "commands": "npm install",
+            "scopes": [
+                "users.write"
+            ]
+        },
+        {
             "$id": "send_email",
             "name": "sendEmail",
             "runtime": "node-20.0",
