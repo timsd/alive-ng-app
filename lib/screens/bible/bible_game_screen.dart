@@ -498,7 +498,14 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
 /// Clean and deduplicate voice transcript tokens from Speech-to-Text.
 /// Fixes run-together words (e.g. "JesusJesusJesus"), consecutive repeated words,
 /// and repeated phrases without UI glitches.
-String _cleanVoiceTranscript(String text) {
+///
+/// [maxWords] caps the result to the length of the verse being recited. A child
+/// is repeating one verse, so anything past that length is the recogniser
+/// looping -- the earlier steps only removed *adjacent* and *exact back-to-back*
+/// repeats, so "the the word the the word" or a recogniser that replays the
+/// tail survived them. Truncating to the target length removes any remaining
+/// repetition without discarding a genuine word.
+String _cleanVoiceTranscript(String text, {int? maxWords}) {
   if (text.trim().isEmpty) return '';
 
   // 1. Separate run-together capitalized words, e.g. "JesusJesusJesus" -> "Jesus Jesus Jesus"
@@ -539,9 +546,14 @@ String _cleanVoiceTranscript(String text) {
     }
   }
 
+  // 4. Cap to the target verse length. Whatever follows the verse is the
+  // recogniser repeating itself, not something the child said.
+  if (maxWords != null && maxWords > 0 && tokens.length > maxWords) {
+    return tokens.take(maxWords).join(' ').trim();
+  }
+
   return cleaned.trim();
 }
-
 /// Levenshtein edit distance between two strings.
 int _levenshteinDistance(String a, String b) {
   if (a == b) return 0;
@@ -920,7 +932,23 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
     ref.read(bibleGameProvider.notifier).setListening(false);
     final gameState = ref.read(bibleGameProvider);
     if (gameState.gameMode == GameMode.voiceRecitation) {
-      final cleaned = _cleanVoiceTranscript(_bufferedTranscript);
+      // Cap the transcript to the verse being recited, so a recogniser that
+      // loops cannot hand back a longer and more repetitive answer than the
+      // child actually spoke.
+      final verse = gameState.currentVerse;
+      final target = verse == null
+          ? null
+          : (verse.text[gameState.selectedVersion] ?? verse.text.values.first);
+      final targetWords = target == null
+          ? 0
+          : _normalizeText(target)
+              .split(RegExp(r'\s+'))
+              .where((w) => w.isNotEmpty)
+              .length;
+      final cleaned = _cleanVoiceTranscript(
+        _bufferedTranscript,
+        maxWords: targetWords > 0 ? targetWords : null,
+      );
       if (cleaned.isEmpty) return;
       ref.read(bibleGameProvider.notifier).updateUserInput(cleaned);
       _textController.value = TextEditingValue(

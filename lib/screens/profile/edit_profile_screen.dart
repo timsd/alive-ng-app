@@ -137,8 +137,49 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     super.dispose();
   }
 
+  /// Moves to the page holding the first invalid field and says what is
+  /// wrong, so a failed save is never silent.
+  void _showValidationError() {
+    final missing = <String>[];
+    if (_fullNameController.text.trim().isEmpty) missing.add('Full name');
+    if (_locationController.text.trim().isEmpty) missing.add('Location');
+    if (_localChurchController.text.trim().isEmpty) missing.add('Local church');
+
+    // The form is a pager, so the offending field may not be on this page.
+    final fieldOrder = <String, int>{
+      'Full name': 0,
+      'Phone': 0,
+      'Location': 0,
+      'Local church': 0,
+    };
+    for (final label in missing) {
+      final page = fieldOrder[label] ?? 0;
+      if (_currentPage != page) {
+        _currentPage = page;
+        _pageController.animateToPage(
+          page,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+        );
+        break;
+      }
+    }
+
+    final detail = missing.isEmpty
+        ? 'Please correct the highlighted fields.'
+        : 'Please fill in: ${missing.join(', ')}.';
+    ToastUtils.showError('Profile not saved. $detail');
+  }
+
   Future<void> _saveProfile() async {
-    if (!_formKey.currentState!.validate()) return;
+    // This used to return silently when validation failed, so pressing Save
+    // appeared to do nothing at all: no message, no change, no explanation.
+    // The required fields (Location, Local Church) are easy to miss, and the
+    // form sits on the last page of a pager, so the error may be off-screen.
+    if (!_formKey.currentState!.validate()) {
+      _showValidationError();
+      return;
+    }
 
     setState(() => _isLoading = true);
 
@@ -282,13 +323,27 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         appBar: CustomAppBar(
           title: 'Edit Profile',
           showBackButton: true,
-          actions: [
-            if (_hasChanges)
-              IconButton(
-                icon: const Icon(Icons.save),
-                onPressed: _isLoading ? null : _saveProfile,
-              ),
-          ],
+          // Saving moved to a floating action button, so it is always visible
+          // and reachable one-handed instead of only appearing in the app bar
+          // once a field had been touched.
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: _isLoading ? null : _saveProfile,
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          foregroundColor: Theme.of(context).colorScheme.onPrimary,
+          icon: _isLoading
+              ? SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Theme.of(context).colorScheme.onPrimary,
+                    ),
+                  ),
+                )
+              : const Icon(Icons.save),
+          label: Text(_hasChanges ? 'Save Changes' : 'Done'),
         ),
         body: Form(
           key: _formKey,

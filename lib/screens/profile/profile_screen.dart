@@ -6,6 +6,8 @@ import '../../providers/appwrite_auth_provider.dart';
 import '../../models/app_models.dart';
 import '../../services/appwrite_profile_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/biometric_auth_service.dart';
+import '../../utils/toast_utils.dart';
 import '../../config/appwrite_backend_config.dart';
 import '../../utils/responsive_utils.dart';
 import 'edit_profile_screen.dart';
@@ -222,6 +224,16 @@ class ProfileScreen extends ConsumerWidget {
             title: 'Account & Security',
             icon: Icons.security_rounded,
             children: [
+              // Biometric sign-in belongs with account settings, not buried on
+              // the sign-in screen: once someone is signed in, the auth screen
+              // is unreachable, so that was the only place they could turn it
+              // on -- effectively nowhere.
+              //
+              // Only shown when the device actually supports it. The service
+              // reports unavailable on web, so on the deployed web build this
+              // row is correctly hidden rather than offering a switch that
+              // cannot work.
+              _BiometricToggle(profile: profile),
               _ActionTile(
                 icon: Icons.lock_reset_rounded,
                 iconColor: const Color(0xFF3B82F6),
@@ -668,6 +680,132 @@ class _InfoItem {
   final String value;
   final IconData icon;
   _InfoItem(this.label, this.value, this.icon);
+}
+
+class _BiometricToggle extends StatefulWidget {
+  final UserProfile? profile;
+  const _BiometricToggle({required this.profile});
+
+  @override
+  State<_BiometricToggle> createState() => _BiometricToggleState();
+}
+
+class _BiometricToggleState extends State<_BiometricToggle> {
+  final BiometricAuthService _bio = BiometricAuthService.instance;
+
+  bool _available = false;
+  bool _enabled = false;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      // Both calls report unavailable on web, which is correct: a browser
+      // build has no biometric prompt to offer.
+      final available = await _bio.isBiometricAvailable();
+      final enabled = available && await _bio.isBiometricEnabled();
+      if (!mounted) return;
+      setState(() {
+        _available = available;
+        _enabled = enabled;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _available = false);
+    }
+  }
+
+  Future<void> _setEnabled(bool value) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      if (value) {
+        final ok = await _promptPasswordAndEnable();
+        if (!mounted) return;
+        if (ok) setState(() => _enabled = true);
+      } else {
+        await _bio.disableBiometricAuth();
+        if (!mounted) return;
+        setState(() => _enabled = false);
+        ToastUtils.showSuccess('Biometric sign-in turned off');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ToastUtils.showError('Could not update biometric sign-in: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Enabling stores the account's credentials for later sign-in, so the
+  /// password is required again. The server is never asked for it.
+  Future<bool> _promptPasswordAndEnable() async {
+    final controller = TextEditingController();
+      final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Confirm your password'),
+        content: TextField(
+          controller: controller,
+          obscureText: true,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Password',
+            helperText: 'Needed once so you can sign in with your fingerprint.',
+          ),
+          onSubmitted: (_) => Navigator.of(dialogContext).pop(true),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Enable'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (confirmed != true) return false;
+
+    final password = controller.text;
+    if (password.isEmpty) {
+      ToastUtils.showError('Please enter your password');
+      return false;
+    }
+    final email = widget.profile?.email ??
+        AuthService.instance.currentUser?.email ??
+        '';
+    if (email.isEmpty) {
+      ToastUtils.showError('No email address is available for this account');
+      return false;
+    }
+    final ok = await _bio.enableBiometricAuth(email: email, password: password);
+    if (ok) {
+      ToastUtils.showSuccess('Biometric sign-in turned on');
+    } else {
+      ToastUtils.showError('Could not enable biometric sign-in');
+    }
+    return ok;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_available) return const SizedBox.shrink();
+    return SwitchListTile(
+      secondary: const Icon(Icons.fingerprint_rounded, color: Color(0xFF10B981)),
+      title: const Text('Biometric Sign-In'),
+      subtitle: const Text('Use your fingerprint or face to sign in'),
+      value: _enabled,
+      onChanged: _busy ? null : _setEnabled,
+    );
+  }
 }
 
 class _InfoSection extends StatelessWidget {
