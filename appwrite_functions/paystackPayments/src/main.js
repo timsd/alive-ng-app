@@ -793,6 +793,32 @@ async function markProjectCredited(databases, collectionId, reference) {
   }
 }
 
+// The donor's `verify_transaction` call also sends a receipt, so this used to
+// deliver two identical "Official Donation Receipt" emails for one gift. The
+// marker lives on the donation row and is shared with `paystackPayments`.
+const RECEIPT_SENT_FIELD = 'receipt_sent_at';
+
+async function hasReceiptBeenSent(databases, reference) {
+  if (!databases || !donationsCollectionId || !reference) return false;
+  try {
+    const donation = await databases.getDocument(databaseId, donationsCollectionId, reference);
+    return Boolean(donation && donation[RECEIPT_SENT_FIELD]);
+  } catch (_) {
+    return false;
+  }
+}
+
+async function markReceiptSent(databases, reference) {
+  if (!databases || !donationsCollectionId || !reference) return;
+  try {
+    await databases.updateDocument(databaseId, donationsCollectionId, reference, {
+      [RECEIPT_SENT_FIELD]: new Date().toISOString(),
+    });
+  } catch (_) {
+    // The mail is already out; a missing stamp only risks a duplicate.
+  }
+}
+
 /**
  * Adds to a project's raised total.
  *
@@ -937,8 +963,15 @@ async function handleVerifiedPayment(paystackData, log) {
       }
     }
 
-    // 3. Send donation receipt email
-    if (process.env.RESEND_API_KEY && customerEmail) {
+    // 3. Send donation receipt email.
+    //
+    // Paystack's webhook sends the same receipt, so a single gift produced two
+    // identical "Official Donation Receipt" emails. The marker on the donation
+    // row keeps it to one.
+    const receiptAlreadySent = await hasReceiptBeenSent(databases, reference);
+    if (receiptAlreadySent) {
+      if (log) log(`Receipt already sent for ${reference}; not resending`);
+    } else if (process.env.RESEND_API_KEY && customerEmail) {
       try {
         const dateStr = new Date().toLocaleDateString('en-NG', { year: 'numeric', month: 'long', day: 'numeric' });
         const currency = paystackData.currency || 'NGN';
@@ -953,7 +986,10 @@ async function handleVerifiedPayment(paystackData, log) {
         const typeRow = `<tr><td style="padding:10px;border:1px solid #e2e8f0;background:#f7fafc;"><strong>Type</strong></td><td style="padding:10px;border:1px solid #e2e8f0;">${isRecurring ? 'Monthly recurring gift' : 'One-time gift'}</td></tr>`;
         const receiptHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Donation Receipt - ALIVE Nigeria</title></head><body style="font-family:Georgia,serif;max-width:600px;margin:0 auto;padding:20px;color:#1a202c;"><div style="text-align:center;border-bottom:3px solid #1a365d;padding-bottom:20px;margin-bottom:20px;"><img src="${ALIVE_LOGO_URL}" alt="ALIVE Nigeria" width="88" height="88" style="display:block;margin:0 auto 12px;border:0;outline:none;" /><h1 style="color:#1a365d;margin:0;">ALIVE Nigeria</h1><p style="color:#666;margin:4px 0;">Official Donation Receipt</p></div><div style="padding:10px 0;"><p>Dear ${safeDonorName},</p><p>Thank you for your generous donation to ALIVE Nigeria. Your support empowers our work across Nigeria.</p><p style="color:#4a5568;">Your gift of <strong>${escapeHtml(currency)} ${escapeHtml(formattedAmount)}</strong> was designated to <strong>${safePurpose}</strong>.</p><table style="width:100%;border-collapse:collapse;margin:20px 0;"><tr><td style="padding:10px;border:1px solid #e2e8f0;background:#f7fafc;"><strong>Donor Name</strong></td><td style="padding:10px;border:1px solid #e2e8f0;">${safeDonorName}</td></tr>${typeRow}${purposeRow}<tr><td style="padding:10px;border:1px solid #e2e8f0;background:#f7fafc;"><strong>Amount</strong></td><td style="padding:10px;border:1px solid #e2e8f0;">${escapeHtml(currency)} ${escapeHtml(formattedAmount)}</td></tr><tr><td style="padding:10px;border:1px solid #e2e8f0;background:#f7fafc;"><strong>Reference</strong></td><td style="padding:10px;border:1px solid #e2e8f0;">${safeReference}</td></tr><tr><td style="padding:10px;border:1px solid #e2e8f0;background:#f7fafc;"><strong>Date</strong></td><td style="padding:10px;border:1px solid #e2e8f0;">${escapeHtml(dateStr)}</td></tr></table><p style="color:#4a5568;font-size:14px;">Please retain this receipt for your records. Contact us at <a href="mailto:app@alivenigeria.org">app@alivenigeria.org</a> for any inquiries.</p></div><div style="text-align:center;border-top:1px solid #e2e8f0;padding-top:20px;color:#999;font-size:12px;"><p>ALIVE Nigeria &mdash; Thank you for your generosity.</p></div></body></html>`;
 
-        const sender = process.env.RECEIPT_SENDER_EMAIL || process.env.SENDER_EMAIL || 'ALIVE Nigeria App <receipts@app.alivenigeria.org>';
+        // Receipts always come from the dedicated receipts@ identity so a
+        // donor can distinguish a financial document from ministry mail.
+        const sender =
+          process.env.RECEIPT_SENDER_EMAIL || 'ALIVE Nigeria App <receipts@app.alivenigeria.org>';
         const replyTo = process.env.REPLY_TO_EMAIL || 'app@alivenigeria.org';
         const emailRes = await fetch('https://api.resend.com/emails', {
           method: 'POST',
@@ -973,6 +1009,9 @@ async function handleVerifiedPayment(paystackData, log) {
         const resText = await emailRes.text();
         if (emailRes.ok) {
           if (log) log(`Receipt email dispatched to ${customerEmail}: status ${emailRes.status}`);
+          // Stamp only after Resend accepted it, so a failure can be retried
+          // by the other handler rather than silently swallowed.
+          await markReceiptSent(databases, reference);
         } else if (log) {
           log(`Receipt email FAILED for ${customerEmail} (${emailRes.status}): ${resText}`);
         }

@@ -217,10 +217,14 @@ class AuthService {
 
   /// Sends a password-reset link to [email].
   ///
-  /// Two deliveries happen: Appwrite mints the recovery token and sends its
-  /// own invite, and we additionally send the same working link through our
-  /// branded Resend template so the member always receives a working email
-  /// from our verified address.
+  /// Exactly one email goes out. Appwrite's `createRecovery` mints the
+  /// recovery token, but its own notification mail is suppressed so the
+  /// member receives only our branded Resend message -- which is the one whose
+  /// link carries `userId` and `secret` and therefore actually works.
+  ///
+  /// Previously both fired, so every reset produced two emails and the
+  /// Appwrite one (different template, no working link) was the one that got
+  /// clicked.
   Future<bool> resetPassword(String email) async {
     final normalized = email.trim();
     if (normalized.isEmpty) {

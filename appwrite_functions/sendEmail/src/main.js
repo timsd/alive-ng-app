@@ -5,6 +5,13 @@
 // `app@alivenigeria.org` is used as the Reply-To so replies reach the
 // monitored mailbox.
 const defaultSender = 'ALIVE Nigeria App <msg@app.alivenigeria.org>';
+
+// Ministry mail (verification, password reset, notifications) goes from
+// msg@; a donation receipt is a financial document and goes from receipts@
+// so a donor can tell the two apart. Set SENDER_EMAIL and
+// RECEIPT_SENDER_EMAIL on the function to override these.
+const DEFAULT_SENDER = defaultSender;
+const DEFAULT_RECEIPT_SENDER = 'ALIVE Nigeria App <receipts@app.alivenigeria.org>';
 const defaultReplyTo = 'app@alivenigeria.org';
 
 // Branding assets used across all outbound emails.
@@ -36,7 +43,19 @@ export default async ({ req, res, log, error }) => {
       log(`[debug] body type=${typeof req.body}, raw type=${typeof req.bodyRaw}, src=${src.substring(0, 120)}`);
       body = JSON.parse(src || '{}');
     }
-    const from = process.env.RECEIPT_SENDER_EMAIL || process.env.SENDER_EMAIL || defaultSender;
+    // Two distinct senders, on purpose.
+    //
+    // A receipt is a financial document and must come from the dedicated
+    // receipts@ identity, so a donor can tell it apart from ministry mail.
+    // Everything else -- verification, password reset, notifications -- comes
+    // from msg@. Previously this function preferred RECEIPT_SENDER_EMAIL, so
+    // every password reset and verification went out as receipts@, which is
+    // both wrong and the reason the reset link looked like the wrong email.
+    const isReceipt =
+      body.kind === 'receipt' || body.template === 'receipt';
+    const from = isReceipt
+      ? process.env.RECEIPT_SENDER_EMAIL || DEFAULT_RECEIPT_SENDER
+      : process.env.SENDER_EMAIL || DEFAULT_SENDER;
     // Every outbound email replies to the monitored support mailbox unless the
     // caller explicitly overrides it in the execution body.
     const replyTo =

@@ -128,7 +128,9 @@ async function sendDonationReceipt(paymentData) {
   
   try {
     if (process.env.RESEND_API_KEY) {
-      const sender = process.env.RECEIPT_SENDER_EMAIL || process.env.SENDER_EMAIL || 'ALIVE Nigeria App <receipts@app.alivenigeria.org>';
+      // Receipts always come from the dedicated receipts@ identity.
+      const sender =
+        process.env.RECEIPT_SENDER_EMAIL || 'ALIVE Nigeria App <receipts@app.alivenigeria.org>';
       const replyTo = process.env.REPLY_TO_EMAIL || 'app@alivenigeria.org';
       const emailRes = await fetch('https://api.resend.com/emails', {
         method: 'POST',
@@ -220,7 +222,13 @@ export default async ({ req, res, log, error }) => {
       // idempotent -- the same charge can reach us from Paystack more than
       // once, and the donor's own verify call increments too.
       await incrementProjectRaised(databases, metadata, log, reference, data?.currency);
-      await sendDonationReceipt(data);
+      // Guarded so the donor's own verify call cannot send a second copy.
+      if (await hasReceiptBeenSent(databases, reference)) {
+        log(`Receipt already sent for ${reference}; not resending`);
+      } else {
+        await sendDonationReceipt(data);
+        await markReceiptSent(databases, reference);
+      }
     } else if (type === 'charge.failed' || type === 'charge.abandoned') {
       await updateDonation(databases, reference, {
         status: 'failed',
@@ -312,6 +320,32 @@ async function markProjectCredited(databases, reference) {
     });
   } catch (_) {
     // The total is already correct; not worth failing the webhook over.
+  }
+}
+
+// The donor's `verify_transaction` call also sends a receipt, so this used to
+// deliver two identical "Official Donation Receipt" emails for one gift. The
+// marker lives on the donation row and is shared with `paystackPayments`.
+const RECEIPT_SENT_FIELD = 'receipt_sent_at';
+
+async function hasReceiptBeenSent(databases, reference) {
+  if (!databases || !donationsCollectionId || !reference) return false;
+  try {
+    const donation = await databases.getDocument(databaseId, donationsCollectionId, reference);
+    return Boolean(donation && donation[RECEIPT_SENT_FIELD]);
+  } catch (_) {
+    return false;
+  }
+}
+
+async function markReceiptSent(databases, reference) {
+  if (!databases || !donationsCollectionId || !reference) return;
+  try {
+    await databases.updateDocument(databaseId, donationsCollectionId, reference, {
+      [RECEIPT_SENT_FIELD]: new Date().toISOString(),
+    });
+  } catch (_) {
+    // The mail is already out; a missing stamp only risks a duplicate.
   }
 }
 

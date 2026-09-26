@@ -115,8 +115,17 @@ class AppwriteBackendConfig {
       'user_submitted_recipes';
   static const String userSubmittedHealthTipsCollectionId =
       'user_submitted_health_tips';
+  /// The link the branded reset email points at.
+  ///
+  /// The app routes with a URL fragment (`/#/reset-password`), so anything
+  /// appended after `#` becomes part of the FRAGMENT, not the query string.
+  /// `?userId=..&secret=..` placed there was invisible to
+  /// `GoRouterState.uri.queryParameters`, and the reset screen rendered
+  /// without a token -- which is why the link appeared to have no secret
+  /// attached. The parameters therefore go BEFORE the fragment, where
+  /// `Uri` exposes them as real query parameters.
   static const String passwordRecoveryUrl =
-      'https://app.alivenigeria.org/#/reset-password';
+      'https://app.alivenigeria.org/reset-password';
   static const String oauthSuccessUrl = 'https://app.alivenigeria.org/#/home';
   static const String oauthFailureUrl = 'https://app.alivenigeria.org/#/auth';
 

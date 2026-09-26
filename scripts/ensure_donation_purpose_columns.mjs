@@ -106,6 +106,14 @@ console.log(`Existing ${kind}: ${[...existingKeys].join(', ')}\n`);
 const WANTED = [
   { key: 'purpose', size: 512, required: false },
   { key: 'project_title', size: 512, required: false },
+  // Stamped by the payment handlers once the receipt email has been
+  // accepted, so one gift never produces two "Official Donation Receipt"
+  // emails (the donor's verify call and the Paystack webhook both send).
+  { key: 'receipt_sent_at', size: 64, required: false },
+  // Stamped by the payment handlers once the receipt email has been
+  // accepted, so one gift never produces two "Official Donation Receipt"
+  // emails (the donor's verify call and the Paystack webhook both send).
+  { key: 'receipt_sent_at', size: 64, required: false },
   // Stamped by the payment handlers once a gift has been added to a project
   // target, so the same charge is never counted twice across the verify call
   // and the Paystack webhook. See `PROJECT_CREDIT_FIELD` in the two functions.

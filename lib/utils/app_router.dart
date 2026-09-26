@@ -268,10 +268,23 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       GoRoute(
         path: AppConstants.resetPasswordRoute,
-        builder: (context, state) => ResetPasswordScreen(
-          userId: state.uri.queryParameters['userId'],
-          secret: state.uri.queryParameters['secret'],
-        ),
+        builder: (context, state) {
+          // Appwrite's own recovery mail and our branded Resend mail can both
+          // arrive, and they build the link differently. Read the token from
+          // the query string first, then fall back to the fragment, because
+          // this app also routes with `/#/path`, where anything after `#`
+          // is a fragment rather than a query. Reading only one of the two is
+          // what made the reset screen appear to have no secret.
+          final query = state.uri.queryParameters;
+          final fragment = state.uri.fragment;
+          final fromFragment = fragment.contains('?')
+              ? Uri.splitQueryString(fragment.split('?').last)
+              : const <String, String>{};
+          return ResetPasswordScreen(
+            userId: query['userId'] ?? fromFragment['userId'],
+            secret: query['secret'] ?? fromFragment['secret'],
+          );
+        },
       ),
 
       // Admin approval-link route (email link handler)
