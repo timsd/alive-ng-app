@@ -440,8 +440,12 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                     SizedBox(
                         height:
                             ResponsiveUtils.getResponsiveSpacing(context, 32)),
-                    // 1. Where Your Support Goes (Impact Section) FIRST
-                    _buildImpactSection(context, theme, isDark),
+                    // Projects and purposes were two sections -- "Where Your
+                    // Support Goes" and "Where should this go?" -- so a donor
+                    // read two headings to work out where money was going and
+                    // could not split across both. One section now, and it
+                    // comes before the giving method.
+                    _buildPurposeSelector(context, theme),
                     SizedBox(
                         height:
                             ResponsiveUtils.getResponsiveSpacing(context, 32)),
@@ -452,10 +456,6 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                             ResponsiveUtils.getResponsiveSpacing(context, 36)),
                     // 3. Giving Method & Amount Checkout THIRD
                     _buildDonationTypeSelector(context, theme),
-                    SizedBox(
-                        height:
-                            ResponsiveUtils.getResponsiveSpacing(context, 24)),
-                    _buildPurposeSelector(context, theme),
                     SizedBox(
                         height:
                             ResponsiveUtils.getResponsiveSpacing(context, 24)),
@@ -593,9 +593,42 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
     );
   }
 
-  /// Lets the donor direct the gift at an administrative purpose when it is not
-  /// aimed at one of the capital projects.
+  /// Lets the donor direct the gift, and split it across several areas.
+  ///
+  /// Projects and administrative purposes are one list. They used to be two
+  /// separate sections -- "Where Your Support Goes" (projects) and "Where
+  /// should this go?" (purposes) -- which meant a donor could pick a project
+  /// OR a purpose, but not split across both, and had to read two headings to
+  /// work out where their money was going. Everything now lives here, and every
+  /// entry participates in the split.
   Widget _buildPurposeSelector(BuildContext context, ThemeData theme) {
+    final scheme = theme.colorScheme;
+
+    void toggle(String title, {String? projectId}) {
+      setState(() {
+        if (_selectedFundDesignations.contains(title)) {
+          _selectedFundDesignations.remove(title);
+          // Clear the project only when the entry being removed was the one
+          // driving the project panel, otherwise a second project stays put.
+          if (projectId != null && _selectedProjectId == projectId) {
+            _selectedProjectId = null;
+            _selectedProjectTitle = null;
+          }
+        } else {
+          _selectedFundDesignations.add(title);
+          if (projectId != null) {
+            _selectedProjectId = projectId;
+            _selectedProjectTitle = title;
+          }
+        }
+        // A single administrative chip is also the "purpose" for the receipt.
+        final purposes = _selectedFundDesignations
+            .where((t) => kAdministrativePurposes.any((p) => p.label == t))
+            .toList();
+        _selectedPurposeId = purposes.length == 1 ? purposes.first : null;
+      });
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -605,29 +638,211 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
             fontWeight: FontWeight.bold,
           ),
         ),
-        SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
+        SizedBox(height: 4),
+        Text(
+          'Choose one, or several to split your gift across them.',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: scheme.onSurfaceVariant,
+          ),
+        ),
+        SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 10)),
+
+        // Capital projects, each with an icon, before the general purposes.
+        if (_fallbackProjects.isNotEmpty) ...[
+          _buildSelectorGroupLabel(context, theme, 'Projects'),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final project in _fallbackProjects)
+                _buildDesignationChip(
+                  context,
+                  theme,
+                  label: project.title,
+                  icon: Icons.volunteer_activism_outlined,
+                  selected: _selectedFundDesignations.contains(project.title),
+                  onTap: () =>
+                      toggle(project.title, projectId: project.id),
+                ),
+            ],
+          ),
+          SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 14)),
+        ],
+
+        _buildSelectorGroupLabel(context, theme, 'Where we need it most'),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
-            ChoiceChip(
-              label: Text(kGeneralSupportPurpose.label),
-              selected: _selectedPurposeId == null,
-              onSelected: (_) => setState(() => _selectedPurposeId = null),
+            _buildDesignationChip(
+              context,
+              theme,
+              label: kGeneralSupportPurpose.label,
+              icon: Icons.volunteer_activism_outlined,
+              selected: _selectedFundDesignations.isEmpty,
+              onTap: () {
+                // General support is the fallback: picking it clears any
+                // split rather than adding to one.
+                setState(() {
+                  _selectedFundDesignations.clear();
+                  _selectedProjectId = null;
+                  _selectedProjectTitle = null;
+                  _selectedPurposeId = null;
+                });
+              },
             ),
-            ...kAdministrativePurposes.map(
-              (purpose) => ChoiceChip(
-                label: Text(purpose.label),
-                selected: _selectedPurposeId == purpose.id,
-                onSelected: (selected) => setState(() {
-                  _selectedPurposeId = selected ? purpose.id : null;
-                }),
-                tooltip: purpose.description,
+            for (final item in kMinistryAreas)
+              _buildDesignationChip(
+                context,
+                theme,
+                label: item.title,
+                icon: Icons.volunteer_activism_outlined,
+                selected: _selectedFundDesignations.contains(item.title),
+                onTap: () {
+                  if (item.title == 'Custom Purpose') {
+                    _showCustomDesignationDialog();
+                  } else {
+                    toggle(item.title);
+                  }
+                },
               ),
+            // A trailing chip opens the free-text dialog, so a donor can still
+            // name an area the list does not cover.
+            ActionChip(
+              avatar: const Icon(Icons.edit_note, size: 18),
+              label: const Text('Custom purpose'),
+              onPressed: _showCustomDesignationDialog,
             ),
+            for (final purpose in kAdministrativePurposes)
+              _buildDesignationChip(
+                context,
+                theme,
+                label: purpose.label,
+                icon: Icons.favorite_border_rounded,
+                selected: _selectedFundDesignations.contains(purpose.label),
+                tooltip: purpose.description,
+                onTap: () => toggle(purpose.label),
+              ),
           ],
         ),
+        SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
+        _buildSplitSummary(context, theme),
       ],
+    );
+  }
+
+  /// Shows how the gift is divided, and offers a reset.
+  Widget _buildSplitSummary(BuildContext context, ThemeData theme) {
+    final count = _selectedFundDesignations.length;
+    if (count == 0) {
+      return Row(
+        children: [
+          Icon(
+            Icons.info_outline_rounded,
+            size: 16,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Not chosen yet, so this gift goes where it is needed most.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    final each = 100.0 / count;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: theme.colorScheme.primary.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            count > 1 ? Icons.call_split_rounded : Icons.check_circle_outline,
+            size: 18,
+            color: theme.colorScheme.primary,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              count == 1
+                  ? 'All of it to ${_selectedFundDesignations.first}'
+                  : 'Split ${each.toStringAsFixed(0)}% each across: '
+                      '${_selectedFundDesignations.join(', ')}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            tooltip: 'Clear selection',
+            icon: const Icon(Icons.clear_all, size: 18),
+            onPressed: () => setState(() {
+              _selectedFundDesignations.clear();
+              _selectedProjectId = null;
+              _selectedProjectTitle = null;
+              _selectedPurposeId = null;
+            }),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSelectorGroupLabel(
+    BuildContext context,
+    ThemeData theme,
+    String label,
+  ) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 6),
+      child: Text(
+        label,
+        style: theme.textTheme.labelMedium?.copyWith(
+          fontWeight: FontWeight.w700,
+          color: theme.colorScheme.onSurfaceVariant,
+          letterSpacing: 0.3,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDesignationChip(
+    BuildContext context,
+    ThemeData theme, {
+    required String label,
+    required IconData icon,
+    required bool selected,
+    required VoidCallback onTap,
+    String? tooltip,
+  }) {
+    final scheme = theme.colorScheme;
+    return FilterChip(
+      selected: selected,
+      onSelected: (_) => onTap(),
+      tooltip: tooltip,
+      showCheckmark: true,
+      avatar: Icon(
+        icon,
+        size: 18,
+        color: selected ? scheme.onSecondaryContainer : scheme.onSurfaceVariant,
+      ),
+      label: Text(label),
+      labelStyle: theme.textTheme.bodyMedium?.copyWith(
+        fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+      ),
     );
   }
 
@@ -1035,123 +1250,66 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
     );
   }
 
-  Widget _buildImpactSection(
-      BuildContext context, ThemeData theme, bool isDark) {
-    const impactItems = [
-      DonationImpact(
-        icon: Icons.terrain,
-        title: 'Rural Missions',
-        description:
-            'Send teams to remote communities with the Gospel and compassionate care.',
-      ),
-      DonationImpact(
-        icon: Icons.location_city,
-        title: 'Campus/City Missions',
-        description:
-            'Send teams to Campus/City communities with the Gospel and compassionate care.',
-      ),
-      DonationImpact(
-        icon: Icons.school,
-        title: 'Missionary Training',
-        description:
-            'Equip and train the next generation of Groundbreakers and Missionaries for effective witness.',
-      ),
-      DonationImpact(
-        icon: Icons.local_hospital,
-        title: 'Health Evangelism',
-        description:
-            'Provide medical care that opens hearts to the transforming power of the Gospel.',
-      ),
-      DonationImpact(
-        icon: Icons.phonelink,
-        title: 'Digital Ministry',
-        description:
-            'Leverage technology to share the Good News through tracts, podcasts, online events and discipleship.',
-      ),
-      DonationImpact(
-        icon: Icons.people_outline,
-        title: 'LTMs Stipends',
-        description: 'Support the monthly upkeep of long-term field workers.',
-      ),
-      DonationImpact(
-        icon: Icons.groups_outlined,
-        title: 'STMs Stipends',
-        description: 'Support the monthly upkeep of short-term field workers.',
-      ),
-      DonationImpact(
-        icon: Icons.volunteer_activism,
-        title: 'Volunteers',
-        description:
-            'Support the monthly upkeep of the volunteers at the mission field.',
-      ),
-      DonationImpact(
-        icon: Icons.edit_note,
-        title: 'Custom Purpose',
-        description:
-            'Specify your own custom ministry designation or special project.',
-      ),
-    ];
+  /// The ministry areas a donor can direct a gift at, and split across.
+  ///
+  /// These lived inside the old "Where Your Support Goes" section as a local
+  /// list. They are a field now so the unified selector can show them
+  /// alongside the capital projects and the administrative purposes.
+  static const List<DonationImpact> kMinistryAreas = [
+    DonationImpact(
+      icon: Icons.terrain,
+      title: 'Rural Missions',
+      description:
+          'Send teams to remote communities with the Gospel and compassionate care.',
+    ),
+    DonationImpact(
+      icon: Icons.location_city,
+      title: 'Campus/City Missions',
+      description:
+          'Send teams to Campus/City communities with the Gospel and compassionate care.',
+    ),
+    DonationImpact(
+      icon: Icons.school,
+      title: 'Missionary Training',
+      description:
+          'Equip and train the next generation of Groundbreakers and Missionaries for effective witness.',
+    ),
+    DonationImpact(
+      icon: Icons.local_hospital,
+      title: 'Health Evangelism',
+      description:
+          'Provide medical care that opens hearts to the transforming power of the Gospel.',
+    ),
+    DonationImpact(
+      icon: Icons.phonelink,
+      title: 'Digital Ministry',
+      description:
+          'Leverage technology to share the Good News through tracts, podcasts, online events and discipleship.',
+    ),
+    DonationImpact(
+      icon: Icons.people_outline,
+      title: 'LTMs Stipends',
+      description: 'Support the monthly upkeep of long-term field workers.',
+    ),
+    DonationImpact(
+      icon: Icons.groups_outlined,
+      title: 'STMs Stipends',
+      description: 'Support the monthly upkeep of short-term field workers.',
+    ),
+    DonationImpact(
+      icon: Icons.volunteer_activism,
+      title: 'Volunteers',
+      description:
+          'Support the monthly upkeep of the volunteers at the mission field.',
+    ),
+    DonationImpact(
+      icon: Icons.edit_note,
+      title: 'Custom Purpose',
+      description:
+          'Specify your own custom ministry designation or special project.',
+    ),
+  ];
 
-    final splitCount = _selectedFundDesignations.length;
-    final splitPercent = splitCount > 1
-        ? (100.0 / splitCount)
-        : (splitCount == 1 ? 100.0 : null);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Where Your Support Goes',
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Tap one or multiple areas to direct or split your donation ratio',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (_selectedFundDesignations.isNotEmpty)
-              TextButton.icon(
-                onPressed: () =>
-                    setState(() => _selectedFundDesignations.clear()),
-                icon: const Icon(Icons.clear_all, size: 18),
-                label: const Text('Reset'),
-              ),
-          ],
-        ),
-        SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-        ...impactItems.map((item) {
-          final isSelected = _selectedFundDesignations.contains(item.title);
-          return ImpactCard(
-            impact: item,
-            isSelected: isSelected,
-            splitPercent: isSelected ? splitPercent : null,
-            selectionLabel: isSelected
-                ? (splitCount > 1
-                    ? 'Included in split (${splitPercent!.toStringAsFixed(0)}%)'
-                    : 'Selected for this Gift (100%)')
-                : null,
-            onTap: () => _selectDesignation(item.title),
-          );
-        }),
-      ],
-    );
-  }
 
   void _selectDesignation(String title) {
     if (title == 'Custom Purpose') {
