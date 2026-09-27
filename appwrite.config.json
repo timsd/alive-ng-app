@@ -1,185 +1,204 @@
 {
-    "projectId": "6a3bef53002f5090dedf",
-    "projectName": "dbalive-app",
-    "endpoint": "https://api.alivenigeria.org/v1",
-    "settings": {
-        "services": {
-            "account": true,
-            "avatars": true,
-            "databases": true,
-            "locale": true,
-            "health": true,
-            "storage": true,
-            "teams": true,
-            "users": true,
-            "sites": true,
-            "functions": true,
-            "graphql": true,
-            "messaging": true
-        },
-        "protocols": {},
-        "auth": {
-            "methods": {
-                "jwt": true,
-                "phone": true,
-                "invites": true,
-                "anonymous": true,
-                "email-otp": true,
-                "magic-url": true,
-                "email-password": true
-            },
-            "security": {
-                "duration": 31536000,
-                "limit": 0,
-                "sessionsLimit": 10,
-                "passwordHistory": 0,
-                "passwordDictionary": false,
-                "personalDataCheck": false,
-                "sessionAlerts": false,
-                "mockNumbers": []
-            }
-        }
+  "projectId": "6a3bef53002f5090dedf",
+  "projectName": "dbalive-app",
+  "endpoint": "https://api.alivenigeria.org/v1",
+  "settings": {
+    "services": {
+      "account": true,
+      "avatars": true,
+      "databases": true,
+      "locale": true,
+      "health": true,
+      "storage": true,
+      "teams": true,
+      "users": true,
+      "sites": true,
+      "functions": true,
+      "graphql": true,
+      "messaging": true
     },
-    "functions": [
-        {
-            "$id": "6a08e9010035dc8c1e51",
-            "name": "createLiveKitToken",
-            "runtime": "node-20.0",
-            "path": "appwrite_functions/createLiveKitToken",
-            "entrypoint": "src/main.js",
-            "execute": [
-                "users"
-            ],
-            "enabled": true,
-            "logging": true,
-            "events": [],
-            "schedule": "",
-            "timeout": 15,
-            "commands": "npm install",
-            "scopes": [
-                "databases.read",
-                "documents.read"
-            ]
-        },
-        {
-            "$id": "paystack_payments",
-            "name": "paystackPayments",
-            "runtime": "node-20.0",
-            "path": "appwrite_functions/paystackPayments",
-            "entrypoint": "src/main.js",
-            "execute": [
-                "any"
-            ],
-            "enabled": true,
-            "logging": true,
-            "events": [],
-            "schedule": "",
-            "timeout": 15,
-            "commands": "npm install",
-            "scopes": [
-                "databases.read",
-                "databases.write"
-            ]
-        },
-        {
-            "$id": "paystack_webhook",
-            "name": "paystackWebhook",
-            "runtime": "node-20.0",
-            "path": "appwrite_functions/paystackWebhook",
-            "entrypoint": "src/main.js",
-            "execute": [
-                "any"
-            ],
-            "enabled": true,
-            "logging": true,
-            "events": [],
-            "schedule": "",
-            "timeout": 15,
-            "commands": "npm install",
-            "scopes": [
-                "databases.read",
-                "databases.write"
-            ]
-        },
-        {
-            "$id": "delete_account",
-            "name": "deleteAccount",
-            "runtime": "node-20.0",
-            "path": "appwrite_functions/deleteAccount",
-            "entrypoint": "src/main.js",
-            "execute": [
-                "users"
-            ],
-            "enabled": true,
-            "logging": true,
-            "events": [],
-            "schedule": "",
-            "timeout": 15,
-            "commands": "npm install",
-            "scopes": [
-                "users.write"
-            ]
-        },
-        {
-            "$id": "send_email",
-            "name": "sendEmail",
-            "runtime": "node-20.0",
-            "path": "appwrite_functions/sendEmail",
-            "entrypoint": "src/main.js",
-            "execute": [
-                "users"
-            ],
-            "enabled": true,
-            "logging": true,
-            "events": [
-                "users.*.create"
-            ],
-            "schedule": "",
-            "timeout": 15,
-            "commands": "npm install",
-            "scopes": []
-        },
-        {
-            "$id": "start_livekit_broadcast",
-            "name": "startLiveKitBroadcast",
-            "runtime": "node-20.0",
-            "path": "appwrite_functions/startLiveKitBroadcast",
-            "entrypoint": "src/main.js",
-            "execute": [
-                "users"
-            ],
-            "enabled": true,
-            "logging": true,
-            "events": [],
-            "schedule": "",
-            "timeout": 30,
-            "commands": "npm install",
-            "scopes": [
-                "databases.read",
-                "documents.read"
-            ]
-        },
-        {
-            "$id": "monthly_donation_reminder",
-            "name": "monthlyDonationReminder",
-            "runtime": "node-20.0",
-            "path": "appwrite_functions/monthlyDonationReminder",
-            "entrypoint": "src/main.js",
-            "execute": [
-                "any"
-            ],
-            "enabled": true,
-            "logging": true,
-            "events": [],
-            "schedule": "0 8 1 * *",
-            "timeout": 300,
-            "commands": "npm install",
-            "scopes": [
-                "users.read",
-                "messages.write",
-                "databases.read",
-                "documents.read"
-            ]
-        }
-    ]
+    "protocols": {},
+    "auth": {
+      "methods": {
+        "jwt": true,
+        "phone": true,
+        "invites": true,
+        "anonymous": true,
+        "email-otp": true,
+        "magic-url": true,
+        "email-password": true
+      },
+      "security": {
+        "duration": 31536000,
+        "limit": 0,
+        "sessionsLimit": 10,
+        "passwordHistory": 0,
+        "passwordDictionary": false,
+        "personalDataCheck": false,
+        "sessionAlerts": false,
+        "mockNumbers": []
+      }
+    }
+  },
+  "functions": [
+    {
+      "$id": "6a08e9010035dc8c1e51",
+      "name": "createLiveKitToken",
+      "runtime": "node-20.0",
+      "path": "appwrite_functions/createLiveKitToken",
+      "entrypoint": "src/main.js",
+      "execute": [
+        "users"
+      ],
+      "enabled": true,
+      "logging": true,
+      "events": [],
+      "schedule": "",
+      "timeout": 15,
+      "commands": "npm install",
+      "scopes": [
+        "databases.read",
+        "documents.read"
+      ]
+    },
+    {
+      "$id": "paystack_payments",
+      "name": "paystackPayments",
+      "runtime": "node-20.0",
+      "path": "appwrite_functions/paystackPayments",
+      "entrypoint": "src/main.js",
+      "execute": [
+        "any"
+      ],
+      "enabled": true,
+      "logging": true,
+      "events": [],
+      "schedule": "",
+      "timeout": 15,
+      "commands": "npm install",
+      "scopes": [
+        "databases.read",
+        "databases.write"
+      ]
+    },
+    {
+      "$id": "paystack_webhook",
+      "name": "paystackWebhook",
+      "runtime": "node-20.0",
+      "path": "appwrite_functions/paystackWebhook",
+      "entrypoint": "src/main.js",
+      "execute": [
+        "any"
+      ],
+      "enabled": true,
+      "logging": true,
+      "events": [],
+      "schedule": "",
+      "timeout": 15,
+      "commands": "npm install",
+      "scopes": [
+        "databases.read",
+        "databases.write"
+      ]
+    },
+    {
+      "$id": "delete_account",
+      "name": "deleteAccount",
+      "runtime": "node-20.0",
+      "path": "appwrite_functions/deleteAccount",
+      "entrypoint": "src/main.js",
+      "execute": [
+        "users"
+      ],
+      "enabled": true,
+      "logging": true,
+      "events": [],
+      "schedule": "",
+      "timeout": 15,
+      "commands": "npm install",
+      "scopes": [
+        "users.write"
+      ]
+    },
+    {
+      "$id": "send_email",
+      "name": "sendEmail",
+      "runtime": "node-20.0",
+      "path": "appwrite_functions/sendEmail",
+      "entrypoint": "src/main.js",
+      "execute": [
+        "users"
+      ],
+      "enabled": true,
+      "logging": true,
+      "events": [
+        "users.*.create"
+      ],
+      "schedule": "",
+      "timeout": 15,
+      "commands": "npm install",
+      "scopes": []
+    },
+    {
+      "$id": "start_livekit_broadcast",
+      "name": "startLiveKitBroadcast",
+      "runtime": "node-20.0",
+      "path": "appwrite_functions/startLiveKitBroadcast",
+      "entrypoint": "src/main.js",
+      "execute": [
+        "users"
+      ],
+      "enabled": true,
+      "logging": true,
+      "events": [],
+      "schedule": "",
+      "timeout": 30,
+      "commands": "npm install",
+      "scopes": [
+        "databases.read",
+        "documents.read"
+      ]
+    },
+    {
+      "$id": "monthly_donation_reminder",
+      "name": "monthlyDonationReminder",
+      "runtime": "node-20.0",
+      "path": "appwrite_functions/monthlyDonationReminder",
+      "entrypoint": "src/main.js",
+      "execute": [
+        "any"
+      ],
+      "enabled": true,
+      "logging": true,
+      "events": [],
+      "schedule": "0 8 1 * *",
+      "timeout": 300,
+      "commands": "npm install",
+      "scopes": [
+        "users.read",
+        "messages.write",
+        "databases.read",
+        "documents.read"
+      ]
+    },
+    {
+      "$id": "bind_office_on_signup",
+      "name": "bindOfficeOnSignup",
+      "path": "appwrite_functions/bindOfficeOnSignup",
+      "entrypoint": "src/main.js",
+      "commands": "npm install",
+      "events": [
+        "users.*.create"
+      ],
+      "execute": [
+        "users"
+      ],
+      "runtime": "node-20.0",
+      "scopes": [
+        "databases.read",
+        "databases.write",
+        "users.read"
+      ]
+    }
+  ]
 }

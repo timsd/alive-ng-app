@@ -1,0 +1,14 @@
+{
+  "name": "bind-office-on-signup",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Attaches a leadership office to a new account by matching the signup email against officer_registry.",
+  "main": "src/main.js",
+  "engines": {
+    "node": "20"
+  },
+  "dependencies": {
+    "node-appwrite": "^14.1.0"
+  }
+}
