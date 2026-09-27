@@ -233,6 +233,24 @@ class AuthService {
 
     final token = await _appwriteAuth.sendPasswordRecovery(normalized);
 
+    // Appwrite 1.8.1 returns `secret: ""` from createRecovery -- the token is
+    // only ever delivered by its own recovery mail, not in the API response.
+    // The branded link below is therefore built from an empty secret, which
+    // produced a link that reached the reset screen with nothing to submit and
+    // the member could never set a new password.
+    //
+    // So do not send a broken link. Appwrite's own recovery mail is the only
+    // one carrying a usable secret, and it is built from the `url` passed to
+    // createRecovery above.
+    final secret = token.secret.trim();
+    if (secret.isEmpty) {
+      _logger.warning(
+        'createRecovery returned no secret for $normalized; relying on Appwrite\'s '
+        'own recovery email rather than sending a branded link with an empty secret.',
+      );
+      return true;
+    }
+
     final displayName =
         currentUser?.displayName ?? normalized.split('@').first;
     try {
@@ -240,7 +258,7 @@ class AuthService {
         toEmail: normalized,
         toName: displayName,
         userId: token.userId,
-        secret: token.secret,
+        secret: secret,
       );
     } catch (e) {
       _logger.warning('Branded password-reset email failed for $normalized: $e');
