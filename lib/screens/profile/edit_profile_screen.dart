@@ -184,38 +184,26 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     setState(() => _isLoading = true);
 
     try {
+      // Empty inputs become '' rather than null. copyWith treats a null
+      // argument as "keep the current value", and the profile service drops
+      // nulls before the write, so passing null here meant a cleared field kept
+      // its old value, was never sent to Appwrite, and the save looked broken.
+      String field(TextEditingController c) => c.text.trim();
+
       // Create updated user profile
       final updatedProfile = widget.userProfile.copyWith(
-        fullName: _fullNameController.text.trim(),
-        phoneNumber: _phoneController.text.trim().isNotEmpty
-            ? _phoneController.text.trim()
-            : null,
-        location: _locationController.text.trim().isNotEmpty
-            ? _locationController.text.trim()
-            : null,
-        localChurch: _localChurchController.text.trim().isNotEmpty
-            ? _localChurchController.text.trim()
-            : null,
-        occupation: _occupationController.text.trim().isNotEmpty
-            ? _occupationController.text.trim()
-            : null,
-        skills: _skillsController.text.trim().isNotEmpty
-            ? _skillsController.text.trim()
-            : null,
-        workContact: _workContactController.text.trim().isNotEmpty
-            ? _workContactController.text.trim()
-            : null,
-        homeContact: _homeContactController.text.trim().isNotEmpty
-            ? _homeContactController.text.trim()
-            : null,
-        generalInfo: _generalInfoController.text.trim().isNotEmpty
-            ? _generalInfoController.text.trim()
-            : null,
-        localChapter: _localChapterController.text.trim().isNotEmpty
-            ? _localChapterController.text.trim()
-            : null,
+        fullName: field(_fullNameController),
+        phoneNumber: field(_phoneController),
+        location: field(_locationController),
+        localChurch: field(_localChurchController),
+        occupation: field(_occupationController),
+        skills: field(_skillsController),
+        workContact: field(_workContactController),
+        homeContact: field(_homeContactController),
+        generalInfo: field(_generalInfoController),
+        localChapter: field(_localChapterController),
         commitmentType: _commitmentType,
-        avatarUrl: _profilePictureUrl, // Add profile picture URL
+        avatarUrl: _profilePictureUrl ?? '',
         updatedAt: DateTime.now(),
       );
 

@@ -244,6 +244,12 @@ class UserProfile {
   }
 
   // Copy with method for easy updates
+  /// Copies the profile, replacing only the fields that are passed.
+  ///
+  /// A null argument means "keep the current value", so this cannot clear a
+  /// field. Callers that need to clear one pass an empty string instead -- see
+  /// _saveProfile in the edit-profile screen, which is why it maps empty inputs
+  /// to `''` rather than null.
   UserProfile copyWith({
     String? id,
     String? email,
