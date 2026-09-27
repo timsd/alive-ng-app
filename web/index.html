@@ -52,11 +52,21 @@
   <meta name="version" content="2.0.1-8">
   <script>
     // Clear stale service-worker caches so users always get the latest build.
+    //
+    // Only Flutter's own workers are cleared. Unregistering *every* worker -- as
+    // this did -- also tore down the Firebase messaging worker, so a browser
+    // could never hold a push token even once the Firebase web config was in
+    // place. The messaging worker is registered separately at the end of this
+    // file and is identified by its script URL.
     (function () {
       try {
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.getRegistrations().then(function (regs) {
-            regs.forEach(function (r) { r.unregister(); });
+            regs.forEach(function (r) {
+              var url = (r.active && r.active.scriptURL) || '';
+              if (url.indexOf('firebase-messaging-sw.js') !== -1) return;
+              r.unregister();
+            });
           });
         }
         if (window.caches && window.caches.keys) {
@@ -1572,6 +1582,29 @@
     <div style="padding:10px 20px; color:#718096; font-size:12px;">&copy; <span id="year"></span> ALIVE Nigeria</div>
     <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
   </footer>
+
+  <script>
+    // Registers the Firebase Cloud Messaging worker.
+    //
+    // A browser cannot receive push without it, and firebase_messaging's getToken
+    // fails outright if it is not registered first. It is deliberately NOT
+    // combined with Flutter's generated service worker: that one is wiped on
+    // every load to guarantee fresh assets, and FCM needs a worker that
+    // survives.
+    //
+    // Failure here is non-fatal. A browser without a registered worker simply
+    // falls back to in-app notifications.
+    (function () {
+      if (!('serviceWorker' in navigator)) return;
+      window.addEventListener('load', function () {
+        navigator.serviceWorker
+          .register('firebase-messaging-sw.js', { scope: '/firebase-cloud-messaging-push-scope' })
+          .catch(function (e) {
+            console.warn('[push] service worker not registered:', e && e.message);
+          });
+      });
+    })();
+  </script>
 </body>
 
 </html>

@@ -42,6 +42,64 @@ void main() async {
     // We don't exit here to allow partial updates if intended, but usually this is fatal for a correct build.
   }
 
+  // The Firebase service worker ships with placeholders rather than real config,
+  // so nothing secret is committed. Substituting them here means the deployed
+  // bundle is built from the same --dart-define values the Dart side reads,
+  // and the two cannot drift.
+  //
+  // A browser cannot register an FCM token without a real Firebase *Web app*
+  // and a VAPID key. When either is missing the placeholders are left in place
+  // and the app falls back to in-app notifications, which is a clear "not
+  // configured" rather than a runtime error inside Firebase.
+  const swKeys = [
+    'FIREBASE_WEB_API_KEY',
+    'FIREBASE_WEB_AUTH_DOMAIN',
+    'FIREBASE_WEB_PROJECT_ID',
+    'FIREBASE_WEB_STORAGE_BUCKET',
+    'FIREBASE_WEB_MESSAGING_SENDER_ID',
+    'FIREBASE_WEB_APP_ID',
+  ];
+
+  final swValues = <String, String>{};
+  var swConfigured = true;
+  for (final key in swKeys) {
+    final value = Platform.environment[key] ?? envMap[key];
+    if (value == null || value.isEmpty) {
+      swConfigured = false;
+    } else {
+      swValues[key] = value;
+    }
+  }
+
+  final swFile = File('web/firebase-messaging-sw.js');
+  if (await swFile.exists()) {
+    if (swConfigured) {
+      var sw = await swFile.readAsString();
+      swValues.forEach((key, value) {
+        // The placeholder is a literal __NAME__, not an interpolated string:
+        // writing '__$key__' would ask Dart to interpolate `key` and match
+        // 'key__'.
+        final placeholder = '__${key}__';
+        sw = sw.replaceAll(placeholder, value);
+      });
+      await swFile.writeAsString(sw);
+      stdout.writeln('Injected Firebase web config into firebase-messaging-sw.js');
+    } else {
+      final missing = swKeys
+          .where((k) => (Platform.environment[k] ?? envMap[k] ?? '').isEmpty)
+          .toList();
+      stderr.writeln(
+        'Web push stays disabled: missing ${missing.join(', ')}.\n'
+        '  A Firebase Web app must be registered in the project, and its VAPID '
+        'key is passed separately as FIREBASE_WEB_VAPID_KEY.\n'
+        '  See web/README-push.md. The app still works; it just uses in-app '
+        'notifications in the browser.',
+      );
+    }
+  } else {
+    stderr.writeln('File not found: web/firebase-messaging-sw.js');
+  }
+
   // Files to update
   final files = [
     'web/index.html',
