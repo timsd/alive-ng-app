@@ -178,7 +178,10 @@ for (const doc of documents) {
         verification_method: plan.verification_method,
       };
 
-  await api('PATCH', `${base}/documents/${doc.$id}`, payload);
+  // Appwrite 1.8 requires a PATCH body wrapped in `data`. Sent inline it is
+  // read as an empty document and rejected with "the document data and
+  // permissions are missing", which is what blocked this migration before.
+  await api('PATCH', `${base}/documents/${doc.$id}`, { data: payload });
   changed++;
   console.log(
     plan.witness
