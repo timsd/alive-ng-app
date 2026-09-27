@@ -16,63 +16,18 @@ class AppwriteBackendConfig {
     defaultValue: '',
   );
 
-  // --- Web push (browser) -----------------------------------------------
+  // Push is native-only.
   //
-  // Native builds get a device token from FCM using the Android/iOS client in
-  // google-services.json. The browser has no such thing: it needs a Firebase
-  // *Web app* config plus a VAPID key, and it can only mint a token if a
-  // service worker is registered. None of these existed, which is why
-  // NotificationService returned early on web and no browser could ever
-  // subscribe.
+  // Browsers were never a working push channel: minting a web token needs a
+  // Firebase *Web app*, a VAPID key and a registered service worker, and none
+  // were ever provisioned. Supporting it cost a service worker that had to be
+  // excluded from the cache-clearing in web/index.html, a second token path,
+  // and seven build-time dart-defines that were always empty. That is removed.
   //
-  // Firebase Web config and the VAPID key are public identifiers, not secrets,
-  // so they are safe as build args. Empty values simply disable web push
-  // rather than breaking the app.
-  static const String firebaseWebApiKey = String.fromEnvironment(
-    'FIREBASE_WEB_API_KEY',
-    defaultValue: '',
-  );
-  static const String firebaseWebProjectId = String.fromEnvironment(
-    'FIREBASE_WEB_PROJECT_ID',
-    defaultValue: '',
-  );
-  static const String firebaseWebMessagingSenderId = String.fromEnvironment(
-    'FIREBASE_WEB_MESSAGING_SENDER_ID',
-    defaultValue: '',
-  );
-  static const String firebaseWebAppId = String.fromEnvironment(
-    'FIREBASE_WEB_APP_ID',
-    defaultValue: '',
-  );
-  static const String firebaseWebStorageBucket = String.fromEnvironment(
-    'FIREBASE_WEB_STORAGE_BUCKET',
-    defaultValue: '',
-  );
-  static const String firebaseWebAuthDomain = String.fromEnvironment(
-    'FIREBASE_WEB_AUTH_DOMAIN',
-    defaultValue: '',
-  );
-
-  /// The Web Push certificate (VAPID public key) from Firebase console ->
-  /// Project settings -> Cloud Messaging -> Web configuration.
-  ///
-  /// Required for `getToken` in a browser. Without it the browser refuses to
-  /// issue a token, which is the other half of why web could not subscribe.
-  static const String firebaseWebVapidKey = String.fromEnvironment(
-    'FIREBASE_WEB_VAPID_KEY',
-    defaultValue: '',
-  );
-
-  /// True when the build carries everything a browser needs to subscribe.
-  ///
-  /// Checked before any web push call so a misconfigured build degrades to
-  /// in-app notifications with a clear reason, instead of throwing inside
-  /// Firebase and leaving the member with a toggle that silently does nothing.
-  static bool get isWebPushConfigured =>
-      firebaseWebApiKey.isNotEmpty &&
-      firebaseWebMessagingSenderId.isNotEmpty &&
-      firebaseWebAppId.isNotEmpty &&
-      firebaseWebVapidKey.isNotEmpty;
+  // The web build still gets reminders, via flutter_local_notifications in the
+  // page -- see NotificationService, which logs why no push token exists rather
+  // than failing silently. Native builds get a real FCM device token from
+  // google-services.json / GoogleService-Info.plist.
   static const String usersCollectionId = '6a08943100226f5b4963';
   static const String chatChannelsCollectionId = '6a08f1c70032affbc00d';
   /// One row per person per office. The server-side source of truth for

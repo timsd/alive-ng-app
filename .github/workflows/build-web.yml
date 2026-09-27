@@ -16,11 +16,9 @@ name: Build and publish web image
 # into the build args here is safe. It is what lets the client register a push
 # target; without it no device can ever receive a notification.
 #
-# The FIREBASE_WEB_* values are also public (web app config + the VAPID public
-# key). They are read from repository *variables*, not secrets, and are passed
-# through as-is: if they are unset they expand to empty strings, which leaves
-# the app in its documented "web push not configured" state rather than
-# breaking the build. See web/README-push.md.
+# Push is native-only. The browser build no longer needs a Firebase Web app or a
+# VAPID key: web/firebase-messaging-sw.js and the FIREBASE_WEB_* dart-defines
+# have been removed, and the browser falls back to local notifications.
 on:
   push:
     tags: ['v*']
@@ -71,6 +69,6 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.tags.outputs.tags }}
           build-args: |
-            FLUTTER_BUILD_ARGS=--dart-define=APPWRITE_FCM_PROVIDER_ID=6a0cbd1600215f960c03 --dart-define=FIREBASE_WEB_API_KEY=${{ vars.FIREBASE_WEB_API_KEY }} --dart-define=FIREBASE_WEB_AUTH_DOMAIN=${{ vars.FIREBASE_WEB_AUTH_DOMAIN }} --dart-define=FIREBASE_WEB_PROJECT_ID=${{ vars.FIREBASE_WEB_PROJECT_ID }} --dart-define=FIREBASE_WEB_STORAGE_BUCKET=${{ vars.FIREBASE_WEB_STORAGE_BUCKET }} --dart-define=FIREBASE_WEB_MESSAGING_SENDER_ID=${{ vars.FIREBASE_WEB_MESSAGING_SENDER_ID }} --dart-define=FIREBASE_WEB_APP_ID=${{ vars.FIREBASE_WEB_APP_ID }} --dart-define=FIREBASE_WEB_VAPID_KEY=${{ vars.FIREBASE_WEB_VAPID_KEY }}
+            FLUTTER_BUILD_ARGS=--dart-define=APPWRITE_FCM_PROVIDER_ID=6a0cbd1600215f960c03
           cache-from: type=gha
           cache-to: type=gha,mode=max

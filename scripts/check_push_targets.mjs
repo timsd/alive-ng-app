@@ -93,25 +93,9 @@ if (!allTopics.length) {
   console.log('   -> NO TOPICS: nothing is addressable.');
 }
 
-console.log('\n4. Firebase web configuration in the build');
-const webKeys = [
-  'FIREBASE_WEB_API_KEY',
-  'FIREBASE_WEB_PROJECT_ID',
-  'FIREBASE_WEB_MESSAGING_SENDER_ID',
-  'FIREBASE_WEB_APP_ID',
-  'FIREBASE_WEB_VAPID_KEY',
-];
-let webOk = true;
-for (const k of webKeys) {
-  const present = Boolean(process.env[k]);
-  if (!present) webOk = false;
-  console.log(`   ${k.padEnd(36)} ${present ? 'set' : 'MISSING'}`);
-}
-console.log(
-  webOk
-    ? '   -> web push is configured.'
-    : '   -> WEB PUSH NOT CONFIGURED: no Firebase Web app / VAPID key. See web/README-push.md.',
-);
+console.log('\n4. Platform');
+console.log('   Push is native-only (Android/iOS). The browser build uses local');
+console.log('   notifications while the page is open and holds no push target.');
 
 const ready = fcm.some((p) => p.enabled) && tokens.length > 0;
 console.log(`\n${ready ? 'READY: a test push can be delivered.' : 'NOT READY: a test push cannot be delivered yet.'}`);

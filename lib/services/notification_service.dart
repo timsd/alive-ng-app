@@ -195,85 +195,21 @@ class NotificationService {
     }
   }
 
-  // --- Web push (browser) ---
+  // --- Web push (browser): not supported ---
   //
-  // This used to return null immediately, so no browser could ever hold a
-  // device token: opening the app and allowing notifications only wrote a local
-  // settings flag, and no push target or subscription was ever created. Two
-  // things were missing, both of which are now in place:
+  // Push is native-only. A browser would need a Firebase *Web app*, a VAPID key
+  // and a registered service worker to mint a token, and none were ever
+  // provisioned, so no browser could hold a real push target.
   //
-  //   * a Firebase *Web app* and a VAPID key, which a browser needs to mint a
-  //     token at all
-  //   * web/firebase-messaging-sw.js, which FCM uses to run in the background
-  //
-  // When the build does not carry the web config we say so plainly and fall
-  // back to in-app notifications, rather than throwing inside Firebase and
-  // leaving a toggle that silently does nothing.
+  // Rather than leave a toggle that silently does nothing, this logs the reason
+  // once. Reminder toggles still work in the browser -- they are handled by
+  // flutter_local_notifications while the page is open, which is local, not push.
   Future<String?> _registerWebPushToken() async {
-    if (!AppwriteBackendConfig.isWebPushConfigured) {
-      _logger.warning(
-        'Web push is not configured in this build (Firebase web app / VAPID key '
-        'missing). Browser notifications stay in-app only.',
-      );
-      return null;
-    }
-
-    try {
-      final permission = await FirebaseMessaging.instance.requestPermission();
-      _logger.info('Web notification permission: ${permission.authorizationStatus}');
-      if (permission.authorizationStatus == AuthorizationStatus.denied) {
-        _logger.warning('Web notification permission denied by the browser');
-        return null;
-      }
-
-      final token = await FirebaseMessaging.instance.getToken(
-        vapidKey: AppwriteBackendConfig.firebaseWebVapidKey,
-      );
-      if (token == null || token.isEmpty) {
-        _logger.warning('Firebase returned no web token (service worker issue?)');
-        return null;
-      }
-
-      _currentToken = token;
-      _logger.info(
-        'Web FCM token acquired: ${token.substring(0, token.length > 8 ? 8 : token.length)}...',
-      );
-      final targetId = await AppwritePushService.instance.registerToken(token);
-
-      // Keep the token fresh: a browser can rotate it, and a stale one can
-      // never receive a message.
-      FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
-        _logger.info('Web FCM token refreshed');
-        _currentToken = newToken;
-        await AppwritePushService.instance.registerToken(newToken);
-      });
-
-      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        final data = message.data;
-        showNotification(
-          id: message.hashCode,
-          title: data['title'] as String? ?? 'ALIVE Nigeria',
-          body: data['body'] as String? ?? '',
-          payload: jsonEncode(data),
-        );
-      });
-
-      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-        _logger.info('Web notification opened: ${message.messageId}');
-        handleMessageOpenedApp(message.data);
-      });
-
-      final initial = await FirebaseMessaging.instance.getInitialMessage();
-      if (initial != null) {
-        _logger.info('Page opened from a web notification: ${initial.messageId}');
-        handleMessageOpenedApp(initial.data);
-      }
-
-      return targetId;
-    } catch (e) {
-      _logger.error('Failed to register web push token', e);
-      return null;
-    }
+    _logger.info(
+      'Push is native-only; this browser build uses in-page local notifications. '
+      'Server-originated push arrives in the Android/iOS app.',
+    );
+    return null;
   }
 
   // --- Foreground / background message handling (Appwrite push payloads) ---

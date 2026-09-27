@@ -52,23 +52,36 @@ Use this safer sequence for remaining migration:
    only after each Appwrite target is verified.
 5. Push targets are Appwrite-native; no Firebase bridge files are needed in the app.
 
-## Firebase Removal
+## Firebase usage
 
-Firebase has been **fully removed from the client app**. There is no Firebase
-dependency, config file, or service worker left in the repository.
+Firebase is used in **one place only: FCM as the transport for push on Android
+and iOS.** `firebase_core` and `firebase_messaging` remain in `pubspec.yaml`,
+`Firebase.initializeApp()` runs under `if (!kIsWeb)` in `lib/main.dart`, and
+`google-services.json` / `GoogleService-Info.plist` are still required for
+native builds.
 
-### Deleted
-- `firebase_core` and `firebase_messaging` from `pubspec.yaml` (and `pubspec.lock`).
+Browser push is **not** supported and is deliberately absent. A browser needs a
+Firebase *Web app*, a VAPID key and a registered service worker to mint a token;
+none were ever provisioned, so no browser could hold a push target. The
+supporting code has been removed rather than left dormant:
+
+- `web/firebase-messaging-sw.js` (the FCM web worker).
+- The `FIREBASE_WEB_*` dart-defines and `isWebPushConfigured` in
+  `lib/config/appwrite_backend_config.dart`.
+- `_registerWebPushToken()`'s token-minting path in
+  `lib/services/notification_service.dart`; it now logs that push is native-only.
+- The `FIREBASE_WEB_*` dart-defines in `.github/workflows/build-web.yml`.
+
+The web build still delivers reminders through `flutter_local_notifications`
+while the page is open. That is local scheduling, not push.
+
+### Earlier removals
+The following were removed in an earlier pass and are still gone:
 - `lib/config/firebase_config.dart`.
 - `lib/services/firebase_messaging_base.dart`.
-- `web/firebase-messaging-sw.js`.
 - `"gcm_sender_id"` from `web/manifest.json`.
-- `android/app/google-services.json` and `ios/Runner/GoogleService-Info.plist`.
-- The `com.google.gms.google-services` Gradle plugin (project + app level) and the
-  `firebase-bom` / `firebase-messaging` Android dependencies.
-- `FirebaseApp.configure()` and the Firebase imports in `ios/Runner/AppDelegate.swift`.
-- Firebase `messaging` meta-data from `android/app/src/main/AndroidManifest.xml`.
-- `FIREBASE_*` placeholders from `scripts/configure_web.dart`.
+- `FirebaseApp.configure()` and the Firebase imports in
+  `ios/Runner/AppDelegate.swift`.
 
 ### Replacement
 - **Push targets/subscriptions:** `lib/services/appwrite_push_service.dart`
