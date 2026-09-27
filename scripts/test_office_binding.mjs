@@ -71,7 +71,9 @@ try {
     const bound = (holders.j.documents || []).filter((h) => h.user_id === createdId);
     if (bound.length) {
       console.log(`\nBOUND after ${(i + 1) * 5}s:`);
-      for (const b of bound) console.log(`  ${b.office_id}  name=${b.full_name}  bound_by=${b.bound_by}`);
+      // is_current, not bound_by: org_office_holders has no bound_by column.
+      for (const b of bound) console.log(`  ${b.office_id}  name=${b.full_name}  current=${b.is_current}`);
+
       const after = await call(
         'GET',
         `/databases/${db}/collections/officer_registry/documents?limit=200`,
@@ -79,12 +81,30 @@ try {
       const stillPending = (after.j.documents || []).filter(
         (d) => String(d.email || '').toLowerCase() === email && !d.consumed,
       );
-      console.log(`\n  registry rows still pending: ${stillPending.length} (expect 0)`);
-      console.log(
-        stillPending.length === 0
-          ? '\nPASS: the office was bound and the row retired.'
-          : '\nPARTIAL: bound, but the queue was not retired.',
-      );
+
+      // Every queued office must be bound. A person can hold several (Timothy
+      // is Treasurer *and* Director Logistics), and binding only the first
+      // would leave the office gate closed for the rest.
+      const expected = pending.map((p) => p.office_id).sort();
+      const actual = bound.map((b) => b.office_id).sort();
+      const allBound = expected.length === actual.length
+        && expected.every((o, idx) => o === actual[idx]);
+
+      console.log(`\n  expected offices: ${expected.join(', ')}`);
+      console.log(`  bound offices:    ${actual.join(', ')}`);
+      console.log(`  registry rows still pending: ${stillPending.length} (expect 0)`);
+
+      if (allBound && stillPending.length === 0) {
+        console.log('\nPASS: every office was bound and the queue retired.');
+        break;
+      }
+      if (bound.length < expected.length) {
+        console.log(
+          `\nPARTIAL: bound ${actual.length} of ${expected.length}. Still waiting...`,
+        );
+        continue;
+      }
+      console.log('\nPARTIAL: offices bound, but the queue was not fully retired.');
       break;
     }
     console.log(`  waiting... ${(i + 1) * 5}s`);
@@ -102,6 +122,21 @@ try {
       });
     }
     console.log('queue rows restored for the real signup');
+
+    // Deleting the account leaves org_office_holders pointing at a user id that
+    // no longer exists, which would gate the real person's office on a dead
+    // account. Clear those rows too, or the next real signup binds nothing.
+    const holders = await call(
+      'GET',
+      `/databases/${db}/collections/org_office_holders/documents?limit=200`,
+    );
+    for (const h of holders.j.documents || []) {
+      if (h.user_id !== createdId) continue;
+      await call('PATCH', `/databases/${db}/collections/org_office_holders/documents/${h.$id}`, {
+        data: { user_id: '', email: '', is_current: false },
+      });
+      console.log(`cleared test binding on ${h.office_id}`);
+    }
   }
 }
 
