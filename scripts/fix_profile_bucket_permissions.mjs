@@ -51,12 +51,23 @@ const res = await fetch(`${endpoint}/v1/storage/buckets/${BUCKET}`, {
 });
 console.log(`PUT -> ${res.status}`);
 
-const after = await (await fetch(`${endpoint}/v1/storage/buckets/${BUCKET}`, { headers })).json();
-console.log(`after:  permissions=${JSON.stringify(after.permissions)}`);
-console.log(`        maxSize=${after.maximumFileSize}  ext=${JSON.stringify(after.allowedFileExtensions)}`);
-const ok = WANTED.every((p) => (after.permissions || []).includes(p));
+// Appwrite 1.8 returns the bucket's permission list under `$permissions`,
+// not `permissions` -- reading the unprefixed key reports an empty value and
+// makes it look as though the write did not take.
+const listRes = await fetch(`${endpoint}/v1/storage/buckets?limit=100`, { headers });
+const listJson = await listRes.json();
+const bucket = (listJson.buckets || []).find((b) => b.$id === BUCKET);
+
+if (!bucket) {
+  console.log(`bucket ${BUCKET} not found in the list`);
+  process.exit(1);
+}
+
+const applied = bucket.$permissions ?? bucket.permissions ?? [];
+console.log(`$permissions: ${JSON.stringify(applied)}`);
+const ok = WANTED.every((p) => applied.includes(p));
 console.log(
   ok
-    ? '\nOK: a signed-in member can now upload and view a profile picture.'
-    : '\nFAILED: permissions did not stick.',
+    ? '\nVERIFIED: a signed-in member can upload, change and view a profile picture.'
+    : '\nNOT APPLIED: the required permissions are not on the bucket.',
 );
