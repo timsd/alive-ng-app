@@ -552,8 +552,39 @@ class OfflineBibleService {
           return index;
         }
       }
+
+      // 2. Fall back to the bundled database.
+      //
+      // The ZIP bundles are not in the repository, so on web -- where the FTS5
+      // fast path is skipped -- this was the only remaining route and it did not
+      // exist. Every search therefore returned zero results, whatever was
+      // typed. bible.db ships with the app and already holds every loaded
+      // version, so read the verses from there instead.
+      final rows = await _dbHelper.database.then((db) => db.rawQuery(
+            'SELECT c.book AS book, c.chapter AS chapter, '
+            'v.verse_number AS verse_number, v.text AS text '
+            'FROM bible_verses v '
+            'JOIN bible_chapters c ON c.id = v.chapter_id '
+            'WHERE c.version = ? '
+            'ORDER BY c.book, c.chapter, v.verse_number',
+            [versionCode],
+          ));
+      final index = _buildIndexFromRows(rows);
+      if (index.entries.isNotEmpty) {
+        _searchIndexes[indexKey] = index;
+        _logger.info(
+          'Built search index for $indexKey from the database '
+          '(${index.entries.length} verses)',
+        );
+        return index;
+      }
+      _logger.warning(
+        'No verses available for $indexKey; search will return nothing. '
+        'Check that the bundled database has chapters for this version.',
+      );
       return null;
-    } catch (_) {
+    } catch (e) {
+      _logger.warning('Could not build a search index for $indexKey: $e');
       return null;
     }
   }
@@ -1247,6 +1278,31 @@ class _IndexedVerse {
     required this.reference,
     required this.text,
   });
+}
+
+/// Builds the search index from plain verse rows read out of the database.
+///
+/// This is the fallback for when the pre-built ZIP bundles are absent. They
+/// were never committed (`assets/bible_bundles/` does not exist and is not
+/// declared in pubspec.yaml), so _buildSearchIndex always returned null and web
+/// search returned nothing for *every* query -- not just the ones reported.
+_BibleSearchIndex _buildIndexFromRows(List<Map<String, dynamic>> rows) {
+  final entries = <_IndexedVerse>[];
+  for (final row in rows) {
+    final text = (row['text'] as String?) ?? '';
+    if (text.trim().isEmpty) continue;
+    final book = (row['book'] as String?) ?? '';
+    final chapter = (row['chapter'] as num?)?.toInt() ?? 0;
+    final verse = (row['verse_number'] as num?)?.toInt() ?? 0;
+    entries.add(_IndexedVerse(
+      book: book,
+      chapter: chapter,
+      verse: verse,
+      reference: '$book $chapter:$verse',
+      text: text,
+    ));
+  }
+  return _BibleSearchIndex(entries, const <String, List<int>>{});
 }
 
 /// In-memory inverted index over [_IndexedVerse] entries.
