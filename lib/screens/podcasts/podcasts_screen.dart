@@ -598,11 +598,23 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
                               title: Text(episodeModel.title),
                               subtitle: Text(
                                   '${episodeModel.duration} • ${episodeModel.publishDate.toIso8601String().split('T').first}'),
-                              trailing: IconButton(
-                                icon: const Icon(Icons.more_vert),
-                                onPressed: () {
-                                  _showEpisodeOptions(context, episode);
-                                },
+                              trailing: Builder(
+                                builder: (buttonContext) => IconButton(
+                                  icon: const Icon(Icons.more_vert),
+                                  onPressed: () {
+                                    // Anchor the menu to this button so it opens
+                                    // beside it rather than mid-screen.
+                                    final box = buttonContext.findRenderObject();
+                                    final offset = box is RenderBox
+                                        ? box.localToGlobal(Offset.zero) & box.size
+                                        : Offset.zero & const Size(40, 40);
+                                    _showEpisodeOptions(
+                                      context,
+                                      episode,
+                                      anchor: offset.topLeft,
+                                    );
+                                  },
+                                ),
                               ),
                               onTap: () {
                                 _playEpisode(context, episode);
@@ -628,71 +640,58 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
   );
 }
 
-  void _showEpisodeOptions(BuildContext context, Map<String, dynamic> episode) {
-    showModalBottomSheet(
+  /// Episode actions, as a popup menu anchored to the "more" button.
+  ///
+  /// This used to be a second showModalBottomSheet opened from inside the
+  /// podcast-details sheet. Nesting two modal bottom sheets stacks their
+  /// barriers, so the details sheet stayed visible as a second, translucent
+  /// layer behind the options -- the same double-modal that affected the kids
+  /// mission screen.
+  ///
+  /// A menu keeps the details sheet open and open to the episode list, so
+  /// nothing is lost by acting on an episode, and there is only one overlay.
+  void _showEpisodeOptions(
+    BuildContext context,
+    Map<String, dynamic> episode, {
+    Offset? anchor,
+  }) {
+    final messenger = ScaffoldMessenger.of(context);
+    final play = _playEpisode;
+    final download = _downloadEpisode;
+    final shareLabel = 'Sharing: ${episode['title']}';
+
+    // Without an anchor the menu is centred, which reads as detached from the
+    // button. Fall back to the middle of the screen when the caller has no
+    // button position to offer.
+    final size = MediaQuery.sizeOf(context);
+    final rect = anchor == null
+        ? Rect.fromLTWH(size.width / 4, size.height / 4, 40, 40)
+        : Rect.fromPoints(anchor, anchor + const Offset(0, 40));
+
+    showMenu<String>(
       context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => SafeArea(
-        child: Align(
-          alignment: Alignment.bottomCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 640),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).scaffoldBackgroundColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 44,
-                      height: 5,
-                      margin: const EdgeInsets.only(top: 12, bottom: 8),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                    ),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.play_arrow),
-                    title: const Text('Play Episode'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _playEpisode(context, episode);
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.download),
-                    title: const Text('Download Episode'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _downloadEpisode(context, episode);
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.share),
-                    title: const Text('Share Episode'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Sharing: ${episode['title']}')),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                ],
-              ),
-            ),
-          ),
-        ),
+      position: RelativeRect.fromLTRB(
+        rect.left,
+        rect.top,
+        MediaQuery.sizeOf(context).width - rect.right,
+        MediaQuery.sizeOf(context).height - rect.bottom,
       ),
-    );
+      items: const [
+        PopupMenuItem(value: 'play', child: Text('Play Episode')),
+        PopupMenuItem(value: 'download', child: Text('Download Episode')),
+        PopupMenuItem(value: 'share', child: Text('Share Episode')),
+      ],
+    ).then((choice) {
+      if (choice == null || !context.mounted) return;
+      switch (choice) {
+        case 'play':
+          play(context, episode);
+        case 'download':
+          download(context, episode);
+        case 'share':
+          messenger.showSnackBar(SnackBar(content: Text(shareLabel)));
+      }
+    });
   }
 
   // Audio player instance

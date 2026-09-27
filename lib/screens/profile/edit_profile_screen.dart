@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../models/app_models.dart';
 import '../../utils/responsive_utils.dart';
+import '../../utils/error_detail.dart';
 import '../../utils/layout_fix_utils.dart';
 import '../../services/appwrite_storage_service.dart';
 import '../../services/appwrite_profile_service.dart';
@@ -898,13 +899,20 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             }
           }
         } catch (e) {
-          ToastUtils.showError('Failed to upload profile picture: $e');
+          // Surface the real reason instead of `$e`, which stringifies an
+          // AppwriteException to "AppwriteException: ..." and drops the code,
+          // type and message that identify the actual failure. Without them a
+          // permission problem, a missing bucket and an oversized file were
+          // indistinguishable to whoever hit it.
+          debugPrint('[ProfilePicture] upload failed: ${describeError(e)}');
+          ToastUtils.showError('Upload failed: ${describeError(e)}');
         } finally {
           if (mounted) setState(() => _isUploadingPicture = false);
         }
       }
     } catch (e) {
-      ToastUtils.showError('Error selecting image: $e');
+      debugPrint('[ProfilePicture] selection failed: ${describeError(e)}');
+      ToastUtils.showError('Could not read that image: ${describeError(e)}');
       setState(() => _isUploadingPicture = false);
     }
   }
