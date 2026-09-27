@@ -165,7 +165,19 @@ async function deployFunction(functionId, folderPath, entrypoint = 'src/main.js'
 async function run() {
   const configFile = JSON.parse(fs.readFileSync('appwrite.config.json', 'utf8'));
   
-  for (const fn of configFile.functions) {
+  // Optional filter: `node scripts/deploy_appwrite_functions.mjs paystackPayments sendEmail`
+  // Deploying everything is slow and rebuilds functions that did not change,
+  // so name only what needs to go out.
+  const only = process.argv.slice(2).filter((a) => !a.startsWith('-'));
+  const functions = only.length
+    ? configFile.functions.filter((fn) => only.includes(fn.$id) || only.includes(fn.name))
+    : configFile.functions;
+
+  if (only.length) {
+    console.log(`Deploying only: ${functions.map((f) => f.$id).join(', ') || '(nothing matched)'}`);
+  }
+
+  for (const fn of functions) {
     console.log(`\n========================================`);
     console.log(`Processing ${fn.name} (${fn.$id})...`);
     await ensureFunctionExists(fn);
