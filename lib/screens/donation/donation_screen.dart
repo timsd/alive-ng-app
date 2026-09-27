@@ -8,7 +8,6 @@ import '../../providers/payment_provider.dart';
 import '../../providers/language_provider.dart';
 import '../../models/donation_presentation_models.dart';
 import 'widgets/donation_type_card.dart';
-import 'widgets/impact_card.dart';
 import 'widgets/giving_method_row.dart';
 import 'widgets/project_card.dart';
 import 'widgets/project_fund_update.dart';
@@ -621,11 +620,15 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
             _selectedProjectTitle = title;
           }
         }
-        // A single administrative chip is also the "purpose" for the receipt.
-        final purposes = _selectedFundDesignations
-            .where((t) => kAdministrativePurposes.any((p) => p.label == t))
+        // Store the purpose *id*, not its label. Every consumer compares this
+        // against an id (`_selectedPurposeId == 'app_maintenance'`, and
+        // donationPurposeById looks up by id), so assigning the label here
+        // meant the donation type stayed generalSupport and the receipt's
+        // purpose line came out empty for every administrative purpose.
+        final purposes = kAdministrativePurposes
+            .where((p) => _selectedFundDesignations.contains(p.label))
             .toList();
-        _selectedPurposeId = purposes.length == 1 ? purposes.first : null;
+        _selectedPurposeId = purposes.length == 1 ? purposes.first.id : null;
       });
     }
 
@@ -659,7 +662,10 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                   context,
                   theme,
                   label: project.title,
-                  icon: Icons.volunteer_activism_outlined,
+                  icon: _iconForProject(project.id),
+                  tooltip: project.description.isEmpty
+                      ? null
+                      : project.description,
                   selected: _selectedFundDesignations.contains(project.title),
                   onTap: () =>
                       toggle(project.title, projectId: project.id),
@@ -669,7 +675,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 14)),
         ],
 
-        _buildSelectorGroupLabel(context, theme, 'Where we need it most'),
+        _buildSelectorGroupLabel(context, theme, 'Ministry & Administration'),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -696,18 +702,17 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                 context,
                 theme,
                 label: item.title,
-                icon: Icons.volunteer_activism_outlined,
+                // Each area carries its own icon; the old code passed one
+                // shared icon for every chip on the screen.
+                icon: item.icon,
+                tooltip: item.description,
                 selected: _selectedFundDesignations.contains(item.title),
-                onTap: () {
-                  if (item.title == 'Custom Purpose') {
-                    _showCustomDesignationDialog();
-                  } else {
-                    toggle(item.title);
-                  }
-                },
+                onTap: () => toggle(item.title),
               ),
-            // A trailing chip opens the free-text dialog, so a donor can still
-            // name an area the list does not cover.
+            // Opens the free-text dialog so a donor can still name an area the
+            // list does not cover. This replaces the "Custom Purpose" entry
+            // that used to sit inside kMinistryAreas, which rendered a second,
+            // identical-looking chip next to this one.
             ActionChip(
               avatar: const Icon(Icons.edit_note, size: 18),
               label: const Text('Custom purpose'),
@@ -718,9 +723,10 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                 context,
                 theme,
                 label: purpose.label,
-                icon: Icons.favorite_border_rounded,
-                selected: _selectedFundDesignations.contains(purpose.label),
+                icon: Icons.apartment_rounded,
                 tooltip: purpose.description,
+                selected:
+                    _selectedFundDesignations.contains(purpose.label),
                 onTap: () => toggle(purpose.label),
               ),
           ],
@@ -1297,49 +1303,35 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       description: 'Support the monthly upkeep of short-term field workers.',
     ),
     DonationImpact(
-      icon: Icons.volunteer_activism,
-      title: 'Volunteers',
+      icon: Icons.child_care,
+      title: 'Children & Kids',
       description:
-          'Support the monthly upkeep of the volunteers at the mission field.',
+          'Support the Kids Ministry: activities, materials and memorable Bible lessons.',
     ),
-    DonationImpact(
-      icon: Icons.edit_note,
-      title: 'Custom Purpose',
-      description:
-          'Specify your own custom ministry designation or special project.',
-    ),
+    // NOTE: "Volunteers" is deliberately absent. It is an administrative
+    // purpose (kAdministrativePurposes) and was listed here too, so the donor
+    // saw the same label twice in one section and picking either produced a
+    // different record for the same gift. "Custom Purpose" was likewise
+    // duplicated against the trailing custom-purpose chip, which is where it
+    // now lives.
   ];
 
-
-  void _selectDesignation(String title) {
-    if (title == 'Custom Purpose') {
-      _showCustomDesignationDialog();
-    } else {
-      setState(() {
-        if (_selectedFundDesignations.contains(title)) {
-          _selectedFundDesignations.remove(title);
-        } else {
-          _selectedFundDesignations.add(title);
-        }
-        _selectedProjectId = null;
-        _selectedProjectTitle = null;
-      });
-      final count = _selectedFundDesignations.length;
-      final msg = count == 0
-          ? 'Cleared designation (Will go where most needed)'
-          : (count == 1
-              ? 'Selected: ${_selectedFundDesignations.first} (100%)'
-              : 'Selected $count areas (${(100.0 / count).toStringAsFixed(0)}% split each)');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(msg),
-          duration: const Duration(seconds: 2),
-        ),
-      );
+  /// A distinct icon per capital project.
+  ///
+  /// Every chip on the screen used to render the same volunteer icon, which
+  /// made the three projects indistinguishable at a glance.
+  static IconData _iconForProject(String projectId) {
+    switch (projectId) {
+      case 'impact_hub_center':
+        return Icons.apartment;
+      case 'vehicle_purchase':
+        return Icons.directions_car;
+      case 'media_studio_setup':
+        return Icons.videocam;
+      default:
+        return Icons.volunteer_activism_outlined;
     }
-  }
-
-  void _showCustomDesignationDialog() {
+  }void _showCustomDesignationDialog() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -1598,10 +1590,19 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
           if (purposeId != null) 'purpose_id': purposeId,
           if (_selectedProjectId != null) 'project_id': _selectedProjectId,
           if (purposeLabel != null) 'project_title': purposeLabel,
-          if (selectedPurpose != null) 'fund_designation': selectedPurpose.label,
+          // One source of truth for fund_designation. It was previously written
+          // twice in this map -- once from the resolved purpose and again from
+          // the designation summary -- and the later key silently won, so an
+          // administrative purpose's own label was always discarded. The
+          // summary already contains it whenever one is selected, and the
+          // server prefers fund_designations (the split) over this field.
           if (designations.isNotEmpty) ...{
             'fund_designation': designationSummary,
             'fund_designations': designations,
+            // purpose_id deliberately NOT repeated here. It is already set
+            // above from `purposeId`, and repeating it wrote an explicit null
+            // whenever the gift was split across several administrative
+            // purposes -- which erased the value the line above had just set.
             'split_count': designations.length,
             'split_percent': designations.length > 1
                 ? (100.0 / designations.length).round()

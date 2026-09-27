@@ -487,27 +487,16 @@ class _KidsMissionScreenState extends ConsumerState<KidsMissionScreen> {
               ),
             ),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Step $stepNumber',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: colorScheme.primary,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    stepText,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurface,
-                      fontWeight: FontWeight.w500,
-                      height: 1.35,
-                    ),
-                  ),
-                ],
+              child: Text(
+                // No "Step N" caption: the numbered circle beside it already
+                // shows the step, so the label repeated the number twice on
+                // every row.
+                stepText,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurface,
+                  fontWeight: FontWeight.w500,
+                  height: 1.35,
+                ),
               ),
             ),
           ],
@@ -676,8 +665,15 @@ class _KidsMissionScreenState extends ConsumerState<KidsMissionScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               ),
               onPressed: () {
+                // Close the details dialog, then open the activity sheet once
+                // the dismiss has actually completed. Calling both in the same
+                // frame left the sheet mounted behind the dialog's scrim, which
+                // rendered as a second, translucent modal sitting to the side.
                 Navigator.of(context).pop();
-                _openMissionFlow(mission);
+                Future.delayed(
+                  const Duration(milliseconds: 250),
+                  () => _openMissionFlow(mission),
+                );
               },
               child: Text(
                 _progress.isCompleted(mission.id)
