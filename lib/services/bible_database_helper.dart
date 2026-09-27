@@ -518,6 +518,24 @@ class BibleDatabaseHelper {
     });
   }
 
+  /// The version codes that actually have verse text in this database.
+  ///
+  /// `bible_versions` is a catalogue, not proof of content: NLT and HAU are both
+  /// listed there but ship with no `bible_chapters` rows at all. Offering them
+  /// produced an empty reader, and a search filtered to them returned nothing
+  /// for any query -- which is why "jesus wept" found no result even though the
+  /// phrase is present in all five versions that do have text.
+  ///
+  /// Derived from the chapters table, so it stays correct if a later build
+  /// loads the missing translations.
+  Future<Set<String>> getLoadedVersionCodes() async {
+    final db = await database;
+    final rows = await db.rawQuery(
+      'SELECT DISTINCT version FROM $_chaptersTable',
+    );
+    return rows.map((r) => r['version'] as String).toSet();
+  }
+
   Future<List<BibleVersion>> getDownloadedVersions() async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query(

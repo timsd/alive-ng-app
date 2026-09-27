@@ -15,6 +15,7 @@ import '../../services/tts_service.dart';
 import '../../services/user_statistics_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../services/bible_database_helper.dart';
 
 class BibleReaderScreen extends ConsumerStatefulWidget {
   final String? initialReference;
@@ -222,18 +223,36 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
       return preferredOrder;
     }
     if (languageCode == 'ha') {
-      return ['HAU'];
+      // Filter against the database like English does. HAU is listed in
+      // bible_versions but ships with zero chapters, so returning it
+      // unconditionally gave an empty reader and made every Hausa search
+      // return nothing.
+      return await _resolveFromDatabase(['HAU']);
     }
     if (languageCode == 'ig') {
-      return ['IGBOB'];
+      return await _resolveFromDatabase(['IGBOB']);
     }
     if (languageCode == 'yo') {
-      return ['BM'];
+      return await _resolveFromDatabase(['BM']);
     }
 
     final versions =
         await _offlineBible.getAvailableVersions(language: languageCode);
     return versions.map((v) => v.code).toList();
+  }
+
+  /// Keeps only the given version codes that actually have verse text.
+  ///
+  /// Falls back to the requested list if the database cannot be read, so a
+  /// failure here degrades to the old behaviour rather than an empty reader.
+  Future<List<String>> _resolveFromDatabase(List<String> codes) async {
+    try {
+      final present = await BibleDatabaseHelper().getLoadedVersionCodes();
+      if (present.isEmpty) return codes;
+      return codes.where(present.contains).toList();
+    } catch (_) {
+      return codes;
+    }
   }
 
   Future<bool> _openReference(String reference) async {
@@ -1564,7 +1583,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                             Text(
                               hasSearched
                                   ? 'No verses found for "${_searchController.text.trim()}" in $_selectedVersion ($_selectedLanguage).\nTry another keyword, phrase, or reference.'
-                                  : 'Search across all ~31,000 verses in $_selectedVersion\nType a phrase (e.g. "jesus wept", "cain kill abel", "lazarus died") or reference ("John 3:16")',
+                                  : 'Search across all verses in $_selectedVersion\n',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: isSmallScreen ? 14 : 16,

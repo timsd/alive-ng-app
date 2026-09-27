@@ -311,7 +311,13 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
       Future.delayed(const Duration(milliseconds: 1400), () {
         // Skip if the verse changed or the notifier was disposed meanwhile.
         if (generation != _verseGeneration || !mounted) return;
-        state = state.copyWith(showStarAnimation: false);
+        state = state.copyWith(
+          showStarAnimation: false,
+          // Clear the transcript as the verse advances. In voice mode the box
+          // is bound to `userInput`, and the previous verse's recitation stayed
+          // on screen into the new challenge.
+          userInput: '',
+        );
         loadNewVerse();
       });
     } else {
