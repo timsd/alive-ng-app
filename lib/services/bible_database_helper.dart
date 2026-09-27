@@ -4,6 +4,9 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:sqflite/sqflite.dart';
+// Web SQLite (WASM + worker). `sqflite` alone has no browser implementation,
+// which is why the Bible reader was blank in the deployed web app.
+import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 import 'package:path/path.dart' as p;
 import '../models/bible_models.dart';
 
@@ -38,31 +41,32 @@ class BibleDatabaseHelper {
   }
 
   Future<Database> _initDatabase() async {
+    if (kIsWeb) {
+      return _initWebDatabase();
+    }
     final databasesPath = await getDatabasesPath();
     final path = p.join(databasesPath, _databaseName);
 
     // On native platforms, copy the pre-built bible.db from assets
     // on first launch.  This gives us 214 K+ verses, FTS5 search,
     // and compound indexes from the very first open — zero warm-up.
-    if (!kIsWeb) {
-      final dbFile = File(path);
-      if (!dbFile.existsSync()) {
-        // Ensure the databases directory exists
-        await Directory(databasesPath).create(recursive: true);
-        try {
-          final data = await rootBundle.load(_prebuiltAssetPath);
-          final bytes = data.buffer.asUint8List(
-            data.offsetInBytes,
-            data.lengthInBytes,
-          );
-          await dbFile.writeAsBytes(bytes, flush: true);
-          debugPrint('[BibleDB] Pre-built bible.db copied to $path '
-              '(${(bytes.length / 1024 / 1024).toStringAsFixed(1)} MB)');
-        } catch (e) {
-          debugPrint('[BibleDB] Failed to copy pre-built DB, '
-              'falling back to empty DB: $e');
-          // Fall through — openDatabase will create an empty DB below.
-        }
+    final dbFile = File(path);
+    if (!dbFile.existsSync()) {
+      // Ensure the databases directory exists
+      await Directory(databasesPath).create(recursive: true);
+      try {
+        final data = await rootBundle.load(_prebuiltAssetPath);
+        final bytes = data.buffer.asUint8List(
+          data.offsetInBytes,
+          data.lengthInBytes,
+        );
+        await dbFile.writeAsBytes(bytes, flush: true);
+        debugPrint('[BibleDB] Pre-built bible.db copied to $path '
+            '(${(bytes.length / 1024 / 1024).toStringAsFixed(1)} MB)');
+      } catch (e) {
+        debugPrint('[BibleDB] Failed to copy pre-built DB, '
+            'falling back to empty DB: $e');
+        // Fall through — openDatabase will create an empty DB below.
       }
     }
 
@@ -72,6 +76,66 @@ class BibleDatabaseHelper {
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
+  }
+
+  /// Web initialisation.
+  ///
+  /// `sqflite` has no web implementation, so the previous code fell through
+  /// to `openDatabase` here and opened nothing usable -- the reader was blank
+  /// for every member on the deployed web app. This runs SQLite in a worker
+  /// via WASM and seeds it from the same bundled asset, so the browser gets
+  /// the identical 214 K verses the native build does.
+  ///
+  /// Requires `sqlite3.wasm` and `sqflite_sw.js` in `web/`, which
+  /// `scripts/setup_web_sqlite.mjs` copies from the package.
+  Future<Database> _initWebDatabase() async {
+    // Ignore: deprecated_member_use -- assigning the global factory is the
+    // documented way to point sqflite at the web implementation.
+    // ignore: deprecated_member_use
+    databaseFactory = databaseFactoryFfiWeb;
+
+    final path = _databaseName;
+    if (!await _webDatabaseHasVerses(path)) {
+      final data = await rootBundle.load(_prebuiltAssetPath);
+      final bytes = data.buffer.asUint8List(
+        data.offsetInBytes,
+        data.lengthInBytes,
+      );
+      // On the web the database lives in IndexedDB, so there is no file to
+      // copy: the bytes have to be written through the factory. This is what
+      // `sqflite_common_ffi_web` documents for importing an asset database.
+      await databaseFactory.writeDatabaseBytes(path, bytes);
+    }
+
+    return databaseFactory.openDatabase(
+      path,
+      options: OpenDatabaseOptions(
+        version: _databaseVersion,
+        onCreate: _onCreate,
+        onUpgrade: _onUpgrade,
+      ),
+    );
+  }
+
+  /// True when the browser copy already holds verses, so the 60 MB asset is
+  /// only written once rather than on every launch.
+  Future<bool> _webDatabaseHasVerses(String path) async {
+    Database? probe;
+    try {
+      probe = await databaseFactory.openDatabase(
+        path,
+        options: OpenDatabaseOptions(
+          version: _databaseVersion,
+          onCreate: _onCreate,
+        ),
+      );
+      final rows = await probe.rawQuery('SELECT COUNT(*) AS c FROM bible_verses');
+      return ((rows.first['c'] as int?) ?? 0) > 0;
+    } catch (_) {
+      return false;
+    } finally {
+      await probe?.close();
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
