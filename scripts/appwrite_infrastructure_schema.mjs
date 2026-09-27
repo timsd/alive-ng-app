@@ -129,7 +129,7 @@ export const tables = [
       s('provider', 64), dt('date_of_birth'), s('phone_number', 64), text('address'), s('chapter_id', 128), s('role', 64, true),
       b('is_archived', false, false), b('is_new_convert', false, false), dt('convert_date'), b('is_approved', false, true), s('approved_by', 128),
       dt('approved_at'), s('approval_status', 64), s('location'), s('local_church'), s('occupation'),
-      s('work_contact'), s('home_contact'), b('is_chapter_verified', false, false),
+      b('is_chapter_verified', false, false),
       b('is_church_verified', false, false), s('commitment_type', 64), f('financial_commitment'),
       mediumtext('commitment_details'), mediumtext('additional_profile'), i('total_reading_time'), i('chapters_read'), i('verses_read'),
       i('prayers_offered'), i('study_sessions_completed'), i('session_count'), i('total_study_time'), i('total_app_time'),

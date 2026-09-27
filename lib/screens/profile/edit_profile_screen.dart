@@ -41,8 +41,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late final TextEditingController _localChurchController;
   late final TextEditingController _occupationController;
   late final TextEditingController _skillsController;
-  late final TextEditingController _workContactController;
-  late final TextEditingController _homeContactController;
   late final TextEditingController _generalInfoController;
 
   // Commitment controllers
@@ -79,10 +77,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         TextEditingController(text: widget.userProfile.occupation ?? '');
     _skillsController =
         TextEditingController(text: widget.userProfile.skills ?? '');
-    _workContactController =
-        TextEditingController(text: widget.userProfile.workContact ?? '');
-    _homeContactController =
-        TextEditingController(text: widget.userProfile.homeContact ?? '');
     _generalInfoController =
         TextEditingController(text: widget.userProfile.generalInfo ?? '');
     _localChapterController =
@@ -105,8 +99,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       _localChurchController,
       _occupationController,
       _skillsController,
-      _workContactController,
-      _homeContactController,
       _generalInfoController,
       _localChapterController,
     ];
@@ -130,8 +122,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _localChurchController.dispose();
     _occupationController.dispose();
     _skillsController.dispose();
-    _workContactController.dispose();
-    _homeContactController.dispose();
     _generalInfoController.dispose();
     _localChapterController.dispose();
     _pageController.dispose();
@@ -199,8 +189,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         localChurch: field(_localChurchController),
         occupation: field(_occupationController),
         skills: field(_skillsController),
-        workContact: field(_workContactController),
-        homeContact: field(_homeContactController),
         generalInfo: field(_generalInfoController),
         localChapter: field(_localChapterController),
         commitmentType: _commitmentType,
@@ -606,30 +594,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               }
               return null;
             },
-          ),
-          SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-          TextFormField(
-            controller: _workContactController,
-            keyboardType: TextInputType.phone,
-            decoration: InputDecoration(
-              labelText: 'Work Contact',
-              border: const OutlineInputBorder(),
-              prefixIcon: const Icon(Icons.business),
-              filled: true,
-              fillColor: Theme.of(context).colorScheme.surfaceContainer,
-            ),
-          ),
-          SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-          TextFormField(
-            controller: _homeContactController,
-            keyboardType: TextInputType.phone,
-            decoration: InputDecoration(
-              labelText: 'Home Contact',
-              border: const OutlineInputBorder(),
-              prefixIcon: const Icon(Icons.home),
-              filled: true,
-              fillColor: Theme.of(context).colorScheme.surfaceContainer,
-            ),
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
           TextFormField(

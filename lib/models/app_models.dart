@@ -31,8 +31,6 @@ class UserProfile {
   final String? localChurch; // Local church name
   final String? occupation; // Business or work
   final String? skills; // Skills they can contribute
-  final String? workContact; // Work-related contact
-  final String? homeContact; // Home contact
   final String? generalInfo; // Other general information
 
   // Verification fields
@@ -89,8 +87,6 @@ class UserProfile {
     this.localChurch,
     this.occupation,
     this.skills,
-    this.workContact,
-    this.homeContact,
     this.generalInfo,
 
     // Verification fields
@@ -154,8 +150,8 @@ class UserProfile {
       localChurch: json['local_church'] as String?,
       occupation: json['occupation'] as String?,
       skills: json['skills'] as String?,
-      workContact: json['work_contact'] as String?,
-      homeContact: json['home_contact'] as String?,
+      // work_contact / home_contact were removed; the columns are ignored if
+      // an older row still carries them.
       generalInfo: json['general_info'] as String?,
 
       // Verification fields
@@ -215,8 +211,7 @@ class UserProfile {
       'local_church': localChurch,
       'occupation': occupation,
       'skills': skills,
-      'work_contact': workContact,
-      'home_contact': homeContact,
+      // work_contact / home_contact are no longer sent; see fromJson.
       'general_info': generalInfo,
 
       // Verification fields
@@ -277,8 +272,6 @@ class UserProfile {
     String? localChurch,
     String? occupation,
     String? skills,
-    String? workContact,
-    String? homeContact,
     String? generalInfo,
     String? localChapter,
     bool? isChapterVerified,
@@ -323,8 +316,6 @@ class UserProfile {
       localChurch: localChurch ?? this.localChurch,
       occupation: occupation ?? this.occupation,
       skills: skills ?? this.skills,
-      workContact: workContact ?? this.workContact,
-      homeContact: homeContact ?? this.homeContact,
       generalInfo: generalInfo ?? this.generalInfo,
       localChapter: localChapter ?? this.localChapter,
       isChapterVerified: isChapterVerified ?? this.isChapterVerified,

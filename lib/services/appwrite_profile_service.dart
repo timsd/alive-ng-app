@@ -256,8 +256,7 @@ class AppwriteProfileService {
       occupation: _stringValue(data, 'occupation'),
       skills: _stringValue(data, 'skills') ??
           (additionalProfile != null ? _stringValue(additionalProfile, 'skills') : null),
-      workContact: _stringValue(data, 'work_contact'),
-      homeContact: _stringValue(data, 'home_contact'),
+      // work_contact / home_contact removed -- see UserProfile.fromJson.
       generalInfo: _stringValue(data, 'general_info'),
       localChapter: _stringValue(data, 'local_chapter') ??
           (additionalProfile != null ? _stringValue(additionalProfile, 'to_join_chapter') : null),
