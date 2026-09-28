@@ -1081,6 +1081,19 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                 value: enabled,
                 onChanged: (value) => setDialogState(() => enabled = value),
               ),
+              const SizedBox(height: 8),
+              // Oversight: who has actually declined. Without this an admin
+              // cannot tell a member who opted out from one who simply never
+              // gets the notification.
+              if (enabled)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    icon: const Icon(Icons.people_outline, size: 18),
+                    label: const Text('View members who opted out'),
+                    onPressed: () => _showMonthlyReminderOptOuts(dialogContext),
+                  ),
+                ),
             ],
           ),
           actions: [
@@ -1111,6 +1124,78 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Lists members who have opted out of the monthly giving reminder.
+  ///
+  /// Opened from the reminder control, and only offered while the member toggle
+  /// is enabled: while it is disabled the reminder goes to everyone regardless,
+  /// so an opt-out is not a meaningful state.
+  Future<void> _showMonthlyReminderOptOuts(BuildContext dialogContext) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final optOuts = await MonthlyReminderSettingService.listOptedOutMembers();
+    if (!dialogContext.mounted) return;
+
+    await showDialog<void>(
+      context: dialogContext,
+      builder: (listContext) => AlertDialog(
+        title: const Text('Opted out of the monthly reminder'),
+        content: SizedBox(
+          width: 420,
+          child: optOuts.isEmpty
+              ? const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Text(
+                    'Nobody has opted out. Every member with a push target will '
+                    'receive the reminder on the 1st of each month.',
+                    textAlign: TextAlign.center,
+                  ),
+                )
+              : ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: optOuts.length,
+                  itemBuilder: (context, index) {
+                    final o = optOuts[index];
+                    final subtitle =
+                        (o.name != null && o.name!.trim().isNotEmpty)
+                            ? o.email
+                            : null;
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const CircleAvatar(
+                        child: Icon(Icons.notifications_off_outlined, size: 18),
+                      ),
+                      title: Text(o.label),
+                      subtitle: subtitle != null ? Text(subtitle) : null,
+                      trailing: TextButton(
+                        child: const Text('Re-enable'),
+                        onPressed: () async {
+                          final ok = await MonthlyReminderSettingService
+                              .clearOptOut(o.userId);
+                          if (!listContext.mounted) return;
+                          Navigator.of(listContext).pop();
+                          if (!mounted) return;
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: Text(ok
+                                  ? '${o.label} will receive the reminder again'
+                                  : 'Could not update ${o.label}'),
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(listContext).pop(),
+            child: const Text('Close'),
+          ),
+        ],
       ),
     );
   }

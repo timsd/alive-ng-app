@@ -212,8 +212,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         return null;
       }
 
-      // If not authenticated, redirect to auth for protected routes
-      if (!isAuthenticated && !isAuthRoute) {
+      // Password reset must be reachable while signed out -- that is the whole
+      // point of the link, since a member who forgot their password cannot be
+      // logged in. The old check redirected every unauthenticated visitor away
+      // from any non-auth route, so /reset-password bounced to /auth and the
+      // recovery screen never rendered, no matter how good the link was.
+      if (!isAuthenticated &&
+          !isAuthRoute &&
+          state.uri.path != AppConstants.resetPasswordRoute) {
         debugPrint('Unauthenticated; redirect to auth');
         return AppConstants.authRoute;
       }

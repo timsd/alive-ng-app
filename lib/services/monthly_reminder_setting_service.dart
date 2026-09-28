@@ -9,6 +9,26 @@ import '../main.dart';
 import 'auth_service.dart';
 import '../utils/logger.dart';
 
+/// One member who has declined the monthly giving reminder.
+class MonthlyReminderOptOut {
+  final String userId;
+  final String? name;
+  final String? email;
+
+  const MonthlyReminderOptOut({
+    required this.userId,
+    this.name,
+    this.email,
+  });
+
+  /// Best available label: the name, else the address, else a short id.
+  String get label {
+    if (name != null && name!.trim().isNotEmpty) return name!.trim();
+    if (email != null && email!.trim().isNotEmpty) return email!.trim();
+    return '${userId.substring(0, userId.length < 8 ? userId.length : 8)}...';
+  }
+}
+
 /// Controls the monthly ministry-support reminder:
 /// * The admin flag lives in the Appwrite `app_settings` collection
 ///   (document `monthly_reminder`, field `value.user_toggle_enabled`).
@@ -161,6 +181,87 @@ class MonthlyReminderSettingService {
       return true;
     } catch (e) {
       _logger.error('Failed to save monthly reminder opt-out to the server: $e');
+      return false;
+    }
+  }
+
+  /// Members who have opted out of the monthly giving reminder.
+  ///
+  /// The reminder is dispatched server-side by monthlyDonationReminder, so the
+  /// opt-out is a per-user column in notification_settings rather than anything
+  /// held on the device. Reading it back here is the only way an admin can see
+  /// who has declined, and the only way to tell a genuinely silent member from
+  /// one who actively opted out.
+  ///
+  /// Returns an empty list when the table cannot be read, rather than throwing:
+  /// this backs an informational panel and must not break the dashboard.
+  static Future<List<MonthlyReminderOptOut>> listOptedOutMembers() async {
+    try {
+      final user = AuthService.instance.currentUser;
+      if (user == null) return const [];
+      final tables = TablesDB(appwriteClient);
+
+      // Only opted-out rows are of interest, so filter server-side rather than
+      // pulling every settings row and discarding most of them.
+      final snapshot = await tables.listRows(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: AppwriteBackendConfig.notificationSettingsCollectionId,
+        queries: [
+          Query.equal('monthly_reminder_opt_out', true),
+          Query.limit(200),
+        ],
+      );
+
+      // Row data is keyed by user_id (the row id is the user id); carry the
+      // address from the users table when the row does not have one.
+      final withEmail = <MonthlyReminderOptOut>[];
+      for (final row in snapshot.rows) {
+        final rowId = row.$id;
+        String? email = row.data['email'] as String?;
+        String? name = row.data['full_name'] as String?;
+        if (email == null || name == null) {
+          try {
+            // The client SDK's Account.get() only returns the *current* account
+            // and takes no id, so an admin listing other members has to read the
+            // Users table directly. It is keyed by the same user id.
+            final profile = await tables.getRow(
+              databaseId: AppwriteBackendConfig.databaseId,
+              tableId: AppwriteBackendConfig.usersCollectionId,
+              rowId: rowId,
+            );
+            email ??= profile.data['email'] as String?;
+            name ??= profile.data['full_name'] as String?;
+          } catch (_) {
+            // Leave whatever the settings row provided; a missing address is not
+            // a reason to hide the member from the list.
+          }
+        }
+        withEmail.add(MonthlyReminderOptOut(
+          userId: rowId,
+          name: name,
+          email: email,
+        ));
+      }
+      return withEmail;
+    } catch (e) {
+      _logger.error('Failed to list monthly reminder opt-outs: $e');
+      return const [];
+    }
+  }
+
+  /// Puts a member back on the reminder list.
+  static Future<bool> clearOptOut(String userId) async {
+    try {
+      final tables = TablesDB(appwriteClient);
+      await tables.updateRow(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: AppwriteBackendConfig.notificationSettingsCollectionId,
+        rowId: userId,
+        data: {'monthly_reminder_opt_out': false},
+      );
+      return true;
+    } catch (e) {
+      _logger.error('Failed to clear monthly reminder opt-out for $userId: $e');
       return false;
     }
   }

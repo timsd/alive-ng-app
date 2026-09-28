@@ -902,6 +902,14 @@ async function handleVerifiedPayment(paystackData, log) {
           amount,
           currency: paystackData.currency || 'NGN',
           user_id: paystackData.metadata?.user_id || paystackData.metadata?.appwrite_user_id || 'guest',
+          // donorName is resolved above (metadata.donor_name, then the Paystack
+          // customer's first name, then 'Donor'). It was computed but never
+          // written, so every donation made through this function had a NULL
+          // user_name and the admin list fell back to deriving a name from the
+          // email address or showing 'Anonymous Donor'. Guest donors on the web
+          // page are the worst affected, since they have no account to fall back
+          // to.
+          user_name: donorName,
           user_email: customerEmail,
           email: customerEmail,
           type: paystackData.metadata?.donation_type || 'generalSupport',

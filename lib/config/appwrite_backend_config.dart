@@ -132,17 +132,28 @@ class AppwriteBackendConfig {
       'user_submitted_recipes';
   static const String userSubmittedHealthTipsCollectionId =
       'user_submitted_health_tips';
-  /// The link the branded reset email points at.
+  /// The link the recovery email points at.
   ///
-  /// The app routes with a URL fragment (`/#/reset-password`), so anything
-  /// appended after `#` becomes part of the FRAGMENT, not the query string.
-  /// `?userId=..&secret=..` placed there was invisible to
-  /// `GoRouterState.uri.queryParameters`, and the reset screen rendered
-  /// without a token -- which is why the link appeared to have no secret
-  /// attached. The parameters therefore go BEFORE the fragment, where
-  /// `Uri` exposes them as real query parameters.
+  /// This MUST use the fragment form. The app never calls
+  /// `usePathUrlStrategy()`, so Flutter web keeps the default hash-based URL
+  /// strategy and go_router reads the route from `window.location.hash` only.
+  ///
+  /// With a path-style URL such as `https://app.alivenigeria.org/reset-password`,
+  /// nginx serves index.html (its `try_files $uri $uri/ /index.html`), Flutter
+  /// boots, and go_router finds an EMPTY fragment -- so it renders its default
+  /// route and the recovery screen is never reached. The member clicks a valid
+  /// link, lands on the home screen, and the reset silently does nothing. That
+  /// is the actual cause of "the reset link does not work", not the missing
+  /// secret: the secret was arriving fine and being dropped on the floor.
+  ///
+  /// Appwrite appends `?userId=..&secret=..` to whatever this is set to, giving
+  /// `https://app.alivenigeria.org/#/reset-password?userId=..&secret=..`. Those
+  /// parameters live in the fragment, which is exactly what the reset route
+  /// reads them from, so the values arrive intact.
+  ///
+  /// This matches oauthSuccessUrl/oauthFailureUrl, which already use `/#/...`.
   static const String passwordRecoveryUrl =
-      'https://app.alivenigeria.org/reset-password';
+      'https://app.alivenigeria.org/#/reset-password';
   static const String oauthSuccessUrl = 'https://app.alivenigeria.org/#/home';
   static const String oauthFailureUrl = 'https://app.alivenigeria.org/#/auth';
 
