@@ -127,6 +127,15 @@ flutter:
     - assets/images/
     - assets/icons/
     - assets/data/
-    - assets/bible/
+    # Listed file by file rather than as a directory. With 'assets/bible/'
+    # every maintenance script that wrote a bible.db.bak alongside the real
+    # database silently bundled it: the web build reached 250 MB, 131 MB of it
+    # backup copies that no browser ever reads. Listing the files means a new
+    # stray file is excluded by default rather than shipped by accident.
+    - assets/bible/bible.db
+    - assets/bible/books_en.json
+    - assets/bible/books_ha.json
+    - assets/bible/books_ig.json
+    - assets/bible/books_yo.json
 
 

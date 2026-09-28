@@ -18,7 +18,7 @@
 //   node scripts/fix_duplicate_books.mjs          (reports what it would do)
 //   node scripts/fix_duplicate_books.mjs --apply  (deletes)
 import { DatabaseSync } from 'node:sqlite';
-import { copyFileSync, existsSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync } from 'node:fs';
 
 const APPLY = process.argv.includes('--apply');
 
@@ -78,12 +78,13 @@ if (!removable.length) {
   process.exit(0);
 }
 
-if (existsSync('assets/bible/bible.db.bak')) {
-  console.log('\nRefusing to run: assets/bible/bible.db.bak already exists. Move it first.');
+mkdirSync('.tmp-backups', { recursive: true });
+if (existsSync('.tmp-backups/bible.db.bak')) {
+  console.log('\nRefusing to run: .tmp-backups/bible.db.bak already exists. Move it first.');
   process.exit(1);
 }
-copyFileSync('assets/bible/bible.db', 'assets/bible/bible.db.bak');
-console.log('Backed up to assets/bible/bible.db.bak');
+copyFileSync('assets/bible/bible.db', '.tmp-backups/bible.db.bak');
+console.log('Backed up to .tmp-backups/bible.db.bak');
 
 // FTS5 'delete-all' cannot run inside a transaction, so the index rebuild is
 // done outside it. That means the chapter deletes commit first and the reindex
@@ -115,7 +116,7 @@ try {
   }
 } catch (e) {
   console.error('Chapters are deleted but reindexing failed:', e.message);
-  console.error('Restore with: copy assets/bible/bible.db.bak assets/bible/bible.db');
+  console.error('Restore with: copy .tmp-backups/bible.db.bak assets/bible/bible.db');
   process.exit(1);
 }
 
