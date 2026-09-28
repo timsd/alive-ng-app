@@ -217,14 +217,20 @@ class AuthService {
 
   /// Sends a password-reset link to [email].
   ///
-  /// Exactly one email goes out. Appwrite's `createRecovery` mints the
-  /// recovery token, but its own notification mail is suppressed so the
-  /// member receives only our branded Resend message -- which is the one whose
-  /// link carries `userId` and `secret` and therefore actually works.
+  /// Appwrite's `createRecovery` mints the recovery token and delivers it in
+  /// Appwrite's own recovery email. The branded Resend message is only sent when
+  /// the API actually hands back a usable secret, because a branded link built
+  /// from an empty secret reaches the reset screen with nothing to submit and
+  /// the member can never set a new password.
   ///
-  /// Previously both fired, so every reset produced two emails and the
-  /// Appwrite one (different template, no working link) was the one that got
-  /// clicked.
+  /// On Appwrite 1.8.1 the secret always comes back empty, so in practice this
+  /// relies entirely on Appwrite's own mail, and that mail is only delivered if
+  /// SMTP is configured on the Appwrite project. With no SMTP, nothing is sent
+  /// at all -- see scripts/check_appwrite_smtp.mjs.
+  ///
+  /// Exactly one email should go out. When both paths are live, two emails
+  /// arrive, and the Appwrite one, with a different template, is the one members
+  /// tend to click first.
   Future<bool> resetPassword(String email) async {
     final normalized = email.trim();
     if (normalized.isEmpty) {
