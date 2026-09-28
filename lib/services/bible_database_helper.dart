@@ -10,6 +10,20 @@ import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 import 'package:path/path.dart' as p;
 import '../models/bible_models.dart';
 
+/// Thrown when the bundled Bible database cannot be installed.
+///
+/// This exists so a broken install is reported rather than silently presenting
+/// as an empty Bible. The previous code caught the failure, logged it, and
+/// carried on with an empty database, which the member saw as "no translations
+/// downloaded" and nobody could trace back to a failed asset copy.
+class BibleDatabaseInstallException implements Exception {
+  final String message;
+  const BibleDatabaseInstallException(this.message);
+
+  @override
+  String toString() => 'BibleDatabaseInstallException: $message';
+}
+
 class BibleDatabaseHelper {
   static final BibleDatabaseHelper _instance = BibleDatabaseHelper._internal();
   factory BibleDatabaseHelper() => _instance;
@@ -51,7 +65,28 @@ class BibleDatabaseHelper {
     // on first launch.  This gives us 214 K+ verses, FTS5 search,
     // and compound indexes from the very first open — zero warm-up.
     final dbFile = File(path);
-    if (!dbFile.existsSync()) {
+    // Check *content*, not just file existence. `existsSync()` alone is the bug
+    // this replaces: a previous run that was killed mid-copy, or one that ran
+    // before the asset was added, leaves a zero-byte or empty-schema file at
+    // this path. That file exists, so the copy was skipped forever and the
+    // member got a permanently blank reader with no error anywhere.
+    //
+    // The web path already got this right (_webDatabaseHasVerses counts rows);
+    // native was the outlier, which is the same "asset is fine but was never
+    // really installed" failure in the other direction.
+    final needsInstall = !dbFile.existsSync() || !await _fileHasVerses(dbFile);
+    if (needsInstall) {
+      // A stale or truncated file would otherwise be appended to.
+      if (dbFile.existsSync()) {
+        debugPrint('[BibleDB] Existing copy at $path has no verses; '
+            'replacing it with the bundled asset.');
+        try {
+          await dbFile.delete();
+        } catch (e) {
+          debugPrint('[BibleDB] Could not remove stale database: $e');
+        }
+      }
+
       // Ensure the databases directory exists
       await Directory(databasesPath).create(recursive: true);
       try {
@@ -64,9 +99,13 @@ class BibleDatabaseHelper {
         debugPrint('[BibleDB] Pre-built bible.db copied to $path '
             '(${(bytes.length / 1024 / 1024).toStringAsFixed(1)} MB)');
       } catch (e) {
-        debugPrint('[BibleDB] Failed to copy pre-built DB, '
-            'falling back to empty DB: $e');
-        // Fall through — openDatabase will create an empty DB below.
+        // Surfaced rather than swallowed: this used to log and continue,
+        // leaving an empty database that looks healthy from the outside. The
+        // reader surfaces this as an error so a broken install is visible
+        // rather than presenting as "no translations downloaded".
+        throw BibleDatabaseInstallException(
+          'Could not install the bundled Bible database: $e',
+        );
       }
     }
 
@@ -86,8 +125,9 @@ class BibleDatabaseHelper {
   /// via WASM and seeds it from the same bundled asset, so the browser gets
   /// the identical 214 K verses the native build does.
   ///
-  /// Requires `sqlite3.wasm` and `sqflite_sw.js` in `web/`, which
-  /// `scripts/setup_web_sqlite.mjs` copies from the package.
+  /// Requires `sqlite3.wasm` and `sqflite_sw.js` in `web/`. Both are produced by
+  /// `dart run sqflite_common_ffi_web:setup` and are tracked in the repo, so a
+  /// clean checkout can build the web app without a setup step.
   Future<Database> _initWebDatabase() async {
     // Ignore: deprecated_member_use -- assigning the global factory is the
     // documented way to point sqflite at the web implementation.
@@ -95,16 +135,28 @@ class BibleDatabaseHelper {
     databaseFactory = databaseFactoryFfiWeb;
 
     final path = _databaseName;
+    // Content check, not existence: this is what makes the browser recover from
+    // a half-written IndexedDB copy. Matches the native _fileHasVerses check
+    // so the two platforms cannot drift again.
     if (!await _webDatabaseHasVerses(path)) {
-      final data = await rootBundle.load(_prebuiltAssetPath);
-      final bytes = data.buffer.asUint8List(
-        data.offsetInBytes,
-        data.lengthInBytes,
-      );
-      // On the web the database lives in IndexedDB, so there is no file to
-      // copy: the bytes have to be written through the factory. This is what
-      // `sqflite_common_ffi_web` documents for importing an asset database.
-      await databaseFactory.writeDatabaseBytes(path, bytes);
+      try {
+        final data = await rootBundle.load(_prebuiltAssetPath);
+        final bytes = data.buffer.asUint8List(
+          data.offsetInBytes,
+          data.lengthInBytes,
+        );
+        // On the web the database lives in IndexedDB, so there is no file to
+        // copy: the bytes have to be written through the factory. This is what
+        // `sqflite_common_ffi_web` documents for importing an asset database.
+        await databaseFactory.writeDatabaseBytes(path, bytes);
+      } catch (e) {
+        // Thrown rather than swallowed, for the same reason as the native
+        // path: an empty database here is indistinguishable, to the member,
+        // from "no translations downloaded".
+        throw BibleDatabaseInstallException(
+          'Could not install the bundled Bible database in the browser: $e',
+        );
+      }
     }
 
     return databaseFactory.openDatabase(
@@ -132,6 +184,36 @@ class BibleDatabaseHelper {
       final rows = await probe.rawQuery('SELECT COUNT(*) AS c FROM bible_verses');
       return ((rows.first['c'] as int?) ?? 0) > 0;
     } catch (_) {
+      return false;
+    } finally {
+      await probe?.close();
+    }
+  }
+
+  /// True when the native copy at [dbFile] really holds verses.
+  ///
+  /// Opened read-only and by a throwaway handle, so a half-written or
+  /// empty-schema file reports false and gets reinstalled instead of being
+  /// trusted. Mirrors [_webDatabaseHasVerses], which is the same check for the
+  /// browser's IndexedDB copy.
+  Future<bool> _fileHasVerses(File dbFile) async {
+    // A zero-byte file cannot be a database at all, and trying to open it
+    // produces a confusing SQLite error rather than a useful answer.
+    if (!dbFile.existsSync() || dbFile.lengthSync() == 0) return false;
+
+    Database? probe;
+    try {
+      probe = await openDatabase(
+        dbFile.path,
+        // readOnly so that inspecting the file can never create tables in it or
+        // otherwise mutate what we are about to decide to replace.
+        readOnly: true,
+      );
+      final rows = await probe.rawQuery('SELECT COUNT(*) AS c FROM $_versesTable');
+      final count = rows.first['c'];
+      return count is int && count > 0;
+    } catch (_) {
+      // Unreadable, corrupt, or missing the table: treat as not installed.
       return false;
     } finally {
       await probe?.close();

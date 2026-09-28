@@ -152,6 +152,12 @@ class OfflineBibleService {
         if (books.isNotEmpty) {
           return books;
         }
+      } on BibleDatabaseInstallException catch (e) {
+        // The bundled database could not be installed. That is not a transient
+        // read failure, so it must not fall through to the JSON asset path and
+        // present as a Bible with no books. Report it.
+        _logger.error('Bundled Bible database failed to install', e);
+        rethrow;
       } catch (dbErr) {
         _logger.warning('Error fetching books from SQLite DB: $dbErr');
       }
@@ -312,35 +318,44 @@ class OfflineBibleService {
     final cached = _searchCache[cacheKey];
     if (cached != null) return cached;
 
-    // ── FTS5 fast path (native only) ────────────────────────────────
-    if (!kIsWeb) {
-      try {
-        final ftsResults = await _dbHelper.fts5Search(
-          query,
-          version: versionCode,
-          language: languageCode,
-          limit: limit,
-        );
-        if (ftsResults.isNotEmpty) {
-          final hits = ftsResults
-              .map((r) => BibleTextHit(
-                    book: r.book,
-                    chapter: r.chapter,
-                    verse: r.verse,
-                    reference: r.reference,
-                    text: r.text,
-                  ))
-              .toList();
-          if (_searchCache.length > 200) _searchCache.clear();
-          _searchCache[cacheKey] = hits;
-          return hits;
-        }
-      } catch (e) {
-        _logger.warning('FTS5 search failed, falling back to in-memory: $e');
+    // ── FTS5 fast path ────────────────────────────────────────────────
+    // Runs on web as well as native. This was gated on `!kIsWeb` on the
+    // assumption that FTS5 was a native-only capability, but the browser build
+    // ships the stock sqflite_common_ffi_web wasm, which is compiled with
+    // SQLITE_ENABLE_FTS5 (a default define in the sqlite3 package's build
+    // hook). The gate therefore forced every browser search through the slow
+    // in-memory fallback even though the FTS index is present in the very same
+    // database the browser already loaded.
+    //
+    // The existing catch already falls back to the in-memory index if FTS5
+    // turns out to be unavailable, so running this unconditionally is safe
+    // either way.
+    try {
+      final ftsResults = await _dbHelper.fts5Search(
+        query,
+        version: versionCode,
+        language: languageCode,
+        limit: limit,
+      );
+      if (ftsResults.isNotEmpty) {
+        final hits = ftsResults
+            .map((r) => BibleTextHit(
+                  book: r.book,
+                  chapter: r.chapter,
+                  verse: r.verse,
+                  reference: r.reference,
+                  text: r.text,
+                ))
+            .toList();
+        if (_searchCache.length > 200) _searchCache.clear();
+        _searchCache[cacheKey] = hits;
+        return hits;
       }
+    } catch (e) {
+      _logger.warning('FTS5 search failed, falling back to in-memory: $e');
     }
 
-    // ── Legacy in-memory index path (web / fallback) ────────────────
+    // ── Legacy in-memory index path (fallback) ───────────────────────
     final index = await _getOrBuildIndex(
       indexKey: indexKey,
       versionCode: versionCode,
