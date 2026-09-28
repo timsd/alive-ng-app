@@ -329,7 +329,12 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted) return;
     final ctx = _verseKeys[verseNumber]?.currentContext;
-    if (ctx != null) {
+    // Checked on `ctx` itself, not on `mounted`. The State's mounted check says
+    // nothing about this GlobalKey's context: the verse for this chapter may
+    // already have been scrolled out of the tree, in which case ensureVisible
+    // on a defunct context throws exactly when a member taps a search result
+    // and immediately swipes.
+    if (ctx != null && ctx.mounted) {
       await Scrollable.ensureVisible(
         ctx,
         duration: const Duration(milliseconds: 450),

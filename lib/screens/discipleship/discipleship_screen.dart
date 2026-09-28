@@ -1489,19 +1489,19 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
             onPressed: () async {
               final user = _authService.currentUser;
-              // Captured before the await, while the State's `context` is
-              // certainly still valid. The `context` named in this dialog's
-              // builder shadows the State, so an `if (mounted)` check does not
+              // Captured before the await, while the State's `dialogContext` is
+              // certainly still valid. The `dialogContext` named in this dialog's
+              // builder shadows the State, so an `if (dialogContext.mounted)` check does not
               // prove that shadowed one is safe to use after the await.
-              final navigator = Navigator.of(context);
-              final messenger = ScaffoldMessenger.of(context);
+              final navigator = Navigator.of(dialogContext);
+              final messenger = ScaffoldMessenger.of(dialogContext);
               try {
                 await _discipleshipService.markPrayerAnswered(
                   requestId: prayer.id,
@@ -1509,11 +1509,11 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                   actorName: user?.displayName ?? 'Disciple Maker',
                 );
                 // The dialog may have been dismissed while the service call was
-                // in flight, so guard the dialog's own context, not the State's.
+                // in flight, so guard the dialog's own dialogContext, not the State's.
                 if (dialogContext.mounted) {
                   navigator.pop(dialogContext);
                 }
-                if (mounted) {
+                if (dialogContext.mounted) {
                   messenger.showSnackBar(
                     const SnackBar(content: Text('Prayer marked as answered. Praise the Lord!')),
                   );
@@ -1537,8 +1537,8 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
     final notesController = TextEditingController(text: prayer.notes ?? '');
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
           title: const Text('Update Prayer Status & Notes'),
           content: SingleChildScrollView(
             child: Column(
@@ -1575,7 +1575,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Cancel'),
             ),
             ElevatedButton(
@@ -1588,16 +1588,16 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                     note: notesController.text.trim(),
                     actorName: user?.displayName ?? 'Disciple Maker',
                   );
-                  if (mounted) {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
+                  if (dialogContext.mounted) {
+                    Navigator.pop(dialogContext);
+                    ScaffoldMessenger.of(dialogContext).showSnackBar(
                       const SnackBar(content: Text('Prayer status updated.')),
                     );
                     _loadData();
                   }
                 } catch (e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+                  if (dialogContext.mounted) {
+                    ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('Failed: $e')));
                   }
                 }
               },
@@ -1612,7 +1612,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
   void _showPrayerHistoryDialog(PrayerRequest prayer) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Prayer History & Timeline'),
         content: SizedBox(
           width: double.maxFinite,
@@ -1639,8 +1639,8 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
               : ListView.separated(
                   shrinkWrap: true,
                   itemCount: prayer.history.length,
-                  separatorBuilder: (context, i) => const Divider(),
-                  itemBuilder: (context, i) {
+                  separatorBuilder: (dialogContext, i) => const Divider(),
+                  itemBuilder: (dialogContext, i) {
                     final h = prayer.history[i];
                     final isAns = h.status == PrayerRequestStatus.answered;
                     return ListTile(
@@ -1670,7 +1670,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Close'),
           ),
         ],
@@ -1685,7 +1685,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
     if (hasActivity) {
       showDialog(
         context: context,
-        builder: (context) => AlertDialog(
+        builder: (dialogContext) => AlertDialog(
           icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 48),
           title: const Text('Cannot Delete Disciple'),
           content: Text(
@@ -1694,7 +1694,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Understood'),
             ),
           ],
@@ -1707,8 +1707,8 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
     String requesterRole = 'Coordinator';
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
           icon: const Icon(Icons.delete_sweep_rounded, color: Colors.red, size: 48),
           title: const Text('Request Disciple Deletion'),
           content: SingleChildScrollView(
@@ -1750,7 +1750,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Cancel'),
             ),
             ElevatedButton(
@@ -1758,7 +1758,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
               onPressed: () async {
                 final reason = reasonController.text.trim();
                 if (reason.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
                     const SnackBar(content: Text('Please enter a reason for deletion.')),
                   );
                   return;
@@ -1772,16 +1772,16 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                     requesterRole: requesterRole,
                     reason: reason,
                   );
-                  if (mounted) {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
+                  if (dialogContext.mounted) {
+                    Navigator.pop(dialogContext);
+                    ScaffoldMessenger.of(dialogContext).showSnackBar(
                       const SnackBar(content: Text('Deletion request queued for Admin approval.')),
                     );
                     _loadData();
                   }
                 } catch (e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Request failed: $e')));
+                  if (dialogContext.mounted) {
+                    ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('Request failed: $e')));
                   }
                 }
               },
@@ -1806,8 +1806,8 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
           title: const Text('Generate & Dispatch Report'),
           content: SingleChildScrollView(
             child: Column(
@@ -1905,7 +1905,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
             ElevatedButton.icon(
               icon: const Icon(Icons.send_rounded),
               label: const Text('Dispatch Report'),
@@ -1926,16 +1926,16 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                     goals: goalsController.text.trim().isEmpty ? null : goalsController.text.trim(),
                     prayerRequests: prayerRequestsController.text.trim().isEmpty ? null : prayerRequestsController.text.trim(),
                   );
-                  if (mounted) {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
+                  if (dialogContext.mounted) {
+                    Navigator.pop(dialogContext);
+                    ScaffoldMessenger.of(dialogContext).showSnackBar(
                       SnackBar(content: Text('Report dispatched to ${routedOfficer?.officeTitle ?? 'Office'} successfully!')),
                     );
                     _loadData();
                   }
                 } catch (e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+                  if (dialogContext.mounted) {
+                    ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('Failed: $e')));
                   }
                 }
               },
@@ -1950,7 +1950,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
     final feedbackController = TextEditingController(text: report.feedback ?? '');
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Send Officer Feedback'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1973,12 +1973,12 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () async {
               final text = feedbackController.text.trim();
               if (text.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
                   const SnackBar(content: Text('Please enter feedback.')),
                 );
                 return;
@@ -1989,16 +1989,16 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                   feedback: text,
                   officerName: _selectedOfficerOffice?.officerName ?? 'Officer',
                 );
-                if (mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
+                if (dialogContext.mounted) {
+                  Navigator.pop(dialogContext);
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
                     const SnackBar(content: Text('Feedback sent to disciple maker!')),
                   );
                   _loadData();
                 }
               } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+                if (dialogContext.mounted) {
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('Failed: $e')));
                 }
               }
             },
@@ -2017,8 +2017,8 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
     var level = DiscipleshipLevel.prospect;
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
           title: const Text('Add Disciple'),
           content: SingleChildScrollView(
             child: Column(
@@ -2061,7 +2061,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
             ElevatedButton(
               onPressed: () async {
                 final user = _authService.currentUser;
@@ -2072,25 +2072,25 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                 final phone = phoneController.text.trim();
 
                 if (fName.isEmpty || lName.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
                     const SnackBar(content: Text('First and last name are required.')),
                   );
                   return;
                 }
                 if (email.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
                     const SnackBar(content: Text('Email address is mandatory.')),
                   );
                   return;
                 }
                 if (!RegExp(r'^[\w\.-]+@[\w\.-]+\.\w+$').hasMatch(email)) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
                     const SnackBar(content: Text('Please enter a valid email address.')),
                   );
                   return;
                 }
                 if (phone.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
                     const SnackBar(content: Text('Phone number is mandatory.')),
                   );
                   return;
@@ -2109,11 +2109,11 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                     createdAt: DateTime.now(),
                     updatedAt: DateTime.now(),
                   ));
-                  if (mounted) Navigator.pop(context);
+                  if (dialogContext.mounted) Navigator.pop(dialogContext);
                   _loadData();
                 } catch (e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not add disciple: $e')));
+                  if (dialogContext.mounted) {
+                    ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('Could not add disciple: $e')));
                   }
                 }
               },
@@ -2128,7 +2128,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
   void _showContactDetails(DiscipleshipContact contact) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: Text(contact.fullName),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -2142,7 +2142,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
             if (contact.baptismDate != null) Text('Baptized: ${DateFormat('MMM dd, yyyy').format(contact.baptismDate!)}'),
           ],
         ),
-        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))],
+        actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Close'))],
       ),
     );
   }
@@ -2153,8 +2153,8 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
     var method = ContactMethod.inPerson;
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
           title: Text('Log interaction with ${contact.firstName}'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -2169,7 +2169,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
             ElevatedButton(
               onPressed: () async {
                 if (titleController.text.trim().isEmpty) return;
@@ -2181,10 +2181,10 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                     title: titleController.text.trim(), description: descriptionController.text.trim(),
                     date: DateTime.now(), createdAt: DateTime.now(),
                   ));
-                  if (mounted) Navigator.pop(context);
+                  if (dialogContext.mounted) Navigator.pop(dialogContext);
                   _loadData();
                 } catch (e) {
-                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Save failed: $e')));
+                  if (dialogContext.mounted) ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('Save failed: $e')));
                 }
               },
               child: const Text('Save'),
@@ -2201,8 +2201,8 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
     var type = StudyType.bibleStudy;
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
           title: Text('Study session with ${contact.firstName}'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -2217,7 +2217,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
             ElevatedButton(
               onPressed: () async {
                 if (titleController.text.trim().isEmpty) return;
@@ -2229,10 +2229,10 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                     title: titleController.text.trim(), topic: topicController.text.trim(),
                     date: DateTime.now(), createdAt: DateTime.now(),
                   ));
-                  if (mounted) Navigator.pop(context);
+                  if (dialogContext.mounted) Navigator.pop(dialogContext);
                   _loadData();
                 } catch (e) {
-                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Save failed: $e')));
+                  if (dialogContext.mounted) ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('Save failed: $e')));
                 }
               },
               child: const Text('Save'),
@@ -2247,8 +2247,8 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
     var level = contact.currentLevel;
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
           title: Text('Update ${contact.firstName}\'s level'),
           content: DropdownButton<DiscipleshipLevel>(
             value: level, isExpanded: true,
@@ -2256,15 +2256,15 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
             onChanged: (value) { if (value != null) setDialogState(() => level = value); },
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
             ElevatedButton(
               onPressed: () async {
                 try {
                   await _discipleshipService.updateContactLevel(contact.id, level);
-                  if (mounted) Navigator.pop(context);
+                  if (dialogContext.mounted) Navigator.pop(dialogContext);
                   _loadData();
                 } catch (e) {
-                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Update failed: $e')));
+                  if (dialogContext.mounted) ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('Update failed: $e')));
                 }
               },
               child: const Text('Update'),
@@ -2283,7 +2283,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
     showDialog(
       context: context,
       builder: (dialogCtx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
+        builder: (dialogContext, setDialogState) => AlertDialog(
           title: Text(forContact != null
               ? 'Prayer for ${forContact.fullName}'
               : 'Add Prayer Request'),
@@ -2347,14 +2347,14 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
             ElevatedButton(
               onPressed: () async {
                 if (requestController.text.trim().isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
                     const SnackBar(
                         content: Text('Please enter prayer request details')),
                   );
                   return;
                 }
                 if (selectedContactId == null || selectedContactId!.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
                     const SnackBar(
                         content:
                             Text('Please select a disciple for this prayer')),
@@ -2373,11 +2373,11 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                     createdAt: DateTime.now(),
                     updatedAt: DateTime.now(),
                   ));
-                  if (mounted) Navigator.pop(dialogCtx);
+                  if (dialogContext.mounted) Navigator.pop(dialogCtx);
                   _loadData();
                 } catch (e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                  if (dialogContext.mounted) {
+                    ScaffoldMessenger.of(dialogContext).showSnackBar(
                       SnackBar(content: Text('Save failed: $e')),
                     );
                   }
