@@ -281,7 +281,13 @@ class AppwriteAuthService {
     final functions = Functions(appwriteClient);
     final execution = await functions.createExecution(
       functionId: AppwriteBackendConfig.deleteAccountFunctionId,
-      body: jsonEncode({'user_id': user.$id}),
+      body: jsonEncode({
+        'user_id': user.$id,
+        // Passed as a convenience only. The function looks the address up from
+        // Appwrite itself before deleting, because after the delete there is
+        // nothing left to query.
+        'email': user.email,
+      }),
       xasync: false,
       method: appwrite_enums.ExecutionMethod.pOST,
     );
