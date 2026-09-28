@@ -77,8 +77,37 @@ module.exports = async ({ req, res, log, error }) => {
   const messaging = new Messaging(client);
   const databases = new Databases(client);
 
-  // ── 1. Load opt-out list from app_settings ────────────────────────────────
+  const NOTIFICATION_SETTINGS_COLLECTION_ID =
+    process.env.NOTIFICATION_SETTINGS_COLLECTION_ID || 'notification_settings';
+
+  // ── 1. Load the admin flag and the legacy shared opt-out list ─────────────
+  //
+  // Opt-outs are now stored per user in notification_settings
+  // (monthly_reminder_opt_out), which is what the app writes. That is the
+  // authoritative source and is checked per user below.
+  //
+  // The shared app_settings/monthly_reminder_optouts document is still read as
+  // a fallback for anyone opted out before the per-user column existed. It is
+  // not written by the app, so treat it as read-only and do not expect it to
+  // grow.
   let optedOutUserIds = new Set();
+  let userToggleEnabled = false;
+  try {
+    const settingsDoc = await databases.getDocument(
+      DATABASE_ID,
+      APP_SETTINGS_COLLECTION_ID,
+      'monthly_reminder',
+    );
+    const raw = settingsDoc?.data?.value;
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    userToggleEnabled = parsed?.user_toggle_enabled === true;
+  } catch (e) {
+    // No flag document yet: default to admin-managed (members cannot opt out),
+    // which is the safe default and matches the client.
+    if (e?.code !== 404) error(`Warning: could not read the monthly_reminder flag: ${e?.message}`);
+  }
+  log(`Admin toggle (members may opt out): ${userToggleEnabled ? 'enabled' : 'disabled'}`);
+
   try {
     const settingsDoc = await databases.getDocument(
       DATABASE_ID,
@@ -92,11 +121,11 @@ module.exports = async ({ req, res, log, error }) => {
       ? JSON.parse(raw)
       : [];
     optedOutUserIds = new Set(list);
-    log(`Loaded ${optedOutUserIds.size} opt-out user(s).`);
+    log(`Loaded ${optedOutUserIds.size} legacy opt-out user id(s).`);
   } catch (e) {
-    // If document does not exist yet, no one has opted out — carry on.
+    // If document does not exist yet, no one opted out this way — carry on.
     if (e?.code !== 404) {
-      error(`Warning: Could not load opt-out list: ${e?.message}`);
+      error(`Warning: Could not load legacy opt-out list: ${e?.message}`);
     }
   }
 
@@ -116,8 +145,17 @@ module.exports = async ({ req, res, log, error }) => {
     if (!page.users.length) break;
 
     for (const user of page.users) {
-      // Skip opted-out users and users without push targets.
-      if (optedOutUserIds.has(user.$id)) {
+      // Opted out? Check the per-user setting first (authoritative, written by
+      // the app), then the legacy shared list.
+      //
+      // Only checked when the admin has enabled the member toggle. While it is
+      // off, members have no way to opt out, so a stale value must not suppress
+      // a reminder the member cannot decline.
+      let optedOut = optedOutUserIds.has(user.$id);
+      if (!optedOut && userToggleEnabled) {
+        optedOut = await isOptedOutPerUser(user.$id);
+      }
+      if (optedOut) {
         totalSkipped++;
         continue;
       }

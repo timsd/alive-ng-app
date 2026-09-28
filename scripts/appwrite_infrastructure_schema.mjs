@@ -471,7 +471,14 @@ export const tables = [
     columns: [
       s('user_id', 128, true), b('daily_verse_reminder', false, true), b('prayer_reminder', false, true),
       b('health_tracking_reminder', false, true), b('study_reminder', false, true), b('mission_reminder', false, true),
-      s('reminder_time', 16), b('push_notifications_enabled', false, false), b('sound_enabled', false, true),
+      s('reminder_time', 16), b('push_notifications_enabled', false, false),
+      // Per-user opt-out for the monthly giving reminder. The reminder is sent
+      // by a server-side function, so the choice has to live on the server: it
+      // was previously local-only, which meant a member who turned it off was
+      // still sent the push. Default false, so existing members keep receiving
+      // it rather than being silently unsubscribed.
+      b('monthly_reminder_opt_out', false, false),
+      b('sound_enabled', false, true),
       b('prayer'), b('chat'), b('events'), b('donations'), b('study'), b('kids'), b('health'),
       b('prayer_requests'), b('missions'), b('daily_verse'), b('health_reminders'), b('study_reminders'),
       b('bible_memorization_reminder'), dt('daily_verse_time'), mediumtext('health_reminder_settings'),
