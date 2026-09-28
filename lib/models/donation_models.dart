@@ -36,6 +36,14 @@ class DonationRecord extends Equatable {
   final String? materialId;
   final String? materialTitle;
   final String? notes;
+  /// The donation purpose, e.g. 'Ministry & Administration'. Present on the
+  /// table but was missing here, so a DonationRecord could not say what a gift
+  /// was for even though the server knew.
+  final String? purpose;
+  /// The project the gift was aimed at, when it was aimed at one.
+  final String? projectTitle;
+  /// The Paystack reference shown on the receipt.
+  final String? reference;
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? completedAt;
@@ -56,6 +64,9 @@ class DonationRecord extends Equatable {
     this.materialId,
     this.materialTitle,
     this.notes,
+    this.purpose,
+    this.projectTitle,
+    this.reference,
     required this.createdAt,
     required this.updatedAt,
     this.completedAt,
@@ -81,7 +92,7 @@ class DonationRecord extends Equatable {
           _ => DonationType.generalSupport,
         },
       ),
-      amount: (json['amount'] as num).toDouble(),
+      amount: (json['amount'] as num?)?.toDouble() ?? 0,
       currency: json['currency'] as String,
       status: DonationStatus.values.firstWhere(
         (e) => e.name == json['status'],
@@ -97,6 +108,9 @@ class DonationRecord extends Equatable {
       materialId: json['material_id'] as String?,
       materialTitle: json['material_title'] as String?,
       notes: json['notes'] as String?,
+      purpose: json['purpose'] as String?,
+      projectTitle: json['project_title'] as String?,
+      reference: json['reference'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
       completedAt: json['completed_at'] != null
@@ -122,6 +136,9 @@ class DonationRecord extends Equatable {
       'material_id': materialId,
       'material_title': materialTitle,
       'notes': notes,
+      'purpose': purpose,
+      'project_title': projectTitle,
+      'reference': reference,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
       'completed_at': completedAt?.toIso8601String(),
@@ -144,6 +161,9 @@ class DonationRecord extends Equatable {
     String? materialId,
     String? materialTitle,
     String? notes,
+    String? purpose,
+    String? projectTitle,
+    String? reference,
     DateTime? createdAt,
     DateTime? updatedAt,
     DateTime? completedAt,
@@ -164,6 +184,9 @@ class DonationRecord extends Equatable {
       materialId: materialId ?? this.materialId,
       materialTitle: materialTitle ?? this.materialTitle,
       notes: notes ?? this.notes,
+      purpose: purpose ?? this.purpose,
+      projectTitle: projectTitle ?? this.projectTitle,
+      reference: reference ?? this.reference,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       completedAt: completedAt ?? this.completedAt,
@@ -226,6 +249,9 @@ class DonationRecord extends Equatable {
         materialId,
         materialTitle,
         notes,
+    purpose,
+    projectTitle,
+    reference,
         createdAt,
         updatedAt,
         completedAt,
@@ -477,39 +503,6 @@ class UserDownload extends Equatable {
         downloadedAt,
         downloadUrl,
         urlExpiresAt,
-      ];
-}
-
-class DonationSummary extends Equatable {
-  final String userId;
-  final double totalDonated;
-  final int totalDonations;
-  final int materialsDownloaded;
-  final int tractsReprinted;
-  final DateTime? lastDonationDate;
-  final List<DonationRecord> recentDonations;
-
-  const DonationSummary({
-    required this.userId,
-    required this.totalDonated,
-    required this.totalDonations,
-    required this.materialsDownloaded,
-    required this.tractsReprinted,
-    this.lastDonationDate,
-    required this.recentDonations,
-  });
-
-  String get formattedTotalDonated => '\$${totalDonated.toStringAsFixed(2)}';
-
-  @override
-  List<Object?> get props => [
-        userId,
-        totalDonated,
-        totalDonations,
-        materialsDownloaded,
-        tractsReprinted,
-        lastDonationDate,
-        recentDonations,
       ];
 }
 

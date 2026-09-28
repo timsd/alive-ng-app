@@ -621,49 +621,6 @@ class DonationService {
     }
   }
 
-  // Get donation summary for user
-  Future<DonationSummary> getUserDonationSummary() async {
-    try {
-      final user = await _currentUser();
-      final userId = user?.uid;
-      if (userId == null) throw AuthException('User not authenticated');
-
-      final donations = await getUserDonations();
-      final downloads = await getUserDownloads();
-
-      final completedDonations = donations.where((d) => d.isCompleted).toList();
-
-      final totalDonated = completedDonations
-          .map((d) => d.amount)
-          .fold(0.0, (acc, amount) => acc + amount);
-
-      final materialsDownloaded =
-          downloads.where((d) => d.donationAmount != null).length;
-
-      final tractsReprinted = completedDonations
-          .where((d) => d.type == DonationType.tractProduction)
-          .length;
-
-      final lastDonation = completedDonations.isNotEmpty
-          ? completedDonations.first.completedAt
-          : null;
-
-      return DonationSummary(
-        userId: userId,
-        totalDonated: totalDonated,
-        totalDonations: completedDonations.length,
-        materialsDownloaded: materialsDownloaded,
-        tractsReprinted: tractsReprinted,
-        lastDonationDate: lastDonation,
-        recentDonations: completedDonations.take(5).toList(),
-      );
-    } catch (e) {
-      if (e is AppException) rethrow;
-      throw DatabaseException('Failed to fetch donation summary',
-          originalError: e);
-    }
-  }
-
   // Get donation statistics (admin)
   Future<Map<String, dynamic>> getDonationStatistics() async {
     try {
@@ -748,7 +705,7 @@ class DonationService {
       case DonationType.appMaintenance:
         switch (currency.toUpperCase()) {
           case 'NGN':
-            // TEMPORARY TESTING VALUE: lowered to ₦100 so the Paystack
+            // TEMPORARY TESTING VALUE: lowered to â‚¦100 so the Paystack
             // checkout flow can be verified end-to-end. Restore to 7500.0
             // once payment is confirmed working in production.
             return 100.0;
