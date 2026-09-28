@@ -1462,7 +1462,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
     final testimonyController = TextEditingController();
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         icon: const Icon(Icons.celebration_rounded, color: Colors.amber, size: 44),
         title: const Text('Mark Prayer Answered'),
         content: SingleChildScrollView(
@@ -1496,22 +1496,32 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
             style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
             onPressed: () async {
               final user = _authService.currentUser;
+              // Captured before the await, while the State's `context` is
+              // certainly still valid. The `context` named in this dialog's
+              // builder shadows the State, so an `if (mounted)` check does not
+              // prove that shadowed one is safe to use after the await.
+              final navigator = Navigator.of(context);
+              final messenger = ScaffoldMessenger.of(context);
               try {
                 await _discipleshipService.markPrayerAnswered(
                   requestId: prayer.id,
                   testimony: testimonyController.text.trim(),
                   actorName: user?.displayName ?? 'Disciple Maker',
                 );
+                // The dialog may have been dismissed while the service call was
+                // in flight, so guard the dialog's own context, not the State's.
+                if (dialogContext.mounted) {
+                  navigator.pop(dialogContext);
+                }
                 if (mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  messenger.showSnackBar(
                     const SnackBar(content: Text('Prayer marked as answered. Praise the Lord!')),
                   );
                   _loadData();
                 }
               } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+                if (dialogContext.mounted) {
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('Failed: $e')));
                 }
               }
             },
