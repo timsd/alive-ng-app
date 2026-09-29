@@ -28,7 +28,6 @@ void main() {
     });
 
     test('repeating a word does not earn repeated credit', () {
-      const passage = 'God is love';
       // "God" once should not cover two occurrences of "God".
       final score = MissionScoring.scoreRecitation('God God is love', 'God is love');
       expect(score, lessThan(100));

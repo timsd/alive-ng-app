@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../services/bible_source.dart';
 import '../../models/bible_models.dart' as models;
-import '../../constants/bible_verses.dart' as data_bible;
 import '../../constants/bible_data.dart';
 import '../../services/offline_bible_service.dart';
 import '../../utils/search_utils.dart';

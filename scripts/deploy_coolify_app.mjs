@@ -39,11 +39,13 @@ const call = async (method, path, body) => {
   return { status: res.status, text };
 };
 
+const force = process.argv.includes('--force') || process.argv.includes('--no-cache') || true; // User requested: remove all previous caches
+
 // Coolify exposes several deploy entry points depending on version. Try them in
 // order and stop at the first that is accepted.
 const attempts = [
-  ['POST', `/deploy?uuid=${uuid}`],
-  ['POST', `/applications/${uuid}/deploy`],
+  ['POST', `/deploy?uuid=${uuid}${force ? '&force=true' : ''}`],
+  ['POST', `/applications/${uuid}/deploy${force ? '?force=true' : ''}`],
   ['GET', `/applications/${uuid}`],
 ];
 

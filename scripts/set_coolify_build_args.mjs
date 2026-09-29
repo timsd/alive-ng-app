@@ -98,6 +98,12 @@ if (!current) {
     // supported routes differ between Coolify versions.
     for (const [label, method, url, body] of [
       [
+        'PATCH envs',
+        'PATCH',
+        `${appUrl}/envs`,
+        { key: 'FLUTTER_BUILD_ARGS', value: merged },
+      ],
+      [
         'PATCH envs/{uuid}',
         'PATCH',
         `${appUrl}/envs/${current.uuid}`,
