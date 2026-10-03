@@ -621,10 +621,21 @@ export default async ({ req, res, log, error }) => {
       }
     }
 
-    // If Paystack rejects USD (unsupported_currency), fallback seamlessly to NGN conversion
-    // One-time USD gifts only. Recurring gifts are already converted to NGN and
-    // carry a plan by this point, so there is no amount left to re-convert here.
-    if (!json?.status && action !== 'initialize_subscription' && (payload.currency === 'USD' || (json?.message && json.message.toLowerCase().includes('currency')))) {
+    // ── USD fallback to NGN ─────────────────────────────────────────────────
+    // If Paystack rejects the USD transaction for ANY reason — unsupported
+    // currency, no active channel, or anything else — convert to NGN and retry.
+    // This covers BOTH one-time and recurring (subscription) donations.
+    //
+    // Known failure modes:
+    //   • "Currency not supported by merchant" — USD not enabled at all
+    //   • "No active channel to process transaction" — USD enabled but no
+    //     payment channel (card/bank) is activated for USD on Paystack dashboard
+    const isUsdFailure = !json?.status && payload.currency === 'USD';
+    const isCurrencyRelated = !json?.status && json?.message && (
+      json.message.toLowerCase().includes('currency') ||
+      json.message.toLowerCase().includes('channel')
+    );
+    if (isUsdFailure || isCurrencyRelated) {
       // Prefer a client-supplied fresh rate, else resolve live on the server
       // so the donor is billed at the current market rate — never stale.
       // Web sends `exchange_rate`, the Flutter app sends
@@ -639,19 +650,65 @@ export default async ({ req, res, log, error }) => {
         exchangeRate = resolved.rate;
         rateSource = resolved.source;
       }
-      const usdAmount = (payload.amount || 0) / 100;
+
+      // For subscriptions with a USD plan that failed at init, we need to
+      // replace the USD plan with an NGN plan. The original USD amount is in
+      // body.amount (minor units, e.g. 1000 = $10.00).
+      const isSubscription = action === 'initialize_subscription';
+      const originalAmountMinor = Number(body.amount) || 0;
+      const usdAmount = originalAmountMinor / 100;
       const ngnAmountMinor = Math.round(usdAmount * exchangeRate * 100);
-      log(`Paystack rejected USD currency. Converting $${usdAmount} USD to ₦${ngnAmountMinor / 100} NGN at rate ${exchangeRate} (${rateSource})`);
+
+      log(
+        `Paystack rejected USD init: "${json?.message}". ` +
+        `Converting $${usdAmount} USD to ₦${ngnAmountMinor / 100} NGN ` +
+        `at rate ${exchangeRate} (${rateSource})` +
+        (isSubscription ? ' [recurring — re-creating plan in NGN]' : ''),
+      );
+
       payload.currency = 'NGN';
       payload.amount = ngnAmountMinor;
-      payload.metadata = {
-        ...payload.metadata,
+
+      const conversion = {
         original_currency: 'USD',
         original_amount: usdAmount,
         exchange_rate: exchangeRate,
         exchange_rate_source: rateSource,
         converted_to_ngn: true,
       };
+
+      payload.metadata = {
+        ...payload.metadata,
+        ...conversion,
+      };
+
+      // For recurring: replace the USD plan with a new NGN plan
+      if (isSubscription && payload.plan) {
+        if (ngnAmountMinor < MIN_PLAN_KOBO) {
+          return res.json({
+            error: `Recurring donations must be at least ₦${MIN_PLAN_KOBO / 100} per month. Increase the amount or choose a one-time donation.`,
+          }, 400);
+        }
+        const ngnPlanName = makeDynamicPlanName('NGN', ngnAmountMinor, true);
+        const ngnPlanCode = await createDynamicPlan({
+          secret,
+          log,
+          name: ngnPlanName,
+          amount: ngnAmountMinor,
+          currency: 'NGN',
+        });
+        if (!ngnPlanCode) {
+          return res.json({ error: 'Could not create a recurring plan. Please try a one-time donation.' }, 400);
+        }
+        payload.plan = ngnPlanCode;
+        // When using a plan, Paystack ignores `amount` and uses the plan's
+        delete payload.amount;
+        payload.metadata.plan_code = ngnPlanCode;
+        payload.metadata.plan_name = ngnPlanName;
+        payload.metadata.plan_amount_minor = ngnAmountMinor;
+        log(`Replaced USD plan with NGN plan: ${ngnPlanCode} (${ngnPlanName})`);
+      }
+
       // Keep the retry channel-rejection-proof as well.
       if (Array.isArray(payload.channels) && payload.channels.length > 1) {
         payload.channels = ['card'];
