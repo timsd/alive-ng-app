@@ -31,7 +31,13 @@ class PaystackPaymentGateway implements PaymentGateway {
   Future<void> initialize() async {
     if (!_initialized) {
       _initialized = true;
-      _logger.info('Paystack payment gateway initialized');
+      await PaymentConfig.loadCachedPublicKey();
+      await PaymentConfig.syncPublicKeyFromAppwrite().catchError((e) {
+        _logger.warning('Failed to sync Paystack public key from Appwrite: $e');
+        return PaymentConfig.paystackPublicKey;
+      });
+      _logger.info(
+          'Paystack payment gateway initialized (active key: ${PaymentConfig.paystackPublicKey})');
     }
   }
 
@@ -255,7 +261,13 @@ class PaystackPaymentGateway implements PaymentGateway {
         (data['data'] != null ? data['data']['access_code'] : null)) as String?;
     final returnedRef = (data['reference'] ??
         (data['data'] != null ? data['data']['reference'] : null)) as String?;
+    final returnedPk = (data['public_key'] ??
+        (data['data'] != null ? data['data']['public_key'] : null)) as String?;
     final useRef = returnedRef ?? fallbackReference;
+
+    if (returnedPk != null && returnedPk.trim().isNotEmpty) {
+      PaymentConfig.setDynamicPublicKey(returnedPk.trim());
+    }
 
     // Flutter Web: ALWAYS redirect to Paystack authorization_url.
     // paystack_flutter_sdk does not support Web.
@@ -289,8 +301,11 @@ class PaystackPaymentGateway implements PaymentGateway {
     if (isMobile && accessCode != null && accessCode.isNotEmpty) {
       try {
         final paystack = Paystack();
+        final effectivePk = (returnedPk != null && returnedPk.trim().isNotEmpty)
+            ? returnedPk.trim()
+            : PaymentConfig.paystackPublicKey;
         final ok =
-            await paystack.initialize(PaymentConfig.paystackPublicKey, true);
+            await paystack.initialize(effectivePk, true);
         if (ok) {
           final response = await paystack.launch(accessCode);
           if (response.status == 'success') {

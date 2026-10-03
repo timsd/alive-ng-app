@@ -188,6 +188,7 @@ const functionConfigs = [
     path: 'appwrite_functions/paystackPayments',
     variables: [
       envVariable('PAYSTACK_SECRET_KEY', { required: true, secret: true }),
+      envVariable('PAYSTACK_PUBLIC_KEY', { secret: false }),
       literalVariable('APPWRITE_ENDPOINT', endpoint),
       literalVariable('APPWRITE_PROJECT_ID', projectId),
       literalVariable('APPWRITE_DATABASE_ID', databaseId),

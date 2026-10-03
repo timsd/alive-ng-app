@@ -44,7 +44,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       TextEditingController();
   final List<Project> _fallbackProjects = donationFallbackProjects;
 
-  bool _isMonthlySelected = true;
+  bool _isMonthlySelected = false;
 
   String translate(String key) => ref.read(translationProvider)(key);
   String _selectedCurrency = 'USD';

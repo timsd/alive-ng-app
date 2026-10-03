@@ -24,6 +24,7 @@ import 'config/appwrite_backend_config.dart';
 import 'services/analytics_service.dart';
 import 'services/crash_reporting_service.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'config/payment_config.dart';
 import 'services/notification_service.dart';
 
 // Global Appwrite service instances for provider access.
@@ -98,6 +99,13 @@ void main() {
           await NotificationService.instance.initialize();
         } catch (e) {
           debugPrint('Notification initialization failed: $e');
+        }
+
+        try {
+          await PaymentConfig.loadCachedPublicKey();
+          PaymentConfig.syncPublicKeyFromAppwrite().catchError((_) => '');
+        } catch (e) {
+          debugPrint('Payment config initialization failed: $e');
         }
       } else {
         debugPrint(

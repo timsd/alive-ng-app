@@ -184,15 +184,75 @@ async function getConfiguredUsdToNgnRate(log) {
   return { rate: FALLBACK_USD_TO_NGN, source: 'fallback' };
 }
 
+async function getPaystackPublicKey(log) {
+  if (process.env.PAYSTACK_PUBLIC_KEY && process.env.PAYSTACK_PUBLIC_KEY.trim()) {
+    return process.env.PAYSTACK_PUBLIC_KEY.trim();
+  }
+  try {
+    const apiKey = process.env.APPWRITE_FUNCTION_API_KEY || process.env.APPWRITE_API_KEY;
+    const endpoint = process.env.APPWRITE_FUNCTION_API_ENDPOINT || process.env.APPWRITE_ENDPOINT;
+    const projId = process.env.APPWRITE_FUNCTION_PROJECT_ID || process.env.APPWRITE_PROJECT_ID || '';
+    if (apiKey && endpoint) {
+      const client = new Client()
+        .setEndpoint(endpoint)
+        .setProject(projId)
+        .setKey(apiKey);
+      const databases = new Databases(client);
+      const res = await databases.listDocuments(databaseId, appSettingsCollectionId, [
+        Query.equal('key', 'paystack_public_key'),
+        Query.limit(1),
+      ]);
+      const match = res?.documents?.[0];
+      const val = match?.value ?? match?.setting_value;
+      if (typeof val === 'string' && val.trim().startsWith('pk_')) {
+        return val.trim();
+      }
+    }
+  } catch (e) {
+    if (log) log(`Paystack public key lookup failed: ${e.message}`);
+  }
+  return '';
+}
+
+async function getPaystackSecretKey(log) {
+  if (process.env.PAYSTACK_SECRET_KEY && process.env.PAYSTACK_SECRET_KEY.trim()) {
+    return process.env.PAYSTACK_SECRET_KEY.trim();
+  }
+  try {
+    const apiKey = process.env.APPWRITE_FUNCTION_API_KEY || process.env.APPWRITE_API_KEY;
+    const endpoint = process.env.APPWRITE_FUNCTION_API_ENDPOINT || process.env.APPWRITE_ENDPOINT;
+    const projId = process.env.APPWRITE_FUNCTION_PROJECT_ID || process.env.APPWRITE_PROJECT_ID || '';
+    if (apiKey && endpoint) {
+      const client = new Client()
+        .setEndpoint(endpoint)
+        .setProject(projId)
+        .setKey(apiKey);
+      const databases = new Databases(client);
+      const res = await databases.listDocuments(databaseId, appSettingsCollectionId, [
+        Query.equal('key', 'paystack_secret_key'),
+        Query.limit(1),
+      ]);
+      const match = res?.documents?.[0];
+      const val = match?.value ?? match?.setting_value;
+      if (typeof val === 'string' && val.trim().startsWith('sk_')) {
+        return val.trim();
+      }
+    }
+  } catch (e) {
+    if (log) log(`Paystack secret key lookup failed: ${e.message}`);
+  }
+  return '';
+}
+
 export default async ({ req, res, log, error }) => {
   if (req.method !== 'POST') {
     return res.json({ error: 'Method not allowed. Use POST.' }, 405);
   }
 
   try {
-    const secret = process.env.PAYSTACK_SECRET_KEY;
+    const secret = await getPaystackSecretKey(log);
     if (!secret) {
-      error('Missing PAYSTACK_SECRET_KEY.');
+      error('Missing PAYSTACK_SECRET_KEY in function environment or app_settings.');
       return res.json({ error: 'Paystack is not configured.' }, 500);
     }
 
@@ -211,13 +271,15 @@ export default async ({ req, res, log, error }) => {
 
     // ── Public rate lookup (no Paystack call). Lets web + Flutter show a
     // ── live "$1 ≈ ₦X" label from the market rate instead of a constant. ──
-    if (action === 'get_exchange_rate') {
+    if (action === 'get_exchange_rate' || action === 'get_payment_config') {
       const { rate, source } = await getConfiguredUsdToNgnRate(log);
+      const publicKey = await getPaystackPublicKey(log);
       return res.json({
         rate,
         source,
         pair: 'USD_NGN',
         live: source !== 'fallback',
+        paystack_public_key: publicKey,
         updated_at: new Date().toISOString(),
       });
     }
@@ -412,48 +474,91 @@ export default async ({ req, res, log, error }) => {
         return res.json({ error: 'Invalid amount.' }, 400);
       }
 
-      // USD monthly gifts are billed as the NGN equivalent of the quoted USD
-      // amount, so the donor still pays the monthly amount they picked.
-      let planCurrency = payload.currency || 'NGN';
-      let planAmountKobo = payload.amount;
+      // USD monthly gifts: first attempt direct USD plan creation so donors
+      // are billed in USD directly and settled into the merchant's USD account.
+      // If the account does not support USD plans, fallback seamlessly to NGN.
+      let planCurrency = (payload.currency || 'NGN').toUpperCase();
+      let planAmountMinor = payload.amount;
       let conversion = null;
-      if (planCurrency.toUpperCase() === 'USD') {
-        const clientRate = Number(
-          body?.metadata?.exchange_rate_usd_ngn ?? body?.metadata?.exchange_rate,
-        );
-        let exchangeRate = clientRate;
-        let rateSource = 'client';
-        if (!Number.isFinite(exchangeRate) || exchangeRate <= 100) {
-          const resolved = await getConfiguredUsdToNgnRate(log);
-          exchangeRate = resolved.rate;
-          rateSource = resolved.source;
+      let planCode = null;
+      let planName = '';
+
+      if (planCurrency === 'USD') {
+        if (planAmountMinor < 100) {
+          return res.json({
+            error: 'Recurring USD donations must be at least $1.00 per month.',
+          }, 400);
         }
-        const usdAmount = planAmountKobo / 100;
-        planAmountKobo = Math.round(usdAmount * exchangeRate * 100);
-        planCurrency = 'NGN';
-        conversion = {
-          original_currency: 'USD',
-          original_amount: usdAmount,
-          exchange_rate: exchangeRate,
-          exchange_rate_source: rateSource,
-          converted_to_ngn: true,
-        };
-        log(
-          `Converting monthly $${usdAmount} USD to N${planAmountKobo / 100} NGN ` +
-            `at rate ${exchangeRate} (${rateSource}) before creating the plan.`,
-        );
+
+        // 1. Attempt direct USD plan creation on merchant account
+        planName = makeDynamicPlanName('USD', planAmountMinor, false);
+        planCode = await createDynamicPlan({
+          secret,
+          log,
+          name: planName,
+          amount: planAmountMinor,
+          currency: 'USD',
+        });
+
+        // 2. If Paystack rejects direct USD plan creation, fallback to NGN conversion
+        if (!planCode) {
+          log('Paystack direct USD plan creation not available. Falling back to NGN conversion for recurring plan.');
+          const clientRate = Number(
+            body?.metadata?.exchange_rate_usd_ngn ?? body?.metadata?.exchange_rate,
+          );
+          let exchangeRate = clientRate;
+          let rateSource = 'client';
+          if (!Number.isFinite(exchangeRate) || exchangeRate <= 100) {
+            const resolved = await getConfiguredUsdToNgnRate(log);
+            exchangeRate = resolved.rate;
+            rateSource = resolved.source;
+          }
+          const usdAmount = planAmountMinor / 100;
+          planAmountMinor = Math.round(usdAmount * exchangeRate * 100);
+          planCurrency = 'NGN';
+          conversion = {
+            original_currency: 'USD',
+            original_amount: usdAmount,
+            exchange_rate: exchangeRate,
+            exchange_rate_source: rateSource,
+            converted_to_ngn: true,
+          };
+          log(
+            `Converting monthly $${usdAmount} USD to N${planAmountMinor / 100} NGN ` +
+              `at rate ${exchangeRate} (${rateSource}) before creating the plan.`,
+          );
+
+          if (planAmountMinor < MIN_PLAN_KOBO) {
+            return res.json({
+              error: `Recurring donations must be at least N${MIN_PLAN_KOBO / 100} per month. Increase the amount or choose a one-time donation.`,
+            }, 400);
+          }
+
+          planName = makeDynamicPlanName(planCurrency, planAmountMinor, true);
+          planCode = await createDynamicPlan({
+            secret,
+            log,
+            name: planName,
+            amount: planAmountMinor,
+            currency: planCurrency,
+          });
+        }
+      } else {
+        if (planAmountMinor < MIN_PLAN_KOBO) {
+          return res.json({
+            error: `Recurring donations must be at least N${MIN_PLAN_KOBO / 100} per month.`,
+          }, 400);
+        }
+        planName = makeDynamicPlanName(planCurrency, planAmountMinor, false);
+        planCode = await createDynamicPlan({
+          secret,
+          log,
+          name: planName,
+          amount: planAmountMinor,
+          currency: planCurrency,
+        });
       }
 
-      if (planAmountKobo < MIN_PLAN_KOBO) {
-        return res.json({
-          error:
-            `Recurring donations must be at least N${MIN_PLAN_KOBO / 100} per month.` +
-            (conversion ? ' Increase the amount or choose a one-time donation.' : ''),
-        }, 400);
-      }
-
-      const planName = makeDynamicPlanName(planCurrency, planAmountKobo, Boolean(conversion));
-      const planCode = await createDynamicPlan({ secret, log, name: planName, amount: planAmountKobo, currency: planCurrency });
       if (!planCode) {
         return res.json({ error: 'Could not create a recurring plan. Please try a one-time donation.' }, 400);
       }
@@ -469,7 +574,7 @@ export default async ({ req, res, log, error }) => {
         recurring: true,
         plan_code: planCode,
         requested_amount: body.amount,
-        plan_amount_kobo: planAmountKobo,
+        plan_amount_minor: planAmountMinor,
         plan_name: planName,
       };
     }
@@ -578,7 +683,11 @@ export default async ({ req, res, log, error }) => {
       }, 502);
     }
 
-    return res.json(json.data);
+    const publicKey = await getPaystackPublicKey(log);
+    return res.json({
+      ...(json.data || {}),
+      public_key: publicKey,
+    });
   } catch (err) {
     error(`Paystack initialization failed: ${err.message}`);
     return res.json({ error: err.message || 'Internal Server Error' }, 500);
