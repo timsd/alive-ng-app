@@ -28,8 +28,9 @@ if (!functionId) {
   process.exit(1);
 }
 
+const queryStr = encodeURIComponent('orderDesc("$createdAt")');
 const res = await fetch(
-  `${endpoint}/v1/functions/${functionId}/executions?limit=${count}`,
+  `${endpoint}/v1/functions/${functionId}/executions?queries[]=${queryStr}&limit=${count}`,
   { headers },
 );
 const j = await res.json();
@@ -61,9 +62,9 @@ const normalizeLogs = (raw) => {
 };
 
 for (const e of j.executions || []) {
-  console.log(`\n=== ${e.$id}  ${e.status}  ${e.duration || 0}s`);
-  console.log(`    path: ${e.requestPath}`);
-  console.log(`    error: ${e.error || 'none'}`);
+  console.log(`\n=== ${e.$id}  ${e.status} (HTTP ${e.responseStatusCode})  created: ${e.$createdAt}  duration: ${e.duration || 0}s`);
+  console.log(`    response: ${e.responseBody || 'empty'}`);
+  console.log(`    error: ${e.errors || e.error || 'none'}`);
   const logs = normalizeLogs(e.logs ?? e.logsBody);
   if (logs.length) console.log(logs.join('\n'));
 }
