@@ -21,21 +21,45 @@ class AdminNotificationService {
   // Removed unused _adminEmail constant to satisfy analyzer
 
   /// Send notification to admin when a new user signs up
+  /// Send notification to admin when a new user signs up.
+  ///
+  /// Distinguishes between registrations that actually require manual administrator
+  /// approval (e.g. Coordinators/Staff) versus auto-approved users (regular Members and Guests).
   Future<bool> notifyAdminOfNewSignup(UserProfile userProfile) async {
     try {
       _logger.info(
-          'Sending admin notification for new user: ${userProfile.email}');
-      const emailSubject = 'New User Registration - ALIVE Nigeria App';
-      final recipients = ['alivenigeria2011@gmail.com']; // Fallback super admin
-      final token = await ApprovalLinkService.instance
-          .generateToken(userId: userProfile.id);
-      final approvalUrl = ApprovalLinkService.instance.buildApprovalUrl(
-        baseUrl: 'https://app.alivenigeria.org',
-        userId: userProfile.id,
-        token: token,
-      );
-      final emailBody =
-          '${_buildEmailBody(userProfile)}\n\nApproval Link:\n$approvalUrl';
+          'Processing admin notification for new user: ${userProfile.email} (role: ${userProfile.role}, status: ${userProfile.approvalStatus})');
+      final recipients = ['alivenigeria2011@gmail.com']; // Super admin inbox
+
+      final bool requiresApproval =
+          !userProfile.isApproved && userProfile.approvalStatus == 'pending';
+
+      String emailSubject;
+      String emailBody;
+      String? approvalUrl;
+
+      if (requiresApproval) {
+        emailSubject =
+            'Action Required: New ${userProfile.requestedRole ?? userProfile.role} Registration - ALIVE Nigeria';
+
+        if (userProfile.id.isNotEmpty) {
+          final token = await ApprovalLinkService.instance
+              .generateToken(userId: userProfile.id);
+          approvalUrl = ApprovalLinkService.instance.buildApprovalUrl(
+            baseUrl: 'https://app.alivenigeria.org',
+            userId: userProfile.id,
+            token: token,
+          );
+        }
+
+        emailBody =
+            '${_buildApprovalEmailBody(userProfile)}${approvalUrl != null ? '\n\nDirect Approval Link:\n$approvalUrl' : '\n\nPlease review this registration in the ALIVE Nigeria Admin Dashboard.'}';
+      } else {
+        // Informational notification for regular auto-approved member or guest
+        emailSubject =
+            'New Member Joined: ${userProfile.fullName ?? userProfile.email} - ALIVE Nigeria';
+        emailBody = _buildNewMemberInfoEmailBody(userProfile);
+      }
 
       bool anySuccess = false;
       for (final to in recipients) {
@@ -49,15 +73,19 @@ class AdminNotificationService {
       }
 
       await _storeNotificationRecord(
-        type: 'new_user_registration',
+        type: requiresApproval
+            ? 'pending_registration_approval'
+            : 'new_member_registered',
         userId: userProfile.id,
         details: {
           'email': userProfile.email,
           'full_name': userProfile.fullName,
-          'status': 'sent',
+          'role': userProfile.role,
+          'requires_approval': requiresApproval,
+          'status': userProfile.approvalStatus,
           'success': anySuccess,
           'recipients': recipients,
-          'approval_url': approvalUrl,
+          if (approvalUrl != null) 'approval_url': approvalUrl,
         },
       );
 
@@ -76,61 +104,25 @@ class AdminNotificationService {
     }
   }
 
-  /// Send a welcome email / notification to the new user after successful signup.
-  /// Best-effort — never throws; failures are logged only.
+  /// Deprecated: Welcome emails are managed server-side via the Appwrite `sendEmail`
+  /// function (which fires automatically on `users.*.create` and sends the branded
+  /// HTML welcome template). This method is kept as a no-op to prevent duplicate
+  /// plain-text welcome emails.
   Future<void> sendWelcomeNotification({
     required String userId,
     required String name,
     required String email,
   }) async {
-    try {
-      _logger.info('Sending welcome notification to new user: $email');
-      const subject = 'Welcome to ALIVE Nigeria! 🎉';
-      final html = '''
-<html><body>
-<h2>Welcome, $name! 🎉</h2>
-<p>Welcome to the <strong>ALIVE Nigeria App</strong>! We're excited to have you join our community.</p>
-<h3>Here's what you can do next:</h3>
-<ul>
-  <li>Complete your profile to connect with your chapter</li>
-  <li>Read today's Daily Verse for spiritual nourishment</li>
-  <li>Explore Study Guides, Prayer Wall, and more</li>
-  <li>Join an ALIVE Meet conference or Bible Game session</li>
-</ul>
-<p>If you have any questions, please reach out through the <strong>Help &amp; Support</strong> section.</p>
-<p>God bless you,<br/><strong>The ALIVE Nigeria Team</strong></p>
-</body></html>
-''';
-      await EmailService.instance.sendCustomEmail(
-        toEmail: email,
-        toName: name,
-        subject: subject,
-        html: html,
-      );
-
-      // Store welcome notification record
-      await _storeNotificationRecord(
-        type: 'welcome_notification',
-        userId: userId,
-        details: {
-          'email': email,
-          'full_name': name,
-          'status': 'sent',
-        },
-      );
-
-      _logger.info('Welcome notification sent to: $email');
-    } catch (e) {
-      _logger.error('Failed to send welcome notification (non-fatal): $e');
-    }
+    _logger.info(
+        'sendWelcomeNotification skipped: branded welcome email is handled by the server-side Appwrite sendEmail function.');
   }
 
-  /// Build email body with user information for admin review
-  String _buildEmailBody(UserProfile userProfile) {
+  /// Build email body for registrations that require manual review & approval (e.g. Coordinators)
+  String _buildApprovalEmailBody(UserProfile userProfile) {
     final buffer = StringBuffer();
 
     buffer.writeln(
-        'A new user has registered for the ALIVE Nigeria App and requires approval.');
+        'A new user has registered for the ALIVE Nigeria App with an elevated role and requires administrator approval.');
     buffer.writeln('');
     buffer.writeln('User Details:');
     buffer.writeln('=============');
@@ -138,6 +130,7 @@ class AdminNotificationService {
     buffer.writeln('Email: ${userProfile.email ?? 'Not provided'}');
     buffer.writeln('Phone: ${userProfile.phoneNumber ?? 'Not provided'}');
     buffer.writeln('Address: ${userProfile.address ?? 'Not provided'}');
+    buffer.writeln('Requested Role: ${userProfile.requestedRole ?? userProfile.role}');
     buffer.writeln('');
 
     if (userProfile.localChapter != null) {
@@ -155,7 +148,7 @@ class AdminNotificationService {
     }
     if (userProfile.financialCommitment != null) {
       buffer.writeln(
-          'Financial Commitment: \$${userProfile.financialCommitment}');
+          'Financial Commitment: ₦${userProfile.financialCommitment}');
     }
     if (userProfile.availabilityCommitment != null) {
       buffer.writeln(
@@ -171,13 +164,58 @@ class AdminNotificationService {
 
     buffer.writeln(
         'Registration Date: ${userProfile.createdAt.toIso8601String()}');
-    buffer.writeln('Current Status: ${userProfile.approvalStatus}');
+    buffer.writeln('Current Status: Pending Approval');
     buffer.writeln('');
     buffer.writeln(
-        'Please review this user\'s information and approve or reject their access to the platform.');
+        'Please review this user\'s information and approve or reject their access.');
+    buffer.writeln('You can click the direct approval link below or manage approvals via the Admin Dashboard:');
+    buffer.writeln('https://app.alivenigeria.org/admin-approval');
+
+    return buffer.toString();
+  }
+
+  /// Build informational email body for auto-approved regular members and guests
+  String _buildNewMemberInfoEmailBody(UserProfile userProfile) {
+    final buffer = StringBuffer();
+
+    buffer.writeln('A new member has joined the ALIVE Nigeria App community!');
+    buffer.writeln('');
+    buffer.writeln('Member Details:');
+    buffer.writeln('==============');
+    buffer.writeln('Full Name: ${userProfile.fullName ?? 'Not provided'}');
+    buffer.writeln('Email: ${userProfile.email ?? 'Not provided'}');
+    buffer.writeln('Phone: ${userProfile.phoneNumber ?? 'Not provided'}');
+    buffer.writeln('Role: ${userProfile.role}');
+    buffer.writeln('Account Status: Active (Auto-approved)');
+    buffer.writeln('');
+
+    if (userProfile.localChapter != null) {
+      buffer.writeln('Local Chapter: ${userProfile.localChapter}');
+    }
+    if (userProfile.localChurch != null) {
+      buffer.writeln('Local Church: ${userProfile.localChurch}');
+    }
+
+    buffer.writeln('');
+    if (userProfile.commitmentType != null && userProfile.commitmentType != 'none') {
+      buffer.writeln('Commitment Information:');
+      buffer.writeln('======================');
+      buffer.writeln('Type: ${userProfile.commitmentType}');
+      if (userProfile.financialCommitment != null) {
+        buffer.writeln('Financial: ₦${userProfile.financialCommitment}');
+      }
+      if (userProfile.availabilityCommitment != null) {
+        buffer.writeln('Availability: ${userProfile.availabilityCommitment}');
+      }
+      buffer.writeln('');
+    }
+
+    buffer.writeln(
+        'Registration Date: ${userProfile.createdAt.toIso8601String()}');
     buffer.writeln('');
     buffer.writeln(
-        'To manage user approvals, please log into the ALIVE Nigeria Admin Dashboard.');
+        'No approval action is required for this member. To view or manage members, visit the Admin Dashboard:');
+    buffer.writeln('https://app.alivenigeria.org/admin');
 
     return buffer.toString();
   }

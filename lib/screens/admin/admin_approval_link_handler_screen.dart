@@ -23,14 +23,14 @@ class _AdminApprovalLinkHandlerScreenState extends State<AdminApprovalLinkHandle
 
   Future<void> _handle() async {
     final uri = GoRouterState.of(context).uri;
-    final userId = uri.queryParameters['userId'];
-    final token = uri.queryParameters['token'];
+    final userId = uri.queryParameters['userId']?.trim();
+    final token = uri.queryParameters['token']?.trim();
 
-    if (userId == null || token == null) {
+    if (userId == null || token == null || userId.isEmpty || token.isEmpty) {
       setState(() {
         _processing = false;
         _result = false;
-        _message = 'Missing userId or token.';
+        _message = 'Invalid approval link: missing user ID or token.';
       });
       return;
     }

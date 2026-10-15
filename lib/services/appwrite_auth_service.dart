@@ -165,10 +165,16 @@ class AppwriteAuthService {
         name: name,
       );
 
-                        await loginWithEmail(
+                        final augmentedProfileData = <String, dynamic>{
+        ...?profileData,
+        'is_profile_completed': true,
+        'profile_setup_completed': true,
+      };
+
+      await loginWithEmail(
         email: email,
         password: password,
-        profileData: profileData,
+        profileData: augmentedProfileData,
       );
 
       // Email sign-ups collect the profile form during registration, so the
@@ -176,11 +182,15 @@ class AppwriteAuthService {
       // redirected to /profile-completion. Only social (Google) sign-ins leave
       // this preference unset, which lets the router guard redirect them to the
       // setup flow. Merge (preserve) any existing prefs rather than clobbering.
-      final existingPrefs = await _account.getPrefs();
-      await _account.updatePrefs(prefs: {
-        ...existingPrefs.data,
-        'profile_setup_completed': true,
-      });
+      try {
+        final existingPrefs = await _account.getPrefs();
+        await _account.updatePrefs(prefs: {
+          ...existingPrefs.data,
+          'profile_setup_completed': true,
+        });
+      } catch (pe) {
+        debugPrint('Prefs update on signup (non-fatal): $pe');
+      }
       return user;
     } catch (e) {
       debugPrint('Appwrite Sign Up Error: $e');

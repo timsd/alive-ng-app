@@ -18,6 +18,7 @@ import 'app_settings_screen.dart';
 import '../../models/podcast_models.dart';
 import 'storage_admin_screen.dart';
 import 'admin_donations_report_screen.dart';
+import 'ssl_status_screen.dart';
 import '../../services/appwrite_admin_export_service.dart';
 import '../../services/monthly_reminder_setting_service.dart';
 import '../../utils/responsive_utils.dart';
@@ -690,25 +691,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
             ),
             const SizedBox(height: 16),
 
-            // Finance & Donation Management
-            _buildManagementSection(
-              'Finance & Donation Management',
-              Icons.monetization_on_outlined,
-              [
-                _buildActionTile(
-                  'Donation Reports & Analytics',
-                  'View all incoming donations, track fund usage, and download reports',
-                  Icons.receipt_long_outlined,
-                  () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (ctx) => const AdminDonationsReportScreen(),
-                    ),
-                  ),
-                ),
-              ],
-            ),
 
-            const SizedBox(height: 16),
 
             // User Management
             _buildManagementSection(
@@ -797,6 +780,12 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                   () => context.go(AppConstants.adminStudyGuidesRoute),
                 ),
                 _buildActionTile(
+                  'Content Pages & Projects',
+                  'Manage general app content pages, custom sections, and community projects',
+                  Icons.post_add_outlined,
+                  () => context.go(AppConstants.contentManagementRoute),
+                ),
+                _buildActionTile(
                   'Health+ Content',
                   'Manage plant-based recipes, natural remedies, and community discussions',
                   Icons.health_and_safety_rounded,
@@ -824,6 +813,12 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                   'View historical leadership records and past administrations',
                   Icons.history_edu,
                   () => context.go(AppConstants.leadershipArchiveRoute),
+                ),
+                _buildActionTile(
+                  'Board of Trustees (BOD)',
+                  'Manage Board records, official resolutions, decisions, and documents',
+                  Icons.account_balance_outlined,
+                  () => context.go(AppConstants.bodTrusteesRoute),
                 ),
                 _buildActionTile(
                   'Chapter Reports',
@@ -918,6 +913,17 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
                   'View system logs and error reports',
                   Icons.bug_report_outlined,
                   () => _navigateToSystemLogs(),
+                ),
+                _buildActionTile(
+                  'SSL & Network Diagnostics',
+                  'Verify Appwrite endpoint connectivity and SSL encryption status',
+                  Icons.lock_clock_outlined,
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const SSLStatusScreen(),
+                    ),
+                  ),
                 ),
               ],
             ),

@@ -1579,10 +1579,12 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
         ),
       );
 
-      // Notify admin of new signup + send welcome notification (best-effort)
+      // Notify admin of new signup (best-effort)
       try {
+        final currentUid =
+            ref.read(authGatewayProvider).currentUser?.uid ?? '';
         final newProfile = UserProfile(
-          id: '',
+          id: currentUid,
           email: _emailController.text.trim(),
           fullName: _nameController.text.trim(),
           phoneNumber: _phoneController.text.trim(),
@@ -1597,13 +1599,6 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
         );
         await AdminNotificationService.instance
             .notifyAdminOfNewSignup(newProfile);
-        await AdminNotificationService.instance.sendWelcomeNotification(
-          userId: '',
-          name: _nameController.text.trim().isNotEmpty
-              ? _nameController.text.trim()
-              : _emailController.text.split('@').first,
-          email: _emailController.text.trim(),
-        );
       } catch (_) {
         // Best-effort — don't fail signup
       }

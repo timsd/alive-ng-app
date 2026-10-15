@@ -35,10 +35,8 @@ final profileSetupRequiredProvider =
     debugPrint('Profile setup preference unavailable; using profile data: $e');
   }
 
-  // Otherwise fall back to inspecting the stored profile. If the profile is
-  // already populated (or couldn't be loaded), don't redirect — otherwise the
-  // user is sent to the setup flow.
-  if (storedProfile == null) return true;
+  // If profile couldn't be loaded, fail open to avoid trapping users in a loop
+  if (storedProfile == null) return false;
   return needsProfileSetup(storedProfile);
 });
 
@@ -52,11 +50,28 @@ Future<void> completeProfileSetup() async {
 }
 
 bool needsProfileSetup(UserProfile? profile) {
-  if (profile == null) return true;
-  return [
-    profile.phoneNumber,
-    profile.location,
-    profile.localChurch,
-    profile.occupation,
-  ].any((value) => value == null || value.trim().isEmpty);
+  if (profile == null) return false;
+
+  // Guest users are not required to complete member profile setup
+  if (profile.role == 'guest') return false;
+
+  // If the profile already has phone number, church, chapter, or commitment,
+  // they already entered their details during registration (email signup).
+  // Never redirect them to profile completion.
+  final hasPhone =
+      profile.phoneNumber != null && profile.phoneNumber!.trim().isNotEmpty;
+  final hasChurch =
+      profile.localChurch != null && profile.localChurch!.trim().isNotEmpty;
+  final hasChapter =
+      profile.localChapter != null && profile.localChapter!.trim().isNotEmpty;
+  final hasCommitment = profile.commitmentType != null &&
+      profile.commitmentType!.trim().isNotEmpty &&
+      profile.commitmentType != 'none';
+
+  if (hasPhone || hasChurch || hasChapter || hasCommitment) {
+    return false;
+  }
+
+  // Only newly created OAuth/Google accounts with zero contact/church info need setup
+  return true;
 }
