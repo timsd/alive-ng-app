@@ -15,6 +15,7 @@ import '../../widgets/error_widget.dart';
 import '../../models/app_models.dart';
 import '../../services/role_access_service.dart';
 import '../../config/appwrite_backend_config.dart';
+import '../../widgets/shimmer_loading.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -45,7 +46,7 @@ class HomeScreen extends ConsumerWidget {
         ),
         child: authState.when(
           data: (user) => _buildHomeContent(context, ref, user, isGuest),
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => const HomeScreenSkeleton(),
           error: (_, __) => AppErrorWidget(
             title: 'Home is unavailable',
             message:

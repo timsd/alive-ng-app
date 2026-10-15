@@ -9,6 +9,7 @@ import '../services/tts_service.dart';
 import '../utils/text_formatter.dart';
 import '../utils/layout_fix_utils.dart';
 import 'bible_reference_widget.dart';
+import 'shimmer_loading.dart';
 
 class DailyVerseCard extends ConsumerStatefulWidget {
   final DailyVerse? verse;
@@ -150,11 +151,15 @@ class _DailyVerseCardState extends ConsumerState<DailyVerseCard> {
               ),
             ),
             const SizedBox(height: 16),
-            if (widget.isLoading)
-              const Center(
-                child: CircularProgressIndicator(),
-              )
-            else if (widget.verse != null) ...[
+            if (widget.isLoading) ...[
+              const ShimmerLoading(height: 16, borderRadius: 4),
+              const SizedBox(height: 8),
+              const ShimmerLoading(height: 16, borderRadius: 4),
+              const SizedBox(height: 8),
+              const ShimmerLoading(height: 16, width: 220, borderRadius: 4),
+              const SizedBox(height: 16),
+              const ShimmerLoading(height: 14, width: 120, borderRadius: 4),
+            ] else if (widget.verse != null) ...[
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

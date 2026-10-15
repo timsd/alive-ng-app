@@ -130,9 +130,6 @@
     }
 
     body {
-    }
-
-    body {
       font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       margin: 0;
       overflow-x: hidden;
@@ -216,73 +213,154 @@
     }
 
     .hero {
-      padding: 48px 24px;
+      position: relative;
+      padding: 72px 24px 56px;
       text-align: center;
-      background: linear-gradient(180deg, var(--background) 0%, var(--muted) 100%);
+      background: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(35, 62, 95, 0.12), transparent 70%),
+                  radial-gradient(ellipse 60% 40% at 85% 60%, rgba(229, 185, 77, 0.08), transparent 60%),
+                  linear-gradient(180deg, var(--background) 0%, var(--muted) 100%);
+      overflow: hidden;
+    }
+
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      border-radius: 9999px;
+      background: rgba(35, 62, 95, 0.06);
+      border: 1px solid rgba(35, 62, 95, 0.12);
+      color: var(--primary);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+      backdrop-filter: blur(8px);
     }
 
     .hero h1 {
-      margin: 0 0 8px;
-      font-size: 32px;
+      margin: 0 auto 16px;
+      max-width: 800px;
+      font-size: clamp(32px, 5.2vw, 54px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.12;
       color: var(--foreground);
     }
 
     .hero p {
-      margin: 0 0 24px;
-      font-size: 16px;
+      margin: 0 auto 32px;
+      max-width: 600px;
+      font-size: clamp(15px, 2vw, 18px);
+      line-height: 1.6;
       color: var(--muted-foreground);
     }
 
     .available-label {
       margin: 0 0 16px;
-      font-size: 14px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
       color: var(--muted-foreground);
     }
 
     .store-buttons {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(160px, auto));
-      gap: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
       justify-content: center;
-      justify-items: center;
       align-items: center;
+      max-width: 720px;
+      margin: 0 auto;
     }
 
     .store-buttons a,
     .store-buttons button {
-      display: inline-block;
-      padding: 12px 16px;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 22px;
       border-radius: var(--radius-lg);
       text-decoration: none;
       font-weight: 600;
+      font-size: 14px;
     }
 
     .store-buttons .btn-cta {
       display: flex;
       flex-direction: row;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       text-align: left;
       background: #FFFFFF;
       border: 1px solid var(--border);
-      border-radius: var(--radius-md);
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-      padding: 10px 14px;
+      border-radius: var(--radius-lg);
+      box-shadow: 0 4px 12px rgba(23, 38, 59, 0.04);
+      padding: 12px 20px;
+      transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+      cursor: pointer;
+    }
+
+    .store-buttons .btn-cta:hover {
+      transform: translateY(-2px);
+      border-color: var(--primary);
+      box-shadow: 0 8px 24px rgba(35, 62, 95, 0.12);
     }
 
     .store-buttons .btn-cta svg {
-      width: 20px;
-      height: 20px;
-      color: #6B7280;
+      width: 22px;
+      height: 22px;
+      color: var(--primary);
+      transition: transform 0.25s ease;
+    }
+
+    .store-buttons .btn-cta:hover svg {
+      transform: scale(1.1);
     }
 
     .btn-cta .cta-label {
       font-weight: 700;
-      color: #1F2937;
+      color: var(--foreground);
     }
 
     .btn-cta .cta-sub {
       display: none;
+    }
+
+    /* Modern feature cards */
+    .feature-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      background: var(--card);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+      transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.35s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 16px 36px -8px rgba(35, 62, 95, 0.14);
+      border-color: rgba(35, 62, 95, 0.25);
+    }
+
+    .feature-card .card-thumb {
+      height: 160px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .feature-card .card-thumb div {
+      width: 100%;
+      height: 100%;
+      transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .feature-card:hover .card-thumb div {
+      transform: scale(1.06);
     }
 
     .legal-links {
@@ -760,10 +838,13 @@
     <div class="header-actions"></div>
   </header>
   <section class="hero">
-    <h1>Welcome</h1>
-    <p>ALIVE Nigeria community app for prayer, study, health tracking, missions, and more, towards growing together in
-      faith and service.</p>
-    <div class="available-label">Available on the following</div>
+    <div class="hero-eyebrow">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="color:var(--gold);"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      FAITH &bull; FELLOWSHIP &bull; MISSIONS
+    </div>
+    <h1>Growing Together in Faith &amp; Service</h1>
+    <p>The official ALIVE Nigeria digital companion for prayer, spiritual study, health tracking, leadership collaboration, and nationwide mission impact.</p>
+    <div class="available-label">Available across platforms</div>
     <div class="store-buttons">
       <a class="btn-cta"
         href="/downloads/alive-ng-app.apk"
@@ -773,14 +854,14 @@
           <path
             d="M17.523 15.341c-.551 0-.999-.448-.999-1s.448-1 .999-1c.551 0 .999.448.999 1 0 .552-.448 1-.999 1m-11.046 0c-.551 0-.999-.448-.999-1s.448-1 .999-1c.551 0 .999.448.999 1 0 .552-.448 1-.999 1m11.405-6.02l1.997-3.46a.416.416 0 0 0-.152-.567.416.416 0 0 0-.568.152l-2.022 3.503C15.59 8.411 13.853 8.082 12 8.082s-3.59.329-5.137.868L4.84 5.447a.416.416 0 0 0-.567-.152.416.416 0 0 0-.152.567l1.997 3.46C2.689 11.187.343 14.659 0 18.761h24c-.343-4.102-2.689-7.574-6.119-9.44" />
         </svg>
-        <span class="cta-label">Android</span>
+        <span class="cta-label">Android App</span>
       </a>
       <button id="open-web-app" class="btn-cta" aria-label="Open Web App">
         <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20" aria-hidden="true">
           <path
             d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
         </svg>
-        <span class="cta-label">Web App</span>
+        <span class="cta-label">Open Web App</span>
       </button>
       <a class="btn-cta" href="https://apps.apple.com/app/id000000000" target="_blank" rel="noopener"
         aria-label="App Store">
@@ -788,7 +869,7 @@
           <path
             d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.62-.75 1.04-1.8.92-2.85-.9.04-1.99.6-2.64 1.35-.57.65-1.07 1.72-.94 2.74 1.01.08 2.04-.49 2.66-1.24" />
         </svg>
-        <span class="cta-label">iOS</span>
+        <span class="cta-label">iOS (App Store)</span>
       </a>
     </div>
   </section>
@@ -963,29 +1044,31 @@
   </div>
 
   <!-- Featured Grid -->
-  <section id="featured-grid" style="padding: 24px;">
+  <section id="featured-grid" style="padding: 48px 24px; max-width: 1200px; margin: 0 auto;">
+    <div style="text-align: center; margin-bottom: 36px;">
+      <div style="font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); margin-bottom: 8px;">Explore Our Ecosystem</div>
+      <h2 style="font-size: clamp(24px, 3.5vw, 36px); font-weight: 800; color: var(--foreground); margin: 0; letter-spacing: -0.02em;">Impacting Lives Across Nigeria</h2>
+    </div>
     <div style="
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 16px;">
+      gap: 20px;">
 
       <!-- Projects -->
-      <div
-        style="border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; background: var(--card);">
-        <div
-          style="height: 140px; background: url('https://images.unsplash.com/photo-1593914370442-49d414beca24?q=80&w=1031&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D') center/cover, #EDF2F7;">
+      <div class="feature-card">
+        <div class="card-thumb">
+          <div style="background: url('https://images.unsplash.com/photo-1593914370442-49d414beca24?q=80&w=1031&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D') center/cover, #EDF2F7;"></div>
         </div>
-        <div style="padding: 16px;">
-          <div
-            style="font-size: 12px; color: var(--muted-foreground); text-transform: uppercase; letter-spacing: 0.06em;">
-            Projects
+        <div style="padding: 20px; flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div style="font-size: 11px; font-weight: 700; color: var(--emerald); text-transform: uppercase; letter-spacing: 0.1em;">
+              Projects &amp; Impact
+            </div>
+            <div style="font-size: 19px; font-weight: 700; color: var(--foreground); margin-top: 6px;">Missions &amp; Outreaches</div>
+            <p style="font-size: 13px; color: var(--muted-foreground); margin: 8px 0 0; line-height: 1.5;">Support ongoing evangelical missions, school outreaches, and humanitarian projects nationwide.</p>
           </div>
-          <div style="font-size: 18px; font-weight: 600; color: var(--foreground); margin-top: 4px;">Missions &amp;
-            Outreaches
-          </div>
-          <div style="margin-top: 12px;">
-            <button id="open-projects"
-              style="padding: 10px 14px; border-radius: 6px; border: 1px solid #CBD5E0; background: var(--muted); color: var(--foreground); cursor: pointer;">
+          <div style="margin-top: 20px;">
+            <button id="open-projects" class="btn-cta" style="width: 100%; justify-content: center; box-sizing: border-box;">
               View Projects
             </button>
           </div>
@@ -993,64 +1076,63 @@
       </div>
 
       <!-- News -->
-      <div
-        style="border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; background: var(--card);">
-        <div
-          style="height: 140px; background: url('https://images.unsplash.com/photo-1518779578993-ec3579fee39f?auto=format&fit=crop&w=1200&q=80') center/cover, #EDF2F7;">
+      <div class="feature-card">
+        <div class="card-thumb">
+          <div style="background: url('https://images.unsplash.com/photo-1518779578993-ec3579fee39f?auto=format&fit=crop&w=1200&q=80') center/cover, #EDF2F7;"></div>
         </div>
-        <div style="padding: 16px;">
-          <div
-            style="font-size: 12px; color: var(--muted-foreground); text-transform: uppercase; letter-spacing: 0.06em;">
-            News</div>
-          <div style="font-size: 18px; font-weight: 600; color: var(--foreground); margin-top: 4px;">ALIVE Nigeria
-            News
+        <div style="padding: 20px; flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div style="font-size: 11px; font-weight: 700; color: var(--gold); text-transform: uppercase; letter-spacing: 0.1em;">
+              Updates
+            </div>
+            <div style="font-size: 19px; font-weight: 700; color: var(--foreground); margin-top: 6px;">ALIVE Nigeria News</div>
+            <p style="font-size: 13px; color: var(--muted-foreground); margin: 8px 0 0; line-height: 1.5;">Stay informed with the latest leadership announcements, conferences, and chapter developments.</p>
           </div>
-          <div style="margin-top: 12px;">
-            <a href="https://alivenigeria.org/news" target="_blank" rel="noopener"
-              style="display:inline-block; padding: 10px 14px; border-radius: 6px; background: var(--primary); color: var(--primary-foreground); text-decoration: none;">
-              Read Now
+          <div style="margin-top: 20px;">
+            <a href="https://alivenigeria.org/news" target="_blank" rel="noopener" class="btn-cta primary" style="width: 100%; justify-content: center; box-sizing: border-box;">
+              Read News
             </a>
           </div>
         </div>
       </div>
 
       <!-- Blog -->
-      <div
-        style="border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; background: var(--card);">
-        <div
-          style="height: 140px; background: url('https://media.istockphoto.com/id/1449034129/photo/blogging-for-beginners-how-to-start-blog-word-blog-and-laptop-mobile-phone-notebook-and.jpg?s=612x612&w=0&k=20&c=-NTl4B30g2wiXj8jaXRWIwD5rcUUsT_b0oltHmrvgKU=') center/cover, #FEF3C7;">
+      <div class="feature-card">
+        <div class="card-thumb">
+          <div style="background: url('https://media.istockphoto.com/id/1449034129/photo/blogging-for-beginners-how-to-start-blog-word-blog-and-laptop-mobile-phone-notebook-and.jpg?s=612x612&w=0&k=20&c=-NTl4B30g2wiXj8jaXRWIwD5rcUUsT_b0oltHmrvgKU=') center/cover, #FEF3C7;"></div>
         </div>
-        <div style="padding: 16px;">
-          <div
-            style="font-size: 12px; color: var(--muted-foreground); text-transform: uppercase; letter-spacing: 0.06em;">
-            Blog</div>
-          <div style="font-size: 18px; font-weight: 600; color: var(--foreground); margin-top: 4px;">Articles &amp;
-            Insights</div>
-          <div style="margin-top: 12px;">
-            <a href="https://alivenigeria.org/blogs" target="_blank" rel="noopener"
-              style="display:inline-block; padding: 10px 14px; border-radius: 6px; background: var(--primary); color: var(--primary-foreground); text-decoration: none;">
-              Read Now
+        <div style="padding: 20px; flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div style="font-size: 11px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 0.1em;">
+              Spiritual Nourishment
+            </div>
+            <div style="font-size: 19px; font-weight: 700; color: var(--foreground); margin-top: 6px;">Articles &amp; Insights</div>
+            <p style="font-size: 13px; color: var(--muted-foreground); margin: 8px 0 0; line-height: 1.5;">Deep dive into faith-building essays, health recipes, Bible studies, and personal testimonies.</p>
+          </div>
+          <div style="margin-top: 20px;">
+            <a href="https://alivenigeria.org/blogs" target="_blank" rel="noopener" class="btn-cta primary" style="width: 100%; justify-content: center; box-sizing: border-box;">
+              Explore Blog
             </a>
           </div>
         </div>
       </div>
 
       <!-- Events -->
-      <div
-        style="border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; background: var(--card);">
-        <div
-          style="height: 140px; background: url('https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D') center/cover, #EDE9FE;">
+      <div class="feature-card">
+        <div class="card-thumb">
+          <div style="background: url('https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D') center/cover, #EDE9FE;"></div>
         </div>
-        <div style="padding: 16px;">
-          <div
-            style="font-size: 12px; color: var(--muted-foreground); text-transform: uppercase; letter-spacing: 0.06em;">
-            Events</div>
-          <div style="font-size: 18px; font-weight: 600; color: var(--foreground); margin-top: 4px;">Upcoming Programs
+        <div style="padding: 20px; flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div style="font-size: 11px; font-weight: 700; color: var(--gold); text-transform: uppercase; letter-spacing: 0.1em;">
+              Conferences &amp; Rallies
+            </div>
+            <div style="font-size: 19px; font-weight: 700; color: var(--foreground); margin-top: 6px;">Upcoming Programs</div>
+            <p style="font-size: 13px; color: var(--muted-foreground); margin: 8px 0 0; line-height: 1.5;">Join youth rallies, regional retreats, discipleship trainings, and health ministry symposiums.</p>
           </div>
-          <div style="margin-top: 12px;">
-            <a href="https://alivenigeria.org/events?category=all" target="_blank" rel="noopener"
-              style="display:inline-block; padding: 10px 14px; border-radius: 6px; background: var(--gold); color: var(--gold-foreground); text-decoration: none;">
-              View Now
+          <div style="margin-top: 20px;">
+            <a href="https://alivenigeria.org/events?category=all" target="_blank" rel="noopener" class="btn-cta gold" style="width: 100%; justify-content: center; box-sizing: border-box;">
+              View Events
             </a>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alive_flutter_app/constants/app_constants.dart';
@@ -54,45 +55,11 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
         ),
       ),
       body: widget.child,
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: _getCurrentIndex(currentLocation),
-        onTap: (index) => _onItemTapped(context, index),
-        selectedItemColor: Theme.of(context)
-            .bottomNavigationBarTheme
-            .selectedItemColor ??
-            Theme.of(context).colorScheme.primary,
-        unselectedItemColor: Theme.of(context)
-            .bottomNavigationBarTheme
-            .unselectedItemColor ??
-            Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-        items: [
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.home_outlined),
-            activeIcon: const Icon(Icons.home),
-            label: l10n?.home ?? 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.menu_book_outlined),
-            activeIcon: const Icon(Icons.menu_book),
-            label: l10n?.study ?? 'Study',
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.volunteer_activism_outlined),
-            activeIcon: const Icon(Icons.volunteer_activism),
-            label: l10n?.prayer ?? 'Prayer',
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.health_and_safety_outlined),
-            activeIcon: const Icon(Icons.health_and_safety),
-            label: translate('health'),
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.grid_view_rounded),
-            activeIcon: const Icon(Icons.grid_view_rounded),
-            label: translate('more'),
-          ),
-        ],
+      bottomNavigationBar: _buildCustomBottomNavigationBar(
+        context,
+        _getCurrentIndex(currentLocation),
+        l10n,
+        translate,
       ),
     );
   }
@@ -557,6 +524,140 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
       },
     );
   }
+
+  Widget _buildCustomBottomNavigationBar(
+    BuildContext context,
+    int currentIndex,
+    AppLocalizations? l10n,
+    String Function(String) translate,
+  ) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final navItems = [
+      _NavDestination(
+        icon: Icons.home_outlined,
+        activeIcon: Icons.home_rounded,
+        label: l10n?.home ?? 'Home',
+      ),
+      _NavDestination(
+        icon: Icons.menu_book_outlined,
+        activeIcon: Icons.menu_book_rounded,
+        label: l10n?.study ?? 'Study',
+      ),
+      _NavDestination(
+        icon: Icons.volunteer_activism_outlined,
+        activeIcon: Icons.volunteer_activism_rounded,
+        label: l10n?.prayer ?? 'Prayer',
+      ),
+      _NavDestination(
+        icon: Icons.health_and_safety_outlined,
+        activeIcon: Icons.health_and_safety_rounded,
+        label: translate('health'),
+      ),
+      _NavDestination(
+        icon: Icons.grid_view_outlined,
+        activeIcon: Icons.grid_view_rounded,
+        label: translate('more'),
+      ),
+    ];
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        border: Border(
+          top: BorderSide(
+            color: theme.colorScheme.outlineVariant.withValues(alpha: isDark ? 0.2 : 0.45),
+            width: 1,
+          ),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.05),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: List.generate(navItems.length, (index) {
+              final item = navItems[index];
+              final isSelected = index == currentIndex;
+
+              return Expanded(
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      _onItemTapped(context, index);
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    splashColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+                    highlightColor: Colors.transparent,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 250),
+                            curve: Curves.easeOutCubic,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: isSelected ? 16 : 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? theme.colorScheme.primary.withValues(alpha: 0.12)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 200),
+                              child: Icon(
+                                isSelected ? item.activeIcon : item.icon,
+                                key: ValueKey('$index-$isSelected'),
+                                size: 22,
+                                color: isSelected
+                                    ? theme.colorScheme.primary
+                                    : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.75),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          AnimatedDefaultTextStyle(
+                            duration: const Duration(milliseconds: 200),
+                            style: theme.textTheme.labelSmall!.copyWith(
+                              fontSize: 11,
+                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                              color: isSelected
+                                  ? theme.colorScheme.primary
+                                  : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.75),
+                            ),
+                            child: Text(
+                              item.label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _MoreItem {
@@ -567,4 +668,17 @@ class _MoreItem {
 
   const _MoreItem(this.label, this.icon, this.route, {this.color});
 }
+
+class _NavDestination {
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+
+  const _NavDestination({
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+  });
+}
+
 

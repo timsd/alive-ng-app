@@ -1,3 +1,4 @@
+import 'dart:math' show min;
 import '../../services/appwrite_facade.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -24,6 +25,7 @@ import '../../services/monthly_reminder_setting_service.dart';
 import '../../utils/responsive_utils.dart';
 import '../../models/discipleship_models.dart';
 import '../../services/discipleship_service.dart';
+import '../../widgets/shimmer_loading.dart';
 import 'package:intl/intl.dart';
 
 import 'package:url_launcher/url_launcher.dart';
@@ -53,7 +55,8 @@ class _AdminDashboardContent extends StatefulWidget {
   State<_AdminDashboardContent> createState() => _AdminDashboardContentState();
 }
 
-class _AdminDashboardContentState extends State<_AdminDashboardContent> {
+class _AdminDashboardContentState extends State<_AdminDashboardContent>
+    with TickerProviderStateMixin {
   final RoleAccessService _roleService = RoleAccessService.instance;
   final TablesDB _tables = TablesDB(appwriteClient);
   bool _isLoading = true;
@@ -80,10 +83,24 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
   int _totalPrayerRequests = 0;
   int _answeredPrayers = 0;
 
+  // ─── Premium animation & search ───
+  late final AnimationController _staggerController;
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
+    _staggerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
     _loadDashboardData();
+  }
+
+  @override
+  void dispose() {
+    _staggerController.dispose();
+    super.dispose();
   }
 
   /// Resolves whether this person holds a financial office.
@@ -133,6 +150,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
         setState(() {
           _isLoading = false;
         });
+        _staggerController.forward();
       }
     }
   }
@@ -304,11 +322,13 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(
-            color: Theme.of(context).colorScheme.primary,
-          ),
+        appBar: CustomAppBar(
+          showBackButton: true,
+          showDonationButton: false,
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          foregroundColor: Theme.of(context).colorScheme.onPrimary,
         ),
+        body: _buildSkeletonBody(context),
       );
     }
 
@@ -350,6 +370,8 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
       );
     }
 
+    final isWide = MediaQuery.of(context).size.width >= 920;
+
     return Scaffold(
       appBar: CustomAppBar(
         showBackButton: true,
@@ -360,7 +382,12 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh dashboard',
-            onPressed: _loadDashboardStats,
+            onPressed: () {
+              _staggerController.reset();
+              _loadDashboardStats().then((_) {
+                if (mounted) _staggerController.forward();
+              });
+            },
           ),
 
           IconButton(
@@ -458,474 +485,250 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Welcome Card
-            Container(
-              decoration: _panelDecoration(
-                context,
-                tint: Theme.of(context).colorScheme.primaryContainer,
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      child: Icon(
-                        Icons.admin_panel_settings,
-                        color: Theme.of(context).colorScheme.onPrimary,
-                      ),
+      body: _isLoading
+          ? const AdminDashboardSkeleton()
+          : (isWide ? _buildDesktopLayout(context) : _buildMobileLayout(context)),
+    );
+  }
+
+  // ─── Desktop: sidebar + content ───
+
+  Widget _buildDesktopLayout(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        // Sidebar
+        Container(
+          width: 240,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            border: Border(
+              right: BorderSide(color: theme.colorScheme.outlineVariant),
+            ),
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Text(
+                    'NAVIGATION',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      letterSpacing: 1.2,
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Welcome, ${_currentUser?.email ?? 'Administrator'}',
-                            style: Theme.of(context)
-                                .textTheme
-                                .headlineSmall
-                                ?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color:
-                                      Theme.of(context).colorScheme.onSurface,
-                                ),
-                          ),
-                          Text(
-                            'ALIVE Nigeria Admin Dashboard',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.copyWith(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
-                                ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
+                _buildSidebarTile(Icons.people_outline, 'Users', () => context.go(AppConstants.roleManagementRoute)),
+                _buildSidebarTile(Icons.how_to_reg_outlined, 'Approvals', () => context.go(AppConstants.adminApprovalRoute)),
+                _buildSidebarTile(Icons.library_books_outlined, 'Content', () => context.go(AppConstants.tractPodcastAdminRoute)),
+                _buildSidebarTile(Icons.location_city_outlined, 'Chapters', () => _navigateToChapterManagement()),
+                if (_canAccessFinance)
+                  _buildSidebarTile(Icons.savings_outlined, 'Finance', () => context.go(AppConstants.adminDonationsReportRoute)),
+                _buildSidebarTile(Icons.people_outline, 'Discipleship', () => _showOfficerRoutingDialog()),
+                _buildSidebarTile(Icons.cloud_upload_outlined, 'Storage', () => _navigateToStorageAdmin()),
+                _buildSidebarTile(Icons.settings_outlined, 'Settings', () => _navigateToAppSettings()),
+                const Divider(height: 32),
+                _buildSidebarTile(Icons.archive_outlined, 'Archived', () => context.go(AppConstants.userArchiveRoute)),
+                _buildSidebarTile(Icons.lock_clock_outlined, 'SSL Check', () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SSLStatusScreen()),
+                )),
+              ],
+            ),
+          ),
+        ),
+        // Main content area
+        Expanded(
+          child: _buildScrollableContent(context),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSidebarTile(IconData icon, String label, VoidCallback onTap) {
+    final theme = Theme.of(context);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              Icon(icon, size: 20, color: theme.colorScheme.primary),
+              const SizedBox(width: 12),
+              Text(
+                label,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─── Mobile: single-column scroll ───
+
+  Widget _buildMobileLayout(BuildContext context) {
+    return _buildScrollableContent(context);
+  }
+
+  // ─── Shared scrollable content ───
+
+  Widget _buildScrollableContent(BuildContext context) {
+    final theme = Theme.of(context);
+    final isWide = MediaQuery.of(context).size.width >= 920;
+
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(isWide ? 28 : 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ─── Hero welcome banner ───
+          _buildStaggeredChild(
+            index: 0,
+            child: _buildHeroBanner(context),
+          ),
+
+          const SizedBox(height: 24),
+
+          // ─── Unified stats grid (no duplicate) ───
+          _buildStaggeredChild(
+            index: 1,
+            child: _buildStatsGrid(context),
+          ),
+
+          const SizedBox(height: 24),
+
+          // ─── Podcast breakdown (collapsible) ───
+          if (_totalPodcasts > 0) ...[
+            _buildStaggeredChild(
+              index: 2,
+              child: _buildPodcastBreakdownPanel(context),
+            ),
+            const SizedBox(height: 24),
+          ],
+
+          // ─── Management tools search ───
+          _buildStaggeredChild(
+            index: 3,
+            child: _buildManagementHeader(context),
+          ),
+
+          const SizedBox(height: 16),
+
+          // ─── Management sections ───
+          _buildStaggeredChild(
+            index: 4,
+            child: _buildFilteredManagementSections(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Staggered animation wrapper ───
+
+  Widget _buildStaggeredChild({required int index, required Widget child}) {
+    final delay = (index * 0.12).clamp(0.0, 0.6);
+    final end = (delay + 0.4).clamp(0.0, 1.0);
+    final animation = CurvedAnimation(
+      parent: _staggerController,
+      curve: Interval(delay, end, curve: Curves.easeOutCubic),
+    );
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, _) {
+        return Opacity(
+          opacity: animation.value,
+          child: Transform.translate(
+            offset: Offset(0, 24 * (1 - animation.value)),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
+  // ─── Hero banner with gradient ───
+
+  Widget _buildHeroBanner(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? [
+                  theme.colorScheme.primary.withValues(alpha: 0.25),
+                  theme.colorScheme.secondary.withValues(alpha: 0.12),
+                ]
+              : [
+                  theme.colorScheme.primary,
+                  theme.colorScheme.primary.withValues(alpha: 0.75),
+                ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.primary.withValues(alpha: isDark ? 0.2 : 0.25),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Row(
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: isDark ? 0.12 : 0.2),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(
+                Icons.admin_panel_settings,
+                color: isDark ? theme.colorScheme.primary : Colors.white,
+                size: 28,
               ),
             ),
-
-            const SizedBox(height: 24),
-
-            // Community Highlights — concise archived-user style list
-            Row(
-              children: [
-                Icon(
-                  Icons.auto_graph_rounded,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: 22,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Community Highlights',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Welcome, ${_currentUser?.email?.split('@').first ?? 'Administrator'}',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? theme.colorScheme.onSurface : Colors.white,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _buildHighlightTile('Members', _totalUsers.toString(), Icons.groups_rounded),
-            _buildHighlightTile('Daily active', _dailyUsers.toString(), Icons.bolt_rounded),
-            _buildHighlightTile('Prayer requests', _totalPrayerRequests.toString(), Icons.favorite_rounded),
-            _buildHighlightTile('Answered prayers', _answeredPrayers.toString(), Icons.verified_rounded),
-
-            const SizedBox(height: 24),
-
-            // Statistics Cards
-            Text(
-              'System Overview',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 16),
-
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatCard(
-                    'Total Users',
-                    _totalUsers.toString(),
-                    Icons.people,
-                    Theme.of(context).colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatCard(
-                    'Chapters',
-                    _totalChapters.toString(),
-                    Icons.location_city,
-                    Theme.of(context).colorScheme.secondary,
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 24),
-
-            // Podcast Stats
-            Text(
-              'Podcast Stats',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatCard(
-                    'Total Podcasts',
-                    _totalPodcasts.toString(),
-                    Icons.podcasts,
-                    Theme.of(context).colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatCard(
-                    'Categories',
-                    _podcastCategoryCounts.length.toString(),
-                    Icons.category,
-                    Theme.of(context).colorScheme.tertiary,
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 12),
-            Container(
-              decoration: _panelDecoration(context),
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.legend_toggle,
-                            color: Theme.of(context).colorScheme.primary),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Podcast Categories Breakdown',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).colorScheme.onSurface,
-                              ),
-                        ),
-                      ],
+                  const SizedBox(height: 4),
+                  Text(
+                    'ALIVE Nigeria Admin Dashboard',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: isDark
+                          ? theme.colorScheme.onSurfaceVariant
+                          : Colors.white.withValues(alpha: 0.85),
                     ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: _podcastCategoryCounts.entries.map((e) {
-                        final display = _displayPodcastCategory(e.key);
-                        return Chip(
-                          avatar: Icon(Icons.label,
-                              size: 18,
-                              color: Theme.of(context).colorScheme.primary),
-                          label: Text('$display: ${e.value}'),
-                          side: BorderSide(
-                            color: Theme.of(context).colorScheme.outlineVariant,
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatCard(
-                    'Active Reports',
-                    _activeReports.toString(),
-                    Icons.assessment,
-                    Theme.of(context).colorScheme.tertiary,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatCard(
-                    'Archived Users',
-                    _archivedUsers.toString(),
-                    Icons.archive,
-                    Theme.of(context).colorScheme.error,
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 32),
-
-            // Management Sections
-            Text(
-              'Management Tools',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 16),
-
-
-
-            // User Management
-            _buildManagementSection(
-              'User Management',
-              Icons.people_outline,
-              [
-                _buildActionTile(
-                  'Manage Users',
-                  'View, edit, and manage all user accounts',
-                  Icons.person_outline,
-                  () => _navigateToUserManagement(),
-                ),
-                _buildActionTile(
-                  'User Approval',
-                  'Review and approve new user registrations',
-                  Icons.how_to_reg_outlined,
-                  () => context.go(AppConstants.adminApprovalRoute),
-                ),
-                _buildActionTile(
-                  'Archived Users',
-                  'View and manage archived user accounts',
-                  Icons.archive_outlined,
-                  () => _navigateToArchivedUsers(),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-
-            // Content Management
-            _buildManagementSection(
-              'Content Management',
-              Icons.library_books_outlined,
-              [
-                _buildActionTile(
-                  'Tract & Podcast Management',
-                  'Manage tracts, podcasts, and categories',
-                  Icons.article_outlined,
-                  () => context.go(AppConstants.tractPodcastAdminRoute),
-                ),
-                _buildActionTile(
-                  'Sample Content (user-facing seeds)',
-                  'Hide or restore sample podcasts & episodes users currently see',
-                  Icons.preview_outlined,
-                  () => context.go(AppConstants.sampleContentAdminRoute),
-                ),
-                _buildActionTile(
-                  'Monthly Support Reminder',
-                  'Send on the 1st of each month. Enable to let members opt out themselves.',
-                  Icons.notifications_active_outlined,
-                  () => _showMonthlyReminderControl(),
-                ),
-                _buildActionTile(
-                  'Featured Content',
-                  'Manage featured content and highlights',
-                  Icons.star_outline,
-                  () => _navigateToContentManagement('featured'),
-                ),
-                _buildActionTile(
-                  'Announcements',
-                  'Create and manage app announcements',
-                  Icons.campaign_outlined,
-                  () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const AdminAnnouncementsScreen(),
-                    ),
-                  ),
-                ),
-                _buildActionTile(
-                  'Kids Stories',
-                  'Upload PDF to extract text or type in content and upload media (choose which to use)',
-                  Icons.auto_stories,
-                  () => context.go(AppConstants.adminKidsStoriesRoute),
-                ),
-                _buildActionTile(
-                  'Kids Missions',
-                  'Upload PDF to extract text or type in content and upload media (choose which to use)',
-                  Icons.assignment_turned_in,
-                  () => context.go(AppConstants.adminKidsMissionsRoute),
-                ),
-                _buildActionTile(
-                  'Study Guides',
-                  'Upload PDF to extract text or type in content and upload media (choose which to use)',
-                  Icons.menu_book,
-                  () => context.go(AppConstants.adminStudyGuidesRoute),
-                ),
-                _buildActionTile(
-                  'Content Pages & Projects',
-                  'Manage general app content pages, custom sections, and community projects',
-                  Icons.post_add_outlined,
-                  () => context.go(AppConstants.contentManagementRoute),
-                ),
-                _buildActionTile(
-                  'Health+ Content',
-                  'Manage plant-based recipes, natural remedies, and community discussions',
-                  Icons.health_and_safety_rounded,
-                  () => context.go(AppConstants.adminHealthContentRoute),
-                ),
-
-              ],
-            ),
-
-            const SizedBox(height: 16),
-
-            // Chapter Management
-            _buildManagementSection(
-              'Chapter Management',
-              Icons.location_city_outlined,
-              [
-                _buildActionTile(
-                  'Chapter Overview',
-                  'View all chapters and their statistics',
-                  Icons.dashboard_outlined,
-                  () => _navigateToChapterManagement(),
-                ),
-                _buildActionTile(
-                  'Leadership Archive',
-                  'View historical leadership records and past administrations',
-                  Icons.history_edu,
-                  () => context.go(AppConstants.leadershipArchiveRoute),
-                ),
-                _buildActionTile(
-                  'Board of Trustees (BOD)',
-                  'Manage Board records, official resolutions, decisions, and documents',
-                  Icons.account_balance_outlined,
-                  () => context.go(AppConstants.bodTrusteesRoute),
-                ),
-                _buildActionTile(
-                  'Chapter Reports',
-                  'Review chapter activity reports',
-                  Icons.assessment_outlined,
-                  () => _navigateToChapterReports(),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-
-            // Donations & Finance
-            //
-            // Restricted to the Treasurer and Executive President. Previously
-            // this section had no check of its own, so anyone who could reach
-            // the dashboard at all also saw every gift and the finance report.
-            if (_canAccessFinance)
-              _buildManagementSection(
-                'Donations & Finance',
-                Icons.savings_outlined,
-                [
-                  _buildActionTile(
-                    'Donation Reports',
-                    'Search, filter and export every gift, including the purpose '
-                        'each donation was designated toward',
-                    Icons.receipt_long_outlined,
-                    () => context.go(AppConstants.adminDonationsReportRoute),
                   ),
                 ],
               ),
-
-            const SizedBox(height: 16),
-
-            // Discipleship Operations
-            _buildManagementSection(
-              'Discipleship Operations',
-              Icons.people_outline,
-              [
-                _buildActionTile(
-                  'Report Officers & Routing',
-                  'Map Coordinators and Directors to receive dispatched discipleship reports',
-                  Icons.mark_email_read_outlined,
-                  () => _showOfficerRoutingDialog(),
-                ),
-                _buildActionTile(
-                  'Disciple Deletion Requests',
-                  'Review and approve or reject disciple deletion requests',
-                  Icons.person_remove_outlined,
-                  () => _showDeletionRequestsDialog(),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-
-            // Storage Management
-            _buildManagementSection(
-              'Storage Management',
-              Icons.cloud_upload_outlined,
-              [
-                _buildActionTile(
-                  'File Storage',
-                  'Manage buckets and files, including audio, PDFs and profile pictures',
-                  Icons.folder_outlined,
-                  () => _navigateToStorageAdmin(),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-
-            // System Settings
-            _buildManagementSection(
-              'System Settings',
-              Icons.settings_outlined,
-              [
-                _buildActionTile(
-                  'App Configuration',
-                  'Configure app settings and preferences',
-                  Icons.tune_outlined,
-                  () => _navigateToAppSettings(),
-                ),
-                _buildActionTile(
-                  'Backup & Restore',
-                  'Manage system backups and data restoration',
-                  Icons.backup_outlined,
-                  () => _navigateToBackupSettings(),
-                ),
-                _buildActionTile(
-                  'System Logs',
-                  'View system logs and error reports',
-                  Icons.bug_report_outlined,
-                  () => _navigateToSystemLogs(),
-                ),
-                _buildActionTile(
-                  'SSL & Network Diagnostics',
-                  'Verify Appwrite endpoint connectivity and SSL encryption status',
-                  Icons.lock_clock_outlined,
-                  () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const SSLStatusScreen(),
-                    ),
-                  ),
-                ),
-              ],
             ),
           ],
         ),
@@ -933,16 +736,220 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent> {
     );
   }
 
-  Widget _buildHighlightTile(String title, String value, IconData icon) {
+  // ─── Unified stats grid (replaces duplicate Community Highlights + System Overview) ───
+
+  Widget _buildStatsGrid(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        dense: true,
-        leading: Icon(icon, color: theme.colorScheme.primary),
-        title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
-        trailing: Text(value, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+    final isWide = MediaQuery.of(context).size.width >= 920;
+    final crossCount = isWide ? 4 : 2;
+
+    final stats = [
+      _StatItem('Members', _totalUsers.toString(), Icons.groups_rounded, theme.colorScheme.primary),
+      _StatItem('Daily Active', _dailyUsers.toString(), Icons.bolt_rounded, theme.colorScheme.tertiary),
+      _StatItem('Prayers', _totalPrayerRequests.toString(), Icons.favorite_rounded, const Color(0xFFE5513E)),
+      _StatItem('Answered', _answeredPrayers.toString(), Icons.verified_rounded, const Color(0xFF2FAD72)),
+      _StatItem('Chapters', _totalChapters.toString(), Icons.location_city_rounded, theme.colorScheme.secondary),
+      _StatItem('Podcasts', _totalPodcasts.toString(), Icons.podcasts_rounded, const Color(0xFF8B5CF6)),
+      _StatItem('Reports', _activeReports.toString(), Icons.assessment_rounded, const Color(0xFF0EA5E9)),
+      _StatItem('Archived', _archivedUsers.toString(), Icons.archive_rounded, theme.colorScheme.error),
+    ];
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossCount,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: isWide ? 1.6 : 1.45,
       ),
+      itemCount: stats.length,
+      itemBuilder: (context, index) => _buildPremiumStatCard(stats[index]),
+    );
+  }
+
+  // ─── Podcast categories breakdown ───
+
+  Widget _buildPodcastBreakdownPanel(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      decoration: _panelDecoration(context),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.legend_toggle, color: theme.colorScheme.primary, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'Podcast Categories',
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const Spacer(),
+                Text(
+                  '$_totalPodcasts total',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _podcastCategoryCounts.entries.map((e) {
+                final display = _displayPodcastCategory(e.key);
+                return Chip(
+                  avatar: Icon(Icons.label, size: 16, color: theme.colorScheme.primary),
+                  label: Text('$display: ${e.value}',
+                    style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500),
+                  ),
+                  side: BorderSide(color: theme.colorScheme.outlineVariant),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── Management header with search ───
+
+  Widget _buildManagementHeader(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Management Tools',
+          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
+          decoration: InputDecoration(
+            hintText: 'Search tools...',
+            prefixIcon: Icon(Icons.search, size: 20, color: theme.colorScheme.onSurfaceVariant),
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ─── Filtered management sections ───
+
+  Widget _buildFilteredManagementSections(BuildContext context) {
+    final q = _searchQuery;
+
+    // Each tile carries a searchable label so we can filter the whole section
+    final sections = <_MgmtSection>[
+      _MgmtSection('User Management', Icons.people_outline, [
+        _MgmtTile('Manage Users', 'View, edit, and manage all user accounts', Icons.person_outline, () => context.go(AppConstants.roleManagementRoute)),
+        _MgmtTile('User Approval', 'Review and approve new user registrations', Icons.how_to_reg_outlined, () => context.go(AppConstants.adminApprovalRoute)),
+        _MgmtTile('Archived Users', 'View and manage archived user accounts', Icons.archive_outlined, () => context.go(AppConstants.userArchiveRoute)),
+      ]),
+      _MgmtSection('Content Management', Icons.library_books_outlined, [
+        _MgmtTile('Tract & Podcast Management', 'Manage tracts, podcasts, and categories', Icons.article_outlined, () => context.go(AppConstants.tractPodcastAdminRoute)),
+        _MgmtTile('Sample Content (user-facing seeds)', 'Hide or restore sample podcasts & episodes users currently see', Icons.preview_outlined, () => context.go(AppConstants.sampleContentAdminRoute)),
+        _MgmtTile('Monthly Support Reminder', 'Send on the 1st of each month. Enable to let members opt out.', Icons.notifications_active_outlined, () => _showMonthlyReminderControl()),
+        _MgmtTile('Featured Content', 'Manage featured content and highlights', Icons.star_outline, () => _navigateToContentManagement('featured')),
+        _MgmtTile('Announcements', 'Create and manage app announcements', Icons.campaign_outlined, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminAnnouncementsScreen()))),
+        _MgmtTile('Kids Stories', 'Upload PDF or type content with media', Icons.auto_stories, () => context.go(AppConstants.adminKidsStoriesRoute)),
+        _MgmtTile('Kids Missions', 'Upload PDF or type content with media', Icons.assignment_turned_in, () => context.go(AppConstants.adminKidsMissionsRoute)),
+        _MgmtTile('Study Guides', 'Upload PDF or type content with media', Icons.menu_book, () => context.go(AppConstants.adminStudyGuidesRoute)),
+        _MgmtTile('Content Pages & Projects', 'Manage app content pages, custom sections, and projects', Icons.post_add_outlined, () => context.go(AppConstants.contentManagementRoute)),
+        _MgmtTile('Health+ Content', 'Manage plant-based recipes, remedies, and discussions', Icons.health_and_safety_rounded, () => context.go(AppConstants.adminHealthContentRoute)),
+      ]),
+      _MgmtSection('Chapter Management', Icons.location_city_outlined, [
+        _MgmtTile('Chapter Overview', 'View all chapters and their statistics', Icons.dashboard_outlined, () => _navigateToChapterManagement()),
+        _MgmtTile('Leadership Archive', 'View historical leadership records', Icons.history_edu, () => context.go(AppConstants.leadershipArchiveRoute)),
+        _MgmtTile('Board of Trustees (BOD)', 'Manage Board records, resolutions, decisions', Icons.account_balance_outlined, () => context.go(AppConstants.bodTrusteesRoute)),
+        _MgmtTile('Chapter Reports', 'Review chapter activity reports', Icons.assessment_outlined, () => _navigateToChapterReports()),
+      ]),
+      if (_canAccessFinance)
+        _MgmtSection('Donations & Finance', Icons.savings_outlined, [
+          _MgmtTile('Donation Reports', 'Search, filter and export every gift', Icons.receipt_long_outlined, () => context.go(AppConstants.adminDonationsReportRoute)),
+        ]),
+      _MgmtSection('Discipleship Operations', Icons.people_outline, [
+        _MgmtTile('Report Officers & Routing', 'Map Coordinators and Directors to receive dispatched reports', Icons.mark_email_read_outlined, () => _showOfficerRoutingDialog()),
+        _MgmtTile('Disciple Deletion Requests', 'Review and approve or reject deletion requests', Icons.person_remove_outlined, () => _showDeletionRequestsDialog()),
+      ]),
+      _MgmtSection('Storage Management', Icons.cloud_upload_outlined, [
+        _MgmtTile('File Storage', 'Manage buckets, audio, PDFs and profile pictures', Icons.folder_outlined, () => _navigateToStorageAdmin()),
+      ]),
+      _MgmtSection('System Settings', Icons.settings_outlined, [
+        _MgmtTile('App Configuration', 'Configure app settings and preferences', Icons.tune_outlined, () => _navigateToAppSettings()),
+        _MgmtTile('Backup & Restore', 'Manage system backups and data restoration', Icons.backup_outlined, () => _navigateToBackupSettings()),
+        _MgmtTile('System Logs', 'View system logs and error reports', Icons.bug_report_outlined, () => _navigateToSystemLogs()),
+        _MgmtTile('SSL & Network Diagnostics', 'Verify endpoint connectivity and SSL encryption', Icons.lock_clock_outlined, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SSLStatusScreen()))),
+      ]),
+    ];
+
+    // Filter sections and tiles when search is active
+    final filtered = q.isEmpty
+        ? sections
+        : sections
+            .map((s) {
+              final matchedTiles = s.tiles
+                  .where((t) =>
+                      t.title.toLowerCase().contains(q) ||
+                      t.subtitle.toLowerCase().contains(q) ||
+                      s.title.toLowerCase().contains(q))
+                  .toList();
+              return matchedTiles.isEmpty ? null : _MgmtSection(s.title, s.icon, matchedTiles);
+            })
+            .whereType<_MgmtSection>()
+            .toList();
+
+    if (filtered.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 48),
+          child: Column(
+            children: [
+              Icon(Icons.search_off, size: 48, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4)),
+              const SizedBox(height: 12),
+              Text(
+                'No tools match "$_searchQuery"',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: filtered.map((section) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: _buildManagementSection(
+            section.title,
+            section.icon,
+            section.tiles
+                .map((t) => _buildActionTile(t.title, t.subtitle, t.icon, t.onTap))
+                .toList(),
+          ),
+        );
+      }).toList(),
     );
   }
 
