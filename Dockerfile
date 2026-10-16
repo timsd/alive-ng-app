@@ -1,7 +1,6 @@
 # syntax=docker/dockerfile:1
 
-# Use lightweight web-focused Flutter image instead of heavy cirruslabs Android SDK image
-FROM ghcr.io/instrumentisto/flutter:3.22.0 AS build
+FROM ghcr.io/cirruslabs/flutter:stable AS build
 
 WORKDIR /app
 
