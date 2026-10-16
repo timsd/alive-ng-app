@@ -218,68 +218,60 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
               SizedBox(
                   height: ResponsiveUtils.getResponsiveValue(
                       context: context, mobile: 20, tablet: 24, desktop: 28)),
-              // Duolingo-style Streak & Gamification Banner
+              // Spiritual Habit & Consistency Card
               Container(
                 margin: EdgeInsets.symmetric(
                     horizontal: ResponsiveUtils.getResponsiveValue(
                         context: context, mobile: 16, tablet: 20, desktop: 24)),
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Theme.of(context).colorScheme.primaryContainer,
-                      Theme.of(context).colorScheme.surface,
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+                    color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.05),
+                      color: Colors.black.withValues(alpha: 0.03),
                       blurRadius: 8,
-                      offset: const Offset(0, 3),
+                      offset: const Offset(0, 2),
                     ),
                   ],
                 ),
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: Colors.orange.withValues(alpha: 0.2),
-                        shape: BoxShape.circle,
+                        color: const Color(0xFFE5B94D).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Text('🔥', style: TextStyle(fontSize: 26)),
+                      child: const Icon(
+                        Icons.bookmark_added_rounded,
+                        color: Color(0xFFD4A017),
+                        size: 24,
+                      ),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              Text(
-                                '$_currentStreak Day Devotional Streak!',
-                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: Theme.of(context).colorScheme.onSurface,
-                                    ),
-                              ),
-                              const SizedBox(width: 6),
-                              const Icon(Icons.verified, color: Colors.orange, size: 16),
-                            ],
+                          Text(
+                            '$_currentStreak Day Devotional Journey',
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).colorScheme.onSurface,
+                                ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 3),
                           Text(
                             _currentStreak > 1
-                                ? 'Praise God! You have maintained $_currentStreak consecutive days in your devotional habit.'
-                                : 'Complete daily activities to build and grow your spiritual habit with automatic tracking.',
+                                ? 'You have dedicated $_currentStreak consecutive days to scripture and reflection.'
+                                : 'Complete your daily devotional tasks to build a steadfast habit in the Word.',
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  height: 1.35,
                                 ),
                           ),
                         ],

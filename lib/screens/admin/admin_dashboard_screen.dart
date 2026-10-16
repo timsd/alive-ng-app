@@ -1,4 +1,3 @@
-import 'dart:math' show min;
 import '../../services/appwrite_facade.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -18,7 +17,6 @@ import 'chapter_reports_screen.dart';
 import 'app_settings_screen.dart';
 import '../../models/podcast_models.dart';
 import 'storage_admin_screen.dart';
-import 'admin_donations_report_screen.dart';
 import 'ssl_status_screen.dart';
 import '../../services/appwrite_admin_export_service.dart';
 import '../../services/monthly_reminder_setting_service.dart';
@@ -328,7 +326,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
           backgroundColor: Theme.of(context).colorScheme.primary,
           foregroundColor: Theme.of(context).colorScheme.onPrimary,
         ),
-        body: _buildSkeletonBody(context),
+        body: const AdminDashboardSkeleton(),
       );
     }
 
@@ -584,7 +582,6 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
   // ─── Shared scrollable content ───
 
   Widget _buildScrollableContent(BuildContext context) {
-    final theme = Theme.of(context);
     final isWide = MediaQuery.of(context).size.width >= 920;
 
     return SingleChildScrollView(
@@ -710,7 +707,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Welcome, ${_currentUser?.email?.split('@').first ?? 'Administrator'}',
+                    'Welcome, ${_currentUser?.email != null ? _currentUser!.email.split('@').first : 'Administrator'}',
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: isDark ? theme.colorScheme.onSurface : Colors.white,
@@ -766,6 +763,10 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
       itemCount: stats.length,
       itemBuilder: (context, index) => _buildPremiumStatCard(stats[index]),
     );
+  }
+
+  Widget _buildPremiumStatCard(_StatItem item) {
+    return _buildStatCard(item.title, item.value, item.icon, item.color);
   }
 
   // ─── Podcast categories breakdown ───
@@ -860,9 +861,9 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
     // Each tile carries a searchable label so we can filter the whole section
     final sections = <_MgmtSection>[
       _MgmtSection('User Management', Icons.people_outline, [
-        _MgmtTile('Manage Users', 'View, edit, and manage all user accounts', Icons.person_outline, () => context.go(AppConstants.roleManagementRoute)),
+        _MgmtTile('Manage Users', 'View, edit, and manage all user accounts', Icons.person_outline, () => _navigateToUserManagement()),
         _MgmtTile('User Approval', 'Review and approve new user registrations', Icons.how_to_reg_outlined, () => context.go(AppConstants.adminApprovalRoute)),
-        _MgmtTile('Archived Users', 'View and manage archived user accounts', Icons.archive_outlined, () => context.go(AppConstants.userArchiveRoute)),
+        _MgmtTile('Archived Users', 'View and manage archived user accounts', Icons.archive_outlined, () => _navigateToArchivedUsers()),
       ]),
       _MgmtSection('Content Management', Icons.library_books_outlined, [
         _MgmtTile('Tract & Podcast Management', 'Manage tracts, podcasts, and categories', Icons.article_outlined, () => context.go(AppConstants.tractPodcastAdminRoute)),
@@ -902,10 +903,10 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
     ];
 
     // Filter sections and tiles when search is active
-    final filtered = q.isEmpty
+    final List<_MgmtSection> filtered = q.isEmpty
         ? sections
         : sections
-            .map((s) {
+            .map<_MgmtSection?>((s) {
               final matchedTiles = s.tiles
                   .where((t) =>
                       t.title.toLowerCase().contains(q) ||
@@ -938,14 +939,14 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
     }
 
     return Column(
-      children: filtered.map((section) {
+      children: filtered.map<Widget>((section) {
         return Padding(
           padding: const EdgeInsets.only(bottom: 16),
           child: _buildManagementSection(
             section.title,
             section.icon,
             section.tiles
-                .map((t) => _buildActionTile(t.title, t.subtitle, t.icon, t.onTap))
+                .map<Widget>((t) => _buildActionTile(t.title, t.subtitle, t.icon, t.onTap))
                 .toList(),
           ),
         );
@@ -1858,3 +1859,30 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
     }
   }
 }
+
+class _MgmtSection {
+  final String title;
+  final IconData icon;
+  final List<_MgmtTile> tiles;
+
+  const _MgmtSection(this.title, this.icon, this.tiles);
+}
+
+class _MgmtTile {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _MgmtTile(this.title, this.subtitle, this.icon, this.onTap);
+}
+
+class _StatItem {
+  final String title;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  const _StatItem(this.title, this.value, this.icon, this.color);
+}
+

@@ -32,19 +32,7 @@ class HomeScreen extends ConsumerWidget {
       appBar: CustomAppBar(
         title: l10n.home,
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              theme.colorScheme.primary.withValues(alpha: 0.08),
-              theme.scaffoldBackgroundColor,
-              theme.colorScheme.secondary.withValues(alpha: 0.04),
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: authState.when(
+      body: authState.when(
           data: (user) => _buildHomeContent(context, ref, user, isGuest),
           loading: () => const HomeScreenSkeleton(),
           error: (_, __) => AppErrorWidget(
@@ -55,7 +43,6 @@ class HomeScreen extends ConsumerWidget {
             onAction: () => ref.invalidate(authStateProvider),
           ),
         ),
-      ),
     );
   }
 

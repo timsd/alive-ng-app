@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../providers/auth_provider.dart';
 import '../providers/language_provider.dart';
@@ -8,6 +9,9 @@ import '../utils/text_formatter.dart';
 import '../utils/layout_fix_utils.dart';
 import '../constants/app_constants.dart';
 
+/// Clean, human-centered Greeting Header for ALIVE Nigeria.
+/// Grounded in ministry brand colors, warm editorial typography,
+/// and accessible layout without artificial decorative AI orbs.
 class GreetingHeader extends ConsumerWidget {
   const GreetingHeader({super.key});
 
@@ -15,178 +19,194 @@ class GreetingHeader extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final currentUser = ref.watch(currentUserProvider);
     final translate = ref.watch(translationProvider);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-    final greeting = _getGreeting(translate);
+    final hour = DateTime.now().hour;
+    final greeting = _getGreeting(hour);
+    final timeIcon = _getTimeIcon(hour);
     final userName = currentUser?.displayName ??
-        currentUser?.email.split('@').first ??
-        'Friend';
-    final welcomeLabel = currentUser != null
-        ? 'Welcome, $userName'
-        : TextFormatter.formatText('welcome');
+        (currentUser?.email.split('@').first ?? '');
+    final formattedDate =
+        DateFormat('EEEE, MMMM d').format(DateTime.now());
+
+    // Authentic ALIVE brand colors
+    final cardBg = isDark
+        ? const Color(0xFF1E293B) // Slate dark
+        : const Color(0xFF1B365D); // ALIVE Navy
+    final onCard = Colors.white;
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      width: double.infinity,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Theme.of(context).colorScheme.primary,
-            Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
-          ],
-        ),
+        color: cardBg,
         borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top row: Date + Member badge
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
                   children: [
-                    LayoutFixUtils.responsiveText(
-                      greeting,
-                      context: context,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onPrimary
-                                .withValues(alpha: 0.9),
-                          ),
+                    Icon(
+                      timeIcon,
+                      size: 14,
+                      color: const Color(0xFFE5B94D), // Warm Gold
                     ),
-                    const SizedBox(height: 4),
-                    LayoutFixUtils.responsiveText(
-                      welcomeLabel,
-                      context: context,
-                      style:
-                          Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                color: Theme.of(context).colorScheme.onPrimary,
-                                fontWeight: FontWeight.bold,
-                              ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    const SizedBox(width: 6),
+                    Text(
+                      formattedDate,
+                      style: TextStyle(
+                        color: onCard.withValues(alpha: 0.8),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.2,
+                      ),
                     ),
                   ],
                 ),
+                if (currentUser != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.verified_rounded,
+                          size: 13,
+                          color: Color(0xFFE5B94D),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Member',
+                          style: TextStyle(
+                            color: onCard.withValues(alpha: 0.9),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+
+            const SizedBox(height: 14),
+
+            // Greeting + Name
+            Text(
+              greeting,
+              style: TextStyle(
+                color: onCard.withValues(alpha: 0.8),
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
               ),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onPrimary
-                      .withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  _getTimeBasedIcon(),
-                  color: Theme.of(context).colorScheme.onPrimary,
-                  size: 32,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              currentUser != null && userName.isNotEmpty
+                  ? userName
+                  : 'Welcome to ALIVE Nigeria',
+              style: TextStyle(
+                color: onCard,
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.3,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+
+            const SizedBox(height: 10),
+
+            // Subtitle
+            Text(
+              translate('continue_spiritual_journey'),
+              style: TextStyle(
+                color: onCard.withValues(alpha: 0.85),
+                fontSize: 13,
+                height: 1.4,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+
+            // Guest call-to-action
+            if (currentUser == null) ...[
+              const SizedBox(height: 14),
+              InkWell(
+                onTap: () => context.go(AppConstants.authRoute),
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE5B94D), // Warm gold button
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      LayoutFixUtils.responsiveText(
+                        TextFormatter.formatText('join_us_in_spiritual_growth'),
+                        context: context,
+                        style: const TextStyle(
+                          color: Color(0xFF1B365D),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Icon(
+                        Icons.arrow_forward_rounded,
+                        size: 14,
+                        color: Color(0xFF1B365D),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 16),
-          LayoutFixUtils.responsiveText(
-            translate('continue_spiritual_journey'),
-            context: context,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onPrimary
-                      .withValues(alpha: 0.8),
-                ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 16),
-          GestureDetector(
-            onTap: currentUser == null
-                ? () {
-                    context.go(AppConstants.authRoute);
-                  }
-                : null,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: Theme.of(context)
-                    .colorScheme
-                    .onPrimary
-                    .withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(25),
-                border: Border.all(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onPrimary
-                      .withValues(alpha: 0.3),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.group_add,
-                    color: Theme.of(context).colorScheme.onPrimary,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  LayoutFixUtils.responsiveText(
-                    TextFormatter.formatText('join_us_in_spiritual_growth'),
-                    context: context,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onPrimary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.secondary,
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                    child: LayoutFixUtils.responsiveText(
-                      currentUser == null ? 'Join' : 'Member',
-                      context: context,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onSecondary,
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  String _getGreeting(String Function(String) translate) {
-    final hour = DateTime.now().hour;
-
-    if (hour < 12) {
+  String _getGreeting(int hour) {
+    if (hour >= 5 && hour < 12) {
       return TextFormatter.formatText('good_morning');
-    } else if (hour < 17) {
+    } else if (hour >= 12 && hour < 17) {
       return TextFormatter.formatText('good_afternoon');
     } else {
       return TextFormatter.formatText('good_evening');
     }
   }
 
-  IconData _getTimeBasedIcon() {
-    final hour = DateTime.now().hour;
-
-    if (hour >= 6 && hour < 18) {
-      // Daytime: 6 AM to 6 PM - show sun
-      return Icons.wb_sunny;
+  IconData _getTimeIcon(int hour) {
+    if (hour >= 5 && hour < 12) {
+      return Icons.wb_sunny_outlined;
+    } else if (hour >= 12 && hour < 17) {
+      return Icons.wb_sunny_rounded;
     } else {
-      // Nighttime: 6 PM to 6 AM - show moon
-      return Icons.nightlight_round;
+      return Icons.nights_stay_outlined;
     }
   }
 }

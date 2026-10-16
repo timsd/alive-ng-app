@@ -14,6 +14,7 @@ import 'edit_profile_screen.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../constants/app_constants.dart';
 import '../../widgets/custom_image.dart';
+import '../../widgets/shimmer_loading.dart';
 import 'subscriptions_sheet.dart';
 
 // Provider for user profile — gracefully falls back to session data on error
@@ -93,7 +94,7 @@ class ProfileScreen extends ConsumerWidget {
         }
         return _buildProfileContent(context, ref, translate, theme, profile);
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const _ProfileScreenSkeleton(),
       error: (_, __) {
         // Even on error, try to show basic content
         final user = ref.watch(appwriteUserStreamProvider).value;
@@ -1005,6 +1006,30 @@ class _ActionTile extends StatelessWidget {
               ? theme.colorScheme.error
               : theme.colorScheme.onSurface.withValues(alpha: 0.3)),
       onTap: onTap,
+    );
+  }
+}
+
+class _ProfileScreenSkeleton extends StatelessWidget {
+  const _ProfileScreenSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: const [
+          Center(child: ShimmerLoading(width: 88, height: 88, borderRadius: 44)),
+          SizedBox(height: 16),
+          Center(child: ShimmerLoading(width: 160, height: 22, borderRadius: 6)),
+          SizedBox(height: 8),
+          Center(child: ShimmerLoading(width: 200, height: 14, borderRadius: 4)),
+          SizedBox(height: 24),
+          ShimmerLoading(height: 160, borderRadius: 16),
+          SizedBox(height: 16),
+          ShimmerLoading(height: 200, borderRadius: 16),
+        ],
+      ),
     );
   }
 }

@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1
 
-FROM ghcr.io/cirruslabs/flutter:stable AS build
+# Use lightweight web-focused Flutter image instead of heavy cirruslabs Android SDK image
+FROM ghcr.io/instrumentisto/flutter:3.22.0 AS build
 
 WORKDIR /app
 
@@ -14,10 +15,9 @@ RUN flutter pub get
 
 COPY . .
 RUN echo "Build ID: ${BUILD_ID}"
-RUN flutter clean
 RUN flutter config --enable-web \
     && dart scripts/configure_web.dart \
-    && flutter build web --release --no-wasm-dry-run ${FLUTTER_BUILD_ARGS}
+    && flutter build web --release ${FLUTTER_BUILD_ARGS}
 
 FROM nginx:1.27-alpine
 

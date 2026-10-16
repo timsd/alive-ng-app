@@ -9,6 +9,7 @@ import '../../constants/app_constants.dart';
 import '../../utils/text_formatter.dart';
 import '../../utils/responsive_utils.dart';
 import '../../services/appwrite_study_service.dart';
+import '../../widgets/shimmer_loading.dart';
 
 // Provider for study programs
 final studyProgramsProvider = FutureProvider<List<StudyProgram>>((ref) async {
@@ -135,7 +136,7 @@ class StudyScreen extends ConsumerWidget {
 
               studyProgramsAsync.when(
                 data: (programs) => _buildStudyPrograms(context, programs),
-                loading: () => const Center(child: CircularProgressIndicator()),
+                loading: () => const _StudyProgramsSkeleton(),
                 error: (error, stack) =>
                     _buildErrorWidget(context, error.toString()),
               ),

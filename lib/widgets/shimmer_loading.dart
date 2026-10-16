@@ -36,14 +36,19 @@ class ShimmerLoading extends StatefulWidget {
 class _ShimmerLoadingState extends State<ShimmerLoading>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
+  late final Animation<double> _opacityAnimation;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1400),
-    )..repeat();
+      duration: const Duration(milliseconds: 1000),
+    )..repeat(reverse: true);
+
+    _opacityAnimation = Tween<double>(begin: 0.35, end: 0.75).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
   }
 
   @override
@@ -60,32 +65,18 @@ class _ShimmerLoadingState extends State<ShimmerLoading>
     final baseColor = isDark
         ? theme.colorScheme.surfaceContainerHigh
         : theme.colorScheme.surfaceContainerHighest;
-    final highlightColor = isDark
-        ? theme.colorScheme.surfaceContainerHighest
-        : theme.colorScheme.surfaceContainerLow;
 
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return Container(
-          width: widget.width,
-          height: widget.height,
-          margin: widget.margin,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(widget.borderRadius),
-            gradient: LinearGradient(
-              begin: Alignment(-1.0 + 2.0 * _controller.value, 0),
-              end: Alignment(-1.0 + 2.0 * _controller.value + 1.0, 0),
-              colors: [
-                baseColor,
-                highlightColor,
-                baseColor,
-              ],
-              stops: const [0.0, 0.5, 1.0],
-            ),
-          ),
-        );
-      },
+    return FadeTransition(
+      opacity: _opacityAnimation,
+      child: Container(
+        width: widget.width,
+        height: widget.height,
+        margin: widget.margin,
+        decoration: BoxDecoration(
+          color: baseColor,
+          borderRadius: BorderRadius.circular(widget.borderRadius),
+        ),
+      ),
     );
   }
 }

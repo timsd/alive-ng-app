@@ -11,6 +11,7 @@ import '../../services/role_access_service.dart';
 import '../../utils/error_handler.dart';
 import '../../widgets/add_prayer_request_dialog.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../widgets/shimmer_loading.dart';
 
 final publicPrayerWallProvider =
     FutureProvider.autoDispose<List<PrayerRequest>>((ref) {
@@ -123,7 +124,7 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(provider),
       child: asyncRequests.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const _PrayerWallSkeleton(),
         error: (error, _) => _buildLoadErrorState(
           context,
           'Unable to load prayers',
@@ -516,5 +517,66 @@ class _PrayerCard extends StatelessWidget {
     if (difference.inDays < 1) return '${difference.inHours}h ago';
     if (difference.inDays < 7) return '${difference.inDays}d ago';
     return '${timestamp.day}/${timestamp.month}/${timestamp.year}';
+  }
+}
+
+class _PrayerWallSkeleton extends StatelessWidget {
+  const _PrayerWallSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(16),
+      itemCount: 4,
+      itemBuilder: (context, index) {
+        return Card(
+          margin: const EdgeInsets.only(bottom: 16),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+              color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const ShimmerLoading(width: 40, height: 40, borderRadius: 20),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        ShimmerLoading(width: 120, height: 16, borderRadius: 4),
+                        SizedBox(height: 6),
+                        ShimmerLoading(width: 80, height: 12, borderRadius: 4),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const ShimmerLoading(height: 16, borderRadius: 4),
+                const SizedBox(height: 8),
+                const ShimmerLoading(height: 16, borderRadius: 4),
+                const SizedBox(height: 8),
+                const ShimmerLoading(width: 200, height: 16, borderRadius: 4),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: const [
+                    ShimmerLoading(width: 100, height: 32, borderRadius: 16),
+                    ShimmerLoading(width: 32, height: 32, borderRadius: 16),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 }

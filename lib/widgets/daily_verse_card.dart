@@ -11,6 +11,9 @@ import '../utils/layout_fix_utils.dart';
 import 'bible_reference_widget.dart';
 import 'shimmer_loading.dart';
 
+/// Agency-grade Daily Verse Card ($50K+ Design)
+/// Displays scripture with refined editorial typography, ambient depth,
+/// interactive text-to-speech, and instant sharing.
 class DailyVerseCard extends ConsumerStatefulWidget {
   final DailyVerse? verse;
   final bool isLoading;
@@ -73,310 +76,308 @@ class _DailyVerseCardState extends ConsumerState<DailyVerseCard> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final translate = ref.watch(translationProvider);
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        color: Theme.of(context).colorScheme.surface,
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: isDark ? 0.3 : 0.6),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.1),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
             blurRadius: 10,
-            offset: const Offset(0, 4),
+            offset: const Offset(0, 3),
           ),
         ],
       ),
-      child: Container(
+      child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Theme.of(context)
-                    .colorScheme
-                    .primary
-                    .withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: LayoutFixUtils.responsiveIcon(
-                      Icons.auto_stories,
-                      context: context,
-                      baseSize: 20,
-                      color: Theme.of(context).colorScheme.onPrimary,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        LayoutFixUtils.responsiveText(
-                          TextFormatter.formatText('daily_verse'),
-                          context: context,
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                        ),
-                        LayoutFixUtils.responsiveText(
-                          DateFormat('EEEE, MMMM d, y').format(DateTime.now()),
-                          context: context,
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurface
-                                        .withValues(alpha: 0.6),
-                                  ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            if (widget.isLoading) ...[
-              const ShimmerLoading(height: 16, borderRadius: 4),
-              const SizedBox(height: 8),
-              const ShimmerLoading(height: 16, borderRadius: 4),
-              const SizedBox(height: 8),
-              const ShimmerLoading(height: 16, width: 220, borderRadius: 4),
-              const SizedBox(height: 16),
-              const ShimmerLoading(height: 14, width: 120, borderRadius: 4),
-            ] else if (widget.verse != null) ...[
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '"${widget.verse!.verse}"',
-                    softWrap: true,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontStyle: FontStyle.italic,
-                          height: 1.4,
-                          fontWeight: FontWeight.w500,
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                  ),
-                  const SizedBox(height: 16),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final compact = constraints.maxWidth < 360;
-                      final actions = Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .primary
-                                  .withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: IconButton(
-                              onPressed:
-                                  _isSpeaking ? _stopSpeaking : _speakVerse,
-                              icon: LayoutFixUtils.responsiveIcon(
-                                _isSpeaking ? Icons.stop : Icons.volume_up,
-                                context: context,
-                                baseSize: 20,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                              tooltip: _isSpeaking
-                                  ? translate('stop')
-                                  : translate('listen'),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .primary
-                                  .withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: IconButton(
-                              onPressed: () =>
-                                  _shareVerse(context, widget.verse!),
-                              icon: LayoutFixUtils.responsiveIcon(
-                                Icons.share,
-                                context: context,
-                                baseSize: 20,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                              tooltip: translate('share'),
-                            ),
-                          ),
-                        ],
-                      );
-
-                      if (compact) {
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            BibleReferenceWidget(
-                              text: '- ${widget.verse!.reference}',
-                              preferredVersion: widget.verse?.translation,
-                              textStyle: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    color:
-                                        Theme.of(context).colorScheme.primary,
-                                  ),
-                            ),
-                            const SizedBox(height: 10),
-                            actions,
-                          ],
-                        );
-                      }
-
-                      return Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: BibleReferenceWidget(
-                              text: '- ${widget.verse!.reference}',
-                              preferredVersion: widget.verse?.translation,
-                              textStyle: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    color:
-                                        Theme.of(context).colorScheme.primary,
-                                  ),
-                            ),
-                          ),
-                          actions,
-                        ],
-                      );
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .primary
-                      .withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .primary
-                        .withValues(alpha: 0.2),
-                    width: 1,
-                  ),
-                ),
-                child: Text(
-                  "Today, let God's Word guide your heart and mind. ALIVE Nigeria encourages you to meditate on His promises and find strength for your daily journey.",
-                  softWrap: true,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        height: 1.4,
-                        fontStyle: FontStyle.italic,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withValues(alpha: 0.8),
-                      ),
-                ),
-              ),
-              if (widget.verse!.reflection != null) ...[
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .secondary
-                        .withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  // Header badge row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      LayoutFixUtils.responsiveText(
-                        TextFormatter.formatText('reflection'),
-                        context: context,
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleMedium
-                            ?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: Theme.of(context).colorScheme.secondary,
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary
+                              .withValues(alpha: isDark ? 0.2 : 0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.auto_stories_rounded,
+                              size: 14,
+                              color: theme.colorScheme.primary,
                             ),
+                            const SizedBox(width: 6),
+                            Text(
+                              TextFormatter.formatText('daily_verse').toUpperCase(),
+                              style: TextStyle(
+                                color: theme.colorScheme.primary,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 8),
-                      LayoutFixUtils.responsiveText(
-                        widget.verse!.reflection!,
-                        context: context,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              height: 1.4,
-                            ),
+                      Text(
+                        DateFormat('MMM d, y').format(DateTime.now()),
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
-                ),
-              ],
-            ] else
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .error
-                      .withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    LayoutFixUtils.responsiveIcon(
-                      Icons.error_outline,
-                      context: context,
-                      color: Theme.of(context).colorScheme.error,
+
+                  const SizedBox(height: 18),
+
+                  if (widget.isLoading) ...[
+                    const ShimmerLoading(height: 18, borderRadius: 6),
+                    const SizedBox(height: 10),
+                    const ShimmerLoading(height: 18, borderRadius: 6),
+                    const SizedBox(height: 10),
+                    const ShimmerLoading(height: 18, width: 200, borderRadius: 6),
+                    const SizedBox(height: 20),
+                    const ShimmerLoading(height: 16, width: 140, borderRadius: 6),
+                  ] else if (widget.verse != null) ...[
+                    // Scripture quote
+                    Text(
+                      '"${widget.verse!.verse}"',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontStyle: FontStyle.italic,
+                        height: 1.6,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.1,
+                        color: theme.colorScheme.onSurface,
+                      ),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: LayoutFixUtils.responsiveText(
-                        TextFormatter.formatText('failed_to_load_verse'),
-                        context: context,
-                        style: Theme.of(context).textTheme.bodyMedium,
+
+                    const SizedBox(height: 18),
+
+                    // Actions toolbar + Reference
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: BibleReferenceWidget(
+                            text: widget.verse!.reference,
+                            preferredVersion: widget.verse?.translation,
+                            textStyle: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: theme.colorScheme.primary,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // TTS Audio Button
+                            Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: _isSpeaking ? _stopSpeaking : _speakVerse,
+                                borderRadius: BorderRadius.circular(20),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: _isSpeaking
+                                        ? theme.colorScheme.primary
+                                        : theme.colorScheme.primary
+                                            .withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        _isSpeaking
+                                            ? Icons.stop_rounded
+                                            : Icons.volume_up_rounded,
+                                        size: 16,
+                                        color: _isSpeaking
+                                            ? theme.colorScheme.onPrimary
+                                            : theme.colorScheme.primary,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        _isSpeaking
+                                            ? translate('stop')
+                                            : translate('listen'),
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: _isSpeaking
+                                            ? theme.colorScheme.onPrimary
+                                            : theme.colorScheme.primary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+
+                            // Share Button
+                            Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () => _shareVerse(context, widget.verse!),
+                                borderRadius: BorderRadius.circular(20),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.primary
+                                        .withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.share_rounded,
+                                        size: 16,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        translate('share'),
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: theme.colorScheme.primary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+
+                    // Spiritual guidance footer
+                    const SizedBox(height: 18),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary
+                            .withValues(alpha: isDark ? 0.08 : 0.04),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: theme.colorScheme.primary
+                              .withValues(alpha: isDark ? 0.15 : 0.08),
+                        ),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.lightbulb_outline_rounded,
+                            size: 18,
+                            color: theme.colorScheme.primary,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              "Today, let God's Word guide your heart and mind. Meditate on His promises and find strength for your daily journey.",
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                height: 1.45,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    if (widget.verse!.reflection != null &&
+                        widget.verse!.reflection!.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.secondary
+                              .withValues(alpha: isDark ? 0.1 : 0.06),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              TextFormatter.formatText('reflection'),
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: theme.colorScheme.secondary,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              widget.verse!.reflection!,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                height: 1.45,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ] else ...[
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.error.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.error_outline_rounded,
+                            color: theme.colorScheme.error,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              TextFormatter.formatText('failed_to_load_verse'),
+                              style: theme.textTheme.bodyMedium,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
-                ),
+                ],
               ),
-          ],
-        ),
-      ),
+            ),
     );
   }
 
   void _shareVerse(BuildContext context, DailyVerse verse) {
     const webAppUrl = 'https://app.alivenigeria.org/#/daily';
     final shareText =
-        '"${verse.verse}"\n— ${verse.reference}\n\nRead more on the ALIVE Nigeria web app:\n$webAppUrl';
+        '"${verse.verse}"\n— ${verse.reference}\n\nRead more on the ALIVE Nigeria app:\n$webAppUrl';
     SharePlus.instance.share(
       ShareParams(
         text: shareText,

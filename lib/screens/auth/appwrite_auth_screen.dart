@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/text_formatter.dart';
 
 import '../../providers/appwrite_auth_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/language_provider.dart';
 import '../../providers/guest_provider.dart';
 import '../../constants/app_constants.dart';

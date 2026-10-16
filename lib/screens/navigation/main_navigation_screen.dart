@@ -532,130 +532,43 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
     String Function(String) translate,
   ) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
-    final navItems = [
-      _NavDestination(
-        icon: Icons.home_outlined,
-        activeIcon: Icons.home_rounded,
-        label: l10n?.home ?? 'Home',
-      ),
-      _NavDestination(
-        icon: Icons.menu_book_outlined,
-        activeIcon: Icons.menu_book_rounded,
-        label: l10n?.study ?? 'Study',
-      ),
-      _NavDestination(
-        icon: Icons.volunteer_activism_outlined,
-        activeIcon: Icons.volunteer_activism_rounded,
-        label: l10n?.prayer ?? 'Prayer',
-      ),
-      _NavDestination(
-        icon: Icons.health_and_safety_outlined,
-        activeIcon: Icons.health_and_safety_rounded,
-        label: translate('health'),
-      ),
-      _NavDestination(
-        icon: Icons.grid_view_outlined,
-        activeIcon: Icons.grid_view_rounded,
-        label: translate('more'),
-      ),
-    ];
-
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        border: Border(
-          top: BorderSide(
-            color: theme.colorScheme.outlineVariant.withValues(alpha: isDark ? 0.2 : 0.45),
-            width: 1,
-          ),
+    return NavigationBar(
+      selectedIndex: currentIndex,
+      onDestinationSelected: (index) {
+        HapticFeedback.selectionClick();
+        _onItemTapped(context, index);
+      },
+      backgroundColor: theme.colorScheme.surface,
+      indicatorColor: theme.colorScheme.primaryContainer,
+      elevation: 2,
+      destinations: [
+        NavigationDestination(
+          icon: const Icon(Icons.home_outlined),
+          selectedIcon: Icon(Icons.home, color: theme.colorScheme.onPrimaryContainer),
+          label: l10n?.home ?? 'Home',
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.05),
-            blurRadius: 16,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(navItems.length, (index) {
-              final item = navItems[index];
-              final isSelected = index == currentIndex;
-
-              return Expanded(
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      _onItemTapped(context, index);
-                    },
-                    borderRadius: BorderRadius.circular(16),
-                    splashColor: theme.colorScheme.primary.withValues(alpha: 0.1),
-                    highlightColor: Colors.transparent,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          AnimatedContainer(
-                            duration: const Duration(milliseconds: 250),
-                            curve: Curves.easeOutCubic,
-                            padding: EdgeInsets.symmetric(
-                              horizontal: isSelected ? 16 : 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? theme.colorScheme.primary.withValues(alpha: 0.12)
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 200),
-                              child: Icon(
-                                isSelected ? item.activeIcon : item.icon,
-                                key: ValueKey('$index-$isSelected'),
-                                size: 22,
-                                color: isSelected
-                                    ? theme.colorScheme.primary
-                                    : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.75),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 3),
-                          AnimatedDefaultTextStyle(
-                            duration: const Duration(milliseconds: 200),
-                            style: theme.textTheme.labelSmall!.copyWith(
-                              fontSize: 11,
-                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                              color: isSelected
-                                  ? theme.colorScheme.primary
-                                  : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.75),
-                            ),
-                            child: Text(
-                              item.label,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            }),
-          ),
+        NavigationDestination(
+          icon: const Icon(Icons.menu_book_outlined),
+          selectedIcon: Icon(Icons.menu_book, color: theme.colorScheme.onPrimaryContainer),
+          label: l10n?.study ?? 'Study',
         ),
-      ),
+        NavigationDestination(
+          icon: const Icon(Icons.volunteer_activism_outlined),
+          selectedIcon: Icon(Icons.volunteer_activism, color: theme.colorScheme.onPrimaryContainer),
+          label: l10n?.prayer ?? 'Prayer',
+        ),
+        NavigationDestination(
+          icon: const Icon(Icons.health_and_safety_outlined),
+          selectedIcon: Icon(Icons.health_and_safety, color: theme.colorScheme.onPrimaryContainer),
+          label: translate('health'),
+        ),
+        NavigationDestination(
+          icon: const Icon(Icons.grid_view_outlined),
+          selectedIcon: Icon(Icons.grid_view_rounded, color: theme.colorScheme.onPrimaryContainer),
+          label: translate('more'),
+        ),
+      ],
     );
   }
 }
@@ -667,18 +580,6 @@ class _MoreItem {
   final Color? color;
 
   const _MoreItem(this.label, this.icon, this.route, {this.color});
-}
-
-class _NavDestination {
-  final IconData icon;
-  final IconData activeIcon;
-  final String label;
-
-  const _NavDestination({
-    required this.icon,
-    required this.activeIcon,
-    required this.label,
-  });
 }
 
 
