@@ -7,7 +7,6 @@ import '../providers/language_provider.dart';
 import '../models/app_models.dart';
 import '../services/tts_service.dart';
 import '../utils/text_formatter.dart';
-import '../utils/layout_fix_utils.dart';
 import 'bible_reference_widget.dart';
 import 'shimmer_loading.dart';
 

@@ -685,3 +685,66 @@ class StudyProgramCard extends StatelessWidget {
     );
   }
 }
+
+/// Skeleton placeholder shown while study programs are loading.
+class _StudyProgramsSkeleton extends StatelessWidget {
+  const _StudyProgramsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: ResponsiveUtils.getResponsiveSpacing(context, 20),
+      ),
+      child: Column(
+        children: List.generate(
+          3,
+          (index) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(
+                  ResponsiveUtils.getResponsiveBorderRadiusValue(context, 16),
+                ),
+                color: Theme.of(context).colorScheme.surface,
+              ),
+              padding: EdgeInsets.all(
+                ResponsiveUtils.getResponsiveSpacing(context, 16),
+              ),
+              child: Row(
+                children: [
+                  const ShimmerLoading(
+                    width: 48,
+                    height: 48,
+                    borderRadius: 12,
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        ShimmerLoading(height: 16, borderRadius: 4),
+                        SizedBox(height: 8),
+                        ShimmerLoading(
+                          height: 12,
+                          borderRadius: 4,
+                          width: 160,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const ShimmerLoading(
+                    width: 16,
+                    height: 16,
+                    borderRadius: 4,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
