@@ -11,7 +11,7 @@ plugins {
 android {
     namespace = "com.alive.alivengandroidapp"
     compileSdk = flutter.compileSdkVersion
-    // Removed ndkVersion to avoid NDK installation requirement
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
