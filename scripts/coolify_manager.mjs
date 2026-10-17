@@ -92,8 +92,8 @@ async function main() {
       console.log(`Deployment UUID: ${res.data.deployments[0].deployment_uuid}`);
     }
   } else if (arg === 'deployments') {
-    const deploys = await get(`/deployments`);
-    console.log('Deployments:', JSON.stringify(deploys.data, null, 2));
+    const deploys = await get(`/applications/${uuid}/deployments`);
+    console.log('App Deployments:', JSON.stringify(deploys.data, null, 2));
   } else if (arg === 'logs') {
     const depUuid = process.argv[3];
     if (depUuid) {
@@ -111,7 +111,10 @@ async function main() {
     const depUuid = process.argv[3];
     if (depUuid) {
       const dep = await get(`/deployments/${depUuid}`);
-      console.log('Deployment info:', JSON.stringify(dep.data, null, 2));
+      console.log(`Deployment: ${depUuid} (Status: ${dep.data?.status})`);
+      if (dep.data?.logs) {
+        console.log('Logs snippet:\n', dep.data.logs.slice(-500));
+      }
     }
   }
 }
