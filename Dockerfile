@@ -1,4 +1,28 @@
 # syntax=docker/dockerfile:1
-# Coolify deployment: pulls the pre-built Flutter web image produced by GitHub Actions.
-# Compiling Flutter web is handled off the VPS in GitHub Actions to avoid 100% CPU lockups.
-FROM ghcr.io/timsd/alive-ng-app:latest
+
+FROM ghcr.io/cirruslabs/flutter:stable AS build
+
+WORKDIR /app
+
+# Public Flutter web configuration only. Do not put server/API secrets here.
+ARG FLUTTER_BUILD_ARGS=""
+ARG BUILD_ID=""
+
+COPY pubspec.yaml pubspec.lock ./
+RUN flutter pub get
+
+COPY . .
+RUN echo "Build ID: ${BUILD_ID}"
+RUN flutter config --enable-web \
+    && dart scripts/configure_web.dart \
+    && nice -n 19 flutter build web --release --no-wasm-dry-run ${FLUTTER_BUILD_ARGS}
+
+FROM nginx:1.27-alpine
+
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/build/web /usr/share/nginx/html
+
+EXPOSE 80
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget -q --spider http://127.0.0.1/ || exit 1
+CMD ["nginx", "-g", "daemon off;"]
