@@ -9,6 +9,7 @@
 android/.gradle/
 android/app/build/
 build/
+!build/web/
 firebase/
 functions/node_modules/
 node_modules/
