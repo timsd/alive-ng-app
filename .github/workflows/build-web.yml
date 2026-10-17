@@ -21,6 +21,7 @@ name: Build and publish web image
 # have been removed, and the browser falls back to local notifications.
 on:
   push:
+    branches: [master]
     tags: ['v*']
   workflow_dispatch:
     inputs:
@@ -47,11 +48,13 @@ jobs:
         run: |
           SHORT_SHA="$(echo "${GITHUB_SHA}" | cut -c1-7)"
           if [ -n "${{ inputs.tag }}" ]; then
-            TAGS="${{ inputs.tag }}"
+            TAGS="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.tag }}"
           elif [ "${GITHUB_REF_TYPE}" = "tag" ]; then
-            TAGS="${GITHUB_REF_NAME},ghcr-${GITHUB_REF_NAME},ghcr-${SHORT_SHA}"
+            TAGS="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${GITHUB_REF_NAME},${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ghcr-${SHORT_SHA}"
+          elif [ "${GITHUB_REF_NAME}" = "master" ]; then
+            TAGS="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ghcr-${SHORT_SHA}"
           else
-            TAGS="ghcr-${SHORT_SHA}"
+            TAGS="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ghcr-${SHORT_SHA}"
           fi
           echo "tags=${TAGS}" >> "$GITHUB_OUTPUT"
 
@@ -67,7 +70,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.tags.outputs.tags }}
+          tags: ${{ steps.tags.outputs.tags }}
           build-args: |
             FLUTTER_BUILD_ARGS=--dart-define=APPWRITE_FCM_PROVIDER_ID=6a0cbd1600215f960c03
           cache-from: type=gha
