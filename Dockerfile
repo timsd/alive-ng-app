@@ -13,9 +13,10 @@ RUN flutter pub get
 
 COPY . .
 RUN echo "Build ID: ${BUILD_ID}"
+ENV DART_VM_OPTIONS="--old_gen_heap_size=2048"
 RUN flutter config --enable-web \
     && dart scripts/configure_web.dart \
-    && nice -n 19 flutter build web --release --no-wasm-dry-run ${FLUTTER_BUILD_ARGS}
+    && nice -n 19 flutter build web --release --no-wasm-dry-run --no-source-maps --dart2js-optimization=O1 ${FLUTTER_BUILD_ARGS}
 
 FROM nginx:1.27-alpine
 

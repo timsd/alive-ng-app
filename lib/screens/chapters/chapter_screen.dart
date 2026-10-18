@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:appwrite/appwrite.dart';
 import '../../models/chapter_models.dart';
 import '../../services/chapter_service.dart';
 import '../../services/auth_service.dart';

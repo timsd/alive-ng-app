@@ -49,9 +49,23 @@ class AppwriteChatService extends ChangeNotifier {
 
       return response.rows.map(_channelFromRow).toList();
     } catch (e) {
-      _logger.error('Error fetching Appwrite chat channels: $e');
-      throw DatabaseException('Failed to fetch chat channels',
-          originalError: e);
+      _logger.warning('Direct query for user channels failed, falling back to full list: $e');
+      try {
+        final fallback = await _tables.listRows(
+          databaseId: databaseId,
+          tableId: channelsCollectionId,
+          queries: [Query.limit(100)],
+        );
+        final list = fallback.rows.map(_channelFromRow).where((c) {
+          final isMember = c.members.contains(userId) || c.admins.contains(userId);
+          return isMember && !c.isArchived;
+        }).toList();
+        return list;
+      } catch (inner) {
+        _logger.error('Error fetching Appwrite chat channels: $inner');
+        throw DatabaseException('Failed to fetch chat channels',
+            originalError: inner);
+      }
     }
   }
 

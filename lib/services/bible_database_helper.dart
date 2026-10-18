@@ -790,15 +790,15 @@ class BibleDatabaseHelper {
 
     return BibleChapter(
       book: book, // Preserve requested localized book name (e.g. "Farawa") for display
-      chapter: chapterMap['chapter'],
-      version: chapterMap['version'],
-      language: chapterMap['language'],
+      chapter: chapterMap['chapter'] as int,
+      version: chapterMap['version'] as String,
+      language: chapterMap['language'] as String,
       verses: verses,
       metadata: chapterMap['metadata'] != null 
-          ? Map<String, dynamic>.from(jsonDecode(chapterMap['metadata']))
+          ? Map<String, dynamic>.from(jsonDecode(chapterMap['metadata'] as String))
           : null,
       lastUpdated: chapterMap['last_updated'] != null 
-          ? DateTime.parse(chapterMap['last_updated'])
+          ? DateTime.parse(chapterMap['last_updated'] as String)
           : null,
     );
   }

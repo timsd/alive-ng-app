@@ -333,7 +333,7 @@ class RoleAccessService {
       'president',
       'bod',
       'trustee',
-      'health_editor',
+      'dietist',
     ];
     return allowed.contains(currentRole);
   }

@@ -15,6 +15,7 @@ import '../../utils/toast_utils.dart';
 import '../../widgets/custom_image.dart';
 import '../../widgets/profile_page_cues.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../services/channel_membership_sync_service.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   final UserProfile userProfile;
@@ -47,6 +48,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late final TextEditingController _localChapterController;
 
   late String _commitmentType;
+  late String _maritalStatus;
   bool _isLoading = false;
   int _currentPage = 0;
   bool _hasChanges = false;
@@ -83,6 +85,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         TextEditingController(text: widget.userProfile.localChapter ?? '');
 
     _commitmentType = widget.userProfile.commitmentType ?? 'both';
+    _maritalStatus = (widget.userProfile.maritalStatus ?? 'single').toLowerCase();
+    if (_maritalStatus != 'married') _maritalStatus = 'single';
 
     // Initialize profile picture URL
     _profilePictureUrl = widget.userProfile.avatarUrl;
@@ -191,6 +195,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         skills: field(_skillsController),
         generalInfo: field(_generalInfoController),
         localChapter: field(_localChapterController),
+        maritalStatus: _maritalStatus,
         commitmentType: _commitmentType,
         avatarUrl: _profilePictureUrl ?? '',
         updatedAt: DateTime.now(),
@@ -202,6 +207,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         userId: updatedProfile.id,
         profileData: profileService.userProfileToAppwriteData(updatedProfile),
       );
+
+      // Automatically sync/migrate chat channels (e.g. Single -> Married)
+      try {
+        await ChannelMembershipSyncService.instance.syncUserChannels(updatedProfile);
+      } catch (e) {
+        debugPrint('Channel sync after profile save note: $e');
+      }
 
       // Invalidate current user profile provider so all screens reflect updates
       ref.invalidate(currentUserProfileProvider);
@@ -500,6 +512,31 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               filled: true,
               fillColor: Theme.of(context).colorScheme.surfaceContainer,
             ),
+          ),
+          SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
+
+          DropdownButtonFormField<String>(
+            value: _maritalStatus,
+            decoration: InputDecoration(
+              labelText: 'Marital Status',
+              border: const OutlineInputBorder(),
+              prefixIcon: const Icon(Icons.favorite),
+              filled: true,
+              fillColor: Theme.of(context).colorScheme.surfaceContainer,
+              helperText: 'Connects you automatically to Singles or Married Fellowship.',
+            ),
+            items: const [
+              DropdownMenuItem(value: 'single', child: Text('Single')),
+              DropdownMenuItem(value: 'married', child: Text('Married')),
+            ],
+            onChanged: (val) {
+              if (val != null) {
+                setState(() {
+                  _maritalStatus = val;
+                  _hasChanges = true;
+                });
+              }
+            },
           ),
         ],
       ),

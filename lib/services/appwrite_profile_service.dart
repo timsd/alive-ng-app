@@ -240,6 +240,7 @@ class AppwriteProfileService {
       address: _stringValue(data, 'address'),
       bio: _stringValue(data, 'bio'),
       chapterId: _stringValue(data, 'chapter_id'),
+      maritalStatus: _stringValue(data, 'marital_status') ?? 'single',
       role: _stringValue(data, 'role') ?? 'member',
       isArchived: _boolValue(data, 'is_archived') ?? false,
       isNewConvert: _boolValue(data, 'is_new_convert') ?? false,

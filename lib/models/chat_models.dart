@@ -211,6 +211,9 @@ class ChatChannel {
 
 enum ChannelType {
   general,
+  singles,
+  married,
+  donors,
   bod,
   directors,
   coordinators,

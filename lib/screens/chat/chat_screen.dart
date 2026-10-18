@@ -14,6 +14,7 @@ import '../../services/role_access_service.dart';
 import '../../services/tag_parser.dart';
 import '../conference/livekit_meeting_screen.dart';
 import '../../config/appwrite_backend_config.dart';
+import '../../services/channel_membership_sync_service.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final String? channelId;
@@ -70,6 +71,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         });
         return;
       }
+
+      // Ensure user profile membership is synced across system channels
+      try {
+        final profile = ref.read(currentUserProfileProvider).value;
+        if (profile != null) {
+          await ChannelMembershipSyncService.instance.syncUserChannels(profile);
+        }
+      } catch (syncErr) {
+        debugPrint('Auto sync channels note: $syncErr');
+      }
+
       final channels = await _chatService.getUserChannels(userId);
 
       setState(() {

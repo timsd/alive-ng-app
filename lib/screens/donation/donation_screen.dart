@@ -18,6 +18,7 @@ import '../../utils/web_launch_params.dart';
 import '../../providers/appwrite_auth_provider.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../services/exchange_rate_service.dart';
+import '../../services/channel_membership_sync_service.dart';
 
 class DonationScreen extends ConsumerStatefulWidget {
   const DonationScreen({super.key});
@@ -1630,6 +1631,14 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
 
       final checkoutInitialized = paymentResult['initialized'] == true;
       if (paymentResult['success'] == true) {
+        // Add donor to the donors chat channel
+        try {
+          final userId = donation.userId;
+          if (!userId.startsWith('guest-')) {
+            ChannelMembershipSyncService.instance.addDonorToChannel(userId);
+          }
+        } catch (_) {}
+
         // Show success
         if (!rootCtx.mounted) return;
         showDialog(

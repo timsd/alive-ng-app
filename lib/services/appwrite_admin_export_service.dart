@@ -228,7 +228,7 @@ class AppwriteAdminExportService {
         final narration = 'DONATION: $purpose - $donorName';
 
         return {
-          'Value Date': r['created_at'] ?? r['$createdAt'] ?? '',
+          'Value Date': r['created_at'] ?? r[r'$createdAt'] ?? '',
           'Transaction Ref': r['reference'] ?? r['transaction_id'] ?? r['id'] ?? '',
           'Narration / Description': narration,
           'Payer / Donor Name': donorName,
@@ -241,7 +241,7 @@ class AppwriteAdminExportService {
           'Net Inflow': creditStr,
           'Status': rowStatus.toUpperCase(),
           'Purpose / Category': purpose,
-          'Settlement Date': r['completed_at'] ?? r['created_at'] ?? r['$createdAt'] ?? '',
+          'Settlement Date': r['completed_at'] ?? r['created_at'] ?? r[r'$createdAt'] ?? '',
           'Notes': r['notes'] ?? r['custom_purpose'] ?? '',
         };
       }).toList();
@@ -485,8 +485,8 @@ class AppwriteAdminExportService {
         'file_id': file.$id,
         'url': _downloadUrl(file.$id),
       };
-    } catch (e, stackTrace) {
-      _logger.warn('Storage upload unavailable; proceeding with inline export data', e, stackTrace);
+    } catch (e) {
+      _logger.warning('Storage upload unavailable; proceeding with inline export data: $e');
       return {
         'path': '$prefix/$fileName',
         'file_id': null,

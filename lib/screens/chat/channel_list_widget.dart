@@ -372,6 +372,12 @@ class _ChannelListWidgetState extends State<ChannelListWidget> {
     switch (type) {
       case ChannelType.general:
         return Icons.chat;
+      case ChannelType.singles:
+        return Icons.person;
+      case ChannelType.married:
+        return Icons.favorite;
+      case ChannelType.donors:
+        return Icons.volunteer_activism;
       case ChannelType.bod:
         return Icons.business;
       case ChannelType.directors:
@@ -393,6 +399,12 @@ class _ChannelListWidgetState extends State<ChannelListWidget> {
     switch (type) {
       case ChannelType.general:
         return theme.colorScheme.primary;
+      case ChannelType.singles:
+        return Colors.cyan;
+      case ChannelType.married:
+        return Colors.pinkAccent;
+      case ChannelType.donors:
+        return Colors.amber;
       case ChannelType.bod:
         return Colors.purple;
       case ChannelType.directors:

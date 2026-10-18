@@ -45,6 +45,7 @@ class AppwriteBackendConfig {
   static const String contentMediaBucketId = 'content_media';
   static const String meetingFilesBucketId = 'meeting_files';
   static const String systemExportsBucketId = 'system_exports';
+  static const String appReleasesBucketId = 'app_releases';
   static const String createLiveKitTokenFunctionId = '6a08e9010035dc8c1e51';
   static const String paystackPaymentsFunctionId = 'paystack_payments';
   static const String paystackWebhookFunctionId = 'paystack_webhook';

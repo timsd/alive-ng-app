@@ -13,6 +13,7 @@ class UserProfile {
   final String? address;
   final String? bio;
   final String? chapterId;
+  final String? maritalStatus; // single, married
   final String role; // member, coordinator, leader, admin
   final bool isArchived;
   final bool isNewConvert;
@@ -69,6 +70,7 @@ class UserProfile {
     this.address,
     this.bio,
     this.chapterId,
+    this.maritalStatus = 'single',
     this.role = 'member',
     this.isArchived = false,
     this.isNewConvert = false,
@@ -128,6 +130,7 @@ class UserProfile {
       address: json['address'] as String?,
       bio: json['bio'] as String?,
       chapterId: json['chapter_id'] as String?,
+      maritalStatus: json['marital_status'] as String? ?? 'single',
       role: json['role'] as String? ?? 'member',
       isArchived: json['is_archived'] as bool? ?? false,
       isNewConvert: json['is_new_convert'] as bool? ?? false,
@@ -193,6 +196,7 @@ class UserProfile {
       'address': address,
       'bio': bio,
       'chapter_id': chapterId,
+      'marital_status': maritalStatus ?? 'single',
       'role': role,
       'is_archived': isArchived,
       'is_new_convert': isNewConvert,
@@ -259,6 +263,7 @@ class UserProfile {
     String? address,
     String? bio,
     String? chapterId,
+    String? maritalStatus,
     String? role,
     bool? isArchived,
     bool? isNewConvert,
@@ -303,6 +308,7 @@ class UserProfile {
       address: address ?? this.address,
       bio: bio ?? this.bio,
       chapterId: chapterId ?? this.chapterId,
+      maritalStatus: maritalStatus ?? this.maritalStatus,
       role: role ?? this.role,
       isArchived: isArchived ?? this.isArchived,
       isNewConvert: isNewConvert ?? this.isNewConvert,
