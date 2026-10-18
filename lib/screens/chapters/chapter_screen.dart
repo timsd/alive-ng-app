@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../models/chapter_models.dart';
 import '../../services/chapter_service.dart';
 import '../../services/auth_service.dart';
+import '../../main.dart';
+import '../../config/appwrite_backend_config.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../config/meeting_links_config.dart';
 import '../conference/livekit_meeting_screen.dart';
@@ -627,9 +629,10 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
   }
 
   Widget _buildFloatingActionButton() {
-    return FloatingActionButton(
-      onPressed: _createChapter,
-      child: const Icon(Icons.add),
+    return FloatingActionButton.extended(
+      onPressed: _showJoinChapterDialog,
+      icon: const Icon(Icons.group_add_rounded),
+      label: const Text('Join Chapter'),
     );
   }
 
@@ -673,6 +676,20 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Close'),
           ),
+          if (chapter != null)
+            _userMemberships.any((m) => m.chapterId == chapter.id && m.isActive)
+                ? const Chip(
+                    avatar: Icon(Icons.check, size: 16, color: Colors.green),
+                    label: Text('Active Member'),
+                  )
+                : FilledButton.icon(
+                    icon: const Icon(Icons.group_add_rounded, size: 18),
+                    label: const Text('Join Chapter'),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      _handleJoinChapterFlow(chapter);
+                    },
+                  ),
         ],
       ),
     );
@@ -713,11 +730,300 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
     );
   }
 
-  void _createChapter() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-          content: Text('Chapter creation not implemented in this view')),
+  void _showJoinChapterDialog() {
+    if (_currentUserId == null) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Sign In Required'),
+          content: const Text('Please sign in to join an ALIVE Nigeria chapter.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                context.go(AppConstants.authRoute);
+              },
+              child: const Text('Sign In'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.65,
+          maxChildSize: 0.9,
+          minChildSize: 0.4,
+          expand: false,
+          builder: (context, scrollController) {
+            return Column(
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade400,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    children: [
+                      Icon(Icons.group_add_rounded,
+                          color: Theme.of(context).colorScheme.primary),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Select Chapter to Join',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(),
+                Expanded(
+                  child: ListView.separated(
+                    controller: scrollController,
+                    itemCount: _chapters.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final chapter = _chapters[index];
+                      final isCurrent = _userMemberships
+                          .any((m) => m.chapterId == chapter.id && m.isActive);
+                      return ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: Theme.of(context)
+                              .colorScheme
+                              .primary
+                              .withValues(alpha: 0.12),
+                          child: Icon(Icons.location_city_rounded,
+                              color: Theme.of(context).colorScheme.primary),
+                        ),
+                        title: Text(chapter.name,
+                            style: const TextStyle(fontWeight: FontWeight.w600)),
+                        subtitle: Text(
+                            '${_chapterService.getTypeDescription(chapter.type)} • ${chapter.memberIds.length} members'),
+                        trailing: isCurrent
+                            ? const Chip(
+                                avatar: Icon(Icons.check, size: 14),
+                                label: Text('Current', style: TextStyle(fontSize: 11)),
+                              )
+                            : const Icon(Icons.chevron_right),
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          _handleJoinChapterFlow(chapter);
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
+  }
+
+  Future<void> _handleJoinChapterFlow(Chapter targetChapter) async {
+    if (_currentUserId == null) {
+      context.go(AppConstants.authRoute);
+      return;
+    }
+
+    // Check if already in target chapter
+    final isInTarget = _userMemberships
+        .any((m) => m.chapterId == targetChapter.id && m.isActive);
+    if (isInTarget) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('You are already an active member of ${targetChapter.name}.'),
+        ),
+      );
+      return;
+    }
+
+    // 1. One user to a chapter rule: Warn if user belongs to another chapter
+    final existingMembership = _userMemberships
+        .where((m) => m.isActive && m.chapterId != targetChapter.id)
+        .firstOrNull;
+
+    if (existingMembership != null) {
+      final currentChapter = _chapters
+          .where((c) => c.id == existingMembership.chapterId)
+          .firstOrNull;
+      final currentName = currentChapter?.name ?? 'your current chapter';
+
+      final proceedTransfer = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.orange),
+              SizedBox(width: 8),
+              Expanded(child: Text('Chapter Transfer Warning')),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'ALIVE Nigeria guidelines allow membership in only ONE chapter at a time.',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'You are currently assigned to "$currentName". Joining "${targetChapter.name}" will automatically remove and transfer you from "$currentName".',
+              ),
+              const SizedBox(height: 12),
+              const Text('Do you wish to proceed with this transfer?'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Colors.orange.shade800),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Confirm Transfer'),
+            ),
+          ],
+        ),
+      );
+
+      if (proceedTransfer != true) return;
+    }
+
+    // 2. Location proximity check: Warn if distant from chapter physical activities
+    if (!mounted) return;
+    final proceedLocation = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.near_me_outlined, color: Colors.blue),
+            SizedBox(width: 8),
+            Expanded(child: Text('Physical Location Notice')),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${targetChapter.name} conducts physical community fellowships, evangelism, and local missions within its designated territory.',
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'If your current physical location is outside this area, physical attendance may be limited, though you will participate in all virtual sessions.',
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Please confirm that you intend to join this chapter:',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.icon(
+            icon: const Icon(Icons.check, size: 18),
+            label: const Text('Confirm & Join'),
+            onPressed: () => Navigator.pop(ctx, true),
+          ),
+        ],
+      ),
+    );
+
+    if (proceedLocation != true || !mounted) return;
+
+    // 3. Execute membership join and update profile
+    setState(() => _isLoading = true);
+    try {
+      // Remove from existing chapter if transferring
+      if (existingMembership != null) {
+        await _chapterService.removeMember(existingMembership.chapterId, _currentUserId!);
+      }
+
+      // Add to target chapter
+      await _chapterService.addMember(targetChapter.id, _currentUserId!, MemberRole.member);
+
+      // Update user record with pending chapter approval
+      try {
+        final tables = TablesDB(appwriteClient);
+        await tables.updateRow(
+          databaseId: AppwriteBackendConfig.databaseId,
+          tableId: AppwriteBackendConfig.usersCollectionId,
+          rowId: _currentUserId!,
+          data: {
+            'local_chapter': targetChapter.name,
+            'chapter_approval_status': 'pending',
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
+          },
+        );
+      } catch (e) {
+        debugPrint('Profile update note: $e');
+      }
+
+      await _loadData();
+
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.green),
+                SizedBox(width: 8),
+                Text('Joined Chapter!'),
+              ],
+            ),
+            content: Text(
+              'You have successfully submitted your membership for "${targetChapter.name}". Your chapter coordinator and admin will review and approve your active chapter assignment.',
+            ),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Got it'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to join chapter: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _completeTask(ChapterTask task) async {

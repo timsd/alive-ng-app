@@ -324,7 +324,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         ),
         body: Form(
           key: _formKey,
-          child: LayoutFixUtils.safeColumn(
+          child: Column(
             children: [
               // Progress indicator
               Container(
@@ -357,7 +357,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               ProfilePageCues(index: _currentPage, count: 3),
 
               // Page content
-              LayoutFixUtils.expanded(
+              Expanded(
                 child: PageView(
                   controller: _pageController,
                   onPageChanged: (index) =>
@@ -823,7 +823,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           final publicUrl =
               await AppwriteStorageService.instance.uploadProfileFile(
             bytes: newPictureBytes,
-            fileName: 'profile-pictures/$fileName',
+            fileName: fileName,
             contentType: contentType,
           );
 
@@ -832,7 +832,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           // profile can refresh as soon as the upload succeeds.
           await ref.read(appwriteProfileServiceProvider).updateUserProfile(
                 userId: widget.userProfile.id,
-                profileData: {'avatar_url': publicUrl},
+                profileData: {
+                  'avatar_url': publicUrl,
+                  'photo_url': publicUrl,
+                },
               );
 
           if (!mounted) return;

@@ -1,5 +1,9 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../services/appwrite_admin_export_service.dart';
@@ -186,6 +190,7 @@ class _AdminDonationsReportContentState
         status: _statusFilter == 'all' ? null : _statusFilter,
       );
 
+      final content = result['content'] as String? ?? '';
       final fileInfo = result['file'] as Map<String, dynamic>?;
       final downloadUrl = fileInfo?['url']?.toString();
 
@@ -209,7 +214,7 @@ class _AdminDonationsReportContentState
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Donation report in ${format.toUpperCase()} format has been compiled successfully.',
+                'Financial report in ${format.toUpperCase()} format has been compiled using official bank statement standards.',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 12),
@@ -222,12 +227,13 @@ class _AdminDonationsReportContentState
               if ((result['summary']?['total_usd'] ?? _totalUsd) > 0)
                 Text(
                     'Total USD: ${_usdFormat.format(result['summary']?['total_usd'] ?? _totalUsd)}'),
-              const SizedBox(height: 16),
-              if (downloadUrl != null)
-                Text(
-                  'The file has been uploaded to system exports and is ready for download.',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
+              const SizedBox(height: 14),
+              Text(
+                'You can instantly save or share the statement file, copy it to clipboard, or download directly.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
             ],
           ),
           actions: [
@@ -235,10 +241,43 @@ class _AdminDonationsReportContentState
               onPressed: () => Navigator.pop(ctx),
               child: const Text('Close'),
             ),
-            if (downloadUrl != null)
+            if (content.isNotEmpty)
+              OutlinedButton.icon(
+                icon: const Icon(Icons.copy_rounded, size: 16),
+                label: const Text('Copy'),
+                onPressed: () async {
+                  await Clipboard.setData(ClipboardData(text: content));
+                  if (!ctx.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Statement copied to clipboard!')),
+                  );
+                },
+              ),
+            if (content.isNotEmpty)
               FilledButton.icon(
-                icon: const Icon(Icons.download),
-                label: const Text('Download File'),
+                icon: const Icon(Icons.share_rounded, size: 16),
+                label: const Text('Save / Share File'),
+                onPressed: () async {
+                  final fileName =
+                      'alive_financial_statement_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.$format';
+                  await Share.shareXFiles(
+                    [
+                      XFile.fromData(
+                        Uint8List.fromList(utf8.encode(content)),
+                        name: fileName,
+                        mimeType: format == 'csv'
+                            ? 'text/csv'
+                            : 'application/json',
+                      ),
+                    ],
+                    subject: 'ALIVE Nigeria Financial Statement',
+                  );
+                },
+              ),
+            if (downloadUrl != null)
+              TextButton.icon(
+                icon: const Icon(Icons.download, size: 16),
+                label: const Text('Link'),
                 onPressed: () async {
                   final uri = Uri.parse(downloadUrl);
                   if (await canLaunchUrl(uri)) {

@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/appwrite_meeting_file_service.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -131,6 +132,121 @@ class _LeaderMeetingTranscriptionScreenState
     _selectedSpeaker = _attendees.first;
 
     _summaryController.text = '';
+    _checkExistingDraft();
+  }
+
+  static const String _draftKey = 'alive_leader_scribe_backup_draft';
+
+  Future<void> _checkExistingDraft() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final draftStr = prefs.getString(_draftKey);
+      if (draftStr != null && draftStr.isNotEmpty && mounted) {
+        final draft = jsonDecode(draftStr) as Map<String, dynamic>;
+        final count = (draft['entries'] as List?)?.length ?? 0;
+        if (count > 0 && _transcriptEntries.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Found backed-up meeting draft ($count entries).'),
+              duration: const Duration(seconds: 8),
+              action: SnackBarAction(
+                label: 'Restore',
+                textColor: Colors.amberAccent,
+                onPressed: () => _restoreDraftFromBackup(draft),
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error checking scribe draft: $e');
+    }
+  }
+
+  Future<void> _backupDraftLocally({bool showNotification = true}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final draft = {
+        'title': _meetingTitleController.text,
+        'summary': _summaryController.text,
+        'meetingType': _meetingType,
+        'date': _meetingDate.toIso8601String(),
+        'decisions': _decisions,
+        'actionItems': _actionItems
+            .map((a) => {
+                  'id': a.id,
+                  'task': a.task,
+                  'assignee': a.assignee,
+                  'dueDate': a.dueDate?.toIso8601String(),
+                  'isCompleted': a.isCompleted,
+                })
+            .toList(),
+        'entries': _transcriptEntries
+            .map((e) => {
+                  'id': e.id,
+                  'speakerName': e.speakerName,
+                  'speakerRole': e.speakerRole,
+                  'speakerColor': e.speakerColor.toARGB32(),
+                  'content': e.content,
+                  'timestamp': e.timestamp.toIso8601String(),
+                  'type': e.type.index,
+                })
+            .toList(),
+        'savedAt': DateTime.now().toIso8601String(),
+      };
+      await prefs.setString(_draftKey, jsonEncode(draft));
+      if (showNotification && mounted) {
+        _showFeedback('Notes backed up locally!');
+      }
+    } catch (e) {
+      if (showNotification && mounted) {
+        _showFeedback('Backup failed: $e');
+      }
+    }
+  }
+
+  void _restoreDraftFromBackup(Map<String, dynamic> draft) {
+    setState(() {
+      if (draft['title'] != null && draft['title'].toString().isNotEmpty) {
+        _meetingTitleController.text = draft['title'].toString();
+      }
+      if (draft['summary'] != null) {
+        _summaryController.text = draft['summary'].toString();
+      }
+      if (draft['meetingType'] != null) {
+        _meetingType = draft['meetingType'].toString();
+      }
+      if (draft['decisions'] is List) {
+        _decisions
+          ..clear()
+          ..addAll(List<String>.from(draft['decisions']));
+      }
+      if (draft['actionItems'] is List) {
+        _actionItems
+          ..clear()
+          ..addAll((draft['actionItems'] as List).map((i) => MeetingActionItem(
+                id: i['id'] ?? '',
+                task: i['task'] ?? '',
+                assignee: i['assignee'] ?? '',
+                dueDate: i['dueDate'] != null ? DateTime.tryParse(i['dueDate']) : null,
+                isCompleted: i['isCompleted'] == true,
+              )));
+      }
+      if (draft['entries'] is List) {
+        _transcriptEntries
+          ..clear()
+          ..addAll((draft['entries'] as List).map((e) => MeetingTranscriptEntry(
+                id: e['id'] ?? '',
+                speakerName: e['speakerName'] ?? 'Speaker',
+                speakerRole: e['speakerRole'] ?? 'Member',
+                speakerColor: Color(e['speakerColor'] ?? 0xFF1B365D),
+                content: e['content'] ?? '',
+                timestamp: DateTime.tryParse(e['timestamp'] ?? '') ?? DateTime.now(),
+                type: TranscriptEntryType.values[(e['type'] as int?) ?? 0],
+              )));
+      }
+    });
+    _showFeedback('Restored ${_transcriptEntries.length} entries from backup!');
   }
 
   Future<void> _initSpeech() async {
@@ -498,7 +614,7 @@ class _LeaderMeetingTranscriptionScreenState
             FilledButton.icon(
               onPressed: () => Navigator.of(ctx).pop(true),
               icon: const Icon(Icons.cloud_upload),
-              label: const Text('Confirm & Store'),
+              label: const Text('Store'),
             ),
           ],
         );
@@ -605,7 +721,7 @@ class _LeaderMeetingTranscriptionScreenState
                           }
                         },
                         icon: const Icon(Icons.copy),
-                        label: const Text('Copy Text'),
+                        label: const Text('Copy'),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -619,7 +735,7 @@ class _LeaderMeetingTranscriptionScreenState
                           );
                         },
                         icon: const Icon(Icons.share),
-                        label: const Text('Share Notes'),
+                        label: const Text('Share'),
                       ),
                     ),
                   ],
@@ -871,6 +987,11 @@ class _LeaderMeetingTranscriptionScreenState
         showBackButton: true,
         actions: [
           IconButton(
+            icon: const Icon(Icons.backup_outlined),
+            tooltip: 'Backup / Save Draft',
+            onPressed: () => _backupDraftLocally(),
+          ),
+          IconButton(
             icon: const Icon(Icons.folder_open_outlined),
             tooltip: 'View Meeting Files',
             onPressed: () {
@@ -889,7 +1010,7 @@ class _LeaderMeetingTranscriptionScreenState
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.save_as_outlined),
-            tooltip: 'Finish & Save to Meeting Files',
+            tooltip: 'Save Notes to Meeting Files',
             onPressed:
                 _isSavingToFileArea ? null : _finishAndSaveToMeetingFiles,
           ),
@@ -1003,7 +1124,7 @@ class _LeaderMeetingTranscriptionScreenState
                     Row(
                       children: [
                         const Text(
-                          'ALIVE Scribe Bot',
+                          'ALIVE Meeting Scribe',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
@@ -1018,7 +1139,7 @@ class _LeaderMeetingTranscriptionScreenState
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: const Text(
-                            'BOT',
+                            'AI SCRIBE',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 9,
@@ -1104,7 +1225,7 @@ class _LeaderMeetingTranscriptionScreenState
                     size: 18,
                   ),
                   label: Text(
-                    isListening ? 'Stop Scribe Mic' : 'Start Scribe Mic',
+                    isListening ? 'Stop Mic' : 'Record Mic',
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
@@ -1116,7 +1237,7 @@ class _LeaderMeetingTranscriptionScreenState
                   visualDensity: VisualDensity.compact,
                 ),
                 icon: const Icon(Icons.auto_awesome, size: 16),
-                label: const Text('Auto-Summarize'),
+                label: const Text('Summarize'),
               ),
             ],
           ),
@@ -1215,7 +1336,7 @@ class _LeaderMeetingTranscriptionScreenState
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Tap "Start Scribe Mic" or type contributions below.',
+                        'Tap "Record Mic" or type contributions below.',
                         style: TextStyle(color: colorScheme.onSurfaceVariant),
                       ),
                     ],
@@ -2020,8 +2141,8 @@ class _LeaderMeetingTranscriptionScreenState
               : const Icon(Icons.cloud_upload_outlined),
           label: Text(
             _isSavingToFileArea
-                ? 'Storing in Meeting Files Repository...'
-                : 'Finish & Store Notes to Meeting Files',
+                ? 'Saving...'
+                : 'Save Notes',
             style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
           ),
         ),

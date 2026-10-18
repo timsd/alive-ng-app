@@ -158,7 +158,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
         _MoreItem('Admin Portal', Icons.admin_panel_settings_rounded, AppConstants.adminRoute, color: Color(0xFFDC2626)),
         _MoreItem('Approvals', Icons.how_to_reg_rounded, AppConstants.adminApprovalRoute, color: Color(0xFFEA580C)),
         _MoreItem('Donations Report', Icons.analytics_rounded, AppConstants.adminDonationsReportRoute, color: Color(0xFFB91C1C)),
-        _MoreItem('Role Management', Icons.manage_accounts_rounded, AppConstants.roleManagementRoute, color: Color(0xFFC026D3)),
+        _MoreItem('Manage Users', Icons.manage_accounts_rounded, AppConstants.roleManagementRoute, color: Color(0xFFC026D3)),
         _MoreItem('Content Admin', Icons.post_add_rounded, AppConstants.contentManagementRoute, color: Color(0xFF7C3AED)),
         _MoreItem('Media Admin', Icons.library_add_rounded, AppConstants.tractPodcastAdminRoute, color: Color(0xFF2563EB)),
         _MoreItem('User Archive', Icons.archive_rounded, AppConstants.userArchiveRoute, color: Color(0xFF64748B)),

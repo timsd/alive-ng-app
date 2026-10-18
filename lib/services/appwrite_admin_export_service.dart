@@ -223,18 +223,25 @@ class AppwriteAdminExportService {
 
         purposeBreakdown[purpose] = (purposeBreakdown[purpose] ?? 0) + 1;
 
+        final isCredit = (rowStatus == 'success' || rowStatus == 'completed');
+        final creditStr = isCredit ? amountNum.toStringAsFixed(2) : '0.00';
+        final narration = 'DONATION: $purpose - $donorName';
+
         return {
-          'Transaction Date': r['created_at'] ?? r['\$createdAt'] ?? '',
-          'Reference': r['reference'] ?? r['transaction_id'] ?? r['id'] ?? '',
-          'Donor Name': donorName,
-          'Donor Email': r['donor_email'] ?? r['user_email'] ?? r['email'] ?? 'N/A',
-          'Donor Phone': r['donor_phone'] ?? r['phone'] ?? 'N/A',
-          'Amount': amountNum.toStringAsFixed(2),
+          'Value Date': r['created_at'] ?? r['$createdAt'] ?? '',
+          'Transaction Ref': r['reference'] ?? r['transaction_id'] ?? r['id'] ?? '',
+          'Narration / Description': narration,
+          'Payer / Donor Name': donorName,
+          'Payer Email': r['donor_email'] ?? r['user_email'] ?? r['email'] ?? 'N/A',
+          'Payer Phone': r['donor_phone'] ?? r['phone'] ?? 'N/A',
+          'Payment Channel': r['gateway'] ?? r['channel'] ?? 'Paystack',
           'Currency': currency,
-          'Purpose / Category': purpose,
-          'Payment Gateway': r['gateway'] ?? r['channel'] ?? 'Paystack',
+          'Inflow (Credit)': creditStr,
+          'Outflow (Debit)': '0.00',
+          'Net Inflow': creditStr,
           'Status': rowStatus.toUpperCase(),
-          'Completed At': r['completed_at'] ?? '',
+          'Purpose / Category': purpose,
+          'Settlement Date': r['completed_at'] ?? r['created_at'] ?? r['$createdAt'] ?? '',
           'Notes': r['notes'] ?? r['custom_purpose'] ?? '',
         };
       }).toList();
@@ -244,6 +251,7 @@ class AppwriteAdminExportService {
         content = _prettyJson({
           'report_metadata': {
             'organization': 'ALIVE Nigeria',
+            'account_name': 'ALIVE Nigeria Mission & Donation Ledger',
             'generated_at': DateTime.now().toUtc().toIso8601String(),
             'total_records': rows.length,
             'successful_count': successfulCount,
@@ -256,7 +264,12 @@ class AppwriteAdminExportService {
           'donations': formattedRows,
         });
       } else {
-        content = _toBankStatementCsv(formattedRows);
+        content = _toBankStatementCsv(
+          formattedRows,
+          totalNgn: totalAmountNgn,
+          totalUsd: totalAmountUsd,
+          successfulCount: successfulCount,
+        );
       }
 
       final file = await _uploadExport(
@@ -294,11 +307,12 @@ class AppwriteAdminExportService {
 
     try {
       final channels = await _listChatChannels(type: type, filter: filter);
+      final content = _prettyJson(channels);
       final file = await _uploadExport(
         prefix: prefix,
         fileName: 'channels.json',
         contentType: 'application/json',
-        content: _prettyJson(channels),
+        content: content,
       );
 
       _logger.info(
@@ -307,6 +321,7 @@ class AppwriteAdminExportService {
         'prefix': prefix,
         'count': channels.length,
         'file': file,
+        'content': content,
       };
     } catch (e, stackTrace) {
       _logger.error('Error exporting Appwrite chat backup', e, stackTrace);
@@ -365,17 +380,31 @@ class AppwriteAdminExportService {
     required String type,
     Map<String, dynamic>? filter,
   }) async {
-    final queries = <String>[
-      if (type.isNotEmpty) Query.equal('type', type),
-    ];
-    final isArchived = filter?['is_archived'];
-    if (isArchived is bool) {
-      queries.add(Query.equal('is_archived', isArchived));
+    try {
+      final queries = <String>[
+        if (type.isNotEmpty) Query.equal('type', type),
+      ];
+      final isArchived = filter?['is_archived'];
+      if (isArchived is bool) {
+        queries.add(Query.equal('is_archived', isArchived));
+      }
+      return await _listAllDocuments(
+        AppwriteBackendConfig.chatChannelsCollectionId,
+        baseQueries: queries,
+      );
+    } catch (e) {
+      // Fallback without server-side filters in case attributes lack database indexes
+      final all = await _listAllDocuments(
+        AppwriteBackendConfig.chatChannelsCollectionId,
+      );
+      return all.where((c) {
+        if (type.isNotEmpty && c['type'] != null && c['type'] != type) return false;
+        if (filter != null && filter.containsKey('is_archived')) {
+          if (c['is_archived'] != filter['is_archived']) return false;
+        }
+        return true;
+      }).toList();
     }
-    return _listAllDocuments(
-      AppwriteBackendConfig.chatChannelsCollectionId,
-      baseQueries: queries,
-    );
   }
 
   Future<List<Map<String, dynamic>>> _listChannelMessages(
@@ -436,25 +465,34 @@ class AppwriteAdminExportService {
     required String contentType,
     required String content,
   }) async {
-    final storageFileName =
-        '${_safeFileName(prefix)}_${_safeFileName(fileName)}';
-    final file = await _storage.createFile(
-      bucketId: AppwriteBackendConfig.systemExportsBucketId,
-      fileId: ID.unique(),
-      file: InputFile.fromBytes(
-        bytes: Uint8List.fromList(utf8.encode(content)),
-        filename: storageFileName,
-        contentType: contentType,
-      ),
-    );
+    try {
+      final storageFileName =
+          '${_safeFileName(prefix)}_${_safeFileName(fileName)}';
+      final file = await _storage.createFile(
+        bucketId: AppwriteBackendConfig.systemExportsBucketId,
+        fileId: ID.unique(),
+        file: InputFile.fromBytes(
+          bytes: Uint8List.fromList(utf8.encode(content)),
+          filename: storageFileName,
+          contentType: contentType,
+        ),
+      );
 
-    final path = '${AppwriteBackendConfig.systemExportsBucketId}/'
-        '$prefix/$fileName';
-    return {
-      'path': path,
-      'file_id': file.$id,
-      'url': _downloadUrl(file.$id),
-    };
+      final path = '${AppwriteBackendConfig.systemExportsBucketId}/'
+          '$prefix/$fileName';
+      return {
+        'path': path,
+        'file_id': file.$id,
+        'url': _downloadUrl(file.$id),
+      };
+    } catch (e, stackTrace) {
+      _logger.warn('Storage upload unavailable; proceeding with inline export data', e, stackTrace);
+      return {
+        'path': '$prefix/$fileName',
+        'file_id': null,
+        'url': null,
+      };
+    }
   }
 
   String _serializeRows(List<Map<String, dynamic>> rows, String format) {
@@ -485,26 +523,46 @@ class AppwriteAdminExportService {
     return buffer.toString();
   }
 
-  /// Bank-statement-style CSV with fixed column order for donation reports
-  String _toBankStatementCsv(List<Map<String, dynamic>> rows) {
-    // Standard bank statement column ordering
+  /// Bank-statement-style CSV with official header and standard banking columns
+  String _toBankStatementCsv(
+    List<Map<String, dynamic>> rows, {
+    double totalNgn = 0,
+    double totalUsd = 0,
+    int successfulCount = 0,
+  }) {
+    final buffer = StringBuffer();
+    // Official Bank Statement Header Block
+    buffer.writeln('"ALIVE NIGERIA - OFFICIAL FINANCIAL TRANSACTION & DONATION STATEMENT"');
+    buffer.writeln('"Account Name:","ALIVE Nigeria Mission & Donation Ledger"');
+    buffer.writeln('"Statement Date:","${DateTime.now().toUtc().toString().split('.').first} UTC"');
+    buffer.writeln('"Total Transactions:","${rows.length}"');
+    buffer.writeln('"Successful Credits:","$successfulCount"');
+    buffer.writeln('"Total Inflow (NGN):","${totalNgn.toStringAsFixed(2)}"');
+    if (totalUsd > 0) {
+      buffer.writeln('"Total Inflow (USD):","${totalUsd.toStringAsFixed(2)}"');
+    }
+    buffer.writeln(''); // Empty line separator before data table
+
+    // Standard Bank Statement Table Columns
     const bankColumns = [
-      'Transaction Date',
-      'Reference',
-      'Donor Name',
-      'Donor Email',
-      'Donor Phone',
-      'Amount',
+      'Value Date',
+      'Transaction Ref',
+      'Narration / Description',
+      'Payer / Donor Name',
+      'Payer Email',
+      'Payer Phone',
+      'Payment Channel',
       'Currency',
-      'Purpose / Category',
-      'Payment Gateway',
+      'Inflow (Credit)',
+      'Outflow (Debit)',
+      'Net Inflow',
       'Status',
-      'Completed At',
+      'Purpose / Category',
+      'Settlement Date',
       'Notes',
     ];
 
-    final buffer = StringBuffer()
-      ..writeln(bankColumns.map(_csvCell).join(','));
+    buffer.writeln(bankColumns.map(_csvCell).join(','));
 
     for (final row in rows) {
       buffer.writeln(

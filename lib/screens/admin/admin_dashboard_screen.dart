@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+import 'package:share_plus/share_plus.dart';
 import '../../services/appwrite_facade.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -160,34 +163,49 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
           DateTime(now.year, now.month, now.day).toIso8601String();
 
       final results = await Future.wait([
-        _countDocuments(
-          AppwriteBackendConfig.usersCollectionId,
-          queries: [Query.equal('is_archived', false)],
-        ),
-        _countDocuments(
+        // Total users registered in system
+        _safeCountDocuments(AppwriteBackendConfig.usersCollectionId),
+        // Archived users
+        _safeCountDocuments(
           AppwriteBackendConfig.usersCollectionId,
           queries: [Query.equal('is_archived', true)],
         ),
-        _countDocuments(AppwriteBackendConfig.boardReportsCollectionId),
+        // Chapter reports
+        _safeCountDocuments(AppwriteBackendConfig.chapterReportsCollectionId),
+        // Board reports
+        _safeCountDocuments(AppwriteBackendConfig.boardReportsCollectionId),
+        // Podcasts
         _listDocuments(
           AppwriteBackendConfig.podcastsCollectionId,
           queries: [Query.limit(500)],
         ),
+        // Daily active users
         _calculateDailyUsers(todayStart),
+        // Prayer requests
         _safeCountDocuments(AppwriteBackendConfig.prayerRequestsCollectionId),
+        // Answered prayers
         _safeCountDocuments(
           AppwriteBackendConfig.prayerRequestsCollectionId,
           queries: [Query.equal('is_answered', true)],
         ),
+        // Real chapters in DB
+        _safeCountDocuments(AppwriteBackendConfig.chaptersCollectionId),
       ]);
 
-      final activeUsers = results[0] as int;
+      final totalUsers = results[0] as int;
       final archivedUsers = results[1] as int;
-      final activeReports = results[2] as int;
-      final podcasts = results[3] as List<Podcast>;
-      final dailyUsers = results[4] as int;
-      final totalPrayers = results[5] as int;
-      final answeredPrayers = results[6] as int;
+      final activeUsers = (totalUsers - archivedUsers).clamp(0, 999999);
+      final chapterReports = results[2] as int;
+      final boardReports = results[3] as int;
+      final totalReports = chapterReports + boardReports;
+      final podcasts = results[4] as List<Podcast>;
+      final dailyUsers = results[5] as int;
+      final totalPrayers = results[6] as int;
+      final answeredPrayers = results[7] as int;
+      final dbChapters = results[8] as int;
+      final totalChapters = dbChapters > 0
+          ? dbChapters
+          : ChapterConstants.availableChapters.length;
 
       final Map<String, int> categoryCounts = {};
       for (final data in podcasts) {
@@ -199,8 +217,8 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
       setState(() {
         _totalUsers = activeUsers;
         _archivedUsers = archivedUsers;
-        _activeReports = activeReports;
-        _totalChapters = ChapterConstants.availableChapters.length;
+        _activeReports = totalReports;
+        _totalChapters = totalChapters;
         _totalPodcasts = podcasts.length;
         _podcastCategoryCounts = categoryCounts;
         _dailyUsers = dailyUsers;
@@ -387,100 +405,6 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
               });
             },
           ),
-
-          IconButton(
-            icon: const Icon(Icons.chat_outlined),
-            tooltip: 'Export Chat (channels + messages)',
-            onPressed: () async {
-              try {
-                final data =
-                    await AppwriteAdminExportService.instance.exportChatBackup(
-                  type: 'messaging',
-                );
-                if (context.mounted) {
-                  final file = data['file'] as Map?;
-                  showDialog(
-                    context: context,
-                    builder: (context) {
-                      return AlertDialog(
-                        title: const Text('Chat Backup Exported'),
-                        content: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Prefix: ${data['prefix'] ?? ''}'),
-                            const SizedBox(height: 8),
-                            Text(
-                                'Channels exported: ${data['count'] ?? 0}'),
-                            const SizedBox(height: 12),
-                            if (file != null && file['url'] != null)
-                              TextButton(
-                                onPressed: () async {
-                                  final url = Uri.parse(file['url']);
-                                  if (await canLaunchUrl(url)) {
-                                    await launchUrl(url,
-                                        mode: LaunchMode.externalApplication);
-                                  }
-                                },
-                                child: const Text('Open Download Link'),
-                              ),
-                            TextButton(
-                              onPressed: () async {
-                                try {
-                                  final msgData =
-                                      await AppwriteAdminExportService.instance
-                                          .exportChatMessages(
-                                    type: 'messaging',
-                                    limitPerChannel: 500,
-                                  );
-                                  if (!context.mounted) return;
-                                  final files =
-                                      (msgData['files'] as List?) ?? const [];
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                          'Messages exported: ${files.length} channel file(s)'),
-                                    ),
-                                  );
-                                } catch (e) {
-                                  if (!context.mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                          'Chat messages export failed: $e'),
-                                      backgroundColor: Theme.of(context)
-                                          .colorScheme
-                                          .error,
-                                    ),
-                                  );
-                                }
-                              },
-                              child: const Text('Also Export Messages'),
-                            ),
-                          ],
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('Close'),
-                          ),
-                        ],
-                      );
-                    },
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Chat export failed: $e'),
-                      backgroundColor: Theme.of(context).colorScheme.error,
-                    ),
-                  );
-                }
-              }
-            },
-          ),
         ],
       ),
       body: _isLoading
@@ -520,7 +444,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
                     ),
                   ),
                 ),
-                _buildSidebarTile(Icons.people_outline, 'Users', () => context.go(AppConstants.roleManagementRoute)),
+                _buildSidebarTile(Icons.people_outline, 'Manage Users', () => context.go(AppConstants.roleManagementRoute)),
                 _buildSidebarTile(Icons.how_to_reg_outlined, 'Approvals', () => context.go(AppConstants.adminApprovalRoute)),
                 _buildSidebarTile(Icons.library_books_outlined, 'Content', () => context.go(AppConstants.tractPodcastAdminRoute)),
                 _buildSidebarTile(Icons.location_city_outlined, 'Chapters', () => _navigateToChapterManagement()),
@@ -560,10 +484,15 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
             children: [
               Icon(icon, size: 20, color: theme.colorScheme.primary),
               const SizedBox(width: 12),
-              Text(
-                label,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
+              Expanded(
+                child: Text(
+                  label,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
@@ -756,9 +685,9 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossCount,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: isWide ? 1.6 : 1.45,
+        mainAxisSpacing: 10,
+        crossAxisSpacing: 10,
+        childAspectRatio: isWide ? 1.55 : 1.10,
       ),
       itemCount: stats.length,
       itemBuilder: (context, index) => _buildPremiumStatCard(stats[index]),
@@ -894,6 +823,9 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
       _MgmtSection('Storage Management', Icons.cloud_upload_outlined, [
         _MgmtTile('File Storage', 'Manage buckets, audio, PDFs and profile pictures', Icons.folder_outlined, () => _navigateToStorageAdmin()),
       ]),
+      _MgmtSection('Communication & Data Export', Icons.import_export_rounded, [
+        _MgmtTile('Chat & Messages Export', 'Export chat channels, messages, and communication backups', Icons.chat_outlined, () => _showChatExportDialog()),
+      ]),
       _MgmtSection('System Settings', Icons.settings_outlined, [
         _MgmtTile('App Configuration', 'Configure app settings and preferences', Icons.tune_outlined, () => _navigateToAppSettings()),
         _MgmtTile('Backup & Restore', 'Manage system backups and data restoration', Icons.backup_outlined, () => _navigateToBackupSettings()),
@@ -957,6 +889,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
   Widget _buildStatCard(
       String title, String value, IconData icon, Color color) {
     final theme = Theme.of(context);
+    final isWide = MediaQuery.of(context).size.width >= 920;
     return Card(
       elevation: 0,
       shadowColor: color.withValues(alpha: 0.2),
@@ -976,39 +909,53 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
             ],
           ),
         ),
-        padding: const EdgeInsets.all(20.0),
+        padding: EdgeInsets.symmetric(
+          horizontal: isWide ? 16.0 : 10.0,
+          vertical: isWide ? 16.0 : 10.0,
+        ),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(isWide ? 8 : 6),
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 icon,
-                size: ResponsiveUtils.getResponsiveIconSize(context, 28),
+                size: isWide ? 26 : 22,
                 color: color,
               ),
             ),
-            const SizedBox(height: 12),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    color: color,
-                    letterSpacing: -1,
-                  ),
+            SizedBox(height: isWide ? 10 : 6),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                value,
+                style: (isWide
+                        ? theme.textTheme.headlineMedium
+                        : theme.textTheme.titleLarge)
+                    ?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: color,
+                  letterSpacing: -0.5,
+                ),
+              ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Text(
               title.toUpperCase(),
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
-                  ),
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.0,
+                fontSize: isWide ? 11 : 9.5,
+              ),
               textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -1326,6 +1273,116 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
             const StorageAdminScreen(initialBucket: 'app-logs'),
       ),
     );
+  }
+
+  Future<void> _showChatExportDialog() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final data = await AppwriteAdminExportService.instance.exportChatBackup(
+        type: 'messaging',
+      );
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop(); // dismiss loading
+
+      final file = data['file'] as Map?;
+      final downloadUrl = file?['url']?.toString();
+      final content = data['content']?.toString() ?? '';
+
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.chat_outlined, color: Colors.blue),
+              SizedBox(width: 8),
+              Text('Chat Backup Exported'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Prefix: ${data['prefix'] ?? ''}'),
+              const SizedBox(height: 8),
+              Text('Channels exported: ${data['count'] ?? 0}'),
+              const SizedBox(height: 12),
+              const Text(
+                'You can save/share the JSON backup directly or export channel message logs.',
+                style: TextStyle(fontSize: 13),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Close'),
+            ),
+            if (content.isNotEmpty)
+              OutlinedButton.icon(
+                icon: const Icon(Icons.share_rounded, size: 16),
+                label: const Text('Share / Save Backup'),
+                onPressed: () async {
+                  await Share.shareXFiles(
+                    [
+                      XFile.fromData(
+                        Uint8List.fromList(utf8.encode(content)),
+                        name: 'alive_chat_channels_backup.json',
+                        mimeType: 'application/json',
+                      ),
+                    ],
+                    subject: 'ALIVE Nigeria Chat Backup',
+                  );
+                },
+              ),
+            FilledButton.icon(
+              icon: const Icon(Icons.forum_outlined, size: 16),
+              label: const Text('Export Messages'),
+              onPressed: () async {
+                try {
+                  final msgData = await AppwriteAdminExportService.instance
+                      .exportChatMessages(type: 'messaging', limitPerChannel: 500);
+                  if (!mounted) return;
+                  final files = (msgData['files'] as List?) ?? const [];
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Exported ${files.length} channel message file(s)')),
+                  );
+                } catch (e) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Export failed: $e')),
+                  );
+                }
+              },
+            ),
+            if (downloadUrl != null)
+              TextButton(
+                onPressed: () async {
+                  final url = Uri.parse(downloadUrl);
+                  if (await canLaunchUrl(url)) {
+                    await launchUrl(url, mode: LaunchMode.externalApplication);
+                  }
+                },
+                child: const Text('Download Link'),
+              ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop(); // dismiss loading
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Chat export failed: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
   }
 
   // Discipleship Officer Mapping & Report Routing Dialog

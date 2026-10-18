@@ -525,24 +525,37 @@ class _ProfileHeaderCard extends StatelessWidget {
       child: Column(
         children: [
           // Avatar
-          CircleAvatar(
-            radius: avatarRadius,
-            backgroundColor: theme.colorScheme.primary,
-            child: profile.avatarUrl != null || profile.photoUrl != null
-                ? ClipOval(
-                    child: CustomImage(
-                      imageUrl: profile.avatarUrl ?? profile.photoUrl!,
-                      width: avatarRadius * 2,
-                      height: avatarRadius * 2,
-                      fit: BoxFit.cover,
-                      placeholder: Icon(Icons.person,
-                          size: avatarRadius,
-                          color: theme.colorScheme.onPrimary),
-                    ),
-                  )
-                : Icon(Icons.person,
-                    size: avatarRadius,
-                    color: theme.colorScheme.onPrimary),
+          // Avatar
+          Builder(
+            builder: (context) {
+              final avatar = (profile.avatarUrl != null &&
+                      profile.avatarUrl!.trim().isNotEmpty)
+                  ? profile.avatarUrl!.trim()
+                  : ((profile.photoUrl != null &&
+                          profile.photoUrl!.trim().isNotEmpty)
+                      ? profile.photoUrl!.trim()
+                      : null);
+
+              return CircleAvatar(
+                radius: avatarRadius,
+                backgroundColor: theme.colorScheme.primary,
+                child: avatar != null
+                    ? ClipOval(
+                        child: CustomImage(
+                          imageUrl: avatar,
+                          width: avatarRadius * 2,
+                          height: avatarRadius * 2,
+                          fit: BoxFit.cover,
+                          placeholder: Icon(Icons.person,
+                              size: avatarRadius,
+                              color: theme.colorScheme.onPrimary),
+                        ),
+                      )
+                    : Icon(Icons.person,
+                        size: avatarRadius,
+                        color: theme.colorScheme.onPrimary),
+              );
+            },
           ),
           const SizedBox(height: 16),
 
