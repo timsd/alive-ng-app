@@ -6,16 +6,16 @@ import '../constants/app_constants.dart';
 
 /// Provider for achievement badge visibility on home screen.
 class AchievementBadgeNotifier extends StateNotifier<bool> {
-  AchievementBadgeNotifier() : super(false) {
+  AchievementBadgeNotifier() : super(true) {
     _loadPreference();
   }
 
   Future<void> _loadPreference() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      state = prefs.getBool(AppConstants.showAchievementBadgeKey) ?? false;
+      state = prefs.getBool(AppConstants.showAchievementBadgeKey) ?? true;
     } catch (e) {
-      state = false;
+      state = true;
     }
   }
 

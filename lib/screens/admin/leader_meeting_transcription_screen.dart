@@ -102,39 +102,7 @@ class _LeaderMeetingTranscriptionScreenState
   late String _meetingType;
   final DateTime _meetingDate = DateTime.now();
 
-  final List<MeetingAttendee> _attendees = [
-    const MeetingAttendee(
-      id: '1',
-      name: 'Dr. David',
-      role: 'Chairman (BOD)',
-      color: Color(0xFF3F51B5),
-    ),
-    const MeetingAttendee(
-      id: '2',
-      name: 'Pastor Timothy',
-      role: 'Secretary (Trustee)',
-      color: Color(0xFF00897B),
-    ),
-    const MeetingAttendee(
-      id: '3',
-      name: 'Sis. Grace',
-      role: 'Finance Director',
-      color: Color(0xFFD81B60),
-    ),
-    const MeetingAttendee(
-      id: '4',
-      name: 'Bro. Michael',
-      role: 'Operations Director',
-      color: Color(0xFFFB8C00),
-    ),
-    const MeetingAttendee(
-      id: '5',
-      name: 'Pastor Samuel',
-      role: 'Trustee Council',
-      color: Color(0xFF5E35B1),
-    ),
-  ];
-
+  final List<MeetingAttendee> _attendees = [];
   late MeetingAttendee _selectedSpeaker;
 
   final List<MeetingTranscriptEntry> _transcriptEntries = [];
@@ -148,70 +116,21 @@ class _LeaderMeetingTranscriptionScreenState
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _meetingTitleController.text = widget.initialMeetingTitle ??
-        'Leadership & Board Quarterly Council Meeting';
+        'Council Meeting - ${DateFormat('MMMM d, yyyy').format(DateTime.now())}';
     _meetingType = widget.initialMeetingType ?? 'Board of Directors';
+
+    // Initialize with current authenticated leader
+    final user = AuthService().currentUser;
+    final leaderName = user?.displayName ?? 'Host Leader';
+    _attendees.add(MeetingAttendee(
+      id: user?.uid ?? 'host',
+      name: leaderName,
+      role: 'Meeting Host',
+      color: const Color(0xFF1B365D),
+    ));
     _selectedSpeaker = _attendees.first;
 
-    _summaryController.text =
-        'The leadership convened to review Q3 ministry progress, financial stewardship, and expansion initiatives. Action points and key approvals are recorded below.';
-
-    _populateInitialSeedEntries();
-  }
-
-  void _populateInitialSeedEntries() {
-    final now = DateTime.now();
-    _transcriptEntries.addAll([
-      MeetingTranscriptEntry(
-        id: 'seed-1',
-        speakerName: _attendees[0].name,
-        speakerRole: _attendees[0].role,
-        speakerColor: _attendees[0].color,
-        content:
-            'Welcome everyone to today\'s council meeting. We will open with prayer and proceed through the agenda.',
-        timestamp: now.subtract(const Duration(minutes: 12)),
-        type: TranscriptEntryType.general,
-      ),
-      MeetingTranscriptEntry(
-        id: 'seed-2',
-        speakerName: _attendees[1].name,
-        speakerRole: _attendees[1].role,
-        speakerColor: _attendees[1].color,
-        content:
-            'The minutes from our previous sitting have been circulated. We need a motion to adopt them as true records.',
-        timestamp: now.subtract(const Duration(minutes: 9)),
-        type: TranscriptEntryType.motion,
-      ),
-      MeetingTranscriptEntry(
-        id: 'seed-3',
-        speakerName: _attendees[2].name,
-        speakerRole: _attendees[2].role,
-        speakerColor: _attendees[2].color,
-        content:
-            'The Q3 financial audit is finalized with an 18% surplus allocated toward upcoming chapter missions.',
-        timestamp: now.subtract(const Duration(minutes: 6)),
-        type: TranscriptEntryType.general,
-      ),
-      MeetingTranscriptEntry(
-        id: 'seed-4',
-        speakerName: _attendees[0].name,
-        speakerRole: _attendees[0].role,
-        speakerColor: _attendees[0].color,
-        content:
-            'Decision: Council approves the allocation of the 18% surplus exclusively to chapter mission outreaches and community welfare.',
-        timestamp: now.subtract(const Duration(minutes: 3)),
-        type: TranscriptEntryType.decision,
-      ),
-    ]);
-
-    _decisions.add(
-        'Council unanimously approved allocating 18% Q3 surplus to chapter mission outreaches and community welfare.');
-    _actionItems.add(MeetingActionItem(
-      id: 'act-1',
-      task: 'Distribute chapter grants according to audited mission budgets.',
-      assignee: 'Sis. Grace',
-      dueDate: DateTime.now().add(const Duration(days: 7)),
-      isCompleted: false,
-    ));
+    _summaryController.text = '';
   }
 
   Future<void> _initSpeech() async {

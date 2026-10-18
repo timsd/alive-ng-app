@@ -32,20 +32,29 @@ class GreetingHeader extends ConsumerWidget {
 
     // Authentic ALIVE brand colors
     final cardBg = isDark
-        ? const Color(0xFF1E293B) // Slate dark
-        : const Color(0xFF1B365D); // ALIVE Navy
-    final onCard = Colors.white;
+        ? const Color(0xFF141F2D) // Deep elevated slate
+        : Colors.white; // Clean warm white for light mode
+    final onCard = isDark ? Colors.white : const Color(0xFF17263B);
+    final secondaryText = isDark
+        ? Colors.white.withValues(alpha: 0.75)
+        : const Color(0xFF5B6B82);
 
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : const Color(0xFFE7E0D1),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
+            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.04),
             blurRadius: 12,
-            offset: const Offset(0, 4),
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -63,13 +72,13 @@ class GreetingHeader extends ConsumerWidget {
                     Icon(
                       timeIcon,
                       size: 14,
-                      color: const Color(0xFFE5B94D), // Warm Gold
+                      color: const Color(0xFFD49B28), // Warm Gold
                     ),
                     const SizedBox(width: 6),
                     Text(
                       formattedDate,
                       style: TextStyle(
-                        color: onCard.withValues(alpha: 0.8),
+                        color: secondaryText,
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
                         letterSpacing: 0.2,
@@ -82,7 +91,9 @@ class GreetingHeader extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.12),
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.12)
+                          : const Color(0xFFF1EDE4),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
@@ -91,13 +102,15 @@ class GreetingHeader extends ConsumerWidget {
                         const Icon(
                           Icons.verified_rounded,
                           size: 13,
-                          color: Color(0xFFE5B94D),
+                          color: Color(0xFFD49B28),
                         ),
                         const SizedBox(width: 4),
                         Text(
                           'Member',
                           style: TextStyle(
-                            color: onCard.withValues(alpha: 0.9),
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.9)
+                                : const Color(0xFF233E5F),
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
                           ),
@@ -114,7 +127,7 @@ class GreetingHeader extends ConsumerWidget {
             Text(
               greeting,
               style: TextStyle(
-                color: onCard.withValues(alpha: 0.8),
+                color: secondaryText,
                 fontSize: 14,
                 fontWeight: FontWeight.w400,
               ),
@@ -140,7 +153,7 @@ class GreetingHeader extends ConsumerWidget {
             Text(
               translate('continue_spiritual_journey'),
               style: TextStyle(
-                color: onCard.withValues(alpha: 0.85),
+                color: secondaryText,
                 fontSize: 13,
                 height: 1.4,
               ),

@@ -33,12 +33,13 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
   final UserStatisticsService _statisticsService =
       UserStatisticsService.instance;
 
-  String _selectedVersion = '';
-  String _selectedBook = '';
+  String _selectedVersion = 'KJV';
+  String _selectedBook = 'Genesis';
   int _selectedChapter = 1;
   final int _selectedVerse = 1;
   models.BibleVerse? _currentVerse;
-  List<models.BibleVerse> _chapterVerses = [];
+  List<models.BibleVerse> _chapterVerses =
+      OfflineBibleService.instantGenesis1Verses;
   bool _isLoading = false;
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _formKey = GlobalKey();
@@ -156,14 +157,20 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
   }
 
   Future<void> _loadBooksAndInit() async {
-    setState(() => _isLoading = true);
+    if (_chapterVerses.isEmpty) {
+      setState(() => _isLoading = true);
+    }
     try {
       final languageCode = _languageCodes[_selectedLanguage] ?? 'en';
       _versionsForLanguage = await _resolveVersionsForLanguage(languageCode);
 
       if (_versionsForLanguage.isNotEmpty &&
           !_versionsForLanguage.contains(_selectedVersion)) {
-        _selectedVersion = _versionsForLanguage.first;
+        if (_versionsForLanguage.contains('KJV')) {
+          _selectedVersion = 'KJV';
+        } else {
+          _selectedVersion = _versionsForLanguage.first;
+        }
       }
 
       final books = await _offlineBible.getBibleBooks(language: languageCode);
@@ -182,16 +189,20 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
           return a.order.compareTo(b.order);
         });
         _books = books;
-        _currentBookIndex = 0;
+        final bookIdx = _books.indexWhere(
+            (b) => b.name.toLowerCase() == _selectedBook.toLowerCase());
+        _currentBookIndex = bookIdx != -1 ? bookIdx : 0;
         _selectedBook = _books[_currentBookIndex].name;
-        _selectedChapter = 1;
+
         if (widget.initialReference != null && !_didApplyInitialReference) {
           final applied = await _openReference(widget.initialReference!);
           _didApplyInitialReference = true;
           if (!applied) {
             await _loadChapter();
           }
-        } else {
+        } else if (_chapterVerses.isEmpty ||
+            _selectedBook != 'Genesis' ||
+            _selectedChapter != 1) {
           await _loadChapter();
         }
       } else {
@@ -199,7 +210,9 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
         _selectedBook = '';
       }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -297,12 +310,15 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
       _selectedChapter = parsedChapter;
     });
 
-    await _loadChapter();
+    await _loadChapter(targetVerseNumber: parsedVerse);
     if (!mounted) return true;
 
     // Standard bible-app behaviour: return to the Reader tab and auto-scroll
     // so the exact verse is in view, briefly flashing it.
-    _tabController.animateTo(0);
+    if (_tabController.index != 0) {
+      _tabController.animateTo(0);
+      await Future.delayed(const Duration(milliseconds: 320));
+    }
 
     final matches =
         _chapterVerses.where((v) => v.number == parsedVerse).toList();
@@ -323,23 +339,37 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
   /// Scrolls the reader so [verseNumber] is in view and flashes it briefly —
   /// the same pattern YouVersion/Blue Letter Bible use for search jumps.
   Future<void> _scrollToVerse(int verseNumber) async {
-    // Let the freshly loaded chapter finish laying out first so the verse key
-    // is attached and measurable.
+    // Wait for frame rendering so widget context and layout keys are ready
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted) return;
-    final ctx = _verseKeys[verseNumber]?.currentContext;
-    // Checked on `ctx` itself, not on `mounted`. The State's mounted check says
-    // nothing about this GlobalKey's context: the verse for this chapter may
-    // already have been scrolled out of the tree, in which case ensureVisible
-    // on a defunct context throws exactly when a member taps a search result
-    // and immediately swipes.
+
+    BuildContext? ctx = _verseKeys[verseNumber]?.currentContext;
+    if (ctx == null || !ctx.mounted) {
+      await Future.delayed(const Duration(milliseconds: 120));
+      if (!mounted) return;
+      ctx = _verseKeys[verseNumber]?.currentContext;
+    }
+
     if (ctx != null && ctx.mounted) {
       await Scrollable.ensureVisible(
         ctx,
-        duration: const Duration(milliseconds: 450),
-        curve: Curves.easeInOut,
-        alignment: 0.05,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOutCubic,
+        alignment: 0.12,
       );
+    } else if (_scrollController.hasClients && _chapterVerses.isNotEmpty) {
+      final verseIndex =
+          _chapterVerses.indexWhere((v) => v.number == verseNumber);
+      if (verseIndex >= 0) {
+        final total = _chapterVerses.length;
+        final targetOffset =
+            (verseIndex / total) * _scrollController.position.maxScrollExtent;
+        await _scrollController.animateTo(
+          targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOutCubic,
+        );
+      }
     }
     if (!mounted) return;
     _flashTimer?.cancel();
@@ -349,7 +379,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
     });
   }
 
-  Future<void> _loadChapter() async {
+  Future<void> _loadChapter({int? targetVerseNumber}) async {
     setState(() => _isLoading = true);
 
     try {
@@ -365,17 +395,20 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
         setState(() {
           _chapterVerses = chapter.verses;
           // Rebuild per-verse keys for the new chapter and clear any
-          // previous search-jump flash.
+          // previous search-jump flash unless targeting a verse.
           _verseKeys.clear();
-          _flashVerseNumber = null;
-        });
-        // Chapter navigation should start at the top (jump-to-verse, when
-        // requested, repositions afterwards).
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && _scrollController.hasClients) {
-            _scrollController.jumpTo(0);
+          if (targetVerseNumber == null) {
+            _flashVerseNumber = null;
           }
         });
+        // Chapter navigation should start at the top only when not jumping to verse
+        if (targetVerseNumber == null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && _scrollController.hasClients) {
+              _scrollController.jumpTo(0);
+            }
+          });
+        }
         _statisticsService.recordChapterRead(_selectedBook, _selectedChapter);
         _statisticsService.recordVersesRead(
             chapter.reference, chapter.verses.length);
@@ -395,7 +428,9 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
         );
       }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -762,6 +797,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                           ),
                         )
                       : SingleChildScrollView(
+                          controller: _scrollController,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [

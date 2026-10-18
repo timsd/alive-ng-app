@@ -92,10 +92,23 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
         meetingTitle: roomName,
       );
     } catch (e) {
+      final errStr = e.toString();
+      final isPermissionOrDeviceError = errStr.contains('No element') ||
+          errStr.contains('Bad state') ||
+          errStr.contains('permission') ||
+          errStr.contains('NotAllowedError') ||
+          errStr.contains('NotFoundError') ||
+          errStr.contains('device') ||
+          errStr.contains('MediaStream');
+
+      if (isPermissionOrDeviceError) {
+        _showPermissionDialog(gateway);
+        return;
+      }
+
       // Extract user-friendly error message
       String errorMessage =
           'ALIVE Meet could not be joined. Please check your connection and try again.';
-      final errStr = e.toString();
       if (errStr.contains('certificate') ||
           errStr.contains('SSL') ||
           errStr.contains('TLS')) {
@@ -107,9 +120,6 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       } else if (errStr.contains('Token not found')) {
         errorMessage =
             'Failed to generate meeting token. Please try again later.';
-      } else if (errStr.contains('No element') || errStr.contains('Bad state')) {
-        errorMessage =
-            'Audio/video device error. Please ensure your microphone/camera permissions are allowed.';
       } else if (e is Exception) {
         final cleanMsg = errStr.replaceAll('Exception: ', '').trim();
         if (cleanMsg.isNotEmpty && cleanMsg.length < 120) {
@@ -120,6 +130,111 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     } finally {
       if (mounted) setState(() => _isJoining = false);
     }
+  }
+
+  Future<void> _showPermissionDialog(MeetingGateway gateway) async {
+    if (!mounted) return;
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        icon: Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            color: const Color(0xFFE5B94D).withValues(alpha: 0.15),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.mic_none_rounded,
+            size: 32,
+            color: Color(0xFFD49B28),
+          ),
+        ),
+        title: const Text(
+          'Allow Camera & Microphone',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'ALIVE Meet requires access to your microphone and camera to connect your audio and video.',
+              style: TextStyle(fontSize: 14, height: 1.4),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context)
+                    .colorScheme
+                    .surfaceContainerHighest
+                    .withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .outlineVariant
+                      .withValues(alpha: 0.5),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        kIsWeb ? Icons.language : Icons.settings,
+                        size: 16,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        kIsWeb
+                            ? 'How to allow in browser:'
+                            : 'How to allow in settings:',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    kIsWeb
+                        ? '1. Click the permissions or lock icon in the address bar.\n2. Set Camera and Microphone to "Allow".\n3. Tap "Restart & Join" below.'
+                        : '1. Tap "Open App Settings" below.\n2. Enable Camera and Microphone permissions.\n3. Return here and tap "Restart & Join".',
+                    style: const TextStyle(fontSize: 12, height: 1.4),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: const Text('Cancel'),
+          ),
+          if (!kIsWeb)
+            OutlinedButton(
+              onPressed: () async {
+                await openAppSettings();
+              },
+              child: const Text('Open App Settings'),
+            ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(dialogCtx).pop();
+              _joinMeeting(gateway);
+            },
+            child: const Text('Restart & Join'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showMessage(String message) {

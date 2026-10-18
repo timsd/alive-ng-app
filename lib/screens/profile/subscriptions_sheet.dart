@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../models/payment_models.dart';
 import '../../services/payment_service.dart';
@@ -31,8 +32,24 @@ class _SubscriptionsSheetState extends State<SubscriptionsSheet> {
     _future = _load();
   }
 
-  Future<List<RecurringSubscription>> _load() {
-    return PaymentService().listMonthlySubscriptions(email: widget.email);
+  Future<List<RecurringSubscription>> _load() async {
+    final email = widget.email.trim();
+    if (email.isEmpty) return const [];
+    try {
+      return await PaymentService().listMonthlySubscriptions(email: email);
+    } catch (e) {
+      final err = e.toString().toLowerCase();
+      // When there are no Paystack customer records or no subscription elements,
+      // return clean empty list rather than surfacing a fatal error.
+      if (err.contains('no element') ||
+          err.contains('bad state') ||
+          err.contains('not found') ||
+          err.contains('missing donor email') ||
+          err.contains('no subscription')) {
+        return const [];
+      }
+      rethrow;
+    }
   }
 
   String _moneyLabel(RecurringSubscription sub) {
@@ -93,7 +110,6 @@ class _SubscriptionsSheetState extends State<SubscriptionsSheet> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -121,7 +137,9 @@ class _SubscriptionsSheetState extends State<SubscriptionsSheet> {
             ),
             const SizedBox(height: 4),
             Text(
-              'Recurring gifts billed via Paystack for ${widget.email}.',
+              widget.email.isNotEmpty
+                  ? 'Recurring gifts billed via Paystack for ${widget.email}.'
+                  : 'Manage your active monthly giving plans.',
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
@@ -152,30 +170,85 @@ class _SubscriptionsSheetState extends State<SubscriptionsSheet> {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
+
+        // If snapshot has error, check if it's a "no element / bad state" empty condition
         if (snapshot.hasError) {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.error_outline, size: 40),
-                const SizedBox(height: 8),
-                Text('Could not load subscriptions.\n${snapshot.error}'),
-                const SizedBox(height: 12),
-                FilledButton.tonal(
-                  onPressed: () => setState(() => _future = _load()),
-                  child: const Text('Retry'),
-                ),
-              ],
-            ),
-          );
+          final errStr = snapshot.error.toString().toLowerCase();
+          final isNoRecord = errStr.contains('no element') ||
+              errStr.contains('bad state') ||
+              errStr.contains('not found') ||
+              errStr.contains('missing donor email');
+          if (!isNoRecord) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.cloud_off_rounded, size: 40),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Could not check subscriptions at this time.\nPlease check your connection.',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 12),
+                  FilledButton.tonal(
+                    onPressed: () => setState(() => _future = _load()),
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            );
+          }
         }
+
         final subs = snapshot.data ?? const [];
         if (subs.isEmpty) {
-          return const Center(
-            child: Text(
-              'No active monthly donations found.\n'
-              'Start one from the Donate screen.',
-              textAlign: TextAlign.center,
+          return Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 68,
+                    height: 68,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.volunteer_activism_outlined,
+                      size: 34,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No Monthly Donations Yet',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'You do not have any active monthly recurring contributions on file. Your generous gifts support nationwide campus ministry, youth outreaches, and biblical discipleship.',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  FilledButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      context.push('/donation');
+                    },
+                    icon: const Icon(Icons.favorite_rounded, size: 18),
+                    label: const Text('Start Monthly Giving'),
+                  ),
+                ],
+              ),
             ),
           );
         }

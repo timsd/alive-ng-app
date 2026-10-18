@@ -9,6 +9,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 import 'package:path/path.dart' as p;
 import '../models/bible_models.dart';
+import '../constants/bible_data.dart';
 
 /// Thrown when the bundled Bible database cannot be installed.
 ///
@@ -739,13 +740,26 @@ class BibleDatabaseHelper {
   Future<BibleChapter?> getChapter(String book, int chapter, String version, String language) async {
     final db = await database;
     
-    // Get chapter info
-    final List<Map<String, dynamic>> chapterMaps = await db.query(
+    // 1. Direct query by exact book name and version
+    var chapterMaps = await db.query(
       _chaptersTable,
-      where: 'book = ? AND chapter = ? AND version = ? AND language = ?',
-      whereArgs: [book, chapter, version, language],
+      where: 'book = ? AND chapter = ? AND version = ?',
+      whereArgs: [book, chapter, version],
       limit: 1,
     );
+
+    // 2. If not found, resolve canonical English book name (e.g. Farawa -> Genesis for HAU)
+    if (chapterMaps.isEmpty) {
+      final canon = BibleData.canonicalBookName(book);
+      if (canon != null && canon != book) {
+        chapterMaps = await db.query(
+          _chaptersTable,
+          where: 'book = ? AND chapter = ? AND version = ?',
+          whereArgs: [canon, chapter, version],
+          limit: 1,
+        );
+      }
+    }
 
     if (chapterMaps.isEmpty) return null;
 
@@ -775,7 +789,7 @@ class BibleDatabaseHelper {
     });
 
     return BibleChapter(
-      book: chapterMap['book'],
+      book: book, // Preserve requested localized book name (e.g. "Farawa") for display
       chapter: chapterMap['chapter'],
       version: chapterMap['version'],
       language: chapterMap['language'],

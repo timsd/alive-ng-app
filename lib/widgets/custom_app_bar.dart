@@ -126,12 +126,23 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
         ),
         onPressed: onBackPressed ??
             () {
+              if (GoRouter.of(context).canPop()) {
+                context.pop();
+                return;
+              }
               final navigator = Navigator.of(context);
               if (navigator.canPop()) {
                 navigator.pop();
                 return;
               }
               if (context.mounted) {
+                try {
+                  final uri = GoRouterState.of(context).uri.toString();
+                  if (uri.startsWith('/admin') && uri != AppConstants.adminRoute) {
+                    context.go(AppConstants.adminRoute);
+                    return;
+                  }
+                } catch (_) {}
                 context.go(AppConstants.homeRoute);
               }
             },
