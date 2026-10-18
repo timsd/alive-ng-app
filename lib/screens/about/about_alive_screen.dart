@@ -194,13 +194,18 @@ class AboutAliveScreen extends ConsumerWidget {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(height: 14),
-                      // Grouped by PERSON, not by office. Several people hold
-                      // more than one office, and listing an office per row
-                      // printed the same name two or three times. Each person
-                      // now appears once, with their offices underneath.
+                      const SizedBox(height: 18),
+                      // ── Executive & Directors ──────────────────────────────
+                      Text(
+                        'Executive & Directors',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: colorScheme.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                       ...leadershipPeople
-                          .where((p) => p.isRestricted == canSeeLeadership)
+                          .where((p) => !p.isRestricted)
                           .map(
                         (person) => Padding(
                           padding: const EdgeInsets.only(bottom: 12),
@@ -210,31 +215,51 @@ class AboutAliveScreen extends ConsumerWidget {
                                 .map((o) => o.title)
                                 .join(' • '),
                             icon: _officeIcon(
-                              person.isBoardChair
-                                  ? 'shield'
-                                  : person.offices.first.iconName,
+                              person.offices.first.iconName,
                             ),
                           ),
                         ),
                       ),
-                      // The board is one office held by several people, so it
-                      // is registered once. The people are shown above, one
-                      // row each; this is the office itself.
+                      const SizedBox(height: 8),
+                      const Divider(height: 24),
+                      const SizedBox(height: 8),
+                      // ── Board of Trustees ─────────────────────────────────
+                      Text(
+                        'Board of Trustees',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: colorScheme.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'The Board of Trustees provides governance, spiritual counsel, and oversight.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                       if (canSeeLeadership)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4, bottom: 12),
-                          child: Text(
-                            'The Board of Trustees oversees every other '
-                            'office below.',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                              fontStyle: FontStyle.italic,
+                        ...leadershipPeople
+                            .where((p) => p.isRestricted)
+                            .map(
+                          (person) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _LeaderTile(
+                              name: person.name,
+                              role: person.offices
+                                  .map((o) => o.title)
+                                  .join(' • '),
+                              icon: _officeIcon(
+                                person.isBoardChair
+                                    ? 'shield'
+                                    : person.offices.first.iconName,
+                              ),
                             ),
                           ),
-                        ),
-                      // Members never see trustee names, but they should still
-                      // see that the board exists.
-                      if (!canSeeLeadership)
+                        )
+                      else
                         Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: _LeaderTile(
