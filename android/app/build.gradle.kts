@@ -43,16 +43,7 @@ android {
         }
     }
 
-    // Per-ABI APK splits: users download only the native code for their CPU arch.
-    // This can reduce the APK download by 30-60% compared to a universal fat APK.
-    splits {
-        abi {
-            isEnable = true
-            reset()
-            include("armeabi-v7a", "arm64-v8a", "x86_64")
-            isUniversalApk = true   // keep a fallback universal APK
-        }
-    }
+
 
     val keystoreProperties = Properties()
     val keystorePropertiesFile = rootProject.file("key.properties")
