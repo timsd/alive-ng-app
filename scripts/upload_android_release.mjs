@@ -152,25 +152,30 @@ async function uploadRelease() {
         reqHeaders['x-appwrite-id'] = uploadResult.$id;
       }
 
-      let res;
-      let retries = 4;
+      let res = null;
+      let retries = 15;
       while (retries > 0) {
-        res = await appwriteRequest(`/storage/buckets/${bucketId}/files`, {
-          method: 'POST',
-          headers: reqHeaders,
-          body: formData,
-        });
-        if (res.ok) break;
+        try {
+          res = await appwriteRequest(`/storage/buckets/${bucketId}/files`, {
+            method: 'POST',
+            headers: reqHeaders,
+            body: formData,
+          });
+          if (res && res.ok) break;
+          const status = res ? res.status : 'unknown';
+          console.warn(`Chunk ${chunkIndex + 1} HTTP ${status}. Retrying in 4s...`);
+        } catch (fetchErr) {
+          console.warn(`Chunk ${chunkIndex + 1} network exception: ${fetchErr.message}. Retrying in 4s...`);
+        }
         retries--;
         if (retries > 0) {
-          console.warn(`Chunk ${chunkIndex + 1} got HTTP ${res.status}. Retrying in 4s (${retries} attempts left)...`);
           await new Promise((r) => setTimeout(r, 4000));
         }
       }
 
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(`Upload failed on chunk ${chunkIndex + 1}/${totalChunks} (HTTP ${res.status}): ${errorText}`);
+      if (!res || !res.ok) {
+        const errorText = res ? await res.text() : 'Network connection reset';
+        throw new Error(`Upload failed on chunk ${chunkIndex + 1}/${totalChunks}: ${errorText}`);
       }
 
       uploadResult = await res.json();

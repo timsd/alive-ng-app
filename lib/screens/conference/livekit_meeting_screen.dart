@@ -201,6 +201,8 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                   builder: (_) => LeaderMeetingTranscriptionScreen(
                     initialMeetingTitle:
                         widget.meetingType?.displayName ?? _roomController.text,
+                    initialRoomName: _roomController.text.trim(),
+                    initialMeetingType: widget.meetingType?.displayName,
                   ),
                 ),
               );

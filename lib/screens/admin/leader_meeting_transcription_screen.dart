@@ -3,14 +3,18 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:permission_handler/permission_handler.dart';
+import '../../models/meeting_models.dart';
+import '../../providers/meeting_provider.dart';
 import '../../services/appwrite_meeting_file_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/on_device_meeting_synthesizer.dart';
 import '../../widgets/custom_app_bar.dart';
 import 'meeting_file_sharing_screen.dart';
 
@@ -71,23 +75,25 @@ class MeetingActionItem {
   });
 }
 
-class LeaderMeetingTranscriptionScreen extends StatefulWidget {
+class LeaderMeetingTranscriptionScreen extends ConsumerStatefulWidget {
   final String? initialMeetingTitle;
   final String? initialMeetingType;
+  final String? initialRoomName;
 
   const LeaderMeetingTranscriptionScreen({
     super.key,
     this.initialMeetingTitle,
     this.initialMeetingType,
+    this.initialRoomName,
   });
 
   @override
-  State<LeaderMeetingTranscriptionScreen> createState() =>
+  ConsumerState<LeaderMeetingTranscriptionScreen> createState() =>
       _LeaderMeetingTranscriptionScreenState();
 }
 
 class _LeaderMeetingTranscriptionScreenState
-    extends State<LeaderMeetingTranscriptionScreen>
+    extends ConsumerState<LeaderMeetingTranscriptionScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final ScrollController _transcriptScrollController = ScrollController();
@@ -102,6 +108,7 @@ class _LeaderMeetingTranscriptionScreenState
 
   late String _meetingType;
   final DateTime _meetingDate = DateTime.now();
+  String? _connectedRoomName;
 
   final List<MeetingAttendee> _attendees = [];
   late MeetingAttendee _selectedSpeaker;
@@ -109,8 +116,24 @@ class _LeaderMeetingTranscriptionScreenState
   final List<MeetingTranscriptEntry> _transcriptEntries = [];
   final List<String> _decisions = [];
   final List<MeetingActionItem> _actionItems = [];
+  final List<String> _discussionThemes = [];
+  bool _quorumAchieved = false;
+
+  final OnDeviceMeetingSynthesizer _synthesizer =
+      const OnDeviceMeetingSynthesizer();
 
   bool _isSavingToFileArea = false;
+
+  static const List<Color> _colorPalette = [
+    Color(0xFF1B365D), // Host Navy
+    Color(0xFF00897B), // Teal
+    Color(0xFFE65100), // Amber
+    Color(0xFF6A1B9A), // Purple
+    Color(0xFFC2185B), // Pink
+    Color(0xFF2E7D32), // Forest Green
+    Color(0xFF0277BD), // Blue
+    Color(0xFFD84315), // Deep Orange
+  ];
 
   @override
   void initState() {
@@ -119,15 +142,16 @@ class _LeaderMeetingTranscriptionScreenState
     _meetingTitleController.text = widget.initialMeetingTitle ??
         'Council Meeting - ${DateFormat('MMMM d, yyyy').format(DateTime.now())}';
     _meetingType = widget.initialMeetingType ?? 'Board of Directors';
+    _connectedRoomName = widget.initialRoomName;
 
-    // Initialize with current authenticated leader
+    // Initialize with current authenticated leader as primary host
     final user = AuthService.instance.currentUser;
     final leaderName = user?.displayName ?? 'Host Leader';
     _attendees.add(MeetingAttendee(
       id: user?.uid ?? 'host',
       name: leaderName,
       role: 'Meeting Host',
-      color: const Color(0xFF1B365D),
+      color: _colorPalette.first,
     ));
     _selectedSpeaker = _attendees.first;
 
@@ -228,7 +252,8 @@ class _LeaderMeetingTranscriptionScreenState
                 id: i['id'] ?? '',
                 task: i['task'] ?? '',
                 assignee: i['assignee'] ?? '',
-                dueDate: i['dueDate'] != null ? DateTime.tryParse(i['dueDate']) : null,
+                dueDate:
+                    i['dueDate'] != null ? DateTime.tryParse(i['dueDate']) : null,
                 isCompleted: i['isCompleted'] == true,
               )));
       }
@@ -241,12 +266,70 @@ class _LeaderMeetingTranscriptionScreenState
                 speakerRole: e['speakerRole'] ?? 'Member',
                 speakerColor: Color(e['speakerColor'] ?? 0xFF1B365D),
                 content: e['content'] ?? '',
-                timestamp: DateTime.tryParse(e['timestamp'] ?? '') ?? DateTime.now(),
+                timestamp:
+                    DateTime.tryParse(e['timestamp'] ?? '') ?? DateTime.now(),
                 type: TranscriptEntryType.values[(e['type'] as int?) ?? 0],
               )));
       }
     });
     _showFeedback('Restored ${_transcriptEntries.length} entries from backup!');
+  }
+
+  /// Synchronizes LiveKit conference room participants directly into Scribe attendees
+  void _syncLiveKitSession(MeetingSession session) {
+    if (!session.isConnected) return;
+
+    bool stateChanged = false;
+    _connectedRoomName = session.roomName;
+
+    for (final p in session.participants) {
+      final name = p.name.isNotEmpty ? p.name : p.identity;
+      final existingIndex = _attendees.indexWhere(
+        (a) => a.id == p.identity || a.name.toLowerCase() == name.toLowerCase(),
+      );
+
+      if (existingIndex == -1) {
+        final color = _colorPalette[_attendees.length % _colorPalette.length];
+        final role = p.isLocal ? 'Meeting Host' : 'Council Delegate';
+        _attendees.add(MeetingAttendee(
+          id: p.identity,
+          name: name,
+          role: role,
+          color: color,
+        ));
+        stateChanged = true;
+      }
+    }
+
+    // Active Speaker Tracking from LiveKit WebRTC audio stream
+    ParticipantInfo? speakingParticipant;
+    for (final p in session.participants) {
+      if (p.isSpeaking) {
+        speakingParticipant = p;
+        break;
+      }
+    }
+
+    if (speakingParticipant != null) {
+      final sName = speakingParticipant.name.isNotEmpty
+          ? speakingParticipant.name
+          : speakingParticipant.identity;
+      final match = _attendees.firstWhere(
+        (a) =>
+            a.id == speakingParticipant!.identity ||
+            a.name.toLowerCase() == sName.toLowerCase(),
+        orElse: () => _selectedSpeaker,
+      );
+
+      if (match.id != _selectedSpeaker.id) {
+        _selectedSpeaker = match;
+        stateChanged = true;
+      }
+    }
+
+    if (stateChanged && mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _initSpeech() async {
@@ -255,7 +338,6 @@ class _LeaderMeetingTranscriptionScreenState
         onError: (err) {
           debugPrint('Scribe speech engine note: ${err.errorMsg}');
           if (mounted && _isListening) {
-            // In Fathom mode, auto-retry listening after brief pause
             Future.delayed(const Duration(seconds: 1), () {
               if (mounted && _isListening) _startContinuousScribe();
             });
@@ -266,7 +348,6 @@ class _LeaderMeetingTranscriptionScreenState
           if (status == 'done' || status == 'notListening') {
             if (mounted && _isListening) {
               _commitInterimWords();
-              // Seamless autonomous restart: continues listening to meeting room
               Future.delayed(const Duration(milliseconds: 300), () {
                 if (mounted && _isListening) _startContinuousScribe();
               });
@@ -319,7 +400,8 @@ class _LeaderMeetingTranscriptionScreenState
     try {
       final micStatus = await Permission.microphone.request();
       if (micStatus.isPermanentlyDenied) {
-        _showFeedback('Microphone permission is denied. Please allow it in device Settings.');
+        _showFeedback(
+            'Microphone permission is denied. Please allow it in device Settings.');
         return;
       }
       if (!micStatus.isGranted) {
@@ -339,7 +421,8 @@ class _LeaderMeetingTranscriptionScreenState
       _interimWords = '';
     });
 
-    _showFeedback('Scribe active: capturing meeting dialogue automatically.');
+    _showFeedback(
+        'Scribe active: capturing all conference room speakers simultaneously.');
     await _startContinuousScribe();
   }
 
@@ -372,10 +455,12 @@ class _LeaderMeetingTranscriptionScreenState
     final text = _interimWords.trim();
     if (text.isEmpty) return;
 
-    // Attribute speaker: detect if an attendee is named in the statement, or use active speaker
+    // Attribute speaker: detect if an attendee is explicitly addressed/named in text
     MeetingAttendee speaker = _selectedSpeaker;
     for (final attendee in _attendees) {
-      if (text.toLowerCase().contains(attendee.name.toLowerCase().split(' ').first)) {
+      final firstName = attendee.name.toLowerCase().split(' ').first;
+      if (text.toLowerCase().startsWith(firstName) ||
+          text.toLowerCase().contains('$firstName:')) {
         speaker = attendee;
         break;
       }
@@ -389,28 +474,52 @@ class _LeaderMeetingTranscriptionScreenState
       type: entryType,
     );
 
-    // Auto-extract Decisions into Key Decisions tab (like Fathom)
+    // Auto-extract Decisions on-the-fly into Key Decisions list
     if (entryType == TranscriptEntryType.decision) {
-      final decText = text
-          .replaceAll(RegExp(r'^(decision:|it is decided that|resolved that)\s*', caseSensitive: false), '')
-          .trim();
-      if (!_decisions.contains(decText)) {
-        setState(() => _decisions.add(decText));
+      final decisions = _synthesizer.extractDecisions(
+        entries: [
+          MeetingTranscriptEntry(
+            id: 'temp',
+            speakerName: speaker.name,
+            speakerRole: speaker.role,
+            speakerColor: speaker.color,
+            content: text,
+            timestamp: DateTime.now(),
+            type: entryType,
+          )
+        ],
+        existingDecisions: _decisions,
+      );
+      for (final d in decisions) {
+        if (!_decisions.contains(d)) {
+          setState(() => _decisions.add(d));
+        }
       }
     }
 
-    // Auto-extract Action Items into Action Items tab (like Fathom)
+    // Auto-extract Action Items on-the-fly into Action Items list
     if (entryType == TranscriptEntryType.actionItem) {
-      final taskText = text
-          .replaceAll(RegExp(r'^(action:|action item:)\s*', caseSensitive: false), '')
-          .trim();
-      final actionItem = MeetingActionItem(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        task: taskText,
-        assignee: speaker.name,
-        dueDate: DateTime.now().add(const Duration(days: 7)),
+      final actionItems = _synthesizer.extractActionItems(
+        entries: [
+          MeetingTranscriptEntry(
+            id: 'temp',
+            speakerName: speaker.name,
+            speakerRole: speaker.role,
+            speakerColor: speaker.color,
+            content: text,
+            timestamp: DateTime.now(),
+            type: entryType,
+          )
+        ],
+        attendees: _attendees,
+        meetingDate: DateTime.now(),
+        existingActionItems: _actionItems,
       );
-      setState(() => _actionItems.add(actionItem));
+      setState(() {
+        _actionItems
+          ..clear()
+          ..addAll(actionItems);
+      });
     }
 
     setState(() {
@@ -419,7 +528,7 @@ class _LeaderMeetingTranscriptionScreenState
   }
 
   /// One-click meeting simulation to verify that the Scribe captures dialogue,
-  /// attributes attendees, and creates decisions/action items just like Fathom.
+  /// attributes all room speakers, and generates formatted minutes cleanly without error.
   Future<void> _simulateMeetingDiscussion() async {
     if (_attendees.length < 3) {
       _attendees.addAll([
@@ -439,17 +548,46 @@ class _LeaderMeetingTranscriptionScreenState
     }
 
     final simulationSteps = [
-      (speaker: _attendees.first, text: 'Welcome everyone to the council meeting. Let us review the agenda.'),
-      (speaker: _attendees[1], text: 'Sister Grace: The financial statement for Q3 shows healthy surplus for evangelism tracts.'),
-      (speaker: _attendees.first, text: 'Decision: Approved unanimously to allocate 200,000 Naira to chapter literature distribution.'),
-      (speaker: _attendees[2], text: 'Brother Segun: Evangelism teams will conduct outreach across Lagos chapters next Sabbath.'),
-      (speaker: _attendees[2], text: 'Action item: Brother Segun will coordinate 50 volunteer evangelists before Friday.'),
+      (
+        speaker: _attendees.first,
+        text: 'Welcome everyone to the council meeting. Let us review the agenda.'
+      ),
+      (
+        speaker: _attendees[1],
+        text:
+            'Sister Grace: The financial statement for Q3 shows healthy surplus for evangelism tracts.'
+      ),
+      (
+        speaker: _attendees.first,
+        text:
+            'Resolved that the council approves allocating 200,000 Naira to chapter literature distribution.'
+      ),
+      (
+        speaker: _attendees[2],
+        text:
+            'Brother Segun: Evangelism teams will conduct outreach across Lagos chapters next Sabbath.'
+      ),
+      (
+        speaker: _attendees[2],
+        text:
+            'Action item: Brother Segun will coordinate 50 volunteer evangelists before Friday.'
+      ),
+      (
+        speaker: _attendees[1],
+        text:
+            'Action item: Sister Grace to finalize financial audit report by next week.'
+      ),
+      (
+        speaker: _attendees.first,
+        text:
+            'Decision: Approved unanimously to establish a new ALIVE campus chapter in Ibadan.'
+      ),
     ];
 
-    _showFeedback('Simulating live meeting audio capture...');
+    _showFeedback('Simulating simultaneous multi-speaker room dialogue...');
 
     for (int i = 0; i < simulationSteps.length; i++) {
-      await Future.delayed(const Duration(milliseconds: 600));
+      await Future.delayed(const Duration(milliseconds: 300));
       if (!mounted) return;
       final step = simulationSteps[i];
       _selectedSpeaker = step.speaker;
@@ -458,21 +596,26 @@ class _LeaderMeetingTranscriptionScreenState
     }
 
     _autoSummarizeFromTranscript();
-    _showFeedback('Simulation complete: Scribe captured speakers, decisions, and tasks!');
+    _showFeedback(
+        'Minutes generated: Scribe synthesized executive summary, decisions, and action items!');
   }
 
   TranscriptEntryType _inferEntryType(String text) {
     final lower = text.toLowerCase();
     if (lower.startsWith('decision:') ||
+        lower.startsWith('resolution:') ||
         lower.contains('it is decided') ||
         lower.contains('approved unanimously') ||
-        lower.contains('motion passed')) {
+        lower.contains('motion passed') ||
+        lower.contains('council resolved that') ||
+        lower.contains('resolved that')) {
       return TranscriptEntryType.decision;
     }
     if (lower.startsWith('action:') ||
-        lower.contains('action item') ||
+        lower.startsWith('action item:') ||
         lower.contains('will follow up') ||
-        lower.contains('assigned to')) {
+        lower.contains('assigned to') ||
+        lower.contains('task for')) {
       return TranscriptEntryType.actionItem;
     }
     if (lower.startsWith('motion:') || lower.contains('i move that')) {
@@ -501,16 +644,6 @@ class _LeaderMeetingTranscriptionScreenState
 
     setState(() {
       _transcriptEntries.add(entry);
-      if (type == TranscriptEntryType.decision) {
-        _decisions.add(cleanContent.replaceFirst(RegExp(r'^decision:\s*', caseSensitive: false), ''));
-      } else if (type == TranscriptEntryType.actionItem) {
-        _actionItems.add(MeetingActionItem(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          task: cleanContent.replaceFirst(RegExp(r'^action( item)?:\s*', caseSensitive: false), ''),
-          assignee: speaker.name,
-          dueDate: DateTime.now().add(const Duration(days: 7)),
-        ));
-      }
     });
 
     _autoScrollTranscript();
@@ -532,66 +665,86 @@ class _LeaderMeetingTranscriptionScreenState
     final text = _inputController.text.trim();
     if (text.isEmpty) return;
 
+    final type = forcedType ?? _inferEntryType(text);
     _addTranscriptEntry(
       speaker: _selectedSpeaker,
       content: text,
-      type: forcedType ?? _inferEntryType(text),
+      type: type,
     );
+
+    if (type == TranscriptEntryType.decision) {
+      final decs = _synthesizer.extractDecisions(
+        entries: [
+          MeetingTranscriptEntry(
+            id: 'temp',
+            speakerName: _selectedSpeaker.name,
+            speakerRole: _selectedSpeaker.role,
+            speakerColor: _selectedSpeaker.color,
+            content: text,
+            timestamp: DateTime.now(),
+            type: type,
+          )
+        ],
+        existingDecisions: _decisions,
+      );
+      for (final d in decs) {
+        if (!_decisions.contains(d)) _decisions.add(d);
+      }
+    } else if (type == TranscriptEntryType.actionItem) {
+      final acts = _synthesizer.extractActionItems(
+        entries: [
+          MeetingTranscriptEntry(
+            id: 'temp',
+            speakerName: _selectedSpeaker.name,
+            speakerRole: _selectedSpeaker.role,
+            speakerColor: _selectedSpeaker.color,
+            content: text,
+            timestamp: DateTime.now(),
+            type: type,
+          )
+        ],
+        attendees: _attendees,
+        meetingDate: DateTime.now(),
+        existingActionItems: _actionItems,
+      );
+      _actionItems
+        ..clear()
+        ..addAll(acts);
+    }
 
     _inputController.clear();
   }
 
+  /// 100% On-Device Minutes Synthesis
   void _autoSummarizeFromTranscript() {
-    final extractedDecisions = <String>[];
-    final extractedActions = <MeetingActionItem>[];
-
-    for (final entry in _transcriptEntries) {
-      final lower = entry.content.toLowerCase();
-      if (entry.type == TranscriptEntryType.decision ||
-          lower.contains('decision:') ||
-          lower.contains('approved') ||
-          lower.contains('resolved')) {
-        final dText = entry.content
-            .replaceFirst(RegExp(r'^decision:\s*', caseSensitive: false), '')
-            .trim();
-        if (!_decisions.contains(dText) && !extractedDecisions.contains(dText)) {
-          extractedDecisions.add(dText);
-        }
-      }
-      if (entry.type == TranscriptEntryType.actionItem ||
-          lower.contains('action:') ||
-          lower.contains('will follow up') ||
-          lower.contains('assigned to')) {
-        final aText = entry.content
-            .replaceFirst(RegExp(r'^action( item)?:\s*', caseSensitive: false), '')
-            .trim();
-        if (!_actionItems.any((item) => item.task == aText)) {
-          extractedActions.add(MeetingActionItem(
-            id: 'gen-${DateTime.now().millisecondsSinceEpoch}-${extractedActions.length}',
-            task: aText,
-            assignee: entry.speakerName,
-            dueDate: DateTime.now().add(const Duration(days: 7)),
-          ));
-        }
-      }
-    }
+    final result = _synthesizer.synthesize(
+      meetingTitle: _meetingTitleController.text.trim().isNotEmpty
+          ? _meetingTitleController.text.trim()
+          : 'Council Meeting',
+      meetingType: _meetingType,
+      meetingDate: _meetingDate,
+      attendees: _attendees,
+      entries: _transcriptEntries,
+      existingDecisions: _decisions,
+      existingActionItems: _actionItems,
+    );
 
     setState(() {
-      _decisions.addAll(extractedDecisions);
-      _actionItems.addAll(extractedActions);
-
-      final totalSpeakers =
-          _transcriptEntries.map((e) => e.speakerName).toSet().length;
-      final totalItems = _transcriptEntries.length;
-
-      _summaryController.text =
-          'Council convened on ${DateFormat.yMMMd().format(_meetingDate)}. '
-          'A total of $totalItems floor contributions were captured across $totalSpeakers leadership representatives. '
-          '${_decisions.length} core resolutions were adopted and ${_actionItems.length} actionable assignments were allocated for follow-up.';
+      _summaryController.text = result.executiveSummary;
+      _decisions
+        ..clear()
+        ..addAll(result.keyDecisions);
+      _actionItems
+        ..clear()
+        ..addAll(result.actionItems);
+      _discussionThemes
+        ..clear()
+        ..addAll(result.discussionThemes);
+      _quorumAchieved = result.quorumAchieved;
     });
 
     _showFeedback(
-      'Synthesized ${_decisions.length} decisions and ${_actionItems.length} action items!',
+      'Minutes Compiled: Executive Summary, ${_decisions.length} Decisions, and ${_actionItems.length} Action Items!',
     );
   }
 
@@ -600,35 +753,49 @@ class _LeaderMeetingTranscriptionScreenState
     final dateStr = DateFormat('EEEE, MMMM d, y • h:mm a').format(_meetingDate);
 
     buffer.writeln('# 🏛️ ${_meetingTitleController.text.trim()}');
-    buffer.writeln('**Meeting Type:** $_meetingType  ');
+    buffer.writeln('**Meeting Category:** $_meetingType  ');
     buffer.writeln('**Date & Time:** $dateStr  ');
+    if (_connectedRoomName != null && _connectedRoomName!.isNotEmpty) {
+      buffer.writeln('**LiveKit Conference Room:** `$_connectedRoomName`  ');
+    }
     buffer.writeln(
-        '**Attendees:** ${_attendees.map((a) => '${a.name} (${a.role})').join(', ')}  \n');
+        '**Quorum Status:** ${_quorumAchieved ? 'Duly Constituted' : 'Informally Observed'}  ');
+    buffer.writeln(
+        '**Council Attendees (${_attendees.length}):** ${_attendees.map((a) => '${a.name} (${a.role})').join(', ')}  \n');
 
     buffer.writeln('---');
     buffer.writeln('## 📋 Executive Summary\n');
-    buffer.writeln('${_summaryController.text.trim()}\n');
+    buffer.writeln(
+        '${_summaryController.text.trim().isNotEmpty ? _summaryController.text.trim() : '*No executive summary compiled yet.*'}\n');
 
-    buffer.writeln('---');
-    buffer.writeln('## ⚖️ Key Decisions & Resolutions\n');
-    if (_decisions.isEmpty) {
-      buffer.writeln('*No formal decisions recorded.*\n');
-    } else {
-      for (final dec in _decisions) {
-        buffer.writeln('- **[APPROVED]** $dec');
+    if (_discussionThemes.isNotEmpty) {
+      buffer.writeln('### 🏷️ Agenda Discussion Themes\n');
+      for (final theme in _discussionThemes) {
+        buffer.writeln('- $theme');
       }
       buffer.writeln();
     }
 
     buffer.writeln('---');
-    buffer.writeln('## ✅ Action Items & Owners\n');
+    buffer.writeln('## ⚖️ Key Decisions & Council Resolutions\n');
+    if (_decisions.isEmpty) {
+      buffer.writeln('*No formal resolutions recorded.*\n');
+    } else {
+      for (int i = 0; i < _decisions.length; i++) {
+        buffer.writeln('${i + 1}. **[ADOPTED RESOLUTION]** ${_decisions[i]}');
+      }
+      buffer.writeln();
+    }
+
+    buffer.writeln('---');
+    buffer.writeln('## ✅ Action Items & Target Deadlines\n');
     if (_actionItems.isEmpty) {
-      buffer.writeln('*No pending action items recorded.*\n');
+      buffer.writeln('*No pending action items assigned.*\n');
     } else {
       for (final item in _actionItems) {
         final status = item.isCompleted ? '[x]' : '[ ]';
         final due = item.dueDate != null
-            ? ' *(Due: ${DateFormat.yMMMd().format(item.dueDate!)})*'
+            ? ' *(Target Deadline: ${DateFormat.yMMMd().format(item.dueDate!)})*'
             : '';
         buffer.writeln('- $status **${item.assignee}:** ${item.task}$due');
       }
@@ -636,20 +803,25 @@ class _LeaderMeetingTranscriptionScreenState
     }
 
     buffer.writeln('---');
-    buffer.writeln('## 🎙️ Chronological Meeting Transcript\n');
+    buffer.writeln('## 🎙️ Chronological Multi-Speaker Transcript\n');
     buffer.writeln(
-        '> *Automated voice and note-taker transcript recorded by ALIVE Scribe Bot.*\n');
+        '> *Automated multi-speaker transcript recorded on-device by ALIVE Scribe.*\n');
 
-    for (final entry in _transcriptEntries) {
-      final time = DateFormat('h:mm a').format(entry.timestamp);
-      final tag = entry.type == TranscriptEntryType.decision
-          ? ' `[DECISION]`'
-          : entry.type == TranscriptEntryType.actionItem
-              ? ' `[ACTION]`'
-              : entry.type == TranscriptEntryType.motion
-                  ? ' `[MOTION]`'
-                  : '';
-      buffer.writeln('- **[$time] ${entry.speakerName} (${entry.speakerRole}):**$tag ${entry.content}');
+    if (_transcriptEntries.isEmpty) {
+      buffer.writeln('*No speech dialogue captured for this sitting.*\n');
+    } else {
+      for (final entry in _transcriptEntries) {
+        final time = DateFormat('h:mm a').format(entry.timestamp);
+        final tag = entry.type == TranscriptEntryType.decision
+            ? ' `[DECISION]`'
+            : entry.type == TranscriptEntryType.actionItem
+                ? ' `[ACTION]`'
+                : entry.type == TranscriptEntryType.motion
+                    ? ' `[MOTION]`'
+                    : '';
+        buffer.writeln(
+            '- **[$time] ${entry.speakerName} (${entry.speakerRole}):**$tag ${entry.content}');
+      }
     }
 
     return buffer.toString();
@@ -670,7 +842,7 @@ class _LeaderMeetingTranscriptionScreenState
             children: [
               Icon(Icons.folder_special, color: Color(0xFF5865F2)),
               SizedBox(width: 8),
-              Text('Save to Meeting Files?'),
+              Text('Store Formatted Minutes'),
             ],
           ),
           content: Column(
@@ -678,7 +850,7 @@ class _LeaderMeetingTranscriptionScreenState
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'ALIVE Scribe Bot will compile your notes, decisions, and full speaker transcript into a publication-ready Markdown file and store it directly in the Meeting Files area.',
+                'ALIVE Scribe will save the synthesized executive summary, council resolutions, and assigned action items into the leadership Meeting Files repository.',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 12),
@@ -709,7 +881,7 @@ class _LeaderMeetingTranscriptionScreenState
             FilledButton.icon(
               onPressed: () => Navigator.of(ctx).pop(true),
               icon: const Icon(Icons.cloud_upload),
-              label: const Text('Store'),
+              label: const Text('Store Minutes'),
             ),
           ],
         );
@@ -728,17 +900,17 @@ class _LeaderMeetingTranscriptionScreenState
       final sanitizedTitle = title
           .replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_')
           .replaceAll(RegExp(r'_+'), '_');
-      final fileName = 'Notes_${sanitizedTitle}_$dateClean.md';
+      final fileName = 'Minutes_${sanitizedTitle}_$dateClean.md';
 
       final user = AuthService.instance.currentUser;
       final uploaderId = user?.uid ?? 'leader-scribe';
-      final uploaderName = user?.displayName ?? 'ALIVE Scribe Bot';
+      final uploaderName = user?.displayName ?? 'ALIVE Scribe';
 
       await AppwriteMeetingFileService.instance.uploadMeetingFileBytes(
         bytes,
         fileName: fileName,
         description:
-            'Leader meeting notes & speaker transcript for "$title" compiled by ALIVE Scribe Bot.',
+            'Synthesized minutes, council resolutions & multi-speaker transcript for "$title" compiled by ALIVE Scribe.',
         uploaderId: uploaderId,
         uploadedBy: uploaderName,
       );
@@ -792,14 +964,14 @@ class _LeaderMeetingTranscriptionScreenState
                 const Icon(Icons.check_circle, color: Colors.green, size: 48),
                 const SizedBox(height: 12),
                 Text(
-                  'Notes Successfully Stored!',
+                  'Minutes Successfully Formatted!',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'File "$fileName" is now accessible by all authorized leadership members in the Meeting Files repository.',
+                  'File "$fileName" is now stored in Meeting Files. You can also copy or distribute the formatted minutes directly.',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
@@ -812,7 +984,7 @@ class _LeaderMeetingTranscriptionScreenState
                           await Clipboard.setData(ClipboardData(text: markdown));
                           if (ctx.mounted) {
                             Navigator.of(ctx).pop();
-                            _showFeedback('Copied markdown to clipboard!');
+                            _showFeedback('Copied formatted minutes to clipboard!');
                           }
                         },
                         icon: const Icon(Icons.copy),
@@ -870,7 +1042,7 @@ class _LeaderMeetingTranscriptionScreenState
                     controller: roleCtrl,
                     decoration: const InputDecoration(
                       labelText: 'Role in Meeting',
-                      hintText: 'e.g. Trustee / Guest Speaker',
+                      hintText: 'e.g. Trustee / Coordinator',
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -878,13 +1050,7 @@ class _LeaderMeetingTranscriptionScreenState
                     children: [
                       const Text('Speaker Color: '),
                       const SizedBox(width: 8),
-                      ...[
-                        Colors.teal,
-                        Colors.deepPurple,
-                        Colors.blueGrey,
-                        Colors.amber.shade800,
-                        Colors.pink,
-                      ].map((c) {
+                      ..._colorPalette.take(5).map((c) {
                         final isSelected = chosenColor == c;
                         return GestureDetector(
                           onTap: () => setDlgState(() => chosenColor = c),
@@ -927,7 +1093,7 @@ class _LeaderMeetingTranscriptionScreenState
                       final newAttendee = MeetingAttendee(
                         id: DateTime.now().millisecondsSinceEpoch.toString(),
                         name: n,
-                        role: r.isNotEmpty ? r : 'Attendee',
+                        role: r.isNotEmpty ? r : 'Council Delegate',
                         color: chosenColor,
                       );
                       setState(() {
@@ -988,7 +1154,7 @@ class _LeaderMeetingTranscriptionScreenState
                   const SizedBox(height: 12),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('Due Date'),
+                    title: const Text('Target Deadline'),
                     subtitle: Text(DateFormat.yMMMd().format(selectedDate)),
                     trailing: const Icon(Icons.calendar_today),
                     onTap: () async {
@@ -1041,13 +1207,14 @@ class _LeaderMeetingTranscriptionScreenState
       context: context,
       builder: (ctx) {
         return AlertDialog(
-          title: const Text('Record Key Decision'),
+          title: const Text('Record Council Resolution'),
           content: TextField(
             controller: decisionCtrl,
             maxLines: 3,
             decoration: const InputDecoration(
-              labelText: 'Decision / Resolution Text',
-              hintText: 'e.g. Board approved budget increment for Chapter operations.',
+              labelText: 'Resolution Text',
+              hintText:
+                  'e.g. Board approved budget increment for Chapter operations.',
             ),
           ),
           actions: [
@@ -1063,7 +1230,7 @@ class _LeaderMeetingTranscriptionScreenState
                   Navigator.of(ctx).pop();
                 }
               },
-              child: const Text('Save Decision'),
+              child: const Text('Adopt Resolution'),
             ),
           ],
         );
@@ -1073,6 +1240,18 @@ class _LeaderMeetingTranscriptionScreenState
 
   @override
   Widget build(BuildContext context) {
+    // Synchronize LiveKit room session automatically if connected
+    ref.listen<AsyncValue<MeetingSession>>(meetingSessionStreamProvider,
+        (previous, next) {
+      final session = next.value;
+      if (session != null && session.isConnected) {
+        _syncLiveKitSession(session);
+      }
+    });
+
+    final currentLiveKitSession = ref.watch(meetingSessionStreamProvider).value;
+    final isLiveKitActive = currentLiveKitSession?.isConnected == true;
+
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -1113,7 +1292,7 @@ class _LeaderMeetingTranscriptionScreenState
       ),
       body: Column(
         children: [
-          _buildDiscordScribeBotHeader(theme, colorScheme),
+          _buildScribeHeaderCard(theme, colorScheme, isLiveKitActive),
           _buildActiveSpeakerBar(colorScheme),
           TabBar(
             controller: _tabController,
@@ -1145,10 +1324,11 @@ class _LeaderMeetingTranscriptionScreenState
     );
   }
 
-  /// Discord-style Bot Persona Header Card
-  Widget _buildDiscordScribeBotHeader(
-      ThemeData theme, ColorScheme colorScheme) {
-    const discordBlurple = Color(0xFF5865F2);
+  /// On-Device Hybrid Scribe Card with LiveKit room connection banner
+  Widget _buildScribeHeaderCard(
+      ThemeData theme, ColorScheme colorScheme, bool isLiveKitActive) {
+    const brandColor = Color(0xFF1B365D);
+    const livekitGreen = Color(0xFF00897B);
     final isListening = _isListening;
 
     return Container(
@@ -1160,7 +1340,9 @@ class _LeaderMeetingTranscriptionScreenState
         border: Border.all(
           color: isListening
               ? Colors.redAccent.withValues(alpha: 0.6)
-              : discordBlurple.withValues(alpha: 0.3),
+              : isLiveKitActive
+                  ? livekitGreen.withValues(alpha: 0.4)
+                  : brandColor.withValues(alpha: 0.25),
           width: isListening ? 1.8 : 1,
         ),
       ),
@@ -1169,7 +1351,7 @@ class _LeaderMeetingTranscriptionScreenState
         children: [
           Row(
             children: [
-              // Bot avatar with glowing badge
+              // Avatar with active indicator
               Stack(
                 clipBehavior: Clip.none,
                 children: [
@@ -1177,20 +1359,21 @@ class _LeaderMeetingTranscriptionScreenState
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: discordBlurple,
+                      color: isLiveKitActive ? livekitGreen : brandColor,
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: discordBlurple.withValues(alpha: 0.4),
+                          color: (isLiveKitActive ? livekitGreen : brandColor)
+                              .withValues(alpha: 0.35),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
                       ],
                     ),
                     child: const Icon(
-                      Icons.smart_toy_outlined,
+                      Icons.record_voice_over,
                       color: Colors.white,
-                      size: 26,
+                      size: 24,
                     ),
                   ),
                   Positioned(
@@ -1230,7 +1413,7 @@ class _LeaderMeetingTranscriptionScreenState
                           padding: const EdgeInsets.symmetric(
                               horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: discordBlurple,
+                            color: brandColor,
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: const Text(
@@ -1269,8 +1452,10 @@ class _LeaderMeetingTranscriptionScreenState
                               const SizedBox(width: 6),
                               Text(
                                 isListening
-                                    ? 'SCRIBE: ACTIVE'
-                                    : 'ONLINE & READY',
+                                    ? 'SCRIBE: RECORDING'
+                                    : (isLiveKitActive
+                                        ? 'LIVEKIT LINKED'
+                                        : 'ONLINE & READY'),
                                 style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w700,
@@ -1286,9 +1471,11 @@ class _LeaderMeetingTranscriptionScreenState
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      isListening
-                          ? 'Scribe capturing meeting dialogue, decisions & action items...'
-                          : 'Meeting Scribe: captures all voices without holding a mic.',
+                      isLiveKitActive
+                          ? 'Synchronized with LiveKit room "${_connectedRoomName ?? 'Active Meet'}" • ${_attendees.length} Connected'
+                          : (isListening
+                              ? 'Recording all conference room speakers simultaneously...'
+                              : '100% On-Device Hybrid Scribe: private, offline, multi-speaker.'),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: isListening
                             ? colorScheme.primary
@@ -1312,16 +1499,18 @@ class _LeaderMeetingTranscriptionScreenState
                   style: FilledButton.styleFrom(
                     backgroundColor: isListening
                         ? Colors.redAccent
-                        : const Color(0xFF5865F2),
+                        : const Color(0xFF1B365D),
                     foregroundColor: Colors.white,
                     visualDensity: VisualDensity.compact,
                   ),
                   icon: Icon(
-                    isListening ? Icons.stop_circle_outlined : Icons.smart_toy_outlined,
+                    isListening
+                        ? Icons.stop_circle_outlined
+                        : Icons.mic_none_outlined,
                     size: 18,
                   ),
                   label: Text(
-                    isListening ? 'Pause' : 'Start',
+                    isListening ? 'Pause Recording' : 'Record All Speakers',
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
@@ -1333,7 +1522,7 @@ class _LeaderMeetingTranscriptionScreenState
                   visualDensity: VisualDensity.compact,
                 ),
                 icon: const Icon(Icons.science_outlined, size: 16),
-                label: const Text('Test'),
+                label: const Text('Test Simulation'),
               ),
               const SizedBox(width: 8),
               OutlinedButton.icon(
@@ -1342,7 +1531,7 @@ class _LeaderMeetingTranscriptionScreenState
                   visualDensity: VisualDensity.compact,
                 ),
                 icon: const Icon(Icons.auto_awesome, size: 16),
-                label: const Text('Summarize'),
+                label: const Text('Compile Minutes'),
               ),
             ],
           ),
@@ -1351,7 +1540,7 @@ class _LeaderMeetingTranscriptionScreenState
     );
   }
 
-  /// Active Speaker Bar: Horizontal chip selector to attribute statements to the current attendee
+  /// Active Speaker Bar: Displays all meeting attendees / LiveKit participants
   Widget _buildActiveSpeakerBar(ColorScheme colorScheme) {
     return Container(
       height: 48,
@@ -1394,7 +1583,8 @@ class _LeaderMeetingTranscriptionScreenState
                 Text(
                   attendee.name,
                   style: TextStyle(
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    fontWeight:
+                        isSelected ? FontWeight.bold : FontWeight.normal,
                     color: isSelected ? attendee.color : null,
                   ),
                 ),
@@ -1419,7 +1609,7 @@ class _LeaderMeetingTranscriptionScreenState
     );
   }
 
-  /// Live Transcript Tab: Discord-style Message Thread
+  /// Live Transcript Tab: Multi-Speaker Thread
   Widget _buildTranscriptTab(ThemeData theme, ColorScheme colorScheme) {
     return Column(
       children: [
@@ -1432,7 +1622,8 @@ class _LeaderMeetingTranscriptionScreenState
                       Icon(
                         Icons.record_voice_over_outlined,
                         size: 56,
-                        color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                        color:
+                            colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
                       ),
                       const SizedBox(height: 12),
                       const Text(
@@ -1441,7 +1632,7 @@ class _LeaderMeetingTranscriptionScreenState
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Tap "Start" or type contributions below.',
+                        'Tap "Record All Speakers" or "Test Simulation" above.',
                         style: TextStyle(color: colorScheme.onSurfaceVariant),
                       ),
                     ],
@@ -1458,7 +1649,7 @@ class _LeaderMeetingTranscriptionScreenState
                       return _buildInterimBubble(colorScheme);
                     }
                     final entry = _transcriptEntries[index];
-                    return _buildDiscordMessageRow(entry, theme, colorScheme);
+                    return _buildMessageRow(entry, theme, colorScheme);
                   },
                 ),
         ),
@@ -1467,8 +1658,7 @@ class _LeaderMeetingTranscriptionScreenState
     );
   }
 
-  /// Single Discord/Slack Style Message Row
-  Widget _buildDiscordMessageRow(
+  Widget _buildMessageRow(
     MeetingTranscriptEntry entry,
     ThemeData theme,
     ColorScheme colorScheme,
@@ -1557,7 +1747,8 @@ class _LeaderMeetingTranscriptionScreenState
                       timeStr,
                       style: TextStyle(
                         fontSize: 11,
-                        color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                        color:
+                            colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
                       ),
                     ),
                     const Spacer(),
@@ -1704,7 +1895,7 @@ class _LeaderMeetingTranscriptionScreenState
             radius: 14,
             backgroundColor: _selectedSpeaker.color,
             child: Text(
-              _selectedSpeaker.name[0],
+              _selectedSpeaker.name.isNotEmpty ? _selectedSpeaker.name[0] : '?',
               style: const TextStyle(color: Colors.white, fontSize: 11),
             ),
           ),
@@ -1742,7 +1933,7 @@ class _LeaderMeetingTranscriptionScreenState
     );
   }
 
-  /// Discord-style Bottom Input Bar with quick tag shortcuts
+  /// Bottom Input Bar with quick tagging buttons
   Widget _buildInputBar(ThemeData theme, ColorScheme colorScheme) {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
@@ -1756,7 +1947,6 @@ class _LeaderMeetingTranscriptionScreenState
       ),
       child: Column(
         children: [
-          // Quick tag pills
           Row(
             children: [
               Text(
@@ -1800,7 +1990,9 @@ class _LeaderMeetingTranscriptionScreenState
                 radius: 15,
                 backgroundColor: _selectedSpeaker.color,
                 child: Text(
-                  _selectedSpeaker.name[0],
+                  _selectedSpeaker.name.isNotEmpty
+                      ? _selectedSpeaker.name[0]
+                      : '?',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 12,
@@ -1819,8 +2011,8 @@ class _LeaderMeetingTranscriptionScreenState
                       vertical: 10,
                     ),
                     filled: true,
-                    fillColor:
-                        colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                    fillColor: colorScheme.surfaceContainerHighest
+                        .withValues(alpha: 0.4),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(24),
                       borderSide: BorderSide.none,
@@ -1832,10 +2024,11 @@ class _LeaderMeetingTranscriptionScreenState
               const SizedBox(width: 6),
               IconButton(
                 icon: Icon(
-                  _isListening ? Icons.stop_circle : Icons.smart_toy_outlined,
+                  _isListening ? Icons.stop_circle : Icons.mic_none,
                   color: _isListening ? Colors.redAccent : colorScheme.primary,
                 ),
-                tooltip: _isListening ? 'Pause Scribe' : 'Start Scribe',
+                tooltip:
+                    _isListening ? 'Pause Recording' : 'Record All Speakers',
                 onPressed: _toggleScribeMode,
               ),
               IconButton(
@@ -1886,12 +2079,12 @@ class _LeaderMeetingTranscriptionScreenState
     );
   }
 
-  /// Summary & Decisions Tab
+  /// Summary & Decisions Tab: Formatted Minutes
   Widget _buildSummaryTab(ThemeData theme, ColorScheme colorScheme) {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // Meeting Title & Details Card
+        // Meeting Context Card
         Card(
           elevation: 0,
           color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
@@ -1908,6 +2101,29 @@ class _LeaderMeetingTranscriptionScreenState
                       'Meeting Details',
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: _quorumAchieved
+                            ? Colors.green.withValues(alpha: 0.15)
+                            : Colors.amber.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        _quorumAchieved
+                            ? 'QUORUM CONSTITUTED'
+                            : 'INFORMAL SESSION',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: _quorumAchieved
+                              ? Colors.green.shade800
+                              : Colors.amber.shade900,
+                        ),
                       ),
                     ),
                   ],
@@ -1970,7 +2186,35 @@ class _LeaderMeetingTranscriptionScreenState
         ),
         const SizedBox(height: 16),
 
-        // Executive Summary Card
+        // Discussion Themes Chips
+        if (_discussionThemes.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 8),
+            child: Text(
+              'Agenda Discussion Themes:',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: _discussionThemes.map((themeStr) {
+              return Chip(
+                avatar: const Icon(Icons.label_outline, size: 14),
+                label: Text(themeStr, style: const TextStyle(fontSize: 12)),
+                backgroundColor:
+                    colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 16),
+        ],
+
+        // 📋 Executive Summary Card
         Card(
           elevation: 0,
           color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
@@ -2004,9 +2248,10 @@ class _LeaderMeetingTranscriptionScreenState
                 const SizedBox(height: 8),
                 TextField(
                   controller: _summaryController,
-                  maxLines: 4,
+                  maxLines: 5,
                   decoration: const InputDecoration(
-                    hintText: 'Synthesized summary of leadership sitting...',
+                    hintText:
+                        'Professional synthesized minutes detailing quorum, floor deliberations, and outcomes...',
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -2016,7 +2261,7 @@ class _LeaderMeetingTranscriptionScreenState
         ),
         const SizedBox(height: 16),
 
-        // Key Decisions Section
+        // ⚖️ Key Decisions Card
         Card(
           elevation: 0,
           color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
@@ -2034,7 +2279,7 @@ class _LeaderMeetingTranscriptionScreenState
                             size: 20, color: Colors.green),
                         const SizedBox(width: 8),
                         Text(
-                          'Key Decisions & Approvals (${_decisions.length})',
+                          'Key Decisions & Resolutions (${_decisions.length})',
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
@@ -2043,7 +2288,7 @@ class _LeaderMeetingTranscriptionScreenState
                     ),
                     IconButton(
                       icon: const Icon(Icons.add),
-                      tooltip: 'Record Decision',
+                      tooltip: 'Record Resolution',
                       onPressed: _showAddDecisionDialog,
                     ),
                   ],
@@ -2053,7 +2298,7 @@ class _LeaderMeetingTranscriptionScreenState
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 8),
                     child: Text(
-                      'No key decisions recorded yet. Tap + to add or mark statements in the transcript.',
+                      'No formal decisions recorded yet. Tap + to add or mark statements in the transcript.',
                       style: TextStyle(fontStyle: FontStyle.italic),
                     ),
                   )
@@ -2077,9 +2322,25 @@ class _LeaderMeetingTranscriptionScreenState
                               color: Colors.green, size: 18),
                           const SizedBox(width: 10),
                           Expanded(
-                            child: Text(
-                              decision,
-                              style: const TextStyle(fontWeight: FontWeight.w500),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'RESOLUTION ${idx + 1}',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.green.shade800,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  decision,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w500),
+                                ),
+                              ],
                             ),
                           ),
                           IconButton(
@@ -2100,7 +2361,7 @@ class _LeaderMeetingTranscriptionScreenState
         ),
         const SizedBox(height: 16),
 
-        // Action Items Section
+        // ✅ Action Items Card
         Card(
           elevation: 0,
           color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
@@ -2118,7 +2379,7 @@ class _LeaderMeetingTranscriptionScreenState
                             size: 20, color: Colors.amber.shade900),
                         const SizedBox(width: 8),
                         Text(
-                          'Action Items & Follow-Ups (${_actionItems.length})',
+                          'Action Items & Target Deadlines (${_actionItems.length})',
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
@@ -2176,12 +2437,12 @@ class _LeaderMeetingTranscriptionScreenState
                                         : null,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
+                                const SizedBox(height: 4),
                                 Row(
                                   children: [
                                     Container(
                                       padding: const EdgeInsets.symmetric(
-                                          horizontal: 6, vertical: 1),
+                                          horizontal: 6, vertical: 1.5),
                                       decoration: BoxDecoration(
                                         color: colorScheme.surface,
                                         borderRadius: BorderRadius.circular(4),
@@ -2196,11 +2457,21 @@ class _LeaderMeetingTranscriptionScreenState
                                     ),
                                     if (item.dueDate != null) ...[
                                       const SizedBox(width: 8),
-                                      Text(
-                                        'Due: ${DateFormat.yMMMd().format(item.dueDate!)}',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: colorScheme.onSurfaceVariant,
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 6, vertical: 1.5),
+                                        decoration: BoxDecoration(
+                                          color: colorScheme.surface,
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          'Target Deadline: ${DateFormat.yMMMd().format(item.dueDate!)}',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w500,
+                                            color: colorScheme.onSurfaceVariant,
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -2225,7 +2496,7 @@ class _LeaderMeetingTranscriptionScreenState
         ),
         const SizedBox(height: 24),
 
-        // Big Primary Finish Action Button
+        // Primary Action Button: Store in Meeting Files
         FilledButton.icon(
           onPressed: _isSavingToFileArea ? null : _finishAndSaveToMeetingFiles,
           style: FilledButton.styleFrom(
@@ -2245,9 +2516,7 @@ class _LeaderMeetingTranscriptionScreenState
                 )
               : const Icon(Icons.cloud_upload_outlined),
           label: Text(
-            _isSavingToFileArea
-                ? 'Saving...'
-                : 'Save Notes',
+            _isSavingToFileArea ? 'Storing...' : 'Save Formatted Minutes',
             style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
           ),
         ),

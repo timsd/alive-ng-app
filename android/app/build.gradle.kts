@@ -37,7 +37,20 @@ android {
 
     packaging {
         jniLibs {
-            useLegacyPackaging = true
+            // Allow the Play Store to compress native libs inside the AAB.
+            // This reduces per-user download size significantly.
+            useLegacyPackaging = false
+        }
+    }
+
+    // Per-ABI APK splits: users download only the native code for their CPU arch.
+    // This can reduce the APK download by 30-60% compared to a universal fat APK.
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("armeabi-v7a", "arm64-v8a", "x86_64")
+            isUniversalApk = true   // keep a fallback universal APK
         }
     }
 
@@ -88,7 +101,9 @@ android {
                 "proguard-rules.pro"
             )
             ndk {
-                debugSymbolLevel = "none"
+                // Upload native debug symbols to Play Console for meaningful crash traces.
+                // "SYMBOL_TABLE" includes function names; "FULL" adds line numbers but is larger.
+                debugSymbolLevel = "SYMBOL_TABLE"
             }
         }
     }
