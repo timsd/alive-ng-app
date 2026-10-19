@@ -54,7 +54,7 @@ async function ensureReleaseBucket() {
     permissions: ['read("any")'],
     fileSecurity: false,
     enabled: true,
-    maximumFileSize: 200000000,
+    maximumFileSize: 700000000,
     allowedFileExtensions: ['apk'],
     compression: 'none',
     encryption: false,

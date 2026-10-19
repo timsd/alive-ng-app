@@ -238,7 +238,8 @@ class AppwriteProfileService {
       dateOfBirth: _dateValue(data, 'date_of_birth'),
       phoneNumber: _stringValue(data, 'phone_number'),
       address: _stringValue(data, 'address'),
-      bio: _stringValue(data, 'bio'),
+      bio: _stringValue(data, 'bio') ??
+          (additionalProfile != null ? _stringValue(additionalProfile, 'bio') : null),
       chapterId: _stringValue(data, 'chapter_id'),
       maritalStatus: _stringValue(data, 'marital_status') ?? 'single',
       role: _stringValue(data, 'role') ?? 'member',
@@ -249,7 +250,8 @@ class AppwriteProfileService {
       approvedBy: _stringValue(data, 'approved_by'),
       approvedAt: _dateValue(data, 'approved_at'),
       approvalStatus: _stringValue(data, 'approval_status') ?? 'approved',
-      rejectionReason: _stringValue(data, 'rejection_reason'),
+      rejectionReason: _stringValue(data, 'rejection_reason') ??
+          (additionalProfile != null ? _stringValue(additionalProfile, 'rejection_reason') : null),
       requestedRole: _stringValue(data, 'requested_role') ??
           (additionalProfile != null ? _stringValue(additionalProfile, 'requested_role') : null),
       location: _stringValue(data, 'location'),
@@ -258,16 +260,28 @@ class AppwriteProfileService {
       skills: _stringValue(data, 'skills') ??
           (additionalProfile != null ? _stringValue(additionalProfile, 'skills') : null),
       // work_contact / home_contact removed -- see UserProfile.fromJson.
-      generalInfo: _stringValue(data, 'general_info'),
+      generalInfo: _stringValue(data, 'general_info') ??
+          (additionalProfile != null ? _stringValue(additionalProfile, 'general_info') : null),
       localChapter: _stringValue(data, 'local_chapter') ??
           (additionalProfile != null ? _stringValue(additionalProfile, 'to_join_chapter') : null),
       isChapterVerified: _boolValue(data, 'is_chapter_verified') ?? false,
       isChurchVerified: _boolValue(data, 'is_church_verified') ?? false,
       commitmentType: _stringValue(data, 'commitment_type'),
       financialCommitment: _doubleValue(data, 'financial_commitment'),
-      availabilityCommitment: _stringValue(data, 'availability_commitment'),
-      commitmentDetails:
-          _mapValue(data, 'commitment_details') ?? const <String, dynamic>{},
+      availabilityCommitment: _stringValue(data, 'availability_commitment') ??
+          (additionalProfile != null ? _stringValue(additionalProfile, 'availability_commitment') : null),
+      commitmentDetails: _mapValue(data, 'commitment_details') ??
+          (data['commitment_details'] is String
+              ? () {
+                  try {
+                    final d = jsonDecode(data['commitment_details']);
+                    return d is Map<String, dynamic> ? d : null;
+                  } catch (_) {
+                    return null;
+                  }
+                }()
+              : null) ??
+          const <String, dynamic>{},
       totalReadingTime: _intValue(data, 'total_reading_time'),
       chaptersRead: _intValue(data, 'chapters_read'),
       versesRead: _intValue(data, 'verses_read'),
@@ -281,8 +295,74 @@ class AppwriteProfileService {
     );
   }
 
+  static const Set<String> _allowedUserAttributes = {
+    'email',
+    'fullName',
+    'full_name',
+    'avatar_url',
+    'photo_url',
+    'is_email_verified',
+    'is_anonymous',
+    'provider',
+    'date_of_birth',
+    'phone_number',
+    'address',
+    'chapter_id',
+    'role',
+    'is_archived',
+    'is_new_convert',
+    'convert_date',
+    'is_approved',
+    'approved_by',
+    'approved_at',
+    'approval_status',
+    'location',
+    'local_church',
+    'occupation',
+    'work_contact',
+    'local_chapter',
+    'is_chapter_verified',
+    'is_church_verified',
+    'commitment_type',
+    'financial_commitment',
+    'commitment_details',
+    'total_reading_time',
+    'chapters_read',
+    'verses_read',
+    'prayers_offered',
+    'study_sessions_completed',
+    'session_count',
+    'total_study_time',
+    'total_app_time',
+    'last_chapter_read',
+    'last_verse_read',
+    'last_prayer_type',
+    'last_reading_date',
+    'last_prayer_date',
+    'last_study_date',
+    'last_session_start',
+    'last_activity',
+    'stats_start_date',
+    'is_online',
+    'last_seen',
+    'created_at',
+    'updated_at',
+    'last_study_session_type',
+    'additional_profile',
+    'marital_status',
+  };
+
   Map<String, dynamic> userProfileToAppwriteData(UserProfile profile) {
     final profileData = Map<String, dynamic>.from(profile.toJson());
+    // Strip out client-only and document ID properties
+    profileData.remove('id');
+    profileData.remove('\$id');
+    profileData.remove('\$createdAt');
+    profileData.remove('\$updatedAt');
+    profileData.remove('\$permissions');
+    profileData.remove('\$databaseId');
+    profileData.remove('\$collectionId');
+
     // Appwrite ignores null values on update, so clear the avatar explicitly
     // when the picture was removed.
     profileData['avatar_url'] = profile.avatarUrl ?? '';
@@ -327,15 +407,49 @@ class AppwriteProfileService {
       put('is_approved', true);
     }
 
+    final extraFields = <String, dynamic>{};
+
     if (profileData != null) {
-      for (final entry in profileData.entries) {
-        put(entry.key, entry.value);
+      // Existing additional_profile handling
+      Map<String, dynamic> existingAdditional = {};
+      final rawAdditional = profileData['additional_profile'];
+      if (rawAdditional is Map<String, dynamic>) {
+        existingAdditional.addAll(rawAdditional);
+      } else if (rawAdditional is String && rawAdditional.trim().isNotEmpty) {
+        try {
+          final dec = jsonDecode(rawAdditional);
+          if (dec is Map<String, dynamic>) existingAdditional.addAll(dec);
+        } catch (_) {}
       }
+
+      for (final entry in profileData.entries) {
+        final k = entry.key;
+        final v = entry.value;
+
+        // Never pass document IDs or system fields as document attributes
+        if (k == 'id' || k == '\$id' || k.startsWith('\$')) continue;
+
+        if (_allowedUserAttributes.contains(k)) {
+          if (k == 'commitment_details' && v is Map) {
+            put(k, jsonEncode(v));
+          } else {
+            put(k, v);
+          }
+        } else if (v != null) {
+          extraFields[k] = v;
+        }
+      }
+
       if (profileData['fullName'] == null && profileData['full_name'] != null) {
         put('fullName', profileData['full_name']);
       }
       if (profileData['full_name'] == null && profileData['fullName'] != null) {
         put('full_name', profileData['fullName']);
+      }
+
+      if (extraFields.isNotEmpty || existingAdditional.isNotEmpty) {
+        final merged = {...existingAdditional, ...extraFields};
+        data['additional_profile'] = jsonEncode(merged);
       }
     }
 

@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../services/appwrite_meeting_file_service.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -313,6 +313,21 @@ class _LeaderMeetingTranscriptionScreenState
       setState(() => _isListening = false);
       _showFeedback('Scribe paused.');
       return;
+    }
+
+    // Direct OS permission prompt like Zoom/Meet
+    try {
+      final micStatus = await Permission.microphone.request();
+      if (micStatus.isPermanentlyDenied) {
+        _showFeedback('Microphone permission is denied. Please allow it in device Settings.');
+        return;
+      }
+      if (!micStatus.isGranted) {
+        _showFeedback('Microphone permission is required for speech transcription.');
+        return;
+      }
+    } catch (e) {
+      debugPrint('Direct mic permission error: $e');
     }
 
     if (!_speechInitialized) {

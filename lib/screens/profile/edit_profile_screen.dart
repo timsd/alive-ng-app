@@ -1,9 +1,11 @@
-import 'dart:typed_data';
+import 'dart:io' as io;
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../models/app_models.dart';
 import '../../utils/responsive_utils.dart';
 import '../../utils/error_detail.dart';
@@ -760,7 +762,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       child: _pendingPictureBytes != null
                           ? Image.memory(
                               _pendingPictureBytes!,
-                              key: ValueKey(_profilePictureUrl),
+                              key: ValueKey(_pendingPictureBytes.hashCode),
                               width: 80,
                               height: 80,
                               fit: BoxFit.cover,
@@ -786,23 +788,23 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 children: [
                   ElevatedButton.icon(
                     onPressed:
-                        _isUploadingPicture ? null : _uploadProfilePicture,
+                        _isUploadingPicture ? null : _showImageSourcePicker,
                     icon: _isUploadingPicture
                         ? const SizedBox(
                             width: 16,
                             height: 16,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Icon(Icons.upload),
+                        : const Icon(Icons.photo_camera),
                     label: Text(_isUploadingPicture
-                        ? 'Uploading...'
-                        : 'Upload Picture'),
+                        ? 'Saving picture...'
+                        : 'Change Picture'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Theme.of(context).colorScheme.primary,
                       foregroundColor: Theme.of(context).colorScheme.onPrimary,
                     ),
                   ),
-                  if (_profilePictureUrl != null) ...[
+                  if (_profilePictureUrl != null || _pendingPictureBytes != null) ...[
                     SizedBox(
                         height:
                             ResponsiveUtils.getResponsiveSpacing(context, 8)),
@@ -824,100 +826,157 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     );
   }
 
-  Future<void> _uploadProfilePicture() async {
-    try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.image,
-        allowMultiple: false,
-        withData: true,
-      );
+  Future<void> _showImageSourcePicker() async {
+    if (kIsWeb) {
+      await _pickAndUploadImage(ImageSource.gallery);
+      return;
+    }
 
-      if (result != null && result.files.isNotEmpty) {
-        final file = result.files.first;
-
-        if (file.bytes == null) {
-          ToastUtils.showError('Failed to read image file');
-          return;
-        }
-
-        final newPictureBytes = file.bytes!;
-        setState(() => _isUploadingPicture = true);
-
-        try {
-          final userId = widget.userProfile.id;
-
-          // Generate unique filename
-          final timestamp = DateTime.now().millisecondsSinceEpoch;
-          final extension = file.extension ?? 'jpg';
-          final fileName = 'profile_${userId}_$timestamp.$extension';
-          final contentType = switch (extension.toLowerCase()) {
-            'png' => 'image/png',
-            'webp' => 'image/webp',
-            _ => 'image/jpeg',
-          };
-
-          final previousUrl = _profilePictureUrl;
-          final publicUrl =
-              await AppwriteStorageService.instance.uploadProfileFile(
-            bytes: newPictureBytes,
-            fileName: fileName,
-            contentType: contentType,
-          );
-
-          // Persist the new URL immediately (instead of waiting for the Save
-          // button) so the picture is durable and every screen watching the
-          // profile can refresh as soon as the upload succeeds.
-          await ref.read(appwriteProfileServiceProvider).updateUserProfile(
-                userId: widget.userProfile.id,
-                profileData: {
-                  'avatar_url': publicUrl,
-                  'photo_url': publicUrl,
+    await showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Change Profile Photo',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('Take Photo with Camera'),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _pickAndUploadImage(ImageSource.camera);
                 },
-              );
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Choose from Photo Gallery'),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _pickAndUploadImage(ImageSource.gallery);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-          if (!mounted) return;
-          setState(() {
-            _profilePictureUrl = publicUrl;
-            _pendingPictureBytes = newPictureBytes;
-            _hasChanges = true;
-          });
+  Future<void> _pickAndUploadImage(ImageSource source) async {
+    try {
+      Uint8List? imageBytes;
+      String extension = 'jpg';
 
-          // Drop the cached copy of the previous picture so it can never be
-          // rendered in place of the new one.
-          if (previousUrl != null && previousUrl.isNotEmpty) {
-            await CachedNetworkImageProvider(previousUrl).evict();
+      try {
+        final picker = ImagePicker();
+        final pickedFile = await picker.pickImage(
+          source: source,
+          maxWidth: 1024,
+          maxHeight: 1024,
+          imageQuality: 85,
+        );
+        if (pickedFile != null) {
+          imageBytes = await pickedFile.readAsBytes();
+          extension = pickedFile.name.split('.').last.toLowerCase();
+          if (extension.isEmpty) extension = 'jpg';
+        }
+      } catch (pickerErr) {
+        debugPrint('[ProfilePicture] ImagePicker fallback: $pickerErr');
+        // Fallback to FilePicker if ImagePicker fails on platform
+        final result = await FilePicker.platform.pickFiles(
+          type: FileType.image,
+          allowMultiple: false,
+          withData: true,
+        );
+        if (result != null && result.files.isNotEmpty) {
+          final f = result.files.first;
+          if (f.bytes != null) {
+            imageBytes = f.bytes;
+          } else if (f.path != null && !kIsWeb) {
+            imageBytes = await io.File(f.path!).readAsBytes();
           }
-
-          ToastUtils.showSuccess('Profile picture uploaded successfully!');
-
-          // The previous file is deleted only after the new URL is stored, so a
-          // failed upload or save never breaks the picture still in use.
-          if (previousUrl != null &&
-              previousUrl.isNotEmpty &&
-              previousUrl != publicUrl) {
-            try {
-              await AppwriteStorageService.instance
-                  .deleteFileByUrl(previousUrl);
-            } catch (e) {
-              // Ignore errors when deleting old file
-            }
-          }
-        } catch (e) {
-          // Surface the real reason instead of `$e`, which stringifies an
-          // AppwriteException to "AppwriteException: ..." and drops the code,
-          // type and message that identify the actual failure. Without them a
-          // permission problem, a missing bucket and an oversized file were
-          // indistinguishable to whoever hit it.
-          debugPrint('[ProfilePicture] upload failed: ${describeError(e)}');
-          ToastUtils.showError('Upload failed: ${describeError(e)}');
-        } finally {
-          if (mounted) setState(() => _isUploadingPicture = false);
+          if (f.extension != null) extension = f.extension!.toLowerCase();
         }
       }
+
+      if (imageBytes == null || imageBytes.isEmpty) {
+        return; // User cancelled
+      }
+
+      // Immediately change placeholder / avatar preview on UI
+      setState(() {
+        _pendingPictureBytes = imageBytes;
+        _isUploadingPicture = true;
+        _hasChanges = true;
+      });
+
+      try {
+        final userId = widget.userProfile.id;
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        final fileName = 'profile_${userId}_$timestamp.$extension';
+        final contentType = switch (extension) {
+          'png' => 'image/png',
+          'webp' => 'image/webp',
+          _ => 'image/jpeg',
+        };
+
+        final previousUrl = _profilePictureUrl;
+        final publicUrl =
+            await AppwriteStorageService.instance.uploadProfileFile(
+          bytes: imageBytes,
+          fileName: fileName,
+          contentType: contentType,
+        );
+
+        // Update database with the durable URL
+        await ref.read(appwriteProfileServiceProvider).updateUserProfile(
+              userId: widget.userProfile.id,
+              profileData: {
+                'avatar_url': publicUrl,
+                'photo_url': publicUrl,
+              },
+            );
+
+        if (!mounted) return;
+        setState(() {
+          _profilePictureUrl = publicUrl;
+          _hasChanges = true;
+        });
+
+        if (previousUrl != null && previousUrl.isNotEmpty) {
+          await CachedNetworkImageProvider(previousUrl).evict();
+        }
+
+        ToastUtils.showSuccess('Profile photo updated successfully!');
+
+        if (previousUrl != null &&
+            previousUrl.isNotEmpty &&
+            previousUrl != publicUrl) {
+          try {
+            await AppwriteStorageService.instance.deleteFileByUrl(previousUrl);
+          } catch (_) {}
+        }
+      } catch (e) {
+        debugPrint('[ProfilePicture] upload error: ${describeError(e)}');
+        ToastUtils.showError('Upload failed: ${describeError(e)}');
+      } finally {
+        if (mounted) setState(() => _isUploadingPicture = false);
+      }
     } catch (e) {
-      debugPrint('[ProfilePicture] selection failed: ${describeError(e)}');
-      ToastUtils.showError('Could not read that image: ${describeError(e)}');
-      setState(() => _isUploadingPicture = false);
+      debugPrint('[ProfilePicture] selection error: ${describeError(e)}');
+      ToastUtils.showError('Could not process that image: ${describeError(e)}');
+      if (mounted) setState(() => _isUploadingPicture = false);
     }
   }
 
