@@ -26,6 +26,7 @@ import 'services/crash_reporting_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'config/payment_config.dart';
 import 'services/notification_service.dart';
+import 'widgets/app_tour/app_tour_service.dart';
 
 // Global Appwrite service instances for provider access.
 final appwriteClient = Client();
@@ -525,6 +526,13 @@ class MainNavigationScreen extends ConsumerWidget {
                   'icon': Icons.help_outline_rounded,
                   'label': 'help_support',
                   'route': '/help-support',
+                },
+                {
+                  'icon': Icons.explore_rounded,
+                  'label': 'app_tour',
+                  'onTap': () {
+                    AppTourService.maybeStartTour(context, force: true);
+                  },
                 },
                 {
                   'icon': Icons.info_outline_rounded,

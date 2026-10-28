@@ -18,9 +18,12 @@ class PaymentConfig {
         _cachedDynamicPublicKey!.isNotEmpty) {
       return _cachedDynamicPublicKey!;
     }
-    const envKey = String.fromEnvironment('PAYSTACK_PUBLIC_KEY', defaultValue: '');
+    const envKey = String.fromEnvironment(
+      'PAYSTACK_PUBLIC_KEY',
+      defaultValue: 'pk_live_4d497ec0f12f944e22598c8daa40ce716e8971cf',
+    );
     if (envKey.isNotEmpty) return envKey;
-    return '';
+    return 'pk_live_4d497ec0f12f944e22598c8daa40ce716e8971cf';
   }
 
   /// Sets the dynamic public key at runtime (e.g. from Appwrite function response
@@ -86,7 +89,7 @@ class PaymentConfig {
   // Webhook URLs - For server-side processing
   static const String paystackWebhookUrl = String.fromEnvironment(
     'PAYSTACK_WEBHOOK_URL',
-    defaultValue: 'https://app.alivenigeria.org',
+    defaultValue: 'https://api.alivenigeria.org/webhooks/paystack',
   );
 
   // Payment channels to enable.

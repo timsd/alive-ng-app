@@ -16,12 +16,31 @@ import '../../models/app_models.dart';
 import '../../services/role_access_service.dart';
 import '../../config/appwrite_backend_config.dart';
 import '../../widgets/shimmer_loading.dart';
+import '../../widgets/app_tour/app_tour_service.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Allow the home feed widgets to render and settle before presenting tour
+      Future.delayed(const Duration(milliseconds: 800), () {
+        if (mounted) {
+          AppTourService.maybeStartTour(context);
+        }
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
     final isGuest = ref.watch(isGuestModeProvider);
     final l10n = AppLocalizations.of(context)!;

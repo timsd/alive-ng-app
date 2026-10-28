@@ -33,3 +33,9 @@
 -dontwarn org.webrtc.**
 -dontwarn com.livekit.**
 -dontwarn androidx.**
+
+# Appwrite & WebAuth OAuth callbacks
+-keep class io.appwrite.** { *; }
+-dontwarn io.appwrite.**
+-keep class com.linusu.flutter_web_auth_2.** { *; }
+-dontwarn com.linusu.flutter_web_auth_2.**

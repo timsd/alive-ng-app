@@ -13,7 +13,7 @@ class AppwriteBackendConfig {
   );
   static const String fcmProviderId = String.fromEnvironment(
     'APPWRITE_FCM_PROVIDER_ID',
-    defaultValue: '',
+    defaultValue: '6a0cbd1600215f960c03',
   );
 
   // Push is native-only.
