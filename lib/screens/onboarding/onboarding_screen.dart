@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../providers/language_provider.dart';
+import '../../l10n/supported_language.dart';
 import '../../services/appwrite_content_service.dart';
 import '../../services/onboarding_service.dart';
 import '../../utils/responsive_utils.dart';
@@ -144,6 +145,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 },
                 itemBuilder: (context, index) {
                   final step = _steps[index];
+                  final currentLocale = ref.watch(localeProvider);
                   return _OnboardingCard(
                     title: step['title'] as String,
                     body: step['body'] as String,
@@ -151,6 +153,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     iconColor: (step['color'] as Color?) ??
                         Theme.of(context).colorScheme.primary,
                     extra: index == _steps.length - 1 ? _dynamicContent : null,
+                    isFirstCard: index == 0,
+                    selectedLanguageCode: currentLocale.languageCode,
+                    onLanguageSelected: (code) {
+                      ref.read(localeProvider.notifier).setLocale(code);
+                      _loadDynamicContent();
+                    },
                   );
                 },
               ),
@@ -252,6 +260,9 @@ class _OnboardingCard extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
   final String? extra;
+  final bool isFirstCard;
+  final String? selectedLanguageCode;
+  final ValueChanged<String>? onLanguageSelected;
 
   const _OnboardingCard({
     required this.title,
@@ -259,6 +270,9 @@ class _OnboardingCard extends StatelessWidget {
     required this.icon,
     required this.iconColor,
     this.extra,
+    this.isFirstCard = false,
+    this.selectedLanguageCode,
+    this.onLanguageSelected,
   });
 
   @override
@@ -306,6 +320,83 @@ class _OnboardingCard extends StatelessWidget {
                             .withValues(alpha: 0.8),
                       ),
                 ),
+                if (isFirstCard) ...[
+                  const SizedBox(height: 24),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.translate_rounded,
+                              size: 18,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                'Choose Language / Zaɓi Harshe / Yan Èdè / Họrọ Asụsụ',
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: Theme.of(context).colorScheme.primary,
+                                    ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          alignment: WrapAlignment.center,
+                          children: SupportedLanguage.values.map((lang) {
+                            final isSelected = (selectedLanguageCode ?? 'en') == lang.code;
+                            return ChoiceChip(
+                              selected: isSelected,
+                              label: Text(
+                                lang.name,
+                                style: TextStyle(
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              avatar: isSelected
+                                  ? const Icon(Icons.check_circle_rounded, size: 16)
+                                  : CircleAvatar(
+                                      radius: 8,
+                                      backgroundColor: Theme.of(context)
+                                          .colorScheme
+                                          .primary
+                                          .withValues(alpha: 0.15),
+                                      child: Text(
+                                        lang.code.toUpperCase(
+                                        ),
+                                        style: TextStyle(
+                                          fontSize: 8,
+                                          fontWeight: FontWeight.bold,
+                                          color: Theme.of(context).colorScheme.primary,
+                                        ),
+                                      ),
+                                    ),
+                              onSelected: (_) => onLanguageSelected?.call(lang.code),
+                            );
+                          }).toList(),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 if (extra != null && extra!.trim().isNotEmpty) ...[
                   SizedBox(height: context.responsivePadding.top),
                   Container(

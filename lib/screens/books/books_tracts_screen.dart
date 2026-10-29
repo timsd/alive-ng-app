@@ -189,7 +189,7 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
           mainAxisSpacing: ResponsiveUtils.getResponsiveValue(
               context: context, mobile: 12.0, tablet: 16.0, desktop: 20.0),
         ),
-        itemCount: 20, // Using sample data - replace with backend query
+        itemCount: 2, // Sample data limited to 2
         itemBuilder: (context, index) {
           return _buildBookGridItem(context, index, true);
         },
@@ -197,7 +197,7 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
     } else {
       return ListView.builder(
         padding: context.responsivePadding,
-        itemCount: 20, // Using sample data - replace with backend query
+        itemCount: 2, // Sample data limited to 2
         itemBuilder: (context, index) {
           return _buildBookListItem(context, index, true);
         },
@@ -649,46 +649,58 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
     return AppwriteStorageCompatService().getTractDownloadURL('${tract.id}.pdf');
   }
 
-  void _viewOriginalPDF(Tract tract) async {
+    void _viewOriginalPDF(Tract tract) async {
     try {
       final donationService = DonationService();
-      DownloadableMaterial? material;
+      DownloadableMaterial? fetched;
       try {
-        material = await donationService.getMaterialById(tract.id);
+        fetched = await donationService.getMaterialById(tract.id);
       } catch (_) {
-        material = null;
+        fetched = null;
       }
 
-      if (material != null) {
-        final canDownload =
-            await donationService.canUserDownloadMaterial(material.id);
-        if (!canDownload && material.requiresDonation) {
-          if (!mounted) return;
-          final donated = await showDialog<bool>(
-            context: context,
-            builder: (context) => DonationDialog(
-              material: material!,
-              donationType: DonationType.tractProduction,
-            ),
+      final material = fetched ??
+          DownloadableMaterial(
+            id: tract.id,
+            title: tract.title,
+            description: tract.description,
+            category: 'tracts',
+            fileSizeBytes: 0,
+            fileType: 'pdf',
+            downloadCount: 0,
+            fileUrl: await _resolveTractPdfUrl(tract) ?? '',
+            minimumDonation: DonationConstants.tractDonationByRegion['NG'] ??
+                DonationConstants.minimumTractDonation,
+            requiresDonation: true,
+            isActive: true,
+            createdAt: tract.createdAt ?? DateTime.now(),
+            updatedAt: tract.updatedAt ?? DateTime.now(),
           );
-          if (donated != true) return;
-        }
 
-        final downloadUrl =
-            await donationService.generateDownloadUrl(material.id);
-        if (await canLaunchUrl(Uri.parse(downloadUrl))) {
-          await launchUrl(Uri.parse(downloadUrl),
-              mode: LaunchMode.externalApplication);
-        } else {
-          throw 'Could not launch PDF viewer';
-        }
-        return;
+      final canDownload =
+          await donationService.canUserDownloadMaterial(material.id);
+      if (!canDownload && material.requiresDonation) {
+        if (!mounted) return;
+        final donated = await showDialog<bool>(
+          context: context,
+          builder: (context) => DonationDialog(
+            material: material,
+            donationType: DonationType.tractProduction,
+          ),
+        );
+        if (donated != true) return;
       }
 
-      // Fallback to direct Storage URL if material is not registered
-      final String? pdfUrl = await _resolveTractPdfUrl(tract);
-      if (pdfUrl != null && await canLaunchUrl(Uri.parse(pdfUrl))) {
-        await launchUrl(Uri.parse(pdfUrl),
+      String? downloadUrl;
+      try {
+        downloadUrl = await donationService.generateDownloadUrl(material.id);
+      } catch (_) {
+        downloadUrl = null;
+      }
+      downloadUrl ??= await _resolveTractPdfUrl(tract);
+
+      if (downloadUrl != null && await canLaunchUrl(Uri.parse(downloadUrl))) {
+        await launchUrl(Uri.parse(downloadUrl),
             mode: LaunchMode.externalApplication);
       } else {
         throw 'Could not launch PDF viewer';
@@ -713,58 +725,56 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
   void _downloadTract(Tract tract) async {
     try {
       final donationService = DonationService();
-      DownloadableMaterial? material;
+      DownloadableMaterial? fetched;
       try {
-        material = await donationService.getMaterialById(tract.id);
+        fetched = await donationService.getMaterialById(tract.id);
       } catch (_) {
-        material = null;
+        fetched = null;
       }
 
-      if (material != null) {
-        final canDownload =
-            await donationService.canUserDownloadMaterial(material.id);
-        if (!canDownload && material.requiresDonation) {
-          if (!mounted) return;
-          final donated = await showDialog<bool>(
-            context: context,
-            builder: (context) => DonationDialog(
-              material: material!,
-              donationType: DonationType.tractProduction,
-            ),
+      final material = fetched ??
+          DownloadableMaterial(
+            id: tract.id,
+            title: tract.title,
+            description: tract.description,
+            category: 'tracts',
+            fileSizeBytes: 0,
+            fileType: 'pdf',
+            downloadCount: 0,
+            fileUrl: await _resolveTractPdfUrl(tract) ?? '',
+            minimumDonation: DonationConstants.tractDonationByRegion['NG'] ??
+                DonationConstants.minimumTractDonation,
+            requiresDonation: true,
+            isActive: true,
+            createdAt: tract.createdAt ?? DateTime.now(),
+            updatedAt: tract.updatedAt ?? DateTime.now(),
           );
-          if (donated != true) return;
-        }
 
-        final downloadUrl =
-            await donationService.generateDownloadUrl(material.id);
-        if (await canLaunchUrl(Uri.parse(downloadUrl))) {
-          // Register the download so it appears in the "Downloaded" tab
-          await donationService.recordDownload(material.id);
-
-          await launchUrl(Uri.parse(downloadUrl),
-              mode: LaunchMode.externalApplication);
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Downloading ${tract.title}...'),
-                backgroundColor: Theme.of(context).colorScheme.tertiary,
-              ),
-            );
-            // Refresh downloads tab
-            setState(() {
-              _downloadsFuture = donationService.getUserDownloads();
-            });
-          }
-        } else {
-          throw 'Could not launch downloaded tract';
-        }
-        return;
+      final canDownload =
+          await donationService.canUserDownloadMaterial(material.id);
+      if (!canDownload && material.requiresDonation) {
+        if (!mounted) return;
+        final donated = await showDialog<bool>(
+          context: context,
+          builder: (context) => DonationDialog(
+            material: material,
+            donationType: DonationType.tractProduction,
+          ),
+        );
+        if (donated != true) return;
       }
 
-      // Fallback: direct Storage URL
-      final String? pdfUrl = await _resolveTractPdfUrl(tract);
-      if (pdfUrl != null && await canLaunchUrl(Uri.parse(pdfUrl))) {
-        await launchUrl(Uri.parse(pdfUrl),
+      String? downloadUrl;
+      try {
+        downloadUrl = await donationService.generateDownloadUrl(material.id);
+      } catch (_) {
+        downloadUrl = null;
+      }
+      downloadUrl ??= await _resolveTractPdfUrl(tract);
+
+      if (downloadUrl != null && await canLaunchUrl(Uri.parse(downloadUrl))) {
+        await donationService.recordDownload(material.id);
+        await launchUrl(Uri.parse(downloadUrl),
             mode: LaunchMode.externalApplication);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -773,6 +783,9 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
               backgroundColor: Theme.of(context).colorScheme.tertiary,
             ),
           );
+          setState(() {
+            _downloadsFuture = donationService.getUserDownloads();
+          });
         }
       } else {
         throw 'Could not launch downloaded tract';

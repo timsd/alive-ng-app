@@ -103,6 +103,7 @@ class PodcastEpisode {
   final DateTime publishDate;
   final bool isDownloaded;
   final String? localPath;
+  final String? transcript;
 
   const PodcastEpisode({
     required this.id,
@@ -115,6 +116,7 @@ class PodcastEpisode {
     required this.publishDate,
     required this.isDownloaded,
     this.localPath,
+    this.transcript,
   });
 
   factory PodcastEpisode.fromJson(Map<String, dynamic> json) {
@@ -135,6 +137,7 @@ class PodcastEpisode {
           json['is_downloaded'] as bool? ??
           false,
       localPath: json['localPath'] as String? ?? json['local_path'] as String?,
+      transcript: json['transcript'] as String? ?? json['transcription'] as String?,
     );
   }
 
@@ -150,6 +153,7 @@ class PodcastEpisode {
       'publishDate': publishDate.toIso8601String(),
       'isDownloaded': isDownloaded,
       'localPath': localPath,
+      'transcript': transcript,
     };
   }
 }

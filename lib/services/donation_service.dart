@@ -705,10 +705,10 @@ class DonationService {
       case DonationType.appMaintenance:
         switch (currency.toUpperCase()) {
           case 'NGN':
-            // TEMPORARY TESTING VALUE: lowered to â‚¦100 so the Paystack
-            // checkout flow can be verified end-to-end. Restore to 7500.0
-            // once payment is confirmed working in production.
-            return 100.0;
+            // Standard production minimum donation
+
+
+            return 7500.0;
           case 'USD':
           default:
             return 5.0;

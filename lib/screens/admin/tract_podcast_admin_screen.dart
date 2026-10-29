@@ -1028,24 +1028,49 @@ class _TractFormDialogState extends State<_TractFormDialog> {
 
         if (_selectedPdfBytes != null && _selectedPdfName != null) {
           try {
-            final extractedText = await PdfExtractorService()
-                .extractTextFromBytes(_selectedPdfBytes!, _selectedPdfName!);
-            if (extractedText.trim().isNotEmpty) {
+            final article = await PdfExtractorService().extractAndFormatArticle(
+              _selectedPdfBytes!,
+              _selectedPdfName!,
+              fallbackTitle: tract.title,
+            );
+            if (article.fullFormattedBody.trim().isNotEmpty) {
               await contentService.upsertDocument(
                 'tract_contents',
                 tract.id,
                 {
                   'tract_id': tract.id,
-                  'content': extractedText.trim(),
+                  'content': article.fullFormattedBody.trim(),
                   'questions': jsonEncode(const []),
                   'metadata': jsonEncode({
                     'source_file': _selectedPdfName,
                     'source_pdf_url': tract.downloadUrl,
                     'extracted_at': DateTime.now().toUtc().toIso8601String(),
+                    'pages': article.sections,
+                    'headings': article.headings,
+                    'word_count': article.totalWordCount,
                   }),
                 },
               );
             }
+
+            // Auto-register tract in downloadable_materials to enforce donation gate
+            try {
+              await contentService.upsertDocument(
+                'downloadable_materials',
+                tract.id,
+                {
+                  'title': tract.title,
+                  'description': tract.description,
+                  'type': 'tract',
+                  'file_url': tract.downloadUrl ?? '',
+                  'requires_donation': true,
+                  'minimum_donation': 7500.0,
+                  'is_active': true,
+                  'created_at': DateTime.now().toUtc().toIso8601String(),
+                  'updated_at': DateTime.now().toUtc().toIso8601String(),
+                },
+              );
+            } catch (_) {}
           } catch (e) {
             debugPrint('Warning: Could not extract tract PDF text: $e');
           }

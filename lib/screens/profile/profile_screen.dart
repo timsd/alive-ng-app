@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/language_provider.dart';
+import '../../l10n/supported_language.dart';
 import '../../providers/appwrite_auth_provider.dart';
 import '../../models/app_models.dart';
 import '../../services/appwrite_profile_service.dart';
@@ -82,6 +83,95 @@ class ProfileScreen extends ConsumerWidget {
       ),
     );
   }
+
+  void _showLanguageSelector(BuildContext context, WidgetRef ref) {
+    final translate = ref.read(translationProvider);
+    final currentLocale = ref.read(localeProvider);
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        final theme = Theme.of(context);
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.language_rounded, color: Color(0xFF3B82F6)),
+                      const SizedBox(width: 12),
+                      Text(
+                        translate('language'),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(),
+                ...SupportedLanguage.values.map((language) {
+                  final isSelected = currentLocale.languageCode == language.code;
+                  return ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: isSelected
+                          ? theme.colorScheme.primary.withValues(alpha: 0.15)
+                          : theme.colorScheme.surfaceContainerHighest,
+                      child: Text(
+                        language.code.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                    title: Text(
+                      language.name,
+                      style: TextStyle(
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                    subtitle: Text(_getNativeLanguageName(language.code)),
+                    trailing: isSelected
+                        ? Icon(Icons.check_circle_rounded, color: theme.colorScheme.primary)
+                        : null,
+                    onTap: () {
+                      ref.read(localeProvider.notifier).setLocale(language.code);
+                      Navigator.of(context).pop();
+                    },
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _getNativeLanguageName(String code) {
+    switch (code) {
+      case 'yo':
+        return 'Èdè Yorùbá';
+      case 'ha':
+        return 'Harshen Hausa';
+      case 'ig':
+        return 'Asụsụ Igbo';
+      case 'en':
+      default:
+        return 'English';
+    }
+  }
+
 
   Widget _buildBody(BuildContext context, WidgetRef ref,
       String Function(String) translate, ThemeData theme) {
@@ -186,6 +276,18 @@ class ProfileScreen extends ConsumerWidget {
             title: translate('preferences'),
             icon: Icons.tune_rounded,
             children: [
+              _ActionTile(
+                icon: Icons.language_rounded,
+                iconColor: const Color(0xFF3B82F6),
+                title: translate('language'),
+                subtitle: SupportedLanguage.values
+                    .firstWhere(
+                      (l) => l.code == ref.watch(localeProvider).languageCode,
+                      orElse: () => SupportedLanguage.english,
+                    )
+                    .name,
+                onTap: () => _showLanguageSelector(context, ref),
+              ),
               _ActionTile(
                 icon: Icons.notifications_rounded,
                 iconColor: const Color(0xFFEAB308),

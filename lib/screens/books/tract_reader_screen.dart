@@ -737,49 +737,58 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
   }
 
   void _viewOriginalPDF() async {
-    final rootCtx = context;
-    try {
+        try {
       final donationService = DonationService();
-      DownloadableMaterial? material;
+      DownloadableMaterial? fetched;
       try {
-        material = await donationService.getMaterialById(widget.tract.id);
+        fetched = await donationService.getMaterialById(widget.tract.id);
       } catch (_) {
-        material = null;
+        fetched = null;
       }
 
-      if (material != null) {
-        final canDownload =
-            await donationService.canUserDownloadMaterial(material.id);
-        if (!canDownload && material.requiresDonation) {
-          if (!mounted) return;
-          final donated = await showDialog<bool>(
-            context: context,
-            builder: (context) => DonationDialog(
-              material: material!,
-              donationType: DonationType.tractProduction,
-            ),
+      final material = fetched ??
+          DownloadableMaterial(
+            id: widget.tract.id,
+            title: widget.tract.title,
+            description: widget.tract.description,
+            category: 'tracts',
+            fileSizeBytes: 0,
+            fileType: 'pdf',
+            downloadCount: 0,
+            fileUrl: await _resolveDirectPdfUrl() ?? '',
+            minimumDonation: DonationConstants.tractDonationByRegion['NG'] ??
+                DonationConstants.minimumTractDonation,
+            requiresDonation: true,
+            isActive: true,
+            createdAt: widget.tract.createdAt ?? DateTime.now(),
+            updatedAt: widget.tract.updatedAt ?? DateTime.now(),
           );
-          if (donated != true) return;
-        }
 
-        final downloadUrl =
-            await donationService.generateDownloadUrl(material.id);
-        if (await canLaunchUrl(Uri.parse(downloadUrl))) {
-          await launchUrl(Uri.parse(downloadUrl),
-              mode: LaunchMode.externalApplication);
-        } else {
-          throw 'Could not launch PDF viewer';
-        }
-        return;
+      final canDownload =
+          await donationService.canUserDownloadMaterial(material.id);
+      if (!canDownload && material.requiresDonation) {
+        if (!mounted) return;
+        final donated = await showDialog<bool>(
+          context: context,
+          builder: (context) => DonationDialog(
+            material: material,
+            donationType: DonationType.tractProduction,
+          ),
+        );
+        if (donated != true) return;
       }
 
-      // Fallback to direct Storage URL if material is not registered
-      final String? pdfUrl = await _resolveDirectPdfUrl();
-      if (pdfUrl != null && await canLaunchUrl(Uri.parse(pdfUrl))) {
-        await launchUrl(Uri.parse(pdfUrl),
+      String? downloadUrl;
+      try {
+        downloadUrl = await donationService.generateDownloadUrl(material.id);
+      } catch (_) {
+        downloadUrl = null;
+      }
+      downloadUrl ??= await _resolveDirectPdfUrl();
+
+      if (downloadUrl != null && await canLaunchUrl(Uri.parse(downloadUrl))) {
+        await launchUrl(Uri.parse(downloadUrl),
             mode: LaunchMode.externalApplication);
-        if (!rootCtx.mounted) return;
-        _showDonationDialog(rootCtx);
       } else {
         throw 'Could not launch PDF viewer';
       }
@@ -802,57 +811,67 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
   }
 
   void _downloadTract() async {
-    final rootCtx = context;
-    try {
+        try {
       final donationService = DonationService();
-      DownloadableMaterial? material;
+      DownloadableMaterial? fetched;
       try {
-        material = await donationService.getMaterialById(widget.tract.id);
+        fetched = await donationService.getMaterialById(widget.tract.id);
       } catch (_) {
-        material = null;
+        fetched = null;
       }
 
-      if (material != null) {
-        final canDownload =
-            await donationService.canUserDownloadMaterial(material.id);
-        if (!canDownload && material.requiresDonation) {
-          if (!mounted) return;
-          final donated = await showDialog<bool>(
-            context: context,
-            builder: (context) => DonationDialog(
-              material: material!,
-              donationType: DonationType.tractProduction,
+      final material = fetched ??
+          DownloadableMaterial(
+            id: widget.tract.id,
+            title: widget.tract.title,
+            description: widget.tract.description,
+            category: 'tracts',
+            fileSizeBytes: 0,
+            fileType: 'pdf',
+            downloadCount: 0,
+            fileUrl: await _resolveDirectPdfUrl() ?? '',
+            minimumDonation: DonationConstants.tractDonationByRegion['NG'] ??
+                DonationConstants.minimumTractDonation,
+            requiresDonation: true,
+            isActive: true,
+            createdAt: widget.tract.createdAt ?? DateTime.now(),
+            updatedAt: widget.tract.updatedAt ?? DateTime.now(),
+          );
+
+      final canDownload =
+          await donationService.canUserDownloadMaterial(material.id);
+      if (!canDownload && material.requiresDonation) {
+        if (!mounted) return;
+        final donated = await showDialog<bool>(
+          context: context,
+          builder: (context) => DonationDialog(
+            material: material,
+            donationType: DonationType.tractProduction,
+          ),
+        );
+        if (donated != true) return;
+      }
+
+      String? downloadUrl;
+      try {
+        downloadUrl = await donationService.generateDownloadUrl(material.id);
+      } catch (_) {
+        downloadUrl = null;
+      }
+      downloadUrl ??= await _resolveDirectPdfUrl();
+
+      if (downloadUrl != null && await canLaunchUrl(Uri.parse(downloadUrl))) {
+        await donationService.recordDownload(material.id);
+        await launchUrl(Uri.parse(downloadUrl),
+            mode: LaunchMode.externalApplication);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Downloading ${widget.tract.title}...'),
+              backgroundColor: Colors.green,
             ),
           );
-          if (donated != true) return;
         }
-
-        final downloadUrl =
-            await donationService.generateDownloadUrl(material.id);
-        if (await canLaunchUrl(Uri.parse(downloadUrl))) {
-          await launchUrl(Uri.parse(downloadUrl),
-              mode: LaunchMode.externalApplication);
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Downloading ${widget.tract.title}...'),
-                backgroundColor: Colors.green,
-              ),
-            );
-          }
-        } else {
-          throw 'Could not launch downloaded tract';
-        }
-        return;
-      }
-
-      // Fallback: direct Storage URL and optional donation prompt
-      final String? pdfUrl = await _resolveDirectPdfUrl();
-      if (pdfUrl != null && await canLaunchUrl(Uri.parse(pdfUrl))) {
-        await launchUrl(Uri.parse(pdfUrl),
-            mode: LaunchMode.externalApplication);
-        if (!rootCtx.mounted) return;
-        _showDonationDialog(rootCtx);
       } else {
         throw 'Could not launch downloaded tract';
       }
@@ -865,44 +884,7 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
     }
   }
 
-  void _showDonationDialog(BuildContext ctx) {
-    showDialog(
-      context: ctx,
-      builder: (context) => AlertDialog(
-        title: const Text('Support Our Ministry'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Thank you for downloading this tract! Your support helps us continue spreading the Gospel.',
-              style: Theme.of(ctx).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Consider making a donation to support ALIVE Nigeria ministry.',
-              style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
-                    fontStyle: FontStyle.italic,
-                  ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Maybe Later'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _openDonationPage();
-            },
-            child: const Text('Donate Now'),
-          ),
-        ],
-      ),
-    );
-  }
-
+  
   void _openDonationPage() {
     // Navigate to in-app donation page
     context.go(AppConstants.donationRoute);
@@ -1391,8 +1373,7 @@ Download it from ALIVE Nigeria App: https://app.alivenigeria.org
   }
 
   void _openBibleApp(String reference) async {
-    final rootCtx = context;
-    // Try to open in Bible app or web browser
+        // Try to open in Bible app or web browser
     final bibleUrls = [
       'bible://$reference', // Bible app protocol
       'https://www.biblegateway.com/passage/?search=${Uri.encodeComponent(reference)}&version=NIV',
@@ -1410,8 +1391,8 @@ Download it from ALIVE Nigeria App: https://app.alivenigeria.org
     }
 
     // Fallback message
-    if (!rootCtx.mounted) return;
-    ScaffoldMessenger.of(rootCtx).showSnackBar(
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
             'Please install a Bible app or visit BibleGateway.com to read $reference'),
@@ -1421,8 +1402,7 @@ Download it from ALIVE Nigeria App: https://app.alivenigeria.org
   }
 
   void _saveProgress() async {
-    final rootCtx = context;
-    try {
+        try {
       // Collect all answers
       Map<String, String> answers = {};
       _answerControllers.forEach((key, controller) {
@@ -1448,8 +1428,8 @@ Download it from ALIVE Nigeria App: https://app.alivenigeria.org
               user.uid, widget.tract.id, answers);
         }
 
-        if (!rootCtx.mounted) return;
-        ScaffoldMessenger.of(rootCtx).showSnackBar(
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Progress saved successfully'),
             backgroundColor: Colors.green,
@@ -1459,8 +1439,8 @@ Download it from ALIVE Nigeria App: https://app.alivenigeria.org
         throw 'User not authenticated';
       }
     } catch (e) {
-      if (!rootCtx.mounted) return;
-      ScaffoldMessenger.of(rootCtx).showSnackBar(
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error saving progress: $e'),
           backgroundColor: Colors.red,

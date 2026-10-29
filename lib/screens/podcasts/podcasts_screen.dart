@@ -11,6 +11,7 @@ import '../../widgets/podcast_episode_card.dart';
 import '../../models/podcast_models.dart';
 import '../../widgets/custom_image.dart';
 import '../../services/sample_content_service.dart';
+import '../../widgets/modern_podcast_player_sheet.dart';
 
 class PodcastsScreen extends ConsumerStatefulWidget {
   const PodcastsScreen({super.key});
@@ -118,6 +119,7 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
               ],
             ),
           ),
+          if (_currentPlayingEpisode != null) _buildMiniPlayer(),
         ],
       ),
     );
@@ -694,8 +696,126 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
     });
   }
 
-  // Audio player instance
+  // Audio player instance & active episode
   final AudioPlayer _audioPlayer = AudioPlayer();
+  Map<String, dynamic>? _currentPlayingEpisode;
+
+  Widget _buildMiniPlayer() {
+    if (_currentPlayingEpisode == null) return const SizedBox.shrink();
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final title = _currentPlayingEpisode!['title']?.toString() ?? 'Episode';
+    final podcastTitle =
+        _currentPlayingEpisode!['podcastTitle']?.toString() ?? 'Podcast';
+    final coverImage = _currentPlayingEpisode!['coverImage']?.toString();
+
+    return SafeArea(
+      top: false,
+      child: GestureDetector(
+        onTap: () {
+          ModernPodcastPlayerSheet.show(
+            context,
+            audioPlayer: _audioPlayer,
+            episodeData: _currentPlayingEpisode!,
+            podcastTitle: podcastTitle,
+            coverImage: coverImage,
+            onDownload: () =>
+                _downloadEpisode(context, _currentPlayingEpisode!),
+          );
+        },
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: theme.brightness == Brightness.dark
+                ? const Color(0xFF182433)
+                : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.18),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+            ],
+            border: Border.all(
+              color: colorScheme.outline.withValues(alpha: 0.15),
+            ),
+          ),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  color: colorScheme.primary.withValues(alpha: 0.15),
+                  child: coverImage != null && coverImage.isNotEmpty
+                      ? CustomImage(imageUrl: coverImage, fit: BoxFit.cover)
+                      : Icon(Icons.podcasts_rounded,
+                          color: colorScheme.primary, size: 24),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                    Text(
+                      podcastTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colorScheme.onSurface.withValues(alpha: 0.65),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              StreamBuilder<PlayerState>(
+                stream: _audioPlayer.playerStateStream,
+                builder: (context, snapshot) {
+                  final isPlaying = snapshot.data?.playing ?? false;
+                  return IconButton(
+                    icon: Icon(isPlaying
+                        ? Icons.pause_circle_filled_rounded
+                        : Icons.play_circle_fill_rounded),
+                    iconSize: 34,
+                    color: colorScheme.primary,
+                    onPressed: () {
+                      if (isPlaying) {
+                        _audioPlayer.pause();
+                      } else {
+                        _audioPlayer.play();
+                      }
+                    },
+                  );
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.close_rounded, size: 20),
+                onPressed: () {
+                  _audioPlayer.stop();
+                  setState(() {
+                    _currentPlayingEpisode = null;
+                  });
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   // Episode Methods
   Future<void> _playEpisode(
@@ -710,33 +830,25 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
         return;
       }
 
-      // Show loading indicator
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Loading audio...')),
-      );
+      setState(() {
+        _currentPlayingEpisode = episode;
+      });
 
-      // Play the audio
+      // Play audio
       await _audioPlayer.setUrl(audioUrl);
       await _audioPlayer.play();
 
-      // Show now playing notification
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Playing: ${episode['title']}'),
-          action: SnackBarAction(
-            label: 'Pause',
-            onPressed: () {
-              _audioPlayer.pause();
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Episode paused')),
-              );
-            },
-          ),
-          duration: const Duration(seconds: 4),
-        ),
+
+      // Automatically present lively modern player modal with live transcript & seekbar
+      ModernPodcastPlayerSheet.show(
+        context,
+        audioPlayer: _audioPlayer,
+        episodeData: episode,
+        podcastTitle:
+            episode['podcastTitle']?.toString() ?? 'ALIVE Nigeria Podcast',
+        coverImage: episode['coverImage']?.toString(),
+        onDownload: () => _downloadEpisode(context, episode),
       );
     } catch (e) {
       if (!context.mounted) return;

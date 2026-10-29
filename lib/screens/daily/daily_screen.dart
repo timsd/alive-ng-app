@@ -17,6 +17,21 @@ import '../../utils/responsive_utils.dart';
 import '../../constants/app_constants.dart';
 
 // Provider for daily verse
+String _getLocalizedReflection(String langCode) {
+  switch (langCode) {
+    case 'yo':
+      return 'Kí ọ̀rọ̀ Ọlọ́run jẹ́ ìmọ́lẹ̀ sí ipa-ọ̀nà rẹ lónìí. Gbẹ́kẹ̀lé Olúwa pẹ̀lú gbogbo àyà rẹ, kí o sì rìn nínú àlàáfíà àti ìfẹ́ Rẹ̀.';
+    case 'ha':
+      return 'Bari maganar Allah ta zama haske ga tafarkinka a yau. Ka dogara ga Ubangiji da dukan zuciyarka kuma ka yi tafiya cikin salama da ƙaunarsa.';
+    case 'ig':
+      return 'Ka okwu Chineke bụrụ ìhè n\'ụzọ gị taa. Tụkwasị Onye-nwe obi gị niile, ma jee ije n\'udo na ịhụnanya Ya.';
+    case 'en':
+    default:
+      return 'Let God\'s word guide your steps and illuminate your path today. Trust in the Lord with all your heart, walking in His grace and perfect peace.';
+  }
+}
+
+// Provider for daily verse
 final dailyVerseProvider = FutureProvider<DailyVerse?>((ref) async {
   final locale = ref.watch(localeProvider);
   final langCode = locale.languageCode;
@@ -28,14 +43,14 @@ final dailyVerseProvider = FutureProvider<DailyVerse?>((ref) async {
     final index = verses.isEmpty ? 0 : epochDays % verses.length;
     final v = verses.isEmpty ? null : verses[index];
     final localVersion = {'yo': 'BM', 'ha': 'HAU', 'ig': 'IGBOB'}[langCode] ?? 'KJV';
-    final text = v?.text[localVersion] ?? v?.text['KJV'] ?? v?.text.values.firstOrNull ?? 'Trust in the Lord with all your heart.';
+    final text = v?.text[localVersion] ?? v?.text[langCode] ?? v?.text['KJV'] ?? v?.text.values.firstOrNull ?? 'Trust in the Lord with all your heart.';
     return DailyVerse(
       id: 'local-fallback-$langCode',
       verse: text,
       reference: v?.reference ?? 'Proverbs 3:5',
       translation: localVersion,
       date: now,
-      reflection: null,
+      reflection: _getLocalizedReflection(langCode),
       createdAt: DateTime.now(),
     );
   }
@@ -44,6 +59,21 @@ final dailyVerseProvider = FutureProvider<DailyVerse?>((ref) async {
     final verseGenerator = DailyVerseGenerationService.instance;
     final dailyVerse = await verseGenerator.generateDailyVerseForToday(languageCode: langCode);
     if (dailyVerse != null) {
+      if (langCode != 'en') {
+        final localVersion = {'yo': 'BM', 'ha': 'HAU', 'ig': 'IGBOB'}[langCode] ?? 'KJV';
+        final corpus = BibleSource.instance.dailyCorpus;
+        final matching = corpus.where((cv) => cv.reference == dailyVerse.reference).firstOrNull;
+        final localText = matching?.text[localVersion] ?? matching?.text[langCode] ?? dailyVerse.verse;
+        return DailyVerse(
+          id: dailyVerse.id,
+          verse: localText,
+          reference: dailyVerse.reference,
+          translation: localVersion,
+          date: dailyVerse.date,
+          reflection: dailyVerse.reflection ?? _getLocalizedReflection(langCode),
+          createdAt: dailyVerse.createdAt,
+        );
+      }
       return dailyVerse;
     }
     return fallbackVerse();
@@ -94,6 +124,66 @@ final dailyTasksProvider = StateProvider<List<DailyTask>>((ref) {
     ),
   ];
 });
+
+String _getLocalizedTaskTitle(String id, String defaultTitle, String langCode) {
+  switch (langCode) {
+    case 'yo':
+      switch (id) {
+        case '1': return 'Àdúrà Àárọ̀';
+        case '2': return 'Kíkà Bíbélì';
+        case '3': return 'Ìtọ́jú Ìlera';
+        case '4': return 'Àṣàrò Ìrọ̀lẹ́';
+      }
+      break;
+    case 'ha':
+      switch (id) {
+        case '1': return 'Addu\'ar Safe';
+        case '2': return 'Karanta Littafi Mai Tsarki';
+        case '3': return 'Kula da Lafiya';
+        case '4': return 'Tunani na Yamma';
+      }
+      break;
+    case 'ig':
+      switch (id) {
+        case '1': return 'Ekpere Ụtụtụ';
+        case '2': return 'Ọgụgụ Baịbụl';
+        case '3': return 'Nlekọta Ahụike';
+        case '4': return 'Ntụgharị Uche Anyasị';
+      }
+      break;
+  }
+  return defaultTitle;
+}
+
+String _getLocalizedTaskDescription(String id, String defaultDesc, String langCode) {
+  switch (langCode) {
+    case 'yo':
+      switch (id) {
+        case '1': return 'Bẹ̀rẹ̀ ọjọ́ rẹ pẹ̀lú àdúrà àti àṣàrò';
+        case '2': return 'Ka ẹsẹ Bíbélì tí òní';
+        case '3': return 'Ṣe àyẹ̀wò àwọn ìgbésẹ̀ ìlera rẹ';
+        case '4': return 'Ronú lórí àwọn ìbùkún Ọlọ́run lónìí';
+      }
+      break;
+    case 'ha':
+      switch (id) {
+        case '1': return 'Fara ranarka da addu\'a da bimbini';
+        case '2': return 'Karanta ayar yau';
+        case '3': return 'Bibiyar ayyukan lafiyarka';
+        case '4': return 'Yi tunani a kan albarkar Allah a yau';
+      }
+      break;
+    case 'ig':
+      switch (id) {
+        case '1': return 'Bido ụbọchị gị site n\'ekpere na ịtụgharị uche';
+        case '2': return 'Gụọ amaokwu Baịbụl nke taa';
+        case '3': return 'Sochie mmemme ahụike gị';
+        case '4': return 'Tụgharịa uche n\'ngọzi Chineke taa';
+      }
+      break;
+  }
+  return defaultDesc;
+}
 
 class DailyScreen extends ConsumerStatefulWidget {
   const DailyScreen({super.key});
@@ -370,6 +460,7 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
             }
           },
           onStart: () => _startTask(context, ref, tasks, index),
+          languageCode: ref.watch(localeProvider).languageCode,
         );
       },
     );
@@ -604,6 +695,7 @@ class DailyTaskCard extends StatelessWidget {
   final Duration remaining;
   final Function(bool) onToggle;
   final VoidCallback onStart;
+  final String languageCode;
 
   const DailyTaskCard({
     super.key,
@@ -612,6 +704,7 @@ class DailyTaskCard extends StatelessWidget {
     required this.trackingStarted,
     required this.remaining,
     required this.onStart,
+    required this.languageCode,
   });
 
   @override
@@ -672,7 +765,7 @@ class DailyTaskCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      task.title,
+                      _getLocalizedTaskTitle(task.id, task.title, languageCode),
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                             decoration: task.completed
@@ -694,7 +787,7 @@ class DailyTaskCard extends StatelessWidget {
                       desktop: 5.0,
                     )),
                     Text(
-                      task.description,
+                      _getLocalizedTaskDescription(task.id, task.description, languageCode),
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: task.completed
                                 ? Theme.of(context)

@@ -40,6 +40,7 @@ Map<String, dynamic> podcastEpisodePayload(PodcastEpisode episode) {
     'publish_date': episode.publishDate.toUtc().toIso8601String(),
     'is_downloaded': episode.isDownloaded,
     'local_path': episode.localPath,
+    'transcript': episode.transcript,
   };
 }
 
@@ -84,6 +85,7 @@ class _PodcastEpisodeFormDialogState extends State<PodcastEpisodeFormDialog> {
   final _descriptionController = TextEditingController();
   final _durationController = TextEditingController();
   final _audioContentController = TextEditingController();
+  final _transcriptController = TextEditingController();
 
   DateTime _publishDate = DateTime.now();
   Uint8List? _audioBytes;
@@ -99,6 +101,7 @@ class _PodcastEpisodeFormDialogState extends State<PodcastEpisodeFormDialog> {
       _durationController.text = widget.episode!.duration;
       _publishDate = widget.episode!.publishDate;
       _audioContentController.text = widget.episode!.audioUrl;
+      _transcriptController.text = widget.episode!.transcript ?? '';
     }
   }
 
@@ -108,6 +111,7 @@ class _PodcastEpisodeFormDialogState extends State<PodcastEpisodeFormDialog> {
     _descriptionController.dispose();
     _durationController.dispose();
     _audioContentController.dispose();
+    _transcriptController.dispose();
     super.dispose();
   }
 
@@ -206,6 +210,7 @@ class _PodcastEpisodeFormDialogState extends State<PodcastEpisodeFormDialog> {
         publishDate: _publishDate,
         isDownloaded: false,
         localPath: null,
+        transcript: _transcriptController.text.trim().isEmpty ? null : _transcriptController.text.trim(),
       );
 
       await contentService.upsertDocument(
@@ -380,6 +385,17 @@ class _PodcastEpisodeFormDialogState extends State<PodcastEpisodeFormDialog> {
                       const SizedBox(height: 16),
 
 
+                      TextFormField(
+                        controller: _transcriptController,
+                        decoration: const InputDecoration(
+                          labelText: 'Episode Transcript & Show Notes (Optional)',
+                          hintText: 'Paste transcription or key sermon timestamps...',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.subtitles_outlined),
+                        ),
+                        maxLines: 4,
+                      ),
+                      const SizedBox(height: 16),
                       TextFormField(
                         controller: _audioContentController,
                         decoration: InputDecoration(
