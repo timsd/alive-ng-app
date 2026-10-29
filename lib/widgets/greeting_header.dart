@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../providers/appwrite_auth_provider.dart';
 
 import '../providers/auth_provider.dart';
 import '../providers/language_provider.dart';
@@ -18,6 +20,14 @@ class GreetingHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentUser = ref.watch(currentUserProvider);
+    final userProfile = ref.watch(currentUserProfileProvider).value;
+    final avatarUrl = (userProfile?.avatarUrl != null && userProfile!.avatarUrl!.trim().isNotEmpty)
+        ? userProfile.avatarUrl!.trim()
+        : ((userProfile?.photoUrl != null && userProfile!.photoUrl!.trim().isNotEmpty)
+            ? userProfile.photoUrl!.trim()
+            : ((currentUser?.photoUrl != null && currentUser!.photoUrl!.trim().isNotEmpty)
+                ? currentUser.photoUrl!.trim()
+                : null));
     final translate = ref.watch(translationProvider);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -106,16 +116,23 @@ class GreetingHeader extends ConsumerWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           CircleAvatar(
-                            radius: 10,
+                            radius: 11,
                             backgroundColor: const Color(0xFFD49B28),
-                            child: Text(
-                              userName.isNotEmpty ? userName[0].toUpperCase() : "M",
-                              style: const TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
+                            backgroundImage: avatarUrl != null
+                                ? CachedNetworkImageProvider(avatarUrl)
+                                : null,
+                            child: avatarUrl == null
+                                ? Text(
+                                    userName.isNotEmpty
+                                        ? userName[0].toUpperCase()
+                                        : "M",
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : null,
                           ),
                           const SizedBox(width: 6),
                           Text(

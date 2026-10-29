@@ -4,7 +4,8 @@
   },
   "scripts": {
     "dev": "node scripts/flutter_web.mjs run",
-    "build:web": "node scripts/flutter_web.mjs build",
+    "version:sync": "node scripts/sync_version_from_pubspec.mjs",
+    "build:web": "node scripts/sync_version_from_pubspec.mjs && node scripts/flutter_web.mjs build",
     "appwrite:ping": "node scripts/appwrite_platform_ping.mjs",
     "appwrite:diagnose": "node --env-file=.env scripts/diagnose_appwrite_infrastructure.mjs",
     "appwrite:dry-run": "node scripts/provision_appwrite_infrastructure.mjs --dry-run",
@@ -23,9 +24,9 @@
     "appwrite:deploy-livekit": "node scripts/upsert_appwrite_function_variables.mjs --deploy --only-function=createLiveKitToken",
     "appwrite:deploy-send-email": "node scripts/upsert_appwrite_function_variables.mjs --deploy",
     "smoke:web-routes": "node test/integration/web_route_smoke_test.js",
-    "build:apk": "node scripts/build_android_release.mjs apk",
-    "build:aab": "node scripts/build_android_release.mjs aab",
-    "build:android": "node scripts/build_android_release.mjs all",
+    "build:apk": "node scripts/sync_version_from_pubspec.mjs && node scripts/build_android_release.mjs apk",
+    "build:aab": "node scripts/sync_version_from_pubspec.mjs && node scripts/build_android_release.mjs aab",
+    "build:android": "node scripts/sync_version_from_pubspec.mjs && node scripts/build_android_release.mjs all",
     "env:sync-coolify": "node scripts/build_android_release.mjs sync",
     "appwrite:upload-android-release": "node --env-file=.env scripts/upload_android_release.mjs"
   },

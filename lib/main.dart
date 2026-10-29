@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:appwrite/appwrite.dart' hide Locale;
-import 'config/development_config.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -81,11 +80,6 @@ void main() {
     );
 
     Future(() async {
-      try {
-        await DevelopmentConfig.initializeFromPrefs();
-      } catch (e) {
-        debugPrint('Dev config init failed: $e');
-      }
       if (backendReady) {
         try {
           await AnalyticsService.instance.initialize();

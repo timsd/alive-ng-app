@@ -1,7 +1,6 @@
 import '../models/app_models.dart';
 import '../utils/logger.dart';
 import 'auth_service.dart';
-import '../config/development_config.dart';
 import '../config/appwrite_backend_config.dart';
 import '../constants/chapters.dart';
 
@@ -144,12 +143,6 @@ class RoleAccessService {
 
   /// Check if current user has required role or higher
   bool hasRole(String requiredRole) {
-    // Check for development mode bypass
-    if (DevelopmentConfig.shouldBypassRoleGuards) {
-      DevelopmentConfig.logDevelopmentWarning('Role check for $requiredRole');
-      return true;
-    }
-
     final currentRole = getCurrentUserRole();
     if (currentRole == null) return false;
 
@@ -175,11 +168,6 @@ class RoleAccessService {
 
   /// Check if user can access admin features
   bool canAccessAdmin() {
-    if (DevelopmentConfig.shouldBypassRoleGuards) {
-      _logger.warning('DEVELOPMENT MODE: Bypassing admin access check');
-      return true;
-    }
-
     return hasRole('admin');
   }
 
@@ -189,8 +177,6 @@ class RoleAccessService {
   /// [canAccessLeadership]: a `dietist` gets the Health+ editor and
   /// nothing else. Admins and the leadership roles keep their existing access.
   bool canManageHealthContent() {
-    if (DevelopmentConfig.shouldBypassRoleGuards) return true;
-
     final role = _normalizeRole(getCurrentUserRole());
     if (role == null) return false;
     return ChapterConstants.healthContentRoles.contains(role);

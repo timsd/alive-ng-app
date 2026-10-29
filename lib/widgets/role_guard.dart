@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../services/role_access_service.dart';
-import '../config/development_config.dart';
 
 /// Widget that guards content based on user roles
 class RoleGuard extends StatelessWidget {
@@ -25,11 +24,7 @@ class RoleGuard extends StatelessWidget {
   Widget build(BuildContext context) {
     final roleService = RoleAccessService.instance;
     
-    // Check for development mode bypass
-    final shouldBypass = bypassGuard || DevelopmentConfig.shouldBypassRoleGuards;
-    
-    if (shouldBypass) {
-      DevelopmentConfig.logDevelopmentWarning('Role guard for $requiredRole');
+    if (bypassGuard) {
       roleService.logAccessAttempt(resource ?? 'widget', true);
       return child;
     }

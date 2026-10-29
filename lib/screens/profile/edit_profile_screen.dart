@@ -200,6 +200,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         maritalStatus: _maritalStatus,
         commitmentType: _commitmentType,
         avatarUrl: _profilePictureUrl ?? '',
+        photoUrl: _profilePictureUrl ?? '',
         updatedAt: DateTime.now(),
       );
 
@@ -271,20 +272,32 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     return shouldPop ?? false;
   }
 
+  void _goToPage(int page) {
+    if (page >= 0 && page < 3 && _pageController.hasClients) {
+      _pageController.animateToPage(
+        page,
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
+
   void _nextPage() {
-    if (_currentPage < 2) {
-      _pageController.nextPage(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
+    if (_currentPage < 2 && _pageController.hasClients) {
+      _pageController.animateToPage(
+        _currentPage + 1,
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
       );
     }
   }
 
   void _previousPage() {
-    if (_currentPage > 0) {
-      _pageController.previousPage(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
+    if (_currentPage > 0 && _pageController.hasClients) {
+      _pageController.animateToPage(
+        _currentPage - 1,
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
       );
     }
   }
@@ -366,14 +379,18 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 ),
               ),
 
-              // Swipe affordance: dots + helper text so it is clear that the
-              // sections are paged horizontally.
-              ProfilePageCues(index: _currentPage, count: 3),
+              // Swipe affordance: dots + helper text with direct tap navigation
+              ProfilePageCues(
+                index: _currentPage,
+                count: 3,
+                onPageSelected: _goToPage,
+              ),
 
-              // Page content
+              // Page content with responsive physics
               Expanded(
                 child: PageView(
                   controller: _pageController,
+                  physics: const PageScrollPhysics(parent: BouncingScrollPhysics()),
                   onPageChanged: (index) =>
                       setState(() => _currentPage = index),
                   children: [
@@ -957,6 +974,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         if (previousUrl != null && previousUrl.isNotEmpty) {
           await CachedNetworkImageProvider(previousUrl).evict();
         }
+        await CachedNetworkImageProvider(publicUrl).evict();
+        PaintingBinding.instance.imageCache.clear();
+        PaintingBinding.instance.imageCache.clearLiveImages();
+        ref.invalidate(currentUserProfileProvider);
 
         ToastUtils.showSuccess('Profile photo updated successfully!');
 
@@ -1001,9 +1022,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       // so an empty string is used to clear the attribute.
       await ref.read(appwriteProfileServiceProvider).updateUserProfile(
             userId: widget.userProfile.id,
-            profileData: {'avatar_url': ''},
+            profileData: {'avatar_url': '', 'photo_url': ''},
           );
       await CachedNetworkImageProvider(previousUrl).evict();
+      PaintingBinding.instance.imageCache.clear();
+      PaintingBinding.instance.imageCache.clearLiveImages();
+      ref.invalidate(currentUserProfileProvider);
       try {
         await AppwriteStorageService.instance.deleteFileByUrl(previousUrl);
       } catch (_) {

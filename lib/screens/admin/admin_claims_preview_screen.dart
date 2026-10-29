@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../config/development_config.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/role_access_service.dart';
 
@@ -110,7 +109,6 @@ class AdminClaimsPreviewScreen extends ConsumerWidget {
     BuildContext context,
     RoleAccessService roleService,
   ) {
-    final devBypass = DevelopmentConfig.shouldBypassRoleGuards;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -118,7 +116,7 @@ class AdminClaimsPreviewScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Preview Mode',
+              'Access Mode',
               style: Theme.of(context)
                   .textTheme
                   .titleMedium
@@ -128,17 +126,13 @@ class AdminClaimsPreviewScreen extends ConsumerWidget {
             Row(
               children: [
                 Icon(
-                  devBypass ? Icons.check_circle : Icons.info,
-                  color: devBypass
-                      ? Theme.of(context).colorScheme.tertiary
-                      : Theme.of(context).colorScheme.secondary,
+                  Icons.verified_user_rounded,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    devBypass
-                        ? 'Development bypass is active. Admin checks are skipped.'
-                        : 'Development bypass disabled. Real role checks are enforced.',
+                    'Production role enforcement active. Real Appwrite roles are verified.',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ),
@@ -149,22 +143,17 @@ class AdminClaimsPreviewScreen extends ConsumerWidget {
               spacing: 12,
               runSpacing: 8,
               children: [
-                _pill(context, 'Role Guards Bypassed', devBypass),
+                _pill(context, 'Role Guards Enforced', true),
                 _pill(
                   context,
-                  'Admin Preview Enabled',
-                  DevelopmentConfig.isAdminPreviewEnabled,
-                ),
-                _pill(
-                  context,
-                  'Has Admin Access (real)',
+                  'Has Admin Access',
                   roleService.canAccessAdmin(),
                 ),
               ],
             ),
             const SizedBox(height: 8),
             Text(
-              'Note: This screen previews what an admin can do. In development, guards may be bypassed. Disable in lib/config/development_config.dart for production.',
+              'Note: This screen previews claims. In production, real Appwrite role checks are strictly enforced.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
