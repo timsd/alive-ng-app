@@ -11,8 +11,8 @@ class DevelopmentConfig {
   static const String _prefAdminPreviewKey = 'dev_enable_admin_preview';
 
   // Default values for development builds
-  static const bool _defaultBypassRoleGuards = true;
-  static const bool _defaultAdminPreview = true;
+  static const bool _defaultBypassRoleGuards = false;
+  static const bool _defaultAdminPreview = false;
 
   // Runtime state (non-release only)
   static bool _bypassRoleGuards = _defaultBypassRoleGuards;
@@ -24,10 +24,10 @@ class DevelopmentConfig {
       );
 
   /// Check if role guards should be bypassed
-  static bool get shouldBypassRoleGuards => !kReleaseMode && _bypassRoleGuards;
+  static bool get shouldBypassRoleGuards => false; // Strict security: never bypass role guards
 
   /// Check if admin preview is enabled
-  static bool get isAdminPreviewEnabled => !kReleaseMode && _adminPreviewEnabled;
+  static bool get isAdminPreviewEnabled => false; // Strict security: disabled by default
 
   /// Initialize runtime values from SharedPreferences (no-op in release mode)
   static Future<void> initializeFromPrefs() async {

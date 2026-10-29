@@ -28,11 +28,8 @@ import 'config/payment_config.dart';
 import 'services/notification_service.dart';
 import 'widgets/app_tour/app_tour_service.dart';
 
-// Global Appwrite service instances for provider access.
-final appwriteClient = Client();
-late final Account appwriteAccount;
-late final Storage appwriteStorage;
-late final Realtime appwriteRealtime;
+export 'services/appwrite_client.dart';
+import 'services/appwrite_client.dart';
 
 void main() {
   runZonedGuarded(() async {

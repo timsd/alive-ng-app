@@ -87,35 +87,88 @@ class GreetingHeader extends ConsumerWidget {
                   ],
                 ),
                 if (currentUser != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? Colors.white.withValues(alpha: 0.12)
-                          : const Color(0xFFF1EDE4),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.verified_rounded,
-                          size: 13,
-                          color: Color(0xFFD49B28),
+                  InkWell(
+                    onTap: () => context.push(AppConstants.profileRoute),
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.12)
+                            : const Color(0xFFF1EDE4),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: const Color(0xFFD49B28).withValues(alpha: 0.4),
+                          width: 1,
                         ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Member',
-                          style: TextStyle(
-                            color: isDark
-                                ? Colors.white.withValues(alpha: 0.9)
-                                : const Color(0xFF233E5F),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircleAvatar(
+                            radius: 10,
+                            backgroundColor: const Color(0xFFD49B28),
+                            child: Text(
+                              userName.isNotEmpty ? userName[0].toUpperCase() : "M",
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 6),
+                          Text(
+                            "Profile",
+                            style: TextStyle(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.9)
+                                  : const Color(0xFF233E5F),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            size: 14,
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.6)
+                                : const Color(0xFF5B6B82),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  InkWell(
+                    onTap: () => context.push(AppConstants.authRoute),
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.login_rounded,
+                            size: 13,
+                            color: theme.colorScheme.primary,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            "Sign In",
+                            style: TextStyle(
+                              color: theme.colorScheme.primary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
               ],

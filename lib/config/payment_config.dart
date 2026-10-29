@@ -1,7 +1,7 @@
 import 'package:appwrite/appwrite.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../main.dart';
+import '../services/appwrite_client.dart';
 import 'appwrite_backend_config.dart';
 
 /// Configuration for payment providers
@@ -20,10 +20,10 @@ class PaymentConfig {
     }
     const envKey = String.fromEnvironment(
       'PAYSTACK_PUBLIC_KEY',
-      defaultValue: 'pk_live_4d497ec0f12f944e22598c8daa40ce716e8971cf',
+      defaultValue: '',
     );
     if (envKey.isNotEmpty) return envKey;
-    return 'pk_live_4d497ec0f12f944e22598c8daa40ce716e8971cf';
+    return '';
   }
 
   /// Sets the dynamic public key at runtime (e.g. from Appwrite function response
