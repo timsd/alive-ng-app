@@ -1327,15 +1327,17 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
                 icon: const Icon(Icons.share_rounded, size: 16),
                 label: const Text('Share / Save Backup'),
                 onPressed: () async {
-                  await SharePlus.instance.shareXFiles(
-                    [
-                      XFile.fromData(
-                        Uint8List.fromList(utf8.encode(content)),
-                        name: 'alive_chat_channels_backup.json',
-                        mimeType: 'application/json',
-                      ),
-                    ],
-                    subject: 'ALIVE Nigeria Chat Backup',
+                  await SharePlus.instance.share(
+                    ShareParams(
+                      files: [
+                        XFile.fromData(
+                          Uint8List.fromList(utf8.encode(content)),
+                          name: 'alive_chat_channels_backup.json',
+                          mimeType: 'application/json',
+                        ),
+                      ],
+                      subject: 'ALIVE Nigeria Chat Backup',
+                    ),
                   );
                 },
               ),
