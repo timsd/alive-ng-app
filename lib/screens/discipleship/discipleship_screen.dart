@@ -837,7 +837,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                     const Text('No officer assignments found. Contact the Administrator.')
                   else
                     DropdownButtonFormField<OfficerOfficeAssignment>(
-                      value: _selectedOfficerOffice,
+                      initialValue: _selectedOfficerOffice,
                       isExpanded: true,
                       decoration: const InputDecoration(
                         labelText: 'Holding Office',
@@ -1548,7 +1548,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                 Text('Prayer: "${prayer.request}"', style: const TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<PrayerRequestStatus>(
-                  value: status,
+                  initialValue: status,
                   decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),
                   items: PrayerRequestStatus.values
                       .map((s) => DropdownMenuItem(
@@ -1722,7 +1722,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value: requesterRole,
+                  initialValue: requesterRole,
                   decoration: const InputDecoration(
                     labelText: 'Your Office / Role *',
                     border: OutlineInputBorder(),
@@ -1815,7 +1815,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 DropdownButtonFormField<ReportFrequency>(
-                  value: frequency,
+                  initialValue: frequency,
                   decoration: const InputDecoration(labelText: 'Report Frequency', border: OutlineInputBorder()),
                   items: ReportFrequency.values
                       .map((f) => DropdownMenuItem(value: f, child: Text(f.name.toUpperCase())))
@@ -1827,7 +1827,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                 const SizedBox(height: 14),
                 if (_officerAssignments.isNotEmpty)
                   DropdownButtonFormField<OfficerOfficeAssignment>(
-                    value: routedOfficer,
+                    initialValue: routedOfficer,
                     isExpanded: true,
                     decoration: const InputDecoration(
                       labelText: 'Dispatch To Officer / Office *',
@@ -2047,7 +2047,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<DiscipleshipLevel>(
-                  value: level,
+                  initialValue: level,
                   isExpanded: true,
                   decoration: const InputDecoration(labelText: 'Initial Level'),
                   items: DiscipleshipLevel.values
@@ -2304,7 +2304,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                             TextStyle(color: Colors.redAccent, fontSize: 12))
                   else
                     DropdownButtonFormField<String>(
-                      value: selectedContactId,
+                      initialValue: selectedContactId,
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
                         contentPadding:

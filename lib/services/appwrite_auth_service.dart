@@ -73,7 +73,9 @@ class AppwriteAuthService {
     }
   }
 
+  // ignore: unnecessary_getters_setters
   models.User? get currentUser => _sharedCurrentUser;
+  // ignore: unnecessary_getters_setters
   set currentUser(models.User? user) => _sharedCurrentUser = user;
   bool get isAuthenticated => _sharedCurrentUser != null;
 

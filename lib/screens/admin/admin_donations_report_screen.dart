@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -248,7 +247,7 @@ class _AdminDonationsReportContentState
                 onPressed: () async {
                   await Clipboard.setData(ClipboardData(text: content));
                   if (!ctx.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  ScaffoldMessenger.of(ctx).showSnackBar(
                     const SnackBar(content: Text('Statement copied to clipboard!')),
                   );
                 },
@@ -260,7 +259,7 @@ class _AdminDonationsReportContentState
                 onPressed: () async {
                   final fileName =
                       'alive_financial_statement_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.$format';
-                  await Share.shareXFiles(
+                  await SharePlus.instance.shareXFiles(
                     [
                       XFile.fromData(
                         Uint8List.fromList(utf8.encode(content)),

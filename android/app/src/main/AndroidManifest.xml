@@ -10,10 +10,11 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     
-    <!-- Storage Permissions (conditional based on Android version) -->
+    <!-- Storage Permissions (conditional based on Android version)
+         Google Play Photo & Video Policy (mandatory 2024-2026):
+         Apps must use the Android Photo Picker (via image_picker) for user-selected
+         media rather than requesting broad READ_MEDIA_IMAGES / READ_MEDIA_AUDIO permissions. -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
-    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     
     <!-- Scoped storage is automatically handled for Android 10+ -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />

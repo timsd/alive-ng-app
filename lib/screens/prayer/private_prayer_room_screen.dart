@@ -215,7 +215,7 @@ class _PrivatePrayerRoomScreenState extends ConsumerState<PrivatePrayerRoomScree
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Text(
@@ -274,7 +274,7 @@ class _PrivatePrayerRoomScreenState extends ConsumerState<PrivatePrayerRoomScree
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         border: Border(
           bottom: BorderSide(color: theme.colorScheme.outlineVariant),
         ),
@@ -318,7 +318,7 @@ class _PrivatePrayerRoomScreenState extends ConsumerState<PrivatePrayerRoomScree
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
         border: Border(
           bottom: BorderSide(color: theme.colorScheme.outlineVariant),
         ),
@@ -339,7 +339,7 @@ class _PrivatePrayerRoomScreenState extends ConsumerState<PrivatePrayerRoomScree
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withOpacity(0.12),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -836,7 +836,7 @@ class _PrivatePrayerCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
           color: request.isAnswered
-              ? Colors.green.withOpacity(0.5)
+              ? Colors.green.withValues(alpha: 0.5)
               : theme.colorScheme.outlineVariant,
           width: request.isAnswered ? 1.5 : 1.0,
         ),

@@ -142,3 +142,48 @@ npm run build:web
 | **RBAC Security** | Tested; `development_config.dart` removed |
 | **Git Repository** | Up to date with `origin/master` |
 
+
+---
+
+## 8. Google Play Store Policy Compliance & Submission Guide (2024–2026)
+
+To ensure the ALIVE Nigeria Android app passes Google Play Store review without friction or rejection, the codebase has been audited and updated to comply with the latest Google Play Developer Policies:
+
+### 8.1 Target API Level (Android 14 / 15 Requirement)
+- **Policy**: Google Play requires new apps and app updates to target API level 34 (Android 14) or higher (and API level 35 / Android 15 starting late 2025).
+- **Implementation**: In ndroid/app/build.gradle.kts, compileSdk and 	argetSdk are configured using maxOf(flutter.compileSdkVersion, 34) and maxOf(flutter.targetSdkVersion, 34). Minimum SDK is locked at 24 (Android 7.0+).
+
+### 8.2 Restricted Photo and Video Permissions (Mandatory May 2025)
+- **Policy**: Google Play prohibits requesting broad media permissions (READ_MEDIA_IMAGES and READ_MEDIA_VIDEO) unless broad media access is the primary core purpose of the app (e.g., a device-wide gallery app). Apps needing user-selected images (profile avatar, chat upload) MUST use the Android Photo Picker.
+- **Implementation**:
+  - Removed READ_MEDIA_IMAGES and READ_MEDIA_AUDIO from ndroid/app/src/main/AndroidManifest.xml.
+  - Flutter's image_picker (v1.2.3+) automatically invokes the native Android Photo Picker on Android 13+ (API 33+), requiring **zero runtime permissions** and avoiding Google Play Console declaration form rejections.
+  - Legacy READ_EXTERNAL_STORAGE is strictly capped with ndroid:maxSdkVersion="32".
+
+### 8.3 In-App & Web Account Deletion Policy
+- **Policy**: Any app offering account creation must allow users to request account deletion **both** from within the app and via an external web link (for users who have uninstalled the app).
+- **Implementation**:
+  - **In-App**: Accessible via Profile Screen -> Delete Account (_showDeleteAccountDialog), which calls AuthService.instance.deleteAccount() and executes the secure Appwrite Cloud Function delete_account.
+  - **External Web Link**: For the Google Play Console Data Safety questionnaire, provide an external URL (e.g. https://alivenigeria.org/delete-account or https://app.alivenigeria.org/privacy#account-deletion).
+
+### 8.4 Charitable Donations Policy (Paystack)
+- **Policy**: Under Google Play Payments Policy, legitimate charitable organizations and non-profits registered to collect donations are exempt from Google Play In-App Billing for bona fide donations, provided donations are processed via external web checkout (such as Paystack).
+- **Implementation**: The app opens Paystack checkout via secure web/browser session with webhook verification, perfectly matching non-profit exemption requirements.
+
+### 8.5 Data Safety & Privacy Disclosures Checklist
+When filling out the **Google Play Console Data Safety Form**:
+1. **Personal Information**:
+   - Name, Email address, Phone number (Collected for account registration, discipleship, and communications; encrypted in transit).
+2. **Financial Information**:
+   - Purchase/Donation history (Processed securely via Paystack; no credit card numbers or bank credentials stored on device or Appwrite).
+3. **Photos / Videos**:
+   - Optional profile pictures (Uploaded by user to Appwrite storage; not shared with ad networks).
+4. **Audio / Microphone**:
+   - Used for interactive LiveKit meetings and prayer rooms (Ephemeral, never stored without explicit recording consent).
+5. **Data Sharing**:
+   - Disclose data shared with Appwrite (backend hosting), Paystack (payment processor), LiveKit (meeting engine), and Resend (email delivery).
+   - Data is encrypted in transit via HTTPS/TLS and WSS.
+
+### 8.6 Google Play Closed Testing (20 Testers Rule)
+- If publishing through an **Individual / Personal** developer account created after November 13, 2023, Google requires a 14-day closed test with at least 20 opted-in testers before production access is unlocked.
+- If registered as an **Organization account** (D-U-N-S registered legal entity), this requirement is bypassed. ALIVE Nigeria should register under an Organization account.

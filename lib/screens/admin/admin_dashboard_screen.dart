@@ -1327,7 +1327,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
                 icon: const Icon(Icons.share_rounded, size: 16),
                 label: const Text('Share / Save Backup'),
                 onPressed: () async {
-                  await Share.shareXFiles(
+                  await SharePlus.instance.shareXFiles(
                     [
                       XFile.fromData(
                         Uint8List.fromList(utf8.encode(content)),
@@ -1574,7 +1574,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      value: officeType,
+                      initialValue: officeType,
                       decoration: const InputDecoration(labelText: 'Office Type *'),
                       items: const [
                         DropdownMenuItem(

@@ -1082,8 +1082,8 @@ class _MissionActivitySheetState extends State<_MissionActivitySheet> {
       _listening = true;
     });
     await _speech.listen(
-      localeId: 'en_US',
       listenOptions: stt.SpeechListenOptions(
+        localeId: 'en_US',
         cancelOnError: true,
         partialResults: false, // avoids duplicated transcripts
         listenMode: stt.ListenMode.dictation,

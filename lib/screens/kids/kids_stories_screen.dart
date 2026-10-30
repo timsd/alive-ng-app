@@ -262,7 +262,7 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
                           Expanded(
                             child: DropdownButtonFormField<String>(
                               isExpanded: true,
-                              value: _selectedAgeGroup,
+                              initialValue: _selectedAgeGroup,
                               decoration: InputDecoration(
                                 labelText: 'Age Group',
                                 border: OutlineInputBorder(
@@ -307,7 +307,7 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
                           Expanded(
                             child: DropdownButtonFormField<String>(
                               isExpanded: true,
-                              value: _selectedCategory,
+                              initialValue: _selectedCategory,
                               decoration: InputDecoration(
                                 labelText: 'Category',
                                 border: OutlineInputBorder(

@@ -441,10 +441,12 @@ class _LeaderMeetingTranscriptionScreenState
             _commitInterimWords();
           }
         },
-        listenFor: const Duration(minutes: 30),
-        pauseFor: const Duration(seconds: 3),
-        cancelOnError: false,
-        partialResults: true,
+        listenOptions: stt.SpeechListenOptions(
+          listenFor: const Duration(minutes: 30),
+          pauseFor: const Duration(seconds: 3),
+          cancelOnError: false,
+          partialResults: true,
+        ),
       );
     } catch (e) {
       debugPrint('Continuous scribe listener error: $e');
@@ -996,7 +998,7 @@ class _LeaderMeetingTranscriptionScreenState
                       child: FilledButton.icon(
                         onPressed: () {
                           Navigator.of(ctx).pop();
-                          Share.share(
+                          SharePlus.instance.share(
                             markdown,
                             subject: _meetingTitleController.text,
                           );

@@ -535,7 +535,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
 
           DropdownButtonFormField<String>(
-            value: _maritalStatus,
+            initialValue: _maritalStatus,
             decoration: InputDecoration(
               labelText: 'Marital Status',
               border: const OutlineInputBorder(),
