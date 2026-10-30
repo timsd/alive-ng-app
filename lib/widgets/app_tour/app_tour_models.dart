@@ -126,7 +126,7 @@ class AppTourSteps {
       highlights: [
         'NEWSTART lifestyle assessments and daily health nuggets',
         'Delicious plant-based recipes made with local Nigerian ingredients',
-        'Natural home remedies and preventative health guides',
+        'Natural home remedies and preventative health guides, accessible on Health+',
       ],
     ),
 
