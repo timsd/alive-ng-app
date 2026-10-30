@@ -259,8 +259,9 @@ class _AdminDonationsReportContentState
                 onPressed: () async {
                   final fileName =
                       'alive_financial_statement_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.$format';
-                  await SharePlus.instance.shareXFiles(
-                    [
+                  await SharePlus.instance.share(
+                    ShareParams(
+                      files: [
                       XFile.fromData(
                         Uint8List.fromList(utf8.encode(content)),
                         name: fileName,
@@ -269,7 +270,8 @@ class _AdminDonationsReportContentState
                             : 'application/json',
                       ),
                     ],
-                    subject: 'ALIVE Nigeria Financial Statement',
+                      subject: 'ALIVE Nigeria Financial Statement',
+                    ),
                   );
                 },
               ),

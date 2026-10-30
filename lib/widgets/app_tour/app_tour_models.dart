@@ -73,7 +73,7 @@ class AppTourSteps {
       subtitle: 'Prayer Requests, Intercession & Testimonies',
       description:
           'Experience the power of united prayer across Nigeria. Submit prayer requests publicly or anonymously, tap "I Prayed for This" to lift up brethren, and celebrate answered prayers on the testimony wall.',
-      icon: FontAwesomeIcons.personPraying,
+      icon: Icons.volunteer_activism_rounded,
       accentColor: Color(0xFF8B5CF6), // Royal Violet
       route: '/prayer',
       targetArea: 'prayer',

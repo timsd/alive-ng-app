@@ -999,8 +999,10 @@ class _LeaderMeetingTranscriptionScreenState
                         onPressed: () {
                           Navigator.of(ctx).pop();
                           SharePlus.instance.share(
-                            markdown,
-                            subject: _meetingTitleController.text,
+                            ShareParams(
+                              text: markdown,
+                              subject: _meetingTitleController.text,
+                            ),
                           );
                         },
                         icon: const Icon(Icons.share),
