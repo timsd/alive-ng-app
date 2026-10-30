@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../providers/language_provider.dart';
 import 'app_tour_models.dart';
 
-/// Fullscreen interactive guided tour overlay with animated zoom-in spotlight,
-/// step transitions, and comprehensive coverage of the ALIVE Nigeria ecosystem.
-class AppTourOverlay extends StatefulWidget {
+/// Fullscreen interactive guided tour overlay with target spotlighting,
+/// smooth animated cutouts, and localized step cards matching real app elements.
+class AppTourOverlay extends ConsumerStatefulWidget {
   final VoidCallback onDismiss;
 
   const AppTourOverlay({
@@ -14,52 +16,44 @@ class AppTourOverlay extends StatefulWidget {
   });
 
   @override
-  State<AppTourOverlay> createState() => _AppTourOverlayState();
+  ConsumerState<AppTourOverlay> createState() => _AppTourOverlayState();
 }
 
-class _AppTourOverlayState extends State<AppTourOverlay>
+class _AppTourOverlayState extends ConsumerState<AppTourOverlay>
     with SingleTickerProviderStateMixin {
-  late final PageController _pageController;
   late final AnimationController _pulseController;
-  late final Animation<double> _zoomAnimation;
   late final Animation<double> _glowAnimation;
+  late final Animation<double> _scaleAnimation;
 
   int _currentIndex = 0;
-  final List<AppTourStep> _steps = AppTourSteps.standardTour;
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController();
 
-    // Pulse & Zoom animation for highlighted spotlight areas
     _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1600),
+      duration: const Duration(milliseconds: 1400),
     )..repeat(reverse: true);
 
-    _zoomAnimation = Tween<double>(begin: 1.0, end: 1.09).animate(
+    _glowAnimation = Tween<double>(begin: 0.35, end: 0.95).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
-    _glowAnimation = Tween<double>(begin: 0.25, end: 0.65).animate(
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
   }
 
   @override
   void dispose() {
-    _pageController.dispose();
     _pulseController.dispose();
     super.dispose();
   }
 
-  void _nextStep() {
-    if (_currentIndex < _steps.length - 1) {
-      _pageController.nextPage(
-        duration: const Duration(milliseconds: 380),
-        curve: Curves.easeOutCubic,
-      );
+  void _nextStep(int totalSteps) {
+    if (_currentIndex < totalSteps - 1) {
+      setState(() => _currentIndex++);
     } else {
       widget.onDismiss();
     }
@@ -67,10 +61,7 @@ class _AppTourOverlayState extends State<AppTourOverlay>
 
   void _previousStep() {
     if (_currentIndex > 0) {
-      _pageController.previousPage(
-        duration: const Duration(milliseconds: 380),
-        curve: Curves.easeOutCubic,
-      );
+      setState(() => _currentIndex--);
     }
   }
 
@@ -83,182 +74,411 @@ class _AppTourOverlayState extends State<AppTourOverlay>
     }
   }
 
+  Offset _getTargetCenter(String targetArea, Size screenSize, double topPadding, double bottomPadding) {
+    final width = screenSize.width;
+    final height = screenSize.height;
+
+    // Center Y coordinate of bottom navigation bar items
+    final bottomNavY = height - (bottomPadding > 0 ? bottomPadding + 28 : 34);
+
+    switch (targetArea) {
+      case 'home':
+        return Offset(width * 0.10, bottomNavY);
+      case 'study':
+        return Offset(width * 0.30, bottomNavY);
+      case 'prayer':
+        return Offset(width * 0.50, bottomNavY);
+      case 'health':
+        return Offset(width * 0.70, bottomNavY);
+      case 'more':
+      case 'conference':
+        return Offset(width * 0.90, bottomNavY);
+      case 'donations':
+        return Offset(width - 92, topPadding + 28);
+      case 'language':
+        return Offset(width - 44, topPadding + 28);
+      default:
+        return Offset(width * 0.10, bottomNavY);
+    }
+  }
+
+  double _getTargetRadius(String targetArea) {
+    switch (targetArea) {
+      case 'donations':
+      case 'language':
+        return 22.0;
+      default:
+        return 27.0; // Bottom nav tab circle spotlight
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final size = MediaQuery.of(context).size;
-    final isCompact = size.height < 700;
+    final screenSize = MediaQuery.of(context).size;
+    final viewPadding = MediaQuery.of(context).viewPadding;
+    final locale = ref.watch(localeProvider);
+    final langCode = locale.languageCode;
+
+    final steps = AppTourSteps.getTourStepsForLanguage(langCode);
+    final step = steps[_currentIndex];
+
+    final targetCenter = _getTargetCenter(
+      step.targetArea,
+      screenSize,
+      viewPadding.top,
+      viewPadding.bottom,
+    );
+    final targetRadius = _getTargetRadius(step.targetArea);
+    final isTopTarget = step.targetArea == 'donations' || step.targetArea == 'language';
+
+    // Localized UI labels
+    final skipLabel = {'yo': 'Kọjá', 'ha': 'Tsallake', 'ig': 'Gbanahụ'}[langCode] ?? 'Skip tour';
+    final backLabel = {'yo': 'Ṣaájú', 'ha': 'Baya', 'ig': 'Azu'}[langCode] ?? 'Back';
+    final nextLabel = _currentIndex == steps.length - 1
+        ? ({'yo': 'Bẹ̀rẹ̀', 'ha': 'Fara', 'ig': 'Bido'}[langCode] ?? 'Get Started')
+        : ({'yo': 'Tókàn', 'ha': 'Na gaba', 'ig': 'Osote'}[langCode] ?? 'Next');
+    final stepBadgeText = {'yo': 'ÌGBÉSẸ̀', 'ha': 'MATAKI', 'ig': 'NZỌỤKWỤ'}[langCode] ?? 'STEP';
+    final ofText = {'yo': 'NÍNÚ', 'ha': 'CIKIN', 'ig': 'NKE'}[langCode] ?? 'OF';
 
     return Material(
       color: Colors.transparent,
-      child: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 540),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Stack(
+        children: [
+          // 1. Dark Backdrop with Cutout Spotlight Hole over Target
+          AnimatedBuilder(
+            animation: _pulseController,
+            builder: (context, _) {
+              return CustomPaint(
+                size: screenSize,
+                painter: _SpotlightPainter(
+                  targetCenter: targetCenter,
+                  targetRadius: targetRadius,
+                  pulseScale: _scaleAnimation.value,
+                  glowOpacity: _glowAnimation.value,
+                  accentColor: step.accentColor,
+                ),
+              );
+            },
+          ),
+
+          // 2. High-Visibility Pulsing White Ring directly spotlighting the on-screen element
+          AnimatedBuilder(
+            animation: _pulseController,
+            builder: (context, _) {
+              final radius = targetRadius * _scaleAnimation.value;
+              return Positioned(
+                left: targetCenter.dx - radius - 4,
+                top: targetCenter.dy - radius - 4,
+                child: IgnorePointer(
+                  child: Container(
+                    width: (radius + 4) * 2,
+                    height: (radius + 4) * 2,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white,
+                        width: 2.8,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          blurRadius: 10,
+                          spreadRadius: 1,
+                        ),
+                        BoxShadow(
+                          color: step.accentColor.withValues(alpha: _glowAnimation.value),
+                          blurRadius: 22,
+                          spreadRadius: 4,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+
+          // 3. Anchored Tour Modal Dialog (position adjusts so spotlight is never obscured)
+          Positioned(
+            left: 16,
+            right: 16,
+            top: isTopTarget ? (viewPadding.top + 64) : null,
+            bottom: !isTopTarget ? (viewPadding.bottom + 68) : null,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: _buildTourModal(
+                  context: context,
+                  step: step,
+                  currentIndex: _currentIndex,
+                  totalSteps: steps.length,
+                  skipLabel: skipLabel,
+                  backLabel: backLabel,
+                  nextLabel: nextLabel,
+                  stepBadgeText: stepBadgeText,
+                  ofText: ofText,
+                  isTopTarget: isTopTarget,
+                  onSkip: widget.onDismiss,
+                  onBack: _previousStep,
+                  onNext: () => _nextStep(steps.length),
+                  onExplore: () => _exploreRoute(step.route),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTourModal({
+    required BuildContext context,
+    required AppTourStep step,
+    required int currentIndex,
+    required int totalSteps,
+    required String skipLabel,
+    required String backLabel,
+    required String nextLabel,
+    required String stepBadgeText,
+    required String ofText,
+    required bool isTopTarget,
+    required VoidCallback onSkip,
+    required VoidCallback onBack,
+    required VoidCallback onNext,
+    required VoidCallback onExplore,
+  }) {
+    final theme = Theme.of(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF141F2D), // Sleek dark slate
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: step.accentColor.withValues(alpha: 0.4),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.55),
+            blurRadius: 30,
+            offset: const Offset(0, 10),
+          ),
+          BoxShadow(
+            color: step.accentColor.withValues(alpha: 0.2),
+            blurRadius: 24,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Top Accent Progress Strip
+            ClipRRect(
+              child: SizedBox(
+                height: 3.5,
+                child: LinearProgressIndicator(
+                  value: (currentIndex + 1) / totalSteps,
+                  backgroundColor: Colors.white.withValues(alpha: 0.12),
+                  valueColor: AlwaysStoppedAnimation<Color>(step.accentColor),
+                ),
+              ),
+            ),
+
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Top Row: App Tour Badge & Skip Button
+                  // Step Header Badge Row
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(20),
+                          color: step.accentColor.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(10),
                           border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.2),
+                            color: step.accentColor.withValues(alpha: 0.4),
+                            width: 1,
                           ),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.explore_rounded,
-                              size: 16,
-                              color: Colors.amberAccent,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'ALIVE Nigeria App Tour',
-                              style: theme.textTheme.labelMedium?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.4,
-                              ),
-                            ),
-                          ],
+                        child: Text(
+                          '$stepBadgeText ${currentIndex + 1} $ofText $totalSteps',
+                          style: TextStyle(
+                            color: step.accentColor,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.6,
+                          ),
                         ),
                       ),
-                      TextButton.icon(
-                        onPressed: widget.onDismiss,
-                        icon: const Icon(Icons.close_rounded,
-                            size: 18, color: Colors.white70),
-                        label: const Text(
-                          'Skip',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontWeight: FontWeight.w600,
-                          ),
+                      // Target Icon Badge
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: step.accentColor.withValues(alpha: 0.2),
+                          shape: BoxShape.circle,
                         ),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 6),
+                        child: Center(
+                          child: step.buildIcon(
+                            size: 16,
+                            color: step.accentColor,
+                          ),
                         ),
                       ),
                     ],
                   ),
 
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
 
-                  // Progress Bar
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: SizedBox(
-                      height: 4,
-                      child: LinearProgressIndicator(
-                        value: (_currentIndex + 1) / _steps.length,
-                        backgroundColor: Colors.white.withValues(alpha: 0.15),
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          _steps[_currentIndex].accentColor,
+                  // Title
+                  Text(
+                    step.title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+
+                  if (step.subtitle.isNotEmpty) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      step.subtitle,
+                      style: TextStyle(
+                        color: step.accentColor.withValues(alpha: 0.95),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(height: 8),
+
+                  // Description
+                  Text(
+                    step.description,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.86),
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
+                  ),
+
+                  // Highlights / Key capabilities
+                  if (step.highlights.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.08),
                         ),
                       ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Main Tour Step Carousel
-                  Flexible(
-                    child: SizedBox(
-                      height: isCompact ? 440 : 500,
-                      child: PageView.builder(
-                        controller: _pageController,
-                        onPageChanged: (idx) {
-                          setState(() => _currentIndex = idx);
-                        },
-                        itemCount: _steps.length,
-                        itemBuilder: (context, index) {
-                          return _buildStepCard(_steps[index], isCompact);
-                        },
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Bottom Navigation Controls
-                  Row(
-                    children: [
-                      // Back Button (hidden on first step)
-                      if (_currentIndex > 0)
-                        IconButton.filledTonal(
-                          onPressed: _previousStep,
-                          icon: const Icon(Icons.arrow_back_rounded),
-                          tooltip: 'Previous Step',
-                          style: IconButton.styleFrom(
-                            backgroundColor:
-                                Colors.white.withValues(alpha: 0.15),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.all(12),
-                          ),
-                        )
-                      else
-                        const SizedBox(width: 48),
-
-                      const Spacer(),
-
-                      // Step Indicator Dots
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: List.generate(_steps.length, (dotIdx) {
-                          final isActive = dotIdx == _currentIndex;
-                          return AnimatedContainer(
-                            duration: const Duration(milliseconds: 300),
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            height: 8,
-                            width: isActive ? 24 : 8,
-                            decoration: BoxDecoration(
-                              color: isActive
-                                  ? _steps[_currentIndex].accentColor
-                                  : Colors.white.withValues(alpha: 0.3),
-                              borderRadius: BorderRadius.circular(4),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: step.highlights.map((h) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2.5),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Icon(
+                                    Icons.check_circle_rounded,
+                                    size: 13,
+                                    color: step.accentColor,
+                                  ),
+                                ),
+                                const SizedBox(width: 7),
+                                Expanded(
+                                  child: Text(
+                                    h,
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(alpha: 0.88),
+                                      fontSize: 11.5,
+                                      height: 1.3,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           );
-                        }),
+                        }).toList(),
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(height: 14),
+
+                  // Action Footer
+                  Row(
+                    children: [
+                      // Skip Tour Text Button
+                      TextButton(
+                        onPressed: onSkip,
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.white60,
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: Text(
+                          skipLabel,
+                          style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500),
+                        ),
                       ),
 
                       const Spacer(),
 
-                      // Next / Complete Button
-                      FilledButton.icon(
-                        onPressed: _nextStep,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: _steps[_currentIndex].accentColor,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                      // Back Button (hidden on step 1)
+                      if (currentIndex > 0) ...[
+                        OutlinedButton(
+                          onPressed: onBack,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: BorderSide(color: Colors.white.withValues(alpha: 0.25)),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                           ),
-                          elevation: 4,
+                          child: Text(
+                            backLabel,
+                            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                          ),
                         ),
-                        icon: Icon(
-                          _currentIndex == _steps.length - 1
-                              ? Icons.check_circle_outline_rounded
-                              : Icons.arrow_forward_rounded,
-                          size: 18,
+                        const SizedBox(width: 8),
+                      ],
+
+                      // Next / Get Started Primary Button
+                      FilledButton(
+                        onPressed: onNext,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: step.accentColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          elevation: 2,
                         ),
-                        label: Text(
-                          _currentIndex == _steps.length - 1
-                              ? 'Get Started'
-                              : 'Next',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        child: Text(
+                          nextLabel,
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ],
@@ -266,208 +486,53 @@ class _AppTourOverlayState extends State<AppTourOverlay>
                 ],
               ),
             ),
-          ),
+          ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildStepCard(AppTourStep step, bool isCompact) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFF131D2A),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: step.accentColor.withValues(alpha: 0.45),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: step.accentColor.withValues(alpha: 0.22),
-            blurRadius: 28,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: SingleChildScrollView(
-          padding: EdgeInsets.all(isCompact ? 16 : 22),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Spotlight Interactive Zoom Feature Hero
-              Center(
-                child: AnimatedBuilder(
-                  animation: _pulseController,
-                  builder: (context, child) {
-                    return Transform.scale(
-                      scale: _zoomAnimation.value,
-                      child: Container(
-                        width: isCompact ? 72 : 88,
-                        height: isCompact ? 72 : 88,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [
-                              step.accentColor,
-                              step.accentColor.withValues(alpha: 0.7),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: step.accentColor.withValues(
-                                  alpha: _glowAnimation.value),
-                              blurRadius: 24,
-                              spreadRadius: 4,
-                            ),
-                          ],
-                        ),
-                        child: Icon(
-                          step.icon,
-                          size: isCompact ? 36 : 44,
-                          color: Colors.white,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
+/// Custom painter that creates a smooth dark backdrop over the screen while
+/// carving out a crisp, clear spotlight hole right over the spotlighted target.
+class _SpotlightPainter extends CustomPainter {
+  final Offset targetCenter;
+  final double targetRadius;
+  final double pulseScale;
+  final double glowOpacity;
+  final Color accentColor;
 
-              SizedBox(height: isCompact ? 14 : 18),
+  _SpotlightPainter({
+    required this.targetCenter,
+    required this.targetRadius,
+    required this.pulseScale,
+    required this.glowOpacity,
+    required this.accentColor,
+  });
 
-              // Step Index Badge
-              Center(
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: step.accentColor.withValues(alpha: 0.16),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    'STEP ${_currentIndex + 1} OF ${_steps.length}',
-                    style: TextStyle(
-                      color: step.accentColor,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                ),
-              ),
+  @override
+  void paint(Canvas canvas, Size size) {
+    final bgPaint = Paint()..color = const Color(0xE8080E17); // Dark translucent backdrop
 
-              const SizedBox(height: 8),
+    // Combine entire screen rect with cutout circle over the target
+    final fullScreenPath = Path()..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
+    final holeRadius = targetRadius * pulseScale;
+    final holePath = Path()
+      ..addOval(
+        Rect.fromCircle(center: targetCenter, radius: holeRadius),
+      );
 
-              // Title
-              Text(
-                step.title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: -0.2,
-                ),
-              ),
+    // Difference leaves the target element completely transparent/visible
+    final overlayPath = Path.combine(PathOperation.difference, fullScreenPath, holePath);
+    canvas.drawPath(overlayPath, bgPaint);
+  }
 
-              const SizedBox(height: 4),
-
-              // Subtitle
-              Text(
-                step.subtitle,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.75),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-
-              SizedBox(height: isCompact ? 10 : 14),
-
-              // Description
-              Text(
-                step.description,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.88),
-                  fontSize: 13.5,
-                  height: 1.45,
-                ),
-              ),
-
-              SizedBox(height: isCompact ? 12 : 16),
-
-              // Key Feature Highlight Bullets
-              if (step.highlights.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.08),
-                    ),
-                  ),
-                  child: Column(
-                    children: step.highlights.map((bullet) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 3),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(
-                              Icons.check_circle_rounded,
-                              size: 15,
-                              color: step.accentColor,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                bullet,
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.9),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-
-              if (step.route != null) ...[
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: () => _exploreRoute(step.route),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    side: BorderSide(
-                      color: step.accentColor.withValues(alpha: 0.6),
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                  ),
-                  icon: const Icon(Icons.open_in_new_rounded, size: 14),
-                  label: Text(
-                    'Explore ${step.title}',
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
+  @override
+  bool shouldRepaint(covariant _SpotlightPainter oldDelegate) {
+    return oldDelegate.targetCenter != targetCenter ||
+        oldDelegate.targetRadius != targetRadius ||
+        oldDelegate.pulseScale != pulseScale ||
+        oldDelegate.glowOpacity != glowOpacity ||
+        oldDelegate.accentColor != accentColor;
   }
 }

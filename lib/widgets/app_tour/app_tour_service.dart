@@ -53,7 +53,7 @@ class AppTourService {
       await showGeneralDialog(
         context: context,
         barrierDismissible: false,
-        barrierColor: Colors.black.withValues(alpha: 0.78),
+        barrierColor: Colors.transparent,
         barrierLabel: 'App Tour',
         transitionDuration: const Duration(milliseconds: 320),
         pageBuilder: (dialogContext, animation, secondaryAnimation) {
