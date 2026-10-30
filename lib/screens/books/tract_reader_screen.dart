@@ -1,3 +1,4 @@
+import '../../widgets/in_app_pdf_viewer.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
@@ -163,11 +164,6 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
             icon: const Icon(Icons.download),
             onPressed: _downloadTract,
             tooltip: 'Download Tract',
-          ),
-          IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: _shareTract,
-            tooltip: 'Share Tract',
           ),
           PopupMenuButton<String>(
             onSelected: (value) {
@@ -764,8 +760,13 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
             updatedAt: widget.tract.updatedAt ?? DateTime.now(),
           );
 
-      final canDownload =
-          await donationService.canUserDownloadMaterial(material.id);
+      bool canDownload = false;
+      try {
+        canDownload = await donationService.canUserDownloadMaterial(material.id);
+      } catch (_) {
+        canDownload = false;
+      }
+
       if (!canDownload && material.requiresDonation) {
         if (!mounted) return;
         final donated = await showDialog<bool>(
@@ -786,11 +787,19 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
       }
       downloadUrl ??= await _resolveDirectPdfUrl();
 
-      if (downloadUrl != null && await canLaunchUrl(Uri.parse(downloadUrl))) {
-        await launchUrl(Uri.parse(downloadUrl),
-            mode: LaunchMode.externalApplication);
+      if (downloadUrl != null && downloadUrl.isNotEmpty) {
+        if (!mounted) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => InAppPdfViewerScreen(
+              title: widget.tract.title,
+              pdfUrl: downloadUrl!,
+            ),
+          ),
+        );
       } else {
-        throw 'Could not launch PDF viewer';
+        throw 'Could not locate PDF document';
       }
     } catch (_) {
       if (!mounted) return;

@@ -265,26 +265,23 @@ class AppwriteStorageCompatService {
     required String logLabel,
   }) async {
     try {
-      final fileId = _stableFileId(objectName);
-      try {
-        await _storage.deleteFile(bucketId: bucketId, fileId: fileId);
-      } on AppwriteException catch (e) {
-        if (e.code != 404) rethrow;
-      }
-
+      final sanitizedFilename = objectName.split('/').last;
       final file = await _storage.createFile(
         bucketId: bucketId,
-        fileId: fileId,
+        fileId: ID.unique(),
         file: InputFile.fromBytes(
           bytes: bytes,
-          filename: objectName.split('/').last,
+          filename: sanitizedFilename,
           contentType: contentType,
         ),
+        permissions: [
+          Permission.read(Role.any()),
+        ],
       );
       return _downloadUrl(bucketId, file.$id);
     } catch (e) {
       _logger.error('Error uploading $logLabel', e);
-      throw StorageException('Failed to upload $logLabel', originalError: e);
+      throw StorageException('Failed to upload $logLabel: $e', originalError: e);
     }
   }
 

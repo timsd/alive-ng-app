@@ -93,12 +93,17 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Meeting File Sharing'),
+        title: const Text(
+          'Meeting File Sharing',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
         backgroundColor: colorScheme.primary,
-        foregroundColor: colorScheme.onPrimary,
+        foregroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.white),
+        actionsIconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
-            icon: const Icon(Icons.mic_none_outlined),
+            icon: const Icon(Icons.mic_none_outlined, color: Colors.white),
             tooltip: 'Leader Scribe & Notes',
             onPressed: () {
               Navigator.of(context).push(
@@ -109,7 +114,8 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh, color: Colors.white),
+            tooltip: 'Refresh',
             onPressed: _loadFiles,
           ),
         ],

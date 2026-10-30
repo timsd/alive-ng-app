@@ -1,3 +1,4 @@
+import 'package:syncfusion_flutter_pdf/pdf.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:convert';
@@ -427,6 +428,8 @@ class _TractFormDialogState extends State<_TractFormDialog> {
       _selectedCoverImageName = widget.tract!.coverImage;
       // Prefill existing additional cover images list (names only; bytes not available)
       _selectedCoverNames = List<String>.from(widget.tract!.coverImages);
+    } else {
+      _pagesController.text = '6'; // Default bulletin format
     }
 
     // Load tract categories from Appwrite
@@ -864,12 +867,24 @@ class _TractFormDialogState extends State<_TractFormDialog> {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf'],
+      withData: true,
     );
 
     if (result != null && result.files.single.bytes != null) {
+      final bytes = result.files.single.bytes!;
+      int detectedPages = 6;
+      try {
+        final pdfDoc = PdfDocument(inputBytes: bytes);
+        detectedPages = pdfDoc.pages.count;
+        pdfDoc.dispose();
+      } catch (e) {
+        debugPrint('Could not auto-detect PDF page count: $e');
+      }
+
       setState(() {
-        _selectedPdfBytes = result.files.single.bytes;
+        _selectedPdfBytes = bytes;
         _selectedPdfName = result.files.single.name;
+        _pagesController.text = detectedPages.toString();
       });
     }
   }

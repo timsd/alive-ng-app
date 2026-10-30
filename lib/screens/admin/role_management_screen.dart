@@ -135,12 +135,18 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Role Management'),
+        title: const Text(
+          'Role Management',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Theme.of(context).colorScheme.onPrimary,
+        foregroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.white),
+        actionsIconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh, color: Colors.white),
+            tooltip: 'Refresh',
             onPressed: _loadUsers,
           ),
         ],

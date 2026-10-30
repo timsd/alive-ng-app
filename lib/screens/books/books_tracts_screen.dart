@@ -1,3 +1,4 @@
+import '../../widgets/in_app_pdf_viewer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -677,8 +678,13 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
             updatedAt: tract.updatedAt ?? DateTime.now(),
           );
 
-      final canDownload =
-          await donationService.canUserDownloadMaterial(material.id);
+      bool canDownload = false;
+      try {
+        canDownload = await donationService.canUserDownloadMaterial(material.id);
+      } catch (_) {
+        canDownload = false;
+      }
+
       if (!canDownload && material.requiresDonation) {
         if (!mounted) return;
         final donated = await showDialog<bool>(
@@ -699,11 +705,19 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
       }
       downloadUrl ??= await _resolveTractPdfUrl(tract);
 
-      if (downloadUrl != null && await canLaunchUrl(Uri.parse(downloadUrl))) {
-        await launchUrl(Uri.parse(downloadUrl),
-            mode: LaunchMode.externalApplication);
+      if (downloadUrl != null && downloadUrl.isNotEmpty) {
+        if (!mounted) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => InAppPdfViewerScreen(
+              title: tract.title,
+              pdfUrl: downloadUrl!,
+            ),
+          ),
+        );
       } else {
-        throw 'Could not launch PDF viewer';
+        throw 'Could not locate PDF document';
       }
     } catch (e) {
       if (!mounted) return;
@@ -750,8 +764,12 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
             updatedAt: tract.updatedAt ?? DateTime.now(),
           );
 
-      final canDownload =
-          await donationService.canUserDownloadMaterial(material.id);
+      bool canDownload = false;
+      try {
+        canDownload = await donationService.canUserDownloadMaterial(material.id);
+      } catch (_) {
+        canDownload = false;
+      }
       if (!canDownload && material.requiresDonation) {
         if (!mounted) return;
         final donated = await showDialog<bool>(

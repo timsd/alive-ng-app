@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 /// Defines an individual step within the interactive App Tour.
 class AppTourStep {
@@ -9,7 +10,7 @@ class AppTourStep {
   final IconData icon;
   final Color accentColor;
   final String? route;
-  final String targetArea; // 'header', 'verse', 'actions', 'study', 'prayer', 'health', 'conference'
+  final String targetArea;
   final List<String> highlights;
 
   const AppTourStep({
@@ -25,103 +26,152 @@ class AppTourStep {
   });
 }
 
-/// Standard 6-step tour covering every major ecosystem feature of ALIVE Nigeria.
+/// Comprehensive multi-step tour covering bottom navigation, header navigation,
+/// and specialized features grounded in ALIVE Nigeria's actual architecture.
 class AppTourSteps {
   static const List<AppTourStep> standardTour = [
+    // 1. Home (Bottom Nav Item 1)
     AppTourStep(
       id: 'step_home',
-      title: 'Home & Spiritual Pulse',
-      subtitle: 'Daily Devotionals & Quick Actions',
+      title: 'Home & Daily Inspiration',
+      subtitle: 'Daily Scripture, Audio & Ministry Pulse',
       description:
-          'Welcome to ALIVE Nigeria! Your home feed provides your personalized daily verse, spiritual milestones, active announcements, and one-tap access to discipleship tools.',
+          'Your daily spiritual home base. Access today\'s Bible verse in your chosen language with Text-To-Speech audio, memorize scripture with interactive games, and track spiritual milestones.',
       icon: Icons.home_rounded,
       accentColor: Color(0xFF2563EB), // Vibrant Blue
       route: '/home',
-      targetArea: 'header',
+      targetArea: 'home',
       highlights: [
-        'Personalized daily Bible verse and memory challenge',
-        'One-tap shortcuts to Kids missions, Tracts, and Podcasts',
-        'Real-time ministry announcements and updates',
+        'Daily Bible verse with multilingual audio TTS playback',
+        'Quick shortcuts to Bible Study, Tracts, Podcasts, and Kids Missions',
+        'Personalized greeting, profile hub, and ministry updates',
       ],
     ),
+
+    // 2. Study (Bottom Nav Item 2)
     AppTourStep(
       id: 'step_study',
       title: 'Interactive Bible Study',
-      subtitle: 'Scripture, Guides & Offline Library',
+      subtitle: 'Offline Bibles, Memory Games & Discipleship',
       description:
-          'Immerse yourself in God\'s Word with offline multi-version Bibles, structured study guides, Sabbath School lessons, tracts, and biblical interactive quizzes.',
-      icon: Icons.menu_book_rounded,
+          'Engage deeply with God\'s Word. Read offline across multiple translations (KJV, NIV, Yoruba BM, Hausa HAU, Igbo IGBOB), memorize verses with voice recitation, and follow discipleship tracks.',
+      icon: Icons.book_rounded,
       accentColor: Color(0xFF10B981), // Emerald Green
       route: '/study',
       targetArea: 'study',
       highlights: [
-        'Multi-translation Bible with instant verse bookmarking',
-        'Comprehensive Discipleship trackers and study questions',
-        'Downloadable tracts and literature evangelism resources',
+        'Multi-translation Bible with verse highlighting and audio TTS',
+        'Scripture Memory Game with Fill-in-the-Gaps and Voice Recitation',
+        'Structured discipleship studies',
       ],
     ),
+
+    // 3. Prayer (Bottom Nav Item 3) - EXACT MATCH with FontAwesome personPraying icon
     AppTourStep(
       id: 'step_prayer',
       title: '24/7 Prayer Community',
-      subtitle: 'Intercession, Private Rooms & Testimonies',
+      subtitle: 'Prayer Requests, Intercession & Testimonies',
       description:
-          'Experience the power of united prayer. Share your requests with believers across Nigeria, intercede for others, create private prayer rooms, and post answered prayer testimonies.',
-      icon: Icons.volunteer_activism_rounded,
+          'Experience the power of united prayer across Nigeria. Submit prayer requests publicly or anonymously, tap "I Prayed for This" to lift up brethren, and celebrate answered prayers on the testimony wall.',
+      icon: FontAwesomeIcons.personPraying,
       accentColor: Color(0xFF8B5CF6), // Royal Violet
       route: '/prayer',
       targetArea: 'prayer',
       highlights: [
-        'Submit public or anonymous prayer requests',
-        'Tap to pray for brothers & sisters in real time',
-        'Testimony wall celebrating God\'s faithfulness',
+        'Submit public or anonymous prayer requests with instant community alerts',
+        'Intercede for fellow believers with a single tap in real time',
+        'Testimony wall celebrating God\'s miraculous answers to prayer',
       ],
     ),
+
+    // 4. Health (Bottom Nav Item 4)
     AppTourStep(
       id: 'step_health',
       title: 'Health & Total Wellness',
-      subtitle: 'NEWSTART Principles & Wholesome Living',
+      subtitle: 'NEWSTART Principles & Lifestyle Medicine',
       description:
-          'Discover biblical health message principles for physical and spiritual vigor — evidence-based plant-based recipes, health trackers, natural remedies, and lifestyle assessments.',
+          'Embrace God\'s design for abundant physical and spiritual vitality through the NEWSTART principles — nutrition, exercise, water, sunshine, temperance, air, rest, and trust in God.',
       icon: Icons.health_and_safety_rounded,
       accentColor: Color(0xFF059669), // Forest Green
       route: '/health',
       targetArea: 'health',
       highlights: [
-        'NEWSTART lifestyle assessments and daily health tips',
-        'Delicious, wholesome plant-based meal recipes',
-        'Natural health remedies and wellness calculators',
+        'NEWSTART lifestyle assessments and daily health nuggets',
+        'Health+ comes with Delicious, nutritious plant-based recipes with local Nigerian ingredients',
+        'and Natural health remedies',
       ],
     ),
+
+    // 5. More (Bottom Nav Item 5)
+    AppTourStep(
+      id: 'step_more',
+      title: 'More Ministry Resources',
+      subtitle: 'Tracts, Podcasts, Kids & Chapters',
+      description:
+          'Explore the complete ALIVE toolbox. Access digital tracts for evangelism, inspiring audio podcasts, interactive kids stories, and locate local campus mission and regional chapters across Nigeria.',
+      icon: Icons.grid_view_rounded,
+      accentColor: Color(0xFFF59E0B), // Radiant Amber
+      route: '/more',
+      targetArea: 'more',
+      highlights: [
+        'Books & Tracts with interactive questions and in-app PDF view',
+        'Podcasts featuring uplifting sermons, health talks, and music',
+        'Kids Mission with illustrated Bible stories and achievement badges',
+        'Chapters directory connecting you to campus & regional units',
+      ],
+    ),
+
+    // 6. Live Meetings (Accessible via More)
     AppTourStep(
       id: 'step_conference',
-      title: 'Live Meetings & Hybrid Scribe',
-      subtitle: 'LiveKit Rooms & 100% On-Device AI Minutes',
+      title: 'Live Meetings & Scribe',
+      subtitle: 'Meeting Rooms & On-Device Minutes Scribe',
       description:
-          'Connect with council members and chapters in crisp live video conference rooms. Our built-in On-Device Scribe automatically transcribes speakers and formats council resolutions and action items.',
+          'Found under the More menu, ALIVE Live Meetings connect members, leaders, and chapters in real-time video conferences with automated meeting minutes and resolution tracking.',
       icon: Icons.video_camera_front_rounded,
       accentColor: Color(0xFFD946EF), // Fuchsia / Magenta
       route: '/conference',
       targetArea: 'conference',
       highlights: [
-        'Low-latency LiveKit multi-speaker conference rooms',
-        '100% On-Device rule synthesizer (no cloud AI latency)',
-        'Automatic minutes: Executive Summary, Decisions & Tasks',
+        'Low-latency LiveKit audio/video conference rooms',
+        'Automated meeting minutes capturing resolutions and action items',
+        'File sharing and secure leader meeting collaboration',
       ],
     ),
+
+    // 7. Donations (Top Header Action)
     AppTourStep(
-      id: 'step_more',
-      title: 'Chapters, Missions & Community',
-      subtitle: 'Regional Chapters, Events & Volunteer Registry',
+      id: 'step_donations',
+      title: 'Giving & Ministry Partnership',
+      subtitle: 'Secure Giving via Paystack & Gift Pledges',
       description:
-          'Find and connect with your nearest ALIVE chapter, join campus evangelism outreaches, submit donations securely via Paystack, and customize your language preferences.',
-      icon: Icons.grid_view_rounded,
-      accentColor: Color(0xFFF59E0B), // Radiant Amber
-      route: '/chapters',
-      targetArea: 'actions',
+          'Accessible anytime from the top bar. Partner in literature evangelism, campus missions, and ministry projects with secure Paystack payments or non-monetary gift pledges.',
+      icon: Icons.volunteer_activism_rounded,
+      accentColor: Color(0xFFE11D48), // Rose Red
+      route: '/donations',
+      targetArea: 'donations',
       highlights: [
-        'Connect with local and campus ALIVE chapters across Nigeria',
-        'Seamless giving via Paystack with instant receipt delivery',
-        'Multilingual support in English, Hausa, Igbo, and Yoruba',
+        'Direct fund designations: General Ministry, Tract Production, Campus Outreaches',
+        'Instant receipt generation and transaction history',
+        'Non-monetary donation registry for equipment and ministry supplies',
+      ],
+    ),
+
+    // 8. Language Selector (Top Header Action)
+    AppTourStep(
+      id: 'step_language',
+      title: 'Indigenous Language Support',
+      subtitle: 'English, Yoruba, Hausa & Igbo',
+      description:
+          'Tap the language selector at the top of the screen to switch the app, daily devotionals, Bible reader, and literature into your preferred indigenous Nigerian language.',
+      icon: Icons.translate_rounded,
+      accentColor: Color(0xFF0284C7), // Sky Blue
+      route: '/settings/language',
+      targetArea: 'language',
+      highlights: [
+        'One-tap toggle between English, Yorùbá, Hausa, and Asụsụ Igbo',
+        'Localized scripture verses, reflections, and menu navigation',
+        'Saves your preference automatically across sessions',
       ],
     ),
   ];

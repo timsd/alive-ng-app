@@ -91,27 +91,9 @@ class SampleContentService {
       'downloadDate': '2024-01-15',
       'category': 'devotional',
       'hasAudio': true,
+      'audioUrl': 'https://api.alivenigeria.org/v1/storage/buckets/podcast_media/files/test_podcast_agana_01/view?project=6a3bef53002f5090dedf',
     },
-    {
-      'id': 'sample-episode-2',
-      'type': 'episode',
-      'title': 'Understanding Bible Prophecy - Part 1',
-      'podcastTitle': 'Prophecy Unveiled',
-      'duration': '35 min',
-      'downloadDate': '2024-01-14',
-      'category': 'prophecy',
-      'hasAudio': true,
-    },
-    {
-      'id': 'sample-episode-3',
-      'type': 'episode',
-      'title': 'Health Tips for Busy Christians',
-      'podcastTitle': 'Health and Wellness',
-      'duration': '20 min',
-      'downloadDate': '2024-01-13',
-      'category': 'health',
-      'hasAudio': true,
-    },
+   
   ];
 
   /// Every sample item (podcasts + episodes) for the admin screen.

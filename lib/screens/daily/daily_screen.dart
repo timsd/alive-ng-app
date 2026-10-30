@@ -12,11 +12,41 @@ import '../../models/app_models.dart';
 import '../../widgets/daily_verse_card.dart';
 import '../../services/daily_verse_generation_service.dart';
 import '../../services/bible_source.dart';
+import '../../constants/daily_verses_translations.dart';
 import '../../utils/text_formatter.dart';
 import '../../utils/responsive_utils.dart';
 import '../../constants/app_constants.dart';
 
-// Provider for daily verse
+// Localized verse helper
+String? _getTranslatedVerseText(String reference, String langCode) {
+  if (langCode == 'en') return null;
+  if (dailyVerseTranslations.containsKey(reference)) {
+    final t = dailyVerseTranslations[reference]?[langCode];
+    if (t != null && t.trim().isNotEmpty) return t;
+  }
+  final cleanRef = reference.trim().toLowerCase();
+  for (final entry in dailyVerseTranslations.entries) {
+    if (entry.key.trim().toLowerCase() == cleanRef) {
+      final t = entry.value[langCode];
+      if (t != null && t.trim().isNotEmpty) return t;
+    }
+  }
+  final localVersion = {'yo': 'BM', 'ha': 'HAU', 'ig': 'IGBOB'}[langCode] ?? 'KJV';
+  final corpus = BibleSource.instance.dailyCorpus;
+  final matching = corpus.where((cv) => cv.reference.trim().toLowerCase() == cleanRef).firstOrNull;
+  final matchText = matching?.text[localVersion] ?? matching?.text[langCode];
+  if (matchText != null && matchText.trim().isNotEmpty) return matchText;
+
+  final translatedKeys = dailyVerseTranslations.keys.toList();
+  if (translatedKeys.isNotEmpty) {
+    final now = DateTime.now();
+    final epochDays = now.toUtc().difference(DateTime.utc(1970, 1, 1)).inDays;
+    final fallbackRef = translatedKeys[epochDays % translatedKeys.length];
+    return dailyVerseTranslations[fallbackRef]?[langCode];
+  }
+  return null;
+}
+
 String _getLocalizedReflection(String langCode) {
   switch (langCode) {
     case 'yo':
@@ -39,16 +69,32 @@ final dailyVerseProvider = FutureProvider<DailyVerse?>((ref) async {
   DailyVerse fallbackVerse() {
     final now = DateTime.now();
     final epochDays = now.toUtc().difference(DateTime.utc(1970, 1, 1)).inDays;
+    final localVersion = {'yo': 'BM', 'ha': 'HAU', 'ig': 'IGBOB'}[langCode] ?? 'KJV';
+
+    if (langCode != 'en') {
+      final translatedKeys = dailyVerseTranslations.keys.toList();
+      final refKey = translatedKeys[epochDays % translatedKeys.length];
+      final text = dailyVerseTranslations[refKey]?[langCode] ?? 'Gbẹ́kẹ̀lé Olúwa pẹ̀lú gbogbo àyà rẹ.';
+      return DailyVerse(
+        id: 'local-fallback-$langCode',
+        verse: text,
+        reference: refKey,
+        translation: localVersion,
+        date: now,
+        reflection: _getLocalizedReflection(langCode),
+        createdAt: DateTime.now(),
+      );
+    }
+
     final verses = BibleSource.instance.dailyCorpus;
     final index = verses.isEmpty ? 0 : epochDays % verses.length;
     final v = verses.isEmpty ? null : verses[index];
-    final localVersion = {'yo': 'BM', 'ha': 'HAU', 'ig': 'IGBOB'}[langCode] ?? 'KJV';
-    final text = v?.text[localVersion] ?? v?.text[langCode] ?? v?.text['KJV'] ?? v?.text.values.firstOrNull ?? 'Trust in the Lord with all your heart.';
+    final text = v?.text['KJV'] ?? v?.text.values.firstOrNull ?? 'Trust in the Lord with all your heart.';
     return DailyVerse(
       id: 'local-fallback-$langCode',
       verse: text,
       reference: v?.reference ?? 'Proverbs 3:5',
-      translation: localVersion,
+      translation: 'KJV',
       date: now,
       reflection: _getLocalizedReflection(langCode),
       createdAt: DateTime.now(),
@@ -61,18 +107,18 @@ final dailyVerseProvider = FutureProvider<DailyVerse?>((ref) async {
     if (dailyVerse != null) {
       if (langCode != 'en') {
         final localVersion = {'yo': 'BM', 'ha': 'HAU', 'ig': 'IGBOB'}[langCode] ?? 'KJV';
-        final corpus = BibleSource.instance.dailyCorpus;
-        final matching = corpus.where((cv) => cv.reference == dailyVerse.reference).firstOrNull;
-        final localText = matching?.text[localVersion] ?? matching?.text[langCode] ?? dailyVerse.verse;
-        return DailyVerse(
-          id: dailyVerse.id,
-          verse: localText,
-          reference: dailyVerse.reference,
-          translation: localVersion,
-          date: dailyVerse.date,
-          reflection: dailyVerse.reflection ?? _getLocalizedReflection(langCode),
-          createdAt: dailyVerse.createdAt,
-        );
+        final translatedText = _getTranslatedVerseText(dailyVerse.reference, langCode);
+        if (translatedText != null && translatedText.trim().isNotEmpty) {
+          return DailyVerse(
+            id: dailyVerse.id,
+            verse: translatedText,
+            reference: dailyVerse.reference,
+            translation: localVersion,
+            date: dailyVerse.date,
+            reflection: _getLocalizedReflection(langCode),
+            createdAt: dailyVerse.createdAt,
+          );
+        }
       }
       return dailyVerse;
     }

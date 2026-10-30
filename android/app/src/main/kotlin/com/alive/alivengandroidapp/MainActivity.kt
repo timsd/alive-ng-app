@@ -97,20 +97,14 @@ class MainActivity: FlutterActivity() {
 
     private fun makePhoneCall(phoneNumber: String) {
         try {
-            val intent = Intent(Intent.ACTION_CALL, Uri.parse("tel:$phoneNumber"))
+            val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phoneNumber"))
             if (intent.resolveActivity(packageManager) != null) {
                 startActivity(intent)
             } else {
-                Log.e("MainActivity", "No activity found to make phone call")
+                Log.e("MainActivity", "No activity found to handle phone dialer")
             }
         } catch (e: Exception) {
-            Log.e("MainActivity", "Error making phone call, falling back to dialer", e)
-            val dialIntent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phoneNumber"))
-            if (dialIntent.resolveActivity(packageManager) != null) {
-                startActivity(dialIntent)
-            } else {
-                Log.e("MainActivity", "No activity found to handle dialer")
-            }
+            Log.e("MainActivity", "Error launching dialer for: $phoneNumber", e)
         }
     }
 

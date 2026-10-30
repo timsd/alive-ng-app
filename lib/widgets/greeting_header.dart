@@ -99,9 +99,9 @@ class GreetingHeader extends ConsumerWidget {
                 if (currentUser != null)
                   InkWell(
                     onTap: () => context.push(AppConstants.profileRoute),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(24),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
                         color: isDark
                             ? Colors.white.withValues(alpha: 0.12)
@@ -116,7 +116,7 @@ class GreetingHeader extends ConsumerWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           CircleAvatar(
-                            radius: 11,
+                            radius: 18,
                             backgroundColor: const Color(0xFFD49B28),
                             backgroundImage: avatarUrl != null
                                 ? CachedNetworkImageProvider(avatarUrl)
@@ -127,28 +127,28 @@ class GreetingHeader extends ConsumerWidget {
                                         ? userName[0].toUpperCase()
                                         : "M",
                                     style: const TextStyle(
-                                      fontSize: 10,
+                                      fontSize: 14,
                                       fontWeight: FontWeight.bold,
                                       color: Colors.white,
                                     ),
                                   )
                                 : null,
                           ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 8),
                           Text(
                             "Profile",
                             style: TextStyle(
                               color: isDark
-                                  ? Colors.white.withValues(alpha: 0.9)
+                                  ? Colors.white.withValues(alpha: 0.95)
                                   : const Color(0xFF233E5F),
-                              fontSize: 11,
+                              fontSize: 13,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                           const SizedBox(width: 4),
                           Icon(
                             Icons.chevron_right_rounded,
-                            size: 14,
+                            size: 16,
                             color: isDark
                                 ? Colors.white.withValues(alpha: 0.6)
                                 : const Color(0xFF5B6B82),
