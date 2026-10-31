@@ -799,7 +799,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
         _MgmtTile('Sample Content (user-facing seeds)', 'Hide or restore sample podcasts & episodes users currently see', Icons.preview_outlined, () => context.push(AppConstants.sampleContentAdminRoute)),
         _MgmtTile('Monthly Support Reminder', 'Send on the 1st of each month. Enable to let members opt out.', Icons.notifications_active_outlined, () => _showMonthlyReminderControl()),
         _MgmtTile('Featured Content', 'Manage featured content and highlights', Icons.star_outline, () => _navigateToContentManagement('featured')),
-        _MgmtTile('Announcements', 'Create and manage app announcements', Icons.campaign_outlined, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminAnnouncementsScreen()))),
+        _MgmtTile('App Broadcast', 'Create and manage app broadcasts and announcements', Icons.campaign_outlined, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminAnnouncementsScreen()))),
         _MgmtTile('Kids Stories', 'Upload PDF or type content with media', Icons.auto_stories, () => context.push(AppConstants.adminKidsStoriesRoute)),
         _MgmtTile('Kids Missions', 'Upload PDF or type content with media', Icons.assignment_turned_in, () => context.push(AppConstants.adminKidsMissionsRoute)),
         _MgmtTile('Study Guides', 'Upload PDF or type content with media', Icons.menu_book, () => context.push(AppConstants.adminStudyGuidesRoute)),

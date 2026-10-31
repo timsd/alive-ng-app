@@ -239,7 +239,7 @@ class GreetingHeader extends ConsumerWidget {
                               ),
                       ),
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 3),
                         Icon(
                           Icons.chevron_right_rounded,
                           size: 22,

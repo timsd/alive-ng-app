@@ -62,7 +62,7 @@ class _AdminHealthContentScreenState
 
     return Scaffold(
       appBar: CustomAppBar(
-        title: 'Health+ Content Admin',
+        title: 'Health+ Content',
         showDonationButton: false,
         bottom: TabBar(
           controller: _tabController,

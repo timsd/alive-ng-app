@@ -172,11 +172,15 @@ class _LeaderMeetingTranscriptionScreenState
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Found backed-up meeting draft ($count entries).'),
-              duration: const Duration(seconds: 8),
+              duration: const Duration(seconds: 5),
+              showCloseIcon: true,
               action: SnackBarAction(
                 label: 'Restore',
                 textColor: Colors.amberAccent,
-                onPressed: () => _restoreDraftFromBackup(draft),
+                onPressed: () {
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  _restoreDraftFromBackup(draft);
+                },
               ),
             ),
           );
@@ -365,6 +369,7 @@ class _LeaderMeetingTranscriptionScreenState
 
   @override
   void dispose() {
+    ScaffoldMessenger.of(context).clearSnackBars();
     _tabController.dispose();
     _transcriptScrollController.dispose();
     _inputController.dispose();
