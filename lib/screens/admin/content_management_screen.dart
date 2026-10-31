@@ -35,17 +35,6 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
 
   static final List<Map<String, dynamic>> _defaultContentPages = [
     {
-      'id': 'page_onboarding',
-      'title': 'Welcome to ALIVE Nigeria',
-      'slug': 'onboarding',
-      'language': 'en',
-      'is_published': true,
-      'publish_date': DateTime.now().toIso8601String(),
-      'created_at': DateTime.now().toIso8601String(),
-      'content':
-          'ALIVE (Adventist Laymen\'s Services and Industries Voices of Hope) Nigeria is dedicated to mobilizing African laymen and young professionals for dynamic evangelism, discipleship, and holistic societal transformation through health, education, and gospel ministry.',
-    },
-    {
       'id': 'page_about_alive',
       'title': 'About ALIVE Nigeria',
       'slug': 'about-alive',
@@ -54,18 +43,40 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
       'publish_date': DateTime.now().toIso8601String(),
       'created_at': DateTime.now().toIso8601String(),
       'content':
-          'ALIVE Nigeria is a movement of Seventh-day Adventist young professionals, students, and lay members who believe every Christian has a mandate to finish the gospel commission in their sphere of influence.',
+          'A.L.I.V.E is an acronym for Africans Living In View of Eternity. ALIVE-Nigeria is the Nigerian chapter of this movement, committed to a Bible-based, youth-led revival across Africa.\n\nWe are men, women, graduates, working professionals, and student volunteers whose hearts are burdened for spreading God\'s Word and works. ALIVE Nigeria exists to challenge and equip believers with tools for individual missionary work, spiritual growth, mentorship, and service.\n\n"The Lord has appointed the youth to be His helping hand." — {ChS 30.1}\n\n"With such an army of workers as our youth, rightly trained, how soon the message of a crucified, risen, and soon-coming Saviour might be carried to the whole world." — Education, p. 271. {ChS 30.2}\n\nJoin us today and let us take the good news of the Gospel to places where no one wants to go.',
     },
     {
-      'id': 'page_statement_of_faith',
-      'title': 'Statement of Faith',
-      'slug': 'statement-of-faith',
+      'id': 'page_mission_vision',
+      'title': 'Mission & Vision Statement',
+      'slug': 'mission-vision',
       'language': 'en',
       'is_published': true,
       'publish_date': DateTime.now().toIso8601String(),
       'created_at': DateTime.now().toIso8601String(),
       'content':
-          'We accept the Bible as our only rule of faith and practice. We adhere to the fundamental beliefs of the Seventh-day Adventist Church, emphasizing salvation by grace through faith, the holy Sabbath, and the imminent return of Jesus Christ.',
+          'MISSION STATEMENT:\nOur mission is to prepare Africa for the imminent return of Jesus Christ. Through biblical spiritual training and evangelistic efforts, we challenge African Seventh-day Adventist young adults to live with authentic biblical excellence, develop a missionary volunteer spirit, support missionary movements across Africa, and make meaningful impact in neglected areas.\n\nVISION STATEMENT:\nAt ALIVE, our vision is to ignite and sustain a Bible-based, youth-led revival movement across the continent of Africa, empowering every Seventh-day Adventist young professional to become a dedicated missionary with a deep personal relationship with Jesus Christ and commitment to His Great Commission.',
+    },
+    {
+      'id': 'page_what_alive_emphasizes',
+      'title': 'What ALIVE Emphasizes',
+      'slug': 'what-alive-emphasizes',
+      'language': 'en',
+      'is_published': true,
+      'publish_date': DateTime.now().toIso8601String(),
+      'created_at': DateTime.now().toIso8601String(),
+      'content':
+          'ALIVE Nigeria emphasizes four core pillars of ministry:\n\n1. Evangelism: Taking the Gospel seriously and making outreach part of everyday ministry life.\n2. Discipleship: Helping people mature in Scripture, character, and practical obedience to Christ.\n3. Prayer and Care: Supporting members spiritually while building a culture of intercession and encouragement.\n4. Wholesome Living: Promoting healthy, balanced living that reflects stewardship of body, mind, and mission (health evangelism and plant-based nutrition).',
+    },
+    {
+      'id': 'page_onboarding',
+      'title': 'Welcome to ALIVE Nigeria',
+      'slug': 'onboarding',
+      'language': 'en',
+      'is_published': true,
+      'publish_date': DateTime.now().toIso8601String(),
+      'created_at': DateTime.now().toIso8601String(),
+      'content':
+          'Welcome to ALIVE Nigeria — Africans Living In View of Eternity. Bible study, prayer, and service in one community.\n\nJoin our vibrant community united by Prayer, Study, Missions, and Health:\n\n• Roles & Organization: We are organized to serve! From dedicated Members and Chapter Leaders to Coordinators, Directors, and Board of Trustees (BOD), every role is vital.\n• Tagging, Praying & Chatting: Stay deeply connected. Tag members, join chapter chats, pray together instantly, and share your powerful testimonies with the community.\n• Kids & Discipleship: A rich library of Books, Tracts, Podcasts, and Health+ recipes awaits you. Plus special mission activities and Bible memorization features for both Kids and Adults.',
     },
     {
       'id': 'page_privacy_policy',
@@ -76,35 +87,44 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
       'publish_date': DateTime.now().toIso8601String(),
       'created_at': DateTime.now().toIso8601String(),
       'content':
-          'ALIVE Nigeria values user trust and spiritual confidentiality. Private prayer rooms, chapter messages, and financial contributions are guarded with industry-standard cryptographic protection.',
+          'ALIVE Nigeria values user trust, spiritual confidentiality, and Christian brotherhood.\n\nPrivate prayer rooms, intercession requests, and personal reflections are protected with role-based and cryptographic boundaries. Chat communication across local chapters, committees, and leadership bodies must reflect Christ-like decorum, mutual respect, and spiritual upliftment.',
     },
   ];
 
   static final List<Map<String, dynamic>> _defaultFeaturedContent = [
     {
       'id': 'feat_annual_retreat',
-      'title': 'ALIVE National Annual Retreat 2026',
+      'title': 'ALIVE Nigeria National Retreat 2026',
       'description':
-          'Experience spiritual revival, leadership empowerments, and nationwide missionary testimonies.',
+          'Annual gathering of Adventist lay missionaries, working professionals, and students across Nigeria for spiritual revival, mission consecration, and evangelism training.',
       'content_type': 'event',
       'is_active': true,
       'created_at': DateTime.now().toIso8601String(),
     },
     {
       'id': 'feat_mission_outreaches',
-      'title': 'Campus & Rural Mission Field Outreaches',
+      'title': 'Campus & Rural Mission Outreaches (STMs & LTMs)',
       'description':
-          'Deploying student evangelists and health workers to unreached territories across Nigeria.',
+          'Deploying Short-Term Missionaries (STMs) and Long-Term Missionaries (LTMs) to unreached campus territories and rural outposts across Nigeria.',
       'content_type': 'ministry',
       'is_active': true,
       'created_at': DateTime.now().toIso8601String(),
     },
     {
       'id': 'feat_health_plus',
-      'title': 'Health+ Plant-Based Lifestyle & Wellness',
+      'title': 'Health+ Plant-Based Living & Remedies',
       'description':
-          'Authentic African plant-based recipes, natural therapeutic remedies, and health evangelism seminars.',
+          'Authentic Nigerian plant-based recipes, natural therapeutic remedies, and wholesome living resources reflecting stewardship of body, mind, and mission.',
       'content_type': 'health',
+      'is_active': true,
+      'created_at': DateTime.now().toIso8601String(),
+    },
+    {
+      'id': 'feat_discipleship_daily',
+      'title': 'Daily Word & Discipleship Growth',
+      'description':
+          'Structured Bible study lessons, Daily Tasks, Instant Word memorization games, and spiritual progress tracking for personal and chapter development.',
+      'content_type': 'study',
       'is_active': true,
       'created_at': DateTime.now().toIso8601String(),
     },
@@ -112,7 +132,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
       'id': 'feat_mission_projects',
       'title': 'Kingdom Mission Projects & Impact Hub',
       'description':
-          'Support the acquisition of mission outreach vehicles and the construction of our discipleship training center.',
+          'Support the acquisition of mission outreach vehicles, media production studio equipment, and the construction of our discipleship training center.',
       'content_type': 'project',
       'is_active': true,
       'created_at': DateTime.now().toIso8601String(),
@@ -125,15 +145,15 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
       'title': 'Impact Hub Center',
       'summary': 'Community discipleship and outreach facility',
       'description':
-          'A central hub for training, discipleship, and community engagement.',
+          'A central hub for training, discipleship, and community engagement. Seed funding has helped prepare the project scope, early planning, and ministry coordination for the hub.',
       'goal': 35000000.0,
       'raised': 8384400.0,
       'currency': 'NGN',
       'status': 'active',
       'priority': 1,
       'cta_label': 'Donate for this item',
-      'image_url':
-          'https://images.unsplash.com/photo-1593914370442-49d414beca24?q=80&w=1031&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+      'image_url': 'assets/images/impact_hub_3d_view.png',
+      'viewer_url': 'alive_ng_3d_viewer.html',
       'fund_update_title': 'Progress so far',
       'fund_update_text':
           'Seed funding has helped prepare the project scope, early planning, and ministry coordination for the hub.',
@@ -162,7 +182,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
       'title': 'Media Studio Setup',
       'summary': 'Podcast and content production equipment',
       'description':
-          'Equipping the ministry with high-quality media production capabilities.',
+          'Equipping the ministry with high-quality media production capabilities for tracts, audio podcasts, video meetings, and digital evangelism.',
       'goal': 9000000.0,
       'raised': 0.0,
       'currency': 'NGN',
@@ -1697,65 +1717,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
   Future<void> _seedSampleProjects({bool showDialog = false}) async {
     setState(() => _isLoading = true);
     try {
-      final samples = [
-        {
-          'id': 'impact_hub_center',
-          'title': 'Impact Hub Center',
-          'summary': 'Community discipleship and outreach facility',
-          'description':
-              'A central hub for training, discipleship, and community engagement.',
-          'goal': 35000000.0,
-          'raised': 8384400.0,
-          'currency': 'NGN',
-          'status': 'active',
-          'priority': 1,
-          'cta_label': 'Donate for this item',
-          'image_url':
-              'https://images.unsplash.com/photo-1593914370442-49d414beca24?q=80&w=1031&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-          'fund_update_title': 'Progress so far',
-          'fund_update_text':
-              'Seed funding has helped prepare the project scope, early planning, and ministry coordination for the hub.',
-          'fund_update_images': <String>[],
-        },
-        {
-          'id': 'vehicle_purchase',
-          'title': 'Vehicle Purchase',
-          'summary': 'Mission vehicle for outreach logistics',
-          'description':
-              'Reliable transportation for mission trips and logistics across Nigeria.',
-          'goal': 18000000.0,
-          'raised': 0.0,
-          'currency': 'NGN',
-          'status': 'active',
-          'priority': 2,
-          'cta_label': 'Donate for this item',
-          'image_url':
-              'https://images.unsplash.com/photo-1597685204565-110abf469a1e?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-          'fund_update_title': '',
-          'fund_update_text': '',
-          'fund_update_images': <String>[],
-        },
-        {
-          'id': 'media_studio_setup',
-          'title': 'Media Studio Setup',
-          'summary': 'Podcast and content production equipment',
-          'description':
-              'Equipping the ministry with high-quality media production capabilities.',
-          'goal': 9000000.0,
-          'raised': 0.0,
-          'currency': 'NGN',
-          'status': 'planning',
-          'priority': 3,
-          'cta_label': 'Donate for this item',
-          'image_url':
-              'https://images.unsplash.com/photo-1769699167906-a44d5ae50abb?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-          'fund_update_title': '',
-          'fund_update_text': '',
-          'fund_update_images': <String>[],
-        },
-      ];
-
-      for (var project in samples) {
+      for (var project in _defaultProjects) {
         final documentId = project['id']?.toString();
         await _upsertAdminDocument(
           AppwriteBackendConfig.projectsCollectionId,
