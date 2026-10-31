@@ -1,7 +1,7 @@
+import '../utils/appwrite_id_utils.dart';
 import 'dart:convert';
 
 import 'package:appwrite/appwrite.dart';
-import 'package:uuid/uuid.dart';
 
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';
@@ -16,7 +16,6 @@ class DiscipleshipService {
   static DiscipleshipService get instance => _instance;
   DiscipleshipService._internal();
 
-  final Uuid _uuid = const Uuid();
   final Logger _logger = Logger('DiscipleshipService');
   final TablesDB _tables = TablesDB(appwriteClient);
 
@@ -78,7 +77,7 @@ class DiscipleshipService {
       final document = await _tables.getRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _contactsCollection,
-        rowId: contactId,
+        rowId: AppwriteIdUtils.toValidUid(contactId),
       );
       return _contactFromDocument(document);
     } on AppwriteException catch (e) {
@@ -96,7 +95,7 @@ class DiscipleshipService {
     try {
       final now = DateTime.now().toUtc();
       final newContact = contact.copyWith(
-        id: contact.id.isNotEmpty ? contact.id : _uuid.v4(),
+        id: contact.id.isNotEmpty ? contact.id : AppwriteIdUtils.uniqueId(),
         createdAt: now,
         updatedAt: now,
       );
@@ -104,7 +103,7 @@ class DiscipleshipService {
       final document = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _contactsCollection,
-        rowId: newContact.id,
+        rowId: AppwriteIdUtils.toValidUid(newContact.id),
         data: _contactData(newContact),
       );
       return _contactFromDocument(document);
@@ -121,7 +120,7 @@ class DiscipleshipService {
       final document = await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _contactsCollection,
-        rowId: updatedContact.id,
+        rowId: AppwriteIdUtils.toValidUid(updatedContact.id),
         data: _contactData(updatedContact),
       );
       return _contactFromDocument(document);
@@ -136,7 +135,7 @@ class DiscipleshipService {
       await _tables.deleteRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _contactsCollection,
-        rowId: contactId,
+        rowId: AppwriteIdUtils.toValidUid(contactId),
       );
     } catch (e) {
       _logger.error('Failed to delete contact', e);
@@ -152,7 +151,7 @@ class DiscipleshipService {
 
       if (contact.currentLevel != newLevel) {
         await createProgressMilestone(ProgressMilestone(
-          id: _uuid.v4(),
+          id: AppwriteIdUtils.uniqueId(),
           contactId: contactId,
           fromLevel: contact.currentLevel,
           toLevel: newLevel,
@@ -208,7 +207,7 @@ class DiscipleshipService {
       ContactInteraction interaction) async {
     try {
       final newInteraction = ContactInteraction(
-        id: interaction.id.isNotEmpty ? interaction.id : _uuid.v4(),
+        id: interaction.id.isNotEmpty ? interaction.id : AppwriteIdUtils.uniqueId(),
         contactId: interaction.contactId,
         discipleMakerId: interaction.discipleMakerId,
         method: interaction.method,
@@ -225,14 +224,14 @@ class DiscipleshipService {
       final document = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _interactionsCollection,
-        rowId: newInteraction.id,
+        rowId: AppwriteIdUtils.toValidUid(newInteraction.id),
         data: _interactionData(newInteraction),
       );
 
       await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _contactsCollection,
-        rowId: interaction.contactId,
+        rowId: AppwriteIdUtils.toValidUid(interaction.contactId),
         data: {
           'last_contact': _iso(interaction.date),
           'updated_at': _iso(DateTime.now()),
@@ -281,7 +280,7 @@ class DiscipleshipService {
   Future<StudySession> createStudySession(StudySession session) async {
     try {
       final newSession = StudySession(
-        id: session.id.isNotEmpty ? session.id : _uuid.v4(),
+        id: session.id.isNotEmpty ? session.id : AppwriteIdUtils.uniqueId(),
         contactId: session.contactId,
         discipleMakerId: session.discipleMakerId,
         type: session.type,
@@ -300,7 +299,7 @@ class DiscipleshipService {
       final document = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _studySessionsCollection,
-        rowId: newSession.id,
+        rowId: AppwriteIdUtils.toValidUid(newSession.id),
         data: _studySessionData(newSession),
       );
       return _studySessionFromDocument(document);
@@ -316,7 +315,7 @@ class DiscipleshipService {
       final document = await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _studySessionsCollection,
-        rowId: session.id,
+        rowId: AppwriteIdUtils.toValidUid(session.id),
         data: _studySessionData(session),
       );
       return _studySessionFromDocument(document);
@@ -358,7 +357,7 @@ class DiscipleshipService {
       final document = await _tables.getRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _prayerRequestsCollection,
-        rowId: requestId,
+        rowId: AppwriteIdUtils.toValidUid(requestId),
       );
       return _prayerRequestFromDocument(document);
     } catch (e) {
@@ -374,7 +373,7 @@ class DiscipleshipService {
           ? request.history
           : [
               PrayerHistoryEntry(
-                id: _uuid.v4(),
+                id: AppwriteIdUtils.uniqueId(),
                 action: 'created',
                 status: request.status,
                 note: 'Prayer request created',
@@ -383,7 +382,7 @@ class DiscipleshipService {
               ),
             ];
       final newRequest = PrayerRequest(
-        id: request.id.isNotEmpty ? request.id : _uuid.v4(),
+        id: request.id.isNotEmpty ? request.id : AppwriteIdUtils.uniqueId(),
         contactId: request.contactId,
         discipleMakerId: request.discipleMakerId,
         request: request.request,
@@ -401,7 +400,7 @@ class DiscipleshipService {
       final document = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _prayerRequestsCollection,
-        rowId: newRequest.id,
+        rowId: AppwriteIdUtils.toValidUid(newRequest.id),
         data: _prayerRequestData(newRequest),
       );
       return _prayerRequestFromDocument(document);
@@ -432,7 +431,7 @@ class DiscipleshipService {
       final now = DateTime.now().toUtc();
       final newHistory = List<PrayerHistoryEntry>.from(current.history)
         ..add(PrayerHistoryEntry(
-          id: _uuid.v4(),
+          id: AppwriteIdUtils.uniqueId(),
           action: 'answered',
           status: PrayerRequestStatus.answered,
           note: testimony.isNotEmpty ? testimony : 'Marked as answered',
@@ -464,7 +463,7 @@ class DiscipleshipService {
       final now = DateTime.now().toUtc();
       final newHistory = List<PrayerHistoryEntry>.from(current.history)
         ..add(PrayerHistoryEntry(
-          id: _uuid.v4(),
+          id: AppwriteIdUtils.uniqueId(),
           action: 'status_updated',
           status: status,
           note: note,
@@ -496,7 +495,7 @@ class DiscipleshipService {
       final document = await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _prayerRequestsCollection,
-        rowId: updatedRequest.id,
+        rowId: AppwriteIdUtils.toValidUid(updatedRequest.id),
         data: _prayerRequestData(updatedRequest),
       );
       return _prayerRequestFromDocument(document);
@@ -529,11 +528,11 @@ class DiscipleshipService {
   Future<ProgressMilestone> createProgressMilestone(
       ProgressMilestone milestone) async {
     try {
-      final id = milestone.id.isNotEmpty ? milestone.id : _uuid.v4();
+      final id = milestone.id.isNotEmpty ? milestone.id : AppwriteIdUtils.uniqueId();
       final document = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _milestonesCollection,
-        rowId: id,
+        rowId: AppwriteIdUtils.toValidUid(id),
         data: _milestoneData(milestone),
       );
       return _milestoneFromDocument(document);
@@ -603,7 +602,7 @@ class DiscipleshipService {
 
       final endInclusive = endDate.add(const Duration(days: 1));
       final report = DiscipleshipReport(
-        id: _uuid.v4(),
+        id: AppwriteIdUtils.uniqueId(),
         discipleMakerId: discipleMakerId,
         supervisorId: supervisorId,
         reportPeriodStart: startDate,
@@ -634,7 +633,7 @@ class DiscipleshipService {
       final document = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _reportsCollection,
-        rowId: report.id,
+        rowId: AppwriteIdUtils.toValidUid(report.id),
         data: _reportData(report),
       );
       return _reportFromDocument(document);
@@ -649,7 +648,7 @@ class DiscipleshipService {
       final document = await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _reportsCollection,
-        rowId: reportId,
+        rowId: AppwriteIdUtils.toValidUid(reportId),
         data: {'submitted_at': _iso(DateTime.now())},
       );
       return _reportFromDocument(document);
@@ -689,7 +688,7 @@ class DiscipleshipService {
       final endInclusive = endDate.add(const Duration(days: 1));
       final now = DateTime.now().toUtc();
       final report = DiscipleshipReport(
-        id: _uuid.v4(),
+        id: AppwriteIdUtils.uniqueId(),
         discipleMakerId: discipleMakerId,
         supervisorId: supervisorId,
         routedOfficerId: routedOfficerId,
@@ -725,7 +724,7 @@ class DiscipleshipService {
       final document = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _reportsCollection,
-        rowId: report.id,
+        rowId: AppwriteIdUtils.toValidUid(report.id),
         data: _reportData(report),
       );
       return _reportFromDocument(document);
@@ -762,7 +761,7 @@ class DiscipleshipService {
       final document = await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _reportsCollection,
-        rowId: reportId,
+        rowId: AppwriteIdUtils.toValidUid(reportId),
         data: {
           'feedback': feedback,
           'feedback_officer_name': officerName,
@@ -783,6 +782,31 @@ class DiscipleshipService {
 
   Future<List<OfficerOfficeAssignment>> getOfficerAssignments() async {
     try {
+      try {
+        final row = await _tables.getRow(
+          databaseId: AppwriteBackendConfig.databaseId,
+          tableId: AppwriteBackendConfig.appSettingsCollectionId,
+          rowId: AppwriteIdUtils.toValidUid(_officerAssignmentsKey),
+        );
+        final rawJson =
+            (row.data['value'] ?? row.data['setting_value'] ?? '').toString();
+        if (rawJson.trim().isNotEmpty) {
+          final decoded = jsonDecode(rawJson);
+          if (decoded is List && decoded.isNotEmpty) {
+            final parsed = decoded
+                .map((e) => OfficerOfficeAssignment.fromJson(
+                    Map<String, dynamic>.from(e as Map)))
+                .toList();
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setStringList(
+              _officerAssignmentsKey,
+              parsed.map((e) => jsonEncode(e.toJson())).toList(),
+            );
+            return parsed;
+          }
+        }
+      } catch (_) {}
+
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getStringList(_officerAssignmentsKey);
       if (raw != null && raw.isNotEmpty) {
@@ -804,7 +828,7 @@ class DiscipleshipService {
         OfficerOfficeAssignment(
           id: 'def-amtc-coord',
           officerId: 'amtc-coord',
-          officerName: 'God/stime Esuku ',
+          officerName: 'Godstime Esuku',
           officerEmail: 'training@alivenigeria.org',
           officeTitle: 'AMTC Coordinator',
           officeType: 'coordinator',
@@ -833,6 +857,40 @@ class DiscipleshipService {
     final prefs = await SharedPreferences.getInstance();
     final raw = list.map((e) => jsonEncode(e.toJson())).toList();
     await prefs.setStringList(_officerAssignmentsKey, raw);
+    final payloadJson = jsonEncode(list.map((e) => e.toJson()).toList());
+    final nowIso = DateTime.now().toUtc().toIso8601String();
+    final data = {
+      'key': _officerAssignmentsKey,
+      'setting_key': _officerAssignmentsKey,
+      'display_name': 'Discipleship Officer Assignments',
+      'category': 'app',
+      'type': 'json',
+      'data_type': 'json',
+      'value': payloadJson,
+      'setting_value': payloadJson,
+      'is_public': true,
+      'is_active': true,
+      'updated_at': nowIso,
+    };
+    try {
+      await _tables.updateRow(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: AppwriteBackendConfig.appSettingsCollectionId,
+        rowId: AppwriteIdUtils.toValidUid(_officerAssignmentsKey),
+        data: data,
+      );
+    } on AppwriteException catch (e) {
+      if (e.code == 404) {
+        try {
+          await _tables.createRow(
+            databaseId: AppwriteBackendConfig.databaseId,
+            tableId: AppwriteBackendConfig.appSettingsCollectionId,
+            rowId: AppwriteIdUtils.toValidUid(_officerAssignmentsKey),
+            data: {...data, 'created_at': nowIso},
+          );
+        } catch (_) {}
+      }
+    } catch (_) {}
   }
 
   Future<OfficerOfficeAssignment> assignOfficerToOffice({
@@ -846,7 +904,7 @@ class DiscipleshipService {
     final updatedList =
         list.where((a) => a.officeTitle != officeTitle).toList();
     final newAssignment = OfficerOfficeAssignment(
-      id: _uuid.v4(),
+      id: AppwriteIdUtils.uniqueId(),
       officerId: officerId,
       officerName: officerName,
       officerEmail: officerEmail,
@@ -929,7 +987,7 @@ class DiscipleshipService {
           'Cannot request deletion: Disciple has attached activity records.');
     }
     final req = DiscipleDeletionRequest(
-      id: _uuid.v4(),
+      id: AppwriteIdUtils.uniqueId(),
       contactId: contact.id,
       contactName: contact.fullName,
       requesterId: requesterId,

@@ -231,6 +231,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
               ...widget.message.taggedUsers.map((userId) => MessageTag(
                 type: TagType.user,
                 value: userId,
+                displayName: '@${userId.replaceAll('_', ' ')}',
                 userId: userId,
               )),
               ...widget.message.taggedGroups.map((groupId) => MessageTag(
@@ -288,8 +289,11 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
         color = theme.colorScheme.primary;
       }
 
+      final displayMatchText = matchText.startsWith('@')
+          ? matchText.replaceAll('_', ' ')
+          : matchText;
       spans.add(TextSpan(
-        text: matchText,
+        text: displayMatchText,
         style: theme.textTheme.bodyMedium?.copyWith(
           color: color,
           fontWeight: fontWeight,

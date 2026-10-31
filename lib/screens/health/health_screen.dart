@@ -134,20 +134,13 @@ class HealthScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    TextFormatter.formatHealthCategory('natural_remedies'),
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onPrimary,
-                          fontWeight: FontWeight.bold,
-                          fontSize: ResponsiveUtils.getResponsiveFontSize(
-                              context, 24),
-                        ),
-                  ),
-                  SizedBox(
-                      height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
-                  Text(
                     TextFormatter.formatHealthCategory('gods_natural_healing'),
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.9),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onPrimary
+                              .withValues(alpha: 0.95),
+                          fontWeight: FontWeight.w500,
                           fontSize: ResponsiveUtils.getResponsiveFontSize(
                               context, 16),
                         ),

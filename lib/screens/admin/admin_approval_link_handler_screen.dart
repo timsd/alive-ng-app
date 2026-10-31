@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../constants/app_constants.dart';
 import '../../services/approval_link_service.dart';
 import '../../utils/responsive_utils.dart';
 
@@ -7,18 +8,24 @@ class AdminApprovalLinkHandlerScreen extends StatefulWidget {
   const AdminApprovalLinkHandlerScreen({super.key});
 
   @override
-  State<AdminApprovalLinkHandlerScreen> createState() => _AdminApprovalLinkHandlerScreenState();
+  State<AdminApprovalLinkHandlerScreen> createState() =>
+      _AdminApprovalLinkHandlerScreenState();
 }
 
-class _AdminApprovalLinkHandlerScreenState extends State<AdminApprovalLinkHandlerScreen> {
+class _AdminApprovalLinkHandlerScreenState
+    extends State<AdminApprovalLinkHandlerScreen> {
   bool _processing = true;
   bool _result = false;
+  bool _handled = false;
   String? _message;
 
   @override
-  void initState() {
-    super.initState();
-    _handle();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_handled) {
+      _handled = true;
+      _handle();
+    }
   }
 
   Future<void> _handle() async {
@@ -27,6 +34,7 @@ class _AdminApprovalLinkHandlerScreenState extends State<AdminApprovalLinkHandle
     final token = uri.queryParameters['token']?.trim();
 
     if (userId == null || token == null || userId.isEmpty || token.isEmpty) {
+      if (!mounted) return;
       setState(() {
         _processing = false;
         _result = false;
@@ -35,11 +43,15 @@ class _AdminApprovalLinkHandlerScreenState extends State<AdminApprovalLinkHandle
       return;
     }
 
-    final ok = await ApprovalLinkService.instance.consumeTokenAndApprove(userId: userId, token: token);
+    final ok = await ApprovalLinkService.instance
+        .consumeTokenAndApprove(userId: userId, token: token);
+    if (!mounted) return;
     setState(() {
       _processing = false;
       _result = ok;
-      _message = ok ? 'User approved successfully.' : 'Approval link is invalid, expired, or already used.';
+      _message = ok
+          ? 'User approved successfully.'
+          : 'Approval link is invalid, expired, or already used.';
     });
   }
 
@@ -50,20 +62,32 @@ class _AdminApprovalLinkHandlerScreenState extends State<AdminApprovalLinkHandle
       body: Center(
         child: _processing
             ? const CircularProgressIndicator()
-            : Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    _result ? Icons.check_circle : Icons.error,
-                    size: ResponsiveUtils.getResponsiveIconSize(context, 64),
-                    color: _result ? Theme.of(context).colorScheme.tertiary : Theme.of(context).colorScheme.error,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    _message ?? '',
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                ],
+            : Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _result ? Icons.check_circle : Icons.error,
+                      size: ResponsiveUtils.getResponsiveIconSize(context, 64),
+                      color: _result
+                          ? Theme.of(context).colorScheme.tertiary
+                          : Theme.of(context).colorScheme.error,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      _message ?? '',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+                    const SizedBox(height: 24),
+                    FilledButton.icon(
+                      onPressed: () => context.go(AppConstants.adminRoute),
+                      icon: const Icon(Icons.dashboard_outlined),
+                      label: const Text('Back to Admin Dashboard'),
+                    ),
+                  ],
+                ),
               ),
       ),
     );

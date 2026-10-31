@@ -64,10 +64,46 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _loadLibraryContent();
+  }
+
+  Future<void> _loadLibraryContent() async {
+    try {
+      final results = await Future.wait([
+        _libraryService.listBooks(),
+        _libraryService.listArticles(),
+        _libraryService.listAudio(),
+        _libraryService.listVideos(),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        if (results[0].isNotEmpty) {
+          _allBooks
+            ..clear()
+            ..addAll(results[0]);
+        }
+        if (results[1].isNotEmpty) {
+          _allArticles
+            ..clear()
+            ..addAll(results[1]);
+        }
+        if (results[2].isNotEmpty) {
+          _allAudio
+            ..clear()
+            ..addAll(results[2]);
+        }
+        if (results[3].isNotEmpty) {
+          _allVideos
+            ..clear()
+            ..addAll(results[3]);
+        }
+      });
+    } catch (_) {}
   }
 
   @override
   void dispose() {
+    _audioPlayer.dispose();
     _tabController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -281,7 +317,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
         borderRadius: BorderRadius.circular(12),
       ),
       child: InkWell(
-        onTap: () => _navigateToBookReader(book['title']),
+        onTap: () => _navigateToBookReader((book['id'] ?? book['title']).toString()),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -367,7 +403,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
         borderRadius: BorderRadius.circular(12),
       ),
       child: InkWell(
-        onTap: () => _navigateToArticle(article['title']),
+        onTap: () => _navigateToArticle((article['id'] ?? article['title']).toString()),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -449,7 +485,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
         borderRadius: BorderRadius.circular(12),
       ),
       child: InkWell(
-        onTap: () => _playAudio(audio['title']),
+        onTap: () => _playAudio((audio['id'] ?? audio['title']).toString()),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -516,7 +552,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 ),
               ),
               IconButton(
-                onPressed: () => _downloadAudio(audio['title']),
+                onPressed: () => _downloadAudio((audio['id'] ?? audio['title']).toString()),
                 icon: const Icon(Icons.download),
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
@@ -534,7 +570,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
         borderRadius: BorderRadius.circular(12),
       ),
       child: InkWell(
-        onTap: () => _playVideo(video['title']),
+        onTap: () => _playVideo((video['id'] ?? video['title']).toString()),
         borderRadius: BorderRadius.circular(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

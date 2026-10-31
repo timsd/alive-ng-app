@@ -9,6 +9,37 @@ Format: [Semantic Versioning](https://semver.org) - `MAJOR.MINOR.PATCH+BUILD`
 
 ---
 
+## [2.0.5+12] - 2026-10-31
+
+### Added
+- **Appwrite 1.8 UID Sanitization Utility (`AppwriteIdUtils`)**: Created `lib/utils/appwrite_id_utils.dart` (`isValidUid`, `uniqueId`, `toValidUid`) to enforce Appwrite 1.8's strict `rowId` rules (`^[a-zA-Z0-9][a-zA-Z0-9_]{0,35}$`, max 36 chars, no hyphens or spaces, no leading underscore).
+- **Live Audio, Book, Article & Video Feeds in `LibraryScreen`**: Added `listBooks()`, `listArticles()`, `listAudio()` (merging `podcast_episodes` and `podcasts`), and `listVideos()` to `AppwriteLibraryService` and wired `LibraryScreen` to load live Appwrite content alongside curated collections.
+- **Prayer Hub & Study Quick Navigation**: Added quick-action header cards on `PrayerScreen` to open `PrayerWallScreen` (`/prayer-wall`) and `PrivatePrayerRoomScreen` (`/private-prayer-room` for leaders/admins), removed the redundant top donation icon on `PrayerWallScreen`, and wired `StudyScreen`'s "Study Guides" card directly to `/study-guide`.
+- **In-App Achievement Notifications & Detail View**: Wired `AchievementNotificationService` on badge unlock in `AchievementService` and badge tap navigation to `AchievementDetailScreen` in `AchievementScreen`.
+- **8 Production Appwrite Functions**: Deployed and synchronized `createLiveKitToken`, `paystack_payments`, `paystack_webhook`, `send_email`, `bind_office_identity`, `delete_account`, `monthly_donation_reminder`, and `notify_admin_signup`.
+
+### Fixed
+- **Audio Playback & Database `Invalid 'rowId' param` (400 `general_argument_invalid`)**:
+  - Fixed `AppwriteLibraryService._getByIdOrTitle` passing human-readable titles with spaces directly to `_tables.getRow(rowId:)` before checking `AppwriteIdUtils.isValidUid`.
+  - Replaced hyphenated `Uuid().v4()`, `YYYY-MM-DD`, and >36-char composite `rowId` values across `AppwriteAdminContentService`, `DailyVerseRepository`, `TractService`, `ChapterService`, `DiscipleshipService`, `DonationService`, `LeadershipService`, `StudyGuideService`, `KidsContentService`, `AppwriteBoardService`, `AppwriteStudyService`, `ContentManagementScreen`, `AppSettingsScreen`, and `RoleManagementScreen`.
+- **28-Screen Admin Area Audit & CRUD Fixes**:
+  - `AdminApprovalScreen`: Fixed approval query to match both `pending` and `pending_approval`, and persisted `rejection_reason` on user rejection.
+  - `AnnouncementEditorScreen`: Fixed edit mode silently creating duplicate rows instead of calling `updateRow`, and mapped `expiry_date` to `expires_at`.
+  - `AppSettingsScreen`: Replaced destructive delete-all-before-upsert save flow with safe upsert + stale-row cleanup.
+  - `TractPodcastAdminScreen` & `AppwriteStorageCompatService`: Added `updateTract` and `updatePodcast` so editing preserves the existing `$id` instead of creating duplicates.
+  - `MaterialSyncService`: Added `syncFromDatabase()` to populate in-memory cache from Appwrite `downloadable_materials` on startup.
+  - `DiscipleshipService`, `BoardDecisionsScreen`, `AppwriteBoardService`, `LeadershipArchiveScreen`, `BodTrusteesScreen`, `ChapterReportsScreen`, `ContentManagementScreen`, `RoleManagementScreen`, `AppwriteAdminExportService`, `AdminApprovalLinkHandlerScreen`, and `AdminDashboardScreen`: Resolved missing column mappings, role enum mismatches, and route guard alignment.
+- **Guest Mode & App Tour Polish**: Hid the "Account Pending Approval" banner for unauthenticated guests in the More modal and fixed App Tour route targets.
+
+### Changed
+- **Appwrite 1.8 TablesDB Schema & Storage Sync**:
+  - Provisioned missing live columns on `study_guides`, `study_questions`, `Users` (`rejection_reason`, `requested_role`), `podcast_episodes` (`transcript`), `discipleship_prayer_requests` (`history`), and `discipleship_reports` (`feedback`).
+  - Removed 14 obsolete 0-row legacy tables and `Users.work_contact` from live Appwrite TablesDB and `scripts/appwrite_infrastructure_schema.mjs` (80 active app tables + 1 server-only `officer_registry` table).
+  - Updated live `podcast_media` (`ogg`) and `meeting_files` (`md`) storage bucket extensions, plus `app_releases` bucket for Android APK distribution.
+- **Model & Codebase Consolidation**: Consolidated duplicate domain models (`Chapter`, `ChapterMember`, `LeadershipRecord`, `Mission`, `BibleStory`, `BibleVerse`, `Meeting`, `PrayerRequest`, `StudyProgress`) into their canonical model files and removed 27 orphaned legacy Dart files and 25 redundant/one-off scripts.
+
+---
+
 ## [1.2.0] - 2026-09-04
 
 ### Added

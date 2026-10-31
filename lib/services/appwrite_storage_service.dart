@@ -11,14 +11,6 @@ class AppwriteStorageService {
 
   final Storage _storage = Storage(appwriteClient);
 
-  /// Uploaded media is rendered with plain HTTP requests (e.g.
-  /// `CachedNetworkImage`), which cannot carry the Appwrite session header.
-  /// Without an explicit read permission the returned `/view` URL would 403
-  /// and the freshly uploaded picture would never appear in the UI.
-  static final List<String> _publicReadPermission = [
-    Permission.read(Role.any()),
-  ];
-
   static bool _isPermissionError(AppwriteException error) {
     final message = (error.message ?? '').toLowerCase();
     return message.contains('permission') || message.contains('forbidden');
@@ -47,7 +39,6 @@ class AppwriteStorageService {
       bytes: bytes,
       fileName: fileName,
       contentType: contentType,
-      permissions: _publicReadPermission,
     );
   }
 

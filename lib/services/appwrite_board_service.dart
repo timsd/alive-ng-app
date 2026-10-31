@@ -1,3 +1,4 @@
+import '../utils/appwrite_id_utils.dart';
 import 'dart:convert';
 
 import 'package:appwrite/appwrite.dart';
@@ -28,7 +29,7 @@ class AppwriteBoardService {
     await _tables.updateRow(
       databaseId: AppwriteBackendConfig.databaseId,
       tableId: AppwriteBackendConfig.boardReportsCollectionId,
-      rowId: reportId,
+      rowId: AppwriteIdUtils.toValidUid(reportId),
       data: {
         'status': status,
         'updated_at': _now(),
@@ -60,12 +61,38 @@ class AppwriteBoardService {
     return true;
   }
 
+  Future<bool> updateBoardDecisionStatus(
+    String decisionId,
+    String status, {
+    String? resolution,
+  }) async {
+    try {
+      await _tables.updateRow(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: AppwriteBackendConfig.boardDecisionsCollectionId,
+        rowId: AppwriteIdUtils.toValidUid(decisionId),
+        data: {
+          'status': status,
+          if (resolution != null) 'resolution': resolution,
+          if (status == 'approved' || status == 'rejected')
+            'resolved_at': _now(),
+          'updated_at': _now(),
+        },
+      );
+      return true;
+    } catch (e) {
+      _logger.error('Failed to update board decision status', e);
+      throw DatabaseException('Failed to update board decision status',
+          originalError: e);
+    }
+  }
+
   Future<bool> deleteBoardDecision(String decisionId) async {
     try {
       await _tables.deleteRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.boardDecisionsCollectionId,
-        rowId: decisionId,
+        rowId: AppwriteIdUtils.toValidUid(decisionId),
       );
       return true;
     } catch (e) {
@@ -83,7 +110,7 @@ class AppwriteBoardService {
       final current = await _tables.getRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.boardDecisionsCollectionId,
-        rowId: decisionId,
+        rowId: AppwriteIdUtils.toValidUid(decisionId),
       );
       final data = _documentData(current);
       final votes = List<Map<String, dynamic>>.from(
@@ -112,9 +139,10 @@ class AppwriteBoardService {
       await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.boardDecisionsCollectionId,
-        rowId: decisionId,
+        rowId: AppwriteIdUtils.toValidUid(decisionId),
         data: {
           'votes': jsonEncode(votes),
+          if (data['status'] == 'proposed') 'status': 'voting',
           'updated_at': _now(),
         },
       );
@@ -144,7 +172,7 @@ class AppwriteBoardService {
       final doc = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: collectionId,
-        rowId: data['id']?.toString() ?? ID.unique(),
+        rowId: AppwriteIdUtils.toValidUid(data['id']?.toString() ?? ID.unique()),
         data: _writeData(data),
       );
       return doc.$id;

@@ -1,6 +1,6 @@
 # Appwrite Migration Readiness
 
-Last reviewed: 2026-05-26
+Last reviewed: 2026-10-31 (v2.0.5+12 — 100% Live on Appwrite 1.8)
 
 ## Chat UI
 
@@ -22,19 +22,15 @@ organization.
 
 ## Appwrite Resource Status
 
-- Settings: app settings are represented in the infrastructure schema and app code; dashboard values still need final production review after the server is reachable.
-- Functions: `createLiveKitToken`, `paystack_payments`, `paystack_webhook`, and `send_email` are represented by local Appwrite function folders and deployment scripts.
-- Databases / collections: the schema source of truth is `scripts/appwrite_infrastructure_schema.mjs`; `npm run appwrite:dry-run` is clean.
-- Buckets: chat files, profile files, board documents, tracts/books, podcast media, content media, meeting files, and system exports are declared.
-- Teams: administrators, BOD, trustees, directors, chapter leaders, content editors, and moderators are declared.
-- Webhooks: profile approval, chat file, and donation record webhooks are optional and skipped until the corresponding `APPWRITE_*_WEBHOOK_URL` values are present.
-- Topics / Messaging: all user, admin, BOD, directors, chapter leaders, approvals, prayer, chat, donations, events, study, kids, health, and content topics are declared.
+- **Settings**: `app_settings` table and `app_version` row are live and synced with `pubspec.yaml` (`2.0.5+12`).
+- **Functions (8 Active)**: `createLiveKitToken`, `paystack_payments`, `paystack_webhook`, `send_email`, `bind_office_identity`, `delete_account`, `monthly_donation_reminder`, and `notify_admin_signup` are deployed under `appwrite_functions/` and managed via `scripts/upsert_appwrite_function_variables.mjs` and `scripts/deploy_function.mjs`.
+- **TablesDB (81 Active Tables)**: The schema source of truth is `scripts/appwrite_infrastructure_schema.mjs` (80 app tables + 1 server-only `officer_registry` table). Verified via `node scripts/audit_database.mjs` and `node --test scripts/appwrite_schema_sizes.test.mjs`.
+- **Buckets (9 Active Buckets)**: `chat_files`, `profile_files`, `board_documents`, `tract_files`, `podcast_media`, `content_media`, `meeting_files`, `system_exports`, and `app_releases` are live.
+- **Teams**: administrators, BOD, trustees, directors, chapter leaders, content editors, and moderators are provisioned.
+- **Webhooks**: profile approval, chat file, and donation record webhooks are optional and skipped until the corresponding `APPWRITE_*_WEBHOOK_URL` values are present.
+- **Topics / Messaging**: all user, admin, BOD, directors, chapter leaders, approvals, prayer, chat, donations, events, study, kids, health, and content topics are provisioned.
 
-Current blocker: the Appwrite endpoint and `app.alivenigeria.org` may still be
-unreachable depending on the current server/proxy/firewall/DNS/Coolify state.
-Local schema validation is clean with `npm run appwrite:dry-run`; rerun
-`npm run appwrite:provision` or `npm run appwrite:provision:legacy` after the
-server is reachable.
+Production status: Both `https://api.alivenigeria.org/v1` (Appwrite 1.8) and `https://app.alivenigeria.org` (Coolify web app) are live and verified.
 
 ## Deployment Gate
 

@@ -59,7 +59,7 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
       }).toList();
 
       setState(() {
-        _reports = chapterReports.isNotEmpty ? chapterReports : mapped;
+        _reports = chapterReports;
       });
     } catch (e) {
       if (mounted) {

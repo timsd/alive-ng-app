@@ -191,21 +191,6 @@ const SCHEMA = {
     created_at: DT,
   },
 
-  // A member's request to join a chapter, and the approval decision.
-  chapter_membership_requests: {
-    user_id: S(64),
-    user_name: S(200),
-    user_email: S(200),
-    chapter_id: S(64),
-    chapter_name: S(200),
-    requested_at: DT,
-    status: S(32),                // pending | approved | rejected
-    decided_by: S(64),
-    decided_by_name: S(200),
-    decided_at: DT,
-    decision_note: S(1000),
-  },
-
   // Reports a worker submits; an officer/coordinator answers.
   discipleship_reports: {
     disciple_maker_id: S(64),
@@ -241,17 +226,6 @@ const SCHEMA = {
     created_at: DT,
   },
 
-  // Discussion rooms. Access is decided by the app role via min_role, never by
-  // membership of an email alias.
-  org_rooms: {
-    room_id: S(128),              // 'directors' | 'trustees' | 'chapter:<id>'
-    name: S(200),
-    description: S(1000),
-    scope: S(32),                 // directors | trustees | chapter | admin
-    chapter_id: S(64),
-    min_role: S(32),
-    created_at: DT,
-  },
 };
 
 await main();

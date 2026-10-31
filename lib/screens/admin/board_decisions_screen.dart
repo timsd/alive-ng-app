@@ -588,9 +588,26 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
               onPressed: () => Navigator.pop(context),
               child: const Text('Close'),
             ),
-            if (decision.status == 'voting')
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+            if (_isAdmin && decision.status == 'proposed')
+              OutlinedButton.icon(
+                onPressed: () async {
+                  final success = await _boardService.updateBoardDecisionStatus(
+                    decision.id,
+                    'voting',
+                  );
+                  if (success && context.mounted) {
+                    Navigator.pop(context);
+                    _loadDecisions();
+                  }
+                },
+                icon: const Icon(Icons.how_to_vote_outlined, size: 18),
+                label: const Text('Open Voting'),
+              ),
+            if (decision.status == 'proposed' || decision.status == 'voting')
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.end,
                 children: [
                   ElevatedButton(
                     onPressed: () async {
@@ -610,9 +627,8 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                     style: ElevatedButton.styleFrom(
                         backgroundColor: colorScheme.tertiary,
                         foregroundColor: colorScheme.onTertiary),
-                    child: const Text('Approve'),
+                    child: const Text('Vote Approve'),
                   ),
-                  const SizedBox(width: 8),
                   ElevatedButton(
                     onPressed: () async {
                       final authService = AuthService.instance;
@@ -631,8 +647,41 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                     style: ElevatedButton.styleFrom(
                         backgroundColor: colorScheme.error,
                         foregroundColor: colorScheme.onError),
-                    child: const Text('Reject'),
+                    child: const Text('Vote Reject'),
                   ),
+                  if (_isAdmin && decision.status == 'voting') ...[
+                    OutlinedButton(
+                      onPressed: () async {
+                        final success =
+                            await _boardService.updateBoardDecisionStatus(
+                          decision.id,
+                          'approved',
+                          resolution: 'Approved by Board vote',
+                        );
+                        if (success && context.mounted) {
+                          Navigator.pop(context);
+                          _loadDecisions();
+                        }
+                      },
+                      child: const Text('Finalize Approved'),
+                    ),
+                    OutlinedButton(
+                      onPressed: () async {
+                        final success =
+                            await _boardService.updateBoardDecisionStatus(
+                          decision.id,
+                          'rejected',
+                          resolution: 'Rejected by Board vote',
+                        );
+                        if (success && context.mounted) {
+                          Navigator.pop(context);
+                          _loadDecisions();
+                        }
+                      },
+                      child: Text('Finalize Rejected',
+                          style: TextStyle(color: colorScheme.error)),
+                    ),
+                  ],
                 ],
               ),
           ],

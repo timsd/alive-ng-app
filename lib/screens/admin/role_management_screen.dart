@@ -1,12 +1,13 @@
+import '../../utils/appwrite_id_utils.dart';
 import 'package:flutter/material.dart';
 
 import '../../models/app_models.dart';
+import '../../models/leadership_models.dart' show RoleHistoryRecord;
 import '../../services/appwrite_profile_service.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/role_guard.dart';
 import '../../widgets/custom_image.dart';
 import '../../constants/chapters.dart';
-import 'package:uuid/uuid.dart';
 import 'package:intl/intl.dart';
 
 class RoleManagementScreen extends StatefulWidget {
@@ -135,17 +136,24 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Role Management',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onPrimary,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Colors.white),
-        actionsIconTheme: const IconThemeData(color: Colors.white),
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
+        iconTheme: IconThemeData(color: Theme.of(context).colorScheme.onPrimary),
+        actionsIconTheme:
+            IconThemeData(color: Theme.of(context).colorScheme.onPrimary),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white),
+            icon: Icon(
+              Icons.refresh,
+              color: Theme.of(context).colorScheme.onPrimary,
+            ),
             tooltip: 'Refresh',
             onPressed: _loadUsers,
           ),
@@ -156,7 +164,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
           // Search and Filter Section
           Container(
             padding: const EdgeInsets.all(16.0),
-            color: Colors.grey.shade50,
+            color: Theme.of(context).colorScheme.surfaceContainerLow,
             child: Column(
               children: [
                 // Search Bar
@@ -375,9 +383,9 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
               ? CustomImage.provider(user.avatarUrl!)
               : null,
           child: user.avatarUrl == null
-              ? const Icon(
+              ? Icon(
                   Icons.person,
-                  color: Colors.white,
+                  color: _getRoleForegroundColor(context, user.role),
                 )
               : null,
         ),
@@ -533,6 +541,22 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
       case 'member':
       default:
         return colorScheme.secondary;
+    }
+  }
+
+  Color _getRoleForegroundColor(BuildContext context, String role) {
+    final colorScheme = Theme.of(context).colorScheme;
+    switch (role) {
+      case 'admin':
+        return colorScheme.onError;
+      case 'leader':
+      case 'dietist':
+        return colorScheme.onTertiary;
+      case 'coordinator':
+        return colorScheme.onPrimary;
+      case 'member':
+      default:
+        return colorScheme.onSecondary;
     }
   }
 
@@ -805,12 +829,12 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
     }
   }
 
-  Future<LeadershipRecord?> _showArchiveRoleDialog(UserProfile user) async {
+  Future<RoleHistoryRecord?> _showArchiveRoleDialog(UserProfile user) async {
     DateTime startDate = DateTime.now().subtract(const Duration(days: 365));
     DateTime endDate = DateTime.now();
     bool shouldArchive = true;
 
-    return await showDialog<LeadershipRecord?>(
+    return await showDialog<RoleHistoryRecord?>(
       context: context,
       barrierDismissible: false,
       builder: (context) {
@@ -880,8 +904,8 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
                       Navigator.of(context).pop(null);
                       return;
                     }
-                    final record = LeadershipRecord(
-                      id: const Uuid().v4(),
+                    final record = RoleHistoryRecord(
+                      id: AppwriteIdUtils.uniqueId(),
                       userId: user.id,
                       role: user.role,
                       startDate: startDate,
@@ -909,7 +933,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
           content: SizedBox(
             width: double.maxFinite,
             height: 400,
-            child: FutureBuilder<List<LeadershipRecord>>(
+            child: FutureBuilder<List<RoleHistoryRecord>>(
               future: _profileService.getLeadershipHistory(user.id),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -938,8 +962,9 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
                       child: ListTile(
                         leading: CircleAvatar(
                           backgroundColor: _getRoleColor(context, record.role),
-                          child: const Icon(Icons.history,
-                              color: Colors.white, size: 20),
+                          child: Icon(Icons.history,
+                              color: _getRoleForegroundColor(context, record.role),
+                              size: 20),
                         ),
                         title: Text(record.role.toUpperCase(),
                             style:

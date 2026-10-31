@@ -58,7 +58,6 @@ class AppConstants {
   static const String privatePrayerRoomRoute = '/private-prayer-room';
   static const String eventsRoute = '/events';
   static const String testimoniesRoute = '/testimonies';
-  static const String resourcesRoute = '/resources';
   
 
   // Support Routes

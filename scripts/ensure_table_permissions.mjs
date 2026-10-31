@@ -71,7 +71,12 @@ async function run() {
   console.log(`Found ${tables.length} tables in Appwrite TablesDB.`);
 
   let updatedCount = 0;
+  const serverOnlyTables = new Set(['officer_registry']);
   for (const table of tables) {
+    if (serverOnlyTables.has(table.$id)) {
+      console.log(`[SKIP] ${table.name} (${table.$id}) is server-only.`);
+      continue;
+    }
     const currentPerms = table.$permissions || [];
     const missing = standardPermissions.filter((p) => !currentPerms.includes(p));
 

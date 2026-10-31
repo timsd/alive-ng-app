@@ -200,21 +200,13 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    translate('great_commission'),
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onPrimary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  SizedBox(
-                      height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
-                  Text(
                     translate('go_make_disciples'),
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           color: Theme.of(context)
                               .colorScheme
                               .onPrimary
-                              .withValues(alpha: 0.9),
+                              .withValues(alpha: 0.95),
+                          fontWeight: FontWeight.w500,
                         ),
                   ),
                 ],

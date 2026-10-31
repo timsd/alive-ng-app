@@ -1,3 +1,4 @@
+import '../utils/appwrite_id_utils.dart';
 import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/models.dart' as models;
 
@@ -47,7 +48,7 @@ class AppwriteAdminContentService {
     await _tables.upsertRow(
       databaseId: AppwriteBackendConfig.databaseId,
       tableId: collectionId,
-      rowId: documentId,
+      rowId: AppwriteIdUtils.toValidUid(documentId),
       data: payload,
     );
   }
@@ -61,7 +62,7 @@ class AppwriteAdminContentService {
     await _tables.updateRow(
       databaseId: AppwriteBackendConfig.databaseId,
       tableId: collectionId,
-      rowId: documentId,
+      rowId: AppwriteIdUtils.toValidUid(documentId),
       data: _sanitize(collectionId, data),
     );
   }
@@ -70,7 +71,7 @@ class AppwriteAdminContentService {
     await _tables.deleteRow(
       databaseId: AppwriteBackendConfig.databaseId,
       tableId: _collectionId(collection),
-      rowId: documentId,
+      rowId: AppwriteIdUtils.toValidUid(documentId),
     );
   }
 

@@ -1,3 +1,4 @@
+import '../utils/appwrite_id_utils.dart';
 import 'package:appwrite/appwrite.dart' hide Locale;
 
 import '../config/appwrite_backend_config.dart';
@@ -17,15 +18,28 @@ class DailyVerseRepository {
 
   Future<DailyVerse?> getDailyVerse(DateTime date) async {
     try {
-      final id = _dateKey(date);
+      final id = AppwriteIdUtils.toValidUid(_dateKey(date), prefix: 'dv');
       final row = await _tables.getRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.dailyVersesCollectionId,
-        rowId: id,
+        rowId: AppwriteIdUtils.toValidUid(id, prefix: 'dv'),
       );
       return DailyVerse.fromJson(_dailyVerseData(row.$id, row.data));
     } catch (e) {
-      if (e is AppwriteException && e.code == 404) return null;
+      if (e is AppwriteException && (e.code == 404 || e.code == 400)) {
+        try {
+          final byDate = await _tables.listRows(
+            databaseId: AppwriteBackendConfig.databaseId,
+            tableId: AppwriteBackendConfig.dailyVersesCollectionId,
+            queries: [Query.equal('date', _dateKey(date)), Query.limit(1)],
+          );
+          if (byDate.rows.isNotEmpty) {
+            final row = byDate.rows.first;
+            return DailyVerse.fromJson(_dailyVerseData(row.$id, row.data));
+          }
+        } catch (_) {}
+        return null;
+      }
       _logger.error('Error getting daily verse for ${_dateKey(date)}: $e');
       return null;
     }
@@ -33,7 +47,7 @@ class DailyVerseRepository {
 
   Future<DailyVerse> createDailyVerse(DailyVerse dailyVerse) async {
     try {
-      final id = _dateKey(dailyVerse.date);
+      final id = AppwriteIdUtils.toValidUid(_dateKey(dailyVerse.date), prefix: 'dv');
       final data = {
         'verse': dailyVerse.verse,
         'reference': dailyVerse.reference,
@@ -98,7 +112,7 @@ class DailyVerseRepository {
       await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.dailyVersesCollectionId,
-        rowId: id,
+        rowId: AppwriteIdUtils.toValidUid(id, prefix: 'dv'),
         data: data,
       );
     } catch (e) {
@@ -106,7 +120,7 @@ class DailyVerseRepository {
       await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.dailyVersesCollectionId,
-        rowId: id,
+        rowId: AppwriteIdUtils.toValidUid(id, prefix: 'dv'),
         data: data,
       );
     }

@@ -37,7 +37,11 @@ class MaterialSyncService {
       final name = file.name;
       if (!name.toLowerCase().endsWith('.pdf')) continue;
 
-      final id = name.replaceAll('.pdf', '');
+      final id = file.$id;
+      final titleName = name
+          .replaceAll(RegExp(r'\.pdf$', caseSensitive: false), '')
+          .replaceAll('_', ' ')
+          .trim();
       final fileUrl = '${AppwriteBackendConfig.endpoint}/storage/buckets/'
           '${AppwriteBackendConfig.tractFilesBucketId}/files/${file.$id}/view'
           '?project=${AppwriteBackendConfig.projectId}';
@@ -58,7 +62,7 @@ class MaterialSyncService {
       }
 
       final data = {
-        'title': id.replaceAll('_', ' ').trim(),
+        'title': titleName.isEmpty ? 'Tract PDF' : titleName,
         'description': 'Tract PDF',
         'category': 'Tracts',
         'file_url': fileUrl,

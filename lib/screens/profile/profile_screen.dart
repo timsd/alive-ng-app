@@ -1,13 +1,22 @@
+import 'dart:io' as io;
+
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../providers/language_provider.dart';
 import '../../l10n/supported_language.dart';
 import '../../providers/appwrite_auth_provider.dart';
 import '../../models/app_models.dart';
 import '../../services/appwrite_profile_service.dart';
+import '../../services/appwrite_storage_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/biometric_auth_service.dart';
+import '../../services/role_access_service.dart';
+import '../../utils/error_detail.dart';
 import '../../utils/toast_utils.dart';
 import '../../config/appwrite_backend_config.dart';
 import '../../utils/responsive_utils.dart';
@@ -18,47 +27,9 @@ import '../../widgets/custom_image.dart';
 import '../../widgets/shimmer_loading.dart';
 import 'subscriptions_sheet.dart';
 
-// Provider for user profile — gracefully falls back to session data on error
-final userProfileProvider = FutureProvider<UserProfile?>((ref) async {
-  final user = ref.watch(appwriteUserStreamProvider).value;
-  if (user == null) return null;
-
-  try {
-    final profileService = ref.watch(appwriteProfileServiceProvider);
-    final document = await profileService.ensureUserProfile(
-      userId: user.uid,
-      email: user.email,
-      fullName: user.displayName ?? user.email.split('@').first,
-    );
-    return profileService.userProfileFromDocument(
-      document,
-      fallbackEmail: user.email,
-      fallbackFullName: user.displayName,
-      isEmailVerified: user.isEmailVerified,
-      isAnonymous: user.isAnonymous,
-      photoUrl: user.photoUrl,
-    );
-  } catch (_) {
-    // Fallback: build a minimal profile from the session so the UI never
-    // shows a raw error container.
-    return UserProfile(
-      id: user.uid,
-      email: user.email,
-      fullName: user.displayName ?? user.email.split('@').first,
-      photoUrl: user.photoUrl,
-      isEmailVerified: user.isEmailVerified,
-      isAnonymous: user.isAnonymous,
-      role: AppwriteBackendConfig.isSuperAdminEmail(user.email)
-          ? 'admin'
-          : 'member',
-      approvalStatus: AppwriteBackendConfig.isSuperAdminEmail(user.email)
-          ? 'approved'
-          : 'pending',
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-    );
-  }
-});
+// Unified provider for user profile — aliases currentUserProfileProvider so
+// Home (GreetingHeader), ProfileScreen, and EditProfileScreen share one source of truth.
+final userProfileProvider = currentUserProfileProvider;
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -76,7 +47,7 @@ class ProfileScreen extends ConsumerWidget {
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {
-            ref.invalidate(userProfileProvider);
+            ref.invalidate(currentUserProfileProvider);
           },
           child: _buildBody(context, ref, translate, theme),
         ),
@@ -103,10 +74,12 @@ class ProfileScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 24.0, vertical: 8.0),
                   child: Row(
                     children: [
-                      const Icon(Icons.language_rounded, color: Color(0xFF3B82F6)),
+                      const Icon(Icons.language_rounded,
+                          color: Color(0xFF3B82F6)),
                       const SizedBox(width: 12),
                       Text(
                         translate('language'),
@@ -119,7 +92,8 @@ class ProfileScreen extends ConsumerWidget {
                 ),
                 const Divider(),
                 ...SupportedLanguage.values.map((language) {
-                  final isSelected = currentLocale.languageCode == language.code;
+                  final isSelected =
+                      currentLocale.languageCode == language.code;
                   return ListTile(
                     leading: CircleAvatar(
                       backgroundColor: isSelected
@@ -130,22 +104,28 @@ class ProfileScreen extends ConsumerWidget {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
-                          color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+                          color: isSelected
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ),
                     title: Text(
                       language.name,
                       style: TextStyle(
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.normal,
                       ),
                     ),
                     subtitle: Text(_getNativeLanguageName(language.code)),
                     trailing: isSelected
-                        ? Icon(Icons.check_circle_rounded, color: theme.colorScheme.primary)
+                        ? Icon(Icons.check_circle_rounded,
+                            color: theme.colorScheme.primary)
                         : null,
                     onTap: () {
-                      ref.read(localeProvider.notifier).setLocale(language.code);
+                      ref
+                          .read(localeProvider.notifier)
+                          .setLocale(language.code);
                       Navigator.of(context).pop();
                     },
                   );
@@ -172,45 +152,47 @@ class ProfileScreen extends ConsumerWidget {
     }
   }
 
-
   Widget _buildBody(BuildContext context, WidgetRef ref,
       String Function(String) translate, ThemeData theme) {
-    final userProfileAsync = ref.watch(userProfileProvider);
+    final userProfileAsync = ref.watch(currentUserProfileProvider);
 
     return userProfileAsync.when(
       data: (profile) {
         if (profile == null) {
-          return const Center(child: Text('Please sign in to view your profile.'));
+          return const Center(
+              child: Text('Please sign in to view your profile.'));
         }
         return _buildProfileContent(context, ref, translate, theme, profile);
       },
       loading: () => const _ProfileScreenSkeleton(),
       error: (_, __) {
-        // Even on error, try to show basic content
         final user = ref.watch(appwriteUserStreamProvider).value;
         if (user != null) {
           final fallback = UserProfile(
             id: user.uid,
             email: user.email,
             fullName: user.displayName ?? user.email.split('@').first,
+            avatarUrl: user.photoUrl,
             photoUrl: user.photoUrl,
             role: 'member',
             approvalStatus: 'pending',
             createdAt: DateTime.now(),
             updatedAt: DateTime.now(),
           );
-          return _buildProfileContent(context, ref, translate, theme, fallback);
+          return _buildProfileContent(
+              context, ref, translate, theme, fallback);
         }
         return Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
+              Icon(Icons.error_outline,
+                  size: 48, color: theme.colorScheme.error),
               const SizedBox(height: 16),
               Text(translate('error_loading_profile')),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: () => ref.invalidate(userProfileProvider),
+                onPressed: () => ref.invalidate(currentUserProfileProvider),
                 child: const Text('Retry'),
               ),
             ],
@@ -224,8 +206,9 @@ class ProfileScreen extends ConsumerWidget {
       String Function(String) translate, ThemeData theme, UserProfile profile) {
     final isSuperAdmin = AppwriteBackendConfig.isSuperAdminEmail(profile.email);
     final effectiveRole = isSuperAdmin ? 'admin' : profile.role;
-    final effectiveApproval =
-        isSuperAdmin || effectiveRole == 'admin' ? 'approved' : profile.approvalStatus;
+    final effectiveApproval = isSuperAdmin || effectiveRole == 'admin'
+        ? 'approved'
+        : profile.approvalStatus;
 
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -251,13 +234,20 @@ class ProfileScreen extends ConsumerWidget {
             title: 'Personal & Ministry Info',
             icon: Icons.person_rounded,
             items: [
-              _InfoItem('Email', profile.email ?? 'Not set', Icons.email_rounded),
-              _InfoItem('Phone', profile.phoneNumber ?? 'Not set', Icons.phone_rounded),
-              _InfoItem('Location', profile.location ?? 'Not set', Icons.location_on_rounded),
-              _InfoItem('Local Church', profile.localChurch ?? 'Not set', Icons.church_rounded),
-              _InfoItem('Chapter', profile.localChapter ?? 'Not set', Icons.groups_rounded),
-              _InfoItem('Occupation', profile.occupation ?? 'Not set', Icons.work_rounded),
-              _InfoItem('Skills', profile.skills ?? 'Not set', Icons.build_rounded),
+              _InfoItem(
+                  'Email', profile.email ?? 'Not set', Icons.email_rounded),
+              _InfoItem('Phone', profile.phoneNumber ?? 'Not set',
+                  Icons.phone_rounded),
+              _InfoItem('Location', profile.location ?? 'Not set',
+                  Icons.location_on_rounded),
+              _InfoItem('Local Church', profile.localChurch ?? 'Not set',
+                  Icons.church_rounded),
+              _InfoItem('Chapter', profile.localChapter ?? 'Not set',
+                  Icons.groups_rounded),
+              _InfoItem('Occupation', profile.occupation ?? 'Not set',
+                  Icons.work_rounded),
+              _InfoItem(
+                  'Skills', profile.skills ?? 'Not set', Icons.build_rounded),
               if (profile.bio != null && profile.bio!.isNotEmpty)
                 _InfoItem('Bio', profile.bio!, Icons.info_rounded),
               _InfoItem(
@@ -269,8 +259,6 @@ class ProfileScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
 
-          // Admin entry points live under More > Admin Dashboard and More >
-          // Board (BOD). Profile intentionally omits that Administrative block.
           // ── Preferences ──
           _SectionCard(
             title: translate('preferences'),
@@ -293,7 +281,8 @@ class ProfileScreen extends ConsumerWidget {
                 iconColor: const Color(0xFFEAB308),
                 title: translate('notifications'),
                 subtitle: translate('manage_notifications'),
-                onTap: () => context.push(AppConstants.notificationSettingsRoute),
+                onTap: () =>
+                    context.push(AppConstants.notificationSettingsRoute),
               ),
               _ActionTile(
                 icon: Icons.emoji_events_rounded,
@@ -327,15 +316,6 @@ class ProfileScreen extends ConsumerWidget {
             title: 'Account & Security',
             icon: Icons.security_rounded,
             children: [
-              // Biometric sign-in belongs with account settings, not buried on
-              // the sign-in screen: once someone is signed in, the auth screen
-              // is unreachable, so that was the only place they could turn it
-              // on -- effectively nowhere.
-              //
-              // Only shown when the device actually supports it. The service
-              // reports unavailable on web, so on the deployed web build this
-              // row is correctly hidden rather than offering a switch that
-              // cannot work.
               _BiometricToggle(profile: profile),
               _ActionTile(
                 icon: Icons.lock_reset_rounded,
@@ -382,18 +362,15 @@ class ProfileScreen extends ConsumerWidget {
 
   void _navigateToEditProfile(
       BuildContext context, WidgetRef ref, UserProfile profile) async {
-    final result = await Navigator.push(
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => EditProfileScreen(userProfile: profile),
       ),
     );
-    // Always refresh: the edit screen may have uploaded a new profile picture
-    // (persisted immediately) even when the user left without saving.
-    ref.invalidate(userProfileProvider);
-    if (result != null) {
-      ref.invalidate(currentUserProfileProvider);
-    }
+    // Always invalidate currentUserProfileProvider when returning so both
+    // ProfileScreen and Home (GreetingHeader) reflect any updated photo or info.
+    ref.invalidate(currentUserProfileProvider);
   }
 
   void _showResetPasswordDialog(BuildContext context, UserProfile profile) {
@@ -449,6 +426,7 @@ class ProfileScreen extends ConsumerWidget {
             onPressed: () async {
               Navigator.pop(ctx);
               try {
+                ref.read(uploadedAvatarUrlProvider.notifier).state = null;
                 await AuthService.instance.signOut();
                 ref.invalidate(currentUserProfileProvider);
                 if (context.mounted) {
@@ -513,7 +491,6 @@ class ProfileScreen extends ConsumerWidget {
           FilledButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              // Second confirmation — the user must actually type DELETE.
               final deleteController = TextEditingController();
               final confirmed = await showDialog<bool>(
                 context: context,
@@ -547,10 +524,11 @@ class ProfileScreen extends ConsumerWidget {
                         child: const Text('Cancel'),
                       ),
                       FilledButton(
-                        onPressed: deleteController.text.trim().toUpperCase() ==
-                                'DELETE'
-                            ? () => Navigator.pop(ctx2, true)
-                            : null,
+                        onPressed:
+                            deleteController.text.trim().toUpperCase() ==
+                                    'DELETE'
+                                ? () => Navigator.pop(ctx2, true)
+                                : null,
                         style: FilledButton.styleFrom(
                           backgroundColor: Theme.of(context).colorScheme.error,
                         ),
@@ -589,7 +567,7 @@ class ProfileScreen extends ConsumerWidget {
 
 // ─── Reusable Profile Widgets ────────────────────────────────────────────────
 
-class _ProfileHeaderCard extends StatelessWidget {
+class _ProfileHeaderCard extends ConsumerStatefulWidget {
   final UserProfile profile;
   final String effectiveRole;
   final String effectiveApproval;
@@ -603,10 +581,242 @@ class _ProfileHeaderCard extends StatelessWidget {
   });
 
   @override
+  ConsumerState<_ProfileHeaderCard> createState() => _ProfileHeaderCardState();
+}
+
+class _ProfileHeaderCardState extends ConsumerState<_ProfileHeaderCard> {
+  Uint8List? _pendingBytes;
+  bool _isUploading = false;
+
+  static String _detectImageExtension(Uint8List bytes, String rawExt) {
+    if (bytes.length >= 4) {
+      if (bytes[0] == 0x89 &&
+          bytes[1] == 0x50 &&
+          bytes[2] == 0x4E &&
+          bytes[3] == 0x47) {
+        return 'png';
+      }
+      if (bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF) {
+        return 'jpg';
+      }
+      if (bytes[0] == 0x47 &&
+          bytes[1] == 0x49 &&
+          bytes[2] == 0x46 &&
+          bytes[3] == 0x38) {
+        return 'gif';
+      }
+      if (bytes.length >= 12 &&
+          bytes[0] == 0x52 &&
+          bytes[1] == 0x49 &&
+          bytes[2] == 0x46 &&
+          bytes[3] == 0x46 &&
+          bytes[8] == 0x57 &&
+          bytes[9] == 0x45 &&
+          bytes[10] == 0x42 &&
+          bytes[11] == 0x50) {
+        return 'webp';
+      }
+    }
+    final cleaned = rawExt.trim().toLowerCase();
+    const allowed = {'jpg', 'jpeg', 'png', 'webp', 'gif'};
+    if (allowed.contains(cleaned)) return cleaned;
+    return 'jpg';
+  }
+
+  Future<void> _showPhotoPicker() async {
+    if (_isUploading) return;
+    if (kIsWeb) {
+      await _pickAndUploadAvatar(ImageSource.gallery);
+      return;
+    }
+
+    await showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Change Profile Photo',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('Take Photo with Camera'),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _pickAndUploadAvatar(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Choose from Photo Gallery'),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _pickAndUploadAvatar(ImageSource.gallery);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickAndUploadAvatar(ImageSource source) async {
+    try {
+      Uint8List? imageBytes;
+      String rawExt = 'jpg';
+
+      try {
+        final picker = ImagePicker();
+        final pickedFile = await picker.pickImage(
+          source: source,
+          maxWidth: 1024,
+          maxHeight: 1024,
+          imageQuality: 85,
+        );
+        if (pickedFile != null) {
+          imageBytes = await pickedFile.readAsBytes();
+          if (pickedFile.name.contains('.')) {
+            rawExt = pickedFile.name.split('.').last.toLowerCase();
+          } else if (pickedFile.mimeType != null &&
+              pickedFile.mimeType!.contains('/')) {
+            rawExt = pickedFile.mimeType!.split('/').last.toLowerCase();
+          }
+        }
+      } catch (pickerErr) {
+        debugPrint('[ProfileHeader] ImagePicker fallback: $pickerErr');
+        final result = await FilePicker.platform.pickFiles(
+          type: FileType.image,
+          allowMultiple: false,
+          withData: true,
+        );
+        if (result != null && result.files.isNotEmpty) {
+          final f = result.files.first;
+          if (f.bytes != null) {
+            imageBytes = f.bytes;
+          } else if (f.path != null && !kIsWeb) {
+            imageBytes = await io.File(f.path!).readAsBytes();
+          }
+          if (f.extension != null) rawExt = f.extension!.toLowerCase();
+        }
+      }
+
+      if (imageBytes == null || imageBytes.isEmpty) return;
+
+      final extension = _detectImageExtension(imageBytes, rawExt);
+
+      setState(() {
+        _pendingBytes = imageBytes;
+        _isUploading = true;
+      });
+
+      final previousUrl = widget.profile.avatarUrl ?? widget.profile.photoUrl;
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final fileName = 'profile_${widget.profile.id}_$timestamp.$extension';
+      final contentType = switch (extension) {
+        'png' => 'image/png',
+        'webp' => 'image/webp',
+        'gif' => 'image/gif',
+        _ => 'image/jpeg',
+      };
+
+      final publicUrl = await AppwriteStorageService.instance.uploadProfileFile(
+        bytes: imageBytes,
+        fileName: fileName,
+        contentType: contentType,
+      );
+
+      await ref.read(appwriteProfileServiceProvider).updateUserProfile(
+            userId: widget.profile.id,
+            email: widget.profile.email,
+            fullName: widget.profile.fullName,
+            profileData: {
+              'avatar_url': publicUrl,
+              'photo_url': publicUrl,
+            },
+          );
+
+      ref.read(uploadedAvatarUrlProvider.notifier).state = publicUrl;
+      RoleAccessService.instance.clearCache();
+
+      try {
+        if (previousUrl != null && previousUrl.isNotEmpty) {
+          await CachedNetworkImageProvider(previousUrl).evict();
+        }
+        await CachedNetworkImageProvider(publicUrl).evict();
+        PaintingBinding.instance.imageCache.clear();
+        PaintingBinding.instance.imageCache.clearLiveImages();
+      } catch (_) {}
+
+      ref.invalidate(currentUserProfileProvider);
+      ToastUtils.showSuccess('Profile photo updated!');
+
+      if (previousUrl != null &&
+          previousUrl.isNotEmpty &&
+          previousUrl != publicUrl) {
+        try {
+          await AppwriteStorageService.instance.deleteFileByUrl(previousUrl);
+        } catch (_) {}
+      }
+    } catch (e) {
+      debugPrint('[ProfileHeader] avatar upload error: ${describeError(e)}');
+      if (mounted) {
+        setState(() => _pendingBytes = null);
+      }
+      ToastUtils.showError('Upload failed: ${describeError(e)}');
+    } finally {
+      if (mounted) {
+        setState(() => _isUploading = false);
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final avatarRadius = ResponsiveUtils.getResponsiveValue(
         context: context, mobile: 44.0, tablet: 54.0, desktop: 64.0);
+    final avatarOverride = ref.watch(uploadedAvatarUrlProvider);
+
+    final avatar = avatarOverride != null
+        ? (avatarOverride.trim().isEmpty ? null : avatarOverride.trim())
+        : ((widget.profile.avatarUrl != null &&
+                widget.profile.avatarUrl!.trim().isNotEmpty)
+            ? widget.profile.avatarUrl!.trim()
+            : ((widget.profile.photoUrl != null &&
+                    widget.profile.photoUrl!.trim().isNotEmpty)
+                ? widget.profile.photoUrl!.trim()
+                : null));
+
+    final displayName = (widget.profile.fullName ?? '').trim();
+    final initialLetter = displayName.isNotEmpty
+        ? displayName[0].toUpperCase()
+        : ((widget.profile.email ?? '').isNotEmpty
+            ? widget.profile.email![0].toUpperCase()
+            : 'M');
+
+    Widget buildPlaceholder() {
+      return Center(
+        child: Text(
+          initialLetter,
+          style: TextStyle(
+            fontSize: avatarRadius * 0.72,
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.onPrimary,
+          ),
+        ),
+      );
+    }
 
     return Container(
       width: double.infinity,
@@ -626,44 +836,73 @@ class _ProfileHeaderCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Avatar
-          // Avatar
-          Builder(
-            builder: (context) {
-              final avatar = (profile.avatarUrl != null &&
-                      profile.avatarUrl!.trim().isNotEmpty)
-                  ? profile.avatarUrl!.trim()
-                  : ((profile.photoUrl != null &&
-                          profile.photoUrl!.trim().isNotEmpty)
-                      ? profile.photoUrl!.trim()
-                      : null);
-
-              return CircleAvatar(
-                radius: avatarRadius,
-                backgroundColor: theme.colorScheme.primary,
-                child: avatar != null
-                    ? ClipOval(
-                        child: CustomImage(
-                          imageUrl: avatar,
-                          width: avatarRadius * 2,
-                          height: avatarRadius * 2,
-                          fit: BoxFit.cover,
-                          placeholder: Icon(Icons.person,
-                              size: avatarRadius,
-                              color: theme.colorScheme.onPrimary),
+          // Tappable Avatar with Camera Badge
+          GestureDetector(
+            onTap: _showPhotoPicker,
+            child: Stack(
+              alignment: Alignment.bottomRight,
+              children: [
+                CircleAvatar(
+                  radius: avatarRadius,
+                  backgroundColor: theme.colorScheme.primary,
+                  child: _pendingBytes != null
+                      ? ClipOval(
+                          child: Image.memory(
+                            _pendingBytes!,
+                            key: ValueKey(_pendingBytes.hashCode),
+                            width: avatarRadius * 2,
+                            height: avatarRadius * 2,
+                            fit: BoxFit.cover,
+                            gaplessPlayback: true,
+                          ),
+                        )
+                      : (avatar != null
+                          ? ClipOval(
+                              child: CustomImage(
+                                key: ValueKey(avatar),
+                                imageUrl: avatar,
+                                width: avatarRadius * 2,
+                                height: avatarRadius * 2,
+                                fit: BoxFit.cover,
+                                backgroundColor: theme.colorScheme.primary,
+                                placeholder: buildPlaceholder(),
+                              ),
+                            )
+                          : buildPlaceholder()),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: theme.colorScheme.surface,
+                      width: 2,
+                    ),
+                  ),
+                  child: _isUploading
+                      ? SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: theme.colorScheme.onPrimary,
+                          ),
+                        )
+                      : Icon(
+                          Icons.camera_alt_rounded,
+                          size: 16,
+                          color: theme.colorScheme.onPrimary,
                         ),
-                      )
-                    : Icon(Icons.person,
-                        size: avatarRadius,
-                        color: theme.colorScheme.onPrimary),
-              );
-            },
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
 
           // Name
           Text(
-            profile.fullName ?? 'Guest User',
+            widget.profile.fullName ?? 'Guest User',
             style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
             ),
@@ -673,7 +912,7 @@ class _ProfileHeaderCard extends StatelessWidget {
 
           // Email
           Text(
-            profile.email ?? '',
+            widget.profile.email ?? '',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
             ),
@@ -687,8 +926,8 @@ class _ProfileHeaderCard extends StatelessWidget {
             runSpacing: 8,
             alignment: WrapAlignment.center,
             children: [
-              _RoleBadge(role: effectiveRole),
-              _StatusBadge(status: effectiveApproval),
+              _RoleBadge(role: widget.effectiveRole),
+              _StatusBadge(status: widget.effectiveApproval),
             ],
           ),
           const SizedBox(height: 20),
@@ -697,7 +936,7 @@ class _ProfileHeaderCard extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              onPressed: onEditProfile,
+              onPressed: widget.onEditProfile,
               icon: const Icon(Icons.edit_rounded, size: 18),
               label: const Text('Edit Profile'),
               style: OutlinedButton.styleFrom(
@@ -821,8 +1060,6 @@ class _BiometricToggleState extends State<_BiometricToggle> {
 
   Future<void> _load() async {
     try {
-      // Both calls report unavailable on web, which is correct: a browser
-      // build has no biometric prompt to offer.
       final available = await _bio.isBiometricAvailable();
       final enabled = available && await _bio.isBiometricEnabled();
       if (!mounted) return;
@@ -857,11 +1094,9 @@ class _BiometricToggleState extends State<_BiometricToggle> {
     }
   }
 
-  /// Enabling stores the account's credentials for later sign-in, so the
-  /// password is required again. The server is never asked for it.
   Future<bool> _promptPasswordAndEnable() async {
     final controller = TextEditingController();
-      final confirmed = await showDialog<bool>(
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Confirm your password'),
@@ -915,7 +1150,8 @@ class _BiometricToggleState extends State<_BiometricToggle> {
   Widget build(BuildContext context) {
     if (!_available) return const SizedBox.shrink();
     return SwitchListTile(
-      secondary: const Icon(Icons.fingerprint_rounded, color: Color(0xFF10B981)),
+      secondary:
+          const Icon(Icons.fingerprint_rounded, color: Color(0xFF10B981)),
       title: const Text('Biometric Sign-In'),
       subtitle: const Text('Use your fingerprint or face to sign in'),
       value: _enabled,
@@ -988,7 +1224,8 @@ class _InfoRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Row(
         children: [
-          Icon(item.icon, size: 20,
+          Icon(item.icon,
+              size: 20,
               color: isSet
                   ? theme.colorScheme.primary
                   : theme.colorScheme.outline),
@@ -999,7 +1236,8 @@ class _InfoRow extends StatelessWidget {
               children: [
                 Text(item.label,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                      color:
+                          theme.colorScheme.onSurface.withValues(alpha: 0.5),
                       fontWeight: FontWeight.w500,
                     )),
                 const SizedBox(height: 2),
@@ -1134,7 +1372,8 @@ class _ProfileScreenSkeleton extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       child: Column(
         children: const [
-          Center(child: ShimmerLoading(width: 88, height: 88, borderRadius: 44)),
+          Center(
+              child: ShimmerLoading(width: 88, height: 88, borderRadius: 44)),
           SizedBox(height: 16),
           Center(child: ShimmerLoading(width: 160, height: 22, borderRadius: 6)),
           SizedBox(height: 8),

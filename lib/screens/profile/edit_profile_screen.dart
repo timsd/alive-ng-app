@@ -12,6 +12,7 @@ import '../../utils/error_detail.dart';
 import '../../utils/layout_fix_utils.dart';
 import '../../services/appwrite_storage_service.dart';
 import '../../services/appwrite_profile_service.dart';
+import '../../services/role_access_service.dart';
 import '../../providers/appwrite_auth_provider.dart';
 import '../../utils/toast_utils.dart';
 import '../../widgets/custom_image.dart';
@@ -60,8 +61,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   bool _isUploadingPicture = false;
 
   /// Local bytes of the most recently uploaded picture. Rendering these keeps
-  /// the new image visible instantly without waiting for a network round trip
-  /// (or an authenticated fetch that a plain HTTP image request cannot make).
+  /// the new image visible instantly without waiting for a network round trip.
   Uint8List? _pendingPictureBytes;
 
   @override
@@ -87,11 +87,18 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         TextEditingController(text: widget.userProfile.localChapter ?? '');
 
     _commitmentType = widget.userProfile.commitmentType ?? 'both';
-    _maritalStatus = (widget.userProfile.maritalStatus ?? 'single').toLowerCase();
+    _maritalStatus =
+        (widget.userProfile.maritalStatus ?? 'single').toLowerCase();
     if (_maritalStatus != 'married') _maritalStatus = 'single';
 
-    // Initialize profile picture URL
-    _profilePictureUrl = widget.userProfile.avatarUrl;
+    // Initialize profile picture URL from either avatarUrl or photoUrl
+    _profilePictureUrl = (widget.userProfile.avatarUrl != null &&
+            widget.userProfile.avatarUrl!.trim().isNotEmpty)
+        ? widget.userProfile.avatarUrl!.trim()
+        : ((widget.userProfile.photoUrl != null &&
+                widget.userProfile.photoUrl!.trim().isNotEmpty)
+            ? widget.userProfile.photoUrl!.trim()
+            : null);
 
     // Add listeners to detect changes
     _addChangeListeners();
@@ -139,15 +146,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   void _showValidationError() {
     final missing = <String>[];
     if (_fullNameController.text.trim().isEmpty) missing.add('Full name');
-    if (_locationController.text.trim().isEmpty) missing.add('Location');
-    if (_localChurchController.text.trim().isEmpty) missing.add('Local church');
 
-    // The form is a pager, so the offending field may not be on this page.
     final fieldOrder = <String, int>{
       'Full name': 0,
-      'Phone': 0,
-      'Location': 0,
-      'Local church': 0,
     };
     for (final label in missing) {
       final page = fieldOrder[label] ?? 0;
@@ -169,10 +170,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   }
 
   Future<void> _saveProfile() async {
-    // This used to return silently when validation failed, so pressing Save
-    // appeared to do nothing at all: no message, no change, no explanation.
-    // The required fields (Location, Local Church) are easy to miss, and the
-    // form sits on the last page of a pager, so the error may be off-screen.
     if (!_formKey.currentState!.validate()) {
       _showValidationError();
       return;
@@ -181,11 +178,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Empty inputs become '' rather than null. copyWith treats a null
-      // argument as "keep the current value", and the profile service drops
-      // nulls before the write, so passing null here meant a cleared field kept
-      // its old value, was never sent to Appwrite, and the save looked broken.
       String field(TextEditingController c) => c.text.trim();
+      final resolvedAvatar = _profilePictureUrl?.trim() ?? '';
 
       // Create updated user profile
       final updatedProfile = widget.userProfile.copyWith(
@@ -199,8 +193,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         localChapter: field(_localChapterController),
         maritalStatus: _maritalStatus,
         commitmentType: _commitmentType,
-        avatarUrl: _profilePictureUrl ?? '',
-        photoUrl: _profilePictureUrl ?? '',
+        avatarUrl: resolvedAvatar,
+        photoUrl: resolvedAvatar,
         updatedAt: DateTime.now(),
       );
 
@@ -208,12 +202,18 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       final profileService = ref.read(appwriteProfileServiceProvider);
       await profileService.updateUserProfile(
         userId: updatedProfile.id,
+        fullName: updatedProfile.fullName,
         profileData: profileService.userProfileToAppwriteData(updatedProfile),
       );
 
+      // Keep reactive avatar state and role cache in sync
+      ref.read(uploadedAvatarUrlProvider.notifier).state = resolvedAvatar;
+      RoleAccessService.instance.clearCache();
+
       // Automatically sync/migrate chat channels (e.g. Single -> Married)
       try {
-        await ChannelMembershipSyncService.instance.syncUserChannels(updatedProfile);
+        await ChannelMembershipSyncService.instance
+            .syncUserChannels(updatedProfile);
       } catch (e) {
         debugPrint('Channel sync after profile save note: $e');
       }
@@ -327,9 +327,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         appBar: CustomAppBar(
           title: 'Edit Profile',
           showBackButton: true,
-          // Saving moved to a floating action button, so it is always visible
-          // and reachable one-handed instead of only appearing in the app bar
-          // once a field had been touched.
         ),
         floatingActionButton: FloatingActionButton.extended(
           onPressed: _isLoading ? null : _saveProfile,
@@ -390,7 +387,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               Expanded(
                 child: PageView(
                   controller: _pageController,
-                  physics: const PageScrollPhysics(parent: BouncingScrollPhysics()),
+                  physics:
+                      const PageScrollPhysics(parent: BouncingScrollPhysics()),
                   onPageChanged: (index) =>
                       setState(() => _currentPage = index),
                   children: [
@@ -542,7 +540,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               prefixIcon: const Icon(Icons.favorite),
               filled: true,
               fillColor: Theme.of(context).colorScheme.surfaceContainer,
-              helperText: 'Connects you automatically to Singles or Married Fellowship.',
+              helperText:
+                  'Connects you automatically to Singles or Married Fellowship.',
             ),
             items: const [
               DropdownMenuItem(value: 'single', child: Text('Single')),
@@ -576,7 +575,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
           LayoutFixUtils.safeText(
-            'Update your profile details. This information is important for community engagement.',
+            'Update your profile details. This information helps connect you with your local community.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -585,71 +584,47 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           TextFormField(
             controller: _locationController,
             decoration: InputDecoration(
-              labelText: 'Location (City, State, Country) *',
+              labelText: 'Location (City, State, Country)',
               border: const OutlineInputBorder(),
               prefixIcon: const Icon(Icons.location_on),
               filled: true,
               fillColor: Theme.of(context).colorScheme.surfaceContainer,
             ),
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Location is required';
-              }
-              return null;
-            },
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
           TextFormField(
             controller: _localChurchController,
             decoration: InputDecoration(
-              labelText: 'Local Church *',
+              labelText: 'Local Church',
               border: const OutlineInputBorder(),
               prefixIcon: const Icon(Icons.church),
               filled: true,
               fillColor: Theme.of(context).colorScheme.surfaceContainer,
             ),
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Local church is required';
-              }
-              return null;
-            },
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
           TextFormField(
             controller: _occupationController,
             decoration: InputDecoration(
-              labelText: 'Occupation/Business *',
+              labelText: 'Occupation/Business',
               border: const OutlineInputBorder(),
               prefixIcon: const Icon(Icons.work),
               filled: true,
               fillColor: Theme.of(context).colorScheme.surfaceContainer,
             ),
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Occupation is required';
-              }
-              return null;
-            },
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
           TextFormField(
             controller: _skillsController,
             maxLines: 3,
             decoration: InputDecoration(
-              labelText: 'Skills & Talents *',
+              labelText: 'Skills & Talents',
               hintText: 'What skills can you contribute to the community?',
               border: const OutlineInputBorder(),
               prefixIcon: const Icon(Icons.star),
               filled: true,
               fillColor: Theme.of(context).colorScheme.surfaceContainer,
             ),
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Please describe your skills';
-              }
-              return null;
-            },
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
           TextFormField(
@@ -756,6 +731,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   }
 
   Widget _buildProfilePictureSection() {
+    final hasImage = _pendingPictureBytes != null ||
+        (_profilePictureUrl != null && _profilePictureUrl!.trim().isNotEmpty);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -769,34 +747,35 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         Row(
           children: [
             // Profile picture preview
-            CircleAvatar(
-              radius: 40,
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              child: (_pendingPictureBytes != null ||
-                      (_profilePictureUrl != null &&
-                          _profilePictureUrl!.isNotEmpty))
-                  ? ClipOval(
-                      child: _pendingPictureBytes != null
-                          ? Image.memory(
-                              _pendingPictureBytes!,
-                              key: ValueKey(_pendingPictureBytes.hashCode),
-                              width: 80,
-                              height: 80,
-                              fit: BoxFit.cover,
-                              gaplessPlayback: true,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  _buildPicturePlaceholder(),
-                            )
-                          : CustomImage(
-                              key: ValueKey(_profilePictureUrl),
-                              imageUrl: _profilePictureUrl!,
-                              width: 80,
-                              height: 80,
-                              fit: BoxFit.cover,
-                              placeholder: _buildPicturePlaceholder(),
-                            ),
-                    )
-                  : _buildPicturePlaceholder(),
+            GestureDetector(
+              onTap: _isUploadingPicture ? null : _showImageSourcePicker,
+              child: CircleAvatar(
+                radius: 40,
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                child: hasImage
+                    ? ClipOval(
+                        child: _pendingPictureBytes != null
+                            ? Image.memory(
+                                _pendingPictureBytes!,
+                                key: ValueKey(_pendingPictureBytes.hashCode),
+                                width: 80,
+                                height: 80,
+                                fit: BoxFit.cover,
+                                gaplessPlayback: true,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    _buildPicturePlaceholder(),
+                              )
+                            : CustomImage(
+                                key: ValueKey(_profilePictureUrl),
+                                imageUrl: _profilePictureUrl!,
+                                width: 80,
+                                height: 80,
+                                fit: BoxFit.cover,
+                                placeholder: _buildPicturePlaceholder(),
+                              ),
+                      )
+                    : _buildPicturePlaceholder(),
+              ),
             ),
             SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 16)),
             Expanded(
@@ -821,12 +800,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       foregroundColor: Theme.of(context).colorScheme.onPrimary,
                     ),
                   ),
-                  if (_profilePictureUrl != null || _pendingPictureBytes != null) ...[
+                  if (hasImage) ...[
                     SizedBox(
                         height:
                             ResponsiveUtils.getResponsiveSpacing(context, 8)),
                     TextButton.icon(
-                      onPressed: _removeProfilePicture,
+                      onPressed:
+                          _isUploadingPicture ? null : _removeProfilePicture,
                       icon: Icon(Icons.delete,
                           color: Theme.of(context).colorScheme.error),
                       label: Text('Remove Picture',
@@ -890,10 +870,51 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     );
   }
 
+  /// Detects a safe, Appwrite-allowed image file extension from magic bytes
+  /// or fallback extension string.
+  static String _detectImageExtension(Uint8List bytes, String rawExt) {
+    if (bytes.length >= 4) {
+      // PNG: 89 50 4E 47
+      if (bytes[0] == 0x89 &&
+          bytes[1] == 0x50 &&
+          bytes[2] == 0x4E &&
+          bytes[3] == 0x47) {
+        return 'png';
+      }
+      // JPEG: FF D8 FF
+      if (bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF) {
+        return 'jpg';
+      }
+      // GIF: 47 49 46 38
+      if (bytes[0] == 0x47 &&
+          bytes[1] == 0x49 &&
+          bytes[2] == 0x46 &&
+          bytes[3] == 0x38) {
+        return 'gif';
+      }
+      // WEBP: RIFF....WEBP
+      if (bytes.length >= 12 &&
+          bytes[0] == 0x52 &&
+          bytes[1] == 0x49 &&
+          bytes[2] == 0x46 &&
+          bytes[3] == 0x46 &&
+          bytes[8] == 0x57 &&
+          bytes[9] == 0x45 &&
+          bytes[10] == 0x42 &&
+          bytes[11] == 0x50) {
+        return 'webp';
+      }
+    }
+    final cleaned = rawExt.trim().toLowerCase();
+    const allowed = {'jpg', 'jpeg', 'png', 'webp', 'gif'};
+    if (allowed.contains(cleaned)) return cleaned;
+    return 'jpg';
+  }
+
   Future<void> _pickAndUploadImage(ImageSource source) async {
     try {
       Uint8List? imageBytes;
-      String extension = 'jpg';
+      String rawExt = 'jpg';
 
       try {
         final picker = ImagePicker();
@@ -905,12 +926,15 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         );
         if (pickedFile != null) {
           imageBytes = await pickedFile.readAsBytes();
-          extension = pickedFile.name.split('.').last.toLowerCase();
-          if (extension.isEmpty) extension = 'jpg';
+          if (pickedFile.name.contains('.')) {
+            rawExt = pickedFile.name.split('.').last.toLowerCase();
+          } else if (pickedFile.mimeType != null &&
+              pickedFile.mimeType!.contains('/')) {
+            rawExt = pickedFile.mimeType!.split('/').last.toLowerCase();
+          }
         }
       } catch (pickerErr) {
         debugPrint('[ProfilePicture] ImagePicker fallback: $pickerErr');
-        // Fallback to FilePicker if ImagePicker fails on platform
         final result = await FilePicker.platform.pickFiles(
           type: FileType.image,
           allowMultiple: false,
@@ -923,7 +947,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           } else if (f.path != null && !kIsWeb) {
             imageBytes = await io.File(f.path!).readAsBytes();
           }
-          if (f.extension != null) extension = f.extension!.toLowerCase();
+          if (f.extension != null) rawExt = f.extension!.toLowerCase();
         }
       }
 
@@ -931,11 +955,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         return; // User cancelled
       }
 
-      // Immediately change placeholder / avatar preview on UI
+      final extension = _detectImageExtension(imageBytes, rawExt);
+
+      // Show local bytes immediately while uploading
       setState(() {
         _pendingPictureBytes = imageBytes;
         _isUploadingPicture = true;
-        _hasChanges = true;
       });
 
       try {
@@ -945,6 +970,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         final contentType = switch (extension) {
           'png' => 'image/png',
           'webp' => 'image/webp',
+          'gif' => 'image/gif',
           _ => 'image/jpeg',
         };
 
@@ -959,24 +985,34 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         // Update database with the durable URL
         await ref.read(appwriteProfileServiceProvider).updateUserProfile(
               userId: widget.userProfile.id,
+              email: widget.userProfile.email,
+              fullName: _fullNameController.text.trim().isNotEmpty
+                  ? _fullNameController.text.trim()
+                  : widget.userProfile.fullName,
               profileData: {
                 'avatar_url': publicUrl,
                 'photo_url': publicUrl,
               },
             );
 
+        // Immediately propagate the new avatar URL to all screens (Home, Profile, etc.)
+        ref.read(uploadedAvatarUrlProvider.notifier).state = publicUrl;
+        RoleAccessService.instance.clearCache();
+
         if (!mounted) return;
         setState(() {
           _profilePictureUrl = publicUrl;
-          _hasChanges = true;
         });
 
-        if (previousUrl != null && previousUrl.isNotEmpty) {
-          await CachedNetworkImageProvider(previousUrl).evict();
-        }
-        await CachedNetworkImageProvider(publicUrl).evict();
-        PaintingBinding.instance.imageCache.clear();
-        PaintingBinding.instance.imageCache.clearLiveImages();
+        try {
+          if (previousUrl != null && previousUrl.isNotEmpty) {
+            await CachedNetworkImageProvider(previousUrl).evict();
+          }
+          await CachedNetworkImageProvider(publicUrl).evict();
+          PaintingBinding.instance.imageCache.clear();
+          PaintingBinding.instance.imageCache.clearLiveImages();
+        } catch (_) {}
+
         ref.invalidate(currentUserProfileProvider);
 
         ToastUtils.showSuccess('Profile photo updated successfully!');
@@ -990,6 +1026,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         }
       } catch (e) {
         debugPrint('[ProfilePicture] upload error: ${describeError(e)}');
+        if (mounted) {
+          setState(() {
+            _pendingPictureBytes = null;
+          });
+        }
         ToastUtils.showError('Upload failed: ${describeError(e)}');
       } finally {
         if (mounted) setState(() => _isUploadingPicture = false);
@@ -1001,37 +1042,60 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     }
   }
 
-  Widget _buildPicturePlaceholder() => Icon(
-        Icons.person,
-        size: 40,
-        color: Theme.of(context).colorScheme.onPrimary,
+  Widget _buildPicturePlaceholder() {
+    final name = _fullNameController.text.trim().isNotEmpty
+        ? _fullNameController.text.trim()
+        : (widget.userProfile.fullName ?? '').trim();
+    if (name.isNotEmpty) {
+      return Center(
+        child: Text(
+          name[0].toUpperCase(),
+          style: TextStyle(
+            fontSize: 30,
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.onPrimary,
+          ),
+        ),
       );
+    }
+    return Icon(
+      Icons.person,
+      size: 40,
+      color: Theme.of(context).colorScheme.onPrimary,
+    );
+  }
 
   Future<void> _removeProfilePicture() async {
     final previousUrl = _profilePictureUrl;
-    if (previousUrl == null || previousUrl.isEmpty) return;
+    if ((previousUrl == null || previousUrl.isEmpty) &&
+        _pendingPictureBytes == null) {
+      return;
+    }
 
     setState(() {
       _profilePictureUrl = null;
       _pendingPictureBytes = null;
-      _hasChanges = true;
     });
 
     try {
-      // Persist the removal right away. Appwrite skips null values on update,
-      // so an empty string is used to clear the attribute.
       await ref.read(appwriteProfileServiceProvider).updateUserProfile(
             userId: widget.userProfile.id,
             profileData: {'avatar_url': '', 'photo_url': ''},
           );
-      await CachedNetworkImageProvider(previousUrl).evict();
-      PaintingBinding.instance.imageCache.clear();
-      PaintingBinding.instance.imageCache.clearLiveImages();
-      ref.invalidate(currentUserProfileProvider);
+      ref.read(uploadedAvatarUrlProvider.notifier).state = '';
+      RoleAccessService.instance.clearCache();
       try {
-        await AppwriteStorageService.instance.deleteFileByUrl(previousUrl);
-      } catch (_) {
-        // Ignore storage errors; the profile no longer references the file.
+        if (previousUrl != null && previousUrl.isNotEmpty) {
+          await CachedNetworkImageProvider(previousUrl).evict();
+        }
+        PaintingBinding.instance.imageCache.clear();
+        PaintingBinding.instance.imageCache.clearLiveImages();
+      } catch (_) {}
+      ref.invalidate(currentUserProfileProvider);
+      if (previousUrl != null && previousUrl.isNotEmpty) {
+        try {
+          await AppwriteStorageService.instance.deleteFileByUrl(previousUrl);
+        } catch (_) {}
       }
       if (mounted) ToastUtils.showSuccess('Profile picture removed');
     } catch (e) {

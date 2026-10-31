@@ -142,9 +142,9 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
           preferredSize: const Size.fromHeight(kTextTabBarHeight),
           child: TabBar(
             controller: _tabController,
-            indicatorColor: Colors.white,
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white.withValues(alpha: 0.7),
+            indicatorColor: Theme.of(context).colorScheme.onPrimary,
+            labelColor: Theme.of(context).colorScheme.onPrimary,
+            unselectedLabelColor: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.7),
             labelStyle:
                 Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold),
             unselectedLabelStyle: Theme.of(context).textTheme.labelLarge,

@@ -35,10 +35,23 @@ class AuthService {
 
   AppUser? _mapUser(dynamic user) {
     if (user == null) return null;
+    String? prefPhoto;
+    try {
+      final prefsData = user.prefs?.data;
+      if (prefsData is Map) {
+        final raw = prefsData['avatar_url'] ??
+            prefsData['photo_url'] ??
+            prefsData['photoUrl'];
+        if (raw is String && raw.trim().isNotEmpty) {
+          prefPhoto = raw.trim();
+        }
+      }
+    } catch (_) {}
     return AppUser(
       uid: user.$id as String,
       email: user.email as String,
       displayName: (user.name as String).isEmpty ? null : user.name as String,
+      photoUrl: prefPhoto,
       isEmailVerified: user.emailVerification as bool,
       isAnonymous: false,
     );

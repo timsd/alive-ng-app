@@ -1,7 +1,7 @@
+import '../utils/appwrite_id_utils.dart';
 import 'dart:convert';
 
 import 'package:appwrite/appwrite.dart';
-import 'package:uuid/uuid.dart';
 
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';
@@ -18,7 +18,6 @@ class LeadershipService {
   static final Logger _logger = Logger('LeadershipService');
   final AuthService _authService = AuthService.instance;
   final TablesDB _tables = TablesDB(appwriteClient);
-  final Uuid _uuid = const Uuid();
 
   static const _recordsCollection =
       AppwriteBackendConfig.leadershipRecordsCollectionId;
@@ -102,7 +101,7 @@ class LeadershipService {
       final document = await _tables.getRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _recordsCollection,
-        rowId: recordId,
+        rowId: AppwriteIdUtils.toValidUid(recordId),
       );
 
       return _recordFromDocument(document);
@@ -124,7 +123,7 @@ class LeadershipService {
       if (currentUserId == null) throw AuthException('User not authenticated');
 
       final now = DateTime.now().toUtc();
-      final id = _uuid.v4();
+      final id = AppwriteIdUtils.uniqueId();
       final data = _recordToAppwriteData(record.copyWith(
         id: id,
         userId: currentUserId,
@@ -138,7 +137,7 @@ class LeadershipService {
       final document = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _recordsCollection,
-        rowId: id,
+        rowId: AppwriteIdUtils.toValidUid(id),
         data: data,
       );
 
@@ -166,7 +165,7 @@ class LeadershipService {
       final document = await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _recordsCollection,
-        rowId: recordId,
+        rowId: AppwriteIdUtils.toValidUid(recordId),
         data: payload,
       );
 
@@ -184,7 +183,7 @@ class LeadershipService {
       await _tables.deleteRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _recordsCollection,
-        rowId: recordId,
+        rowId: AppwriteIdUtils.toValidUid(recordId),
       );
     } catch (e) {
       _logger.error('Failed to delete leadership record', e);
@@ -255,7 +254,7 @@ class LeadershipService {
 
       if (currentRecord != null) {
         await recordLeadershipTransition(LeadershipTransition(
-          id: _uuid.v4(),
+          id: AppwriteIdUtils.uniqueId(),
           userId: currentRecord.userId,
           fromPosition: currentRecord.position,
           toPosition: currentRecord.position,
@@ -385,11 +384,11 @@ class LeadershipService {
   Future<LeadershipTransition> recordLeadershipTransition(
       LeadershipTransition transition) async {
     try {
-      final id = transition.id.isNotEmpty ? transition.id : _uuid.v4();
+      final id = transition.id.isNotEmpty ? transition.id : AppwriteIdUtils.uniqueId();
       final document = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _transitionsCollection,
-        rowId: id,
+        rowId: AppwriteIdUtils.toValidUid(id),
         data: _transitionToAppwriteData(transition),
       );
 

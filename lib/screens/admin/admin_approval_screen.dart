@@ -235,7 +235,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
                   'Commitment Type', user.commitmentType ?? 'Not specified'),
               if (user.financialCommitment != null)
                 _buildDetailRow('Financial Commitment',
-                    '\$${user.financialCommitment!.toStringAsFixed(2)}'),
+                    '₦${user.financialCommitment!.toStringAsFixed(2)}'),
               _buildDetailRow('Availability',
                   user.availabilityCommitment ?? 'Not specified'),
               const SizedBox(height: 16),
@@ -369,7 +369,9 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
               ? CustomImage.provider(user.avatarUrl!)
               : null,
           child: user.avatarUrl == null
-              ? Text(user.fullName?.substring(0, 1).toUpperCase() ?? 'U')
+              ? Text((user.fullName != null && user.fullName!.trim().isNotEmpty)
+                  ? user.fullName!.trim().substring(0, 1).toUpperCase()
+                  : 'U')
               : null,
         ),
         title: Text(user.fullName ?? 'Unknown User'),
@@ -483,6 +485,9 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
         title: const Text('User Approval Management'),
         bottom: TabBar(
           controller: _tabController,
+          indicatorColor: Theme.of(context).colorScheme.primary,
+          labelColor: Theme.of(context).colorScheme.primary,
+          unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
           tabs: [
             Tab(
               text: 'Pending (${_pendingUsers.length})',

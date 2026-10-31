@@ -770,26 +770,14 @@ class _KidsMissionScreenState extends ConsumerState<KidsMissionScreen> {
                     ),
                     const SizedBox(width: 16),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Kids Mission Adventure',
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: isDark ? Colors.white : theme.colorScheme.onPrimaryContainer,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Learn, play, and share God\'s love every day!',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: isDark
-                                  ? Colors.white.withValues(alpha: 0.8)
-                                  : theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.8),
-                            ),
-                          ),
-                        ],
+                      child: Text(
+                        'Learn, play, and share God\'s love every day!',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.95)
+                              : theme.colorScheme.onPrimaryContainer,
+                        ),
                       ),
                     ),
                   ],

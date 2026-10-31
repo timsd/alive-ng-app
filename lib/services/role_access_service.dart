@@ -400,7 +400,8 @@ class RoleAccessService {
       '/chat',
       '/events',
       '/testimonies',
-      '/resources',
+      '/library',
+      '/books-tracts',
     ];
 
     if (canCreateContent()) {

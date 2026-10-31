@@ -27,6 +27,11 @@ migrate_working_dir/
 ios/Flutter/Generated.xcconfig
 ios/Flutter/flutter_export_environment.sh
 ios/Flutter/ephemeral/
+windows/flutter/ephemeral/
+linux/flutter/ephemeral/
+macos/Flutter/ephemeral/
+*.d
+*.stamp
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
@@ -34,6 +39,7 @@ ios/Flutter/ephemeral/
 .pub-cache/
 .pub/
 /build/
+.deploy_payloads/
 
 # Symbolication related
 app.*.symbols
@@ -90,10 +96,10 @@ logs/
 # Markdown docs (keep README.md)
 *.md
 !README.md
+!CHANGELOG.md
 !PROJECT_TOOLS_AND_PLATFORMS.md
 !docs/**/*.md
 docs/oracle-free-tier-deployment-roadmap.md
-!/functions/**/README.md
  
 # Local Chrome downloaded by tooling
 /.local-chrome/

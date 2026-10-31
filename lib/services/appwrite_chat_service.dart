@@ -296,20 +296,32 @@ class AppwriteChatService extends ChangeNotifier {
         ],
       );
 
-      final users = response.rows.map((row) {
+      final seenNames = <String>{};
+      final users = <TaggedEntity>[];
+      for (final row in response.rows) {
         final data = row.data;
-        return TaggedEntity(
-          id: row.$id,
-          name:
-              (data['fullName'] ?? data['full_name'] ?? data['email'] ?? 'User')
-                  .toString(),
-          type: TagType.user,
-          avatar: data['avatar_url'] as String?,
+        final rawName =
+            (data['fullName'] ?? data['full_name'] ?? data['email'] ?? 'User')
+                .toString()
+                .trim();
+        final displayName = rawName.contains('@')
+            ? rawName.split('@').first
+            : rawName;
+        if (displayName.isEmpty) continue;
+        final key = displayName.toLowerCase();
+        if (!seenNames.add(key)) continue;
+        users.add(
+          TaggedEntity(
+            id: row.$id,
+            name: displayName,
+            type: TagType.user,
+            avatar: (data['avatar_url'] ?? data['photo_url']) as String?,
+          ),
         );
-      }).toList();
+      }
 
-      if (tagType == TagType.user) return users;
-      return [...users, ..._getSpecialTags(query)];
+      if (tagType == TagType.user || tagType == null) return users;
+      return _getSpecialTags(query);
     } catch (e) {
       _logger.error('Error fetching Appwrite taggable entities: $e');
       return [];

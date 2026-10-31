@@ -1,7 +1,7 @@
+import '../utils/appwrite_id_utils.dart';
 import 'dart:convert';
 
 import 'package:appwrite/appwrite.dart';
-import 'package:uuid/uuid.dart';
 
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';
@@ -14,7 +14,6 @@ class ChapterService {
   factory ChapterService() => _instance;
   ChapterService._internal();
 
-  final Uuid _uuid = const Uuid();
   final TablesDB _tables = TablesDB(appwriteClient);
 
   static const _chaptersCollection = AppwriteBackendConfig.chaptersCollectionId;
@@ -66,7 +65,7 @@ class ChapterService {
       final document = await _tables.getRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _chaptersCollection,
-        rowId: chapterId,
+        rowId: AppwriteIdUtils.toValidUid(chapterId),
       );
       return _chapterFromDocument(document);
     } on AppwriteException catch (e) {
@@ -98,7 +97,7 @@ class ChapterService {
   Future<Chapter> createChapter(Chapter chapter) async {
     try {
       final now = DateTime.now().toUtc();
-      final id = chapter.id.isNotEmpty ? chapter.id : _uuid.v4();
+      final id = chapter.id.isNotEmpty ? chapter.id : AppwriteIdUtils.uniqueId();
       final newChapter = chapter.copyWith(
         id: id,
         createdAt: now,
@@ -108,7 +107,7 @@ class ChapterService {
       final document = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _chaptersCollection,
-        rowId: id,
+        rowId: AppwriteIdUtils.toValidUid(id),
         data: _chapterData(newChapter),
       );
       return _chapterFromDocument(document);
@@ -124,7 +123,7 @@ class ChapterService {
       final document = await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _chaptersCollection,
-        rowId: updatedChapter.id,
+        rowId: AppwriteIdUtils.toValidUid(updatedChapter.id),
         data: _chapterData(updatedChapter),
       );
       return _chapterFromDocument(document);
@@ -138,7 +137,7 @@ class ChapterService {
       await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _chaptersCollection,
-        rowId: id,
+        rowId: AppwriteIdUtils.toValidUid(id),
         data: _normalizeChapterUpdates({
           ...data,
           'updated_at': DateTime.now().toUtc().toIso8601String(),
@@ -155,7 +154,7 @@ class ChapterService {
       await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _chaptersCollection,
-        rowId: chapterId,
+        rowId: AppwriteIdUtils.toValidUid(chapterId),
         data: {
           'is_active': false,
           'updated_at': _iso(DateTime.now()),
@@ -230,7 +229,7 @@ class ChapterService {
       String chapterId, String userId, MemberRole role) async {
     final now = DateTime.now().toUtc();
     final member = ChapterMember(
-      id: _uuid.v4(),
+      id: AppwriteIdUtils.uniqueId(),
       chapterId: chapterId,
       userId: userId,
       role: role,
@@ -244,7 +243,7 @@ class ChapterService {
       final document = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _membersCollection,
-        rowId: member.id,
+        rowId: AppwriteIdUtils.toValidUid(member.id),
         data: _memberData(member),
       );
       return _memberFromDocument(document);
@@ -264,7 +263,7 @@ class ChapterService {
       final document = await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _membersCollection,
-        rowId: member.id,
+        rowId: AppwriteIdUtils.toValidUid(member.id),
         data: {
           'role': newRole.name,
           'permissions': jsonEncode(_rolePermissions(newRole)),
@@ -285,7 +284,7 @@ class ChapterService {
       await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _membersCollection,
-        rowId: member.id,
+        rowId: AppwriteIdUtils.toValidUid(member.id),
         data: {
           'is_active': false,
           'left_at': _iso(DateTime.now()),
@@ -348,14 +347,14 @@ class ChapterService {
     try {
       final now = DateTime.now().toUtc();
       final newActivity = activity.copyWith(
-        id: activity.id.isNotEmpty ? activity.id : _uuid.v4(),
+        id: activity.id.isNotEmpty ? activity.id : AppwriteIdUtils.uniqueId(),
         createdAt: now,
         updatedAt: now,
       );
       final document = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _activitiesCollection,
-        rowId: newActivity.id,
+        rowId: AppwriteIdUtils.toValidUid(newActivity.id),
         data: _activityData(newActivity),
       );
       return _activityFromDocument(document);
@@ -371,7 +370,7 @@ class ChapterService {
       final document = await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _activitiesCollection,
-        rowId: updatedActivity.id,
+        rowId: AppwriteIdUtils.toValidUid(updatedActivity.id),
         data: _activityData(updatedActivity),
       );
       return _activityFromDocument(document);
@@ -386,7 +385,7 @@ class ChapterService {
       final document = await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _activitiesCollection,
-        rowId: activityId,
+        rowId: AppwriteIdUtils.toValidUid(activityId),
         data: {
           'status': status.name,
           'updated_at': _iso(DateTime.now()),
@@ -452,14 +451,14 @@ class ChapterService {
     try {
       final now = DateTime.now().toUtc();
       final newTask = task.copyWith(
-        id: task.id.isNotEmpty ? task.id : _uuid.v4(),
+        id: task.id.isNotEmpty ? task.id : AppwriteIdUtils.uniqueId(),
         createdAt: now,
         updatedAt: now,
       );
       final document = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _tasksCollection,
-        rowId: newTask.id,
+        rowId: AppwriteIdUtils.toValidUid(newTask.id),
         data: _taskData(newTask),
       );
       return _taskFromDocument(document);
@@ -474,7 +473,7 @@ class ChapterService {
       final document = await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _tasksCollection,
-        rowId: updatedTask.id,
+        rowId: AppwriteIdUtils.toValidUid(updatedTask.id),
         data: _taskData(updatedTask),
       );
       return _taskFromDocument(document);
@@ -489,7 +488,7 @@ class ChapterService {
       final document = await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _tasksCollection,
-        rowId: taskId,
+        rowId: AppwriteIdUtils.toValidUid(taskId),
         data: {
           'status': ActivityStatus.completed.name,
           'completed_at': _iso(now),
@@ -551,14 +550,14 @@ class ChapterService {
     try {
       final now = DateTime.now().toUtc();
       final newReport = report.copyWith(
-        id: report.id.isNotEmpty ? report.id : _uuid.v4(),
+        id: report.id.isNotEmpty ? report.id : AppwriteIdUtils.uniqueId(),
         createdAt: now,
         updatedAt: now,
       );
       final document = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _reportsCollection,
-        rowId: newReport.id,
+        rowId: AppwriteIdUtils.toValidUid(newReport.id),
         data: _reportData(newReport),
       );
       return _reportFromDocument(document);
@@ -573,7 +572,7 @@ class ChapterService {
       final document = await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _reportsCollection,
-        rowId: updatedReport.id,
+        rowId: AppwriteIdUtils.toValidUid(updatedReport.id),
         data: _reportData(updatedReport),
       );
       return _reportFromDocument(document);
@@ -588,7 +587,7 @@ class ChapterService {
       final document = await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _reportsCollection,
-        rowId: reportId,
+        rowId: AppwriteIdUtils.toValidUid(reportId),
         data: {
           'status': ReportStatus.submitted.name,
           'submitted_at': _iso(now),
@@ -612,7 +611,7 @@ class ChapterService {
       final document = await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _reportsCollection,
-        rowId: reportId,
+        rowId: AppwriteIdUtils.toValidUid(reportId),
         data: _stripNulls({
           'status': status.name,
           'reviewed_by': reviewerId,
@@ -765,7 +764,7 @@ class ChapterService {
           _generateReportContent(activities, statistics, startDate, endDate);
 
       final report = ChapterReport(
-        id: _uuid.v4(),
+        id: AppwriteIdUtils.uniqueId(),
         chapterId: chapterId,
         title: 'Monthly Report - ${_formatMonth(month)}',
         content: content,
@@ -1075,7 +1074,7 @@ extension ChapterServiceTaskAssignment on ChapterService {
     try {
       final now = DateTime.now().toUtc();
       final assignment = TaskAssignment(
-        id: const Uuid().v4(),
+        id: AppwriteIdUtils.uniqueId(),
         title: title,
         description: description,
         assignedById: assignedById,
@@ -1092,7 +1091,7 @@ extension ChapterServiceTaskAssignment on ChapterService {
       final document = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: ChapterService._taskAssignmentsCollection,
-        rowId: assignment.id,
+        rowId: AppwriteIdUtils.toValidUid(assignment.id),
         data: _taskAssignmentData(assignment),
       );
       return _taskAssignmentFromDocument(document);

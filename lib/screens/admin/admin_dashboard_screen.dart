@@ -444,17 +444,17 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
                     ),
                   ),
                 ),
-                _buildSidebarTile(Icons.people_outline, 'Manage Users', () => context.go(AppConstants.roleManagementRoute)),
-                _buildSidebarTile(Icons.how_to_reg_outlined, 'Approvals', () => context.go(AppConstants.adminApprovalRoute)),
-                _buildSidebarTile(Icons.library_books_outlined, 'Content', () => context.go(AppConstants.tractPodcastAdminRoute)),
+                _buildSidebarTile(Icons.people_outline, 'Manage Users', () => context.push(AppConstants.roleManagementRoute)),
+                _buildSidebarTile(Icons.how_to_reg_outlined, 'Approvals', () => context.push(AppConstants.adminApprovalRoute)),
+                _buildSidebarTile(Icons.library_books_outlined, 'Content', () => context.push(AppConstants.tractPodcastAdminRoute)),
                 _buildSidebarTile(Icons.location_city_outlined, 'Chapters', () => _navigateToChapterManagement()),
                 if (_canAccessFinance)
-                  _buildSidebarTile(Icons.savings_outlined, 'Finance', () => context.go(AppConstants.adminDonationsReportRoute)),
+                  _buildSidebarTile(Icons.savings_outlined, 'Finance', () => context.push(AppConstants.adminDonationsReportRoute)),
                 _buildSidebarTile(Icons.people_outline, 'Discipleship', () => _showOfficerRoutingDialog()),
                 _buildSidebarTile(Icons.cloud_upload_outlined, 'Storage', () => _navigateToStorageAdmin()),
                 _buildSidebarTile(Icons.settings_outlined, 'Settings', () => _navigateToAppSettings()),
                 const Divider(height: 32),
-                _buildSidebarTile(Icons.archive_outlined, 'Archived', () => context.go(AppConstants.userArchiveRoute)),
+                _buildSidebarTile(Icons.archive_outlined, 'Archived', () => context.push(AppConstants.userArchiveRoute)),
                 _buildSidebarTile(Icons.lock_clock_outlined, 'SSL Check', () => Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const SSLStatusScreen()),
@@ -791,30 +791,30 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
     final sections = <_MgmtSection>[
       _MgmtSection('User Management', Icons.people_outline, [
         _MgmtTile('Manage Users', 'View, edit, and manage all user accounts', Icons.person_outline, () => _navigateToUserManagement()),
-        _MgmtTile('User Approval', 'Review and approve new user registrations', Icons.how_to_reg_outlined, () => context.go(AppConstants.adminApprovalRoute)),
+        _MgmtTile('User Approval', 'Review and approve new user registrations', Icons.how_to_reg_outlined, () => context.push(AppConstants.adminApprovalRoute)),
         _MgmtTile('Archived Users', 'View and manage archived user accounts', Icons.archive_outlined, () => _navigateToArchivedUsers()),
       ]),
       _MgmtSection('Content Management', Icons.library_books_outlined, [
-        _MgmtTile('Tract & Podcast Management', 'Manage tracts, podcasts, and categories', Icons.article_outlined, () => context.go(AppConstants.tractPodcastAdminRoute)),
-        _MgmtTile('Sample Content (user-facing seeds)', 'Hide or restore sample podcasts & episodes users currently see', Icons.preview_outlined, () => context.go(AppConstants.sampleContentAdminRoute)),
+        _MgmtTile('Tract & Podcast Management', 'Manage tracts, podcasts, and categories', Icons.article_outlined, () => context.push(AppConstants.tractPodcastAdminRoute)),
+        _MgmtTile('Sample Content (user-facing seeds)', 'Hide or restore sample podcasts & episodes users currently see', Icons.preview_outlined, () => context.push(AppConstants.sampleContentAdminRoute)),
         _MgmtTile('Monthly Support Reminder', 'Send on the 1st of each month. Enable to let members opt out.', Icons.notifications_active_outlined, () => _showMonthlyReminderControl()),
         _MgmtTile('Featured Content', 'Manage featured content and highlights', Icons.star_outline, () => _navigateToContentManagement('featured')),
         _MgmtTile('Announcements', 'Create and manage app announcements', Icons.campaign_outlined, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminAnnouncementsScreen()))),
-        _MgmtTile('Kids Stories', 'Upload PDF or type content with media', Icons.auto_stories, () => context.go(AppConstants.adminKidsStoriesRoute)),
-        _MgmtTile('Kids Missions', 'Upload PDF or type content with media', Icons.assignment_turned_in, () => context.go(AppConstants.adminKidsMissionsRoute)),
-        _MgmtTile('Study Guides', 'Upload PDF or type content with media', Icons.menu_book, () => context.go(AppConstants.adminStudyGuidesRoute)),
-        _MgmtTile('Content Pages & Projects', 'Manage app content pages, custom sections, and projects', Icons.post_add_outlined, () => context.go(AppConstants.contentManagementRoute)),
-        _MgmtTile('Health+ Content', 'Manage plant-based recipes, remedies, and discussions', Icons.health_and_safety_rounded, () => context.go(AppConstants.adminHealthContentRoute)),
+        _MgmtTile('Kids Stories', 'Upload PDF or type content with media', Icons.auto_stories, () => context.push(AppConstants.adminKidsStoriesRoute)),
+        _MgmtTile('Kids Missions', 'Upload PDF or type content with media', Icons.assignment_turned_in, () => context.push(AppConstants.adminKidsMissionsRoute)),
+        _MgmtTile('Study Guides', 'Upload PDF or type content with media', Icons.menu_book, () => context.push(AppConstants.adminStudyGuidesRoute)),
+        _MgmtTile('Content Pages & Projects', 'Manage app content pages, custom sections, and projects', Icons.post_add_outlined, () => context.push(AppConstants.contentManagementRoute)),
+        _MgmtTile('Health+ Content', 'Manage plant-based recipes, remedies, and discussions', Icons.health_and_safety_rounded, () => context.push(AppConstants.adminHealthContentRoute)),
       ]),
       _MgmtSection('Chapter Management', Icons.location_city_outlined, [
         _MgmtTile('Chapter Overview', 'View all chapters and their statistics', Icons.dashboard_outlined, () => _navigateToChapterManagement()),
-        _MgmtTile('Leadership Archive', 'View historical leadership records', Icons.history_edu, () => context.go(AppConstants.leadershipArchiveRoute)),
-        _MgmtTile('Board of Trustees (BOD)', 'Manage Board records, resolutions, decisions', Icons.account_balance_outlined, () => context.go(AppConstants.bodTrusteesRoute)),
+        _MgmtTile('Leadership Archive', 'View historical leadership records', Icons.history_edu, () => context.push(AppConstants.leadershipArchiveRoute)),
+        _MgmtTile('Board of Trustees (BOD)', 'Manage Board records, resolutions, decisions', Icons.account_balance_outlined, () => context.push(AppConstants.bodTrusteesRoute)),
         _MgmtTile('Chapter Reports', 'Review chapter activity reports', Icons.assessment_outlined, () => _navigateToChapterReports()),
       ]),
       if (_canAccessFinance)
         _MgmtSection('Donations & Finance', Icons.savings_outlined, [
-          _MgmtTile('Donation Reports', 'Search, filter and export every gift', Icons.receipt_long_outlined, () => context.go(AppConstants.adminDonationsReportRoute)),
+          _MgmtTile('Donation Reports', 'Search, filter and export every gift', Icons.receipt_long_outlined, () => context.push(AppConstants.adminDonationsReportRoute)),
         ]),
       _MgmtSection('Discipleship Operations', Icons.people_outline, [
         _MgmtTile('Report Officers & Routing', 'Map Coordinators and Directors to receive dispatched reports', Icons.mark_email_read_outlined, () => _showOfficerRoutingDialog()),
@@ -1201,13 +1201,13 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
     );
   }
 
-  // Navigation methods (placeholder implementations)
+  // Navigation methods
   void _navigateToUserManagement() {
-    context.go(AppConstants.roleManagementRoute);
+    context.push(AppConstants.roleManagementRoute);
   }
 
   void _navigateToArchivedUsers() {
-    context.go(AppConstants.userArchiveRoute);
+    context.push(AppConstants.userArchiveRoute);
   }
 
   void _navigateToContentManagement(String type) {

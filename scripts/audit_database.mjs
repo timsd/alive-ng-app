@@ -1,6 +1,6 @@
-// Audits the database against the app: does every collection the code
-// references exist, is it reachable, does it have a document-security level
-// that lets members read/write, and which ones are still empty.
+// Audits the database against the app: does every table the code
+// references exist, is it reachable, does it have permissions
+// that let members read/write, and which ones are still empty.
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
@@ -44,43 +44,49 @@ const codeFiles = [];
 })('lib');
 for (const f of codeFiles) {
   const s = readFileSync(f, 'utf8');
-  for (const m of s.matchAll(/collectionId:\s*'([a-z][a-z0-9_]{3,})'/gi)) {
+  for (const m of s.matchAll(/(?:collectionId|tableId):\s*'([a-z][a-z0-9_]{3,})'/gi)) {
     referenced.add(m[1]);
   }
 }
 
-const list = await get(`/databases/${db}/collections?limit=1000`);
-const cols = list.j.collections || [];
-const byId = new Map(cols.map((c) => [c.$id, c]));
-console.log(`collections present: ${cols.length} (server total ${list.j.total})`);
-console.log(`collection ids referenced by the app: ${referenced.size}\n`);
+let allTables = [];
+let offset = 0;
+const limit = 100;
+while (true) {
+  const query = new URLSearchParams();
+  query.append('queries[]', JSON.stringify({ method: 'limit', values: [limit] }));
+  query.append('queries[]', JSON.stringify({ method: 'offset', values: [offset] }));
+  const list = await get(`/tablesdb/${db}/tables?${query}`);
+  const batch = list.j.tables || [];
+  allTables.push(...batch);
+  offset += limit;
+  if (offset >= (list.j.total ?? allTables.length) || batch.length === 0) break;
+}
+
+const byId = new Map(allTables.map((c) => [c.$id, c]));
+console.log(`tables present: ${allTables.length}`);
+console.log(`table ids referenced by the app: ${referenced.size}\n`);
 
 const missing = [];
 const rows = [];
 for (const id of referenced) {
   const c = byId.get(id);
   if (!c) {
-    // Probe directly: the list endpoint has been observed to ignore `offset`.
-    const probe = await get(`/databases/${db}/collections/${id}/documents?limit=1`);
-    if (probe.status === 404) missing.push(id);
-    else {
-      const d = await get(`/databases/${db}/collections/${id}/documents?limit=1`);
-      rows.push({ id, n: d.j.total ?? 0, sec: '?', missingFromList: true });
-    }
+    missing.push(id);
     continue;
   }
-  const d = await get(`/databases/${db}/collections/${id}/documents?limit=1`);
+  const d = await get(`/tablesdb/${db}/tables/${id}/rows`);
   rows.push({
     id,
     n: d.j.total ?? 0,
-    sec: c.documentSecurity,
+    sec: c.rowSecurity ?? c.documentSecurity ?? false,
     enabled: c.enabled,
     perms: c.$permissions ?? c.permissions ?? [],
   });
 }
 
 rows.sort((a, b) => a.id.localeCompare(b.id));
-console.log('id'.padEnd(36) + 'docs'.padStart(7) + '  security      client perms');
+console.log('id'.padEnd(36) + 'rows'.padStart(7) + '  security      client perms');
 for (const r of rows) {
   const perms = Array.isArray(r.perms) && r.perms.length ? r.perms.join(' ') : '(server only)';
   console.log(
@@ -90,9 +96,8 @@ for (const r of rows) {
   );
 }
 
-console.log(`\nMISSING (probed directly): ${missing.length}`);
+console.log(`\nMISSING: ${missing.length}`);
 for (const m of missing) console.log(`  ${m}`);
 
 const empty = rows.filter((r) => r.n === 0);
-console.log(`\nempty collections: ${empty.length} of ${rows.length}`);
-for (const e of empty) console.log(`  ${e.id}`);
+console.log(`\nempty tables: ${empty.length} of ${rows.length}`);

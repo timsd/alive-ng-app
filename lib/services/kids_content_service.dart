@@ -1,3 +1,4 @@
+import '../utils/appwrite_id_utils.dart';
 import 'dart:convert';
 import 'package:appwrite/appwrite.dart' as aw;
 import '../config/appwrite_backend_config.dart';
@@ -153,7 +154,7 @@ class KidsContentService {
     await _tables.createRow(
       databaseId: AppwriteBackendConfig.databaseId,
       tableId: _collectionId(collection),
-      rowId: id,
+      rowId: AppwriteIdUtils.toValidUid(id),
       data: payload,
     );
     return id;
@@ -164,7 +165,7 @@ class KidsContentService {
     await _tables.updateRow(
       databaseId: AppwriteBackendConfig.databaseId,
       tableId: _collectionId(collection),
-      rowId: id,
+      rowId: AppwriteIdUtils.toValidUid(id),
       data: _writeData({...updates, 'updated_at': _now()}),
     );
   }
@@ -174,7 +175,7 @@ class KidsContentService {
     await _tables.deleteRow(
       databaseId: AppwriteBackendConfig.databaseId,
       tableId: _collectionId(collection),
-      rowId: id,
+      rowId: AppwriteIdUtils.toValidUid(id),
     );
   }
 
@@ -192,7 +193,7 @@ class KidsContentService {
       await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _collectionId(collection),
-        rowId: id,
+        rowId: AppwriteIdUtils.toValidUid(id),
         data: payload,
       );
     } on aw.AppwriteException catch (e) {
@@ -200,7 +201,7 @@ class KidsContentService {
       await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _collectionId(collection),
-        rowId: id,
+        rowId: AppwriteIdUtils.toValidUid(id),
         data: payload,
       );
     }

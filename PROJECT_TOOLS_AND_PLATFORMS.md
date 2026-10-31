@@ -2,7 +2,7 @@
 
 This file lists the major tools, platforms, SDKs, and external services currently used in this project.
 
-Last updated from codebase review: 2026-09-04
+Last updated from codebase review: 2026-10-31 (v2.0.5+12)
 
 ## Architecture & Migration Snapshot
 
@@ -12,29 +12,35 @@ The app follows the **Ports & Adapters (Hexagonal Architecture)** design pattern
 - **Concrete Adapters**: Confined under `lib/services/adapters/` (`AppwriteAuthGateway`, `LiveKitMeetingGateway`, `PaystackPaymentGateway`).
 - **Owned Domain Models**: `AppUser`, `MeetingSession`, `ParticipantInfo`, `RoomStatus`, `PaymentRequest`, `PaymentResponse`, `PaymentStatus`, and `BibleUserProgress` in `lib/models/`.
 - **Database Isolation**: `sqflite` is strictly confined to `lib/services/*_database_helper.dart`. UI layers consume typed domain models (`models.BibleVerse`) rather than raw database maps.
+- **UID Validation**: `AppwriteIdUtils` (`lib/utils/appwrite_id_utils.dart`) guarantees all `rowId` parameters satisfy Appwrite 1.8's 36-char alphanumeric/underscore constraint.
 - **SDK Upgrade & Freezes**: Appwrite Dart SDK upgraded to `^26.1.0`. `flutter_riverpod` is pinned to `^2.6.1` and `go_router` is pinned to `^14.0.0` (see `docs/architecture.md`).
 
-Estimated code-side migration progress: 100% for active Firebase database/storage/auth/function replacement and Appwrite TablesDB SDK usage. Deployment-side validation still depends on reachable Appwrite/Coolify/LiveKit services.
+Migration status: **100% live in production** on Appwrite 1.8 (`https://api.alivenigeria.org/v1`) and Coolify (`https://app.alivenigeria.org`).
 
 ## Core App Stack
 
-- Flutter and Dart: main app framework and language.
+- Flutter and Dart: main app framework and language (`v2.0.5+12`).
 - Architecture: Ports & Adapters (Hexagonal Architecture) isolating third-party SDKs behind abstract contracts.
 - Flutter Riverpod: primary state management (pinned `^2.6.1`).
 - Go Router: app navigation (pinned `^14.0.0`).
-- Appwrite Dart SDK: primary backend SDK (`^26.1.0`), isolated behind `AuthGateway` adapter.
+- Appwrite Dart SDK: primary backend SDK (`^26.1.0`), isolated behind `AuthGateway` adapter and `TablesDB` services.
 - Local storage: Shared Preferences, Flutter Secure Storage, SQLite/Sqflite (confined to `*_database_helper.dart`), and bundled assets.
 
-## Primary Backend: Appwrite
+## Primary Backend: Appwrite 1.8
 
-- Auth: email/password, OAuth redirects, profile synchronization, and team-based admin sync.
-- Databases: project data, chat, prayer, testimonies, donation records, study, health, content pages, events, announcements, settings, and admin migration targets.
-- Storage buckets: chat files, profile files, board documents, tract files, podcast media, content media, meeting files, and system exports.
-- Functions:
+- **Endpoint**: `https://api.alivenigeria.org/v1` (Project `6a3bef53002f5090dedf`, Database `6a089307002e54291a32`).
+- **Auth**: email/password, OAuth redirects, office-identity auto-binding (`bind_office_identity`), profile synchronization, and team-based admin sync.
+- **TablesDB (81 live tables)**: 80 app tables + 1 server-only `officer_registry` table covering profiles, chat, prayer, testimonies, donation records, study guides/questions, health, content pages, events, announcements, board decisions, chapters, leadership, discipleship, kids content, settings, and analytics.
+- **Storage buckets (9 live buckets)**: `chat_files`, `profile_files`, `board_documents`, `tract_files`, `podcast_media`, `content_media`, `meeting_files`, `system_exports`, and `app_releases` (direct Android APK distribution).
+- **Functions (8 live functions in `appwrite_functions/`)**:
   - `createLiveKitToken`
   - `paystack_payments`
   - `paystack_webhook`
   - `send_email`
+  - `bind_office_identity`
+  - `delete_account`
+  - `monthly_donation_reminder`
+  - `notify_admin_signup`
 - Teams: admin and ministry role/team configuration from the infrastructure schema.
 - Topics: declared in `scripts/appwrite_infrastructure_schema.mjs` for migrated messaging flows.
 - Optional webhooks: profile approval, chat file upload, and donation record event forwarding are declared but skipped unless external receiver URLs are supplied.

@@ -708,12 +708,24 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   List<ChatMessage> _filterMentions(List<ChatMessage> input) {
-    final currentUserId = AuthService.instance.currentUser?.uid;
+    final currentUser = AuthService.instance.currentUser;
+    final currentUserId = currentUser?.uid;
+    final currentNameToken = currentUser?.displayName != null &&
+            currentUser!.displayName!.trim().isNotEmpty
+        ? currentUser.displayName!
+            .trim()
+            .replaceAll(RegExp(r'\s+'), '_')
+            .toLowerCase()
+        : null;
     final currentRole = RoleAccessService.instance.getCurrentUserRole();
-    if (currentUserId == null && currentRole == null) return input;
+    if (currentUserId == null && currentRole == null && currentNameToken == null) {
+      return input;
+    }
     return input.where((m) {
+      final lowerUsers = m.taggedUsers.map((u) => u.toLowerCase()).toSet();
       final mentionsUser =
-          currentUserId != null && m.taggedUsers.contains(currentUserId);
+          (currentUserId != null && lowerUsers.contains(currentUserId.toLowerCase())) ||
+          (currentNameToken != null && lowerUsers.contains(currentNameToken));
       final mentionsRole =
           currentRole != null && m.taggedGroups.contains(currentRole);
       return mentionsUser || mentionsRole;

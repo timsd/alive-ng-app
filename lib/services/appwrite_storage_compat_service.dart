@@ -74,9 +74,10 @@ class AppwriteStorageCompatService {
   Future<void> deleteFile(String legacyPath) async {
     final target = _storageTarget(legacyPath);
     try {
+      final fileId = await _resolveFileId(target.bucketId, target.objectName);
       await _storage.deleteFile(
         bucketId: target.bucketId,
-        fileId: _stableFileId(target.objectName),
+        fileId: fileId,
       );
     } catch (e) {
       _logger.error('Error deleting Appwrite file', e);
@@ -108,7 +109,8 @@ class AppwriteStorageCompatService {
 
   Future<String> getDownloadUrl(String legacyPath) async {
     final target = _storageTarget(legacyPath);
-    return _downloadUrl(target.bucketId, _stableFileId(target.objectName));
+    final fileId = await _resolveFileId(target.bucketId, target.objectName);
+    return _downloadUrl(target.bucketId, fileId);
   }
 
   Future<String?> uploadBoardDocument(
@@ -123,9 +125,13 @@ class AppwriteStorageCompatService {
   }
 
   Future<String?> getBoardDocumentDownloadURL(String fileName) async {
+    final fileId = await _resolveFileId(
+      AppwriteBackendConfig.boardDocumentsBucketId,
+      fileName,
+    );
     return _downloadUrl(
       AppwriteBackendConfig.boardDocumentsBucketId,
-      _stableFileId(fileName),
+      fileId,
     );
   }
 
@@ -148,9 +154,13 @@ class AppwriteStorageCompatService {
   }
 
   Future<String?> getTractDownloadURL(String fileName) async {
+    final fileId = await _resolveFileId(
+      AppwriteBackendConfig.tractFilesBucketId,
+      _normalizeTractName(fileName),
+    );
     return _downloadUrl(
       AppwriteBackendConfig.tractFilesBucketId,
-      _stableFileId(_normalizeTractName(fileName)),
+      fileId,
     );
   }
 
@@ -171,9 +181,13 @@ class AppwriteStorageCompatService {
 
   Future<bool> deleteTractPDF(String fileName) async {
     try {
+      final fileId = await _resolveFileId(
+        AppwriteBackendConfig.tractFilesBucketId,
+        _normalizeTractName(fileName),
+      );
       await _storage.deleteFile(
         bucketId: AppwriteBackendConfig.tractFilesBucketId,
-        fileId: _stableFileId(_normalizeTractName(fileName)),
+        fileId: fileId,
       );
       return true;
     } catch (e) {
@@ -193,9 +207,13 @@ class AppwriteStorageCompatService {
 
   Future<AppwriteStorageMetadata?> getTractFileMetadata(String fileName) async {
     try {
+      final fileId = await _resolveFileId(
+        AppwriteBackendConfig.tractFilesBucketId,
+        _normalizeTractName(fileName),
+      );
       final file = await _storage.getFile(
         bucketId: AppwriteBackendConfig.tractFilesBucketId,
-        fileId: _stableFileId(_normalizeTractName(fileName)),
+        fileId: fileId,
       );
       return AppwriteStorageMetadata.fromFile(file);
     } catch (e) {
@@ -338,6 +356,25 @@ class AppwriteStorageCompatService {
     final objectName =
         parts.length > 1 ? parts.sublist(1).join('/') : parts.first;
     return (bucketId: bucketId, objectName: objectName);
+  }
+
+  Future<String> _resolveFileId(String bucketId, String objectName) async {
+    final leafName = objectName.split('/').last;
+    try {
+      final list = await _storage.listFiles(
+        bucketId: bucketId,
+        queries: [Query.limit(100)],
+      );
+      for (final file in list.files) {
+        if (file.$id == objectName ||
+            file.$id == leafName ||
+            file.name == objectName ||
+            file.name == leafName) {
+          return file.$id;
+        }
+      }
+    } catch (_) {}
+    return _stableFileId(objectName);
   }
 
   String _stableFileId(String objectName) {

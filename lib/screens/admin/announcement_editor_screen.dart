@@ -73,19 +73,24 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
     if (widget.announcement != null) {
       final announcement = widget.announcement!;
       _titleController.text = announcement['title'] ?? '';
-      _messageController.text = announcement['message'] ?? '';
+      _messageController.text =
+          announcement['content'] ?? announcement['message'] ?? '';
       _actionUrlController.text = announcement['action_url'] ?? '';
       _actionTextController.text = announcement['action_text'] ?? '';
       _isActive = announcement['is_active'] ?? true;
       _priority = announcement['priority'] ?? 'medium';
       _type = announcement['type'] ?? 'general';
-      _targetAudience = announcement['target_audience'] ?? 'all';
+      _targetAudience =
+          announcement['target_audience'] ?? announcement['audience'] ?? 'all';
 
-      if (announcement['scheduled_for'] != null) {
-        _scheduledFor = DateTime.parse(announcement['scheduled_for']);
+      final scheduled =
+          announcement['published_at'] ?? announcement['scheduled_for'];
+      if (scheduled != null && scheduled.toString().isNotEmpty) {
+        _scheduledFor = DateTime.tryParse(scheduled.toString());
       }
-      if (announcement['expires_at'] != null) {
-        _expiresAt = DateTime.parse(announcement['expires_at']);
+      if (announcement['expires_at'] != null &&
+          announcement['expires_at'].toString().isNotEmpty) {
+        _expiresAt = DateTime.tryParse(announcement['expires_at'].toString());
       }
     }
   }
@@ -611,6 +616,9 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
         'title': _titleController.text.trim(),
         'content': _messageController.text.trim(),
         'audience': _targetAudience,
+        'target_audience': _targetAudience,
+        'priority': _priority,
+        'is_active': _isActive,
         'published_at': _scheduledFor?.toIso8601String(),
         'updated_at': DateTime.now().toIso8601String(),
       };

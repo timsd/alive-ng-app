@@ -1,3 +1,4 @@
+import '../../utils/appwrite_id_utils.dart';
 import '../../services/appwrite_facade.dart';
 import 'package:flutter/material.dart';
 import '../../config/appwrite_backend_config.dart';
@@ -96,7 +97,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     await _tables.createRow(
       databaseId: AppwriteBackendConfig.databaseId,
       tableId: AppwriteBackendConfig.appSettingsCollectionId,
-      rowId: key == null || key.isEmpty ? ID.unique() : key,
+      rowId: AppwriteIdUtils.toValidUid(key, prefix: 'st'),
       data: _normalizeSettingPayload(data),
     );
   }
@@ -106,7 +107,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     await _tables.updateRow(
       databaseId: AppwriteBackendConfig.databaseId,
       tableId: AppwriteBackendConfig.appSettingsCollectionId,
-      rowId: documentId,
+      rowId: AppwriteIdUtils.toValidUid(documentId, prefix: 'st'),
       data: _normalizeSettingPayload(data),
     );
   }
@@ -115,13 +116,15 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     await _tables.deleteRow(
       databaseId: AppwriteBackendConfig.databaseId,
       tableId: AppwriteBackendConfig.appSettingsCollectionId,
-      rowId: documentId,
+      rowId: AppwriteIdUtils.toValidUid(documentId, prefix: 'st'),
     );
   }
 
   Map<String, dynamic> _normalizeSettingPayload(Map<String, dynamic> data) {
     final key = data['setting_key']?.toString() ?? data['key']?.toString();
     final type = data['data_type']?.toString() ?? data['type']?.toString();
+    final hasValue =
+        data.containsKey('setting_value') || data.containsKey('value');
     final value =
         data['setting_value']?.toString() ?? data['value']?.toString() ?? '';
     return {
@@ -130,8 +133,8 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       if (key != null) 'setting_key': key,
       if (type != null) 'type': type,
       if (type != null) 'data_type': type,
-      'value': value,
-      'setting_value': value,
+      if (hasValue) 'value': value,
+      if (hasValue) 'setting_value': value,
       'updated_at': DateTime.now().toUtc().toIso8601String(),
     };
   }
@@ -374,9 +377,13 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             const Text('Value: '),
             Switch(
               value: controller.text.toLowerCase() == 'true',
-              onChanged: isActive ? (value) {
-                controller.text = value.toString();
-              } : null,
+              onChanged: isActive
+                  ? (value) {
+                      setState(() {
+                        controller.text = value.toString();
+                      });
+                    }
+                  : null,
             ),
             Text(controller.text.toLowerCase() == 'true' ? 'Enabled' : 'Disabled'),
           ],

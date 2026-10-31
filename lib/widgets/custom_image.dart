@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
@@ -22,34 +23,57 @@ class CustomImage extends StatelessWidget {
   });
 
   static ImageProvider provider(String? url, {double scale = 1.0}) {
-    if (url != null && url.isNotEmpty) {
-      return CachedNetworkImageProvider(url, scale: scale);
+    if (url != null && url.trim().isNotEmpty) {
+      if (kIsWeb) {
+        return NetworkImage(url.trim(), scale: scale);
+      }
+      return CachedNetworkImageProvider(url.trim(), scale: scale);
     }
-    // Return a transparent image provider or a local placeholder if needed
-    // For now, we return a provider that will fail gracefully or show nothing
-    // But typically CircleAvatar handles null backgroundImage by showing child
-    return const AssetImage('assets/images/logo.png'); // Fallback
+    return const AssetImage('assets/images/logo.png');
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+    final cleanUrl = imageUrl?.trim();
+
     Widget imageWidget;
-    
-    if (imageUrl != null && imageUrl!.isNotEmpty) {
-      imageWidget = CachedNetworkImage(
-        imageUrl: imageUrl!,
-        width: width,
-        height: height,
-        fit: fit,
-        errorWidget: (context, url, error) {
-          return _buildPlaceholder(theme);
-        },
-        placeholder: (context, url) {
-          return _buildLoadingWidget(theme);
-        },
-      );
+
+    if (cleanUrl != null && cleanUrl.isNotEmpty) {
+      if (kIsWeb) {
+        imageWidget = Image.network(
+          cleanUrl,
+          key: ValueKey(cleanUrl),
+          width: width,
+          height: height,
+          fit: fit,
+          gaplessPlayback: true,
+          webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
+          errorBuilder: (context, error, stackTrace) {
+            return _buildPlaceholder(theme);
+          },
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return placeholder ?? _buildLoadingWidget(theme);
+          },
+        );
+      } else {
+        imageWidget = CachedNetworkImage(
+          key: ValueKey(cleanUrl),
+          imageUrl: cleanUrl,
+          width: width,
+          height: height,
+          fit: fit,
+          fadeInDuration: const Duration(milliseconds: 120),
+          fadeOutDuration: Duration.zero,
+          errorWidget: (context, url, error) {
+            return _buildPlaceholder(theme);
+          },
+          placeholder: (context, url) {
+            return placeholder ?? _buildLoadingWidget(theme);
+          },
+        );
+      }
     } else {
       imageWidget = _buildPlaceholder(theme);
     }
@@ -61,11 +85,13 @@ class CustomImage extends StatelessWidget {
       );
     }
 
-    return Container(
+    return SizedBox(
       width: width,
       height: height,
-      color: backgroundColor,
-      child: imageWidget,
+      child: DecoratedBox(
+        decoration: BoxDecoration(color: backgroundColor),
+        child: imageWidget,
+      ),
     );
   }
 
@@ -78,7 +104,7 @@ class CustomImage extends StatelessWidget {
           child: Icon(
             Icons.image,
             color: theme.colorScheme.onSurfaceVariant,
-            size: (width != null && height != null) 
+            size: (width != null && height != null)
                 ? (width! < height! ? width! * 0.4 : height! * 0.4)
                 : 24,
           ),
@@ -103,6 +129,3 @@ class CustomImage extends StatelessWidget {
     );
   }
 }
-
-
-

@@ -43,22 +43,27 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
     setState(() => _isLoading = true);
     
     try {
+      final guides = await _studyGuideService.getStudyGuides(
+        type: _selectedType,
+        difficulty: _selectedDifficulty,
+        searchQuery: _searchQuery.isEmpty ? null : _searchQuery,
+      );
       final user = _authService.currentUser;
+      List<UserStudyProgress> progress = [];
+      Map<String, dynamic> stats = {'totalStudies': guides.length};
       if (user != null) {
         final results = await Future.wait([
-          _studyGuideService.getStudyGuides(
-            type: _selectedType,
-            difficulty: _selectedDifficulty,
-            searchQuery: _searchQuery.isEmpty ? null : _searchQuery,
-          ),
           _studyGuideService.getUserProgress(user.uid),
           _studyGuideService.getStudyStatistics(user.uid),
         ]);
-        
+        progress = results[0] as List<UserStudyProgress>;
+        stats = results[1] as Map<String, dynamic>;
+      }
+      if (mounted) {
         setState(() {
-          _studyGuides = results[0] as List<StudyGuide>;
-          _userProgress = results[1] as List<UserStudyProgress>;
-          _statistics = results[2] as Map<String, dynamic>;
+          _studyGuides = guides;
+          _userProgress = progress;
+          _statistics = stats;
         });
       }
     } catch (e) {
@@ -78,8 +83,13 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
       appBar: CustomAppBar(
         title: 'Study Guides',
         showBackButton: true,
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         bottom: TabBar(
           controller: _tabController,
+          indicatorColor: Theme.of(context).colorScheme.onPrimary,
+          labelColor: Theme.of(context).colorScheme.onPrimary,
+          unselectedLabelColor: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.72),
           tabs: const [
             Tab(icon: Icon(Icons.dashboard), text: 'Overview'),
             Tab(icon: Icon(Icons.library_books), text: 'Browse'),
@@ -137,14 +147,6 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Welcome to Study Guides',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.onPrimary,
-              ),
-            ),
-            SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 8, tablet: 10, desktop: 12)),
             Text(
               'Deepen your understanding of Scripture through structured Bible studies',
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(

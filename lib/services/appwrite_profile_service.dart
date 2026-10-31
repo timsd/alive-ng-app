@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';
 import '../models/app_models.dart';
+import '../models/leadership_models.dart' show RoleHistoryRecord;
 
 final appwriteProfileServiceProvider = Provider<AppwriteProfileService>((ref) {
   return AppwriteProfileService();
@@ -105,7 +106,7 @@ class AppwriteProfileService {
     }
   }
 
-  Future<void> archiveLeadershipRole(LeadershipRecord record) async {
+  Future<void> archiveLeadershipRole(RoleHistoryRecord record) async {
     await _tables.createRow(
       databaseId: AppwriteBackendConfig.databaseId,
       tableId: AppwriteBackendConfig.leadershipHistoryCollectionId,
@@ -114,7 +115,7 @@ class AppwriteProfileService {
     );
   }
 
-  Future<List<LeadershipRecord>> getLeadershipHistory(String userId) async {
+  Future<List<RoleHistoryRecord>> getLeadershipHistory(String userId) async {
     final response = await _tables.listRows(
       databaseId: AppwriteBackendConfig.databaseId,
       tableId: AppwriteBackendConfig.leadershipHistoryCollectionId,
@@ -125,7 +126,7 @@ class AppwriteProfileService {
     );
 
     final records = response.rows.map((document) {
-      return LeadershipRecord.fromJson({
+      return RoleHistoryRecord.fromJson({
         'id': document.$id,
         ...document.data,
       });
@@ -184,21 +185,66 @@ class AppwriteProfileService {
     String? fullName,
     String? role,
     Map<String, dynamic>? profileData,
-  }) {
+  }) async {
+    final normalizedProfileData = profileData != null
+        ? Map<String, dynamic>.from(profileData)
+        : <String, dynamic>{};
+
+    // Keep avatar_url and photo_url synchronized whenever either is updated.
+    if (normalizedProfileData.containsKey('avatar_url') ||
+        normalizedProfileData.containsKey('photo_url')) {
+      final rawAvatar =
+          (normalizedProfileData['avatar_url'] ?? normalizedProfileData['photo_url'] ?? '')
+              .toString()
+              .trim();
+      normalizedProfileData['avatar_url'] = rawAvatar;
+      normalizedProfileData['photo_url'] = rawAvatar;
+
+      // Best-effort sync to Appwrite Account prefs so session user has photoUrl immediately.
+      try {
+        final account = Account(appwriteClient);
+        final existingPrefs = await account.getPrefs();
+        await account.updatePrefs(prefs: {
+          ...existingPrefs.data,
+          'avatar_url': rawAvatar,
+          'photo_url': rawAvatar,
+        });
+      } catch (e) {
+        debugPrint('Account prefs avatar sync note: $e');
+      }
+    }
+
     final data = _buildProfileData(
       email: email,
       fullName: fullName,
       role: role,
-      profileData: profileData,
+      profileData: normalizedProfileData,
       includeDefaults: false,
     );
 
-    return _tables.updateRow(
-      databaseId: AppwriteBackendConfig.databaseId,
-      tableId: AppwriteBackendConfig.usersCollectionId,
-      rowId: userId,
-      data: data,
-    );
+    try {
+      return await _tables.updateRow(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: AppwriteBackendConfig.usersCollectionId,
+        rowId: userId,
+        data: data,
+      );
+    } on AppwriteException catch (e) {
+      if (e.code == 404) {
+        return await createUserProfile(
+          userId: userId,
+          email: email ?? (normalizedProfileData['email'] ?? '').toString(),
+          fullName: fullName ??
+              (normalizedProfileData['fullName'] ??
+                      normalizedProfileData['full_name'] ??
+                      'Member')
+                  .toString(),
+          role: role ?? (normalizedProfileData['role'] ?? 'member').toString(),
+          profileData: normalizedProfileData,
+        );
+      }
+      rethrow;
+    }
   }
 
   UserProfile userProfileFromDocument(
@@ -224,14 +270,22 @@ class AppwriteProfileService {
       } catch (_) {}
     }
 
+    final resolvedAvatar = _stringValue(data, 'avatar_url') ??
+        _stringValue(data, 'photo_url') ??
+        (additionalProfile != null
+            ? (_stringValue(additionalProfile, 'avatar_url') ??
+                _stringValue(additionalProfile, 'photo_url'))
+            : null) ??
+        (photoUrl != null && photoUrl.trim().isNotEmpty ? photoUrl.trim() : null);
+
     return UserProfile(
       id: document.$id,
       email: _stringValue(data, 'email') ?? fallbackEmail,
       fullName: _stringValue(data, 'fullName') ??
           _stringValue(data, 'full_name') ??
           fallbackFullName,
-      avatarUrl: _stringValue(data, 'avatar_url'),
-      photoUrl: _stringValue(data, 'photo_url') ?? photoUrl,
+      avatarUrl: resolvedAvatar,
+      photoUrl: _stringValue(data, 'photo_url') ?? resolvedAvatar,
       isEmailVerified: _boolValue(data, 'is_email_verified') ?? isEmailVerified,
       isAnonymous: _boolValue(data, 'is_anonymous') ?? isAnonymous,
       provider: _stringValue(data, 'provider') ?? 'appwrite',
@@ -319,8 +373,9 @@ class AppwriteProfileService {
     'location',
     'local_church',
     'occupation',
-    'work_contact',
     'local_chapter',
+    'rejection_reason',
+    'requested_role',
     'is_chapter_verified',
     'is_church_verified',
     'commitment_type',
@@ -364,8 +419,15 @@ class AppwriteProfileService {
     profileData.remove('\$collectionId');
 
     // Appwrite ignores null values on update, so clear the avatar explicitly
-    // when the picture was removed.
-    profileData['avatar_url'] = profile.avatarUrl ?? '';
+    // when the picture was removed, and keep avatar_url + photo_url in sync.
+    final resolvedPhoto =
+        (profile.avatarUrl != null && profile.avatarUrl!.trim().isNotEmpty)
+            ? profile.avatarUrl!.trim()
+            : ((profile.photoUrl != null && profile.photoUrl!.trim().isNotEmpty)
+                ? profile.photoUrl!.trim()
+                : '');
+    profileData['avatar_url'] = resolvedPhoto;
+    profileData['photo_url'] = resolvedPhoto;
     return _buildProfileData(
       email: profile.email,
       fullName: profile.fullName,

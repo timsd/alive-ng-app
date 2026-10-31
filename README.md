@@ -27,10 +27,9 @@ for payments, and Resend-backed Appwrite Functions for email.
 ## Current Stack
 
 - **Architecture:** Ports & Adapters (Hexagonal Architecture) — all 3rd-party SDKs (Appwrite, LiveKit, Paystack, SQLite) are strictly isolated behind abstract ports in `lib/services/ports/` and implemented via concrete adapters in `lib/services/adapters/`. Full details in [Architecture ADR](docs/architecture.md).
-- **Frontend:** Flutter, Riverpod (pinned `^2.6.1`), GoRouter (pinned `^14.0.0`), Material 3 theming
-- **Backend:** Appwrite Dart SDK (`^26.1.0`), Auth, Databases/TablesDB, Storage, Functions, Teams,
-  Messaging topics, and Webhooks
-- **Web hosting:** Coolify Docker build serving Flutter web through Nginx
+- **Frontend:** Flutter (`v2.0.5+12`), Riverpod (pinned `^2.6.1`), GoRouter (pinned `^14.0.0`), Material 3 theming
+- **Backend:** Appwrite 1.8 (`https://api.alivenigeria.org/v1`) & Appwrite Dart SDK (`^26.1.0`), Auth, TablesDB (81 live tables), Storage (9 live buckets including `app_releases`), Functions (8 live functions in `appwrite_functions/`), Teams, Messaging topics, and Webhooks
+- **Web hosting:** Coolify Docker build (`https://app.alivenigeria.org`) serving Flutter web through Nginx
 - **Meetings:** LiveKit (isolated behind `MeetingGateway` port)
 - **Payments:** Paystack (isolated behind `PaymentGateway` port; server-side functions for verification/webhooks)
 - **Email:** Resend via the `send_email` Appwrite Function
@@ -219,17 +218,13 @@ build/app/outputs/bundle/release/app-release.aab
 
 ## Migration And Archive Policy
 
-The app is code-side migrated to Appwrite for database, storage, auth,
-analytics/event tracking, and function-backed workflows. Firebase is retained
-only for FCM push delivery. Legacy Firebase Functions, Firestore rules/indexes,
-Firebase Hosting config, and the old Express/Firebase Admin sidecar have been
-removed from the active repository after replacement by `appwrite_functions/`
-and Appwrite infrastructure scripts.
-
-Current remaining migration targets are primarily:
-
-- Appwrite Messaging provider validation for the final FCM delivery path
-- Browser QA once the Coolify/Appwrite endpoint is reachable
+The app is 100% live on Appwrite 1.8 for database (`TablesDB`), storage, auth,
+analytics/event tracking, and function-backed workflows (`createLiveKitToken`,
+`paystack_payments`, `paystack_webhook`, `send_email`, `bind_office_identity`,
+`delete_account`, `monthly_donation_reminder`, and `notify_admin_signup`).
+Firebase is retained only for native FCM push delivery. Legacy Firebase
+Functions, Firestore rules/indexes, Firebase Hosting config, and the old
+Express/Firebase Admin sidecar have been removed from the active repository.
 
 ## Project Health Commands
 

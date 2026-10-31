@@ -106,7 +106,12 @@ class AppwriteAdminExportService {
         Query.orderDesc('\$createdAt'),
         Query.limit(limit),
         if (status != null && status.isNotEmpty && status != 'all')
-          Query.equal('status', status.toLowerCase()),
+          Query.equal(
+            'status',
+            status.toLowerCase() == 'completed'
+                ? ['completed', 'success']
+                : status.toLowerCase(),
+          ),
       ],
     );
     return response.rows

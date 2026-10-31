@@ -1,3 +1,4 @@
+import '../utils/appwrite_id_utils.dart';
 import 'dart:convert';
 
 import 'package:appwrite/appwrite.dart';
@@ -36,9 +37,9 @@ class AppwriteStudyService {
           description: _string(data['description']),
           category: _string(data['type'], fallback: 'general'),
           difficulty: _string(data['difficulty'], fallback: 'beginner'),
-          duration: _int(data['duration']),
+          duration: _int(data['duration'] ?? data['estimated_duration_minutes']),
           totalLessons: _int(data['lesson_count']),
-          imageUrl: _string(data['cover_image_url']),
+          imageUrl: _string(data['cover_image_url'] ?? data['image_url']),
           createdAt: _date(data['created_at'], fallback: row.$createdAt),
           updatedAt: _date(data['updated_at'], fallback: row.$updatedAt),
         );
@@ -90,7 +91,7 @@ class AppwriteStudyService {
       final row = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.studyGuidesCollectionId,
-        rowId: data['id']?.toString() ?? ID.unique(),
+        rowId: AppwriteIdUtils.toValidUid(data['id']?.toString() ?? ID.unique()),
         data: _sanitizeWriteData(data),
       );
       return row.$id;
@@ -105,7 +106,7 @@ class AppwriteStudyService {
       final row = await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.studyLessonsCollectionId,
-        rowId: data['id']?.toString() ?? ID.unique(),
+        rowId: AppwriteIdUtils.toValidUid(data['id']?.toString() ?? ID.unique()),
         data: _sanitizeWriteData(data),
       );
       return row.$id;

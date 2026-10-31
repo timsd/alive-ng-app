@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../config/appwrite_backend_config.dart';
 import '../models/app_models.dart';
 import '../models/auth_models.dart';
 import '../services/appwrite_profile_service.dart';
@@ -14,26 +15,71 @@ final appwriteAuthControllerProvider = Provider<AuthGateway>((ref) {
 
 final appwriteUserStreamProvider = authStateProvider;
 
+/// Reactive in-memory override for the user's most recently uploaded avatar URL.
+/// Ensures all screens (Home GreetingHeader, ProfileScreen, EditProfileScreen)
+/// switch from the initial representative avatar to the uploaded photo
+/// immediately upon upload without waiting for a database round-trip.
+/// - `null`: no override in this session yet (use database profile URL)
+/// - `''`: avatar was explicitly removed in this session
+/// - non-empty string: newly uploaded avatar URL
+final uploadedAvatarUrlProvider = StateProvider<String?>((ref) {
+  // Reset automatically whenever the authenticated user changes.
+  ref.watch(appwriteUserStreamProvider);
+  return null;
+});
+
 // Current User Profile Provider
 final currentUserProfileProvider = FutureProvider<UserProfile?>((ref) async {
   final user = ref.watch(appwriteUserStreamProvider).value;
 
   if (user == null) return null;
 
-  final profileService = ref.watch(appwriteProfileServiceProvider);
-  final document = await profileService.ensureUserProfile(
-    userId: user.uid,
-    email: user.email,
-    fullName: user.displayName ?? user.email.split('@').first,
-  );
-  return profileService.userProfileFromDocument(
-    document,
-    fallbackEmail: user.email,
-    fallbackFullName: user.displayName,
-    isEmailVerified: user.isEmailVerified,
-    isAnonymous: user.isAnonymous,
-    photoUrl: user.photoUrl,
-  );
+  final avatarOverride = ref.watch(uploadedAvatarUrlProvider);
+
+  try {
+    final profileService = ref.watch(appwriteProfileServiceProvider);
+    final document = await profileService.ensureUserProfile(
+      userId: user.uid,
+      email: user.email,
+      fullName: user.displayName ?? user.email.split('@').first,
+    );
+    final profile = profileService.userProfileFromDocument(
+      document,
+      fallbackEmail: user.email,
+      fallbackFullName: user.displayName,
+      isEmailVerified: user.isEmailVerified,
+      isAnonymous: user.isAnonymous,
+      photoUrl: user.photoUrl,
+    );
+    if (avatarOverride != null) {
+      return profile.copyWith(
+        avatarUrl: avatarOverride,
+        photoUrl: avatarOverride,
+      );
+    }
+    return profile;
+  } catch (_) {
+    final resolvedPhoto = avatarOverride != null
+        ? (avatarOverride.isEmpty ? null : avatarOverride)
+        : user.photoUrl;
+    return UserProfile(
+      id: user.uid,
+      email: user.email,
+      fullName: user.displayName ?? user.email.split('@').first,
+      avatarUrl: resolvedPhoto,
+      photoUrl: resolvedPhoto,
+      isEmailVerified: user.isEmailVerified,
+      isAnonymous: user.isAnonymous,
+      role: AppwriteBackendConfig.isSuperAdminEmail(user.email)
+          ? 'admin'
+          : 'member',
+      approvalStatus: AppwriteBackendConfig.isSuperAdminEmail(user.email)
+          ? 'approved'
+          : 'pending',
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+  }
 });
 
 // Authentication State Provider

@@ -1,7 +1,7 @@
+import '../utils/appwrite_id_utils.dart';
 import 'dart:convert';
 
 import 'package:appwrite/appwrite.dart';
-import 'package:uuid/uuid.dart';
 
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';
@@ -16,7 +16,6 @@ class StudyGuideService {
 
   late final TablesDB _tables = TablesDB(appwriteClient);
   final Logger _logger = Logger('StudyGuideService');
-  final Uuid _uuid = const Uuid();
 
   Future<List<StudyGuide>> getStudyGuides({
     StudyGuideType? type,
@@ -70,7 +69,7 @@ class StudyGuideService {
       final doc = await _tables.getRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.studyGuidesCollectionId,
-        rowId: studyGuideId,
+        rowId: AppwriteIdUtils.toValidUid(studyGuideId),
       );
       return _studyGuideFromData(
           doc.$id, doc.data, doc.$createdAt, doc.$updatedAt);
@@ -102,7 +101,7 @@ class StudyGuideService {
     try {
       final now = DateTime.now();
       final newStudyGuide = studyGuide.copyWith(
-        id: _uuid.v4(),
+        id: AppwriteIdUtils.uniqueId(),
         createdAt: now,
         updatedAt: now,
       );
@@ -110,7 +109,7 @@ class StudyGuideService {
       await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.studyGuidesCollectionId,
-        rowId: newStudyGuide.id,
+        rowId: AppwriteIdUtils.toValidUid(newStudyGuide.id),
         data: _studyGuideToData(newStudyGuide),
       );
       return newStudyGuide;
@@ -126,7 +125,7 @@ class StudyGuideService {
       await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.studyGuidesCollectionId,
-        rowId: studyGuide.id,
+        rowId: AppwriteIdUtils.toValidUid(studyGuide.id),
         data: _studyGuideToData(updatedStudyGuide),
       );
       return updatedStudyGuide;
@@ -162,7 +161,7 @@ class StudyGuideService {
       final doc = await _tables.getRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.studyLessonsCollectionId,
-        rowId: lessonId,
+        rowId: AppwriteIdUtils.toValidUid(lessonId),
       );
       return _lessonFromData(doc.$id, doc.data, doc.$createdAt, doc.$updatedAt);
     } on AppwriteException catch (e) {
@@ -201,7 +200,7 @@ class StudyGuideService {
     try {
       final now = DateTime.now();
       final newLesson = StudyLesson(
-        id: _uuid.v4(),
+        id: AppwriteIdUtils.uniqueId(),
         studyGuideId: lesson.studyGuideId,
         title: lesson.title,
         content: lesson.content,
@@ -219,7 +218,7 @@ class StudyGuideService {
       await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.studyLessonsCollectionId,
-        rowId: newLesson.id,
+        rowId: AppwriteIdUtils.toValidUid(newLesson.id),
         data: _lessonToData(newLesson),
       );
       return newLesson;
@@ -252,7 +251,7 @@ class StudyGuideService {
   Future<StudyQuestion> createQuestion(StudyQuestion question) async {
     try {
       final newQuestion = StudyQuestion(
-        id: _uuid.v4(),
+        id: AppwriteIdUtils.uniqueId(),
         lessonId: question.lessonId,
         question: question.question,
         type: question.type,
@@ -269,7 +268,7 @@ class StudyGuideService {
       await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.studyQuestionsCollectionId,
-        rowId: newQuestion.id,
+        rowId: AppwriteIdUtils.toValidUid(newQuestion.id),
         data: _questionToData(newQuestion),
       );
       return newQuestion;
@@ -352,7 +351,7 @@ class StudyGuideService {
       await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.studyProgressCollectionId,
-        rowId: progress.id,
+        rowId: AppwriteIdUtils.toValidUid(progress.id),
         data: _studyProgressToData(progress),
       );
       return progress;
@@ -369,7 +368,7 @@ class StudyGuideService {
       await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.studyProgressCollectionId,
-        rowId: progress.id,
+        rowId: AppwriteIdUtils.toValidUid(progress.id),
         data: _studyProgressToData(updatedProgress),
       );
       return updatedProgress;
@@ -397,7 +396,7 @@ class StudyGuideService {
       await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.studyProgressCollectionId,
-        rowId: progress.id,
+        rowId: AppwriteIdUtils.toValidUid(progress.id),
         data: _studyProgressToData(completedProgress),
       );
       return completedProgress;
@@ -486,7 +485,7 @@ class StudyGuideService {
       await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.studyProgressCollectionId,
-        rowId: progress.id,
+        rowId: AppwriteIdUtils.toValidUid(progress.id),
         data: _lessonProgressToData(progress, lesson?.studyGuideId ?? ''),
       );
       return progress;
@@ -524,7 +523,7 @@ class StudyGuideService {
       await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.studyProgressCollectionId,
-        rowId: progress.id,
+        rowId: AppwriteIdUtils.toValidUid(progress.id),
         data: _lessonProgressToData(
           updatedProgress,
           lesson?.studyGuideId ?? '',
@@ -564,7 +563,7 @@ class StudyGuideService {
       await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.studyProgressCollectionId,
-        rowId: progress.id,
+        rowId: AppwriteIdUtils.toValidUid(progress.id),
         data: _lessonProgressToData(
           completedProgress,
           lesson?.studyGuideId ?? '',
@@ -630,7 +629,7 @@ class StudyGuideService {
     try {
       final now = DateTime.now();
       final newSession = StudySession(
-        id: _uuid.v4(),
+        id: AppwriteIdUtils.uniqueId(),
         studyGuideId: session.studyGuideId,
         lessonId: session.lessonId,
         facilitatorId: session.facilitatorId,
@@ -651,7 +650,7 @@ class StudyGuideService {
       await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.studySessionsCollectionId,
-        rowId: newSession.id,
+        rowId: AppwriteIdUtils.toValidUid(newSession.id),
         data: _sessionToData(newSession),
       );
       return newSession;
@@ -799,7 +798,7 @@ class StudyGuideService {
       for (var i = 0; i < StudyGuideConstants.defaultStudyGuides.length; i++) {
         final guideData = StudyGuideConstants.defaultStudyGuides[i];
         final studyGuide = StudyGuide(
-          id: _uuid.v4(),
+          id: AppwriteIdUtils.uniqueId(),
           title: guideData['title'] as String,
           description: guideData['description'] as String,
           type: StudyGuideType.values.firstWhere(

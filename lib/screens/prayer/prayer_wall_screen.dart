@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../constants/app_constants.dart';
 import '../../models/app_models.dart';
@@ -57,6 +58,7 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final roleService = RoleAccessService.instance;
     final role = roleService.getCurrentUserRole() ?? 'member';
     const privatePrayerRoles = {
@@ -64,7 +66,7 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
       'bod',
       'trustee',
       'chapter_leader',
-      'director'
+      'director',
     };
     final canAccessPrivate = privatePrayerRoles.contains(role.toLowerCase());
 
@@ -72,24 +74,37 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
       appBar: CustomAppBar(
         title: 'Prayer Wall',
         showBackButton: true,
+        backgroundColor: theme.colorScheme.primary,
+        foregroundColor: theme.colorScheme.onPrimary,
         showThemeToggle: true,
         showLanguageToggle: true,
-        showDonationButton: true,
+        showDonationButton: false,
         actions: [
           if (canAccessPrivate)
             IconButton(
               tooltip: 'Private Prayer Rooms',
               icon: const Icon(Icons.lock_person_rounded),
-              onPressed: () => context.push(AppConstants.privatePrayerRoomRoute),
+              onPressed: () =>
+                  context.push(AppConstants.privatePrayerRoomRoute),
             ),
         ],
         bottom: TabBar(
           controller: _tabController,
+          indicatorColor: theme.colorScheme.onPrimary,
+          labelColor: theme.colorScheme.onPrimary,
+          unselectedLabelColor:
+              theme.colorScheme.onPrimary.withValues(alpha: 0.72),
           tabs: const [
-            Tab(icon: FaIcon(FontAwesomeIcons.globe), text: 'Public Prayers'),
-            Tab(icon: FaIcon(FontAwesomeIcons.user), text: 'My Prayers'),
             Tab(
-              icon: FaIcon(FontAwesomeIcons.personPraying),
+              icon: FaIcon(FontAwesomeIcons.globe, size: 18),
+              text: 'Public Prayers',
+            ),
+            Tab(
+              icon: FaIcon(FontAwesomeIcons.user, size: 18),
+              text: 'My Prayers',
+            ),
+            Tab(
+              icon: FaIcon(FontAwesomeIcons.personPraying, size: 18),
               text: 'Praying For',
             ),
           ],
@@ -98,26 +113,47 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildPrayerList(publicPrayerWallProvider,
-              emptyText: 'No prayer requests found'),
-          _buildPrayerList(myPrayerWallProvider,
-              emptyText: 'You have not created any prayer requests yet'),
-          _buildPrayerList(supportedPrayerWallProvider,
-              emptyText: 'You are not supporting any prayer requests yet'),
+          _buildPrayerList(
+            publicPrayerWallProvider,
+            emptyTitle: 'No public prayer requests yet',
+            emptySubtitle:
+                'Be the first to share a prayer request with the brethren.',
+            showAddButtonOnEmpty: true,
+          ),
+          _buildPrayerList(
+            myPrayerWallProvider,
+            emptyTitle: 'You have not posted any prayers yet',
+            emptySubtitle:
+                'Tap the + button below to share a personal or public prayer request.',
+            showAddButtonOnEmpty: true,
+          ),
+          _buildPrayerList(
+            supportedPrayerWallProvider,
+            emptyTitle: 'Not supporting any prayer requests yet',
+            emptySubtitle:
+                'Tap "Pray" on any request in the Public Prayers tab to track prayers you are interceding for.',
+            showAddButtonOnEmpty: false,
+          ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddPrayerDialog,
+        backgroundColor: theme.colorScheme.primary,
+        foregroundColor: theme.colorScheme.onPrimary,
         tooltip: 'Add Prayer Request',
-        child: const FaIcon(FontAwesomeIcons.plus),
+        icon: const FaIcon(FontAwesomeIcons.plus, size: 16),
+        label: const Text('New Prayer'),
       ),
     );
   }
 
   Widget _buildPrayerList(
     AutoDisposeFutureProvider<List<PrayerRequest>> provider, {
-    required String emptyText,
+    required String emptyTitle,
+    required String emptySubtitle,
+    required bool showAddButtonOnEmpty,
   }) {
+    final theme = Theme.of(context);
     final user = ref.watch(currentUserProvider);
     final asyncRequests = ref.watch(provider);
 
@@ -129,32 +165,86 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
           context,
           'Unable to load prayers',
           error,
+          onRetry: () => ref.invalidate(provider),
         ),
         data: (requests) {
           if (requests.isEmpty) {
             return ListView(
               physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(24),
               children: [
-                SizedBox(height: MediaQuery.sizeOf(context).height * 0.25),
-                Center(child: Text(emptyText, textAlign: TextAlign.center)),
+                SizedBox(height: MediaQuery.sizeOf(context).height * 0.14),
+                Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 360),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 72,
+                          height: 72,
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary
+                                .withValues(alpha: 0.12),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: FaIcon(
+                              FontAwesomeIcons.personPraying,
+                              size: 30,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          emptyTitle,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          emptySubtitle,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                            height: 1.4,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        if (showAddButtonOnEmpty) ...[
+                          const SizedBox(height: 20),
+                          FilledButton.icon(
+                            onPressed: _showAddPrayerDialog,
+                            icon: const Icon(Icons.add),
+                            label: const Text('Add Prayer Request'),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
               ],
             );
           }
 
           return ListView.builder(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
             itemCount: requests.length,
             itemBuilder: (context, index) {
               final request = requests[index];
+              final isOwner = user?.uid == request.userId;
               return _PrayerCard(
                 request: request,
-                isOwner: user?.uid == request.userId,
+                isOwner: isOwner,
                 onPray: () => _recordPrayer(request),
                 onShare: () => _sharePrayerRequest(request),
-                onDelete: user?.uid == request.userId
-                    ? () => _deletePrayer(request)
+                onMarkAnswered: isOwner && !request.isAnswered
+                    ? () => _markPrayerAnswered(request)
                     : null,
+                onDelete: isOwner ? () => _deletePrayer(request) : null,
               );
             },
           );
@@ -166,8 +256,9 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
   Widget _buildLoadErrorState(
     BuildContext context,
     String title,
-    Object? error,
-  ) {
+    Object? error, {
+    required VoidCallback onRetry,
+  }) {
     final theme = Theme.of(context);
     return Center(
       child: Padding(
@@ -206,6 +297,12 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
                     ),
                     textAlign: TextAlign.center,
                   ),
+                  const SizedBox(height: 16),
+                  OutlinedButton.icon(
+                    onPressed: onRetry,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Retry'),
+                  ),
                 ],
               ),
             ),
@@ -227,9 +324,22 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
       ref.invalidate(publicPrayerWallProvider);
       ref.invalidate(myPrayerWallProvider);
       ref.invalidate(supportedPrayerWallProvider);
-      _showSnack('Thank you for praying for ${request.title}');
+      _showSnack('Thank you for praying for "${request.title}"');
     } catch (e) {
       _showSnack('Failed to record prayer: $e', isError: true);
+    }
+  }
+
+  Future<void> _markPrayerAnswered(PrayerRequest request) async {
+    try {
+      await PrayerRequestsService.instance
+          .markPrayerAnswered(requestId: request.id);
+      ref.invalidate(publicPrayerWallProvider);
+      ref.invalidate(myPrayerWallProvider);
+      ref.invalidate(supportedPrayerWallProvider);
+      _showSnack('Praise God! Marked "${request.title}" as answered.');
+    } catch (e) {
+      _showSnack('Failed to mark prayer as answered: $e', isError: true);
     }
   }
 
@@ -313,19 +423,12 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
   }
 
   void _sharePrayerRequest(PrayerRequest request) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Share Prayer Request'),
-        content: Text(
-          '${request.title}\n\n${request.description}\n\nShare this prayer request with others to join in prayer.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
+    final text =
+        '🙏 Prayer Request: ${request.title}\n\n${request.description}\n\n— Join us in prayer on ALIVE Nigeria';
+    SharePlus.instance.share(
+      ShareParams(
+        text: text,
+        subject: 'Prayer Request: ${request.title}',
       ),
     );
   }
@@ -348,6 +451,7 @@ class _PrayerCard extends StatelessWidget {
   final bool isOwner;
   final VoidCallback onPray;
   final VoidCallback onShare;
+  final VoidCallback? onMarkAnswered;
   final VoidCallback? onDelete;
 
   const _PrayerCard({
@@ -355,20 +459,29 @@ class _PrayerCard extends StatelessWidget {
     required this.isOwner,
     required this.onPray,
     required this.onShare,
+    this.onMarkAnswered,
     this.onDelete,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final author = request.isAnonymous ? 'Anonymous' : 'Community Member';
+    final author = request.isAnonymous
+        ? 'Anonymous'
+        : (request.user?.fullName?.trim().isNotEmpty == true
+            ? request.user!.fullName!
+            : 'Community Member');
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 14),
+      elevation: 1,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: theme.colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: request.isAnswered
+              ? Colors.green.withValues(alpha: 0.45)
+              : theme.colorScheme.outlineVariant,
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -381,7 +494,8 @@ class _PrayerCard extends StatelessWidget {
                   radius: 20,
                   backgroundColor: theme.colorScheme.primaryContainer,
                   child: Icon(
-                    Icons.person,
+                    request.isAnonymous ? Icons.visibility_off : Icons.person,
+                    size: 20,
                     color: theme.colorScheme.onPrimaryContainer,
                   ),
                 ),
@@ -392,33 +506,65 @@ class _PrayerCard extends StatelessWidget {
                     children: [
                       Text(
                         author,
-                        style: theme.textTheme.titleMedium
+                        style: theme.textTheme.titleSmall
                             ?.copyWith(fontWeight: FontWeight.bold),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      Text(
-                        _formatTimestamp(request.createdAt),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Text(
+                            _formatTimestamp(request.createdAt),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          if (request.category.trim().isNotEmpty) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primary
+                                    .withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                _formatCategory(request.category),
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ],
                   ),
                 ),
                 if (request.isAnswered)
                   Container(
-                    margin: const EdgeInsets.only(right: 6),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    margin: const EdgeInsets.only(right: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.green.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.green.withValues(alpha: 0.5)),
+                      border:
+                          Border.all(color: Colors.green.withValues(alpha: 0.5)),
                     ),
-                    child: Row(
+                    child: const Row(
                       mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        Icon(Icons.check_circle_rounded, size: 14, color: Colors.green),
+                      children: [
+                        Icon(
+                          Icons.check_circle_rounded,
+                          size: 14,
+                          color: Colors.green,
+                        ),
                         SizedBox(width: 4),
                         Text(
                           'Answered',
@@ -433,17 +579,23 @@ class _PrayerCard extends StatelessWidget {
                   ),
                 if (request.testimonyId != null)
                   Container(
-                    margin: const EdgeInsets.only(right: 6),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    margin: const EdgeInsets.only(right: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.amber.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.amber.withValues(alpha: 0.6)),
+                      border:
+                          Border.all(color: Colors.amber.withValues(alpha: 0.6)),
                     ),
-                    child: Row(
+                    child: const Row(
                       mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        Icon(Icons.celebration_rounded, size: 14, color: Colors.amber),
+                      children: [
+                        Icon(
+                          Icons.celebration_rounded,
+                          size: 14,
+                          color: Colors.amber,
+                        ),
                         SizedBox(width: 4),
                         Text(
                           'Testified',
@@ -460,7 +612,11 @@ class _PrayerCard extends StatelessWidget {
                   IconButton(
                     tooltip: 'Delete',
                     onPressed: onDelete,
-                    icon: const FaIcon(FontAwesomeIcons.trash, size: 18),
+                    icon: Icon(
+                      Icons.delete_outline_rounded,
+                      size: 20,
+                      color: theme.colorScheme.error,
+                    ),
                   ),
               ],
             ),
@@ -468,39 +624,71 @@ class _PrayerCard extends StatelessWidget {
             Text(
               request.title,
               style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w600),
+                  ?.copyWith(fontWeight: FontWeight.w700),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
               request.description,
-              style: theme.textTheme.bodyMedium,
-              maxLines: 5,
+              style: theme.textTheme.bodyMedium?.copyWith(height: 1.45),
+              maxLines: 6,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 16),
-            Row(
+            const SizedBox(height: 14),
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
               children: [
-                FaIcon(
-                  FontAwesomeIcons.heart,
-                  size: 18,
-                  color: theme.colorScheme.onSurfaceVariant,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    FaIcon(
+                      FontAwesomeIcons.personPraying,
+                      size: 15,
+                      color: theme.colorScheme.primary,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${request.prayerCount} praying',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 6),
-                Text(
-                  '${request.prayerCount} praying',
-                  style: theme.textTheme.bodySmall,
-                ),
-                const Spacer(),
-                if (!isOwner)
-                  TextButton.icon(
-                    onPressed: onPray,
-                    icon: const FaIcon(FontAwesomeIcons.handsPraying, size: 18),
-                    label: const Text('Pray'),
-                  ),
-                TextButton.icon(
-                  onPressed: onShare,
-                  icon: const FaIcon(FontAwesomeIcons.share, size: 18),
-                  label: const Text('Share'),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (onMarkAnswered != null)
+                      TextButton.icon(
+                        onPressed: onMarkAnswered,
+                        icon: const Icon(
+                          Icons.check_circle_outline_rounded,
+                          size: 18,
+                          color: Colors.green,
+                        ),
+                        label: const Text(
+                          'Mark Answered',
+                          style: TextStyle(color: Colors.green),
+                        ),
+                      ),
+                    if (!isOwner)
+                      FilledButton.tonalIcon(
+                        onPressed: onPray,
+                        icon: const FaIcon(
+                          FontAwesomeIcons.personPraying,
+                          size: 14,
+                        ),
+                        label: const Text('Pray'),
+                      ),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      tooltip: 'Share prayer request',
+                      onPressed: onShare,
+                      icon: const Icon(Icons.share_rounded, size: 19),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -508,6 +696,12 @@ class _PrayerCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _formatCategory(String raw) {
+    final cleaned = raw.trim().replaceAll('_', ' ');
+    if (cleaned.isEmpty) return raw;
+    return cleaned[0].toUpperCase() + cleaned.substring(1).toLowerCase();
   }
 
   String _formatTimestamp(DateTime timestamp) {
@@ -536,7 +730,10 @@ class _PrayerWallSkeleton extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
             side: BorderSide(
-              color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4),
+              color: Theme.of(context)
+                  .colorScheme
+                  .outlineVariant
+                  .withValues(alpha: 0.4),
             ),
           ),
           child: Padding(
@@ -546,7 +743,11 @@ class _PrayerWallSkeleton extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const ShimmerLoading(width: 40, height: 40, borderRadius: 20),
+                    const ShimmerLoading(
+                      width: 40,
+                      height: 40,
+                      borderRadius: 20,
+                    ),
                     const SizedBox(width: 12),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

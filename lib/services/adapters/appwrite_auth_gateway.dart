@@ -44,11 +44,21 @@ class AppwriteAuthGateway implements AuthGateway {
 
   /// Maps an Appwrite SDK [sdk.User] into our owned [AppUser].
   AppUser _mapSdkUserToAppUser(sdk.User user) {
+    String? prefPhoto;
+    try {
+      final raw = user.prefs.data['avatar_url'] ??
+          user.prefs.data['photo_url'] ??
+          user.prefs.data['photoUrl'];
+      if (raw is String && raw.trim().isNotEmpty) {
+        prefPhoto = raw.trim();
+      }
+    } catch (_) {}
+
     return AppUser(
       uid: user.$id,
       email: user.email,
       displayName: user.name.isEmpty ? null : user.name,
-      photoUrl: null, // Appwrite doesn't expose a photo URL on the User model
+      photoUrl: prefPhoto,
       isEmailVerified: user.emailVerification,
       isAnonymous: false, // Appwrite has no anonymous session on User model
     );

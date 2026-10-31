@@ -140,7 +140,10 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
     final cursor = widget.controller.selection.baseOffset;
     if (_activeTagStart < 0 || cursor < 0) return;
 
-    final replacement = '$_activeTagPrefix${entity.id} ';
+    final tagToken = entity.type == TagType.user
+        ? entity.name.trim().replaceAll(RegExp(r'\s+'), '_')
+        : entity.id;
+    final replacement = '$_activeTagPrefix$tagToken ';
     final newText =
         text.substring(0, _activeTagStart) + replacement + text.substring(cursor);
 

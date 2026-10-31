@@ -1,7 +1,6 @@
 import '../../widgets/in_app_pdf_viewer.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../services/appwrite_storage_compat_service.dart';
 import '../../constants/app_constants.dart';
@@ -897,36 +896,6 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
   void _openDonationPage() {
     // Navigate to in-app donation page
     context.go(AppConstants.donationRoute);
-  }
-
-  void _shareTract() async {
-    try {
-      final shareText = '''
-Check out this amazing tract: "${widget.tract.title}" by ${widget.tract.author}
-
-${widget.tract.description}
-
-Download it from ALIVE Nigeria App: https://app.alivenigeria.org
-
-#ALIVENigeria #Gospel #ChristianTract
-      '''
-          .trim();
-
-      await SharePlus.instance.share(
-        ShareParams(
-          text: shareText,
-          subject: 'Check out this tract: ${widget.tract.title}',
-        ),
-      );
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Unable to share tract right now. Please try again.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
   }
 
   void _resetAnswers() {

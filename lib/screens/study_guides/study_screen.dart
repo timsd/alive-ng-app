@@ -68,22 +68,13 @@ class StudyScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      TextFormatter.formatActivityType('bible_study'),
-                      style:
-                          Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                color: Theme.of(context).colorScheme.onPrimary,
-                                fontWeight: FontWeight.bold,
-                                fontSize: ResponsiveUtils.getResponsiveFontSize(
-                                    context, 24),
-                              ),
-                    ),
-                    SizedBox(
-                        height:
-                            ResponsiveUtils.getResponsiveSpacing(context, 8)),
-                    Text(
                       TextFormatter.formatText('grow_in_faith'),
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.9),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onPrimary
+                                .withValues(alpha: 0.95),
+                            fontWeight: FontWeight.w500,
                             fontSize: ResponsiveUtils.getResponsiveFontSize(
                                 context, 16),
                           ),
@@ -114,6 +105,12 @@ class StudyScreen extends ConsumerWidget {
 
               // Instant Word Card
               _buildBibleGameCard(context),
+
+              SizedBox(
+                  height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
+
+              // Study Guides Card
+              _buildStudyGuidesCard(context),
 
               SizedBox(
                   height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
@@ -301,6 +298,79 @@ class StudyScreen extends ConsumerWidget {
                   Icons.arrow_forward_ios,
                   color: Theme.of(context).colorScheme.onPrimary,
                   size: ResponsiveUtils.getResponsiveIconSize(context, 20),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+
+  Widget _buildStudyGuidesCard(BuildContext context) {
+    return Container(
+      margin: EdgeInsets.symmetric(
+          horizontal: ResponsiveUtils.getResponsiveSpacing(context, 20)),
+      child: Card(
+        elevation: 3,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(
+              ResponsiveUtils.getResponsiveBorderRadiusValue(context, 16)),
+        ),
+        child: InkWell(
+          onTap: () => context.push(AppConstants.studyGuideRoute),
+          borderRadius: BorderRadius.circular(
+              ResponsiveUtils.getResponsiveBorderRadiusValue(context, 16)),
+          child: Container(
+            padding: ResponsiveUtils.getResponsivePaddingWithBase(context, 20),
+            child: Row(
+              children: [
+                Container(
+                  padding:
+                      ResponsiveUtils.getResponsivePaddingWithBase(context, 12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(
+                        ResponsiveUtils.getResponsiveBorderRadiusValue(
+                            context, 12)),
+                  ),
+                  child: Icon(
+                    Icons.library_books_rounded,
+                    color: Theme.of(context).colorScheme.primary,
+                    size: ResponsiveUtils.getResponsiveIconSize(context, 32),
+                  ),
+                ),
+                SizedBox(
+                    width: ResponsiveUtils.getResponsiveSpacing(context, 16)),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Study Guides',
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                      ),
+                      SizedBox(
+                          height:
+                              ResponsiveUtils.getResponsiveSpacing(context, 6)),
+                      Text(
+                        'Structured Bible lessons, progress tracking & statistics',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_forward_ios,
+                  size: ResponsiveUtils.getResponsiveIconSize(context, 18),
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ],
             ),
@@ -547,13 +617,7 @@ class StudyScreen extends ConsumerWidget {
           ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                      'Starting program: ${program.title ?? "Study Program"}'),
-                  backgroundColor: Theme.of(context).colorScheme.tertiary,
-                ),
-              );
+              context.push(AppConstants.studyGuideRoute);
             },
             child: const Text('Start Program'),
           ),

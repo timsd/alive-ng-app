@@ -55,7 +55,6 @@ import '../screens/admin/admin_approval_link_handler_screen.dart';
 import '../screens/help/help_support_screen.dart';
 import '../screens/settings/notification_settings_screen.dart';
 import '../screens/testimonies/testimonies_screen.dart';
-import '../screens/resources/resources_screen.dart';
 import '../screens/donation/donation_screen.dart';
 import '../screens/donation/gift_in_kind_form_screen.dart';
 import '../screens/donation/non_monetary_gift_form_screen.dart';
@@ -100,7 +99,6 @@ bool _isGuestAccessibleRoute(String path) {
     '/books-tracts',
     '/kids-stories',
     '/testimonies',
-    '/resources',
     '/help-support',
     '/donation',
     '/donate',
@@ -515,7 +513,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const AdminHealthContentScreen(),
             redirect: (context, state) {
               final roleService = RoleAccessService.instance;
-              if (!roleService.canAccessAdmin()) {
+              if (!roleService.canAccessAdmin() &&
+                  !roleService.canManageHealthContent()) {
                 return '/home';
               }
               return null;
@@ -653,12 +652,6 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const TestimoniesScreen(),
           ),
 
-          // Resources Route
-          GoRoute(
-            path: AppConstants.resourcesRoute,
-            builder: (context, state) => const ResourcesScreen(),
-          ),
-
           // Donation Route
           GoRoute(
             path: AppConstants.donationRoute,
@@ -694,6 +687,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppConstants.leadershipArchiveRoute,
             builder: (context, state) => const LeadershipArchiveScreen(),
+            redirect: (context, state) {
+              final roleService = RoleAccessService.instance;
+              if (!roleService.canAccessAdmin() &&
+                  !roleService.canAccessBoardDocuments()) {
+                return '/home';
+              }
+              return null;
+            },
           ),
 
           // Admin Sample Content management (soft-delete built-in samples)

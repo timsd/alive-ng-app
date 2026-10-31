@@ -312,23 +312,13 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      TextFormatter.formatActivityType('daily_activities'),
-                      style:
-                          Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                color: Theme.of(context).colorScheme.onSecondary,
-                                fontWeight: FontWeight.bold,
-                              ),
-                    ),
-                    SizedBox(
-                        height: ResponsiveUtils.getResponsiveValue(
-                            context: context,
-                            mobile: 6,
-                            tablet: 8,
-                            desktop: 10)),
-                    Text(
                       _getDateString(),
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: Theme.of(context).colorScheme.onSecondary.withValues(alpha: 0.9),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSecondary
+                                .withValues(alpha: 0.95),
+                            fontWeight: FontWeight.w500,
                           ),
                     ),
                   ],

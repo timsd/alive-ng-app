@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/appwrite_auth_provider.dart';
 
 import '../providers/auth_provider.dart';
@@ -10,6 +9,7 @@ import '../providers/language_provider.dart';
 import '../utils/text_formatter.dart';
 import '../utils/layout_fix_utils.dart';
 import '../constants/app_constants.dart';
+import 'custom_image.dart';
 
 /// Clean, human-centered Greeting Header for ALIVE Nigeria.
 /// Grounded in ministry brand colors, warm editorial typography,
@@ -21,13 +21,19 @@ class GreetingHeader extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final currentUser = ref.watch(currentUserProvider);
     final userProfile = ref.watch(currentUserProfileProvider).value;
-    final avatarUrl = (userProfile?.avatarUrl != null && userProfile!.avatarUrl!.trim().isNotEmpty)
-        ? userProfile.avatarUrl!.trim()
-        : ((userProfile?.photoUrl != null && userProfile!.photoUrl!.trim().isNotEmpty)
-            ? userProfile.photoUrl!.trim()
-            : ((currentUser?.photoUrl != null && currentUser!.photoUrl!.trim().isNotEmpty)
-                ? currentUser.photoUrl!.trim()
-                : null));
+    final avatarOverride = ref.watch(uploadedAvatarUrlProvider);
+    final avatarUrl = avatarOverride != null
+        ? (avatarOverride.trim().isEmpty ? null : avatarOverride.trim())
+        : ((userProfile?.avatarUrl != null &&
+                userProfile!.avatarUrl!.trim().isNotEmpty)
+            ? userProfile.avatarUrl!.trim()
+            : ((userProfile?.photoUrl != null &&
+                    userProfile!.photoUrl!.trim().isNotEmpty)
+                ? userProfile.photoUrl!.trim()
+                : ((currentUser?.photoUrl != null &&
+                        currentUser!.photoUrl!.trim().isNotEmpty)
+                    ? currentUser.photoUrl!.trim()
+                    : null)));
     final translate = ref.watch(translationProvider);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -35,8 +41,13 @@ class GreetingHeader extends ConsumerWidget {
     final hour = DateTime.now().hour;
     final greeting = _getGreeting(hour);
     final timeIcon = _getTimeIcon(hour);
-    final userName = currentUser?.displayName ??
-        (currentUser?.email.split('@').first ?? '');
+    final userName = (userProfile?.fullName != null &&
+            userProfile!.fullName!.trim().isNotEmpty)
+        ? userProfile.fullName!.trim()
+        : (currentUser?.displayName ??
+            (currentUser?.email.split('@').first ?? ''));
+    final initialLetter =
+        userName.isNotEmpty ? userName[0].toUpperCase() : 'M';
     final formattedDate =
         DateFormat('EEEE, MMMM d').format(DateTime.now());
 
@@ -99,58 +110,71 @@ class GreetingHeader extends ConsumerWidget {
                 if (currentUser != null)
                   InkWell(
                     onTap: () => context.push(AppConstants.profileRoute),
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(32),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      padding: const EdgeInsets.fromLTRB(6, 4, 8, 4),
                       decoration: BoxDecoration(
                         color: isDark
                             ? Colors.white.withValues(alpha: 0.12)
                             : const Color(0xFFF1EDE4),
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(32),
                         border: Border.all(
-                          color: const Color(0xFFD49B28).withValues(alpha: 0.4),
-                          width: 1,
+                          color: const Color(0xFFD49B28).withValues(alpha: 0.55),
+                          width: 1.2,
                         ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          CircleAvatar(
-                            radius: 18,
-                            backgroundColor: const Color(0xFFD49B28),
-                            backgroundImage: avatarUrl != null
-                                ? CachedNetworkImageProvider(avatarUrl)
-                                : null,
-                            child: avatarUrl == null
-                                ? Text(
-                                    userName.isNotEmpty
-                                        ? userName[0].toUpperCase()
-                                        : "M",
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
+                          Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: const Color(0xFFD49B28),
+                                width: 1.5,
+                              ),
+                            ),
+                            child: CircleAvatar(
+                              radius: 22,
+                              backgroundColor: const Color(0xFFD49B28),
+                              child: avatarUrl != null
+                                  ? ClipOval(
+                                      child: CustomImage(
+                                        key: ValueKey(avatarUrl),
+                                        imageUrl: avatarUrl,
+                                        width: 44,
+                                        height: 44,
+                                        fit: BoxFit.cover,
+                                        backgroundColor: const Color(0xFFD49B28),
+                                        placeholder: Center(
+                                          child: Text(
+                                            initialLetter,
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                  : Text(
+                                      initialLetter,
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
                                     ),
-                                  )
-                                : null,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            "Profile",
-                            style: TextStyle(
-                              color: isDark
-                                  ? Colors.white.withValues(alpha: 0.95)
-                                  : const Color(0xFF233E5F),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
                             ),
                           ),
                           const SizedBox(width: 4),
                           Icon(
                             Icons.chevron_right_rounded,
-                            size: 16,
+                            size: 18,
                             color: isDark
-                                ? Colors.white.withValues(alpha: 0.6)
+                                ? Colors.white.withValues(alpha: 0.75)
                                 : const Color(0xFF5B6B82),
                           ),
                         ],

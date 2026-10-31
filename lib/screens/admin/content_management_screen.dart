@@ -1,3 +1,4 @@
+import '../../utils/appwrite_id_utils.dart';
 import 'package:flutter/material.dart';
 import '../../services/appwrite_facade.dart';
 import 'package:intl/intl.dart';
@@ -8,7 +9,6 @@ import '../../widgets/loading_widget.dart';
 import '../../utils/toast_utils.dart';
 import '../../utils/text_formatter.dart';
 import '../../utils/layout_fix_utils.dart';
-import 'tract_podcast_admin_screen.dart';
 
 class ContentManagementScreen extends StatefulWidget {
   final String? contentType;
@@ -166,7 +166,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     await _tables.createRow(
       databaseId: AppwriteBackendConfig.databaseId,
       tableId: collectionId,
-      rowId: documentId ?? ID.unique(),
+      rowId: AppwriteIdUtils.toValidUid(documentId),
       data: data,
     );
   }
@@ -180,7 +180,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
       await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: collectionId,
-        rowId: documentId,
+        rowId: AppwriteIdUtils.toValidUid(documentId),
         data: data,
       );
     } on AppwriteException catch (e) {
@@ -197,7 +197,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     await _tables.updateRow(
       databaseId: AppwriteBackendConfig.databaseId,
       tableId: collectionId,
-      rowId: documentId,
+      rowId: AppwriteIdUtils.toValidUid(documentId),
       data: data,
     );
   }
@@ -209,7 +209,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     await _tables.deleteRow(
       databaseId: AppwriteBackendConfig.databaseId,
       tableId: collectionId,
-      rowId: documentId,
+      rowId: AppwriteIdUtils.toValidUid(documentId),
     );
   }
 
@@ -400,8 +400,8 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
               child: ListTile(
                 leading: const Icon(Icons.delete, color: Colors.red),
                 title: Text('Delete',
-                    style: TextStyle(
-                        color: Theme.of(context).colorScheme.onError)),
+                    style:
+                        TextStyle(color: Theme.of(context).colorScheme.error)),
                 contentPadding: EdgeInsets.zero,
               ),
             ),
@@ -513,8 +513,8 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
               child: ListTile(
                 leading: const Icon(Icons.delete, color: Colors.red),
                 title: Text('Delete',
-                    style: TextStyle(
-                        color: Theme.of(context).colorScheme.onError)),
+                    style:
+                        TextStyle(color: Theme.of(context).colorScheme.error)),
                 contentPadding: EdgeInsets.zero,
               ),
             ),
@@ -706,7 +706,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                         ToastUtils.showSuccess('Content page created');
                       }
                       if (!mounted) return;
-                      Navigator.of(this.context).pop();
+                      Navigator.of(context).pop();
                       _loadContentPages();
                     } catch (e) {
                       ToastUtils.showError('Error saving content: $e');
@@ -722,12 +722,168 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
   }
 
   void _showFeaturedContentDialog({Map<String, dynamic>? content}) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const TractPodcastAdminScreen(),
-      ),
-    ).then((_) => _loadFeaturedContent());
+    final isEditing = content != null && content.isNotEmpty;
+    final titleController =
+        TextEditingController(text: content?['title']?.toString() ?? '');
+    final descriptionController =
+        TextEditingController(text: content?['description']?.toString() ?? '');
+    final contentIdController =
+        TextEditingController(text: content?['content_id']?.toString() ?? '');
+    final priorityController =
+        TextEditingController(text: (content?['priority'] ?? 1).toString());
+    String contentType =
+        (content?['content_type']?.toString() ?? 'general').toLowerCase();
+    const validTypes = [
+      'general',
+      'tract',
+      'podcast',
+      'study_guide',
+      'kids_story',
+      'project',
+    ];
+    if (!validTypes.contains(contentType)) {
+      contentType = 'general';
+    }
+    bool isActive = content?['is_active'] ?? true;
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            return AlertDialog(
+              title: Text(
+                isEditing ? 'Edit Featured Content' : 'Create Featured Content',
+              ),
+              content: SizedBox(
+                width: 460,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        controller: titleController,
+                        decoration: const InputDecoration(
+                          labelText: 'Title *',
+                          prefixIcon: Icon(Icons.star_outline),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        initialValue: contentType,
+                        decoration: const InputDecoration(
+                          labelText: 'Content Type',
+                          prefixIcon: Icon(Icons.category_outlined),
+                          border: OutlineInputBorder(),
+                        ),
+                        items: validTypes
+                            .map((t) => DropdownMenuItem(
+                                  value: t,
+                                  child: Text(TextFormatter.formatCategory(t)),
+                                ))
+                            .toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setDialogState(() => contentType = val);
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: contentIdController,
+                        decoration: const InputDecoration(
+                          labelText: 'Target Content ID (optional)',
+                          prefixIcon: Icon(Icons.tag),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: priorityController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Priority (1 = highest)',
+                          prefixIcon: Icon(Icons.low_priority),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: descriptionController,
+                        maxLines: 3,
+                        decoration: const InputDecoration(
+                          labelText: 'Description',
+                          prefixIcon: Icon(Icons.description_outlined),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      SwitchListTile(
+                        value: isActive,
+                        onChanged: (v) => setDialogState(() => isActive = v),
+                        title: const Text('Active'),
+                        subtitle: const Text('Show in featured highlights'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.save),
+                  label: Text(isEditing ? 'Update' : 'Create'),
+                  onPressed: () async {
+                    if (titleController.text.trim().isEmpty) {
+                      ToastUtils.showError('Title is required');
+                      return;
+                    }
+                    final payload = {
+                      'title': titleController.text.trim(),
+                      'description': descriptionController.text.trim(),
+                      'content_type': contentType,
+                      'content_id': contentIdController.text.trim(),
+                      'priority': int.tryParse(priorityController.text) ?? 1,
+                      'is_active': isActive,
+                      'updated_at': DateTime.now().toIso8601String(),
+                    };
+                    try {
+                      if (isEditing) {
+                        await _updateAdminDocument(
+                          AppwriteBackendConfig.featuredContentCollectionId,
+                          content['id'],
+                          payload,
+                        );
+                        ToastUtils.showSuccess('Featured content updated');
+                      } else {
+                        await _createAdminDocument(
+                          AppwriteBackendConfig.featuredContentCollectionId,
+                          {
+                            ...payload,
+                            'created_at': DateTime.now().toIso8601String(),
+                          },
+                        );
+                        ToastUtils.showSuccess('Featured content created');
+                      }
+                      if (dialogContext.mounted) {
+                        Navigator.of(dialogContext).pop();
+                      }
+                      _loadFeaturedContent();
+                    } catch (e) {
+                      ToastUtils.showError('Error saving featured content: $e');
+                    }
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   // Database operations

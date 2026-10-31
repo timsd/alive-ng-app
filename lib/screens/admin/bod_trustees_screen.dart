@@ -6,7 +6,7 @@ import '../../services/appwrite_profile_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/leadership_service.dart';
 import '../../services/role_access_service.dart';
-import '../../models/app_models.dart' hide LeadershipRecord;
+import '../../models/app_models.dart';
 import '../../models/leadership_models.dart';
 import 'board_reports_screen.dart';
 import 'board_decisions_screen.dart';
@@ -1252,10 +1252,11 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
     );
   }
 
-  Future<void> _joinMeeting(String _) async {
+  Future<void> _joinMeeting(String roomName) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => const LiveKitMeetingScreen(
+        builder: (_) => LiveKitMeetingScreen(
+          customRoomName: roomName,
           meetingType: MeetingType.board,
         ),
       ),

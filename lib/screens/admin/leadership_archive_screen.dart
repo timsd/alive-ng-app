@@ -184,6 +184,7 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
                     Expanded(
                       child: TabBarView(
                         controller: _tabController,
+
                         children: [
                           _buildStatisticsTab(theme),
                           _buildRecordsTab(_getFilteredRecords(_activeRecords),
@@ -287,6 +288,10 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
       color: theme.colorScheme.surface,
       child: TabBar(
         controller: _tabController,
+
+        indicatorColor: theme.colorScheme.primary,
+        labelColor: theme.colorScheme.primary,
+        unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
         tabs: [
           const Tab(
             child: Column(
@@ -719,21 +724,33 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
     String notes,
   ) async {
     try {
+      final parsedStatus = switch (status.toLowerCase()) {
+        'completed' => ServiceStatus.completed,
+        'inactive' => ServiceStatus.inactive,
+        'archived' => ServiceStatus.archived,
+        _ => ServiceStatus.active,
+      };
+      final parsedPosition = switch (department.toLowerCase()) {
+        String s when s.contains('trustee') => LeadershipPosition.trustee,
+        String s when s.contains('director') => LeadershipPosition.director,
+        String s when s.contains('chapter') => LeadershipPosition.chapterCoordinator,
+        _ => LeadershipPosition.bod,
+      };
       final record = LeadershipRecord(
         id: '',
-        userId: 'temp_user_id', // Will be overridden by service
+        userId: name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_'),
         userName: name,
-        userEmail: 'temp@email.com', // Replace with actual user email if available
+        userEmail: department.contains('@') ? department.trim() : 'office@alivenigeria.org',
         userPhone: null,
-        position: LeadershipPosition.bod, // Parse from position string if needed
+        position: parsedPosition,
         positionTitle: position,
         startDate: startDate,
-        endDate: null,
-        yearsOfService: 0,
-        status: ServiceStatus.active,
+        endDate: parsedStatus == ServiceStatus.completed ? DateTime.now() : null,
+        yearsOfService: (DateTime.now().difference(startDate).inDays / 365).round(),
+        status: parsedStatus,
         notes: notes,
         achievements: null,
-        contactInfo: null,
+        contactInfo: department.isNotEmpty ? {'department': department} : null,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
         createdBy: null,
@@ -784,7 +801,7 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
         {
           'end_date': endDate.toIso8601String(),
           'status': ServiceStatus.completed.name,
-          'achievements': achievements,
+          'achievements': achievements.join('\n'),
           'notes': finalNotes,
           'years_of_service': yearsOfService.round(),
           'updated_at': DateTime.now().toIso8601String(),
@@ -856,11 +873,12 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
             mainAxisSize: MainAxisSize.min,
             children: [
               _buildSimpleDetailRow('Name', record.userName),
-              _buildSimpleDetailRow('Position', record.position.toString()),
+              _buildSimpleDetailRow('Position', record.positionDisplayName),
+              _buildSimpleDetailRow('Title', record.positionTitle),
               _buildSimpleDetailRow('Start Date', _formatDate(record.startDate)),
               if (record.endDate != null)
                 _buildSimpleDetailRow('End Date', _formatDate(record.endDate!)),
-              _buildSimpleDetailRow('Status', record.status.toString()),
+              _buildSimpleDetailRow('Status', record.statusDisplayName),
               _buildSimpleDetailRow('Years of Service', '${record.yearsOfService} years'),
               if (record.achievements != null && record.achievements!.isNotEmpty) ...[
                 const SizedBox(height: 16),
@@ -1024,7 +1042,7 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Position: ${record.position}', 
+                Text('Position: ${record.positionDisplayName}',
                      style: const TextStyle(fontWeight: FontWeight.bold)),
                 Text('Start Date: ${_formatDate(record.startDate)}'),
                 const SizedBox(height: 16),
@@ -1105,7 +1123,7 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
             const Text('Are you sure you want to archive the leadership record for:'),
             const SizedBox(height: 8),
             Text(record.userName, style: const TextStyle(fontWeight: FontWeight.bold)),
-            Text('Position: ${record.position}'),
+            Text('Position: ${record.positionDisplayName}'),
             Text('Position Title: ${record.positionTitle}'),
             const SizedBox(height: 16),
             Container(

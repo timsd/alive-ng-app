@@ -1,3 +1,4 @@
+import '../utils/appwrite_id_utils.dart';
 import 'dart:convert';
 
 import 'package:appwrite/appwrite.dart';
@@ -11,7 +12,6 @@ import 'payment_service.dart';
 import 'ports/payment_gateway.dart';
 import '../models/donation_models.dart';
 import '../models/project_model.dart';
-import 'package:uuid/uuid.dart';
 import '../utils/logger.dart';
 import '../utils/app_exception.dart';
 import 'auth_service.dart';
@@ -27,7 +27,6 @@ class DonationService {
   final PaymentService _paymentService;
 
   late final TablesDB _tables = TablesDB(appwriteClient);
-  final Uuid _uuid = const Uuid();
   final Map<String, DonationRecord> _checkoutDrafts = {};
   final Logger _logger = Logger('DonationService');
 
@@ -121,7 +120,7 @@ class DonationService {
       final row = await _tables.getRow(
         databaseId: _databaseId,
         tableId: _projectsCollectionId,
-        rowId: projectId,
+        rowId: AppwriteIdUtils.toValidUid(projectId),
       );
       return Project.fromJson(_rowData(row));
     } catch (_) {
@@ -230,7 +229,7 @@ class DonationService {
       final row = await _tables.getRow(
         databaseId: _databaseId,
         tableId: _materialsCollectionId,
-        rowId: materialId,
+        rowId: AppwriteIdUtils.toValidUid(materialId),
       );
       final data = _rowData(row);
       if (data['is_active'] != true) {
@@ -353,7 +352,7 @@ class DonationService {
         userName = user.displayName ?? (user.email.isNotEmpty ? user.email.split('@').first : 'Donor');
         userEmail = user.email.isNotEmpty ? user.email : (guestEmail ?? '');
       } else {
-        userId = 'guest-${_uuid.v4()}';
+        userId = 'guest-${AppwriteIdUtils.uniqueId()}';
         userName = (guestName ?? 'Guest Donor');
         userEmail = (guestEmail ?? '');
         if (userEmail.isEmpty) {
@@ -362,7 +361,7 @@ class DonationService {
       }
 
       final donation = DonationRecord(
-        id: _uuid.v4(),
+        id: AppwriteIdUtils.uniqueId(),
         userId: userId,
         userName: userName,
         userEmail: userEmail,
@@ -390,7 +389,7 @@ class DonationService {
           await _tables.createRow(
             databaseId: _databaseId,
             tableId: _donationsCollectionId,
-            rowId: donation.id,
+            rowId: AppwriteIdUtils.toValidUid(donation.id),
             data: data,
           );
         } catch (e) {
@@ -407,7 +406,7 @@ class DonationService {
       await _tables.createRow(
         databaseId: _databaseId,
         tableId: _donationsCollectionId,
-        rowId: donation.id,
+        rowId: AppwriteIdUtils.toValidUid(donation.id),
         data: data,
       );
 
@@ -444,7 +443,7 @@ class DonationService {
         final existing = await _tables.getRow(
           databaseId: _databaseId,
           tableId: _donationsCollectionId,
-          rowId: donationId,
+          rowId: AppwriteIdUtils.toValidUid(donationId),
         );
         updates['metadata'] = jsonEncode({
           ...?_parseMetadata(existing.data['metadata']),
@@ -459,13 +458,13 @@ class DonationService {
       await _tables.updateRow(
         databaseId: _databaseId,
         tableId: _donationsCollectionId,
-        rowId: donationId,
+        rowId: AppwriteIdUtils.toValidUid(donationId),
         data: updates,
       );
       final row = await _tables.getRow(
         databaseId: _databaseId,
         tableId: _donationsCollectionId,
-        rowId: donationId,
+        rowId: AppwriteIdUtils.toValidUid(donationId),
       );
       return DonationRecord.fromJson(_rowData(row));
     } catch (e) {
@@ -497,7 +496,7 @@ class DonationService {
       await _tables.updateRow(
         databaseId: _databaseId,
         tableId: _materialsCollectionId,
-        rowId: materialId,
+        rowId: AppwriteIdUtils.toValidUid(materialId),
         data: {
           'download_count': material.downloadCount + 1,
           'updated_at': DateTime.now().toIso8601String(),
@@ -547,7 +546,7 @@ class DonationService {
           donationDataList.isNotEmpty ? donationDataList.first : null;
 
       final download = UserDownload(
-        id: _uuid.v4(),
+        id: AppwriteIdUtils.uniqueId(),
         userId: userId,
         materialId: materialId,
         materialTitle: materialTitle,
@@ -560,7 +559,7 @@ class DonationService {
       await _tables.createRow(
         databaseId: _databaseId,
         tableId: _downloadsCollectionId,
-        rowId: download.id,
+        rowId: AppwriteIdUtils.toValidUid(download.id),
         data: _appwriteData(download.toJson()),
       );
     } catch (e) {
@@ -734,7 +733,7 @@ class DonationService {
           final row = await _tables.getRow(
             databaseId: _databaseId,
             tableId: _donationsCollectionId,
-            rowId: donationId,
+            rowId: AppwriteIdUtils.toValidUid(donationId),
           );
           donation = DonationRecord.fromJson(_rowData(row));
         } catch (e) {
@@ -847,7 +846,7 @@ class DonationService {
         await _tables.updateRow(
           databaseId: _databaseId,
           tableId: _donationsCollectionId,
-          rowId: donationId,
+          rowId: AppwriteIdUtils.toValidUid(donationId),
           data: {
             'status': 'initialized',
             'updated_at': DateTime.now().toIso8601String(),

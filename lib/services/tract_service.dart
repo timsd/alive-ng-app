@@ -1,3 +1,4 @@
+import '../utils/appwrite_id_utils.dart';
 import 'dart:convert';
 
 import 'package:appwrite/appwrite.dart';
@@ -198,7 +199,7 @@ class TractService {
       final row = await _tables.getRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: 'tract_progress',
-        rowId: '${userId}_$tractId',
+        rowId: AppwriteIdUtils.toValidUid('${userId}_$tractId', prefix: 'tp'),
       );
       return TractProgress.fromJson({
         'id': row.$id,
@@ -246,7 +247,7 @@ class TractService {
         'is_completed': progress.isCompleted,
         'last_updated': progress.lastUpdated.toUtc().toIso8601String(),
       };
-      final docId = '${progress.userId}_${progress.tractId}';
+      final docId = AppwriteIdUtils.toValidUid('${progress.userId}_${progress.tractId}', prefix: 'tp');
       try {
         await _tables.updateRow(
           databaseId: AppwriteBackendConfig.databaseId,
@@ -302,7 +303,7 @@ class TractService {
         final tractRow = await _tables.getRow(
           databaseId: AppwriteBackendConfig.databaseId,
           tableId: 'tracts',
-          rowId: tractId,
+          rowId: AppwriteIdUtils.toValidUid(tractId, prefix: 'tr'),
         );
         totalDownloads = _intValue(
             tractRow.data['downloadCount'] ?? tractRow.data['downloads']);
@@ -461,7 +462,7 @@ class TractService {
       final row = await _tables.getRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: 'tracts',
-        rowId: tractId,
+        rowId: AppwriteIdUtils.toValidUid(tractId, prefix: 'tr'),
       );
       return Tract.fromDocument(row.data, row.$id);
     } on AppwriteException catch (e) {
@@ -479,7 +480,7 @@ class TractService {
       final row = await _tables.getRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: 'tract_contents',
-        rowId: tractId,
+        rowId: AppwriteIdUtils.toValidUid(tractId, prefix: 'tr'),
       );
       final data = row.data;
       return TractContent(
@@ -513,7 +514,7 @@ class TractService {
         await _tables.updateRow(
           databaseId: AppwriteBackendConfig.databaseId,
           tableId: 'user_tract_answers',
-          rowId: answer.id,
+          rowId: AppwriteIdUtils.toValidUid(answer.id, prefix: 'ta'),
           data: payload,
         );
       } on AppwriteException catch (e) {
@@ -521,7 +522,7 @@ class TractService {
         await _tables.createRow(
           databaseId: AppwriteBackendConfig.databaseId,
           tableId: 'user_tract_answers',
-          rowId: answer.id,
+          rowId: AppwriteIdUtils.toValidUid(answer.id, prefix: 'ta'),
           data: payload,
         );
       }

@@ -1014,6 +1014,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
             existing: widget.tract?.coverImages ?? const [],
             uploaded: additionalCoverUrls,
           ),
+          featured: _isFeatured,
         );
 
         final payload = {
@@ -1076,8 +1077,10 @@ class _TractFormDialogState extends State<_TractFormDialog> {
                 {
                   'title': tract.title,
                   'description': tract.description,
-                  'type': 'tract',
+                  'category': 'Tracts',
+                  'file_type': 'pdf',
                   'file_url': tract.downloadUrl ?? '',
+                  'thumbnail_url': tract.coverImage,
                   'requires_donation': true,
                   'minimum_donation': 7500.0,
                   'is_active': true,
@@ -2435,6 +2438,30 @@ class _PodcastFormDialogState extends State<_PodcastFormDialog> {
           podcast.id,
           payload,
         );
+
+        try {
+          if (_isFeatured) {
+            await contentService.upsertDocument(
+              'featured_content',
+              'podcast_${podcast.id}',
+              {
+                'title': podcast.title,
+                'description': podcast.description,
+                'content_id': podcast.id,
+                'content_type': 'podcast',
+                'priority': 1,
+                'is_active': true,
+                'created_at': DateTime.now().toUtc().toIso8601String(),
+                'updated_at': DateTime.now().toUtc().toIso8601String(),
+              },
+            );
+          } else {
+            await contentService.deleteDocument(
+              'featured_content',
+              'podcast_${podcast.id}',
+            );
+          }
+        } catch (_) {}
 
         if (!mounted) return;
         navigator.pop(podcast);
