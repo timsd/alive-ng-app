@@ -105,12 +105,26 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
   }
 
   ParticipantInfo _mapParticipant(lk.Participant participant, {bool isLocal = false}) {
+    bool isAudioEnabled = false;
+    try {
+      isAudioEnabled = participant.isMicrophoneEnabled();
+    } catch (_) {
+      isAudioEnabled = false;
+    }
+
+    bool isVideoEnabled = false;
+    try {
+      isVideoEnabled = participant.isCameraEnabled();
+    } catch (_) {
+      isVideoEnabled = false;
+    }
+
     return ParticipantInfo(
       identity: participant.identity,
       name: participant.name.isNotEmpty ? participant.name : participant.identity,
       isSpeaking: participant.isSpeaking,
-      isAudioEnabled: participant.isMicrophoneEnabled(),
-      isVideoEnabled: participant.isCameraEnabled(),
+      isAudioEnabled: isAudioEnabled,
+      isVideoEnabled: isVideoEnabled,
       isLocal: isLocal,
     );
   }
@@ -120,54 +134,62 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
     final room = _room;
     if (room == null) return list;
 
-    final local = room.localParticipant;
-    if (local != null) {
-      list.add(_mapParticipant(local, isLocal: true));
-    }
+    try {
+      final local = room.localParticipant;
+      if (local != null) {
+        list.add(_mapParticipant(local, isLocal: true));
+      }
 
-    for (final remote in room.remoteParticipants.values) {
-      list.add(_mapParticipant(remote, isLocal: false));
+      for (final remote in room.remoteParticipants.values) {
+        list.add(_mapParticipant(remote, isLocal: false));
+      }
+    } catch (e) {
+      debugPrint('[LiveKitMeetingGateway] Participant collection note: $e');
     }
 
     return list;
   }
 
   void _syncStateFromRoom() {
-    final room = _room;
-    if (room == null) {
-      _currentSession = MeetingSession.initial();
+    try {
+      final room = _room;
+      if (room == null) {
+        _currentSession = MeetingSession.initial();
+        _emitSession();
+        return;
+      }
+
+      RoomStatus status;
+      switch (room.connectionState) {
+        case lk.ConnectionState.connected:
+          status = RoomStatus.connected;
+          break;
+        case lk.ConnectionState.connecting:
+          status = RoomStatus.connecting;
+          break;
+        case lk.ConnectionState.reconnecting:
+          status = RoomStatus.reconnecting;
+          break;
+        case lk.ConnectionState.disconnected:
+          status = RoomStatus.disconnected;
+          break;
+      }
+
+      final roomName = (room.name != null && room.name!.isNotEmpty)
+          ? room.name!
+          : _currentSession.roomName;
+
+      _currentSession = _currentSession.copyWith(
+        roomName: roomName,
+        status: status,
+        isAudioMuted: _isAudioMuted,
+        isVideoMuted: _isVideoMuted,
+        participants: _collectParticipants(),
+      );
       _emitSession();
-      return;
+    } catch (e) {
+      debugPrint('[LiveKitMeetingGateway] State sync note: $e');
     }
-
-    RoomStatus status;
-    switch (room.connectionState) {
-      case lk.ConnectionState.connected:
-        status = RoomStatus.connected;
-        break;
-      case lk.ConnectionState.connecting:
-        status = RoomStatus.connecting;
-        break;
-      case lk.ConnectionState.reconnecting:
-        status = RoomStatus.reconnecting;
-        break;
-      case lk.ConnectionState.disconnected:
-        status = RoomStatus.disconnected;
-        break;
-    }
-
-    final roomName = (room.name != null && room.name!.isNotEmpty)
-        ? room.name!
-        : _currentSession.roomName;
-
-    _currentSession = _currentSession.copyWith(
-      roomName: roomName,
-      status: status,
-      isAudioMuted: _isAudioMuted,
-      isVideoMuted: _isVideoMuted,
-      participants: _collectParticipants(),
-    );
-    _emitSession();
   }
 
   void _attachRoomListeners(lk.Room room) {
@@ -256,9 +278,15 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       await joinMeeting(roomToken: token, roomName: roomName);
     } catch (e) {
       debugPrint('Failed executing LiveKit token function: $e');
+      String errStr = e.toString();
+      if (errStr.contains('No element') || errStr.contains('Bad state')) {
+        errStr =
+            'Audio/video device not detected. Please verify your camera and microphone connections.';
+      }
+      final cleanError = _currentSession.error ?? errStr;
       _currentSession = _currentSession.copyWith(
         status: RoomStatus.disconnected,
-        error: e.toString(),
+        error: cleanError,
       );
       _emitSession();
       rethrow;

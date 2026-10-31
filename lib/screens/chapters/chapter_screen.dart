@@ -80,6 +80,19 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
         activities = results[1] as List<ChapterActivity>;
         tasks = results[2] as List<ChapterTask>;
         statistics = results[3] as ChapterUserStatistics;
+
+        // Ensure every chapter in user's memberships is resolved by name
+        for (final m in memberships) {
+          if (!chapters.any((c) => c.id == m.chapterId)) {
+            try {
+              final chapterDoc =
+                  await _chapterService.getChapterById(m.chapterId);
+              if (chapterDoc != null) {
+                chapters.add(chapterDoc);
+              }
+            } catch (_) {}
+          }
+        }
       }
 
       setState(() {
@@ -534,18 +547,65 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
       itemCount: _userMemberships.length,
       itemBuilder: (context, index) {
         final membership = _userMemberships[index];
+        final chapter = _chapters.cast<Chapter?>().firstWhere(
+              (c) => c?.id == membership.chapterId,
+              orElse: () => null,
+            );
+
+        final chapterDisplayName = chapter != null
+            ? (chapter.name.toLowerCase().contains('chapter')
+                ? chapter.name
+                : '${chapter.name} Chapter')
+            : 'Chapter (${membership.chapterId.length > 8 ? membership.chapterId.substring(0, 8) : membership.chapterId}...)';
+
         return Card(
+          elevation: 2,
+          margin: const EdgeInsets.only(bottom: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
+          ),
           child: ListTile(
-            leading: const Icon(Icons.group),
-            title: Text('Chapter: ${membership.chapterId}'),
-            subtitle: Text('Role: ${membership.role}'),
-            trailing: const Icon(Icons.arrow_forward_ios),
-            onTap: () => _navigateToChapterDetails(null,
-                chapterId: membership.chapterId),
+            leading: CircleAvatar(
+              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+              child: Icon(
+                Icons.groups_rounded,
+                color: Theme.of(context).colorScheme.onPrimaryContainer,
+              ),
+            ),
+            title: Text(
+              chapterDisplayName,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Text(
+              'Role: ${_formatRole(membership.role)}${chapter != null ? ' • ${_chapterService.getTypeDescription(chapter.type)}' : ''}',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _navigateToChapterDetails(
+              chapter,
+              chapterId: membership.chapterId,
+            ),
           ),
         );
       },
     );
+  }
+
+  String _formatRole(MemberRole role) {
+    switch (role) {
+      case MemberRole.coordinator:
+        return 'Coordinator';
+      case MemberRole.director:
+        return 'Director';
+      case MemberRole.bod:
+        return 'Board Member';
+      case MemberRole.trustee:
+        return 'Trustee';
+      case MemberRole.member:
+        return 'Member';
+    }
   }
 
   Widget _buildActivitiesTab() {
@@ -642,32 +702,65 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
   }
 
   // Navigation methods
-  void _navigateToChapterDetails(Chapter? chapter, {String? chapterId}) {
+  Future<void> _navigateToChapterDetails(Chapter? chapter,
+      {String? chapterId}) async {
+    Chapter? targetChapter = chapter;
+    if (targetChapter == null && chapterId != null) {
+      targetChapter = _chapters.cast<Chapter?>().firstWhere(
+            (c) => c?.id == chapterId,
+            orElse: () => null,
+          );
+      if (targetChapter == null) {
+        try {
+          targetChapter = await _chapterService.getChapterById(chapterId);
+          if (targetChapter != null && mounted) {
+            setState(() {
+              if (!_chapters.any((c) => c.id == targetChapter!.id)) {
+                _chapters.add(targetChapter!);
+              }
+            });
+          }
+        } catch (_) {}
+      }
+    }
+
+    if (!mounted) return;
+
+    final displayName = targetChapter != null
+        ? (targetChapter.name.toLowerCase().contains('chapter')
+            ? targetChapter.name
+            : '${targetChapter.name} Chapter')
+        : 'Chapter Details';
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Chapter Details'),
+        title: Text(displayName,
+            style: const TextStyle(fontWeight: FontWeight.bold)),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (chapter != null) ...[
-                Text('Name: ${chapter.name}',
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                Text(
-                    'Type: ${_chapterService.getTypeDescription(chapter.type)}'),
-                const SizedBox(height: 8),
-                Text('Members: ${chapter.memberIds.length}'),
-                const SizedBox(height: 8),
-                Text('Coordinator: ${chapter.coordinatorId ?? "Not assigned"}'),
-                const SizedBox(height: 8),
-                Text('Status: ${chapter.isActive ? "Active" : "Inactive"}'),
+              if (targetChapter != null) ...[
+                _buildChapterDetailRow('Name', displayName),
+                _buildChapterDetailRow('Type',
+                    _chapterService.getTypeDescription(targetChapter.type)),
+                _buildChapterDetailRow(
+                    'Members', '${targetChapter.memberIds.length}'),
+                _buildChapterDetailRow(
+                    'Coordinator',
+                    (targetChapter.coordinatorId != null &&
+                            targetChapter.coordinatorId!.isNotEmpty)
+                        ? targetChapter.coordinatorId!
+                        : 'Not assigned'),
+                _buildChapterDetailRow(
+                    'Status', targetChapter.isActive ? 'Active' : 'Inactive'),
               ] else ...[
                 Text('Chapter ID: $chapterId'),
                 const SizedBox(height: 8),
-                const Text('Loading chapter details...'),
+                const Text(
+                    'Chapter information could not be retrieved at this time.'),
               ],
             ],
           ),
@@ -677,10 +770,12 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Close'),
           ),
-          if (chapter != null)
-            _userMemberships.any((m) => m.chapterId == chapter.id && m.isActive)
+          if (targetChapter != null)
+            _userMemberships
+                    .any((m) => m.chapterId == targetChapter!.id && m.isActive)
                 ? const Chip(
-                    avatar: Icon(Icons.check, size: 16, color: Colors.green),
+                    avatar:
+                        Icon(Icons.check_circle, size: 16, color: Colors.green),
                     label: Text('Active Member'),
                   )
                 : FilledButton.icon(
@@ -688,9 +783,28 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
                     label: const Text('Join Chapter'),
                     onPressed: () {
                       Navigator.of(context).pop();
-                      _handleJoinChapterFlow(chapter);
+                      _handleJoinChapterFlow(targetChapter!);
                     },
                   ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChapterDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              '$label:',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+          Expanded(child: Text(value)),
         ],
       ),
     );

@@ -62,7 +62,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
 
     return Scaffold(
       appBar: CustomAppBar(
-        title: translate('notice_board'),
+        title: translate('news_feed'),
         showBackButton: true,
       ),
       floatingActionButton: RoleAccessService.instance.canCreateEvents() 

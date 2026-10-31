@@ -120,6 +120,10 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       } else if (errStr.contains('Token not found')) {
         errorMessage =
             'Failed to generate meeting token. Please try again later.';
+      } else if (errStr.contains('No element') ||
+          errStr.contains('Bad state')) {
+        errorMessage =
+            'Audio/video device not detected. Please verify microphone and camera permissions.';
       } else if (errStr.contains('permission') || errStr.contains('NotAllowedError')) {
         if (!kIsWeb) {
           final isPermanent = await Permission.microphone.isPermanentlyDenied ||
@@ -191,6 +195,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       appBar: CustomAppBar(
         title: widget.meetingType?.displayName ?? 'ALIVE Meet',
         showBackButton: true,
+        showDonationButton: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.note_alt_outlined),
