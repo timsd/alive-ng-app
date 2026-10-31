@@ -140,23 +140,40 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
         showDonationButton: false,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(kTextTabBarHeight),
-          child: TabBar(
-            controller: _tabController,
-            indicatorColor: Theme.of(context).colorScheme.onPrimary,
-            labelColor: Theme.of(context).colorScheme.onPrimary,
-            unselectedLabelColor: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.7),
-            labelStyle:
-                Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold),
-            unselectedLabelStyle: Theme.of(context).textTheme.labelLarge,
-            isScrollable: true,
-            tabs: const [
-              Tab(text: 'Overview'),
-              Tab(text: 'Contacts'),
-              Tab(text: 'Activities'),
-              Tab(text: 'Prayer'),
-              Tab(text: 'Reports'),
-              Tab(text: 'Officer Inbox'),
-            ],
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: TabBar(
+              controller: _tabController,
+              indicatorColor: Theme.of(context).colorScheme.primary,
+              indicatorWeight: 3,
+              labelColor: Theme.of(context).colorScheme.primary,
+              unselectedLabelColor: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.65),
+              labelStyle: Theme.of(context)
+                  .textTheme
+                  .labelLarge
+                  ?.copyWith(fontWeight: FontWeight.bold),
+              unselectedLabelStyle: Theme.of(context).textTheme.labelLarge,
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
+              tabs: const [
+                Tab(text: 'Overview'),
+                Tab(text: 'Contacts'),
+                Tab(text: 'Activities'),
+                Tab(text: 'Prayer'),
+                Tab(text: 'Reports'),
+                Tab(text: 'Officer Inbox'),
+              ],
+            ),
           ),
         ),
         // The "+" moved to a floating action button. Keeping it in the app bar

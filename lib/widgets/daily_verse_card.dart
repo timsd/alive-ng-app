@@ -277,44 +277,9 @@ class _DailyVerseCardState extends ConsumerState<DailyVerseCard> {
                       ],
                     ),
 
-                    // Spiritual guidance footer
-                    const SizedBox(height: 18),
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary
-                            .withValues(alpha: isDark ? 0.08 : 0.04),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: theme.colorScheme.primary
-                              .withValues(alpha: isDark ? 0.15 : 0.08),
-                        ),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(
-                            Icons.lightbulb_outline_rounded,
-                            size: 18,
-                            color: theme.colorScheme.primary,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              "Today, let God's Word guide your heart and mind. Meditate on His promises and find strength for your daily journey.",
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                height: 1.45,
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
                     if (widget.verse!.reflection != null &&
                         widget.verse!.reflection!.isNotEmpty) ...[
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 18),
                       Container(
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
