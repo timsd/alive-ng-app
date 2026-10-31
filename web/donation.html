@@ -553,6 +553,102 @@
         }
       };
 
+      function formatMoneyNGN(val) {
+        return 'NGN ' + Number(val || 0).toLocaleString('en-NG');
+      }
+
+      function applyProjectsList(list) {
+        if (!Array.isArray(list) || list.length === 0) return;
+        var newProjects = {};
+        for (var i = 0; i < list.length; i++) {
+          var p = list[i];
+          var id = p.id || ('proj_' + i);
+          var goalNum = Number(p.goal || p.targetAmount || 0);
+          var raisedNum = Number(p.raised || p.raisedAmount || 0);
+          var pct = goalNum > 0 ? Math.round((raisedNum / goalNum) * 100) : 0;
+          newProjects[id] = {
+            id: id,
+            title: p.title || 'Mission Project',
+            copy: p.summary || p.description || '',
+            raised: 'Raised: ' + formatMoneyNGN(raisedNum),
+            goal: 'Goal: ' + formatMoneyNGN(goalNum),
+            progress: pct,
+            raisedNum: raisedNum,
+            goalNum: goalNum
+          };
+        }
+        projects = newProjects;
+
+        var projectSelectEl = document.getElementById('project-select');
+        if (projectSelectEl) {
+          var currentVal = projectSelectEl.value || projectId;
+          projectSelectEl.innerHTML = '';
+          for (var k in projects) {
+            var opt = document.createElement('option');
+            opt.value = k;
+            opt.textContent = projects[k].title;
+            projectSelectEl.appendChild(opt);
+          }
+          if (projects[currentVal]) {
+            projectSelectEl.value = currentVal;
+            projectId = currentVal;
+          } else if (list.length > 0) {
+            projectSelectEl.value = list[0].id;
+            projectId = list[0].id;
+          }
+        }
+
+        var activeProj = projects[projectId] || projects[Object.keys(projects)[0]];
+        if (activeProj) {
+          var titleEl = document.getElementById('project-title');
+          var copyEl = document.getElementById('project-copy');
+          var raisedEl = document.getElementById('raised-label');
+          var goalEl = document.getElementById('goal-label');
+          var progressFill = document.getElementById('progress-fill');
+          if (titleEl) titleEl.textContent = activeProj.title;
+          if (copyEl) copyEl.textContent = activeProj.copy;
+          if (raisedEl) raisedEl.textContent = activeProj.raised;
+          if (goalEl) goalEl.textContent = activeProj.goal;
+          if (progressFill) progressFill.style.width = Math.max(0, Math.min(activeProj.progress, 100)) + '%';
+          updateProjectViewer(activeProj.id);
+        }
+      }
+
+      function loadStoredProjects() {
+        try {
+          var raw = localStorage.getItem('alive_projects_cache') || localStorage.getItem('flutter.alive_projects_cache');
+          if (raw) {
+            var parsed = JSON.parse(raw);
+            applyProjectsList(parsed);
+          }
+        } catch (_) {}
+      }
+
+      async function syncProjectsFromAppwrite() {
+        try {
+          var res = await fetch(APPWRITE_ENDPOINT + '/databases/6a3bef53002f5090dedf/collections/projects/documents?queries[]=' + encodeURIComponent('limit(100)'), {
+            headers: { 'X-Appwrite-Project': APPWRITE_PROJECT_ID }
+          });
+          if (res.ok) {
+            var data = await res.json();
+            var rows = data.documents || data.rows;
+            if (Array.isArray(rows) && rows.length > 0) {
+              applyProjectsList(rows);
+              try { localStorage.setItem('alive_projects_cache', JSON.stringify(rows)); } catch (_) {}
+            }
+          }
+        } catch (_) {}
+      }
+
+      loadStoredProjects();
+      syncProjectsFromAppwrite();
+      window.addEventListener('alive_projects_updated', loadStoredProjects);
+      window.addEventListener('storage', function (e) {
+        if (e.key === 'alive_projects_cache' || e.key === 'flutter.alive_projects_cache') {
+          loadStoredProjects();
+        }
+      });
+
       var query = new URLSearchParams(window.location.search);
       var projectId = query.get('projectId') || sessionStorage.getItem('selected_project_id') || '';
       var project = projects[projectId];

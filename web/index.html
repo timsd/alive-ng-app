@@ -1485,9 +1485,51 @@
     ];
 
     async function fetchProjects() {
-      _projects = fallbackProjects.slice();
-      applyFiltersAndSort();
+      // 1. Check local cache from Flutter single source of truth
+      try {
+        var raw = localStorage.getItem('alive_projects_cache') || localStorage.getItem('flutter.alive_projects_cache');
+        if (raw) {
+          var list = JSON.parse(raw);
+          if (Array.isArray(list) && list.length > 0) {
+            _projects = list;
+            applyFiltersAndSort();
+            renderProjectsList();
+          }
+        }
+      } catch (_) {}
+
+      // 2. Fetch from Appwrite backend for remote sync
+      try {
+        var res = await fetch('https://api.alivenigeria.org/v1/databases/6a3bef53002f5090dedf/collections/projects/documents?queries[]=' + encodeURIComponent('limit(100)'), {
+          headers: { 'X-Appwrite-Project': '6a3bef53002f5090dedf' }
+        });
+        if (res.ok) {
+          var data = await res.json();
+          var rows = data.documents || data.rows;
+          if (Array.isArray(rows) && rows.length > 0) {
+            _projects = rows;
+            try { localStorage.setItem('alive_projects_cache', JSON.stringify(rows)); } catch (_) {}
+            applyFiltersAndSort();
+            renderProjectsList();
+            return;
+          }
+        }
+      } catch (_) {}
+
+      if (_projects.length === 0) {
+        _projects = fallbackProjects.slice();
+        applyFiltersAndSort();
+      }
     }
+
+    window.addEventListener('alive_projects_updated', function () {
+      fetchProjects();
+    });
+    window.addEventListener('storage', function (e) {
+      if (e.key === 'alive_projects_cache' || e.key === 'flutter.alive_projects_cache') {
+        fetchProjects();
+      }
+    });
 
     function openProjectsModal() {
       const overlay = document.getElementById('projects-modal');

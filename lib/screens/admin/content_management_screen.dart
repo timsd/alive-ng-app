@@ -1,3 +1,4 @@
+import 'dart:convert';
 import '../../utils/appwrite_id_utils.dart';
 import 'package:flutter/material.dart';
 import '../../services/appwrite_facade.dart';
@@ -9,6 +10,7 @@ import '../../widgets/loading_widget.dart';
 import '../../utils/toast_utils.dart';
 import '../../utils/text_formatter.dart';
 import '../../utils/layout_fix_utils.dart';
+import '../../utils/project_sync_bridge.dart';
 
 class ContentManagementScreen extends StatefulWidget {
   final String? contentType;
@@ -302,6 +304,15 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     }
   }
 
+  void _broadcastProjectsSync() {
+    try {
+      final jsonString = jsonEncode(_projects);
+      syncProjectsToWeb(jsonString);
+    } catch (e) {
+      debugPrint('Error syncing projects to web: $e');
+    }
+  }
+
   Future<void> _loadProjects() async {
     try {
       final projects = await _listAdminDocuments(
@@ -312,6 +323,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
       setState(() {
         _projects = projects.isNotEmpty ? projects : List.from(_defaultProjects);
       });
+      _broadcastProjectsSync();
       if (projects.isEmpty) {
         _seedSampleProjects(showDialog: false);
       }
@@ -321,6 +333,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
         setState(() {
           _projects = List.from(_defaultProjects);
         });
+        _broadcastProjectsSync();
       }
     }
   }
@@ -1624,6 +1637,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
           });
         }
       });
+      _broadcastProjectsSync();
 
       try {
         if (isEditing) {
@@ -1700,6 +1714,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
       setState(() {
         _projects.removeWhere((p) => p['id'] == id);
       });
+      _broadcastProjectsSync();
       try {
         await _deleteAdminDocument(
           AppwriteBackendConfig.projectsCollectionId,
