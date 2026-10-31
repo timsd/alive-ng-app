@@ -182,7 +182,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
             Theme.of(context).colorScheme.primary,
           ),
         ),
-        SizedBox(width: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
+        SizedBox(width: ResponsiveUtils.getResponsiveValue(context: context, mobile: 6, tablet: 12, desktop: 16)),
         Expanded(
           child: _buildStatCard(
             'Completed',
@@ -191,7 +191,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
             Theme.of(context).colorScheme.tertiary,
           ),
         ),
-        SizedBox(width: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
+        SizedBox(width: ResponsiveUtils.getResponsiveValue(context: context, mobile: 6, tablet: 12, desktop: 16)),
         Expanded(
           child: _buildStatCard(
             'In Progress',
@@ -366,7 +366,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
                   },
                 ),
               ),
-              SizedBox(width: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
+              SizedBox(width: ResponsiveUtils.getResponsiveValue(context: context, mobile: 6, tablet: 12, desktop: 16)),
               Expanded(
                 child: DropdownButtonFormField<StudyDifficulty>(
                   isExpanded: true,
@@ -636,7 +636,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
                 Theme.of(context).colorScheme.tertiary,
               ),
             ),
-            SizedBox(width: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
+            SizedBox(width: ResponsiveUtils.getResponsiveValue(context: context, mobile: 6, tablet: 12, desktop: 16)),
             Expanded(
               child: _buildStatCard(
                 'Total Time',
@@ -658,7 +658,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
                 Theme.of(context).colorScheme.primary,
               ),
             ),
-            SizedBox(width: ResponsiveUtils.getResponsiveValue(context: context, mobile: 8, tablet: 14, desktop: 18)),
+            SizedBox(width: ResponsiveUtils.getResponsiveValue(context: context, mobile: 6, tablet: 12, desktop: 16)),
             Expanded(
               child: _buildStatCard(
                 'Completed',
@@ -667,7 +667,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
                 Theme.of(context).colorScheme.tertiary,
               ),
             ),
-            SizedBox(width: ResponsiveUtils.getResponsiveValue(context: context, mobile: 8, tablet: 14, desktop: 18)),
+            SizedBox(width: ResponsiveUtils.getResponsiveValue(context: context, mobile: 6, tablet: 12, desktop: 16)),
             Expanded(
               child: _buildStatCard(
                 'In Progress',

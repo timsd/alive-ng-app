@@ -181,11 +181,14 @@ class GreetingHeader extends ConsumerWidget {
                 ),
                 if (currentUser != null) ...[
                   const SizedBox(width: 16),
-                  // User avatar placed in the middle-right area without pill container
+                  // User avatar + chevron arrow without pill container background
                   InkWell(
                     onTap: () => context.push(AppConstants.profileRoute),
                     borderRadius: BorderRadius.circular(32),
-                    child: Container(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
                       padding: const EdgeInsets.all(2.5),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
@@ -235,6 +238,14 @@ class GreetingHeader extends ConsumerWidget {
                                 ),
                               ),
                       ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          size: 22,
+                          color: secondaryText,
+                        ),
+                      ],
                     ),
                   ),
                 ],
