@@ -84,7 +84,7 @@ class GreetingHeader extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Top row: Date + Member badge
+            // Top row: Date + Sign In (if guest)
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -107,88 +107,16 @@ class GreetingHeader extends ConsumerWidget {
                     ),
                   ],
                 ),
-                if (currentUser != null)
-                  InkWell(
-                    onTap: () => context.push(AppConstants.profileRoute),
-                    borderRadius: BorderRadius.circular(32),
-                    child: Container(
-                      padding: const EdgeInsets.fromLTRB(6, 4, 8, 4),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.12)
-                            : const Color(0xFFF1EDE4),
-                        borderRadius: BorderRadius.circular(32),
-                        border: Border.all(
-                          color: const Color(0xFFD49B28).withValues(alpha: 0.55),
-                          width: 1.2,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(2),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: const Color(0xFFD49B28),
-                                width: 1.5,
-                              ),
-                            ),
-                            child: CircleAvatar(
-                              radius: 22,
-                              backgroundColor: const Color(0xFFD49B28),
-                              child: avatarUrl != null
-                                  ? ClipOval(
-                                      child: CustomImage(
-                                        key: ValueKey(avatarUrl),
-                                        imageUrl: avatarUrl,
-                                        width: 44,
-                                        height: 44,
-                                        fit: BoxFit.cover,
-                                        backgroundColor: const Color(0xFFD49B28),
-                                        placeholder: Center(
-                                          child: Text(
-                                            initialLetter,
-                                            style: const TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    )
-                                  : Text(
-                                      initialLetter,
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Icon(
-                            Icons.chevron_right_rounded,
-                            size: 18,
-                            color: isDark
-                                ? Colors.white.withValues(alpha: 0.75)
-                                : const Color(0xFF5B6B82),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                else
+                if (currentUser == null)
                   InkWell(
                     onTap: () => context.push(AppConstants.authRoute),
                     borderRadius: BorderRadius.circular(20),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                        color:
+                            theme.colorScheme.primary.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
@@ -217,33 +145,105 @@ class GreetingHeader extends ConsumerWidget {
 
             const SizedBox(height: 14),
 
-            // Greeting + Name
-            Text(
-              greeting,
-              style: TextStyle(
-                color: secondaryText,
-                fontSize: 14,
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              currentUser != null && userName.isNotEmpty
-                  ? userName
-                  : 'Welcome to ALIVE Nigeria',
-              style: TextStyle(
-                color: onCard,
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.3,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            // Middle row: Greeting & Name on left; Profile Avatar on right (Blue Circle position)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        greeting,
+                        style: TextStyle(
+                          color: secondaryText,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        currentUser != null && userName.isNotEmpty
+                            ? userName
+                            : 'Welcome to ALIVE Nigeria',
+                        style: TextStyle(
+                          color: onCard,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.3,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                if (currentUser != null) ...[
+                  const SizedBox(width: 16),
+                  // User avatar placed in the middle-right area without pill container
+                  InkWell(
+                    onTap: () => context.push(AppConstants.profileRoute),
+                    borderRadius: BorderRadius.circular(32),
+                    child: Container(
+                      padding: const EdgeInsets.all(2.5),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: const Color(0xFFD49B28),
+                          width: 2,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(
+                                alpha: isDark ? 0.35 : 0.08),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: CircleAvatar(
+                        radius: 28,
+                        backgroundColor: const Color(0xFFD49B28),
+                        child: avatarUrl != null
+                            ? ClipOval(
+                                child: CustomImage(
+                                  key: ValueKey(avatarUrl),
+                                  imageUrl: avatarUrl,
+                                  width: 56,
+                                  height: 56,
+                                  fit: BoxFit.cover,
+                                  backgroundColor: const Color(0xFFD49B28),
+                                  placeholder: Center(
+                                    child: Text(
+                                      initialLetter,
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : Text(
+                                initialLetter,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
 
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
 
-            // Subtitle
+            // Bottom row: Subtitle
             Text(
               translate('continue_spiritual_journey'),
               style: TextStyle(
