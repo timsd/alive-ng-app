@@ -1,36 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../widgets/custom_app_bar.dart';
 import 'package:go_router/go_router.dart';
-import '../../providers/auth_provider.dart';
-import '../../models/app_models.dart';
 import '../../constants/app_constants.dart';
 import '../../utils/text_formatter.dart';
 import '../../utils/responsive_utils.dart';
-import '../../services/appwrite_study_service.dart';
-import '../../widgets/shimmer_loading.dart';
 
-// Provider for study programs
-final studyProgramsProvider = FutureProvider<List<StudyProgram>>((ref) async {
-  return AppwriteStudyService.instance.getStudyPrograms();
-});
-
-// Provider for user's study progress
-final studyProgressProvider = FutureProvider<List<StudyProgress>>((ref) async {
-  final user = ref.watch(currentUserProvider);
-  if (user == null) return <StudyProgress>[];
-  return AppwriteStudyService.instance.getUserStudyProgress(user.uid);
-});
-
-class StudyScreen extends ConsumerWidget {
+class StudyScreen extends StatelessWidget {
   const StudyScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final studyProgramsAsync = ref.watch(studyProgramsProvider);
-    final studyProgressAsync = ref.watch(studyProgressProvider);
 
     return Scaffold(
       appBar: CustomAppBar(
@@ -43,105 +24,62 @@ class StudyScreen extends ConsumerWidget {
         showLanguageToggle: true,
         showDonationButton: true,
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(studyProgramsProvider);
-          ref.invalidate(studyProgressProvider);
-        },
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header section
-              Container(
-                width: double.infinity,
-                padding: ResponsiveUtils.getResponsivePadding(context),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary,
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(24),
-                    bottomRight: Radius.circular(24),
+      body: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header section
+            Container(
+              width: double.infinity,
+              padding: ResponsiveUtils.getResponsivePadding(context),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary,
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(24),
+                  bottomRight: Radius.circular(24),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    TextFormatter.formatText('grow_in_faith'),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onPrimary
+                              .withValues(alpha: 0.95),
+                          fontWeight: FontWeight.w500,
+                          fontSize: ResponsiveUtils.getResponsiveFontSize(
+                              context, 16),
+                        ),
                   ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      TextFormatter.formatText('grow_in_faith'),
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onPrimary
-                                .withValues(alpha: 0.95),
-                            fontWeight: FontWeight.w500,
-                            fontSize: ResponsiveUtils.getResponsiveFontSize(
-                                context, 16),
-                          ),
-                    ),
-                  ],
-                ),
+                ],
               ),
+            ),
 
-              SizedBox(
-                  height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
 
-              // Progress Overview
-              studyProgressAsync.when(
-                data: (progress) => _buildProgressOverview(context, progress),
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, stack) =>
-                    _buildErrorWidget(context, error.toString()),
-              ),
+            // Bible Reader Card (accessible to all users)
+            _buildBibleReaderCard(context),
 
-              SizedBox(
-                  height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
 
-              // Bible Reader Card (accessible to all users)
-              _buildBibleReaderCard(context),
+            // Instant Word Card
+            _buildBibleGameCard(context),
 
-              SizedBox(
-                  height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
 
-              // Instant Word Card
-              _buildBibleGameCard(context),
+            // Study Guides Card (Includes Lessons, Progress Tracking & Statistics)
+            _buildStudyGuidesCard(context),
 
-              SizedBox(
-                  height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
-
-              // Study Guides Card
-              _buildStudyGuidesCard(context),
-
-              SizedBox(
-                  height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
-
-              // Study Programs
-              Padding(
-                padding: EdgeInsets.symmetric(
-                    horizontal:
-                        ResponsiveUtils.getResponsiveSpacing(context, 20)),
-                child: Text(
-                  TextFormatter.formatActivityType('study_programs'),
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-              ),
-
-              SizedBox(
-                  height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-
-              studyProgramsAsync.when(
-                data: (programs) => _buildStudyPrograms(context, programs),
-                loading: () => const _StudyProgramsSkeleton(),
-                error: (error, stack) =>
-                    _buildErrorWidget(context, error.toString()),
-              ),
-
-              SizedBox(
-                  height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
-            ],
-          ),
+            SizedBox(
+                height: ResponsiveUtils.getResponsiveSpacing(context, 28)),
+          ],
         ),
       ),
     );
@@ -307,7 +245,6 @@ class StudyScreen extends ConsumerWidget {
     );
   }
 
-
   Widget _buildStudyGuidesCard(BuildContext context) {
     return Container(
       margin: EdgeInsets.symmetric(
@@ -373,438 +310,6 @@ class StudyScreen extends ConsumerWidget {
                   color: Theme.of(context).colorScheme.primary,
                 ),
               ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProgressOverview(
-      BuildContext context, List<StudyProgress> progress) {
-    final completedLessons =
-        progress.fold<int>(0, (sum, p) => sum + p.completedLessons);
-    final totalLessons = progress.length;
-    final progressPercentage =
-        totalLessons > 0 ? (completedLessons / totalLessons) : 0.0;
-
-    return Container(
-      margin: EdgeInsets.symmetric(
-          horizontal: ResponsiveUtils.getResponsiveSpacing(context, 20)),
-      padding: ResponsiveUtils.getResponsivePaddingWithBase(context, 20),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(
-            ResponsiveUtils.getResponsiveBorderRadiusValue(context, 16)),
-        boxShadow: [
-          BoxShadow(
-            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            TextFormatter.formatText('your_progress'),
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-          ),
-          SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '$completedLessons / $totalLessons ${TextFormatter.formatActivityType('lessons_completed')}',
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    ),
-                    SizedBox(
-                        height:
-                            ResponsiveUtils.getResponsiveSpacing(context, 8)),
-                    LinearProgressIndicator(
-                      value: progressPercentage,
-                      backgroundColor: Theme.of(context)
-                          .colorScheme
-                          .primary
-                          .withValues(alpha: 0.2),
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(
-                  width: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-              CircularProgressIndicator(
-                value: progressPercentage,
-                backgroundColor: Theme.of(context)
-                    .colorScheme
-                    .primary
-                    .withValues(alpha: 0.2),
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  Theme.of(context).colorScheme.primary,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStudyPrograms(
-      BuildContext context, List<StudyProgram> programs) {
-    if (programs.isEmpty) {
-      return Container(
-        margin: EdgeInsets.symmetric(
-            horizontal: ResponsiveUtils.getResponsiveSpacing(context, 20)),
-        padding: ResponsiveUtils.getResponsivePaddingWithBase(context, 20),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(
-              ResponsiveUtils.getResponsiveBorderRadiusValue(context, 16)),
-        ),
-        child: Column(
-          children: [
-            Icon(
-              Icons.menu_book_outlined,
-              size: ResponsiveUtils.getResponsiveIconSize(context, 48),
-              color:
-                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
-            ),
-            SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-            Text(
-              TextFormatter.formatText('no_study_programs'),
-              style: Theme.of(context).textTheme.titleMedium,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: EdgeInsets.symmetric(
-          horizontal: ResponsiveUtils.getResponsiveSpacing(context, 20)),
-      itemCount: programs.length,
-      itemBuilder: (context, index) {
-        final program = programs[index];
-        return StudyProgramCard(
-          program: program,
-          onTap: () {
-            _navigateToProgramDetails(context, program);
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildErrorWidget(BuildContext context, String error) {
-    return Container(
-      margin: EdgeInsets.symmetric(
-          horizontal: ResponsiveUtils.getResponsiveSpacing(context, 20)),
-      padding: ResponsiveUtils.getResponsivePaddingWithBase(context, 20),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(
-            ResponsiveUtils.getResponsiveBorderRadiusValue(context, 16)),
-      ),
-      child: Column(
-        children: [
-          Icon(
-            Icons.error_outline,
-            color: Theme.of(context).colorScheme.error,
-            size: ResponsiveUtils.getResponsiveIconSize(context, 48),
-          ),
-          SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-          Text(
-            TextFormatter.formatText('error_loading_data'),
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.error,
-                ),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
-          Text(
-            error,
-            style: Theme.of(context).textTheme.bodySmall,
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _navigateToProgramDetails(BuildContext context, dynamic program) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        title: Text(program.title ?? 'Study Program'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Program Details',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    fontSize:
-                        ResponsiveUtils.getResponsiveFontSize(context, 16)),
-              ),
-              SizedBox(
-                  height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
-              Text(program.description ??
-                  'Detailed study program with comprehensive lessons and activities.'),
-              SizedBox(
-                  height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-              Text(
-                'Includes:',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              SizedBox(
-                  height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
-              const Text('• Interactive lessons and quizzes'),
-              const Text('• Progress tracking'),
-              const Text('• Discussion forums'),
-              const Text('• Certificate upon completion'),
-              SizedBox(
-                  height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-              Container(
-                padding:
-                    ResponsiveUtils.getResponsivePaddingWithBase(context, 12),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(
-                      ResponsiveUtils.getResponsiveBorderRadiusValue(
-                          context, 8)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info, color: Theme.of(context).colorScheme.primary),
-                    SizedBox(
-                        width:
-                            ResponsiveUtils.getResponsiveSpacing(context, 8)),
-                    Expanded(
-                      child: Text(
-                        'This program includes multiple modules and assessments.',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.primary),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              context.push(AppConstants.studyGuideRoute);
-            },
-            child: const Text('Start Program'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class StudyProgramCard extends StatelessWidget {
-  final StudyProgram program;
-  final VoidCallback onTap;
-
-  const StudyProgramCard({
-    super.key,
-    required this.program,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: EdgeInsets.only(
-          bottom: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(
-            ResponsiveUtils.getResponsiveBorderRadiusValue(context, 16)),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(
-            ResponsiveUtils.getResponsiveBorderRadiusValue(context, 16)),
-        child: Padding(
-          padding: ResponsiveUtils.getResponsivePaddingWithBase(context, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: ResponsiveUtils.getResponsivePaddingWithBase(
-                        context, 12),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .primary
-                          .withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(
-                          ResponsiveUtils.getResponsiveBorderRadiusValue(
-                              context, 12)),
-                    ),
-                    child: Icon(
-                      Icons.menu_book,
-                      color: Theme.of(context).colorScheme.primary,
-                      size: ResponsiveUtils.getResponsiveIconSize(context, 32),
-                    ),
-                  ),
-                  SizedBox(
-                      width: ResponsiveUtils.getResponsiveSpacing(context, 12)),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          program.title,
-                          style:
-                              Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                        ),
-                        if (program.description.isNotEmpty)
-                          Text(
-                            program.description,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.copyWith(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurface
-                                      .withValues(alpha: 0.7),
-                                ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    Icons.arrow_forward_ios,
-                    color: Theme.of(context).colorScheme.primary,
-                    size: ResponsiveUtils.getResponsiveIconSize(context, 16),
-                  ),
-                ],
-              ),
-              if (program.duration > 0) ...[
-                SizedBox(
-                    height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.schedule,
-                      size: ResponsiveUtils.getResponsiveIconSize(context, 16),
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withValues(alpha: 0.6),
-                    ),
-                    SizedBox(
-                        width:
-                            ResponsiveUtils.getResponsiveSpacing(context, 4)),
-                    Text(
-                      '${program.duration} days',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurface
-                                .withValues(alpha: 0.6),
-                          ),
-                    ),
-                  ],
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Skeleton placeholder shown while study programs are loading.
-class _StudyProgramsSkeleton extends StatelessWidget {
-  const _StudyProgramsSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: ResponsiveUtils.getResponsiveSpacing(context, 20),
-      ),
-      child: Column(
-        children: List.generate(
-          3,
-          (index) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(
-                  ResponsiveUtils.getResponsiveBorderRadiusValue(context, 16),
-                ),
-                color: Theme.of(context).colorScheme.surface,
-              ),
-              padding: EdgeInsets.all(
-                ResponsiveUtils.getResponsiveSpacing(context, 16),
-              ),
-              child: Row(
-                children: [
-                  const ShimmerLoading(
-                    width: 48,
-                    height: 48,
-                    borderRadius: 12,
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        ShimmerLoading(height: 16, borderRadius: 4),
-                        SizedBox(height: 8),
-                        ShimmerLoading(
-                          height: 12,
-                          borderRadius: 4,
-                          width: 160,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  const ShimmerLoading(
-                    width: 16,
-                    height: 16,
-                    borderRadius: 4,
-                  ),
-                ],
-              ),
             ),
           ),
         ),
