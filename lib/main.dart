@@ -241,6 +241,8 @@ class MainNavigationScreen extends ConsumerWidget {
       case AppConstants.studyRoute:
         return 1;
       case AppConstants.prayerRoute:
+      case AppConstants.prayerWallRoute:
+      case AppConstants.privatePrayerRoomRoute:
         return 2;
       case AppConstants.healthRoute:
       case AppConstants.enhancedHealthRoute:
@@ -255,10 +257,30 @@ class MainNavigationScreen extends ConsumerWidget {
       case AppConstants.userArchiveRoute:
       case AppConstants.roleManagementRoute:
       case AppConstants.conferenceRoute:
+      case AppConstants.bibleRoute:
       case AppConstants.bibleGameRoute:
       case AppConstants.chatRoute:
       case AppConstants.chaptersRoute:
       case AppConstants.recipeSubmissionRoute:
+      case AppConstants.eventsRoute:
+      case AppConstants.podcastsRoute:
+      case AppConstants.libraryRoute:
+      case AppConstants.booksTractsRoute:
+      case AppConstants.interactiveLessonsRoute:
+      case AppConstants.kidsStoriesRoute:
+      case AppConstants.kidsMissionRoute:
+      case AppConstants.testimoniesRoute:
+      case AppConstants.discipleshipTrackerRoute:
+      case AppConstants.helpSupportRoute:
+      case AppConstants.donationRoute:
+      case '/donate':
+      case AppConstants.leadershipArchiveRoute:
+      case AppConstants.tractPodcastAdminRoute:
+      case AppConstants.contentManagementRoute:
+      case AppConstants.adminApprovalRoute:
+      case AppConstants.adminDonationsReportRoute:
+      case AppConstants.adminHealthContentRoute:
+      case AppConstants.meetingFileSharingRoute:
         return 4;
       default:
         return 0;
@@ -266,6 +288,7 @@ class MainNavigationScreen extends ConsumerWidget {
   }
 
   void _onItemTapped(BuildContext context, WidgetRef ref, int index) {
+    HapticFeedback.selectionClick();
     switch (index) {
       case 0:
         context.go(AppConstants.homeRoute);
@@ -351,6 +374,13 @@ class MainNavigationScreen extends ConsumerWidget {
     final translate = ref.watch(languageProvider);
     final roleService = RoleAccessService.instance;
     final canAccessRoleGated = roleService.canAccessRoleGatedFeatures();
+    final authState = ref.watch(authStateProvider);
+    final isAuthenticated = authState.maybeWhen(
+      data: (user) => user != null,
+      orElse: () => false,
+    );
+    final userRole = roleService.getCurrentUserRole();
+    final isGuest = !isAuthenticated || userRole == 'guest';
     const crossAxisCount = 4;
 
     return Container(
@@ -395,7 +425,7 @@ class MainNavigationScreen extends ConsumerWidget {
                   ),
             ),
           ),
-          if (!canAccessRoleGated) ...[
+          if (!isGuest && !canAccessRoleGated) ...[
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -562,12 +592,6 @@ class MainNavigationScreen extends ConsumerWidget {
                   'onTap': () => _showSignOutDialog(context, ref),
                 },
               ];
-              final authState = ref.watch(authStateProvider);
-              final isAuthenticated = authState.maybeWhen(
-                data: (user) => user != null,
-                orElse: () => false,
-              );
-              final userRole = RoleAccessService.instance.getCurrentUserRole();
 
               final visibleItems = items.where((item) {
                 if (item['guestOnly'] == true && isAuthenticated) {

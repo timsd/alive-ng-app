@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../models/achievement_model.dart';
+import '../achievement_detail_screen.dart';
 
 class AchievementCard extends StatelessWidget {
   const AchievementCard({
@@ -33,27 +34,40 @@ class AchievementCard extends StatelessWidget {
           width: isEarned ? 2 : 1,
         ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            _buildBadgeIcon(context, theme, isEarned),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _buildDetails(
-                  context, theme, isEarned, progressPercent),
-            ),
-            if (isEarned)
-              IconButton(
-                icon: Icon(
-                  Icons.share_rounded,
-                  color: achievement.tier.color,
-                  size: 20,
-                ),
-                tooltip: 'Share Achievement',
-                onPressed: () => _shareAchievement(context),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => AchievementDetailScreen(
+                achievement: achievement,
+                progress: progress,
               ),
-          ],
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              _buildBadgeIcon(context, theme, isEarned),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildDetails(
+                    context, theme, isEarned, progressPercent),
+              ),
+              if (isEarned)
+                IconButton(
+                  icon: Icon(
+                    Icons.share_rounded,
+                    color: achievement.tier.color,
+                    size: 20,
+                  ),
+                  tooltip: 'Share Achievement',
+                  onPressed: () => _shareAchievement(context),
+                ),
+            ],
+          ),
         ),
       ),
     );

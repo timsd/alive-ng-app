@@ -94,9 +94,11 @@ class _AppTourOverlayState extends ConsumerState<AppTourOverlay>
       case 'conference':
         return Offset(width * 0.90, bottomNavY);
       case 'donations':
-        return Offset(width - 92, topPadding + 28);
+        // CompactDonationButton is the rightmost IconButton (48px wide -> center at width - 24)
+        return Offset(width - 24, topPadding + 28);
       case 'language':
-        return Offset(width - 44, topPadding + 28);
+        // Language toggle is the second IconButton from the right (center at width - 72)
+        return Offset(width - 72, topPadding + 28);
       default:
         return Offset(width * 0.10, bottomNavY);
     }
@@ -247,8 +249,6 @@ class _AppTourOverlayState extends ConsumerState<AppTourOverlay>
     required VoidCallback onNext,
     required VoidCallback onExplore,
   }) {
-    final theme = Theme.of(context);
-
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF141F2D), // Sleek dark slate

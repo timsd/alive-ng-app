@@ -8,7 +8,7 @@ class AppTourStep {
   final String subtitle;
   final String description;
   final IconData? icon;
-  final IconData? faIcon;
+  final FaIconData? faIcon;
   final Color accentColor;
   final String? route;
   final String targetArea;
@@ -132,14 +132,14 @@ class AppTourSteps {
 
     // 5. More
     AppTourStep(
-      id: 'step_more',
+      id: 'step_home',
       title: 'More Ministry Resources',
       subtitle: 'Tracts, Podcasts, Kids & Chapters',
       description:
           'Explore the complete ALIVE ministry toolbox. Access digital tracts for evangelism, uplifting audio podcasts, interactive kids Bible stories, and directory of campus and regional chapters.',
       icon: Icons.grid_view_rounded,
       accentColor: Color(0xFFF59E0B), // Radiant Amber
-      route: '/more',
+      route: '/home',
       targetArea: 'more',
       highlights: [
         'Digital tracts with in-app PDF view and sharing',
@@ -176,7 +176,7 @@ class AppTourSteps {
           'Accessible anytime from the top bar. Partner in literature evangelism, campus missions, and community outreach with secure Paystack payments or non-monetary gift pledges.',
       icon: Icons.volunteer_activism_rounded,
       accentColor: Color(0xFFE11D48), // Rose Red
-      route: '/donations',
+      route: '/donation',
       targetArea: 'donations',
       highlights: [
         'Direct fund designations: General Ministry, Tract Production, Campus Outreaches',
@@ -326,7 +326,7 @@ class AppTourSteps {
           'Wà lórí pẹpẹ lókè nígbàkúgbà. Ṣe àtìlẹ́yìn fún títẹ ìwé àṣàrò jáde, iṣẹ́ ìránṣẹ́ ní àwọn ilé-ẹ̀kọ́, àti ìrànwọ́ àwùjọ nípasẹ̀ Paystack.',
       icon: Icons.volunteer_activism_rounded,
       accentColor: Color(0xFFE11D48),
-      route: '/donations',
+      route: '/donation',
       targetArea: 'donations',
       highlights: [
         'Yíyàn ibi tí ìtọrẹ ń lọ: Iṣẹ́ Ìránṣẹ́ Gbogbogbò, Ìwé Àṣàrò, Ìwàásù',
@@ -344,7 +344,7 @@ class AppTourSteps {
           'Tẹ àami bọ́ọ̀lù àgbáyé lókè láti yí gbogbo àpù, ẹsẹ Bíbélì ojoojúmọ́, àti àwọn ìwé àṣàrò padà sí èdè abínibí rẹ nígbàkúgbà.',
       icon: Icons.translate_rounded,
       accentColor: Color(0xFF0284C7),
-      route: '/settings/language',
+      route: '/home',
       targetArea: 'language',
       highlights: [
         'Fífọwọ́tẹ́ lẹ́ẹ̀kan láti yí padà láàárín English, Yorùbá, Hausa, àti Igbo',
@@ -430,7 +430,7 @@ class AppTourSteps {
           'Bincika cikakkun albarkatun ALIVE: warƙoƙin bishara, sautin podcasts, da labaran Littafi Mai Tsarki na yara.',
       icon: Icons.grid_view_rounded,
       accentColor: Color(0xFFF59E0B),
-      route: '/more',
+      route: '/home',
       targetArea: 'more',
       highlights: [
         'Warƙoƙin bishara a cikin PDF',
@@ -462,7 +462,7 @@ class AppTourSteps {
           'Taimaka wa buga warƙoƙi da aikin bishara a Najeriya ta hanyar Paystack cikin kwanciyar hankali.',
       icon: Icons.volunteer_activism_rounded,
       accentColor: Color(0xFFE11D48),
-      route: '/donations',
+      route: '/donation',
       targetArea: 'donations',
       highlights: [
         'Zaɓi inda gudunmawar ke zuwa',
@@ -478,7 +478,7 @@ class AppTourSteps {
           'Taɓa tambarin duniya da ke sama don sauya manhajar zuwa yaren da kuka fi so a kowane lokaci.',
       icon: Icons.translate_rounded,
       accentColor: Color(0xFF0284C7),
-      route: '/settings/language',
+      route: '/home',
       targetArea: 'language',
       highlights: [
         'Sauyawa tsakanin Turanci, Yorùbá, Hausa da Igbo',
@@ -564,7 +564,7 @@ class AppTourSteps {
           'Nyochaa ngwa ọrụ ALIVE niile: traktị maka ozi ọma, ọdịyo podcasts, na akụkọ Baịbụl ụmụaka.',
       icon: Icons.grid_view_rounded,
       accentColor: Color(0xFFF59E0B),
-      route: '/more',
+      route: '/home',
       targetArea: 'more',
       highlights: [
         'Traktị ozi ọma n\'ụdị PDF na ngwa',
@@ -596,7 +596,7 @@ class AppTourSteps {
           'Kwado ibipụta traktị na ozi ọma na Mahadum na Nigeria site na Paystack na nchekwa.',
       icon: Icons.volunteer_activism_rounded,
       accentColor: Color(0xFFE11D48),
-      route: '/donations',
+      route: '/donation',
       targetArea: 'donations',
       highlights: [
         'Họrọ ebe onyinye gị ga-aga',
@@ -612,7 +612,7 @@ class AppTourSteps {
           'Kpatụ akara ụwa dị n\'elu ka ị gbanwee ngwa ahụ gaa n\'asụsụ masịrị gị n\'oge ọ bụla.',
       icon: Icons.translate_rounded,
       accentColor: Color(0xFF0284C7),
-      route: '/settings/language',
+      route: '/home',
       targetArea: 'language',
       highlights: [
         'Gbanwee n\'etiti Bekee, Yorùbá, Hausa na Igbo',

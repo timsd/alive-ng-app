@@ -570,122 +570,152 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
         TextEditingController(text: page?['title'] ?? 'Onboarding');
     final slugController =
         TextEditingController(text: page?['slug'] ?? 'onboarding');
-    final languageController =
-        TextEditingController(text: page?['language'] ?? 'en');
     final contentController =
         TextEditingController(text: page?['content'] ?? '');
+    String selectedLanguage =
+        (page?['language'] ?? page?['language_code'] ?? 'en').toString();
+    if (!['en', 'yo', 'ha', 'ig'].contains(selectedLanguage)) {
+      selectedLanguage = 'en';
+    }
     bool isPublished = page?['is_published'] ?? false;
 
     showDialog<void>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(isEditing
-              ? 'Edit Onboarding Content'
-              : 'Create Onboarding Content'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: titleController,
-                  decoration: const InputDecoration(
-                    labelText: 'Title',
-                    prefixIcon: Icon(Icons.title),
-                    border: OutlineInputBorder(),
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            return AlertDialog(
+              title: Text(
+                isEditing ? 'Edit Content Page' : 'Create Content Page',
+              ),
+              content: SizedBox(
+                width: 480,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        controller: titleController,
+                        onChanged: (val) {
+                          if (!isEditing) {
+                            slugController.text = val
+                                .toLowerCase()
+                                .replaceAll(RegExp(r'[^a-z0-9\s-]'), '')
+                                .replaceAll(RegExp(r'\s+'), '-')
+                                .replaceAll(RegExp(r'-+'), '-')
+                                .trim();
+                          }
+                        },
+                        decoration: const InputDecoration(
+                          labelText: 'Title',
+                          prefixIcon: Icon(Icons.title),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: slugController,
+                        decoration: const InputDecoration(
+                          labelText: 'Slug',
+                          hintText: 'onboarding',
+                          prefixIcon: Icon(Icons.link),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        initialValue: selectedLanguage,
+                        decoration: const InputDecoration(
+                          labelText: 'Language',
+                          prefixIcon: Icon(Icons.language),
+                          border: OutlineInputBorder(),
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: 'en', child: Text('English (en)')),
+                          DropdownMenuItem(value: 'yo', child: Text('Yorùbá (yo)')),
+                          DropdownMenuItem(value: 'ha', child: Text('Hausa (ha)')),
+                          DropdownMenuItem(value: 'ig', child: Text('Igbo (ig)')),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) {
+                            setDialogState(() => selectedLanguage = val);
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: contentController,
+                        maxLines: 8,
+                        decoration: const InputDecoration(
+                          labelText: 'Content',
+                          alignLabelWithHint: true,
+                          prefixIcon: Icon(Icons.description),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SwitchListTile(
+                        value: isPublished,
+                        onChanged: (v) => setDialogState(() => isPublished = v),
+                        title: const Text('Published'),
+                        subtitle: Text(
+                          isPublished
+                              ? 'Visible to app users'
+                              : 'Saved as draft (hidden)',
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: slugController,
-                  decoration: const InputDecoration(
-                    labelText: 'Slug',
-                    hintText: 'onboarding',
-                    prefixIcon: Icon(Icons.link),
-                    border: OutlineInputBorder(),
-                  ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
                 ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: languageController,
-                  decoration: const InputDecoration(
-                    labelText: 'Language Code',
-                    hintText: 'en, fr, ha...',
-                    prefixIcon: Icon(Icons.language),
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: contentController,
-                  maxLines: 8,
-                  decoration: const InputDecoration(
-                    labelText: 'Content',
-                    alignLabelWithHint: true,
-                    prefixIcon: Icon(Icons.description),
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SwitchListTile(
-                  value: isPublished,
-                  onChanged: (v) => isPublished = v,
-                  title: const Text('Published'),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.save),
+                  label: const Text('Save'),
+                  onPressed: () async {
+                    final payload = {
+                      'title': titleController.text.trim(),
+                      'slug': slugController.text.trim(),
+                      'language': selectedLanguage,
+                      'language_code': selectedLanguage,
+                      'content': contentController.text.trim(),
+                      'is_published': isPublished,
+                      'updated_at': DateTime.now().toIso8601String(),
+                    };
+
+                    try {
+                      if (isEditing) {
+                        await _updateAdminDocument(
+                          AppwriteBackendConfig.contentPagesCollectionId,
+                          page['id'],
+                          payload,
+                        );
+                        ToastUtils.showSuccess('Content page updated');
+                      } else {
+                        await _createAdminDocument(
+                          AppwriteBackendConfig.contentPagesCollectionId,
+                          {
+                            ...payload,
+                            'created_at': DateTime.now().toIso8601String(),
+                          },
+                        );
+                        ToastUtils.showSuccess('Content page created');
+                      }
+                      if (!mounted) return;
+                      Navigator.of(this.context).pop();
+                      _loadContentPages();
+                    } catch (e) {
+                      ToastUtils.showError('Error saving content: $e');
+                    }
+                  },
                 ),
               ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.save),
-              label: const Text('Save'),
-              onPressed: () async {
-                final payload = {
-                  'title': titleController.text.trim(),
-                  'slug': slugController.text.trim(),
-                  'language': languageController.text.trim(),
-                  'language_code': languageController.text.trim(),
-                  'content': contentController.text.trim(),
-                  'is_published': isPublished,
-                  'updated_at': DateTime.now().toIso8601String(),
-                };
-
-                try {
-                  if (isEditing) {
-                    await _updateAdminDocument(
-                      AppwriteBackendConfig.contentPagesCollectionId,
-                      page['id'],
-                      payload,
-                    );
-                    ToastUtils.showSuccess('Onboarding content updated');
-                  } else {
-                    await _createAdminDocument(
-                      AppwriteBackendConfig.contentPagesCollectionId,
-                      {
-                        ...payload,
-                        'created_at': DateTime.now().toIso8601String(),
-                      },
-                    );
-                    ToastUtils.showSuccess('Onboarding content created');
-                  }
-                  if (!mounted) return;
-                  Navigator.of(this.context).pop();
-                  _loadContentPages();
-                } catch (e) {
-                  ToastUtils.showError('Error saving content: $e');
-                } finally {
-                  titleController.dispose();
-                  slugController.dispose();
-                  languageController.dispose();
-                  contentController.dispose();
-                }
-              },
-            ),
-          ],
+            );
+          },
         );
       },
     );
