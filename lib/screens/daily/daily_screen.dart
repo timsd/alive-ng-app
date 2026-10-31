@@ -274,8 +274,8 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
         elevation: 0,
         backgroundColor: Theme.of(context).colorScheme.secondary,
         foregroundColor: Theme.of(context).colorScheme.onSecondary,
-        showThemeToggle: true,
-        showLanguageToggle: true,
+        showThemeToggle: false,
+        showLanguageToggle: false,
         showDonationButton: true,
       ),
       body: RefreshIndicator(

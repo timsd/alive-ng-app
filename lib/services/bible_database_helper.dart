@@ -740,25 +740,45 @@ class BibleDatabaseHelper {
   Future<BibleChapter?> getChapter(String book, int chapter, String version, String language) async {
     final db = await database;
     
-    // 1. Direct query by exact book name and version
+    final canon = BibleData.canonicalBookName(book) ?? book;
+    final localizedForVersion = BibleData.localizedBookName(canon, version);
+
+    // 1. Direct query by version-specific localized book name (e.g. Genesis -> JENESIS for IGBOB, Jẹnẹsisi for BM)
     var chapterMaps = await db.query(
       _chaptersTable,
       where: 'book = ? AND chapter = ? AND version = ?',
-      whereArgs: [book, chapter, version],
+      whereArgs: [localizedForVersion, chapter, version],
       limit: 1,
     );
 
-    // 2. If not found, resolve canonical English book name (e.g. Farawa -> Genesis for HAU)
+    // 2. If not found, try the exact input book name
+    if (chapterMaps.isEmpty && book != localizedForVersion) {
+      chapterMaps = await db.query(
+        _chaptersTable,
+        where: 'book = ? AND chapter = ? AND version = ?',
+        whereArgs: [book, chapter, version],
+        limit: 1,
+      );
+    }
+
+    // 3. If not found, try canonical English book name (e.g. Farawa -> Genesis for HAU/KJV)
+    if (chapterMaps.isEmpty && canon != book && canon != localizedForVersion) {
+      chapterMaps = await db.query(
+        _chaptersTable,
+        where: 'book = ? AND chapter = ? AND version = ?',
+        whereArgs: [canon, chapter, version],
+        limit: 1,
+      );
+    }
+
+    // 4. Case-insensitive / uppercase fallback (e.g. "genesis" -> "JENESIS")
     if (chapterMaps.isEmpty) {
-      final canon = BibleData.canonicalBookName(book);
-      if (canon != null && canon != book) {
-        chapterMaps = await db.query(
-          _chaptersTable,
-          where: 'book = ? AND chapter = ? AND version = ?',
-          whereArgs: [canon, chapter, version],
-          limit: 1,
-        );
-      }
+      chapterMaps = await db.query(
+        _chaptersTable,
+        where: 'UPPER(book) = ? AND chapter = ? AND version = ?',
+        whereArgs: [canon.toUpperCase(), chapter, version],
+        limit: 1,
+      );
     }
 
     if (chapterMaps.isEmpty) return null;

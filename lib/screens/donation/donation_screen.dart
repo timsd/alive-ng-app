@@ -147,8 +147,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       appBar: CustomAppBar(
         title: translate('support_alive'),
         showBackButton: true,
-        showThemeToggle: true,
-        showLanguageToggle: true,
+        showThemeToggle: false,
+        showLanguageToggle: false,
         showDonationButton: false, // Already on donation screen
       ),
       body: AnimatedBuilder(

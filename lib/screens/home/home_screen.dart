@@ -50,6 +50,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: CustomAppBar(
         title: l10n.home,
+        showThemeToggle: true,
+        showLanguageToggle: true,
       ),
       body: authState.when(
           data: (user) => _buildHomeContent(context, ref, user, isGuest),

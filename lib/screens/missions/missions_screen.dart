@@ -408,12 +408,32 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
                   Icon(
                     category.icon,
                     size: ResponsiveUtils.getResponsiveIconSize(context, 16),
-                    color: category.isSelected ? Colors.white : (category.color ?? Theme.of(context).colorScheme.primary),
+                    color: category.isSelected
+                        ? Colors.white
+                        : (category.color ??
+                            Theme.of(context).colorScheme.primary),
                   ),
                   SizedBox(
                       width: ResponsiveUtils.getResponsiveSpacing(context, 6)),
-                  Text(category.name),
+                  Text(
+                    category.name,
+                    style: TextStyle(
+                      color: category.isSelected
+                          ? Colors.white
+                          : Theme.of(context).colorScheme.onSurface,
+                      fontWeight: category.isSelected
+                          ? FontWeight.bold
+                          : FontWeight.w500,
+                    ),
+                  ),
                 ],
+              ),
+              labelStyle: TextStyle(
+                color: category.isSelected
+                    ? Colors.white
+                    : Theme.of(context).colorScheme.onSurface,
+                fontWeight:
+                    category.isSelected ? FontWeight.bold : FontWeight.w500,
               ),
               onSelected: (selected) {
                 if (selected) {
@@ -430,7 +450,8 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
                       updatedCategories;
                 }
               },
-              selectedColor: category.color ?? Theme.of(context).colorScheme.primary,
+              selectedColor:
+                  category.color ?? Theme.of(context).colorScheme.primary,
               checkmarkColor: Colors.white,
             ),
           );

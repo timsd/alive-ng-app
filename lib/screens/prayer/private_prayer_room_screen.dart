@@ -896,15 +896,19 @@ class _PrivatePrayerRoomScreenState extends ConsumerState<PrivatePrayerRoomScree
                         ],
                       ),
                     );
-                    if (confirm == true) {
+                    if (confirm == true && ctx.mounted) {
                       Navigator.pop(ctx);
                       try {
                         await _prayerService.deletePrivateRoom(room.id);
-                        _showSnack('Room deleted successfully');
-                        _selectedRoom = null;
-                        _loadRooms();
+                        if (mounted) {
+                          _showSnack('Room deleted successfully');
+                          _selectedRoom = null;
+                          _loadRooms();
+                        }
                       } catch (e) {
-                        _showSnack('Failed to delete room: $e', isError: true);
+                        if (mounted) {
+                          _showSnack('Failed to delete room: $e', isError: true);
+                        }
                       }
                     }
                   },

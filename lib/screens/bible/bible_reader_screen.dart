@@ -189,8 +189,13 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
           return a.order.compareTo(b.order);
         });
         _books = books;
-        final bookIdx = _books.indexWhere(
+        final canonSelected = BibleData.canonicalBookName(_selectedBook) ?? _selectedBook;
+        var bookIdx = _books.indexWhere(
             (b) => b.name.toLowerCase() == _selectedBook.toLowerCase());
+        if (bookIdx == -1) {
+          bookIdx = _books.indexWhere(
+              (b) => (BibleData.canonicalBookName(b.name) ?? b.name).toLowerCase() == canonSelected.toLowerCase());
+        }
         _currentBookIndex = bookIdx != -1 ? bookIdx : 0;
         _selectedBook = _books[_currentBookIndex].name;
 
@@ -200,9 +205,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
           if (!applied) {
             await _loadChapter();
           }
-        } else if (_chapterVerses.isEmpty ||
-            _selectedBook != 'Genesis' ||
-            _selectedChapter != 1) {
+        } else {
           await _loadChapter();
         }
       } else {
@@ -662,12 +665,12 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
       backgroundColor: headerBgColor,
       appBar: CustomAppBar(
         showBackButton: true,
-        title: 'Bible Reader',
+        title: 'Bible',
         backgroundColor: headerBgColor,
         foregroundColor: headerTextColor,
         elevation: 0,
-        showThemeToggle: true,
-        showLanguageToggle: true,
+        showThemeToggle: false,
+        showLanguageToggle: false,
         showDonationButton: true,
         actions: [
           IconButton(

@@ -107,8 +107,8 @@ class HealthScreen extends ConsumerWidget {
         elevation: 0,
         backgroundColor: Colors.green,
         foregroundColor: Theme.of(context).colorScheme.onPrimary,
-        showThemeToggle: true,
-        showLanguageToggle: true,
+        showThemeToggle: false,
+        showLanguageToggle: false,
         showDonationButton: true,
       ),
       body: RefreshIndicator(

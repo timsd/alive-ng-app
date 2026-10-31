@@ -76,8 +76,8 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
         showBackButton: true,
         backgroundColor: theme.colorScheme.primary,
         foregroundColor: theme.colorScheme.onPrimary,
-        showThemeToggle: true,
-        showLanguageToggle: true,
+        showThemeToggle: false,
+        showLanguageToggle: false,
         showDonationButton: false,
         actions: [
           if (canAccessPrivate)

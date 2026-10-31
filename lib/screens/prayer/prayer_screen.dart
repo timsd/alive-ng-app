@@ -324,8 +324,20 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
                               const SizedBox(width: 10),
                               Expanded(
                                 child: ElevatedButton.icon(
-                                  onPressed: () => context.push(
-                                      AppConstants.privatePrayerRoomRoute),
+                                  onPressed: () {
+                                    if (canAccessPrivate) {
+                                      context.push(
+                                          AppConstants.privatePrayerRoomRoute);
+                                    } else {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                              'Private Prayer Rooms are reserved for leaders, board members, and trustees.'),
+                                        ),
+                                      );
+                                    }
+                                  },
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor:
                                         onPrimary.withValues(alpha: 0.16),
@@ -342,7 +354,7 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                   ),
-                                  icon: const Icon(
+                                  icon: Icon(
                                     Icons.lock_person_rounded,
                                     size: 16,
                                     color: onPrimary,

@@ -60,8 +60,8 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
     this.pinned = true,
     this.floating = false,
     this.snap = false,
-    this.showThemeToggle = true,
-    this.showLanguageToggle = true,
+    this.showThemeToggle = false,
+    this.showLanguageToggle = false,
     this.showDonationButton = true,
   });
 
