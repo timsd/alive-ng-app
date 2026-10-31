@@ -614,6 +614,17 @@ String lookupLegacyMessage(AppLocalizations messages, String key) {
       return messages.bod_trustees;
     case 'events':
       return messages.events;
+    case 'notice_board':
+      switch (messages.localeName) {
+        case 'ha':
+          return 'Allon Sanarwa';
+        case 'ig':
+          return 'Bọọdụ Ọkwa';
+        case 'yo':
+          return 'Pátákó Ìkédé';
+        default:
+          return 'Notice Board';
+      }
     case 'bible_game':
     case 'bibleGame':
       return messages.bible_game;

@@ -475,8 +475,8 @@ class MainNavigationScreen extends ConsumerWidget {
                     'route': AppConstants.missionsRoute
                   },
                   {
-                    'icon': Icons.event_available_rounded,
-                    'label': 'events',
+                    'icon': Icons.campaign_rounded,
+                    'label': 'notice_board',
                     'route': AppConstants.eventsRoute
                   },
                   {
