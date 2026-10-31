@@ -235,7 +235,10 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
             itemCount: requests.length,
             itemBuilder: (context, index) {
               final request = requests[index];
-              final isOwner = user?.uid == request.userId;
+              final userRole = RoleAccessService.instance.getCurrentUserRole()?.toLowerCase() ?? 'member';
+              const adminRoles = {'admin', 'bod', 'trustee', 'director'};
+              final canModerate = adminRoles.contains(userRole);
+              final isOwner = user?.uid == request.userId || (user != null && canModerate);
               return _PrayerCard(
                 request: request,
                 isOwner: isOwner,

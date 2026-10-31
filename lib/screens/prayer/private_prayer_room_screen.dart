@@ -119,16 +119,20 @@ class _PrivatePrayerRoomScreenState extends ConsumerState<PrivatePrayerRoomScree
     return Scaffold(
       appBar: CustomAppBar(
         title: 'Private Prayer Rooms',
+        showBackButton: true,
+        showThemeToggle: false,
+        showLanguageToggle: false,
+        showDonationButton: false,
         actions: [
           IconButton(
             tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded),
             onPressed: _loadRooms,
           ),
-          if (_canCreateRoom)
+          if (_canCreateRoom && _rooms.isEmpty)
             IconButton(
               tooltip: 'Create Room',
-              icon: const Icon(Icons.add_business_rounded),
+              icon: const Icon(Icons.add_circle_outline_rounded),
               onPressed: _showCreateRoomDialog,
             ),
         ],
@@ -136,7 +140,7 @@ class _PrivatePrayerRoomScreenState extends ConsumerState<PrivatePrayerRoomScree
       floatingActionButton: _selectedRoom != null
           ? FloatingActionButton.extended(
               onPressed: _showAddPrayerDialog,
-              icon: const FaIcon(FontAwesomeIcons.handsPraying, size: 18),
+              icon: const Icon(Icons.add_rounded, size: 20),
               label: const Text('New Request'),
               backgroundColor: theme.colorScheme.primary,
               foregroundColor: theme.colorScheme.onPrimary,
@@ -362,6 +366,15 @@ class _PrivatePrayerRoomScreenState extends ConsumerState<PrivatePrayerRoomScree
                   ],
                 ),
               ),
+              if (_canEditRoom(room)) ...[
+                const SizedBox(width: 6),
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  tooltip: 'Edit Room & Access',
+                  onPressed: () => _showEditRoomDialog(room),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
             ],
           ),
           if (room.description.isNotEmpty) ...[
@@ -410,12 +423,12 @@ class _PrivatePrayerRoomScreenState extends ConsumerState<PrivatePrayerRoomScree
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              FaIcon(
+              Icon(
                 isAnsweredTab
-                    ? FontAwesomeIcons.trophy
-                    : FontAwesomeIcons.handsPraying,
-                size: 40,
-                color: Theme.of(context).colorScheme.outline,
+                    ? Icons.emoji_events_outlined
+                    : Icons.volunteer_activism_outlined,
+                size: 48,
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
               ),
               const SizedBox(height: 12),
               Text(
@@ -787,6 +800,159 @@ class _PrivatePrayerRoomScreenState extends ConsumerState<PrivatePrayerRoomScree
                 }
               },
               child: const Text('Create Room'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  bool _canEditRoom(PrivatePrayerRoom room) {
+    final user = ref.read(currentUserProvider);
+    if (user == null) return false;
+    final role = _roleService.getCurrentUserRole()?.toLowerCase() ?? 'member';
+    const adminRoles = {'admin', 'bod', 'trustee', 'director'};
+    return room.createdBy == user.uid || adminRoles.contains(role);
+  }
+
+  void _showEditRoomDialog(PrivatePrayerRoom room) {
+    final nameController = TextEditingController(text: room.name);
+    final descController = TextEditingController(text: room.description);
+    final selectedRoles = Set<String>.from(room.allowedRoles);
+
+    final availableRoles = [
+      {'key': 'member', 'label': 'All Members'},
+      {'key': 'chapter_leader', 'label': 'Chapter Leaders'},
+      {'key': 'director', 'label': 'Directors'},
+      {'key': 'bod', 'label': 'Board of Directors (BOD)'},
+      {'key': 'trustee', 'label': 'Trustees'},
+      {'key': 'admin', 'label': 'Administrators'},
+    ];
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) => AlertDialog(
+          title: Text('Edit ${room.name}'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Room Name',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: descController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Description',
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Who Can Access (Revoke/Grant):',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 6),
+                for (final roleInfo in availableRoles)
+                  CheckboxListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(roleInfo['label']!),
+                    value: selectedRoles.contains(roleInfo['key']),
+                    onChanged: (val) {
+                      setDlgState(() {
+                        if (val == true) {
+                          selectedRoles.add(roleInfo['key']!);
+                        } else {
+                          selectedRoles.remove(roleInfo['key']!);
+                        }
+                      });
+                    },
+                  ),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final confirm = await showDialog<bool>(
+                      context: ctx,
+                      builder: (delCtx) => AlertDialog(
+                        title: const Text('Delete Prayer Room'),
+                        content: Text('Are you sure you want to delete "${room.name}"? All room prayers will be removed.'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(delCtx, false),
+                            child: const Text('Cancel'),
+                          ),
+                          FilledButton(
+                            onPressed: () => Navigator.pop(delCtx, true),
+                            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                            child: const Text('Delete'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirm == true) {
+                      Navigator.pop(ctx);
+                      try {
+                        await _prayerService.deletePrivateRoom(room.id);
+                        _showSnack('Room deleted successfully');
+                        _selectedRoom = null;
+                        _loadRooms();
+                      } catch (e) {
+                        _showSnack('Failed to delete room: $e', isError: true);
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.delete_forever_rounded, color: Colors.red),
+                  label: const Text('Delete This Room', style: TextStyle(color: Colors.red)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.red),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                final name = nameController.text.trim();
+                final desc = descController.text.trim();
+                if (name.isEmpty) {
+                  _showSnack('Room name is required', isError: true);
+                  return;
+                }
+                Navigator.pop(ctx);
+
+                try {
+                  final updatedRoom = PrivatePrayerRoom(
+                    id: room.id,
+                    name: name,
+                    description: desc,
+                    allowedRoles: selectedRoles.toList(),
+                    allowedUserIds: room.allowedUserIds,
+                    createdBy: room.createdBy,
+                    createdAt: room.createdAt,
+                    updatedAt: DateTime.now(),
+                    memberCount: room.memberCount,
+                  );
+                  await _prayerService.updatePrivateRoom(updatedRoom);
+                  _showSnack('Room updated successfully!');
+                  _selectedRoom = updatedRoom;
+                  _loadRooms();
+                } catch (e) {
+                  _showSnack('Failed to update room: $e', isError: true);
+                }
+              },
+              child: const Text('Save Changes'),
             ),
           ],
         ),

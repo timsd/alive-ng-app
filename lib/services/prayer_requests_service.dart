@@ -304,6 +304,48 @@ class PrayerRequestsService {
     }
   }
 
+  Future<PrivatePrayerRoom> updatePrivateRoom(PrivatePrayerRoom room) async {
+    try {
+      final now = DateTime.now().toIso8601String();
+      final document = await _tables.updateRow(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: AppwriteBackendConfig.privatePrayerRoomsCollectionId,
+        rowId: room.id,
+        data: {
+          'name': room.name,
+          'description': room.description,
+          'allowed_roles': room.allowedRoles,
+          'allowed_user_ids': room.allowedUserIds,
+          'updated_at': now,
+        },
+      );
+
+      return PrivatePrayerRoom.fromJson(_documentData(document));
+    } catch (e) {
+      _logger.error('Error updating private prayer room', e);
+      throw DatabaseException(
+        'Failed to update private prayer room',
+        originalError: e,
+      );
+    }
+  }
+
+  Future<void> deletePrivateRoom(String roomId) async {
+    try {
+      await _tables.deleteRow(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: AppwriteBackendConfig.privatePrayerRoomsCollectionId,
+        rowId: roomId,
+      );
+    } catch (e) {
+      _logger.error('Error deleting private prayer room', e);
+      throw DatabaseException(
+        'Failed to delete private prayer room',
+        originalError: e,
+      );
+    }
+  }
+
   Future<List<PrayerRequest>> fetchRoomPrayerRequests(String roomId) async {
     try {
       final response = await _tables.listRows(
