@@ -614,6 +614,18 @@ String lookupLegacyMessage(AppLocalizations messages, String key) {
       return messages.bod_trustees;
     case 'events':
       return messages.events;
+    case 'daily_tasks':
+    case 'daily_task':
+      switch (messages.localeName) {
+        case 'ha':
+          return 'Ayyukan Kullum';
+        case 'ig':
+          return 'Ọrụ Kwa Ụbọchị';
+        case 'yo':
+          return 'Iṣẹ́ Ojoojúmọ́';
+        default:
+          return 'Daily Task';
+      }
     case 'news_feed':
     case 'notice_board':
       switch (messages.localeName) {

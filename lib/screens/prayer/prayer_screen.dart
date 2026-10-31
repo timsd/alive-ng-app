@@ -136,27 +136,6 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
         showBackButton: true,
         backgroundColor: primary,
         foregroundColor: onPrimary,
-        actions: [
-          if (isAuthenticated) ...[
-            IconButton(
-              onPressed: () => context.push(AppConstants.prayerWallRoute),
-              icon: const FaIcon(FontAwesomeIcons.personPraying, size: 18),
-              tooltip: 'My Prayer Wall',
-            ),
-            if (canAccessPrivate)
-              IconButton(
-                onPressed: () =>
-                    context.push(AppConstants.privatePrayerRoomRoute),
-                icon: const Icon(Icons.lock_person_rounded),
-                tooltip: 'Private Prayer Rooms',
-              ),
-            IconButton(
-              onPressed: () => _showCreatePrayerDialog(context, ref),
-              icon: const Icon(Icons.add),
-              tooltip: translate('add_prayer_request'),
-            ),
-          ],
-        ],
       ),
       body: SafeArea(
         child: LayoutBuilder(
@@ -268,85 +247,123 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
                           SizedBox(
                               height: ResponsiveUtils.getResponsiveSpacing(
                                   context, 16)),
-                          Wrap(
-                            spacing: 10,
-                            runSpacing: 10,
+                          Row(
                             children: [
-                              ElevatedButton.icon(
-                                onPressed: _openPrayerMeeting,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: theme.colorScheme.surface,
-                                  foregroundColor: primary,
-                                ),
-                                icon: const Icon(Icons.video_call_rounded),
-                                label: Text(
-                                  translate('join_prayer_meeting'),
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .labelLarge
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                        color: primary,
-                                      ),
-                                ),
-                              ),
-                              ElevatedButton.icon(
-                                onPressed: () =>
-                                    context.push(AppConstants.prayerWallRoute),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor:
-                                      onPrimary.withValues(alpha: 0.16),
-                                  foregroundColor: onPrimary,
-                                  elevation: 0,
-                                  side: BorderSide(
-                                    color: onPrimary.withValues(alpha: 0.35),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: _openPrayerMeeting,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: theme.colorScheme.surface,
+                                    foregroundColor: primary,
+                                    elevation: 2,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                      vertical: 10,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  icon: const Icon(Icons.video_call_rounded, size: 18),
+                                  label: Text(
+                                    'Meeting',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          color: primary,
+                                          fontSize: 12,
+                                        ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                                icon: FaIcon(
-                                  FontAwesomeIcons.personPraying,
-                                  size: 16,
-                                  color: onPrimary,
-                                ),
-                                label: Text(
-                                  'My Prayer Wall',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .labelLarge
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                        color: onPrimary,
-                                      ),
-                                ),
                               ),
-                              if (canAccessPrivate)
-                                ElevatedButton.icon(
-                                  onPressed: () => context.push(
-                                      AppConstants.privatePrayerRoomRoute),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () =>
+                                      context.push(AppConstants.prayerWallRoute),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor:
                                         onPrimary.withValues(alpha: 0.16),
                                     foregroundColor: onPrimary,
                                     elevation: 0,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                      vertical: 10,
+                                    ),
                                     side: BorderSide(
                                       color: onPrimary.withValues(alpha: 0.35),
                                     ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
                                   ),
-                                  icon: Icon(
-                                    Icons.lock_person_rounded,
-                                    size: 18,
+                                  icon: FaIcon(
+                                    FontAwesomeIcons.personPraying,
+                                    size: 14,
                                     color: onPrimary,
                                   ),
                                   label: Text(
-                                    'Private Rooms',
+                                    'Prayer Wall',
                                     style: Theme.of(context)
                                         .textTheme
-                                        .labelLarge
+                                        .labelMedium
                                         ?.copyWith(
                                           fontWeight: FontWeight.w600,
                                           color: onPrimary,
+                                          fontSize: 12,
                                         ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
+                              ),
+                              if (canAccessPrivate) ...[
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () => context.push(
+                                        AppConstants.privatePrayerRoomRoute),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor:
+                                          onPrimary.withValues(alpha: 0.16),
+                                      foregroundColor: onPrimary,
+                                      elevation: 0,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 4,
+                                        vertical: 10,
+                                      ),
+                                      side: BorderSide(
+                                        color: onPrimary.withValues(alpha: 0.35),
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    icon: Icon(
+                                      Icons.lock_person_rounded,
+                                      size: 16,
+                                      color: onPrimary,
+                                    ),
+                                    label: Text(
+                                      'Private',
+                                      style: Theme.of(context)
+                                        .textTheme
+                                        .labelMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          color: onPrimary,
+                                          fontSize: 12,
+                                        ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ],
@@ -383,15 +400,6 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
                                       ResponsiveUtils.getResponsiveFontSize(
                                           context, 20),
                                 ),
-                          ),
-                          TextButton.icon(
-                            onPressed: () =>
-                                context.push(AppConstants.prayerWallRoute),
-                            icon: const FaIcon(
-                              FontAwesomeIcons.personPraying,
-                              size: 14,
-                            ),
-                            label: const Text('My Prayers & Wall'),
                           ),
                         ],
                       ),
@@ -721,7 +729,7 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
   }
 }
 
-class PrayerRequestCard extends StatelessWidget {
+class PrayerRequestCard extends StatefulWidget {
   final PrayerRequest request;
   final VoidCallback onPray;
 
@@ -732,7 +740,16 @@ class PrayerRequestCard extends StatelessWidget {
   });
 
   @override
+  State<PrayerRequestCard> createState() => _PrayerRequestCardState();
+}
+
+class _PrayerRequestCardState extends State<PrayerRequestCard> {
+  bool _isExpanded = false;
+
+  @override
   Widget build(BuildContext context) {
+    final request = widget.request;
+    final onPray = widget.onPray;
     return Card(
       margin: EdgeInsets.only(
           bottom: ResponsiveUtils.getResponsiveSpacing(context, 16)),
@@ -887,14 +904,35 @@ class PrayerRequestCard extends StatelessWidget {
               ],
             ),
             SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
-            Text(
-              request.description,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontSize:
-                        ResponsiveUtils.getResponsiveFontSize(context, 14),
-                  ),
-              maxLines: 4,
-              overflow: TextOverflow.ellipsis,
+            InkWell(
+              onTap: () {
+                setState(() {
+                  _isExpanded = !_isExpanded;
+                });
+              },
+              borderRadius: BorderRadius.circular(8),
+              child: AnimatedSize(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOut,
+                alignment: Alignment.topLeft,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      request.description,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontSize:
+                                ResponsiveUtils.getResponsiveFontSize(context, 14),
+                            height: 1.4,
+                          ),
+                      maxLines: _isExpanded ? null : 4,
+                      overflow: _isExpanded
+                          ? TextOverflow.visible
+                          : TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
             ),
             SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
             Row(

@@ -270,7 +270,7 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
     return Scaffold(
       appBar: CustomAppBar(
         showBackButton: true,
-        title: translate('daily'),
+        title: translate('daily_tasks'),
         elevation: 0,
         backgroundColor: Theme.of(context).colorScheme.secondary,
         foregroundColor: Theme.of(context).colorScheme.onSecondary,
