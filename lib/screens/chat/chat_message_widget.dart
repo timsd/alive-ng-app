@@ -494,6 +494,16 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
 
   Widget _buildActionButtons(ThemeData theme) {
     final currentUserId = AuthService.instance.currentUser?.uid;
+    final isOwner = currentUserId != null && widget.message.senderId == currentUserId;
+    final isLeaderOrAdmin = RoleAccessService.instance.canAccessAdmin() ||
+        RoleAccessService.instance.isBoardOrTrustee() ||
+        RoleAccessService.instance.hasRole('chapter_leader') ||
+        RoleAccessService.instance.hasRole('director');
+    final canDelete = isOwner || isLeaderOrAdmin;
+    // Edit timeframe: only allow editing if sent within the last 15 minutes
+    final isWithinEditTimeframe =
+        DateTime.now().difference(widget.message.timestamp).inMinutes < 15;
+    final canEdit = isOwner && isWithinEditTimeframe;
 
     return Container(
       margin: EdgeInsets.only(
@@ -519,21 +529,20 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
             tooltip: 'Copy',
             visualDensity: VisualDensity.compact,
           ),
-          if (currentUserId != null &&
-              widget.message.senderId == currentUserId) ...[
+          if (canEdit)
             IconButton(
               icon: Icon(Icons.edit, size: context.responsiveIconSize(18)),
               onPressed: () => widget.onEdit?.call(widget.message),
-              tooltip: 'Edit',
+              tooltip: 'Edit (within 15m)',
               visualDensity: VisualDensity.compact,
             ),
+          if (canDelete)
             IconButton(
               icon: Icon(Icons.delete, size: context.responsiveIconSize(18)),
               onPressed: () => widget.onDelete?.call(widget.message),
               tooltip: 'Delete',
               visualDensity: VisualDensity.compact,
             ),
-          ],
         ],
       ),
     );

@@ -49,6 +49,14 @@ class ChatService {
     );
   }
 
+  Future<void> deleteMessage(String messageId) {
+    return _appwrite.deleteMessage(messageId);
+  }
+
+  Future<ChatMessage> editMessage(String messageId, String newContent) {
+    return _appwrite.editMessage(messageId, newContent);
+  }
+
   Future<ChatChannel> createChannel({
     required String name,
     required String description,

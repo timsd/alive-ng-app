@@ -35,6 +35,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   List<ChatChannel> _channels = [];
   List<ChatMessage> _messages = [];
   bool _onlyMentions = false;
+  ChatMessage? _replyingTo;
   ChatChannel? _selectedChannel;
   bool _isLoading = true;
   bool _isLoadingMessages = false;
@@ -46,6 +47,99 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _loadChannels();
     if (widget.channelId != null) {
       _selectChannelById(widget.channelId!);
+    }
+  }
+
+  Future<void> _handleDeleteMessage(ChatMessage message) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Message'),
+        content: const Text(
+          'Are you sure you want to delete this message? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      try {
+        await _chatService.deleteMessage(message.id);
+        setState(() {
+          _messages.removeWhere((m) => m.id == message.id);
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Message deleted')),
+          );
+        }
+      } catch (e) {
+        _showError('Failed to delete message: $e');
+      }
+    }
+  }
+
+  Future<void> _handleEditMessage(ChatMessage message) async {
+    final editController = TextEditingController(text: message.content);
+    final newText = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Message'),
+        content: TextField(
+          controller: editController,
+          autofocus: true,
+          maxLines: 4,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            hintText: 'Enter updated message',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(null),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.of(context).pop(editController.text.trim()),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (newText != null &&
+        newText.isNotEmpty &&
+        newText != message.content &&
+        mounted) {
+      try {
+        final updated = await _chatService.editMessage(message.id, newText);
+        setState(() {
+          final idx = _messages.indexWhere((m) => m.id == message.id);
+          if (idx != -1) {
+            _messages[idx] = updated;
+          }
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Message updated')),
+          );
+        }
+      } catch (e) {
+        _showError('Failed to edit message: $e');
+      }
     }
   }
 
@@ -170,12 +264,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       final message = await _chatService.sendMessage(
         channelId: _selectedChannel!.id,
         content: content.trim(),
-        replyToId: replyToId,
+        replyToId: replyToId ?? _replyingTo?.id,
         tags: TagParser.parseUniqueMessage(content),
       );
 
       setState(() {
         _messages.add(message);
+        _replyingTo = null;
       });
 
       _messageController.clear();
@@ -614,48 +709,97 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                     canStartGeneral)
                                   Padding(
                                     padding: const EdgeInsets.fromLTRB(
-                                        16, 16, 16, 0),
-                                    child: Card(
-                                      color: Theme.of(context)
-                                          .primaryColor
-                                          .withValues(alpha: 0.08),
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(12.0),
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.video_call,
-                                                color: Theme.of(context)
-                                                    .primaryColor),
-                                            const SizedBox(width: 8),
-                                            Expanded(
-                                              child: Text(
-                                                'General Meeting is available',
-                                                style: TextStyle(
-                                                  color: Theme.of(context)
-                                                      .primaryColor,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                            ),
-                                            ElevatedButton.icon(
-                                              onPressed: () {
-                                                Navigator.of(context).push(
-                                                  MaterialPageRoute(
-                                                    builder: (context) =>
-                                                        LiveKitMeetingScreen(
-                                                      customRoomName:
-                                                          _selectedChannel!.id,
-                                                      isModerator: isModerator,
-                                                    ),
-                                                  ),
-                                                );
-                                              },
-                                              icon:
-                                                  const Icon(Icons.play_arrow),
-                                              label: const Text('Join'),
-                                            ),
-                                          ],
+                                        16, 8, 16, 8),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 14, vertical: 10),
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primaryContainer
+                                            .withValues(alpha: 0.35),
+                                        borderRadius:
+                                            BorderRadius.circular(14),
+                                        border: Border.all(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .primary
+                                              .withValues(alpha: 0.2),
                                         ),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(8),
+                                            decoration: BoxDecoration(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .primary
+                                                  .withValues(alpha: 0.15),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: Icon(
+                                              Icons.videocam_rounded,
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .primary,
+                                              size: 20,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Text(
+                                                  '${_selectedChannel?.name ?? 'General'} Meeting',
+                                                  style: TextStyle(
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .onSurface,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 14,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  'Live Video Fellowship Room',
+                                                  style: TextStyle(
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .onSurfaceVariant,
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          FilledButton.icon(
+                                            onPressed: () {
+                                              Navigator.of(context).push(
+                                                MaterialPageRoute(
+                                                  builder: (context) =>
+                                                      LiveKitMeetingScreen(
+                                                    customRoomName:
+                                                        _selectedChannel!.id,
+                                                    isModerator: isModerator,
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                            icon: const Icon(
+                                                Icons.play_arrow_rounded,
+                                                size: 18),
+                                            label: const Text('Join'),
+                                            style: FilledButton.styleFrom(
+                                              padding: const EdgeInsets
+                                                  .symmetric(
+                                                  horizontal: 14,
+                                                  vertical: 8),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ),
@@ -689,12 +833,81 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                               message: message,
                                               isConsecutive: isConsecutive,
                                               onReply: (replyMessage) {
-                                                // Handle reply
+                                                setState(() {
+                                                  _replyingTo = replyMessage;
+                                                });
                                               },
+                                              onEdit: (editMsg) =>
+                                                  _handleEditMessage(editMsg),
+                                              onDelete: (delMsg) =>
+                                                  _handleDeleteMessage(delMsg),
                                             );
                                           },
                                         ),
                                 ),
+                                // Reply preview banner
+                                if (_replyingTo != null)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .surfaceContainerHighest,
+                                      border: Border(
+                                        top: BorderSide(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .outlineVariant
+                                              .withValues(alpha: 0.5),
+                                        ),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.reply_rounded,
+                                            size: 18,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .primary),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                'Replying to ${_replyingTo!.senderName}',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .primary,
+                                                ),
+                                              ),
+                                              Text(
+                                                _replyingTo!.content,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .bodySmall,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.close,
+                                              size: 18),
+                                          onPressed: () => setState(
+                                              () => _replyingTo = null),
+                                          visualDensity: VisualDensity.compact,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 // Message input
                                 ChatInputWidget(
                                   controller: _messageController,

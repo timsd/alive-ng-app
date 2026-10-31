@@ -724,7 +724,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                 context,
                 theme,
                 label: purpose.label,
-                icon: Icons.apartment_rounded,
+                icon: purpose.icon ?? Icons.apartment_rounded,
                 tooltip: purpose.description,
                 selected:
                     _selectedFundDesignations.contains(purpose.label),
@@ -1264,47 +1264,47 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
   /// alongside the capital projects and the administrative purposes.
   static const List<DonationImpact> kMinistryAreas = [
     DonationImpact(
-      icon: Icons.terrain,
+      icon: Icons.terrain_rounded,
       title: 'Rural Missions',
       description:
           'Send teams to remote communities with the Gospel and compassionate care.',
     ),
     DonationImpact(
-      icon: Icons.location_city,
+      icon: Icons.location_city_rounded,
       title: 'Campus/City Missions',
       description:
           'Send teams to Campus/City communities with the Gospel and compassionate care.',
     ),
     DonationImpact(
-      icon: Icons.school,
+      icon: Icons.school_rounded,
       title: 'Missionary Training',
       description:
           'Equip and train the next generation of Groundbreakers and Missionaries for effective witness.',
     ),
     DonationImpact(
-      icon: Icons.local_hospital,
+      icon: Icons.medical_services_rounded,
       title: 'Health Evangelism',
       description:
           'Provide medical care that opens hearts to the transforming power of the Gospel.',
     ),
     DonationImpact(
-      icon: Icons.phonelink,
+      icon: Icons.devices_rounded,
       title: 'Digital Ministry',
       description:
           'Leverage technology to share the Good News through tracts, podcasts, online events and discipleship.',
     ),
     DonationImpact(
-      icon: Icons.people_outline,
+      icon: Icons.payments_rounded,
       title: 'LTMs Stipends',
       description: 'Support the monthly upkeep of long-term field workers.',
     ),
     DonationImpact(
-      icon: Icons.groups_outlined,
+      icon: Icons.account_balance_wallet_rounded,
       title: 'STMs Stipends',
       description: 'Support the monthly upkeep of short-term field workers.',
     ),
     DonationImpact(
-      icon: Icons.child_care,
+      icon: Icons.face_rounded,
       title: 'Children & Kids',
       description:
           'Support the Kids Ministry: activities, materials and memorable Bible lessons.',

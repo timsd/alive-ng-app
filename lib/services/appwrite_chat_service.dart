@@ -238,6 +238,38 @@ class AppwriteChatService extends ChangeNotifier {
     return sendMessage(channelId: roomId, content: text);
   }
 
+  Future<void> deleteMessage(String messageId) async {
+    try {
+      await _tables.deleteRow(
+        databaseId: databaseId,
+        tableId: messagesCollectionId,
+        rowId: messageId,
+      );
+    } catch (e) {
+      _logger.error('Failed to delete Appwrite chat message: $e');
+      throw DatabaseException('Failed to delete message', originalError: e);
+    }
+  }
+
+  Future<ChatMessage> editMessage(String messageId, String newContent) async {
+    try {
+      final row = await _tables.updateRow(
+        databaseId: databaseId,
+        tableId: messagesCollectionId,
+        rowId: messageId,
+        data: {
+          'content': newContent,
+          'messageText': newContent,
+          'is_edited': true,
+        },
+      );
+      return _messageFromRow(row);
+    } catch (e) {
+      _logger.error('Failed to edit Appwrite chat message: $e');
+      throw DatabaseException('Failed to edit message', originalError: e);
+    }
+  }
+
   Future<ChatChannel> createChannel({
     required String name,
     required String description,

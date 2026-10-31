@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import '../models/project_model.dart';
 
 /// A destination a donor can direct their gift toward.
@@ -16,10 +17,13 @@ class DonationPurposeOption {
 
   final String? description;
 
+  final IconData? icon;
+
   const DonationPurposeOption({
     required this.id,
     required this.label,
     this.description,
+    this.icon,
   });
 }
 
@@ -30,21 +34,25 @@ const List<DonationPurposeOption> kAdministrativePurposes = [
     id: 'app_maintenance',
     label: 'App Maintenance',
     description: 'Hosting, push notifications and running costs of the app.',
+    icon: Icons.handyman_rounded,
   ),
   DonationPurposeOption(
     id: 'campus_workers',
     label: 'Campus Workers',
     description: 'Supporting full-time workers serving on campuses.',
+    icon: Icons.badge_outlined,
   ),
   DonationPurposeOption(
     id: 'volunteers',
     label: 'Volunteers',
     description: 'Equipping and funding those serving as volunteers.',
+    icon: Icons.front_hand_rounded,
   ),
   DonationPurposeOption(
     id: 'media_and_equipment',
     label: 'Media & Equipment',
     description: 'Cameras, audio, production and ministry equipment.',
+    icon: Icons.videocam_rounded,
   ),
 ];
 
@@ -53,6 +61,7 @@ const DonationPurposeOption kGeneralSupportPurpose = DonationPurposeOption(
   id: 'general_support',
   label: 'General Support',
   description: 'Wherever the need is greatest.',
+  icon: Icons.volunteer_activism_rounded,
 );
 
 /// Look up an administrative purpose by its id, or null when it is unknown.
