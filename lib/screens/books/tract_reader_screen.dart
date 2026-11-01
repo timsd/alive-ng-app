@@ -12,6 +12,7 @@ import '../../services/tract_service.dart';
 import '../../models/donation_models.dart';
 import '../materials/donation_dialog.dart';
 import '../../widgets/custom_image.dart';
+import '../../widgets/custom_app_bar.dart';
 
 class TractReaderScreen extends StatefulWidget {
   final Tract tract;
@@ -141,18 +142,8 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.tract.title,
-          style: TextStyle(
-            fontSize: ResponsiveUtils.getResponsiveValue(
-              context: context,
-              mobile: 18.0,
-              tablet: 20.0,
-              desktop: 22.0,
-            ),
-          ),
-        ),
+      appBar: CustomAppBar(
+        title: widget.tract.title,
         actions: [
           IconButton(
             icon: const Icon(Icons.picture_as_pdf),

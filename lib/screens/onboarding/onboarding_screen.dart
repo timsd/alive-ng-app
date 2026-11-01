@@ -3,10 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../providers/language_provider.dart';
-import '../../l10n/supported_language.dart';
 import '../../services/appwrite_content_service.dart';
 import '../../services/onboarding_service.dart';
 import '../../utils/responsive_utils.dart';
+import '../../widgets/custom_app_bar.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
@@ -25,29 +25,29 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     {
       'title': 'Welcome to ALIVE Nigeria',
       'body':
-          'Join our vibrant community united by Prayer, Study, Missions, and Health.',
-      'icon': Icons.public,
-      'color': null,
+          'Join our vibrant community united in deep Prayer, Scripture Study, Campus & Global Missions, and Wholistic Health.',
+      'icon': Icons.volunteer_activism_rounded,
+      'color': const Color(0xFFD49B28),
     },
     {
       'title': 'Roles & Organization',
       'body':
           'We are organized to serve! From dedicated Members and Chapter Leaders to Coordinators, Directors, and BODs, every role is vital.',
-      'icon': Icons.groups,
+      'icon': Icons.groups_rounded,
       'color': Colors.indigo,
     },
     {
-      'title': 'Tagging, Praying & Chatting',
+      'title': 'Praying & Chatting',
       'body':
           'Stay deeply connected. Tag members, join chapter chats, pray together instantly, and share your powerful testimonies with the community.',
-      'icon': Icons.chat_bubble_outline,
+      'icon': Icons.chat_bubble_outline_rounded,
       'color': Colors.teal,
     },
     {
       'title': 'Kids & Discipleship',
       'body':
           'A rich library of Books, Tracts, and Podcasts awaits you. Plus special mission activities and Bible memorization features for both Kids and Adults.',
-      'icon': Icons.menu_book,
+      'icon': Icons.menu_book_rounded,
       'color': Colors.orange,
     },
   ];
@@ -103,19 +103,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Getting Started',
-          style: TextStyle(
-            color: theme.colorScheme.onPrimary,
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
-        ),
-        centerTitle: true,
-        backgroundColor: theme.colorScheme.primary,
-        foregroundColor: theme.colorScheme.onPrimary,
-        elevation: 0,
+      appBar: CustomAppBar(
+        title: 'Getting Started',
+        showBackButton: false,
         actions: [
           if (_currentPage < _steps.length - 1)
             TextButton(
@@ -145,7 +135,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 },
                 itemBuilder: (context, index) {
                   final step = _steps[index];
-                  final currentLocale = ref.watch(localeProvider);
                   return _OnboardingCard(
                     title: step['title'] as String,
                     body: step['body'] as String,
@@ -153,12 +142,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     iconColor: (step['color'] as Color?) ??
                         Theme.of(context).colorScheme.primary,
                     extra: index == _steps.length - 1 ? _dynamicContent : null,
-                    isFirstCard: index == 0,
-                    selectedLanguageCode: currentLocale.languageCode,
-                    onLanguageSelected: (code) {
-                      ref.read(localeProvider.notifier).setLocale(code);
-                      _loadDynamicContent();
-                    },
                   );
                 },
               ),
@@ -260,9 +243,6 @@ class _OnboardingCard extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
   final String? extra;
-  final bool isFirstCard;
-  final String? selectedLanguageCode;
-  final ValueChanged<String>? onLanguageSelected;
 
   const _OnboardingCard({
     required this.title,
@@ -270,148 +250,99 @@ class _OnboardingCard extends StatelessWidget {
     required this.icon,
     required this.iconColor,
     this.extra,
-    this.isFirstCard = false,
-    this.selectedLanguageCode,
-    this.onLanguageSelected,
   });
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Align(
       alignment: Alignment.center,
       child: Card(
         elevation: 0,
         color: Colors.transparent,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 680),
+            constraints: const BoxConstraints(maxWidth: 620),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                // Welcoming Hero Icon Container with warm layered glow
                 Container(
-                  padding: const EdgeInsets.all(24),
+                  width: 140,
+                  height: 140,
                   decoration: BoxDecoration(
-                    color: iconColor.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        iconColor.withValues(alpha: isDark ? 0.28 : 0.16),
+                        iconColor.withValues(alpha: isDark ? 0.08 : 0.04),
+                      ],
+                    ),
+                    border: Border.all(
+                      color: iconColor.withValues(alpha: isDark ? 0.45 : 0.35),
+                      width: 2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: iconColor.withValues(alpha: isDark ? 0.25 : 0.12),
+                        blurRadius: 28,
+                        spreadRadius: 2,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
                   ),
-                  child: Icon(icon, size: 80, color: iconColor),
+                  child: Center(
+                    child: Icon(
+                      icon,
+                      size: 68,
+                      color: iconColor,
+                    ),
+                  ),
                 ),
-                SizedBox(height: context.responsivePadding.top * 1.5),
+                const SizedBox(height: 36),
                 Text(
                   title,
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        fontSize: context.responsiveFontSize(24),
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        fontSize: context.responsiveFontSize(26),
+                        letterSpacing: -0.5,
+                        height: 1.25,
                       ),
                 ),
-                SizedBox(height: context.responsivePadding.top),
-                Text(
-                  body,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        fontSize: context.responsiveFontSize(16),
-                        height: 1.6,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withValues(alpha: 0.8),
-                      ),
-                ),
-                if (isFirstCard) ...[
-                  const SizedBox(height: 24),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
-                      ),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.translate_rounded,
-                              size: 18,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                            const SizedBox(width: 8),
-                            Flexible(
-                              child: Text(
-                                'Choose Language / Zaɓi Harshe / Yan Èdè / Họrọ Asụsụ',
-                                textAlign: TextAlign.center,
-                                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: Theme.of(context).colorScheme.primary,
-                                    ),
-                              ),
-                            ),
-                          ],
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  child: Text(
+                    body,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                          fontSize: context.responsiveFontSize(16),
+                          height: 1.6,
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.82),
+                          fontWeight: FontWeight.w400,
                         ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          alignment: WrapAlignment.center,
-                          children: SupportedLanguage.values.map((lang) {
-                            final isSelected = (selectedLanguageCode ?? 'en') == lang.code;
-                            return ChoiceChip(
-                              selected: isSelected,
-                              label: Text(
-                                lang.name,
-                                style: TextStyle(
-                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              avatar: isSelected
-                                  ? const Icon(Icons.check_circle_rounded, size: 16)
-                                  : CircleAvatar(
-                                      radius: 8,
-                                      backgroundColor: Theme.of(context)
-                                          .colorScheme
-                                          .primary
-                                          .withValues(alpha: 0.15),
-                                      child: Text(
-                                        lang.code.toUpperCase(
-                                        ),
-                                        style: TextStyle(
-                                          fontSize: 8,
-                                          fontWeight: FontWeight.bold,
-                                          color: Theme.of(context).colorScheme.primary,
-                                        ),
-                                      ),
-                                    ),
-                              onSelected: (_) => onLanguageSelected?.call(lang.code),
-                            );
-                          }).toList(),
-                        ),
-                      ],
-                    ),
                   ),
-                ],
+                ),
                 if (extra != null && extra!.trim().isNotEmpty) ...[
-                  SizedBox(height: context.responsivePadding.top),
+                  const SizedBox(height: 24),
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(12),
+                      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+                      ),
                     ),
                     child: Text(
                       extra!,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            height: 1.6,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                            height: 1.5,
                           ),
                     ),
                   ),

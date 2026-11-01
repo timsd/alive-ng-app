@@ -433,6 +433,7 @@ async function ensureBuckets(storage) {
       name: bucket.name,
       enabled: true,
       fileSecurity: false,
+      permissions: ['read("any")', 'create("users")', 'update("users")', 'delete("users")'],
       maximumFileSize: bucket.maximumFileSize,
       allowedFileExtensions: bucket.allowedFileExtensions,
       compression: 'gzip',

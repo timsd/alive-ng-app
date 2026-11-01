@@ -123,9 +123,14 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       } else if (errStr.contains('No element') ||
           errStr.contains('Bad state')) {
         errorMessage =
-            'LiveKit meeting connection interrupted. Please check your network and try again.';
-      } else if (errStr.contains('permission') || errStr.contains('NotAllowedError')) {
-        errorMessage = 'Camera or microphone access was restricted. Joining in muted / listen-only mode.';
+            'ALIVE Meet connection interrupted. Please check your network and try again.';
+      } else if (errStr.contains('permission') ||
+          errStr.contains('NotAllowedError') ||
+          errStr.contains('device') ||
+          errStr.contains('NotFound') ||
+          errStr.contains('not detected')) {
+        errorMessage =
+            'Microphone or camera not detected. Joining in listen-only mode.';
       } else if (e is Exception) {
         final cleanMsg = errStr.replaceAll('Exception: ', '').trim();
         if (cleanMsg.isNotEmpty && cleanMsg.length < 120) {

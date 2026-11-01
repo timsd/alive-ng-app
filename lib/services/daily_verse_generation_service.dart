@@ -73,12 +73,33 @@ class DailyVerseGenerationService {
       // Check if verse already exists for this date (shared across all
       // users via the date-keyed Appwrite row).
       final existingVerse = await _repo.getDailyVerse(date);
-      if (existingVerse != null && languageCode == 'en') {
-        _logger.info('Daily verse already exists for $dateString');
+      if (existingVerse != null) {
+        if (languageCode == 'en') {
+          _logger.info('Daily verse already exists for $dateString');
+          return existingVerse;
+        }
+        // Non-English users map the EXACT existing verse reference into their language
+        // so every language sees the identical scripture on the same calendar date.
+        final localVersion = {'yo': 'BM', 'ha': 'HAU', 'ig': 'IGBOB'}[languageCode] ?? 'KJV';
+        String? translatedText = dailyVerseTranslations[existingVerse.reference]?[languageCode];
+        if (translatedText == null || translatedText.trim().isEmpty) {
+          final corpus = BibleSource.instance.dailyCorpus;
+          final match = corpus.where((v) => v.reference.trim().toLowerCase() == existingVerse.reference.trim().toLowerCase()).firstOrNull;
+          translatedText = match?.text[localVersion] ?? match?.text[languageCode];
+        }
+        if (translatedText != null && translatedText.trim().isNotEmpty) {
+          return DailyVerse(
+            id: existingVerse.id,
+            verse: translatedText,
+            reference: existingVerse.reference,
+            translation: localVersion,
+            date: existingVerse.date,
+            reflection: _generateReflection(null, languageCode: languageCode),
+            createdAt: existingVerse.createdAt,
+          );
+        }
         return existingVerse;
       }
-      // Non-English users regenerate from the localized bundle below so the
-      // verse always renders in their language (the cached row stays English).
 
       // Selection happens below: full-corpus (date-indexed) with a
       // deterministic static-corpus fallback.

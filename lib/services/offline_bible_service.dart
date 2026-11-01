@@ -237,8 +237,7 @@ class OfflineBibleService {
         final isOld = BibleData.oldTestamentBooks.contains(name);
         return BibleBook(
           name: name,
-          abbreviation: BibleData.bookAbbreviations[name] ??
-              (name.length > 3 ? name.substring(0, 3) : name),
+          abbreviation: name.length > 3 ? name.substring(0, 3) : name,
           chapters: chapters,
           testament: isOld ? 'OT' : 'NT',
           order: BibleData.allBooks.indexOf(name) + 1,
@@ -253,8 +252,7 @@ class OfflineBibleService {
         final isOld = BibleData.oldTestamentBooks.contains(name);
         return BibleBook(
           name: name,
-          abbreviation: BibleData.bookAbbreviations[name] ??
-              (name.length > 3 ? name.substring(0, 3) : name),
+          abbreviation: name.length > 3 ? name.substring(0, 3) : name,
           chapters: chapters,
           testament: isOld ? 'OT' : 'NT',
           order: BibleData.allBooks.indexOf(name) + 1,

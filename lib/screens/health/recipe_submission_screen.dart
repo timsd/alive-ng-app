@@ -11,6 +11,7 @@ import '../../providers/language_provider.dart';
 import '../../utils/responsive_utils.dart';
 import '../../widgets/guest_access_indicator.dart';
 import '../../widgets/error_widget.dart';
+import '../../widgets/custom_app_bar.dart';
 
 /// Screen for authenticated users to submit meal and natural remedy recipes
 class RecipeSubmissionScreen extends ConsumerStatefulWidget {
@@ -106,8 +107,8 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
   Widget _buildUnauthenticatedView(
       BuildContext context, String Function(String) translate) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(translate('recipe_submission')),
+      appBar: CustomAppBar(
+        title: translate('recipe_submission'),
       ),
       body: Center(
         child: Padding(
@@ -127,8 +128,8 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
   Widget _buildAuthenticatedView(
       BuildContext context, String Function(String) translate, AppUser user) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(translate('submit_recipe')),
+      appBar: CustomAppBar(
+        title: translate('submit_recipe'),
         bottom: TabBar(
           controller: _tabController,
           tabs: [

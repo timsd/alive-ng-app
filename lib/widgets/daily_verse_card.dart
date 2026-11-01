@@ -35,6 +35,21 @@ class _DailyVerseCardState extends ConsumerState<DailyVerseCard> {
   void initState() {
     super.initState();
     _tts.initialize();
+    _tts.addCompletionListener(_onTtsComplete);
+  }
+
+  @override
+  void dispose() {
+    _tts.removeCompletionListener(_onTtsComplete);
+    super.dispose();
+  }
+
+  void _onTtsComplete() {
+    if (mounted && _isSpeaking) {
+      setState(() {
+        _isSpeaking = false;
+      });
+    }
   }
 
   Future<void> _speakVerse() async {
@@ -47,9 +62,17 @@ class _DailyVerseCardState extends ConsumerState<DailyVerseCard> {
     try {
       final verseText = widget.verse!.verse;
       final fullText = '$verseText. ${widget.verse!.reference}';
-      await _tts.speak(fullText);
+      final lang = ref.read(localeProvider).languageCode;
+      await _tts.speak(
+        fullText,
+        languageCode: lang,
+        onComplete: _onTtsComplete,
+      );
     } catch (e) {
       if (mounted) {
+        setState(() {
+          _isSpeaking = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Unable to play verse: $e'),
@@ -57,20 +80,16 @@ class _DailyVerseCardState extends ConsumerState<DailyVerseCard> {
           ),
         );
       }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSpeaking = false;
-        });
-      }
     }
   }
 
   Future<void> _stopSpeaking() async {
     await _tts.stop();
-    setState(() {
-      _isSpeaking = false;
-    });
+    if (mounted) {
+      setState(() {
+        _isSpeaking = false;
+      });
+    }
   }
 
   @override

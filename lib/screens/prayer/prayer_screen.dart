@@ -247,135 +247,202 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
                           SizedBox(
                               height: ResponsiveUtils.getResponsiveSpacing(
                                   context, 16)),
-                          // Top row (full width): Join Prayer Meeting
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              onPressed: _openPrayerMeeting,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: theme.colorScheme.surface,
-                                foregroundColor: primary,
-                                elevation: 2,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 12,
+                          if (canAccessPrivate) ...[
+                            // Leaders Layout: Full width Join Prayer Meeting, then 50/50 My Prayer Wall & Private Rooms
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: _openPrayerMeeting,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: theme.colorScheme.surface,
+                                  foregroundColor: primary,
+                                  elevation: 2,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 12,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
                                 ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                icon: const Icon(Icons.video_call_rounded, size: 20),
+                                label: Text(
+                                  translate('join_prayer_meeting'),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .labelLarge
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                        color: primary,
+                                      ),
                                 ),
-                              ),
-                              icon: const Icon(Icons.video_call_rounded, size: 20),
-                              label: Text(
-                                translate('join_prayer_meeting'),
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .labelLarge
-                                    ?.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                      color: primary,
-                                    ),
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 10),
-                          // Bottom row (50/50 grid): Left My Prayer Wall, Right Private Rooms
-                          Row(
-                            children: [
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  onPressed: () =>
-                                      context.push(AppConstants.prayerWallRoute),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor:
-                                        onPrimary.withValues(alpha: 0.16),
-                                    foregroundColor: onPrimary,
-                                    elevation: 0,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 11,
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () =>
+                                        context.push(AppConstants.prayerWallRoute),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor:
+                                          onPrimary.withValues(alpha: 0.16),
+                                      foregroundColor: onPrimary,
+                                      elevation: 0,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 11,
+                                      ),
+                                      side: BorderSide(
+                                        color: onPrimary.withValues(alpha: 0.35),
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
                                     ),
-                                    side: BorderSide(
-                                      color: onPrimary.withValues(alpha: 0.35),
+                                    icon: const Icon(
+                                      Icons.volunteer_activism_rounded,
+                                      size: 16,
                                     ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
+                                    label: Text(
+                                      'My Prayer Wall',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                            color: onPrimary,
+                                            fontSize: 12.5,
+                                          ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                  ),
-                                  icon: FaIcon(
-                                    FontAwesomeIcons.personPraying,
-                                    size: 14,
-                                    color: onPrimary,
-                                  ),
-                                  label: Text(
-                                    'My Prayer Wall',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelMedium
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.w600,
-                                          color: onPrimary,
-                                          fontSize: 12.5,
-                                        ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  onPressed: () {
-                                    if (canAccessPrivate) {
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () {
                                       context.push(
                                           AppConstants.privatePrayerRoomRoute);
-                                    } else {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                              'Private Prayer Rooms are reserved for leaders, board members, and trustees.'),
-                                        ),
-                                      );
-                                    }
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor:
-                                        onPrimary.withValues(alpha: 0.16),
-                                    foregroundColor: onPrimary,
-                                    elevation: 0,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 11,
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor:
+                                          onPrimary.withValues(alpha: 0.16),
+                                      foregroundColor: onPrimary,
+                                      elevation: 0,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 11,
+                                      ),
+                                      side: BorderSide(
+                                        color: onPrimary.withValues(alpha: 0.35),
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
                                     ),
-                                    side: BorderSide(
-                                      color: onPrimary.withValues(alpha: 0.35),
+                                    icon: Icon(
+                                      Icons.lock_person_rounded,
+                                      size: 16,
+                                      color: onPrimary,
                                     ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
+                                    label: Text(
+                                      'Private Rooms',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                            color: onPrimary,
+                                            fontSize: 12.5,
+                                          ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                  ),
-                                  icon: Icon(
-                                    Icons.lock_person_rounded,
-                                    size: 16,
-                                    color: onPrimary,
-                                  ),
-                                  label: Text(
-                                    'Private Rooms',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelMedium
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.w600,
-                                          color: onPrimary,
-                                          fontSize: 12.5,
-                                        ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
+                              ],
+                            ),
+                          ] else ...[
+                            // Standard Member Layout: 50/50 Join Prayer Meeting & My Prayer Wall (Private Rooms hidden)
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: _openPrayerMeeting,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: theme.colorScheme.surface,
+                                      foregroundColor: primary,
+                                      elevation: 2,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 12,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    icon: const Icon(Icons.video_call_rounded, size: 18),
+                                    label: Text(
+                                      translate('join_prayer_meeting'),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                            color: primary,
+                                            fontSize: 12.5,
+                                          ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () =>
+                                        context.push(AppConstants.prayerWallRoute),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor:
+                                          onPrimary.withValues(alpha: 0.16),
+                                      foregroundColor: onPrimary,
+                                      elevation: 0,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 12,
+                                      ),
+                                      side: BorderSide(
+                                        color: onPrimary.withValues(alpha: 0.35),
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    icon: const Icon(
+                                      Icons.volunteer_activism_rounded,
+                                      size: 16,
+                                    ),
+                                    label: Text(
+                                      'My Prayer Wall',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                            color: onPrimary,
+                                            fontSize: 12.5,
+                                          ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
                       ),
                     ),

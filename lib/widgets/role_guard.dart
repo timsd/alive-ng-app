@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/role_access_service.dart';
+import 'custom_app_bar.dart';
 
 /// Widget that guards content based on user roles
 class RoleGuard extends StatelessWidget {
@@ -182,10 +183,8 @@ class RoleProtectedScreen extends StatelessWidget {
       resource: screenName ?? 'screen',
       bypassGuard: bypassGuard,
       fallback: Scaffold(
-        appBar: AppBar(
-          title: const Text('Access Denied'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-          foregroundColor: Theme.of(context).colorScheme.onError,
+        appBar: const CustomAppBar(
+          title: 'Access Denied',
         ),
         body: _buildAccessDeniedBody(context),
       ),

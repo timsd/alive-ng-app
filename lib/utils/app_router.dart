@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../widgets/custom_app_bar.dart';
 import '../screens/splash/animated_splash_screen.dart';
 import '../screens/onboarding/onboarding_screen.dart';
 import '../screens/oath/oath_screen.dart';
@@ -742,8 +743,8 @@ final routerProvider = Provider<GoRouter>((ref) {
 
     // Error handling
     errorBuilder: (context, state) => Scaffold(
-      appBar: AppBar(
-        title: const Text('Error'),
+      appBar: const CustomAppBar(
+        title: 'Error',
       ),
       body: Center(
         child: Column(

@@ -1595,15 +1595,6 @@ class _LeaderMeetingTranscriptionScreenState
                 ),
               ),
               OutlinedButton.icon(
-                onPressed: _simulateMeetingDiscussion,
-                style: OutlinedButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                ),
-                icon: const Icon(Icons.science_outlined, size: 15),
-                label: const Text('Test Simulation', style: TextStyle(fontSize: 12)),
-              ),
-              OutlinedButton.icon(
                 onPressed: _autoSummarizeFromTranscript,
                 style: OutlinedButton.styleFrom(
                   visualDensity: VisualDensity.compact,
@@ -1767,7 +1758,7 @@ class _LeaderMeetingTranscriptionScreenState
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            'Tap "Record All Speakers" above to transcribe live speech, or "Test Simulation" to test minutes generation.',
+                            'Tap "Record All Speakers" above to transcribe live speech, or type an entry below.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: colorScheme.onSurfaceVariant,

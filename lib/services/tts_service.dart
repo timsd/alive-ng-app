@@ -1,6 +1,5 @@
 import 'platform/tts_adapter.dart';
 import 'package:flutter/foundation.dart';
-import '../utils/app_exception.dart';
 import '../utils/logger.dart';
 
 class TTSService {
@@ -11,175 +10,254 @@ class TTSService {
 
   FlutterTts? _flutterTts;
   bool _isInitialized = false;
+  bool _isSpeaking = false;
+
+  bool get isSpeaking => _isSpeaking;
+
+  final List<VoidCallback> _completionListeners = [];
+  final List<VoidCallback> _startListeners = [];
+  final List<void Function(dynamic)> _errorListeners = [];
+
+  void addCompletionListener(VoidCallback listener) => _completionListeners.add(listener);
+  void removeCompletionListener(VoidCallback listener) => _completionListeners.remove(listener);
+
+  void addStartListener(VoidCallback listener) => _startListeners.add(listener);
+  void removeStartListener(VoidCallback listener) => _startListeners.remove(listener);
+
+  void addErrorListener(void Function(dynamic) listener) => _errorListeners.add(listener);
+  void removeErrorListener(void Function(dynamic) listener) => _errorListeners.remove(listener);
 
   Future<void> initialize() async {
-    if (_isInitialized) return;
+    if (_isInitialized && _flutterTts != null) return;
 
-    _flutterTts = FlutterTts();
+    try {
+      _flutterTts = FlutterTts();
 
-    // Configure for human-like voice
-    await _configureVoice();
+      _flutterTts!.setStartHandler(() {
+        _isSpeaking = true;
+        for (final l in List.of(_startListeners)) {
+          l();
+        }
+      });
 
-    _isInitialized = true;
+      _flutterTts!.setCompletionHandler(() {
+        _isSpeaking = false;
+        for (final l in List.of(_completionListeners)) {
+          l();
+        }
+      });
+
+      _flutterTts!.setErrorHandler((msg) {
+        _isSpeaking = false;
+        _logger.warning('TTS error event: $msg');
+        for (final l in List.of(_errorListeners)) {
+          l(msg);
+        }
+      });
+
+      _flutterTts!.setCancelHandler(() {
+        _isSpeaking = false;
+        for (final l in List.of(_completionListeners)) {
+          l();
+        }
+      });
+
+      // Configure for human-like voice
+      await _configureVoice();
+      _isInitialized = true;
+    } catch (e) {
+      _logger.warning('TTS Initialization warning: $e');
+      _isInitialized = true; // Mark initialized to allow fallback speak attempts
+    }
   }
 
   Future<void> _configureVoice() async {
     if (_flutterTts == null) return;
 
     try {
-      // Set language to English (US) for best quality
+      // Set language to English (US) for default base
       await _flutterTts!.setLanguage('en-US');
 
-      // Set speech rate for natural conversation pace (0.4-0.6 is most natural)
+      // Set speech rate for natural conversation pace
       await _flutterTts!.setSpeechRate(0.5);
 
       // Set volume to full
       await _flutterTts!.setVolume(1.0);
 
-      // Set pitch for more natural sound (0.8-1.2 range)
+      // Set pitch for more natural sound
       await _flutterTts!.setPitch(1.0);
 
-      // Get available voices and select the best one
-      List<dynamic> voices = await _flutterTts!.getVoices;
-
-      // Try to find a high-quality neural voice
-      String? bestVoice = _selectBestVoice(voices);
-      if (bestVoice != null) {
-        await _flutterTts!.setVoice({"name": bestVoice, "locale": "en-US"});
+      // Try selecting high quality voice
+      try {
+        final voices = await _flutterTts!.getVoices;
+        if (voices is List && voices.isNotEmpty) {
+          final bestVoice = _selectBestVoice(voices);
+          if (bestVoice != null) {
+            await _flutterTts!.setVoice({"name": bestVoice, "locale": "en-US"});
+          }
+        }
+      } catch (voiceError) {
+        _logger.debug('Voice query skipped or unsupported: $voiceError');
       }
 
       // Set speech engine if available (for Android)
       if (!kIsWeb) {
-        await _flutterTts!.setEngine('com.google.android.tts');
+        try {
+          await _flutterTts!.setEngine('com.google.android.tts');
+        } catch (_) {}
       }
     } catch (e) {
-      _logger.error('TTS Configuration Error', e);
-      throw AppException('Failed to configure TTS', originalError: e);
+      _logger.warning('TTS Configuration Warning (using platform default): $e');
     }
   }
 
   String? _selectBestVoice(List<dynamic> voices) {
-    // Priority order for human-like voices
     List<String> preferredVoices = [
-      'en-us-x-sfg#female_2-local', // Google's high-quality female voice
-      'en-us-x-sfg#male_1-local', // Google's high-quality male voice
-      'en-US-Neural2-A', // Azure Neural voices
+      'en-us-x-sfg#female_2-local',
+      'en-us-x-sfg#male_1-local',
+      'en-US-Neural2-A',
       'en-US-Neural2-C',
-      'en-US-AriaNeural', // Microsoft Neural voices
+      'en-US-AriaNeural',
       'en-US-JennyNeural',
-      'com.apple.ttsbundle.Samantha-compact', // Apple voices
+      'com.apple.ttsbundle.Samantha-compact',
       'com.apple.ttsbundle.Alex-compact',
-      'en-us-x-iol-local', // Google enhanced voices
+      'en-us-x-iol-local',
       'en-us-x-iom-local',
     ];
 
-    // First, try to find exact matches
     for (String preferred in preferredVoices) {
       for (var voice in voices) {
-        String voiceName = voice['name'] ?? '';
+        String voiceName = voice['name']?.toString() ?? '';
         if (voiceName.toLowerCase().contains(preferred.toLowerCase())) {
-          _logger.debug('Selected TTS Voice: $voiceName');
           return voiceName;
         }
       }
     }
 
-    // Fallback: look for any neural or enhanced voice
     for (var voice in voices) {
-      String voiceName = voice['name'] ?? '';
-      String locale = voice['locale'] ?? '';
+      String voiceName = voice['name']?.toString() ?? '';
+      String locale = voice['locale']?.toString() ?? '';
 
-      if (locale.startsWith('en-US') || locale.startsWith('en-us')) {
+      if (locale.toLowerCase().startsWith('en')) {
         String lowerName = voiceName.toLowerCase();
         if (lowerName.contains('neural') ||
             lowerName.contains('enhanced') ||
             lowerName.contains('premium') ||
-            lowerName.contains('high') ||
-            lowerName.contains('quality')) {
-          _logger.debug('Selected TTS Voice (fallback): $voiceName');
+            lowerName.contains('natural')) {
           return voiceName;
         }
       }
     }
 
-    _logger.debug('Using default TTS voice');
     return null;
   }
 
-  Future<void> speak(String text) async {
+  Future<void> speak(
+    String text, {
+    String? languageCode,
+    VoidCallback? onStart,
+    VoidCallback? onComplete,
+  }) async {
     try {
-      if (!_isInitialized) {
+      if (!_isInitialized || _flutterTts == null) {
         await initialize();
       }
 
-      if (_flutterTts != null && text.isNotEmpty) {
-        // Clean text for better pronunciation
-        String cleanText = _cleanTextForSpeech(text);
-        await _flutterTts!.speak(cleanText);
+      if (_flutterTts == null || text.trim().isEmpty) return;
+
+      // Handle language configuration
+      if (languageCode != null && languageCode.isNotEmpty) {
+        final langTag = {
+          'yo': 'yo-NG',
+          'ha': 'ha-NG',
+          'ig': 'ig-NG',
+          'en': 'en-US',
+        }[languageCode] ?? languageCode;
+
+        try {
+          await _flutterTts!.setLanguage(langTag);
+        } catch (_) {
+          // If local African dialect tag is unsupported by host engine, fall back to en-US
+          await _flutterTts!.setLanguage('en-US');
+        }
       }
+
+      if (onStart != null) {
+        _startListeners.add(onStart);
+      }
+      if (onComplete != null) {
+        _completionListeners.add(onComplete);
+      }
+
+      final cleanText = _cleanTextForSpeech(text);
+      _isSpeaking = true;
+      await _flutterTts!.speak(cleanText);
     } catch (e) {
+      _isSpeaking = false;
       _logger.error('Error speaking text', e);
-      throw AppException('Failed to speak text', originalError: e);
+      onComplete?.call();
     }
   }
 
   String _cleanTextForSpeech(String text) {
-    // Remove excessive punctuation and format for natural speech
     return text
-        .replaceAll(RegExp(r'\s+'), ' ') // Multiple spaces to single
-        .replaceAll(RegExp(r'[\n\r]+'), '. ') // Line breaks to pauses
-        .replaceAll(RegExp(r'\.\.+'), '.') // Multiple periods to single
-        .replaceAll(RegExp(r'!!+'), '!') // Multiple exclamations to single
-        .replaceAll(RegExp(r'\?\?+'), '?') // Multiple questions to single
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .replaceAll(RegExp(r'[\n\r]+'), '. ')
+        .replaceAll(RegExp(r'\.\.+'), '.')
+        .replaceAll(RegExp(r'!!+'), '!')
+        .replaceAll(RegExp(r'\?\?+'), '?')
         .trim();
   }
 
   Future<void> stop() async {
-    if (_flutterTts != null) {
-      await _flutterTts!.stop();
+    _isSpeaking = false;
+    try {
+      if (_flutterTts != null) {
+        await _flutterTts!.stop();
+      }
+    } catch (_) {}
+    for (final l in List.of(_completionListeners)) {
+      l();
     }
   }
 
   Future<void> pause() async {
-    if (_flutterTts != null) {
-      await _flutterTts!.pause();
-    }
+    try {
+      if (_flutterTts != null) {
+        await _flutterTts!.pause();
+      }
+    } catch (_) {}
   }
 
-  bool get isPlaying {
-    // FlutterTts doesn't have isPlaying getter, so we track state manually
-    return _isInitialized && _flutterTts != null;
-  }
+  bool get isPlaying => _isSpeaking;
 
   void dispose() {
-    _flutterTts?.stop();
+    stop();
+    _completionListeners.clear();
+    _startListeners.clear();
+    _errorListeners.clear();
     _isInitialized = false;
   }
 
-  // Convenience methods for different speech rates
   Future<void> setSpeechRate(double rate) async {
     try {
       if (_flutterTts != null) {
-        // Clamp rate between 0.1 and 1.0 for natural speech
         double clampedRate = rate.clamp(0.1, 1.0);
         await _flutterTts!.setSpeechRate(clampedRate);
       }
     } catch (e) {
-      _logger.error('Error setting speech rate', e);
-      throw AppException('Failed to set speech rate', originalError: e);
+      _logger.warning('Error setting speech rate: $e');
     }
   }
 
   Future<void> setPitch(double pitch) async {
     try {
       if (_flutterTts != null) {
-        // Clamp pitch between 0.5 and 2.0 for natural speech
         double clampedPitch = pitch.clamp(0.5, 2.0);
         await _flutterTts!.setPitch(clampedPitch);
       }
     } catch (e) {
-      _logger.error('Error setting pitch', e);
-      throw AppException('Failed to set pitch', originalError: e);
+      _logger.warning('Error setting pitch: $e');
     }
   }
 }

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../constants/app_constants.dart';
 import '../../services/approval_link_service.dart';
 import '../../utils/responsive_utils.dart';
+import '../../widgets/custom_app_bar.dart';
 
 class AdminApprovalLinkHandlerScreen extends StatefulWidget {
   const AdminApprovalLinkHandlerScreen({super.key});
@@ -58,7 +59,7 @@ class _AdminApprovalLinkHandlerScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Approval Link')),
+      appBar: const CustomAppBar(title: 'Approval Link'),
       body: Center(
         child: _processing
             ? const CircularProgressIndicator()

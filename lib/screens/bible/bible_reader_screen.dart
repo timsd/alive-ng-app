@@ -79,6 +79,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _ttsService.initialize();
+    _ttsService.addCompletionListener(_onTtsComplete);
     _statisticsService.startReadingSession();
     _loadHighlights();
     _loadBooksAndInit();
@@ -110,9 +111,18 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
     _scrollController.dispose();
     _tabController.dispose();
     _searchController.dispose();
+    _ttsService.removeCompletionListener(_onTtsComplete);
     _ttsService.dispose();
     _statisticsService.stopReadingSession();
     super.dispose();
+  }
+
+  void _onTtsComplete() {
+    if (mounted && _isSpeaking) {
+      setState(() {
+        _isSpeaking = false;
+      });
+    }
   }
 
   Future<void> _loadHighlights() async {
@@ -474,21 +484,22 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
           .map((v) => 'Verse ${v.number}. ${v.text}')
           .join(' ');
 
-      await _ttsService.speak(chapterText);
+      await _ttsService.speak(
+        chapterText,
+        languageCode: _selectedLanguage,
+        onComplete: _onTtsComplete,
+      );
     } catch (e) {
       if (mounted) {
+        setState(() {
+          _isSpeaking = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error speaking chapter: $e'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSpeaking = false;
-        });
       }
     }
   }
@@ -2019,21 +2030,22 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
 
     try {
       final text = _currentVerse!.text;
-      await _ttsService.speak(text);
+      await _ttsService.speak(
+        text,
+        languageCode: _selectedLanguage,
+        onComplete: _onTtsComplete,
+      );
     } catch (e) {
       if (mounted) {
+        setState(() {
+          _isSpeaking = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error speaking verse: $e'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSpeaking = false;
-        });
       }
     }
   }

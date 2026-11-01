@@ -99,6 +99,12 @@ class _AppTourOverlayState extends ConsumerState<AppTourOverlay>
       case 'language':
         // Language toggle is the second IconButton from the right (center at width - 72)
         return Offset(width - 72, topPadding + 28);
+      case 'theme':
+        // Theme toggle is the third IconButton from the right (center at width - 118)
+        return Offset(width - 118, topPadding + 28);
+      case 'profile':
+        // Profile pill with curved chevron on the top right of the Greeting Header
+        return Offset(width - 56, topPadding + kToolbarHeight + 54);
       default:
         return Offset(width * 0.10, bottomNavY);
     }
@@ -108,7 +114,10 @@ class _AppTourOverlayState extends ConsumerState<AppTourOverlay>
     switch (targetArea) {
       case 'donations':
       case 'language':
+      case 'theme':
         return 22.0;
+      case 'profile':
+        return 38.0;
       default:
         return 27.0; // Bottom nav tab circle spotlight
     }
@@ -131,7 +140,10 @@ class _AppTourOverlayState extends ConsumerState<AppTourOverlay>
       viewPadding.bottom,
     );
     final targetRadius = _getTargetRadius(step.targetArea);
-    final isTopTarget = step.targetArea == 'donations' || step.targetArea == 'language';
+    final isTopTarget = step.targetArea == 'donations' ||
+        step.targetArea == 'language' ||
+        step.targetArea == 'theme' ||
+        step.targetArea == 'profile';
 
     // Localized UI labels
     final skipLabel = {'yo': 'Kọjá', 'ha': 'Tsallake', 'ig': 'Gbanahụ'}[langCode] ?? 'Skip tour';

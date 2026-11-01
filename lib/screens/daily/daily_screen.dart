@@ -37,13 +37,7 @@ String? _getTranslatedVerseText(String reference, String langCode) {
   final matchText = matching?.text[localVersion] ?? matching?.text[langCode];
   if (matchText != null && matchText.trim().isNotEmpty) return matchText;
 
-  final translatedKeys = dailyVerseTranslations.keys.toList();
-  if (translatedKeys.isNotEmpty) {
-    final now = DateTime.now();
-    final epochDays = now.toUtc().difference(DateTime.utc(1970, 1, 1)).inDays;
-    final fallbackRef = translatedKeys[epochDays % translatedKeys.length];
-    return dailyVerseTranslations[fallbackRef]?[langCode];
-  }
+  // Never fall back to a different verse text under this reference!
   return null;
 }
 
@@ -71,30 +65,24 @@ final dailyVerseProvider = FutureProvider<DailyVerse?>((ref) async {
     final epochDays = now.toUtc().difference(DateTime.utc(1970, 1, 1)).inDays;
     final localVersion = {'yo': 'BM', 'ha': 'HAU', 'ig': 'IGBOB'}[langCode] ?? 'KJV';
 
-    if (langCode != 'en') {
-      final translatedKeys = dailyVerseTranslations.keys.toList();
-      final refKey = translatedKeys[epochDays % translatedKeys.length];
-      final text = dailyVerseTranslations[refKey]?[langCode] ?? 'Gbẹ́kẹ̀lé Olúwa pẹ̀lú gbogbo àyà rẹ.';
-      return DailyVerse(
-        id: 'local-fallback-$langCode',
-        verse: text,
-        reference: refKey,
-        translation: localVersion,
-        date: now,
-        reflection: _getLocalizedReflection(langCode),
-        createdAt: DateTime.now(),
-      );
-    }
-
+    // 1. Pick single deterministic verse reference for today across all languages
     final verses = BibleSource.instance.dailyCorpus;
     final index = verses.isEmpty ? 0 : epochDays % verses.length;
     final v = verses.isEmpty ? null : verses[index];
-    final text = v?.text['KJV'] ?? v?.text.values.firstOrNull ?? 'Trust in the Lord with all your heart.';
+    final reference = v?.reference ?? 'Matthew 28:19-20';
+
+    // 2. Fetch translated text for this exact reference
+    String? text;
+    if (langCode != 'en') {
+      text = _getTranslatedVerseText(reference, langCode);
+    }
+    text ??= v?.text['KJV'] ?? v?.text.values.firstOrNull ?? 'Go ye therefore, and teach all nations.';
+
     return DailyVerse(
       id: 'local-fallback-$langCode',
       verse: text,
-      reference: v?.reference ?? 'Proverbs 3:5',
-      translation: 'KJV',
+      reference: reference,
+      translation: localVersion,
       date: now,
       reflection: _getLocalizedReflection(langCode),
       createdAt: DateTime.now(),
@@ -103,7 +91,8 @@ final dailyVerseProvider = FutureProvider<DailyVerse?>((ref) async {
 
   try {
     final verseGenerator = DailyVerseGenerationService.instance;
-    final dailyVerse = await verseGenerator.generateDailyVerseForToday(languageCode: langCode);
+    // Always resolve the canonical daily verse reference first
+    final dailyVerse = await verseGenerator.generateDailyVerseForToday(languageCode: 'en');
     if (dailyVerse != null) {
       if (langCode != 'en') {
         final localVersion = {'yo': 'BM', 'ha': 'HAU', 'ig': 'IGBOB'}[langCode] ?? 'KJV';

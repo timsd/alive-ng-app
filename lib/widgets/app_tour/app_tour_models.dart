@@ -202,6 +202,42 @@ class AppTourSteps {
         'Saves your preference automatically across sessions',
       ],
     ),
+
+    // 9. Profile & Account Hub
+    AppTourStep(
+      id: 'step_profile',
+      title: 'Profile & Account Hub',
+      subtitle: 'Avatar, Chapter Affiliation & Settings',
+      description:
+          'Tap your avatar and curved chevron pill in the greeting header to view your member profile, track discipleship progress, manage chapter affiliation, and configure account security.',
+      icon: Icons.account_circle_rounded,
+      accentColor: Color(0xFFD49B28), // Warm Gold
+      route: '/profile',
+      targetArea: 'profile',
+      highlights: [
+        'Interactive profile pill reachable directly from the greeting header',
+        'Update personal milestones, spiritual growth track, and contact details',
+        'Manage security settings, linked devices, and notification alerts',
+      ],
+    ),
+
+    // 10. Theme & Night Reading
+    AppTourStep(
+      id: 'step_theme',
+      title: 'Display & Theme Toggle',
+      subtitle: 'Comfortable Reading Day & Night',
+      description:
+          'Tap the sun/moon icon at the top of the screen to switch between clean light mode and soothing dark mode for comfortable reading during late-night study or morning devotions.',
+      icon: Icons.dark_mode_rounded,
+      accentColor: Color(0xFF6366F1), // Indigo
+      route: '/home',
+      targetArea: 'theme',
+      highlights: [
+        'Instant one-tap toggle between Light and Dark mode',
+        'High-contrast typography optimized for scripture reading in low light',
+        'Visual preference is automatically remembered on your device',
+      ],
+    ),
   ];
 
   // -------------------------------------------------------------
@@ -352,6 +388,42 @@ class AppTourSteps {
         'Àpù ń rántí èdè tí o yàn fún ìgbà mìíràn tí o bá wọlé',
       ],
     ),
+
+    // 9. Àkọọ́lẹ̀ & Profaili
+    AppTourStep(
+      id: 'step_profile',
+      title: 'Profaili & Ètò Rẹ',
+      subtitle: 'Àwòrán, Ẹka Ìjọ & Ààbò',
+      description:
+          'Tẹ àwòrán rẹ pẹ̀lú ọfà kọ́ọ̀bù lórí àkọlé ilé láti wo profaili rẹ, ìlọsíwájú ẹ̀mí rẹ, àti àwọn ètò ààbò àkọọ́lẹ̀ rẹ.',
+      icon: Icons.account_circle_rounded,
+      accentColor: Color(0xFFD49B28),
+      route: '/profile',
+      targetArea: 'profile',
+      highlights: [
+        'Ọ̀nà tààrà sí profaili rẹ láti orí àkọlé ilé',
+        'Ṣíṣe àtúnṣe orúkọ, ẹ̀ka ìjọ, àti àwọn àfojúsùn tẹ̀mí',
+        'Àbójútó àwọn ẹ̀rọ tí ó wọlé àti àwọn ìfitilétí',
+      ],
+    ),
+
+    // 10. Àwọ̀ Ojú-èso (Theme Toggle)
+    AppTourStep(
+      id: 'step_theme',
+      title: 'Àwọ̀ Òkùnkùn & Ìmọ́lẹ̀',
+      subtitle: 'Kíkà Ọ̀rọ̀ Ọlọ́run Lọ́wọ́ Ìrọ̀rùn',
+      description:
+          'Tẹ àmì oòrùn tàbí oṣù lókè láti yí padà láàárín àwọ̀ ìmọ́lẹ̀ àti àwọ̀ òkùnkùn fún kíkà Bíbélì nígbà àṣálẹ́ tàbí òwúrọ̀.',
+      icon: Icons.dark_mode_rounded,
+      accentColor: Color(0xFF6366F1),
+      route: '/home',
+      targetArea: 'theme',
+      highlights: [
+        'Fífọwọ́tẹ́ lẹ́ẹ̀kan láti yí padà láàárín Ìmọ́lẹ̀ àti Òkùnkùn',
+        'Àwọn lẹ́tà tó hàn kedere fún ojú rẹ',
+        'Àpù ń fipamọ́ àwọ̀ tí o yàn',
+      ],
+    ),
   ];
 
   // -------------------------------------------------------------
@@ -486,6 +558,38 @@ class AppTourSteps {
         'Adana zaɓinku ta atomatik',
       ],
     ),
+    AppTourStep(
+      id: 'step_profile',
+      title: 'Bayanin Martaba & Saituna',
+      subtitle: 'Hotonku, Reshe & Tsaro',
+      description:
+          'Taɓa hotonku tare da kibiyar lanƙwasa a saman shafin farko don duba bayananku, ci gaban ruhaniya da saitunan tsaro.',
+      icon: Icons.account_circle_rounded,
+      accentColor: Color(0xFFD49B28),
+      route: '/profile',
+      targetArea: 'profile',
+      highlights: [
+        'Hanya mai sauri zuwa bayanan martaba daga shafin farko',
+        'Sabunta bayanan sirri da ci gaban ruhaniya',
+        'Kula da saitunan tsaro da na\'urori',
+      ],
+    ),
+    AppTourStep(
+      id: 'step_theme',
+      title: 'Yanayin Dare & Haske',
+      subtitle: 'Karatu Mai Sauƙi Dare da Rana',
+      description:
+          'Taɓa tambarin rana/wata da ke sama don sauya tsakanin haske da duhun dare don jin daɗin karatun Littafi Mai Tsarki a kowane lokaci.',
+      icon: Icons.dark_mode_rounded,
+      accentColor: Color(0xFF6366F1),
+      route: '/home',
+      targetArea: 'theme',
+      highlights: [
+        'Sauyawa da taɓawa ɗaya tsakanin Haske da Duhu',
+        'Rubutu mai haske mai dacewa da idanu',
+        'Adana zaɓinku na gani a kowane lokaci',
+      ],
+    ),
   ];
 
   // -------------------------------------------------------------
@@ -618,6 +722,38 @@ class AppTourSteps {
         'Gbanwee n\'etiti Bekee, Yorùbá, Hausa na Igbo',
         'Amaokwu Baịbụl n\'asụsụ gị',
         'Chekwaa nhọrọ gị ozugbo',
+      ],
+    ),
+    AppTourStep(
+      id: 'step_profile',
+      title: 'Profaịlụ & Ntọala Akaụntụ',
+      subtitle: 'Foto Gị, Alaka Ụka & Nchebe',
+      description:
+          'Kpatụ foto gị nwere akụ gbagọrọ agbagọ n\'isi akụkọ ihu iji lelee profaịlụ gị, ntolite ime mmụọ gị na ntọala nchebe akaụntụ gị.',
+      icon: Icons.account_circle_rounded,
+      accentColor: Color(0xFFD49B28),
+      route: '/profile',
+      targetArea: 'profile',
+      highlights: [
+        'Ụzọ ngwa ngwa na profaịlụ gị ozugbo na mbido ihuenyo',
+        'Mmelite ozi nke gị na ọganihu ime mmụọ',
+        'Nlekọta ntọala nchebe na ngwaọrụ',
+      ],
+    ),
+    AppTourStep(
+      id: 'step_theme',
+      title: 'Ụdị Ọchịchịrị & Ìhè',
+      subtitle: 'Ọgụgụ Dị Mfe Abalị na Ehihie',
+      description:
+          'Kpatụ akara anyanwụ/ọnwa dị n\'elu iji gbanwee n\'etiti Ìhè na Ọchịchịrị maka ọgụgụ Baịbụl dị mma n\'anya n\'oge ọ bụla.',
+      icon: Icons.dark_mode_rounded,
+      accentColor: Color(0xFF6366F1),
+      route: '/home',
+      targetArea: 'theme',
+      highlights: [
+        'Otu mmetụ iji gbanwee Ìhè na Ọchịchịrị',
+        'Mkpuruokwu doro anya dabara maka anya gị',
+        'Na-echekwa nhọrọ gị ozugbo na ngwaọrụ gị',
       ],
     ),
   ];

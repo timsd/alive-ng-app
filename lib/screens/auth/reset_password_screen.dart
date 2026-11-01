@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../constants/app_constants.dart';
 import '../../services/auth_service.dart';
+import '../../widgets/custom_app_bar.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   final String? userId;
@@ -80,8 +81,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Reset Password'),
+      appBar: const CustomAppBar(
+        title: 'Reset Password',
       ),
       body: Center(
         child: ConstrainedBox(

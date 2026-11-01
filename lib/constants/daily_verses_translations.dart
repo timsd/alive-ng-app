@@ -135,4 +135,100 @@ const Map<String, Map<String, String>> dailyVerseTranslations = {
     "ha": "Amma ku fara nẙãma mulkin Allah da adalci, kuma duk waɗannan abubuwa za’a ƙãre muku.",
     "ig": "Ma bịa n'iche n'ọkwa Chineke na ọzụzụ ya, a ga-agụnyekwu gị ihe ndị a nile.",
   },
+  // Matthew 28:19-20
+  "Matthew 28:19-20": {
+    "yo": "Nítorí náà, ẹ lọ, kí ẹ sì máa kọ́ gbogbo orílẹ̀-èdè, kí ẹ máa baḿtisi wọn ní orúkọ Baba, àti ti Ọmọ, àti ti Ẹ̀mí Mímọ́: Ẹ máa kọ́ wọn láti máa pa gbogbo ohun tí mo ti pa láṣẹ fún yín mọ́: sì kíyèsí i, èmi wà pẹ̀lú yín nígbà gbogbo, títí dé òpin ayé.",
+    "ha": "Saboda haka ku tafi, ku almajirtar da dukan al'ummai, kuna yi musu baftisma da sunan Uba, da na Ɗa, da na Ruhu Mai Tsarki, kuna koya musu su kiyaye dukan abin da na umurce ku da shi. Ga shi kuwa, ina tare da ku kullum, har zuwa matuƙar zamani.",
+    "ig": "Ya mere gaanụ mee ka mba niile bụrụ ndị na-eso ụzọ, na-eme ha baptizim n'aha Nna, na nke Ọkpara, na nke Mmụọ Nsọ, na-akụziri ha idebe ihe niile M nyere unu n'iwu. Ma lee, M nọnyeere unu mgbe niile, ruo ọgwụgwụ nke oge a.",
+  },
+  // Genesis 1:1
+  "Genesis 1:1": {
+    "yo": "Ní ìbẹ̀rẹ̀ ohun gbogbo, Ọlọ́run dá ọ̀run àti ayé.",
+    "ha": "A farko Allah ya halicci sammai da ƙasa.",
+    "ig": "Na mmalite Chineke kere eluigwe na ụwa.",
+  },
+  // Genesis 1:3
+  "Genesis 1:3": {
+    "yo": "Ọlọ́run sì wí pé, 'Jẹ́ kí ìmọ́lẹ̀ kí ó wà:' ìmọ́lẹ̀ sì wà.",
+    "ha": "Allah kuwa ya ce, 'Bari haske ya kasance;' haske kuwa ya kasance.",
+    "ig": "Chineke wee sị, 'Ka ìhè dị;' ìhè wee dị.",
+  },
+  // Psalm 121:1-2
+  "Psalm 121:1-2": {
+    "yo": "Èmi ó gbé ojú mi sókè sí àwọn òkè: níbo ni ìrànwọ́ mi yóò ti wá? Ìrànwọ́ mi ti ọ̀dọ̀ Olúwa wá, ẹni tí ó dá ọ̀run àti ayé.",
+    "ha": "Zan ɗaga idanuna zuwa duwatsu, daga ina taimakona zai fito? Taimakona yana fitowa daga wurin Ubangiji, Mahaliccin sama da ƙasa.",
+    "ig": "Aga m eweliri anya m lee ugwu niile, olee ebe enyemaka m si abịa? Enyemaka m si n'aka Onye-nwe bịa, Onye kere eluigwe na ụwa.",
+  },
+  // Proverbs 18:10
+  "Proverbs 18:10": {
+    "yo": "Orúkọ Olúwa jẹ́ ilé-ìṣọ́ tí ó lágbára; olódodo sáré wọ inú rẹ̀, ó sì wà láìléwu.",
+    "ha": "Sunan Ubangiji hasumiya ce mai ƙarfi, mai adalci yakan gudu ciki ya tsira.",
+    "ig": "Aha Onye-nwe bụ ụlọ elu siri ike; onye ezi omume na-agbaga n'ime ya wee nwee nchebe.",
+  },
+  // Isaiah 40:29
+  "Isaiah 40:29": {
+    "yo": "Ó ń fún àwọn tí ó rẹ̀ ní agbára, ó sì ń mú ipá àwọn tí kò ní agbára pọ̀ sí i.",
+    "ha": "Yakan ba marar ƙarfi iko, yakan kuma ƙara wa mai rauni ƙarfi.",
+    "ig": "Ọ na-enye ndị ike gwụrụ ume, Ọ na-emekwa ka ndị na-adịghị ike nwekwuo ume.",
+  },
+  // Isaiah 53:5
+  "Isaiah 53:5": {
+    "yo": "Ṣùgbọ́n a gbọgbẹ́ fún ìrékọjá wa, a pa á lára fún ẹ̀ṣẹ̀ wa; ìbáwí àlàáfíà wa wà lórí rẹ̀, àti nípasẹ̀ àpá rẹ̀ ni a fi mú wa láradá.",
+    "ha": "Amma an soke shi saboda laifofinmu, an ji masa rauni saboda muguntarmu; horon da ya kawo mana salama ya hau kansa, ta wurin raunukansa kuma aka warkar da mu.",
+    "ig": "Ma a mara Ya mma n'ihi njehie anyị, a zọpịara Ya n'ihi ajọ omume anyị; ntiwapụ nke udo anyị dịkwasịrị Ya, ọ bụkwa site n'ọnyá Ya ka e ji gwọọ anyị.",
+  },
+  // John 1:1
+  "John 1:1": {
+    "yo": "Ní ìbẹ̀rẹ̀ ni Ọ̀rọ̀ wà, Ọ̀rọ̀ sì wà pẹ̀lú Ọlọ́run, Ọ̀rọ̀ náà sì jẹ́ Ọlọ́run.",
+    "ha": "A farko Kalmar nan tana nan, Kalmar kuwa tana tare da Allah, Kalmar kuwa ita ce Allah.",
+    "ig": "Na mmalite Okwu ahụ dị, Okwu ahụ na Chineke nọkwa, Okwu ahụ bụkwa Chineke.",
+  },
+  // John 14:1-3
+  "John 14:1-3": {
+    "yo": "Ẹ má ṣe jẹ́ kí ọkàn yín dàrú: ẹ gbà gbọ́ nínú Ọlọ́run, ẹ gbà mí gbọ́ pẹ̀lú. Ní ilé Baba mi ọ̀pọ̀ ibùgbé ló wà; èmi ń lọ láti pèsè àyè sílẹ̀ fún yín.",
+    "ha": "Kada zuciyarku ta firgita, ku gaskata da Allah, ku kuma gaskata da ni. A gidan Ubana akwai wuraren zama masu yawa; ina tafiya in shirya muku wuri.",
+    "ig": "Ka obi unu ghara ịnọ na nsogbu: kwere na Chineke, kwerekwa na Mụ onwe m. N'ụlọ Nna m, ọtụtụ ebe obibi dị; Ana m aga ịkwadebeere unu ebe.",
+  },
+  // John 14:27
+  "John 14:27": {
+    "yo": "Àlàáfíà ni mo fi sílẹ̀ fún yín, àlàáfíà mi ni mo fún yín; kì í ṣe bí ayé ti ń fi fúnni ni mo fún yín. Ẹ má ṣe jẹ́ kí ọkàn yín dàrú, bẹ́ẹ̀ ni kí ẹ má ṣe jẹ́ kí ó fò.",
+    "ha": "Salama nake bar muku, salamata nake ba ku; ba kamar yadda duniya take bayarwa nake ba ku ba. Kada zuciyarku ta firgita, kada kuma ta karai.",
+    "ig": "Udo ka M na-ahapụrụ unu, udo nke M ka M na-enye unu; ọ bụghị dị ka ụwa si enye ka M na-enye unu. Ka obi unu ghara ịnọ na nsogbu, ka ọ ghara ịtụkwa egwu.",
+  },
+  // Romans 8:38-39
+  "Romans 8:38-39": {
+    "yo": "Nítorí ó dá mi lójú pé, kì í ṣe ikú, tàbí ìyè, tàbí àwọn áńgẹ́lì, tàbí àwọn ìjòyè, yóò lè yà wá kúrò nínú ìfẹ́ Ọlọ́run tí ó wà nínú Kristi Jesu Olúwa wa.",
+    "ha": "Gama na tabbata cewa mutuwa ko rai, mala'iku ko masu mulki, ba wani abu da zai iya raba mu da ƙaunar Allah wadda take cikin Almasihu Yesu Ubangijinmu.",
+    "ig": "N'ihi na o doro m anya na ọnwụ ma ọ bụ ndụ, ndị mmụọ ozi ma ọ bụ ndị ọchịchị, agaghị enwe ike ikewapụ anyị n'ịhụnanya Chineke nke dị n'ime Kraịst Jizọs Onye-nwe anyị.",
+  },
+  // Galatians 5:22-23
+  "Galatians 5:22-23": {
+    "yo": "Ṣùgbọ́n èso ti Ẹ̀mí ni: ìfẹ́, ayọ̀, àlàáfíà, sùúrù, ìwà pẹ̀lẹ́, oore, ìgbàgbọ́, ìwà tútù, ìkóra-ẹni-níjàánu.",
+    "ha": "Amma amfanin Ruhu shi ne: ƙauna, farin ciki, salama, haƙuri, kirki, nagarta, aminci, tawali'u, kamun kai.",
+    "ig": "Ma mkpụrụ nke Mmụọ Nsọ bụ: ịhụnanya, ọṅụ, udo, ogologo ntachi obi, obiọma, ịdị mma, ikwesị ntụkwasị obi, ịdị nwayọọ, njide onwe onye.",
+  },
+  // Ephesians 2:8-9
+  "Ephesians 2:8-9": {
+    "yo": "Nítorí nípa oore-ọ̀fẹ́ ni a fi gbà yín là nípasẹ̀ ìgbàgbọ́; èyí kì í sì í ṣe láti ọwọ́ ara yín wá: ẹ̀bùn Ọlọ́run ni; kì í ṣe nípa iṣẹ́, kí ẹnikẹ́ni má bàa ṣògo.",
+    "ha": "Gama ta wurin alheri aka cece ku ta wurin bangaskiya, wannan kuwa ba daga gare ku ba ne, kyauta ce ta Allah, ba ta wurin ayyuka ba ne, domin kada wani ya yi fahariya.",
+    "ig": "N'ihi na site n'amara ka e ji zọpụta unu site na okwukwe; nke a abụghịkwa nke si n'onwe unu pụta, ọ bụ onyinye Chineke; ọ bụghị site n'ọrụ, ka onye ọ bụla ghara ịnya isi.",
+  },
+  // Hebrews 12:1-2
+  "Hebrews 12:1-2": {
+    "yo": "Ẹ jẹ́ kí a tẹjúmọ́ Jesu, aṣáájú àti aláṣepé ìgbàgbọ́ wa, ẹni tí ó fi nítorí ayọ̀ tí a gbé ka iwájú rẹ̀ fara da àgbélébùú.",
+    "ha": "Kuma mu zuba wa Yesu ido, jagoran bangaskiyarmu kuma mai cika ta, wanda saboda farin cikin da aka sa a gabansa ya jure gicciye.",
+    "ig": "Ka anyị na-elegide anya na Jizọs, Onye na-ebute ma na-eme ka okwukwe anyị zuo oke, Onye n'ihi ọṅụ e debere n'ihu Ya tachiri obi n'obe.",
+  },
+  // Revelation 21:4
+  "Revelation 21:4": {
+    "yo": "Ọlọ́run yóò sì nu gbogbo omijé kúrò ní ojú wọn; kì yóò sì sí ikú mọ́, bẹ́ẹ̀ ni kì yóò sì sí ọ̀fọ̀, tàbí ẹkún, tàbí ìrora mọ́.",
+    "ha": "Zai share dukan hawaye daga idanunsu, babu sauran mutuwa, ko baƙin ciki, ko kuka, ko azaba.",
+    "ig": "Chineke ga-ehichapụkwa anya mmiri niile n'anya ha; ọnwụ agaghị adịkwa ọzọ, iru uju ma ọ bụ ákwá ma ọ bụ ihe mgbu agaghị adịkwa.",
+  },
+  // Revelation 22:20
+  "Revelation 22:20": {
+    "yo": "Ẹni tí ó jẹ́rìí sí nǹkan wọ̀nyí wí pé, 'Nítòótọ́, èmi ń bọ̀ ní kánkán.' Àmín. Bẹ́ẹ̀ ni, wá, Jesu Olúwa.",
+    "ha": "Wanda yake shaidar waɗannan abubuwa ya ce, 'I, ina zuwa da sauri.' Amin. Haka ne, zo, Ubangiji Yesu.",
+    "ig": "Onye na-agba akaebe maka ihe ndị a na-asị, 'N'ezie Ana m abịa ngwa ngwa.' Amen. Bịa, Onye-nwe Jizọs.",
+  },
 };

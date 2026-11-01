@@ -10,6 +10,7 @@ import '../../services/role_access_service.dart';
 import '../../utils/responsive_utils.dart';
 import '../../widgets/loading_widget.dart';
 import '../../utils/toast_utils.dart';
+import '../../widgets/custom_app_bar.dart';
 import 'leader_meeting_transcription_screen.dart';
 
 class MeetingFileSharingScreen extends StatefulWidget {
@@ -92,18 +93,11 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Meeting File Sharing',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: colorScheme.primary,
-        foregroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Colors.white),
-        actionsIconTheme: const IconThemeData(color: Colors.white),
+      appBar: CustomAppBar(
+        title: 'Meeting File Sharing',
         actions: [
           IconButton(
-            icon: const Icon(Icons.mic_none_outlined, color: Colors.white),
+            icon: const Icon(Icons.mic_none_outlined),
             tooltip: 'Leader Scribe & Notes',
             onPressed: () {
               Navigator.of(context).push(
@@ -114,7 +108,7 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white),
+            icon: const Icon(Icons.refresh),
             tooltip: 'Refresh',
             onPressed: _loadFiles,
           ),

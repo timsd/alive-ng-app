@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../constants/app_constants.dart';
+import '../../widgets/custom_app_bar.dart';
 
 /// Oath page shown after onboarding's "Get Started".
 /// User commits to the community values before entering the app.
@@ -21,20 +22,15 @@ class OathScreen extends ConsumerWidget {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          tooltip: 'Go Back',
-          onPressed: () {
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              context.go(AppConstants.onboardingRoute);
-            }
-          },
-        ),
+      appBar: CustomAppBar(
+        title: 'Community Covenant',
+        onBackPressed: () {
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go(AppConstants.onboardingRoute);
+          }
+        },
       ),
       body: SafeArea(
         child: Padding(

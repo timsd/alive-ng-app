@@ -540,7 +540,8 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
     final currentUserId = AuthService.instance.currentUser?.uid;
     final isOwner = currentUserId != null && widget.message.senderId == currentUserId;
     final isLeaderOrAdmin = RoleAccessService.instance.canAccessAdmin() ||
-        RoleAccessService.instance.isBoardOrTrustee() ||
+        RoleAccessService.instance.hasRole('bod') ||
+        RoleAccessService.instance.hasRole('trustee') ||
         RoleAccessService.instance.hasRole('chapter_leader') ||
         RoleAccessService.instance.hasRole('director');
     final canDelete = isOwner || isLeaderOrAdmin;

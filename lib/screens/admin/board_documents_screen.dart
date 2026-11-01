@@ -106,6 +106,8 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
       appBar: CustomAppBar(
         title: 'Board Documents',
         showBackButton: true,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
         actions: [
           IconButton(
             icon: const Icon(Icons.upload_file),
@@ -171,9 +173,12 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                           ),
                         ),
                         items: _categories.map((category) {
+                          final label = category.toLowerCase() == 'all'
+                              ? 'All Categories'
+                              : TextFormatter.formatCategory(category);
                           return DropdownMenuItem(
                             value: category,
-                            child: Text(TextFormatter.formatCategory(category)),
+                            child: Text(label, overflow: TextOverflow.ellipsis),
                           );
                         }).toList(),
                         onChanged: (value) {
@@ -205,9 +210,12 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                           ),
                         ),
                         items: _accessLevels.map((level) {
+                          final label = level.toLowerCase() == 'all'
+                              ? 'All Access Levels'
+                              : TextFormatter.formatRole(level);
                           return DropdownMenuItem(
                             value: level,
-                            child: Text(TextFormatter.formatRole(level)),
+                            child: Text(label, overflow: TextOverflow.ellipsis),
                           );
                         }).toList(),
                         onChanged: (value) {

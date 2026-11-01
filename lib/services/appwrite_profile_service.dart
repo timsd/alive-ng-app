@@ -8,6 +8,7 @@ import '../config/appwrite_backend_config.dart';
 import '../main.dart';
 import '../models/app_models.dart';
 import '../models/leadership_models.dart' show RoleHistoryRecord;
+import 'auth_service.dart';
 
 final appwriteProfileServiceProvider = Provider<AppwriteProfileService>((ref) {
   return AppwriteProfileService();
@@ -210,7 +211,7 @@ class AppwriteProfileService {
           'photo_url': rawAvatar,
         });
         // Refresh local auth user so prefs take effect in memory immediately
-        await AppwriteAuthService.instance.reloadCurrentUser();
+        await AuthService.instance.getCurrentUser();
       } catch (e) {
         debugPrint('Account prefs avatar sync note: $e');
       }

@@ -12,6 +12,7 @@ import 'dart:convert';
 import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/enums.dart' as appwrite_enums;
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:livekit_client/livekit_client.dart' as lk;
 
 import '../../config/appwrite_backend_config.dart';
@@ -220,6 +221,91 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
   //  MeetingGateway Actions
   // ──────────────────────────────────────────────────────────
 
+  /// Safely executes an Appwrite function with automatic fallback to direct HTTP.
+  /// This prevents crashes when Appwrite Dart SDK's Execution.fromMap fails with
+  /// "Bad state: No element" due to enum variations on self-hosted Appwrite instances.
+  Future<Map<String, dynamic>> _executeFunctionSafely({
+    required String functionId,
+    required Map<String, dynamic> body,
+  }) async {
+    final bodyJson = jsonEncode(body);
+
+    // 1. Attempt standard SDK execution first
+    try {
+      final functions = Functions(appwriteClient);
+      final execution = await functions.createExecution(
+        functionId: functionId,
+        body: bodyJson,
+        xasync: false,
+        method: appwrite_enums.ExecutionMethod.pOST,
+      );
+
+      final rawBody = execution.responseBody;
+      if (rawBody.isNotEmpty) {
+        final decoded = jsonDecode(rawBody);
+        if (decoded is Map<String, dynamic>) return decoded;
+      }
+    } catch (sdkErr) {
+      debugPrint(
+        '[LiveKitMeetingGateway] Functions SDK createExecution note: $sdkErr. '
+        'Falling back to robust direct HTTP execution...',
+      );
+    }
+
+    // 2. Direct HTTP execution fallback
+    try {
+      final uri = Uri.parse(
+        '${appwriteClient.endPoint}/functions/$functionId/executions',
+      );
+      final reqHeaders = <String, String>{
+        'X-Appwrite-Project': AppwriteBackendConfig.projectId,
+        'content-type': 'application/json',
+      };
+      try {
+        final jwt = await Account(appwriteClient).createJWT();
+        reqHeaders['X-Appwrite-JWT'] = jwt.jwt;
+      } catch (_) {}
+
+      final client = http.Client();
+      try {
+        final response = await client.post(
+          uri,
+          headers: reqHeaders,
+          body: jsonEncode({
+            'body': bodyJson,
+            'async': false,
+            'method': 'POST',
+          }),
+        );
+
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          final execMap = jsonDecode(response.body);
+          if (execMap is Map<String, dynamic>) {
+            final respBody = execMap['responseBody']?.toString() ?? '';
+            if (respBody.isNotEmpty) {
+              final decodedBody = jsonDecode(respBody);
+              if (decodedBody is Map<String, dynamic>) return decodedBody;
+            }
+          }
+        } else {
+          final errorMap = jsonDecode(response.body);
+          if (errorMap is Map<String, dynamic> && errorMap['message'] != null) {
+            throw Exception(errorMap['message']);
+          }
+        }
+      } finally {
+        client.close();
+      }
+    } catch (httpErr) {
+      debugPrint('[LiveKitMeetingGateway] Direct HTTP function note: $httpErr');
+      if (httpErr is Exception && !httpErr.toString().contains('No element')) {
+        rethrow;
+      }
+    }
+
+    throw Exception('Failed to obtain meeting access credentials from server.');
+  }
+
   @override
   Future<void> executionAndJoin({
     required String roomName,
@@ -237,43 +323,25 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       );
       _emitSession();
 
-      final functions = Functions(appwriteClient);
-      final execution = await functions.createExecution(
+      final decoded = await _executeFunctionSafely(
         functionId: AppwriteBackendConfig.createLiveKitTokenFunctionId,
-        body: jsonEncode({
+        body: {
           'roomName': roomName,
           'identity': userId,
           'participantName': userName,
           'meetingType': meetingType,
           if (notifyMembers) 'notifyMembers': true,
           if (meetingTitle != null) 'meetingTitle': meetingTitle,
-        }),
-        xasync: false,
-        method: appwrite_enums.ExecutionMethod.pOST,
+        },
       );
 
-      dynamic decoded;
-      try {
-        decoded = jsonDecode(execution.responseBody);
-      } catch (_) {
-        throw Exception(
-          'Invalid response from server (${execution.responseStatusCode}): '
-          '${execution.responseBody}',
-        );
-      }
-
-      if (decoded is Map<String, dynamic> && decoded['error'] != null) {
+      if (decoded['error'] != null) {
         throw Exception(decoded['error']);
       }
 
-      final token = (decoded is Map<String, dynamic>)
-          ? decoded['token'] as String?
-          : null;
+      final token = decoded['token'] as String?;
       if (token == null || token.isEmpty) {
-        throw Exception(
-          'Token not found in Appwrite Function response: '
-          '${execution.responseBody}',
-        );
+        throw Exception('Token not found in ALIVE Meet response.');
       }
 
       await joinMeeting(roomToken: token, roomName: roomName);
@@ -282,7 +350,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       String errStr = e.toString().replaceAll('Exception: ', '').trim();
       if (errStr.contains('No element') || errStr.contains('Bad state')) {
         errStr =
-            'LiveKit meeting connection interrupted. Please check your network and try again.';
+            'ALIVE Meet connection interrupted. Please verify your internet and try again.';
       }
       _currentSession = _currentSession.copyWith(
         status: RoomStatus.disconnected,
@@ -486,18 +554,11 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
   @override
   Future<String> startBroadcast({required String meetingType}) async {
     try {
-      final functions = Functions(appwriteClient);
-      final result = await functions.createExecution(
+      final response = await _executeFunctionSafely(
         functionId: _broadcastFunctionId,
-        body: jsonEncode({'action': 'start', 'meetingType': meetingType}),
-        xasync: false,
+        body: {'action': 'start', 'meetingType': meetingType},
       );
 
-      if (result.responseStatusCode != 200) {
-        throw Exception('Broadcast failed (${result.responseStatusCode}): ${result.responseBody}');
-      }
-
-      final response = jsonDecode(result.responseBody);
       if (response['error'] != null) {
         throw Exception(response['error']);
       }
@@ -519,16 +580,10 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
   @override
   Future<void> stopBroadcast({required String egressId}) async {
     try {
-      final functions = Functions(appwriteClient);
-      final result = await functions.createExecution(
+      await _executeFunctionSafely(
         functionId: _broadcastFunctionId,
-        body: jsonEncode({'action': 'stop', 'egressId': egressId}),
-        xasync: false,
+        body: {'action': 'stop', 'egressId': egressId},
       );
-
-      if (result.responseStatusCode != 200) {
-        throw Exception('Stop broadcast failed (${result.responseStatusCode}): ${result.responseBody}');
-      }
 
       _updateBroadcastState(false);
       debugPrint('Broadcast stopped: egressId=$egressId');
@@ -541,18 +596,11 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
   @override
   Future<List<dynamic>> listBroadcasts() async {
     try {
-      final functions = Functions(appwriteClient);
-      final result = await functions.createExecution(
+      final response = await _executeFunctionSafely(
         functionId: _broadcastFunctionId,
-        body: jsonEncode({'action': 'list'}),
-        xasync: false,
+        body: {'action': 'list'},
       );
 
-      if (result.responseStatusCode != 200) {
-        throw Exception('List broadcasts failed (${result.responseStatusCode}): ${result.responseBody}');
-      }
-
-      final response = jsonDecode(result.responseBody);
       return (response['egresses'] as List?) ?? [];
     } catch (e) {
       debugPrint('Failed to list broadcasts: $e');

@@ -171,6 +171,12 @@ class BibleSource {
         "KJV": "Go ye therefore, and teach all nations, baptizing them in the name of the Father, and of the Son, and of the Holy Ghost: Teaching them to observe all things whatsoever I have commanded you: and, lo, I am with you alway, even unto the end of the world.",
         "NKJV": "Go therefore and make disciples of all the nations, baptizing them in the name of the Father and of the Son and of the Holy Spirit, teaching them to observe all things that I have commanded you; and lo, I am with you always, even to the end of the age.",
         "NIV": "Therefore go and make disciples of all nations, baptizing them in the name of the Father and of the Son and of the Holy Spirit, and teaching them to obey everything I have commanded you. And surely I am with you always, to the very end of the age.",
+        "BM": "Nítorí náà, ẹ lọ, kí ẹ sì máa kọ́ gbogbo orílẹ̀-èdè, kí ẹ máa baḿtisi wọn ní orúkọ Baba, àti ti Ọmọ, àti ti Ẹ̀mí Mímọ́: Ẹ máa kọ́ wọn láti máa pa gbogbo ohun tí mo ti pa láṣẹ fún yín mọ́: sì kíyèsí i, èmi wà pẹ̀lú yín nígbà gbogbo, títí dé òpin ayé.",
+        "yo": "Nítorí náà, ẹ lọ, kí ẹ sì máa kọ́ gbogbo orílẹ̀-èdè, kí ẹ máa baḿtisi wọn ní orúkọ Baba, àti ti Ọmọ, àti ti Ẹ̀mí Mímọ́: Ẹ máa kọ́ wọn láti máa pa gbogbo ohun tí mo ti pa láṣẹ fún yín mọ́: sì kíyèsí i, èmi wà pẹ̀lú yín nígbà gbogbo, títí dé òpin ayé.",
+        "HAU": "Saboda haka ku tafi, ku almajirtar da dukan al'ummai, kuna yi musu baftisma da sunan Uba, da na Ɗa, da na Ruhu Mai Tsarki, kuna koya musu su kiyaye dukan abin da na umurce ku da shi. Ga shi kuwa, ina tare da ku kullum, har zuwa matuƙar zamani.",
+        "ha": "Saboda haka ku tafi, ku almajirtar da dukan al'ummai, kuna yi musu baftisma da sunan Uba, da na Ɗa, da na Ruhu Mai Tsarki, kuna koya musu su kiyaye dukan abin da na umurce ku da shi. Ga shi kuwa, ina tare da ku kullum, har zuwa matuƙar zamani.",
+        "IGBOB": "Ya mere gaanụ mee ka mba niile bụrụ ndị na-eso ụzọ, na-eme ha baptizim n'aha Nna, na nke Ọkpara, na nke Mmụọ Nsọ, na-akụziri ha idebe ihe niile M nyere unu n'iwu. Ma lee, M nọnyeere unu mgbe niile, ruo ọgwụgwụ nke oge a.",
+        "ig": "Ya mere gaanụ mee ka mba niile bụrụ ndị na-eso ụzọ, na-eme ha baptizim n'aha Nna, na nke Ọkpara, na nke Mmụọ Nsọ, na-akụziri ha idebe ihe niile M nyere unu n'iwu. Ma lee, M nọnyeere unu mgbe niile, ruo ọgwụgwụ nke oge a.",
       },
     ),
     const BibleVerse(

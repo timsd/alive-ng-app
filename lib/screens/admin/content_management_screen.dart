@@ -199,21 +199,35 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
       BuildContext context, String title, Widget action) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-      child: Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: 12,
-        runSpacing: 10,
-        children: [
-          LayoutFixUtils.safeText(
-            title,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.5,
-                ),
-          ),
-          action,
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isNarrow = constraints.maxWidth < 460;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: LayoutFixUtils.safeText(
+                      title,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.5,
+                          ),
+                    ),
+                  ),
+                  if (!isNarrow) action,
+                ],
+              ),
+              if (isNarrow) ...[
+                const SizedBox(height: 10),
+                action,
+              ],
+            ],
+          );
+        },
       ),
     );
   }
@@ -448,19 +462,19 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
             children: [
               ElevatedButton.icon(
                 onPressed: () => _showContentPageDialog(),
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('New Page'),
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('New Page', style: TextStyle(fontSize: 13)),
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   visualDensity: VisualDensity.compact,
                 ),
               ),
               OutlinedButton.icon(
                 onPressed: _editOnboardingPage,
-                icon: const Icon(Icons.flag, size: 18),
-                label: const Text('Edit Onboarding'),
+                icon: const Icon(Icons.flag, size: 16),
+                label: const Text('Edit Onboarding', style: TextStyle(fontSize: 13)),
                 style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   visualDensity: VisualDensity.compact,
                 ),
               ),

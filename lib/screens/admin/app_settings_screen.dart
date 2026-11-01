@@ -285,7 +285,8 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   }
 
   Widget _buildSettingItem(Map<String, dynamic> setting) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final key = _settingKey(setting);
     final dataType = _settingDataType(setting);
     final isActive = setting['is_active'] as bool? ?? true;

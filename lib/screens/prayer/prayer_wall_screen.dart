@@ -96,15 +96,15 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
               theme.colorScheme.onPrimary.withValues(alpha: 0.72),
           tabs: const [
             Tab(
-              icon: FaIcon(FontAwesomeIcons.globe, size: 18),
+              icon: Icon(Icons.public_rounded, size: 20),
               text: 'Public Prayers',
             ),
             Tab(
-              icon: FaIcon(FontAwesomeIcons.user, size: 18),
+              icon: Icon(Icons.person_outline_rounded, size: 20),
               text: 'My Prayers',
             ),
             Tab(
-              icon: FaIcon(FontAwesomeIcons.personPraying, size: 18),
+              icon: Icon(Icons.volunteer_activism_rounded, size: 20),
               text: 'Praying For',
             ),
           ],
@@ -125,7 +125,7 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
             emptyTitle: 'You have not posted any prayers yet',
             emptySubtitle:
                 'Tap the + button below to share a personal or public prayer request.',
-            showAddButtonOnEmpty: true,
+            showAddButtonOnEmpty: false,
           ),
           _buildPrayerList(
             supportedPrayerWallProvider,
