@@ -8,6 +8,7 @@ import '../../services/appwrite_storage_compat_service.dart';
 import '../../services/auth_service.dart';
 import '../../utils/responsive_utils.dart';
 import '../../utils/text_formatter.dart';
+import '../../widgets/custom_app_bar.dart';
 
 class BoardDocumentsScreen extends StatefulWidget {
   const BoardDocumentsScreen({super.key});
@@ -102,13 +103,13 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Board Documents'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Theme.of(context).colorScheme.onPrimary,
+      appBar: CustomAppBar(
+        title: 'Board Documents',
+        showBackButton: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.upload_file),
+            tooltip: 'Upload Document',
             onPressed: () => _showUploadDialog(),
           ),
         ],

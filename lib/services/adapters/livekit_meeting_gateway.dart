@@ -233,6 +233,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       _currentSession = _currentSession.copyWith(
         roomName: roomName,
         status: RoomStatus.connecting,
+        error: null,
       );
       _emitSession();
 
@@ -278,15 +279,14 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       await joinMeeting(roomToken: token, roomName: roomName);
     } catch (e) {
       debugPrint('Failed executing LiveKit token function: $e');
-      String errStr = e.toString();
+      String errStr = e.toString().replaceAll('Exception: ', '').trim();
       if (errStr.contains('No element') || errStr.contains('Bad state')) {
         errStr =
-            'Audio/video device not detected. Please verify your camera and microphone connections.';
+            'Audio/video device not detected. Please verify your camera and microphone permissions.';
       }
-      final cleanError = _currentSession.error ?? errStr;
       _currentSession = _currentSession.copyWith(
         status: RoomStatus.disconnected,
-        error: cleanError,
+        error: errStr,
       );
       _emitSession();
       rethrow;
@@ -304,6 +304,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       _currentSession = _currentSession.copyWith(
         roomName: roomName ?? '',
         status: RoomStatus.connecting,
+        error: null,
       );
       _emitSession();
 

@@ -147,6 +147,7 @@ class _AppTourOverlayState extends ConsumerState<AppTourOverlay>
       child: Stack(
         children: [
           // 1. Dark Backdrop with Cutout Spotlight Hole over Target
+          // 1. Full-screen Spotlight Painter with crystal-clear transparent cutout & exterior glow ring
           AnimatedBuilder(
             animation: _pulseController,
             builder: (context, _) {
@@ -163,44 +164,7 @@ class _AppTourOverlayState extends ConsumerState<AppTourOverlay>
             },
           ),
 
-          // 2. High-Visibility Pulsing White Ring directly spotlighting the on-screen element
-          AnimatedBuilder(
-            animation: _pulseController,
-            builder: (context, _) {
-              final radius = targetRadius * _scaleAnimation.value;
-              return Positioned(
-                left: targetCenter.dx - radius - 4,
-                top: targetCenter.dy - radius - 4,
-                child: IgnorePointer(
-                  child: Container(
-                    width: (radius + 4) * 2,
-                    height: (radius + 4) * 2,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white,
-                        width: 2.8,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          blurRadius: 10,
-                          spreadRadius: 1,
-                        ),
-                        BoxShadow(
-                          color: step.accentColor.withValues(alpha: _glowAnimation.value),
-                          blurRadius: 22,
-                          spreadRadius: 4,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-
-          // 3. Anchored Tour Modal Dialog (position adjusts so spotlight is never obscured)
+          // 2. Anchored Tour Modal Dialog (position adjusts so spotlight is never obscured)
           Positioned(
             left: 16,
             right: 16,
@@ -522,9 +486,32 @@ class _SpotlightPainter extends CustomPainter {
         Rect.fromCircle(center: targetCenter, radius: holeRadius),
       );
 
-    // Difference leaves the target element completely transparent/visible
+    // Difference leaves the target element 100% transparent and visible
     final overlayPath = Path.combine(PathOperation.difference, fullScreenPath, holePath);
     canvas.drawPath(overlayPath, bgPaint);
+
+    // Exterior-only accent glow ring (never fills or obscures the interior target)
+    final outerGlowPaint = Paint()
+      ..color = accentColor.withValues(alpha: glowOpacity * 0.75)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 5.0
+      ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 12);
+    canvas.drawCircle(targetCenter, holeRadius, outerGlowPaint);
+
+    // Exterior-only white halo for extra vibrancy
+    final whiteHaloPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.8)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.0
+      ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 5);
+    canvas.drawCircle(targetCenter, holeRadius, whiteHaloPaint);
+
+    // Crisp white border ring delineating the target
+    final borderPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5;
+    canvas.drawCircle(targetCenter, holeRadius, borderPaint);
   }
 
   @override
