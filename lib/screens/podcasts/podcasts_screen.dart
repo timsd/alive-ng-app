@@ -1031,7 +1031,7 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
                   },
                   icon: const Icon(Icons.play_circle_fill_rounded, size: 22),
                   label: const Text(
-                    'Play in Modern Player',
+                    'Play',
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                   ),
                 ),

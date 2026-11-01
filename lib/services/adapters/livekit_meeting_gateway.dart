@@ -41,6 +41,9 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
   bool _isVideoMuted = false;
   bool _isRoomAudioLocked = false;
   bool _isHostOrModerator = false;
+  bool _isWaitingRoomEnabled = false;
+  bool _isAdmitted = true;
+  final List<Map<String, String>> _waitingKnocks = [];
   final Map<String, bool> _handsRaised = {};
 
   MeetingSession _currentSession = MeetingSession.initial();
@@ -206,6 +209,9 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         isVideoMuted: _isVideoMuted,
         isRoomAudioLocked: _isRoomAudioLocked,
         isHandRaised: _handsRaised[localId] ?? false,
+        isWaitingRoomEnabled: _isWaitingRoomEnabled,
+        isAdmitted: _isAdmitted,
+        waitingKnocks: List<Map<String, String>>.from(_waitingKnocks),
         participants: _collectParticipants(),
       );
       _emitSession();
@@ -320,6 +326,38 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         _handsRaised[target] = false;
         _syncStateFromRoom();
       }
+    } else if (action == 'knock') {
+      if (_isHostOrModerator) {
+        final uId = msg['userId']?.toString() ?? sender ?? '';
+        final uName = msg['userName']?.toString() ?? uId;
+        if (uId.isNotEmpty) {
+          _waitingKnocks.removeWhere((k) => k['id'] == uId);
+          _waitingKnocks.add({'id': uId, 'name': uName});
+          _syncStateFromRoom();
+        }
+      }
+    } else if (action == 'admit') {
+      final target = targetIdentity ?? msg['userId']?.toString();
+      if (target == myIdentity) {
+        _isAdmitted = true;
+        _syncStateFromRoom();
+        _moderationPromptsController.add('admitted_by_host');
+      } else if (_isHostOrModerator) {
+        _waitingKnocks.removeWhere((k) => k['id'] == target);
+        _syncStateFromRoom();
+      }
+    } else if (action == 'decline') {
+      final target = targetIdentity ?? msg['userId']?.toString();
+      if (target == myIdentity) {
+        _moderationPromptsController.add('declined_by_host');
+        leaveMeeting();
+      } else if (_isHostOrModerator) {
+        _waitingKnocks.removeWhere((k) => k['id'] == target);
+        _syncStateFromRoom();
+      }
+    } else if (action == 'toggle_waiting_room') {
+      _isWaitingRoomEnabled = msg['enabled'] == true;
+      _syncStateFromRoom();
     }
   }
 
@@ -420,12 +458,24 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
     required String meetingType,
     bool notifyMembers = false,
     String? meetingTitle,
+    String targetAudience = 'general',
+    String? targetChapter,
+    bool isWaitingRoomEnabled = false,
   }) async {
     try {
-      _isHostOrModerator = RoleAccessService.instance.canAccessAdmin();
+      _isHostOrModerator = RoleAccessService.instance.canAccessAdmin() ||
+          RoleAccessService.instance.canStartConferencing();
+      _isWaitingRoomEnabled = isWaitingRoomEnabled;
+      // Host / Leader is always admitted immediately; standard attendee in a waiting room starts unadmitted
+      _isAdmitted = _isHostOrModerator || !isWaitingRoomEnabled;
+      _waitingKnocks.clear();
+
       _currentSession = _currentSession.copyWith(
         roomName: roomName,
         status: RoomStatus.connecting,
+        isWaitingRoomEnabled: _isWaitingRoomEnabled,
+        isAdmitted: _isAdmitted,
+        waitingKnocks: [],
         error: null,
       );
       _emitSession();
@@ -439,6 +489,9 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
           'meetingType': meetingType,
           if (notifyMembers) 'notifyMembers': true,
           if (meetingTitle != null) 'meetingTitle': meetingTitle,
+          'targetAudience': targetAudience,
+          if (targetChapter != null) 'targetChapter': targetChapter,
+          'isWaitingRoomEnabled': isWaitingRoomEnabled,
         },
       );
 
@@ -452,6 +505,21 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       }
 
       await joinMeeting(roomToken: token, roomName: roomName);
+
+      // If this attendee is in waiting room and not yet admitted, knock on the door
+      if (!_isAdmitted) {
+        final local = _room?.localParticipant;
+        if (local != null) {
+          final knockMsg = jsonEncode({
+            'action': 'knock',
+            'userId': userId,
+            'userName': userName,
+          });
+          try {
+            await local.publishData(utf8.encode(knockMsg), reliable: true);
+          } catch (_) {}
+        }
+      }
     } catch (e) {
       debugPrint('Failed executing LiveKit token function: $e');
       String errStr = e.toString().replaceAll('Exception: ', '').trim();
@@ -809,6 +877,58 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
   }
 
   @override
+  Future<void> admitParticipant(String identity) async {
+    _waitingKnocks.removeWhere((k) => k['id'] == identity);
+    _syncStateFromRoom();
+    try {
+      final payload = utf8.encode(jsonEncode({
+        'action': 'admit',
+        'target': identity,
+        'target_identity': identity,
+        'userId': identity,
+      }));
+      await _room?.localParticipant?.publishData(payload, reliable: true);
+      debugPrint('[LiveKitMeetingGateway] Admit participant broadcast sent for $identity');
+    } catch (e) {
+      debugPrint('[LiveKitMeetingGateway] admitParticipant error: $e');
+    }
+  }
+
+  @override
+  Future<void> declineParticipant(String identity) async {
+    _waitingKnocks.removeWhere((k) => k['id'] == identity);
+    _syncStateFromRoom();
+    try {
+      final payload = utf8.encode(jsonEncode({
+        'action': 'decline',
+        'target': identity,
+        'target_identity': identity,
+        'userId': identity,
+      }));
+      await _room?.localParticipant?.publishData(payload, reliable: true);
+      debugPrint('[LiveKitMeetingGateway] Decline participant broadcast sent for $identity');
+    } catch (e) {
+      debugPrint('[LiveKitMeetingGateway] declineParticipant error: $e');
+    }
+  }
+
+  @override
+  Future<void> setWaitingRoom(bool enabled) async {
+    _isWaitingRoomEnabled = enabled;
+    _syncStateFromRoom();
+    try {
+      final payload = utf8.encode(jsonEncode({
+        'action': 'toggle_waiting_room',
+        'enabled': enabled,
+      }));
+      await _room?.localParticipant?.publishData(payload, reliable: true);
+      debugPrint('[LiveKitMeetingGateway] Toggle waiting room broadcast sent: $enabled');
+    } catch (e) {
+      debugPrint('[LiveKitMeetingGateway] setWaitingRoom error: $e');
+    }
+  }
+
+  @override
   Future<void> leaveMeeting() async {
     final room = _room;
     if (room == null) return;
@@ -825,6 +945,9 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       _isAudioMuted = true;
       _isVideoMuted = false;
       _isRoomAudioLocked = false;
+      _isWaitingRoomEnabled = false;
+      _isAdmitted = true;
+      _waitingKnocks.clear();
       _handsRaised.clear();
       _currentSession = MeetingSession.initial();
       _emitSession();

@@ -56,6 +56,89 @@ async function getRole(userId, req) {
   return String(profile.role || 'member').trim().toLowerCase();
 }
 
+async function getTargetUsers(endpoint, projectId, databaseId, serverApiKey, usersTableId, targetAudience, targetChapter) {
+  if (targetAudience === 'general') return { users: [], topics: ['all_users'] };
+
+  const headers = {
+    'X-Appwrite-Project': projectId,
+    'X-Appwrite-Key': serverApiKey,
+  };
+
+  let rows = [];
+  try {
+    let res = await fetch(
+      `${endpoint}/databases/${databaseId}/collections/${usersTableId}/documents?limit=250`,
+      { headers },
+    );
+    if (res.status === 404) {
+      res = await fetch(
+        `${endpoint}/tablesdb/${databaseId}/tables/${usersTableId}/rows?limit=250`,
+        { headers },
+      );
+    }
+    if (res.ok) {
+      const data = await res.json();
+      rows = data.documents || data.rows || [];
+    }
+  } catch (e) {
+    // If user listing fails, fall back to topic
+  }
+
+  const norm = (s) => String(s || '').trim().toLowerCase();
+  let matchedIds = [];
+  let topics = [];
+
+  switch (targetAudience) {
+    case 'chapter': {
+      const chapterQuery = norm(targetChapter);
+      const chapterSlug = chapterQuery.replace(/[^a-z0-9]/g, '_');
+      topics = chapterSlug ? [`chapter_${chapterSlug}`] : ['all_users'];
+      matchedIds = rows
+        .filter((r) => {
+          const chId = norm(r.chapter_id || r.chapterId);
+          const localCh = norm(r.local_chapter || r.localChapter);
+          return chId === chapterQuery || localCh === chapterQuery || chId.includes(chapterQuery) || localCh.includes(chapterQuery);
+        })
+        .map((r) => r.$id || r.id);
+      break;
+    }
+    case 'singles': {
+      topics = ['singles', 'fellowship_singles'];
+      matchedIds = rows
+        .filter((r) => norm(r.marital_status || r.maritalStatus) === 'single')
+        .map((r) => r.$id || r.id);
+      break;
+    }
+    case 'directors': {
+      topics = ['directors'];
+      matchedIds = rows
+        .filter((r) => ['director', 'admin'].includes(norm(r.role)))
+        .map((r) => r.$id || r.id);
+      break;
+    }
+    case 'board':
+    case 'bod': {
+      topics = ['board', 'bod'];
+      matchedIds = rows
+        .filter((r) => ['bod', 'trustee', 'admin'].includes(norm(r.role)))
+        .map((r) => r.$id || r.id);
+      break;
+    }
+    case 'leadership': {
+      topics = ['leadership'];
+      matchedIds = rows
+        .filter((r) => ['coordinator', 'leader', 'director', 'bod', 'trustee', 'admin'].includes(norm(r.role)))
+        .map((r) => r.$id || r.id);
+      break;
+    }
+    default:
+      topics = ['all_users'];
+      break;
+  }
+
+  return { users: matchedIds.slice(0, 100), topics };
+}
+
 export default async ({ req, res, log, error }) => {
   if (req.method !== 'POST') return res.json({ error: 'Method not allowed. Use POST.' }, 405);
 
@@ -97,14 +180,16 @@ export default async ({ req, res, log, error }) => {
     const apiSecret = process.env.LIVEKIT_API_SECRET || process.env.LIVEKIT_SECRET;
     if (!apiKey || !apiSecret) return res.json({ error: 'ALIVE Meet is not configured.' }, 503);
 
-    // Trigger push notification to members when a leader/admin starts a meeting and requests member notification
+    // Trigger targeted push notification when a leader/admin starts a meeting
     if (notifyMembers && isLeader) {
       try {
         const endpoint = process.env.APPWRITE_ENDPOINT?.replace(/\/$/, '');
         const projectId = process.env.APPWRITE_PROJECT_ID;
+        const databaseId = process.env.APPWRITE_DATABASE_ID;
         const serverApiKey = req.headers['x-appwrite-key'] || process.env.APPWRITE_FUNCTION_API_KEY;
+        const usersTableId = process.env.APPWRITE_USERS_TABLE_ID || '6a08943100226f5b4963';
 
-        if (endpoint && projectId && serverApiKey) {
+        if (endpoint && projectId && databaseId && serverApiKey) {
           const client = new Client()
             .setEndpoint(endpoint)
             .setProject(projectId)
@@ -113,26 +198,76 @@ export default async ({ req, res, log, error }) => {
           const meetingTitle = body.meetingTitle || targetRoom;
           const host = participantName || (isAdmin ? 'An Admin' : 'A Leader');
 
-          await messaging.createPush({
+          const targetAudience = body.targetAudience || 'general';
+          const targetChapter = body.targetChapter || '';
+          const { users: targetUsers, topics: targetTopics } = await getTargetUsers(
+            endpoint,
+            projectId,
+            databaseId,
+            serverApiKey,
+            usersTableId,
+            targetAudience,
+            targetChapter,
+          );
+
+          let notificationTitle = 'ALIVE Meet: Meeting Started';
+          let notificationBody = `${host} has started "${meetingTitle}". Tap to join now!`;
+
+          if (targetAudience === 'chapter' && targetChapter) {
+            notificationTitle = `ALIVE Meet: ${targetChapter} Chapter Meeting`;
+            notificationBody = `${host} has started the ${targetChapter} chapter fellowship. Tap to join!`;
+          } else if (targetAudience === 'singles') {
+            notificationTitle = 'ALIVE Meet: Singles Fellowship';
+            notificationBody = `${host} has started Singles Fellowship. Tap to join!`;
+          } else if (targetAudience === 'directors') {
+            notificationTitle = 'ALIVE Meet: Directors Meeting';
+            notificationBody = `${host} has started the Directors Meeting. Tap to join!`;
+          } else if (targetAudience === 'board' || targetAudience === 'bod') {
+            notificationTitle = 'ALIVE Meet: Board of Directors Meeting';
+            notificationBody = `${host} has started the Board Meeting. Tap to join!`;
+          } else if (targetAudience === 'leadership') {
+            notificationTitle = 'ALIVE Meet: Leadership Meeting';
+            notificationBody = `${host} has started the Leadership Meeting. Tap to join!`;
+          }
+
+          const pushPayload = {
             messageId: ID.unique(),
-            title: 'ALIVE Meet: Meeting Started',
-            body: `${host} has started "${meetingTitle}". Tap to join now!`,
-            topics: ['all_users'],
+            title: notificationTitle,
+            body: notificationBody,
+            topics: targetTopics && targetTopics.length > 0 ? targetTopics : undefined,
+            users: targetUsers && targetUsers.length > 0 ? targetUsers : undefined,
             data: {
               type: 'meeting_started',
               roomName: targetRoom,
               meetingType: meetingType,
+              targetAudience: targetAudience,
+              targetChapter: targetChapter,
             },
             draft: false,
-          });
-          if (log) log(`Meeting notification dispatched for room ${targetRoom}`);
+          };
+
+          if (!pushPayload.topics && !pushPayload.users) {
+            pushPayload.topics = ['all_users'];
+          }
+
+          await messaging.createPush(pushPayload);
+          if (log) log(`Targeted meeting notification dispatched for ${targetAudience} (${targetChapter})`);
         }
       } catch (pushErr) {
         if (error) error(`Failed to dispatch meeting start push notification: ${pushErr.message}`);
       }
     }
 
-    const token = new AccessToken(apiKey, apiSecret, { identity, name: participantName || identity });
+    const token = new AccessToken(apiKey, apiSecret, {
+      identity,
+      name: participantName || identity,
+      metadata: JSON.stringify({
+        isLeader,
+        isWaitingRoomEnabled: Boolean(body.isWaitingRoomEnabled),
+        targetAudience: body.targetAudience || 'general',
+        targetChapter: body.targetChapter || '',
+      }),
+    });
     token.addGrant({
       roomJoin: true,
       room: targetRoom,

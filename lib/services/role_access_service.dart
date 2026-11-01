@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../models/app_models.dart';
 import '../utils/logger.dart';
 import 'auth_service.dart';
@@ -17,6 +19,20 @@ class RoleAccessService {
 
   UserProfile? _cachedUserProfile;
   DateTime? _cacheTimestamp;
+
+  final StreamController<UserProfile> _roleChangeController =
+      StreamController<UserProfile>.broadcast();
+
+  /// Reactive stream that broadcasts whenever a user's role or profile is promoted/demoted/updated.
+  Stream<UserProfile> get onRoleChanged => _roleChangeController.stream;
+
+  /// Proactively notifies the app that a user's role has updated, invalidating caches
+  /// and pushing the new state without requiring force refresh or re-login.
+  void notifyRoleChanged(UserProfile updatedProfile) {
+    _cachedUserProfile = updatedProfile;
+    _cacheTimestamp = DateTime.now();
+    _roleChangeController.add(updatedProfile);
+  }
 
   /// User roles in hierarchical order (lowest to highest privilege)
   ///

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../config/meeting_links_config.dart';
+import '../../constants/chapters.dart';
 import '../../models/meeting_models.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/meeting_provider.dart';
@@ -36,6 +37,9 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   bool _isJoining = false;
   bool _isBroadcasting = false;
   bool _notifyMembers = true;
+  String _targetAudience = 'general';
+  String _selectedTargetChapter = 'Ibadan';
+  bool _requireHostApproval = false;
   String? _activeEgressId;
   StreamSubscription<String>? _moderationSub;
 
@@ -65,6 +69,10 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
         _showMessage('You have been removed from the meeting by the host.');
       } else if (event == 'ended_by_host') {
         _showMessage('The meeting has been ended for all by the host.');
+      } else if (event == 'admitted_by_host') {
+        _showMessage('You have been admitted to the meeting room.');
+      } else if (event == 'declined_by_host') {
+        _showDeclinedDialog();
       }
     });
   }
@@ -115,6 +123,9 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
         meetingType: widget.meetingType?.name ?? 'general',
         notifyMembers: isAdmin && _notifyMembers,
         meetingTitle: roomTitle,
+        targetAudience: _targetAudience,
+        targetChapter: _targetAudience == 'chapter' ? _selectedTargetChapter : null,
+        isWaitingRoomEnabled: _requireHostApproval,
       );
     } catch (e) {
       final errStr = e.toString();
@@ -183,6 +194,35 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     );
   }
 
+  void _showDeclinedDialog() {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.info_outline, color: Colors.orange),
+            SizedBox(width: 8),
+            Text('Admission Declined'),
+          ],
+        ),
+        content: const Text(
+          'The meeting host did not admit you to this meeting session. If you believe this is a mistake, please reach out to your leader or coordinator.',
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              if (mounted) Navigator.of(context).maybePop();
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showMessage(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -244,13 +284,87 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
             ),
             if (isLeader && !connected) ...[
               const SizedBox(height: 8),
+              // Waiting Room Policy toggle
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
+                secondary: const Icon(Icons.meeting_room_outlined),
+                title: const Text('Require Host Approval (Waiting Room)'),
+                subtitle: const Text('Participants wait in virtual lobby until admitted by host/leader'),
+                value: _requireHostApproval,
+                onChanged: (val) => setState(() => _requireHostApproval = val),
+              ),
+              const SizedBox(height: 4),
+              // Targeted Push Notification toggle
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                secondary: const Icon(Icons.notifications_active_outlined),
                 title: const Text('Notify members via push notification'),
                 subtitle: const Text('Sends a background push notification when meeting starts'),
                 value: _notifyMembers,
                 onChanged: (val) => setState(() => _notifyMembers = val),
               ),
+              if (_notifyMembers) ...[
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  value: _targetAudience,
+                  decoration: const InputDecoration(
+                    labelText: 'Notification Target Audience',
+                    prefixIcon: Icon(Icons.group_outlined),
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'general',
+                      child: Text('General (All Members)'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'chapter',
+                      child: Text('Selected Chapter Members Only'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'singles',
+                      child: Text('Singles Fellowship Platform Only'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'directors',
+                      child: Text('Directors Only'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'board',
+                      child: Text('Board of Directors (BOD) & Trustees'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'leadership',
+                      child: Text('Coordinators & Leaders Only'),
+                    ),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) setState(() => _targetAudience = val);
+                  },
+                ),
+                if (_targetAudience == 'chapter') ...[
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: _selectedTargetChapter,
+                    decoration: const InputDecoration(
+                      labelText: 'Select Chapter to Notify',
+                      prefixIcon: Icon(Icons.location_on_outlined),
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                    items: ChapterConstants.availableChapters.map((ch) {
+                      return DropdownMenuItem(
+                        value: ch,
+                        child: Text(ch),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) setState(() => _selectedTargetChapter = val);
+                    },
+                  ),
+                ],
+              ],
             ],
             const SizedBox(height: 12),
             ElevatedButton.icon(
@@ -357,7 +471,152 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
               ),
             ],
             const SizedBox(height: 16),
-            if (connected) ...[
+            if (connected && !session.isAdmitted && session.isWaitingRoomEnabled && !isLeader) ...[
+              // Gated Waiting Room UI for unadmitted participants
+              const SizedBox(height: 24),
+              Center(
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: 480),
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: const Color(0xFFD49B28).withValues(alpha: 0.5),
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD49B28).withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.hourglass_top_rounded,
+                          size: 48,
+                          color: Color(0xFFD49B28),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Waiting for Host Approval',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'The meeting leader has been notified that you are in the lobby. You will be admitted automatically once approved.',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 20),
+                      const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      const SizedBox(height: 24),
+                      OutlinedButton.icon(
+                        onPressed: gateway.leaveMeeting,
+                        icon: const Icon(Icons.call_end),
+                        label: const Text('Leave Waiting Room'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ] else if (connected) ...[
+              // Host Waiting Room Admission Requests Banner
+              if (isLeader && session.waitingKnocks.isNotEmpty) ...[
+                Container(
+                  margin: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade900.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.amber.shade700.withValues(alpha: 0.6)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.door_sliding_outlined, size: 20, color: Color(0xFFD49B28)),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Waiting Room (${session.waitingKnocks.length})',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const Spacer(),
+                          TextButton(
+                            onPressed: () {
+                              for (final knock in List<Map<String, String>>.from(session.waitingKnocks)) {
+                                final id = knock['id'];
+                                if (id != null) gateway.admitParticipant(id);
+                              }
+                            },
+                            child: const Text('Admit All'),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 12),
+                      ...session.waitingKnocks.map((knock) {
+                        final kId = knock['id'] ?? '';
+                        final kName = knock['name'] ?? 'Participant';
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 14,
+                                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                                child: Text(
+                                  kName.isNotEmpty ? kName.substring(0, 1).toUpperCase() : 'U',
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  kName,
+                                  style: const TextStyle(fontWeight: FontWeight.w600),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              FilledButton(
+                                onPressed: () => gateway.admitParticipant(kId),
+                                style: FilledButton.styleFrom(
+                                  visualDensity: VisualDensity.compact,
+                                  backgroundColor: Colors.green.shade700,
+                                ),
+                                child: const Text('Admit'),
+                              ),
+                              const SizedBox(width: 8),
+                              OutlinedButton(
+                                onPressed: () => gateway.declineParticipant(kId),
+                                style: OutlinedButton.styleFrom(
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                                child: const Text('Decline'),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+              ],
               // Audio Lock notice banner
               if (session.isRoomAudioLocked) ...[
                 Container(
@@ -538,6 +797,24 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                               size: 16,
                             ),
                             label: Text(session.isRoomAudioLocked ? 'Unlock Mics' : 'Lock Mics'),
+                          ),
+                          // Waiting Room / Gated meeting toggle
+                          OutlinedButton.icon(
+                            onPressed: () async {
+                              final newWaiting = !session.isWaitingRoomEnabled;
+                              await gateway.setWaitingRoom(newWaiting);
+                              _showMessage(newWaiting
+                                  ? 'Waiting Room activated: New participants must be admitted.'
+                                  : 'Waiting Room disabled: Participants can now join directly.');
+                            },
+                            icon: Icon(
+                              session.isWaitingRoomEnabled ? Icons.door_sliding : Icons.meeting_room_outlined,
+                              size: 16,
+                            ),
+                            label: Text(session.isWaitingRoomEnabled ? 'Waiting Room: ON' : 'Waiting Room: OFF'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: session.isWaitingRoomEnabled ? const Color(0xFFD49B28) : null,
+                            ),
                           ),
                           // End Meeting for All in Host Controls
                           ElevatedButton.icon(

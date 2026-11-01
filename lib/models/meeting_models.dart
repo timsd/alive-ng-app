@@ -129,6 +129,15 @@ class MeetingSession {
   /// Whether the local participant currently has their hand raised.
   final bool isHandRaised;
 
+  /// Whether this meeting requires host approval before entering (Waiting Room).
+  final bool isWaitingRoomEnabled;
+
+  /// Whether this participant has been admitted to the live meeting.
+  final bool isAdmitted;
+
+  /// Waiting knocks for hosts to approve (list of maps with id, name).
+  final List<Map<String, String>> waitingKnocks;
+
   /// Optional error message if connection or operation failed.
   final String? error;
 
@@ -141,6 +150,9 @@ class MeetingSession {
     this.isRoomAudioLocked = false,
     this.isMuteOnEntry = true,
     this.isHandRaised = false,
+    this.isWaitingRoomEnabled = false,
+    this.isAdmitted = true,
+    this.waitingKnocks = const [],
     this.error,
   });
 
@@ -175,6 +187,9 @@ class MeetingSession {
     bool? isRoomAudioLocked,
     bool? isMuteOnEntry,
     bool? isHandRaised,
+    bool? isWaitingRoomEnabled,
+    bool? isAdmitted,
+    List<Map<String, String>>? waitingKnocks,
     String? error,
   }) {
     return MeetingSession(
@@ -186,6 +201,9 @@ class MeetingSession {
       isRoomAudioLocked: isRoomAudioLocked ?? this.isRoomAudioLocked,
       isMuteOnEntry: isMuteOnEntry ?? this.isMuteOnEntry,
       isHandRaised: isHandRaised ?? this.isHandRaised,
+      isWaitingRoomEnabled: isWaitingRoomEnabled ?? this.isWaitingRoomEnabled,
+      isAdmitted: isAdmitted ?? this.isAdmitted,
+      waitingKnocks: waitingKnocks ?? this.waitingKnocks,
       error: error,
     );
   }
@@ -202,6 +220,8 @@ class MeetingSession {
           isRoomAudioLocked == other.isRoomAudioLocked &&
           isMuteOnEntry == other.isMuteOnEntry &&
           isHandRaised == other.isHandRaised &&
+          isWaitingRoomEnabled == other.isWaitingRoomEnabled &&
+          isAdmitted == other.isAdmitted &&
           error == other.error;
 
   @override
@@ -213,6 +233,8 @@ class MeetingSession {
         isRoomAudioLocked,
         isMuteOnEntry,
         isHandRaised,
+        isWaitingRoomEnabled,
+        isAdmitted,
         error,
       );
 

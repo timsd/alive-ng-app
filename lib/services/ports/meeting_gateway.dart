@@ -42,6 +42,9 @@ abstract class MeetingGateway {
     required String meetingType,
     bool notifyMembers = false,
     String? meetingTitle,
+    String targetAudience = 'general',
+    String? targetChapter,
+    bool isWaitingRoomEnabled = false,
   });
 
   /// Joins a meeting room directly using a pre-fetched [roomToken].
@@ -91,6 +94,15 @@ abstract class MeetingGateway {
 
   /// Host command: Lowers a participant's raised hand.
   Future<void> lowerParticipantHand(String identity);
+
+  /// Host command: Admits a participant waiting in the waiting room.
+  Future<void> admitParticipant(String identity);
+
+  /// Host command: Declines admission for a waiting participant.
+  Future<void> declineParticipant(String identity);
+
+  /// Host command: Toggles whether the room requires host approval (waiting room).
+  Future<void> setWaitingRoom(bool enabled);
 
   /// Stream of user-facing moderation prompts (e.g. host ask-to-unmute requests).
   Stream<String> get moderationPromptsStream;

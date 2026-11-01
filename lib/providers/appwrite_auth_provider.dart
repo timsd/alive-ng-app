@@ -67,10 +67,18 @@ final currentUserProfileProvider = FutureProvider<UserProfile?>((ref) async {
 
   if (user == null) return null;
 
+  // Real-time listener: auto-refresh immediately when user's role/profile changes
+  final profileService = ref.watch(appwriteProfileServiceProvider);
+  final sub = profileService.onUserProfileUpdated.listen((updated) {
+    if (updated.id == user.uid) {
+      ref.invalidateSelf();
+    }
+  });
+  ref.onDispose(() => sub.cancel());
+
   final avatarOverride = ref.watch(uploadedAvatarUrlProvider);
 
   try {
-    final profileService = ref.watch(appwriteProfileServiceProvider);
     final document = await profileService.ensureUserProfile(
       userId: user.uid,
       email: user.email,

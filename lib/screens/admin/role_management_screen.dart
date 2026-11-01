@@ -1,3 +1,4 @@
+import 'dart:async';
 import '../../utils/appwrite_id_utils.dart';
 import 'package:flutter/material.dart';
 
@@ -47,11 +48,23 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
   String _selectedRole = 'all';
   String _selectedChapter = 'all';
   final TextEditingController _searchController = TextEditingController();
+  StreamSubscription<UserProfile>? _profileUpdatesSub;
 
   @override
   void initState() {
     super.initState();
     _loadData();
+    _profileUpdatesSub = _profileService.onUserProfileUpdated.listen((updated) {
+      if (!mounted) return;
+      setState(() {
+        final index = _users.indexWhere((u) => u.id == updated.id);
+        if (index != -1) {
+          _users[index] = updated;
+        } else {
+          _users.add(updated);
+        }
+      });
+    });
   }
 
   Future<void> _loadData() async {
@@ -987,6 +1000,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
 
   @override
   void dispose() {
+    _profileUpdatesSub?.cancel();
     _searchController.dispose();
     super.dispose();
   }

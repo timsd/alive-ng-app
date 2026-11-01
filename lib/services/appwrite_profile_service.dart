@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/models.dart' as models;
@@ -8,17 +9,63 @@ import '../config/appwrite_backend_config.dart';
 import '../main.dart';
 import '../models/app_models.dart';
 import '../models/leadership_models.dart' show RoleHistoryRecord;
+import 'appwrite_client.dart';
 import 'auth_service.dart';
+import 'role_access_service.dart';
 
 final appwriteProfileServiceProvider = Provider<AppwriteProfileService>((ref) {
-  return AppwriteProfileService();
+  return AppwriteProfileService.instance;
 });
 
 class AppwriteProfileService {
-  late final TablesDB _tables;
+  static final AppwriteProfileService _instance = AppwriteProfileService._internal();
+  static AppwriteProfileService get instance => _instance;
+  factory AppwriteProfileService() => _instance;
 
-  AppwriteProfileService() {
+  late final TablesDB _tables;
+  final StreamController<UserProfile> _userProfileUpdatedController =
+      StreamController<UserProfile>.broadcast();
+
+  /// Real-time stream of user profile & role modifications across the organization.
+  Stream<UserProfile> get onUserProfileUpdated =>
+      _userProfileUpdatedController.stream;
+
+  RealtimeSubscription? _usersSubscription;
+
+  AppwriteProfileService._internal() {
     _tables = TablesDB(appwriteClient);
+    _initRealtime();
+  }
+
+  void _initRealtime() {
+    try {
+      final dbId = AppwriteBackendConfig.databaseId;
+      final usersTable = AppwriteBackendConfig.usersCollectionId;
+      _usersSubscription = appwriteRealtime.subscribe([
+        'databases.$dbId.tables.$usersTable.rows',
+        'databases.$dbId.collections.$usersTable.documents',
+      ]);
+      _usersSubscription?.stream.listen((event) {
+        try {
+          if (event.events.any((e) => e.contains('.update') || e.contains('.create'))) {
+            final data = event.payload;
+            final userDoc = models.Row.fromMap(data);
+            final updatedProfile = userProfileFromDocument(userDoc);
+            _userProfileUpdatedController.add(updatedProfile);
+
+            // If this is the currently authenticated user, update role cache immediately!
+            final currentAuthUser = AuthService.instance.currentUser;
+            if (currentAuthUser != null && updatedProfile.id == currentAuthUser.uid) {
+              RoleAccessService.instance.notifyRoleChanged(updatedProfile);
+            }
+          }
+        } catch (e) {
+          debugPrint('[AppwriteProfileService] Realtime sync notice: $e');
+        }
+      });
+    } catch (e) {
+      debugPrint('[AppwriteProfileService] Realtime subscription init error: $e');
+    }
   }
 
   Future<models.Row?> getUserProfile(String userId) async {
@@ -81,6 +128,18 @@ class AppwriteProfileService {
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       },
     );
+
+    // Proactively fetch updated user profile and broadcast for zero-latency local updates
+    try {
+      final updated = await getUserProfileModel(userId);
+      if (updated != null) {
+        _userProfileUpdatedController.add(updated);
+        final currentAuthUser = AuthService.instance.currentUser;
+        if (currentAuthUser != null && updated.id == currentAuthUser.uid) {
+          RoleAccessService.instance.notifyRoleChanged(updated);
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> archiveUser(String userId) async {
