@@ -50,7 +50,11 @@ class AppwriteProfileService {
           if (event.events.any((e) => e.contains('.update') || e.contains('.create'))) {
             final data = event.payload;
             final userDoc = models.Row.fromMap(data);
-            final updatedProfile = userProfileFromDocument(userDoc);
+            final updatedProfile = userProfileFromDocument(
+              userDoc,
+              fallbackEmail: (userDoc.data['email'] ?? '').toString(),
+              fallbackFullName: (userDoc.data['fullName'] ?? userDoc.data['full_name'])?.toString(),
+            );
             _userProfileUpdatedController.add(updatedProfile);
 
             // If this is the currently authenticated user, update role cache immediately!
