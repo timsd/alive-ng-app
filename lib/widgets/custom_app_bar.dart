@@ -184,8 +184,8 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
                     context.go('/discipleship');
                     return;
                   }
-                  if (uri.startsWith('/kids') && uri != '/kids') {
-                    context.go('/kids');
+                  if (uri.startsWith('/kids')) {
+                    context.go('/study');
                     return;
                   }
                   if (uri.startsWith('/more') && uri != '/more') {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -36,6 +37,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   bool _isBroadcasting = false;
   bool _notifyMembers = true;
   String? _activeEgressId;
+  StreamSubscription<String>? _moderationSub;
 
   @override
   void initState() {
@@ -44,6 +46,26 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     // Auto-prompt media permissions upfront (Google Meet flow)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       MediaPermissionService.requestMediaPermissions();
+    });
+
+    final gateway = ref.read(meetingGatewayProvider);
+    _moderationSub = gateway.moderationPromptsStream.listen((event) {
+      if (!mounted) return;
+      if (event == 'ask_unmute') {
+        _showUnmuteRequestDialog(gateway);
+      } else if (event == 'ask_video') {
+        _showVideoRequestDialog(gateway);
+      } else if (event == 'muted_by_host') {
+        _showMessage('The host has muted your microphone.');
+      } else if (event == 'video_stopped_by_host') {
+        _showMessage('The host has stopped your video.');
+      } else if (event == 'granted_cohost') {
+        _showMessage('You are now a co-host of this meeting.');
+      } else if (event == 'removed_by_host') {
+        _showMessage('You have been removed from the meeting by the host.');
+      } else if (event == 'ended_by_host') {
+        _showMessage('The meeting has been ended for all by the host.');
+      }
     });
   }
 
@@ -178,7 +200,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     final isAudioMuted = session.isAudioMuted;
     final isVideoMuted = session.isVideoMuted;
 
-    final isAdmin = RoleAccessService.instance.canAccessAdmin() || widget.isModerator;
+    final isLeader = RoleAccessService.instance.canStartConferencing() || widget.isModerator;
 
     return Scaffold(
       appBar: CustomAppBar(
@@ -211,13 +233,16 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
           children: [
             TextField(
               controller: _roomController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Meeting Room',
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
+                helperText: !isLeader
+                    ? 'Members can join designated rooms. Starting new rooms is reserved for leaders.'
+                    : null,
               ),
-              readOnly: !isAdmin && (widget.meetingType != null || widget.customRoomName != null),
+              readOnly: !isLeader,
             ),
-            if (isAdmin && !connected) ...[
+            if (isLeader && !connected) ...[
               const SizedBox(height: 8),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
@@ -243,7 +268,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                   ? 'Joining...'
                   : connected
                       ? 'Connected'
-                      : (isAdmin ? 'Start / Join ALIVE Meet' : 'Join ALIVE Meet')),
+                      : (isLeader ? 'Start / Join ALIVE Meet' : 'Join ALIVE Meet')),
             ),
             // Connection status banner
             if (session.status == RoomStatus.connecting ||
@@ -372,7 +397,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                 children: [
                   FilledButton.icon(
                     onPressed: () async {
-                      if (!isAdmin && !widget.isModerator && session.isRoomAudioLocked && isAudioMuted) {
+                      if (!isLeader && session.isRoomAudioLocked && isAudioMuted) {
                         _showMessage('The host has locked microphones. Raise your hand to ask to speak.');
                         return;
                       }
@@ -384,18 +409,24 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                     },
                     icon: Icon(isAudioMuted ? Icons.mic_off : Icons.mic),
                     label: Text(
-                      !isAdmin && !widget.isModerator && session.isRoomAudioLocked && isAudioMuted
+                      !isLeader && session.isRoomAudioLocked && isAudioMuted
                           ? 'Muted (Locked)'
                           : (isAudioMuted ? 'Unmute' : 'Mute'),
                     ),
-                    style: !isAdmin && !widget.isModerator && session.isRoomAudioLocked && isAudioMuted
+                    style: !isLeader && session.isRoomAudioLocked && isAudioMuted
                         ? FilledButton.styleFrom(
                             backgroundColor: Colors.grey.shade700,
                           )
                         : null,
                   ),
                   FilledButton.icon(
-                    onPressed: gateway.toggleVideo,
+                    onPressed: () async {
+                      try {
+                        await gateway.toggleVideo();
+                      } catch (e) {
+                        _showMessage(e.toString().replaceAll('Exception: ', ''));
+                      }
+                    },
                     icon: Icon(isVideoMuted ? Icons.videocam_off : Icons.videocam),
                     label: Text(isVideoMuted ? 'Camera On' : 'Camera Off'),
                   ),
@@ -417,6 +448,17 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                     icon: const Icon(Icons.call_end),
                     label: const Text('Leave'),
                   ),
+                  // End Meeting for All button (leaders/hosts only)
+                  if (isLeader)
+                    FilledButton.icon(
+                      onPressed: () => _confirmEndMeetingForAll(gateway),
+                      icon: const Icon(Icons.stop_circle_outlined),
+                      label: const Text('End Meeting for All'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.red.shade800,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
                   // Go Live button — streams to YouTube via LiveKit egress
                   if (widget.isModerator)
                     FilledButton.icon(
@@ -434,7 +476,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
               ),
 
               // Host / Moderator Controls Area
-              if (isAdmin || widget.isModerator) ...[
+              if (isLeader) ...[
                 const SizedBox(height: 14),
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -497,6 +539,16 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                             ),
                             label: Text(session.isRoomAudioLocked ? 'Unlock Mics' : 'Lock Mics'),
                           ),
+                          // End Meeting for All in Host Controls
+                          ElevatedButton.icon(
+                            onPressed: () => _confirmEndMeetingForAll(gateway),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red.shade900,
+                              foregroundColor: Colors.white,
+                            ),
+                            icon: const Icon(Icons.power_settings_new_rounded, size: 16),
+                            label: const Text('End Meeting for All'),
+                          ),
                         ],
                       ),
                     ],
@@ -518,6 +570,12 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                       final participant = session.participants[index];
                       final displayName = _formatParticipantName(participant);
                       return ListTile(
+                        onTap: () => _showParticipantActions(
+                          context,
+                          participant,
+                          gateway,
+                          isLeader,
+                        ),
                         leading: CircleAvatar(
                           child: Text(
                             displayName.isNotEmpty
@@ -529,6 +587,15 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                           participant.isLocal
                               ? '$displayName (You)'
                               : displayName,
+                        ),
+                        subtitle: Text(
+                          isLeader
+                              ? 'Tap to manage (mute, video, co-host)'
+                              : (participant.isLocal ? 'Tap for your audio/video controls' : ''),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                          ),
                         ),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -574,6 +641,12 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                                   ? Colors.red
                                   : Colors.green,
                             ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.chevron_right,
+                              size: 18,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                            ),
                           ],
                         ),
                       );
@@ -584,6 +657,329 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
             ],
           ],
         ),
+      ),
+    );
+  }
+
+  void _showParticipantActions(
+    BuildContext context,
+    ParticipantInfo participant,
+    MeetingGateway gateway,
+    bool isLeaderOrHost,
+  ) {
+    final displayName = _formatParticipantName(participant);
+    final theme = Theme.of(context);
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 22,
+                        backgroundColor: const Color(0xFFD49B28),
+                        child: Text(
+                          displayName.isNotEmpty ? displayName[0].toUpperCase() : 'M',
+                          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              participant.isLocal ? '$displayName (You)' : displayName,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              participant.isLocal
+                                  ? (isLeaderOrHost ? 'Host / Moderator (You)' : 'Participant (You)')
+                                  : 'Meeting Participant',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(),
+
+                // Local user options
+                if (participant.isLocal) ...[
+                  ListTile(
+                    leading: Icon(
+                      participant.isAudioMuted ? Icons.mic : Icons.mic_off,
+                      color: participant.isAudioMuted ? Colors.green : Colors.red,
+                    ),
+                    title: Text(participant.isAudioMuted ? 'Unmute My Microphone' : 'Mute My Microphone'),
+                    onTap: () async {
+                      Navigator.of(ctx).pop();
+                      try {
+                        await gateway.toggleAudio();
+                      } catch (e) {
+                        _showMessage(e.toString().replaceAll('Exception: ', ''));
+                      }
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(
+                      participant.isVideoMuted ? Icons.videocam : Icons.videocam_off,
+                      color: participant.isVideoMuted ? Colors.green : Colors.red,
+                    ),
+                    title: Text(participant.isVideoMuted ? 'Start My Video' : 'Stop My Video'),
+                    onTap: () async {
+                      Navigator.of(ctx).pop();
+                      try {
+                        await gateway.toggleVideo();
+                      } catch (e) {
+                        _showMessage(e.toString().replaceAll('Exception: ', ''));
+                      }
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(
+                      participant.isHandRaised ? Icons.pan_tool_rounded : Icons.pan_tool_outlined,
+                      color: const Color(0xFFD49B28),
+                    ),
+                    title: Text(participant.isHandRaised ? 'Lower My Hand' : 'Raise My Hand'),
+                    onTap: () async {
+                      Navigator.of(ctx).pop();
+                      await gateway.raiseHand(raised: !participant.isHandRaised);
+                      _showMessage(participant.isHandRaised ? 'Hand lowered' : 'Hand raised');
+                    },
+                  ),
+                ],
+
+                // Leader / Moderator options for remote participant (Zoom style)
+                if (!participant.isLocal && isLeaderOrHost) ...[
+                  if (participant.isHandRaised)
+                    ListTile(
+                      leading: const Icon(Icons.pan_tool_outlined, color: Color(0xFFD49B28)),
+                      title: const Text('Lower Participant\'s Hand'),
+                      onTap: () async {
+                        Navigator.of(ctx).pop();
+                        await gateway.lowerParticipantHand(participant.identity);
+                        _showMessage('Lowered hand for $displayName');
+                      },
+                    ),
+                  if (participant.isAudioMuted)
+                    ListTile(
+                      leading: const Icon(Icons.mic, color: Colors.green),
+                      title: const Text('Ask to Unmute / Allow to Speak'),
+                      subtitle: const Text('Sends an invitation to unmute'),
+                      onTap: () async {
+                        Navigator.of(ctx).pop();
+                        await gateway.askParticipantToUnmute(participant.identity);
+                        _showMessage('Asked $displayName to unmute');
+                      },
+                    )
+                  else
+                    ListTile(
+                      leading: const Icon(Icons.mic_off, color: Colors.red),
+                      title: const Text('Mute Participant'),
+                      onTap: () async {
+                        Navigator.of(ctx).pop();
+                        await gateway.muteParticipant(participant.identity);
+                        _showMessage('Muted $displayName');
+                      },
+                    ),
+                  if (participant.isVideoMuted)
+                    ListTile(
+                      leading: const Icon(Icons.videocam, color: Colors.green),
+                      title: const Text('Ask to Start Video'),
+                      onTap: () async {
+                        Navigator.of(ctx).pop();
+                        await gateway.askParticipantToStartVideo(participant.identity);
+                        _showMessage('Asked $displayName to start video');
+                      },
+                    )
+                  else
+                    ListTile(
+                      leading: const Icon(Icons.videocam_off, color: Colors.red),
+                      title: const Text('Stop Participant\'s Video'),
+                      onTap: () async {
+                        Navigator.of(ctx).pop();
+                        await gateway.stopParticipantVideo(participant.identity);
+                        _showMessage('Stopped video for $displayName');
+                      },
+                    ),
+                  ListTile(
+                    leading: const Icon(Icons.admin_panel_settings_outlined, color: Color(0xFFD49B28)),
+                    title: const Text('Make Co-Host'),
+                    onTap: () async {
+                      Navigator.of(ctx).pop();
+                      await gateway.makeParticipantCoHost(participant.identity);
+                      _showMessage('$displayName is now a co-host');
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.person_remove_rounded, color: Colors.red),
+                    title: const Text('Remove from Meeting', style: TextStyle(color: Colors.red)),
+                    onTap: () {
+                      Navigator.of(ctx).pop();
+                      _confirmRemoveParticipant(participant, gateway);
+                    },
+                  ),
+                ],
+
+                // Non-leader options for remote participant
+                if (!participant.isLocal && !isLeaderOrHost) ...[
+                  ListTile(
+                    leading: const Icon(Icons.info_outline),
+                    title: Text(displayName),
+                    subtitle: Text(
+                      'Audio: ${participant.isAudioMuted ? 'Muted' : 'Unmuted'} • Video: ${participant.isVideoMuted ? 'Off' : 'On'}',
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _confirmEndMeetingForAll(MeetingGateway gateway) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.stop_circle_outlined, color: Colors.red),
+            SizedBox(width: 8),
+            Text('End Meeting for All?'),
+          ],
+        ),
+        content: const Text(
+          'This will disconnect all attendees and close the meeting room immediately.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              await gateway.endMeetingForAll();
+              _showMessage('Meeting ended for all participants.');
+            },
+            style: FilledButton.styleFrom(backgroundColor: Colors.red.shade800),
+            child: const Text('End Meeting for All'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmRemoveParticipant(ParticipantInfo participant, MeetingGateway gateway) {
+    final displayName = _formatParticipantName(participant);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Remove $displayName?'),
+        content: Text('Are you sure you want to remove $displayName from this meeting?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              await gateway.removeParticipant(participant.identity);
+              _showMessage('$displayName has been removed.');
+            },
+            style: FilledButton.styleFrom(backgroundColor: Colors.red.shade800),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showUnmuteRequestDialog(MeetingGateway gateway) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.mic, color: Colors.green),
+            SizedBox(width: 8),
+            Text('The Host Asked You to Speak'),
+          ],
+        ),
+        content: const Text('The host has invited you to unmute your microphone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Stay Muted'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              try {
+                await gateway.toggleAudio();
+              } catch (e) {
+                _showMessage(e.toString().replaceAll('Exception: ', ''));
+              }
+            },
+            child: const Text('Unmute Microphone'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showVideoRequestDialog(MeetingGateway gateway) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.videocam, color: Colors.green),
+            SizedBox(width: 8),
+            Text('The Host Asked You to Start Video'),
+          ],
+        ),
+        content: const Text('The host has requested that you turn on your camera.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Keep Camera Off'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              try {
+                await gateway.toggleVideo();
+              } catch (e) {
+                _showMessage(e.toString().replaceAll('Exception: ', ''));
+              }
+            },
+            child: const Text('Start Video'),
+          ),
+        ],
       ),
     );
   }
@@ -629,6 +1025,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
 
   @override
   void dispose() {
+    _moderationSub?.cancel();
     _roomController.dispose();
     super.dispose();
   }

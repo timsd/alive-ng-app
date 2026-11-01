@@ -79,6 +79,7 @@ export default async ({ req, res, log, error }) => {
       if (log) log(`Role lookup notice: ${roleErr.message}`);
     }
 
+    const isLeader = ['admin', 'bod', 'director', 'trustee', 'leader', 'coordinator'].includes(role);
     const isAdmin = ['admin', 'bod', 'director', 'trustee'].includes(role);
 
     // Permission enforcement:
@@ -87,17 +88,17 @@ export default async ({ req, res, log, error }) => {
       return res.json({ error: 'You do not have access to this ALIVE Meet room.' }, 403);
     }
 
-    // 2. Fixed-room policy validation for non-admins
-    if (policy.room && targetRoom !== policy.room && !isAdmin) {
-      return res.json({ error: 'Invalid room for the requested ALIVE Meet type.' }, 403);
+    // 2. Fixed-room policy validation for non-leaders (only leaders can start arbitrary/custom rooms)
+    if (policy.room && targetRoom !== policy.room && !isLeader) {
+      return res.json({ error: 'Only ALIVE leaders and administrators can start new meeting rooms.' }, 403);
     }
 
     const apiKey = process.env.LIVEKIT_API_KEY;
     const apiSecret = process.env.LIVEKIT_API_SECRET || process.env.LIVEKIT_SECRET;
     if (!apiKey || !apiSecret) return res.json({ error: 'ALIVE Meet is not configured.' }, 503);
 
-    // Trigger push notification to members when an admin starts a meeting and requests member notification
-    if (notifyMembers && isAdmin) {
+    // Trigger push notification to members when a leader/admin starts a meeting and requests member notification
+    if (notifyMembers && isLeader) {
       try {
         const endpoint = process.env.APPWRITE_ENDPOINT?.replace(/\/$/, '');
         const projectId = process.env.APPWRITE_PROJECT_ID;
@@ -110,7 +111,7 @@ export default async ({ req, res, log, error }) => {
             .setKey(serverApiKey);
           const messaging = new Messaging(client);
           const meetingTitle = body.meetingTitle || targetRoom;
-          const host = participantName || 'An Admin';
+          const host = participantName || (isAdmin ? 'An Admin' : 'A Leader');
 
           await messaging.createPush({
             messageId: ID.unique(),
@@ -137,7 +138,8 @@ export default async ({ req, res, log, error }) => {
       room: targetRoom,
       canPublish: true,
       canSubscribe: true,
-      roomAdmin: ['admin', 'bod', 'trustee'].includes(role),
+      canPublishData: true,
+      roomAdmin: isLeader,
     });
 
     return res.json({

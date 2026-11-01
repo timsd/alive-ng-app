@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -16,6 +17,11 @@ final appwriteAuthControllerProvider = Provider<AuthGateway>((ref) {
 
 final appwriteUserStreamProvider = authStateProvider;
 
+/// In-memory bytes for newly picked/uploaded avatar to render instantly (0ms)
+/// across all screens (GreetingHeader, ProfileScreen, EditProfileScreen)
+/// before and during network upload, ensuring immediate updates even on repeated changes.
+final pendingAvatarBytesProvider = StateProvider<Uint8List?>((ref) => null);
+
 /// Reactive in-memory override for the user's most recently uploaded avatar URL.
 /// Ensures all screens (Home GreetingHeader, ProfileScreen, EditProfileScreen)
 /// switch from the initial representative avatar to the uploaded photo
@@ -26,6 +32,32 @@ final appwriteUserStreamProvider = authStateProvider;
 final uploadedAvatarUrlProvider = StateProvider<String?>((ref) {
   // Reset automatically whenever the authenticated user changes.
   ref.watch(appwriteUserStreamProvider);
+  return null;
+});
+
+/// The SINGLE CENTER OF TRUTH for current user's profile image / avatar URL across the entire app.
+/// Feeds GreetingHeader, CustomAppBar, ProfileScreen, EditProfileScreen, Chat, and ALIVE Meet.
+/// Priority:
+/// 1. Newly uploaded avatar override in this session (instant feedback)
+/// 2. User profile `avatarUrl` from database / persistent cache
+/// 3. User profile `photoUrl`
+/// 4. Google account image (from OAuth login / user session)
+final currentUserAvatarUrlProvider = Provider<String?>((ref) {
+  final override = ref.watch(uploadedAvatarUrlProvider);
+  if (override != null) {
+    return override.trim().isEmpty ? null : override.trim();
+  }
+  final profile = ref.watch(currentUserProfileProvider).value;
+  if (profile?.avatarUrl != null && profile!.avatarUrl!.trim().isNotEmpty) {
+    return profile.avatarUrl!.trim();
+  }
+  if (profile?.photoUrl != null && profile!.photoUrl!.trim().isNotEmpty) {
+    return profile.photoUrl!.trim();
+  }
+  final authUser = ref.watch(currentUserProvider);
+  if (authUser?.photoUrl != null && authUser!.photoUrl!.trim().isNotEmpty) {
+    return authUser.photoUrl!.trim();
+  }
   return null;
 });
 
@@ -52,6 +84,17 @@ final currentUserProfileProvider = FutureProvider<UserProfile?>((ref) async {
       isAnonymous: user.isAnonymous,
       photoUrl: user.photoUrl,
     );
+
+    // If Google account has a photoUrl and the profile has none, adopt Google photoUrl automatically!
+    if ((profile.avatarUrl == null || profile.avatarUrl!.isEmpty) &&
+        (user.photoUrl != null && user.photoUrl!.isNotEmpty)) {
+      profile = profile.copyWith(avatarUrl: user.photoUrl, photoUrl: user.photoUrl);
+      // Persist Google account avatar in the background so it's durable in Appwrite
+      profileService.updateUserProfile(
+        userId: user.uid,
+        profileData: {'avatar_url': user.photoUrl, 'photo_url': user.photoUrl},
+      ).catchError((_) => document);
+    }
 
     // Fall back to locally cached avatar if remote document field is empty
     if (profile.avatarUrl == null || profile.avatarUrl!.isEmpty) {

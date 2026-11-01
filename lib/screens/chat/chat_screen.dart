@@ -353,6 +353,62 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
+  Future<void> _startDirectMessage({
+    required String targetUserId,
+    required String targetUserName,
+  }) async {
+    final currentUserId = AuthService.instance.currentUser?.uid;
+    if (currentUserId == null) {
+      _showError('You must be signed in to send direct messages.');
+      return;
+    }
+    if (currentUserId == targetUserId) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cannot message yourself directly.')),
+      );
+      return;
+    }
+
+    try {
+      // Find existing DM channel with target user
+      ChatChannel? existingDm;
+      for (final channel in _channels) {
+        if (channel.type == ChannelType.direct &&
+            channel.members.contains(targetUserId) &&
+            channel.members.contains(currentUserId)) {
+          existingDm = channel;
+          break;
+        }
+      }
+
+      if (existingDm != null) {
+        _selectChannel(existingDm);
+        return;
+      }
+
+      // Create new direct message channel
+      final cleanName = targetUserName.trim().isNotEmpty
+          ? targetUserName.trim()
+          : 'Direct Message';
+      final newChannel = await _chatService.createChannel(
+        name: cleanName,
+        description: 'Direct message with $cleanName',
+        type: ChannelType.direct,
+        members: [targetUserId, currentUserId],
+        admins: [targetUserId, currentUserId],
+      );
+
+      setState(() {
+        _channels.insert(0, newChannel);
+        _selectedChannel = newChannel;
+        _messages = [];
+      });
+      _loadMessages();
+    } catch (e) {
+      _showError('Could not open direct message: $e');
+    }
+  }
+
   void _showCreateChannelDialog() {
     final profile = ref.read(currentUserProfileProvider).value;
     if (profile != null) {
@@ -394,23 +450,34 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final userProfileAsync = ref.watch(currentUserProfileProvider);
     bool canStartGeneral = false;
     bool isModerator = false;
+    bool canCreateChannel = false;
     if (userProfileAsync.hasValue && userProfileAsync.value != null) {
-      final role = (userProfileAsync.value!.role).toLowerCase();
+      final profile = userProfileAsync.value!;
+      final role = (profile.role).toLowerCase();
       const allowedRoles = [
         'admin',
         'bod',
         'director',
         'chapter_leader',
+        'chapter_coordinator',
+        'chap_coor',
+        'coordinator',
         'moderator',
         'leader',
+        'trustee',
       ];
       const moderatorRoles = [
         'admin',
         'bod',
         'director',
+        'trustee',
       ];
       canStartGeneral = allowedRoles.contains(role);
       isModerator = moderatorRoles.contains(role);
+      canCreateChannel = allowedRoles.contains(role) ||
+          RoleAccessService.instance.canStartConferencing() ||
+          RoleAccessService.instance.canAccessAdmin() ||
+          AppwriteBackendConfig.isSuperAdminEmail(profile.email);
     }
 
     return LayoutBuilder(
@@ -471,8 +538,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               if (isWide)
                 IconButton(
                   icon: Icon(_channelsExpanded
-                      ? Icons.view_sidebar_rounded
-                      : Icons.view_sidebar_outlined),
+                      ? Icons.menu_open_rounded
+                      : Icons.menu_rounded),
                   tooltip: _channelsExpanded
                       ? 'Collapse Channels'
                       : 'Expand Channels',
@@ -485,11 +552,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   tooltip: 'View Channels',
                   onPressed: () => _scaffoldKey.currentState?.openDrawer(),
                 ),
-              IconButton(
-                icon: const Icon(Icons.add),
-                onPressed: _showCreateChannelDialog,
-                tooltip: 'Create Channel',
-              ),
+              if (canCreateChannel)
+                IconButton(
+                  icon: const Icon(Icons.add),
+                  onPressed: _showCreateChannelDialog,
+                  tooltip: 'Create Channel',
+                ),
               IconButton(
                 icon: const Icon(Icons.info_outline),
                 onPressed: _selectedChannel != null ? _showChannelInfo : null,
@@ -527,7 +595,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                     onCollapse: () => setState(
                                         () => _channelsExpanded = false),
                                   )
-                                : _buildDiscordMiniRail(context),
+                                : _buildDiscordMiniRail(context, canCreateChannel),
                           ),
                         Expanded(
                           child: _buildChatPane(
@@ -543,7 +611,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-  Widget _buildDiscordMiniRail(BuildContext context) {
+  Widget _buildDiscordMiniRail(BuildContext context, bool canCreateChannel) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
@@ -653,22 +721,24 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               },
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12, top: 4),
-            child: Tooltip(
-              message: 'Create Channel',
-              child: IconButton.filledTonal(
-                icon: const Icon(Icons.add_rounded, size: 20),
-                onPressed: _showCreateChannelDialog,
+          if (canCreateChannel)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12, top: 4),
+              child: Tooltip(
+                message: 'Create Channel',
+                child: IconButton.filledTonal(
+                  icon: const Icon(Icons.add_rounded, size: 20),
+                  onPressed: _showCreateChannelDialog,
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildChatPane(BuildContext context, bool canStartGeneral, bool isModerator) {
+  Widget _buildChatPane(
+      BuildContext context, bool canStartGeneral, bool isModerator) {
     if (_selectedChannel == null) {
       return Center(
         child: Padding(
@@ -687,7 +757,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ),
       );
     }
-    return Column(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      color: isDark
+          ? const Color(0xFF313338)
+          : Theme.of(context).colorScheme.surface,
+      child: Column(
                               children: [
                                 // Filter bar
                                 Padding(
@@ -830,8 +905,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                                         .inMinutes <
                                                     5;
 
+                                            final repliedMessage = message.replyToId != null
+                                                ? _messages.cast<ChatMessage?>().firstWhere(
+                                                      (m) => m?.id == message.replyToId,
+                                                      orElse: () => null,
+                                                    )
+                                                : null;
+
                                             return ChatMessageWidget(
                                               message: message,
+                                              repliedMessage: repliedMessage,
                                               isConsecutive: isConsecutive,
                                               onReply: (replyMessage) {
                                                 setState(() {
@@ -842,6 +925,28 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                                   _handleEditMessage(editMsg),
                                               onDelete: (delMsg) =>
                                                   _handleDeleteMessage(delMsg),
+                                              onDirectMessage:
+                                                  (senderId, senderName) =>
+                                                      _startDirectMessage(
+                                                targetUserId: senderId,
+                                                targetUserName: senderName,
+                                              ),
+                                              onMention: (mentionName) {
+                                                final current =
+                                                    _messageController.text;
+                                                final prefix = current.isEmpty ||
+                                                        current.endsWith(' ')
+                                                    ? ''
+                                                    : ' ';
+                                                _messageController.text =
+                                                    '$current$prefix@$mentionName ';
+                                                _messageController.selection =
+                                                    TextSelection.fromPosition(
+                                                  TextPosition(
+                                                      offset: _messageController
+                                                          .text.length),
+                                                );
+                                              },
                                             );
                                           },
                                         ),
@@ -918,6 +1023,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                   onTagSearch: _chatService.getTaggableEntities,
                                 ),
                               ],
+                            ),
     );
   }
 

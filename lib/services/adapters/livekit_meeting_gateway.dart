@@ -51,6 +51,9 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
   final StreamController<RoomStatus> _statusController =
       StreamController<RoomStatus>.broadcast();
 
+  final StreamController<String> _moderationPromptsController =
+      StreamController<String>.broadcast();
+
   // ── Broadcast state ──────────────────────────────────────────
   bool _isBroadcasting = false;
   String? _activeEgressId;
@@ -75,6 +78,10 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
 
   @override
   Stream<RoomStatus> get roomStatus => _statusController.stream;
+
+  @override
+  Stream<String> get moderationPromptsStream =>
+      _moderationPromptsController.stream;
 
   @override
   bool get isConnected => _room != null && _currentSession.isConnected;
@@ -115,16 +122,16 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
   ParticipantInfo _mapParticipant(lk.Participant participant, {bool isLocal = false}) {
     bool isAudioEnabled = false;
     try {
-      isAudioEnabled = participant.isMicrophoneEnabled();
+      isAudioEnabled = isLocal ? !_isAudioMuted : participant.isMicrophoneEnabled();
     } catch (_) {
-      isAudioEnabled = false;
+      isAudioEnabled = isLocal ? !_isAudioMuted : false;
     }
 
     bool isVideoEnabled = false;
     try {
-      isVideoEnabled = participant.isCameraEnabled();
+      isVideoEnabled = isLocal ? !_isVideoMuted : participant.isCameraEnabled();
     } catch (_) {
-      isVideoEnabled = false;
+      isVideoEnabled = isLocal ? !_isVideoMuted : false;
     }
 
     final identity = participant.identity;
@@ -244,6 +251,9 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
 
   void _handleControlMessage(Map<String, dynamic> msg, {String? sender}) {
     final action = msg['action'];
+    final myIdentity = _room?.localParticipant?.identity ?? '';
+    final targetIdentity = msg['target_identity']?.toString();
+
     if (action == 'mute_all') {
       debugPrint('[LiveKitMeetingGateway] Received mute_all control message from $sender');
       if (!_isHostOrModerator && !_isAudioMuted) {
@@ -265,6 +275,49 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       final raised = msg['raised'] == true;
       if (participantId != null && participantId.isNotEmpty) {
         _handsRaised[participantId] = raised;
+        _syncStateFromRoom();
+      }
+    } else if (action == 'ask_unmute') {
+      if (targetIdentity == myIdentity) {
+        _moderationPromptsController.add('ask_unmute');
+      }
+    } else if (action == 'ask_video') {
+      if (targetIdentity == myIdentity) {
+        _moderationPromptsController.add('ask_video');
+      }
+    } else if (action == 'mute_participant') {
+      if (targetIdentity == myIdentity && !_isAudioMuted) {
+        _room?.localParticipant?.setMicrophoneEnabled(false);
+        _isAudioMuted = true;
+        _syncStateFromRoom();
+        _moderationPromptsController.add('muted_by_host');
+      }
+    } else if (action == 'stop_video') {
+      if (targetIdentity == myIdentity && !_isVideoMuted) {
+        _room?.localParticipant?.setCameraEnabled(false);
+        _isVideoMuted = true;
+        _syncStateFromRoom();
+        _moderationPromptsController.add('video_stopped_by_host');
+      }
+    } else if (action == 'make_cohost') {
+      if (targetIdentity == myIdentity) {
+        _isHostOrModerator = true;
+        _syncStateFromRoom();
+        _moderationPromptsController.add('granted_cohost');
+      }
+    } else if (action == 'remove_participant') {
+      if (targetIdentity == myIdentity) {
+        _moderationPromptsController.add('removed_by_host');
+        leaveMeeting();
+      }
+    } else if (action == 'end_meeting_for_all') {
+      debugPrint('[LiveKitMeetingGateway] Meeting ended for all by host $sender');
+      _moderationPromptsController.add('ended_by_host');
+      leaveMeeting();
+    } else if (action == 'lower_hand') {
+      final target = targetIdentity ?? sender;
+      if (target != null && target.isNotEmpty) {
+        _handsRaised[target] = false;
         _syncStateFromRoom();
       }
     }
@@ -547,16 +600,48 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       throw Exception('Microphones are locked by the host. Raise your hand to speak.');
     }
 
-    final targetState = !_isAudioMuted;
+    // Fix inverted boolean logic:
+    // If currently muted (_isAudioMuted == true), enable microphone (true).
+    // If currently unmuted (_isAudioMuted == false), disable microphone (false).
+    final shouldEnableMicrophone = _isAudioMuted;
     try {
-      await participant.setMicrophoneEnabled(targetState);
-      _isAudioMuted = !targetState;
+      await participant.setMicrophoneEnabled(shouldEnableMicrophone);
+      _isAudioMuted = !shouldEnableMicrophone;
     } catch (e) {
       debugPrint('[LiveKitMeetingGateway] toggleAudio note: $e');
-      _isAudioMuted = true;
+      if (shouldEnableMicrophone) {
+        _isAudioMuted = true;
+      }
+      rethrow;
     }
     _currentSession = _currentSession.copyWith(
       isAudioMuted: _isAudioMuted,
+      participants: _collectParticipants(),
+    );
+    _emitSession();
+  }
+
+  @override
+  Future<void> toggleVideo() async {
+    final participant = _room?.localParticipant;
+    if (participant == null) return;
+
+    // Fix inverted boolean logic:
+    // If currently muted (_isVideoMuted == true), enable camera (true).
+    // If currently unmuted (_isVideoMuted == false), disable camera (false).
+    final shouldEnableCamera = _isVideoMuted;
+    try {
+      await participant.setCameraEnabled(shouldEnableCamera);
+      _isVideoMuted = !shouldEnableCamera;
+    } catch (e) {
+      debugPrint('[LiveKitMeetingGateway] toggleVideo note: $e');
+      if (shouldEnableCamera) {
+        _isVideoMuted = true;
+      }
+      rethrow;
+    }
+    _currentSession = _currentSession.copyWith(
+      isVideoMuted: _isVideoMuted,
       participants: _collectParticipants(),
     );
     _emitSession();
@@ -610,23 +695,117 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
   }
 
   @override
-  Future<void> toggleVideo() async {
-    final participant = _room?.localParticipant;
-    if (participant == null) return;
-
-    final targetState = !_isVideoMuted;
+  Future<void> askParticipantToUnmute(String identity) async {
     try {
-      await participant.setCameraEnabled(targetState);
-      _isVideoMuted = !targetState;
+      final payload = utf8.encode(jsonEncode({
+        'action': 'ask_unmute',
+        'target_identity': identity,
+      }));
+      await _room?.localParticipant?.publishData(payload, reliable: true);
+      debugPrint('[LiveKitMeetingGateway] Ask to unmute sent to $identity');
     } catch (e) {
-      debugPrint('[LiveKitMeetingGateway] toggleVideo note: $e');
-      _isVideoMuted = true;
+      debugPrint('[LiveKitMeetingGateway] askParticipantToUnmute error: $e');
     }
-    _currentSession = _currentSession.copyWith(
-      isVideoMuted: _isVideoMuted,
-      participants: _collectParticipants(),
-    );
-    _emitSession();
+  }
+
+  @override
+  Future<void> muteParticipant(String identity) async {
+    try {
+      final payload = utf8.encode(jsonEncode({
+        'action': 'mute_participant',
+        'target_identity': identity,
+      }));
+      await _room?.localParticipant?.publishData(payload, reliable: true);
+      debugPrint('[LiveKitMeetingGateway] Force mute sent to $identity');
+    } catch (e) {
+      debugPrint('[LiveKitMeetingGateway] muteParticipant error: $e');
+    }
+  }
+
+  @override
+  Future<void> askParticipantToStartVideo(String identity) async {
+    try {
+      final payload = utf8.encode(jsonEncode({
+        'action': 'ask_video',
+        'target_identity': identity,
+      }));
+      await _room?.localParticipant?.publishData(payload, reliable: true);
+      debugPrint('[LiveKitMeetingGateway] Ask video sent to $identity');
+    } catch (e) {
+      debugPrint('[LiveKitMeetingGateway] askParticipantToStartVideo error: $e');
+    }
+  }
+
+  @override
+  Future<void> stopParticipantVideo(String identity) async {
+    try {
+      final payload = utf8.encode(jsonEncode({
+        'action': 'stop_video',
+        'target_identity': identity,
+      }));
+      await _room?.localParticipant?.publishData(payload, reliable: true);
+      debugPrint('[LiveKitMeetingGateway] Stop video sent to $identity');
+    } catch (e) {
+      debugPrint('[LiveKitMeetingGateway] stopParticipantVideo error: $e');
+    }
+  }
+
+  @override
+  Future<void> makeParticipantCoHost(String identity) async {
+    try {
+      final payload = utf8.encode(jsonEncode({
+        'action': 'make_cohost',
+        'target_identity': identity,
+      }));
+      await _room?.localParticipant?.publishData(payload, reliable: true);
+      debugPrint('[LiveKitMeetingGateway] Make co-host sent to $identity');
+    } catch (e) {
+      debugPrint('[LiveKitMeetingGateway] makeParticipantCoHost error: $e');
+    }
+  }
+
+  @override
+  Future<void> removeParticipant(String identity) async {
+    try {
+      final payload = utf8.encode(jsonEncode({
+        'action': 'remove_participant',
+        'target_identity': identity,
+      }));
+      await _room?.localParticipant?.publishData(payload, reliable: true);
+      debugPrint('[LiveKitMeetingGateway] Remove participant sent to $identity');
+    } catch (e) {
+      debugPrint('[LiveKitMeetingGateway] removeParticipant error: $e');
+    }
+  }
+
+  @override
+  Future<void> endMeetingForAll() async {
+    try {
+      final payload = utf8.encode(jsonEncode({
+        'action': 'end_meeting_for_all',
+      }));
+      await _room?.localParticipant?.publishData(payload, reliable: true);
+      debugPrint('[LiveKitMeetingGateway] End meeting for all broadcast sent');
+    } catch (e) {
+      debugPrint('[LiveKitMeetingGateway] endMeetingForAll error: $e');
+    }
+    await leaveMeeting();
+  }
+
+  @override
+  Future<void> lowerParticipantHand(String identity) async {
+    _handsRaised[identity] = false;
+    _syncStateFromRoom();
+    try {
+      final payload = utf8.encode(jsonEncode({
+        'action': 'lower_hand',
+        'target_identity': identity,
+      }));
+      await _room?.localParticipant?.publishData(payload, reliable: true);
+      debugPrint('[LiveKitMeetingGateway] Lower hand sent to $identity');
+    } catch (e) {
+      debugPrint('[LiveKitMeetingGateway] lowerParticipantHand error: $e');
+    }
   }
 
   @override
@@ -728,6 +907,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
     _room = null;
     _sessionController.close();
     _statusController.close();
+    _moderationPromptsController.close();
     _broadcastingController.close();
     super.dispose();
   }

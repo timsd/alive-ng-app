@@ -962,7 +962,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       // Automatically compress and resize to standard 512x512 avatar
       final compressedBytes = ImageCompressionUtils.compressAvatar(imageBytes);
 
-      // Show local bytes immediately while uploading
+      // Instantly propagate local bytes to state and global provider for immediate 0ms preview
+      ref.read(pendingAvatarBytesProvider.notifier).state = compressedBytes;
       setState(() {
         _pendingPictureBytes = compressedBytes;
         _isUploadingPicture = true;
@@ -974,7 +975,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         final fileName = 'profile_${userId}_$timestamp.jpg';
         const contentType = 'image/jpeg';
 
-        final previousUrl = _profilePictureUrl;
+        final previousUrl = ref.read(uploadedAvatarUrlProvider) ?? _profilePictureUrl;
         final publicUrl =
             await AppwriteStorageService.instance.uploadProfileFile(
           bytes: compressedBytes,
@@ -1003,6 +1004,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
         // Immediately propagate the new avatar URL to all screens (Home, Profile, etc.)
         ref.read(uploadedAvatarUrlProvider.notifier).state = publicUrl;
+        ref.read(pendingAvatarBytesProvider.notifier).state = null;
         RoleAccessService.instance.clearCache();
 
         if (!mounted) return;
@@ -1011,14 +1013,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           _pendingPictureBytes = null;
         });
 
-        try {
-          if (previousUrl != null && previousUrl.isNotEmpty) {
+        if (previousUrl != null && previousUrl.isNotEmpty && previousUrl != publicUrl) {
+          try {
             await CachedNetworkImageProvider(previousUrl).evict();
-          }
-          await CachedNetworkImageProvider(publicUrl).evict();
-          PaintingBinding.instance.imageCache.clear();
-          PaintingBinding.instance.imageCache.clearLiveImages();
-        } catch (_) {}
+          } catch (_) {}
+        }
 
         ref.invalidate(currentUserProfileProvider);
 

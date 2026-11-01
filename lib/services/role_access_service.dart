@@ -187,6 +187,23 @@ class RoleAccessService {
     return canAccessAdmin();
   }
 
+  /// Check if user can start/host an ALIVE Meet conference.
+  /// Only leaders (coordinator, chapter leader, director, bod, trustee, admin) can start a meeting.
+  bool canStartConferencing() {
+    if (canAccessAdmin()) return true;
+    final role = getCurrentUserRole();
+    if (role == null) return false;
+    const conferenceLeaderRoles = {
+      'coordinator',
+      'leader',
+      'director',
+      'bod',
+      'trustee',
+      'admin',
+    };
+    return conferenceLeaderRoles.contains(role);
+  }
+
   /// Check if user can access leadership features
   bool canAccessLeadership() {
     return hasRole('leader');

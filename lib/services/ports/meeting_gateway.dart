@@ -68,6 +68,33 @@ abstract class MeetingGateway {
   /// Participant action: Raises or lowers hand to request permission to speak.
   Future<void> raiseHand({bool raised = true});
 
+  /// Host command: Asks a specific participant to unmute their microphone.
+  Future<void> askParticipantToUnmute(String identity);
+
+  /// Host command: Force mutes a specific participant.
+  Future<void> muteParticipant(String identity);
+
+  /// Host command: Asks a specific participant to turn on their camera.
+  Future<void> askParticipantToStartVideo(String identity);
+
+  /// Host command: Stops a specific participant's video.
+  Future<void> stopParticipantVideo(String identity);
+
+  /// Host command: Designates a participant as a co-host.
+  Future<void> makeParticipantCoHost(String identity);
+
+  /// Host command: Removes a participant from the meeting room.
+  Future<void> removeParticipant(String identity);
+
+  /// Host command: Ends the meeting for all participants in the room.
+  Future<void> endMeetingForAll();
+
+  /// Host command: Lowers a participant's raised hand.
+  Future<void> lowerParticipantHand(String identity);
+
+  /// Stream of user-facing moderation prompts (e.g. host ask-to-unmute requests).
+  Stream<String> get moderationPromptsStream;
+
   /// Releases resources, disconnects from room, and closes streams.
   void dispose();
 

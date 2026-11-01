@@ -114,7 +114,7 @@ class _ChannelListWidgetState extends State<ChannelListWidget> {
                       ),
                     if (widget.onCollapse != null)
                       IconButton(
-                        icon: const Icon(Icons.view_sidebar_rounded, size: 20),
+                        icon: const Icon(Icons.menu_open_rounded, size: 20),
                         onPressed: widget.onCollapse,
                         tooltip: 'Collapse channels',
                         visualDensity: VisualDensity.compact,

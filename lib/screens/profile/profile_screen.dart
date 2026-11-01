@@ -718,12 +718,16 @@ class _ProfileHeaderCardState extends ConsumerState<_ProfileHeaderCard> {
       // Automatically compress and resize to standard 512x512 avatar
       final compressedBytes = ImageCompressionUtils.compressAvatar(imageBytes);
 
+      // Instantly propagate local bytes to state and global provider for immediate 0ms preview
+      ref.read(pendingAvatarBytesProvider.notifier).state = compressedBytes;
       setState(() {
         _pendingBytes = compressedBytes;
         _isUploading = true;
       });
 
-      final previousUrl = widget.profile.avatarUrl ?? widget.profile.photoUrl;
+      final previousUrl = ref.read(uploadedAvatarUrlProvider) ??
+          widget.profile.avatarUrl ??
+          widget.profile.photoUrl;
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final fileName = 'profile_${widget.profile.id}_$timestamp.jpg';
       const contentType = 'image/jpeg';
@@ -750,17 +754,17 @@ class _ProfileHeaderCardState extends ConsumerState<_ProfileHeaderCard> {
         await prefs.setString('cached_avatar_url_${widget.profile.id}', publicUrl);
       } catch (_) {}
 
+      // Update reactive URL override before clearing pending bytes to prevent placeholder flicker
       ref.read(uploadedAvatarUrlProvider.notifier).state = publicUrl;
+      ref.read(pendingAvatarBytesProvider.notifier).state = null;
       RoleAccessService.instance.clearCache();
 
-      try {
-        if (previousUrl != null && previousUrl.isNotEmpty) {
+      // Only evict previous image to free memory, keep the new one warm in cache
+      if (previousUrl != null && previousUrl.isNotEmpty && previousUrl != publicUrl) {
+        try {
           await CachedNetworkImageProvider(previousUrl).evict();
-        }
-        await CachedNetworkImageProvider(publicUrl).evict();
-        PaintingBinding.instance.imageCache.clear();
-        PaintingBinding.instance.imageCache.clearLiveImages();
-      } catch (_) {}
+        } catch (_) {}
+      }
 
       ref.invalidate(currentUserProfileProvider);
       if (mounted) {
