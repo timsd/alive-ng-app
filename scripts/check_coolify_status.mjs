@@ -20,7 +20,28 @@ const depRes = await fetch(`${base}/api/v1/deployments`, { headers });
 console.log('Deployments list status:', depRes.status);
 if (depRes.ok) {
   const deps = await depRes.json();
-  console.log(JSON.stringify(deps.slice(0, 5), null, 2));
+  const latest = deps?.[0];
+  if (latest) {
+    console.log('Latest deployment:', {
+      id: latest.id,
+      commit: latest.commit?.slice(0, 8),
+      status: latest.status,
+      finished_at: latest.finished_at,
+      created_at: latest.created_at,
+      updated_at: latest.updated_at
+    });
+    if (latest.logs) {
+      try {
+        const logs = JSON.parse(latest.logs);
+        console.log('--- Last 10 log entries ---');
+        logs.slice(-10).forEach(l => console.log(l.output));
+      } catch(e) {
+        console.log('Logs slice:', latest.logs.slice(-300));
+      }
+    }
+  } else {
+    console.log('No deployments found in active queue.');
+  }
 } else {
   console.log(await depRes.text());
 }

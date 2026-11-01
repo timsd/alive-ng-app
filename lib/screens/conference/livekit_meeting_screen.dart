@@ -52,7 +52,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     if (widget.meetingType != null) {
       return widget.meetingType!.displayName;
     }
-    return 'ALIVE Community Fellowship';
+    return 'ALIVE Meeting';
   }
 
   String _getRoomSlug() {
@@ -60,7 +60,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       return AliveMeetConfig.roomFor(widget.meetingType!);
     }
     final text = _roomController.text.trim();
-    if (text.isEmpty) return 'alive-meet-community';
+    if (text.isEmpty) return 'alive-meet';
     return text.replaceAll(' ', '-').toLowerCase();
   }
 
