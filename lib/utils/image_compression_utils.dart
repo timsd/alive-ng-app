@@ -106,3 +106,4 @@ class ImageCompressionUtils {
         lower.endsWith('.gif');
   }
 }
+

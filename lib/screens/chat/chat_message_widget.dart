@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
+import 'package:intl/intl.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:url_launcher/url_launcher.dart';
 
@@ -95,6 +96,9 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
 
                           // Message footer
                           _buildMessageFooter(theme),
+
+                          // WhatsApp-style timestamp & edited indicator
+                          _buildTimestampAndEdited(theme),
                         ],
                       ),
                     ),
@@ -164,18 +168,58 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
             ),
           ),
 
-          // Edited indicator
+          // Edited indicator in header
           if (widget.message.isEdited)
             Padding(
               padding: EdgeInsets.only(left: ResponsiveUtils.getResponsiveValue(context: context, mobile: 4.0, tablet: 5.0, desktop: 6.0)),
               child: Text(
-                '(edited)',
+                '• Edited',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                   fontStyle: FontStyle.italic,
+                  fontSize: 11,
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimestampAndEdited(ThemeData theme) {
+    final timeStr = DateFormat.jm().format(widget.message.timestamp.toLocal());
+    final isDark = theme.brightness == Brightness.dark;
+    final metaColor = isDark
+        ? Colors.white.withValues(alpha: 0.55)
+        : const Color(0xFF6B7280);
+
+    return Container(
+      margin: const EdgeInsets.only(top: 4.0),
+      alignment: Alignment.centerRight,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          if (widget.message.isEdited) ...[
+            Text(
+              'Edited',
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w400,
+                fontStyle: FontStyle.italic,
+                color: metaColor,
+              ),
+            ),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            timeStr,
+            style: TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w400,
+              color: metaColor,
+            ),
+          ),
         ],
       ),
     );

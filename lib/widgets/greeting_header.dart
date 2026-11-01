@@ -181,72 +181,12 @@ class GreetingHeader extends ConsumerWidget {
                 ),
                 if (currentUser != null) ...[
                   const SizedBox(width: 16),
-                  // User avatar + chevron arrow without pill container background
-                  InkWell(
+                  _GreetingProfilePill(
+                    avatarUrl: avatarUrl,
+                    initialLetter: initialLetter,
+                    isDark: isDark,
+                    secondaryText: secondaryText,
                     onTap: () => context.push(AppConstants.profileRoute),
-                    borderRadius: BorderRadius.circular(32),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                      padding: const EdgeInsets.all(2.5),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: const Color(0xFFD49B28),
-                          width: 2,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(
-                                alpha: isDark ? 0.35 : 0.08),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: CircleAvatar(
-                        radius: 28,
-                        backgroundColor: const Color(0xFFD49B28),
-                        child: avatarUrl != null
-                            ? ClipOval(
-                                child: CustomImage(
-                                  key: ValueKey(avatarUrl),
-                                  imageUrl: avatarUrl,
-                                  width: 56,
-                                  height: 56,
-                                  fit: BoxFit.cover,
-                                  backgroundColor: const Color(0xFFD49B28),
-                                  placeholder: Center(
-                                    child: Text(
-                                      initialLetter,
-                                      style: const TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              )
-                            : Text(
-                                initialLetter,
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                      ),
-                        ),
-                        const SizedBox(width: 3),
-                        Icon(
-                          Icons.chevron_right_rounded,
-                          size: 22,
-                          color: secondaryText,
-                        ),
-                      ],
-                    ),
                   ),
                 ],
               ],
@@ -326,5 +266,207 @@ class GreetingHeader extends ConsumerWidget {
     } else {
       return Icons.nights_stay_outlined;
     }
+  }
+}
+
+class _GreetingProfilePill extends StatefulWidget {
+  final String? avatarUrl;
+  final String initialLetter;
+  final bool isDark;
+  final Color secondaryText;
+  final VoidCallback onTap;
+
+  const _GreetingProfilePill({
+    required this.avatarUrl,
+    required this.initialLetter,
+    required this.isDark,
+    required this.secondaryText,
+    required this.onTap,
+  });
+
+  @override
+  State<_GreetingProfilePill> createState() => _GreetingProfilePillState();
+}
+
+class _GreetingProfilePillState extends State<_GreetingProfilePill> {
+  bool _isHovered = false;
+  bool _isPressed = false;
+
+  bool get _isActive => _isHovered || _isPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    const goldColor = Color(0xFFD49B28);
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => _isPressed = true),
+        onTapUp: (_) => setState(() => _isPressed = false),
+        onTapCancel: () => setState(() => _isPressed = false),
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.only(
+            left: 3.0,
+            top: 3.0,
+            bottom: 3.0,
+            right: 10.0,
+          ),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(36),
+            color: _isActive
+                ? (widget.isDark
+                    ? const Color(0xFF1B2432)
+                    : const Color(0xFFF3EBE0))
+                : Colors.transparent,
+            border: Border.all(
+              color: _isActive
+                  ? goldColor.withValues(alpha: 0.9)
+                  : Colors.transparent,
+              width: 1.5,
+            ),
+            boxShadow: _isActive
+                ? [
+                    BoxShadow(
+                      color: goldColor.withValues(
+                          alpha: widget.isDark ? 0.28 : 0.18),
+                      blurRadius: 10,
+                      spreadRadius: 0.5,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : const [],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Avatar with gold border
+              Container(
+                padding: const EdgeInsets.all(2.5),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: goldColor,
+                    width: 2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(
+                          alpha: widget.isDark ? 0.35 : 0.08),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: CircleAvatar(
+                  radius: 28,
+                  backgroundColor: goldColor,
+                  child: widget.avatarUrl != null
+                      ? ClipOval(
+                          child: CustomImage(
+                            key: ValueKey(widget.avatarUrl),
+                            imageUrl: widget.avatarUrl!,
+                            width: 56,
+                            height: 56,
+                            fit: BoxFit.cover,
+                            backgroundColor: goldColor,
+                            placeholder: Center(
+                              child: Text(
+                                widget.initialLetter,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        )
+                      : Text(
+                          widget.initialLetter,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(width: 4), // 4px spacing from reference measurement
+              // Curved Chevron & Cutout Arc
+              CustomPaint(
+                size: const Size(18, 30),
+                painter: _CurvedChevronPainter(
+                  color: _isActive
+                      ? goldColor
+                      : widget.secondaryText.withValues(alpha: 0.8),
+                  arcColor: _isActive
+                      ? goldColor.withValues(alpha: 0.65)
+                      : widget.secondaryText.withValues(alpha: 0.35),
+                  strokeWidth: _isActive ? 2.6 : 2.2,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CurvedChevronPainter extends CustomPainter {
+  final Color color;
+  final Color arcColor;
+  final double strokeWidth;
+
+  _CurvedChevronPainter({
+    required this.color,
+    required this.arcColor,
+    required this.strokeWidth,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // 1. Crescent accent arc concentric to the avatar's circular perimeter
+    final arcPaint = Paint()
+      ..color = arcColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.6
+      ..strokeCap = StrokeCap.round;
+
+    final arcPath = Path();
+    arcPath.moveTo(1.5, 3.5);
+    arcPath.quadraticBezierTo(5.8, size.height / 2, 1.5, size.height - 3.5);
+    canvas.drawPath(arcPath, arcPaint);
+
+    // 2. Curved chevron arrow pointing right with curved wings following the circular contour
+    final chevronPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final chevronPath = Path();
+    final startX = 7.0;
+    final apexX = size.width - 2.0;
+    final midY = size.height / 2;
+
+    chevronPath.moveTo(startX, 4.5);
+    chevronPath.quadraticBezierTo(startX + 2.8, midY * 0.62, apexX, midY);
+    chevronPath.quadraticBezierTo(
+        startX + 2.8, midY * 1.38, startX, size.height - 4.5);
+    canvas.drawPath(chevronPath, chevronPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _CurvedChevronPainter oldDelegate) {
+    return oldDelegate.color != color ||
+        oldDelegate.arcColor != arcColor ||
+        oldDelegate.strokeWidth != strokeWidth;
   }
 }
