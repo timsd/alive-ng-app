@@ -311,13 +311,13 @@ class _GreetingProfilePillState extends State<_GreetingProfilePill> {
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeOutCubic,
           padding: const EdgeInsets.only(
-            left: 3.0,
-            top: 3.0,
-            bottom: 3.0,
-            right: 10.0,
+            left: 4.0,
+            top: 4.0,
+            bottom: 4.0,
+            right: 12.0,
           ),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(36),
+            borderRadius: BorderRadius.circular(40),
             color: _isActive
                 ? (widget.isDark
                     ? const Color(0xFF1B2432)
@@ -399,14 +399,14 @@ class _GreetingProfilePillState extends State<_GreetingProfilePill> {
               const SizedBox(width: 4), // 4px spacing from reference measurement
               // Curved Chevron & Cutout Arc
               CustomPaint(
-                size: const Size(18, 30),
+                size: const Size(22, 38),
                 painter: _CurvedChevronPainter(
                   color: _isActive
                       ? goldColor
                       : widget.secondaryText.withValues(alpha: 0.8),
                   arcColor: _isActive
-                      ? goldColor.withValues(alpha: 0.65)
-                      : widget.secondaryText.withValues(alpha: 0.35),
+                      ? goldColor.withValues(alpha: 0.7)
+                      : widget.secondaryText.withValues(alpha: 0.4),
                   strokeWidth: _isActive ? 2.6 : 2.2,
                 ),
               ),
@@ -431,16 +431,18 @@ class _CurvedChevronPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    final midY = size.height / 2;
+
     // 1. Crescent accent arc concentric to the avatar's circular perimeter
     final arcPaint = Paint()
       ..color = arcColor
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.6
+      ..strokeWidth = 1.8
       ..strokeCap = StrokeCap.round;
 
     final arcPath = Path();
-    arcPath.moveTo(1.5, 3.5);
-    arcPath.quadraticBezierTo(5.8, size.height / 2, 1.5, size.height - 3.5);
+    arcPath.moveTo(2.0, 4.0);
+    arcPath.quadraticBezierTo(6.5, midY, 2.0, size.height - 4.0);
     canvas.drawPath(arcPath, arcPaint);
 
     // 2. Curved chevron arrow pointing right with curved wings following the circular contour
@@ -452,14 +454,13 @@ class _CurvedChevronPainter extends CustomPainter {
       ..strokeJoin = StrokeJoin.round;
 
     final chevronPath = Path();
-    final startX = 7.0;
-    final apexX = size.width - 2.0;
-    final midY = size.height / 2;
+    final startX = 8.5;
+    final apexX = size.width - 2.5;
 
-    chevronPath.moveTo(startX, 4.5);
-    chevronPath.quadraticBezierTo(startX + 2.8, midY * 0.62, apexX, midY);
+    chevronPath.moveTo(startX, 6.0);
+    chevronPath.quadraticBezierTo(startX + 3.2, midY * 0.65, apexX, midY);
     chevronPath.quadraticBezierTo(
-        startX + 2.8, midY * 1.38, startX, size.height - 4.5);
+        startX + 3.2, midY * 1.35, startX, size.height - 6.0);
     canvas.drawPath(chevronPath, chevronPaint);
   }
 

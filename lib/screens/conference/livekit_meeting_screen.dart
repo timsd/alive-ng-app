@@ -7,6 +7,7 @@ import '../../config/meeting_links_config.dart';
 import '../../models/meeting_models.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/meeting_provider.dart';
+import '../../services/platform/media_permission_adapter.dart';
 import '../../services/ports/meeting_gateway.dart';
 import '../../services/role_access_service.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -40,6 +41,10 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   void initState() {
     super.initState();
     _roomController = TextEditingController(text: _initialRoomName());
+    // Auto-prompt media permissions upfront (Google Meet flow)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      MediaPermissionService.requestMediaPermissions();
+    });
   }
 
   String _initialRoomName() {
@@ -67,29 +72,8 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       return;
     }
 
-    // Google Meet flow: Request microphone & camera upfront so browser/OS prompt triggers automatically
-    if (!kIsWeb) {
-      try {
-        final micStatus = await Permission.microphone.status;
-        final camStatus = await Permission.camera.status;
-
-        if (!micStatus.isGranted || !camStatus.isGranted) {
-          final statuses = await [
-            Permission.microphone,
-            Permission.camera,
-          ].request();
-          debugPrint('Media permissions requested directly: $statuses');
-
-          // Defensively allow meeting entry in listen-only mode if permissions are denied (Google Meet behavior)
-          if (statuses[Permission.microphone]?.isPermanentlyDenied == true ||
-              statuses[Permission.camera]?.isPermanentlyDenied == true) {
-            _showMessage('Microphone or camera is restricted in settings. Joining in listen-only mode.');
-          }
-        }
-      } catch (permErr) {
-        debugPrint('Media permission request note: $permErr');
-      }
-    }
+    // Google Meet flow: Auto-prompt microphone & camera upfront
+    await MediaPermissionService.requestMediaPermissions();
 
     setState(() => _isJoining = true);
     try {
@@ -286,23 +270,38 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                 ),
               ),
             ],
-            // Error banner
-            if (session.error != null) ...[
+            // Notice / Error banner
+            if (session.error != null && !connected) ...[
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .errorContainer
-                      .withValues(alpha: 0.3),
+                  color: session.error!.toLowerCase().contains('listen-only') ||
+                          session.error!.toLowerCase().contains('device not detected')
+                      ? Colors.amber.withValues(alpha: 0.15)
+                      : Theme.of(context)
+                          .colorScheme
+                          .errorContainer
+                          .withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: session.error!.toLowerCase().contains('listen-only') ||
+                            session.error!.toLowerCase().contains('device not detected')
+                        ? Colors.amber.shade700.withValues(alpha: 0.4)
+                        : Theme.of(context).colorScheme.error.withValues(alpha: 0.4),
+                  ),
                 ),
                 child: Row(
                   children: [
                     Icon(
-                      Icons.error_outline,
-                      color: Theme.of(context).colorScheme.error,
+                      session.error!.toLowerCase().contains('listen-only') ||
+                              session.error!.toLowerCase().contains('device not detected')
+                          ? Icons.info_outline_rounded
+                          : Icons.error_outline,
+                      color: session.error!.toLowerCase().contains('listen-only') ||
+                              session.error!.toLowerCase().contains('device not detected')
+                          ? Colors.amber.shade800
+                          : Theme.of(context).colorScheme.error,
                       size: 20,
                     ),
                     const SizedBox(width: 12),
@@ -311,7 +310,12 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                         session.error!,
                         style:
                             Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: Theme.of(context).colorScheme.error,
+                                  color: session.error!.toLowerCase().contains('listen-only') ||
+                                          session.error!.toLowerCase().contains('device not detected')
+                                      ? (Theme.of(context).brightness == Brightness.dark
+                                          ? Colors.amber.shade200
+                                          : Colors.amber.shade900)
+                                      : Theme.of(context).colorScheme.error,
                                 ),
                       ),
                     ),
