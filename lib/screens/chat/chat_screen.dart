@@ -15,6 +15,7 @@ import '../../services/tag_parser.dart';
 import '../conference/livekit_meeting_screen.dart';
 import '../../config/appwrite_backend_config.dart';
 import '../../services/channel_membership_sync_service.dart';
+import '../../utils/text_formatter.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final String? channelId;
@@ -1102,6 +1103,9 @@ class _CreateChannelDialogState extends State<_CreateChannelDialog> {
             const SizedBox(height: 16),
             DropdownButtonFormField<ChannelType>(
               initialValue: _selectedType,
+              borderRadius: BorderRadius.circular(12),
+              dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+              icon: const Icon(Icons.arrow_drop_down_rounded),
               decoration: const InputDecoration(
                 labelText: 'Channel Type',
                 border: OutlineInputBorder(),
@@ -1109,7 +1113,7 @@ class _CreateChannelDialogState extends State<_CreateChannelDialog> {
               items: ChannelType.values.map((type) {
                 return DropdownMenuItem(
                   value: type,
-                  child: Text(type.name.toUpperCase()),
+                  child: Text(TextFormatter.formatText(type.name)),
                 );
               }).toList(),
               onChanged: (value) {

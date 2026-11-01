@@ -8,6 +8,7 @@ import '../../services/auth_service.dart';
 import '../../widgets/role_guard.dart';
 import '../../widgets/custom_image.dart';
 import '../../constants/chapters.dart';
+import '../../utils/text_formatter.dart';
 import 'package:intl/intl.dart';
 
 class RoleManagementScreen extends StatefulWidget {
@@ -204,6 +205,9 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         initialValue: _selectedRole,
+                        borderRadius: BorderRadius.circular(12),
+                        dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        icon: const Icon(Icons.arrow_drop_down_rounded),
                         decoration: const InputDecoration(
                           labelText: 'Filter by Role',
                           border: OutlineInputBorder(),
@@ -220,7 +224,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
                           ...ChapterConstants.userRoles.map(
                             (role) => DropdownMenuItem(
                               value: role,
-                              child: Text(role.toUpperCase()),
+                              child: Text(TextFormatter.formatRole(role)),
                             ),
                           ),
                         ],
@@ -671,6 +675,9 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
               initialValue: user.role,
+              borderRadius: BorderRadius.circular(12),
+              dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+              icon: const Icon(Icons.arrow_drop_down_rounded),
               decoration: const InputDecoration(
                 labelText: 'New Role',
                 border: OutlineInputBorder(),
@@ -680,7 +687,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
                   .map(
                     (role) => DropdownMenuItem(
                       value: role,
-                      child: Text(role.toUpperCase()),
+                      child: Text(TextFormatter.formatRole(role)),
                     ),
                   )
                   .toList(),

@@ -5,6 +5,7 @@ import '../../constants/chapters.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/loading_widget.dart';
 import '../../utils/toast_utils.dart';
+import '../../utils/text_formatter.dart';
 import 'chapter_reports_screen.dart';
 
 class AdminChaptersScreen extends StatefulWidget {
@@ -409,6 +410,9 @@ class _AdminChaptersScreenState extends State<AdminChaptersScreen> {
                 const SizedBox(height: 12),
                 DropdownButtonFormField<WorkersType>(
                   initialValue: selectedType,
+                  borderRadius: BorderRadius.circular(12),
+                  dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  icon: const Icon(Icons.arrow_drop_down_rounded),
                   decoration: const InputDecoration(
                     labelText: 'Chapter Type',
                     border: OutlineInputBorder(),
@@ -416,7 +420,7 @@ class _AdminChaptersScreenState extends State<AdminChaptersScreen> {
                   items: WorkersType.values.map((type) {
                     return DropdownMenuItem(
                       value: type,
-                      child: Text(type.name.toUpperCase()),
+                      child: Text(TextFormatter.formatText(type.name)),
                     );
                   }).toList(),
                   onChanged: (val) {

@@ -1562,10 +1562,13 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   initialValue: status,
+                  borderRadius: BorderRadius.circular(12),
+                  dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  icon: const Icon(Icons.arrow_drop_down_rounded),
                   decoration: const InputDecoration(labelText: 'Status'),
                   items: ['active', 'planning', 'completed']
                       .map((s) => DropdownMenuItem(
-                          value: s, child: Text(s.toUpperCase())))
+                          value: s, child: Text(TextFormatter.formatText(s))))
                       .toList(),
                   onChanged: (val) {
                     if (val != null) {

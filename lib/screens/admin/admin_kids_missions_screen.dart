@@ -6,6 +6,7 @@ import '../../services/pdf_extractor_service.dart';
 import '../../services/appwrite_storage_service.dart';
 import '../../services/kids_content_service.dart';
 import '../../models/kids_missions.dart';
+import '../../utils/text_formatter.dart';
 
 class AdminKidsMissionsScreen extends StatefulWidget {
   const AdminKidsMissionsScreen({super.key});
@@ -297,12 +298,15 @@ class _AdminKidsMissionsScreenState extends State<AdminKidsMissionsScreen> {
                         Expanded(
                           child: DropdownButtonFormField<MissionCategory>(
                             initialValue: _selectedCategory,
+                            borderRadius: BorderRadius.circular(12),
+                            dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                            icon: const Icon(Icons.arrow_drop_down_rounded),
                             decoration: const InputDecoration(
                                 labelText: 'Category',
                                 border: OutlineInputBorder()),
                             items: MissionCategory.values.map((c) {
                               return DropdownMenuItem(
-                                  value: c, child: Text(c.name.toUpperCase()));
+                                  value: c, child: Text(TextFormatter.formatText(c.name)));
                             }).toList(),
                             onChanged: (v) =>
                                 setState(() => _selectedCategory = v!),
@@ -312,12 +316,15 @@ class _AdminKidsMissionsScreenState extends State<AdminKidsMissionsScreen> {
                         Expanded(
                           child: DropdownButtonFormField<MissionDifficulty>(
                             initialValue: _selectedDifficulty,
+                            borderRadius: BorderRadius.circular(12),
+                            dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                            icon: const Icon(Icons.arrow_drop_down_rounded),
                             decoration: const InputDecoration(
                                 labelText: 'Difficulty',
                                 border: OutlineInputBorder()),
                             items: MissionDifficulty.values.map((a) {
                               return DropdownMenuItem(
-                                  value: a, child: Text(a.name.toUpperCase()));
+                                  value: a, child: Text(TextFormatter.formatText(a.name)));
                             }).toList(),
                             onChanged: (v) =>
                                 setState(() => _selectedDifficulty = v!),
@@ -363,12 +370,15 @@ class _AdminKidsMissionsScreenState extends State<AdminKidsMissionsScreen> {
                         Expanded(
                           child: DropdownButtonFormField<VerificationMethod>(
                             initialValue: _selectedVerification,
+                            borderRadius: BorderRadius.circular(12),
+                            dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                            icon: const Icon(Icons.arrow_drop_down_rounded),
                             decoration: const InputDecoration(
                                 labelText: 'Verification',
                                 border: OutlineInputBorder()),
                             items: VerificationMethod.values.map((v) {
                               return DropdownMenuItem(
-                                  value: v, child: Text(v.name.toUpperCase()));
+                                  value: v, child: Text(TextFormatter.formatText(v.name)));
                             }).toList(),
                             onChanged: (v) =>
                                 setState(() => _selectedVerification = v!),

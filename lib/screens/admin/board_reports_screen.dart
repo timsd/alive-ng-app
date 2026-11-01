@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../../models/board_models.dart';
 import '../../services/appwrite_board_service.dart';
 import '../../services/auth_service.dart';
+import '../../utils/text_formatter.dart';
 import '../../widgets/custom_app_bar.dart';
 
 class BoardReportsScreen extends StatefulWidget {
@@ -116,6 +117,9 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
                 Expanded(
                   child: DropdownButtonFormField<String>(
                     initialValue: _selectedCategory,
+                    borderRadius: BorderRadius.circular(12),
+                    dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    icon: const Icon(Icons.arrow_drop_down_rounded),
                     decoration: const InputDecoration(
                       labelText: 'Category',
                       border: OutlineInputBorder(),
@@ -124,7 +128,7 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
                     items: _categories
                         .map((c) => DropdownMenuItem(
                               value: c,
-                              child: Text(c.toUpperCase()),
+                              child: Text(c == 'all' ? 'All Categories' : TextFormatter.formatText(c)),
                             ))
                         .toList(),
                     onChanged: (val) =>
@@ -135,6 +139,9 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
                 Expanded(
                   child: DropdownButtonFormField<String>(
                     initialValue: _selectedStatus,
+                    borderRadius: BorderRadius.circular(12),
+                    dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    icon: const Icon(Icons.arrow_drop_down_rounded),
                     decoration: const InputDecoration(
                       labelText: 'Status',
                       border: OutlineInputBorder(),
@@ -143,7 +150,7 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
                     items: _statuses
                         .map((s) => DropdownMenuItem(
                               value: s,
-                              child: Text(s.toUpperCase()),
+                              child: Text(s == 'all' ? 'All Statuses' : TextFormatter.formatText(s)),
                             ))
                         .toList(),
                     onChanged: (val) => setState(() => _selectedStatus = val!),
@@ -417,14 +424,16 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
                     initialValue: selectedCat,
-                    dropdownColor: theme.cardColor,
+                    borderRadius: BorderRadius.circular(12),
+                    dropdownColor: theme.colorScheme.surfaceContainerHighest,
+                    icon: const Icon(Icons.arrow_drop_down_rounded),
                     style: TextStyle(color: theme.colorScheme.onSurface),
                     decoration: const InputDecoration(labelText: 'Category'),
                     items: _categories
                         .skip(1)
                         .map((c) => DropdownMenuItem(
                               value: c,
-                              child: Text(c.toUpperCase()),
+                              child: Text(TextFormatter.formatText(c)),
                             ))
                         .toList(),
                     onChanged: (val) =>

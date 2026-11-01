@@ -309,6 +309,9 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
                         Expanded(
                           child: DropdownButtonFormField<StoryCategory>(
                             initialValue: _selectedCategory,
+                            borderRadius: BorderRadius.circular(12),
+                            dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                            icon: const Icon(Icons.arrow_drop_down_rounded),
                             decoration: const InputDecoration(
                                 labelText: 'Category',
                                 border: OutlineInputBorder()),
@@ -324,6 +327,9 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
                         Expanded(
                           child: DropdownButtonFormField<AgeGroup>(
                             initialValue: _selectedAgeGroup,
+                            borderRadius: BorderRadius.circular(12),
+                            dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                            icon: const Icon(Icons.arrow_drop_down_rounded),
                             decoration: const InputDecoration(
                                 labelText: 'Age Group',
                                 border: OutlineInputBorder()),

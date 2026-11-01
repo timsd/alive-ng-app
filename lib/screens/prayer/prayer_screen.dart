@@ -995,7 +995,7 @@ class _PrayerRequestCardState extends State<PrayerRequestCard> {
                   tooltip: 'Share prayer',
                   onPressed: () {
                     final text =
-                        '🙏 ${request.title}\n\n${request.description}\n\n— Shared from ALIVE Nigeria Prayer';
+                        '🙏 *${request.title}*\n\n${request.description}\n\n— Shared from ALIVE Nigeria Prayer';
                     SharePlus.instance.share(ShareParams(text: text));
                   },
                   icon: Icon(Icons.share,

@@ -5,6 +5,7 @@ import '../../services/pdf_extractor_service.dart';
 import '../../services/appwrite_storage_service.dart';
 import '../../services/appwrite_study_service.dart';
 import '../../models/study_guide_models.dart';
+import '../../utils/text_formatter.dart';
 
 class AdminStudyGuidesScreen extends StatefulWidget {
   const AdminStudyGuidesScreen({super.key});
@@ -300,12 +301,15 @@ class _AdminStudyGuidesScreenState extends State<AdminStudyGuidesScreen> {
                         Expanded(
                           child: DropdownButtonFormField<StudyGuideType>(
                             initialValue: _selectedType,
+                            borderRadius: BorderRadius.circular(12),
+                            dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                            icon: const Icon(Icons.arrow_drop_down_rounded),
                             decoration: const InputDecoration(
                                 labelText: 'Type',
                                 border: OutlineInputBorder()),
                             items: StudyGuideType.values.map((c) {
                               return DropdownMenuItem(
-                                  value: c, child: Text(c.name.toUpperCase()));
+                                  value: c, child: Text(TextFormatter.formatText(c.name)));
                             }).toList(),
                             onChanged: (v) =>
                                 setState(() => _selectedType = v!),
@@ -315,12 +319,15 @@ class _AdminStudyGuidesScreenState extends State<AdminStudyGuidesScreen> {
                         Expanded(
                           child: DropdownButtonFormField<StudyDifficulty>(
                             initialValue: _selectedDifficulty,
+                            borderRadius: BorderRadius.circular(12),
+                            dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                            icon: const Icon(Icons.arrow_drop_down_rounded),
                             decoration: const InputDecoration(
                                 labelText: 'Difficulty',
                                 border: OutlineInputBorder()),
                             items: StudyDifficulty.values.map((a) {
                               return DropdownMenuItem(
-                                  value: a, child: Text(a.name.toUpperCase()));
+                                  value: a, child: Text(TextFormatter.formatText(a.name)));
                             }).toList(),
                             onChanged: (v) =>
                                 setState(() => _selectedDifficulty = v!),

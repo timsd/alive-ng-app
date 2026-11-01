@@ -7,6 +7,7 @@ import '../../services/auth_service.dart';
 import '../../services/role_access_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/responsive_utils.dart';
+import '../../utils/text_formatter.dart';
 import '../../widgets/custom_app_bar.dart';
 
 class DiscipleshipScreen extends StatefulWidget {
@@ -1566,11 +1567,14 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                 const SizedBox(height: 16),
                 DropdownButtonFormField<PrayerRequestStatus>(
                   initialValue: status,
+                  borderRadius: BorderRadius.circular(12),
+                  dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  icon: const Icon(Icons.arrow_drop_down_rounded),
                   decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),
                   items: PrayerRequestStatus.values
                       .map((s) => DropdownMenuItem(
                             value: s,
-                            child: Text(s.name.toUpperCase()),
+                            child: Text(TextFormatter.formatText(s.name)),
                           ))
                       .toList(),
                   onChanged: (val) {
@@ -1833,9 +1837,12 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
               children: [
                 DropdownButtonFormField<ReportFrequency>(
                   initialValue: frequency,
+                  borderRadius: BorderRadius.circular(12),
+                  dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  icon: const Icon(Icons.arrow_drop_down_rounded),
                   decoration: const InputDecoration(labelText: 'Report Frequency', border: OutlineInputBorder()),
                   items: ReportFrequency.values
-                      .map((f) => DropdownMenuItem(value: f, child: Text(f.name.toUpperCase())))
+                      .map((f) => DropdownMenuItem(value: f, child: Text(TextFormatter.formatText(f.name))))
                       .toList(),
                   onChanged: (val) {
                     if (val != null) setDialogState(() => frequency = val);
@@ -2179,8 +2186,12 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
               TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Title')),
               TextField(controller: descriptionController, decoration: const InputDecoration(labelText: 'Notes')),
               DropdownButton<ContactMethod>(
-                value: method, isExpanded: true,
-                items: ContactMethod.values.map((m) => DropdownMenuItem(value: m, child: Text(m.name))).toList(),
+                value: method,
+                isExpanded: true,
+                borderRadius: BorderRadius.circular(12),
+                dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                icon: const Icon(Icons.arrow_drop_down_rounded),
+                items: ContactMethod.values.map((m) => DropdownMenuItem(value: m, child: Text(TextFormatter.formatText(m.name)))).toList(),
                 onChanged: (value) { if (value != null) setDialogState(() => method = value); },
               ),
             ],
@@ -2227,8 +2238,12 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
               TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Title')),
               TextField(controller: topicController, decoration: const InputDecoration(labelText: 'Topic')),
               DropdownButton<StudyType>(
-                value: type, isExpanded: true,
-                items: StudyType.values.map((t) => DropdownMenuItem(value: t, child: Text(t.name))).toList(),
+                value: type,
+                isExpanded: true,
+                borderRadius: BorderRadius.circular(12),
+                dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                icon: const Icon(Icons.arrow_drop_down_rounded),
+                items: StudyType.values.map((t) => DropdownMenuItem(value: t, child: Text(TextFormatter.formatText(t.name)))).toList(),
                 onChanged: (value) { if (value != null) setDialogState(() => type = value); },
               ),
             ],

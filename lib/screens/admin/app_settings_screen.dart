@@ -651,11 +651,14 @@ class _AddSettingDialogState extends State<_AddSettingDialog> {
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 initialValue: _category,
+                borderRadius: BorderRadius.circular(12),
+                dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                icon: const Icon(Icons.arrow_drop_down_rounded),
                 decoration: const InputDecoration(labelText: 'Category'),
                 items: _categories.map((cat) {
                   return DropdownMenuItem(
                     value: cat,
-                    child: Text(TextFormatter.formatCategory(cat).toUpperCase()),
+                    child: Text(TextFormatter.formatCategory(cat)),
                   );
                 }).toList(),
                 onChanged: (value) => setState(() => _category = value!),
@@ -663,11 +666,14 @@ class _AddSettingDialogState extends State<_AddSettingDialog> {
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 initialValue: _dataType,
+                borderRadius: BorderRadius.circular(12),
+                dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                icon: const Icon(Icons.arrow_drop_down_rounded),
                 decoration: const InputDecoration(labelText: 'Data Type'),
                 items: _dataTypes.map((type) {
                   return DropdownMenuItem(
                     value: type,
-                    child: Text(type.toUpperCase()),
+                    child: Text(TextFormatter.formatText(type)),
                   );
                 }).toList(),
                 onChanged: (value) => setState(() => _dataType = value!),
@@ -777,11 +783,14 @@ class _EditSettingDialogState extends State<_EditSettingDialog> {
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 initialValue: _category,
+                borderRadius: BorderRadius.circular(12),
+                dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                icon: const Icon(Icons.arrow_drop_down_rounded),
                 decoration: const InputDecoration(labelText: 'Category'),
                 items: _categories.map((cat) {
                   return DropdownMenuItem(
                     value: cat,
-                    child: Text(cat.toUpperCase()),
+                    child: Text(TextFormatter.formatCategory(cat)),
                   );
                 }).toList(),
                 onChanged: (value) => setState(() => _category = value!),

@@ -4,6 +4,7 @@ import '../../services/study_guide_service.dart';
 import '../../services/auth_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/responsive_utils.dart';
+import '../../utils/text_formatter.dart';
 import '../../widgets/custom_app_bar.dart';
 
 class StudyGuideScreen extends StatefulWidget {
@@ -349,15 +350,23 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
                 child: DropdownButtonFormField<StudyGuideType>(
                   isExpanded: true,
                   initialValue: _selectedType,
-                  decoration: const InputDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  icon: const Icon(Icons.arrow_drop_down_rounded),
+                  decoration: InputDecoration(
                     labelText: 'Type',
-                    border: OutlineInputBorder(),
+                    filled: true,
+                    fillColor: Theme.of(context).colorScheme.surface,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   items: [null, ...StudyGuideType.values].map((type) {
+                    final label = type == null ? 'All Types' : TextFormatter.formatText(type.name);
                     return DropdownMenuItem(
                       value: type,
-                      child: Text(type?.name.toUpperCase() ?? 'All Types',
-                          overflow: TextOverflow.ellipsis),
+                      child: Text(label, overflow: TextOverflow.ellipsis),
                     );
                   }).toList(),
                   onChanged: (value) {
@@ -371,15 +380,23 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
                 child: DropdownButtonFormField<StudyDifficulty>(
                   isExpanded: true,
                   initialValue: _selectedDifficulty,
-                  decoration: const InputDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  icon: const Icon(Icons.arrow_drop_down_rounded),
+                  decoration: InputDecoration(
                     labelText: 'Difficulty',
-                    border: OutlineInputBorder(),
+                    filled: true,
+                    fillColor: Theme.of(context).colorScheme.surface,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   items: [null, ...StudyDifficulty.values].map((difficulty) {
+                    final label = difficulty == null ? 'All Levels' : TextFormatter.formatText(difficulty.name);
                     return DropdownMenuItem(
                       value: difficulty,
-                      child: Text(difficulty?.name.toUpperCase() ?? 'All Levels',
-                          overflow: TextOverflow.ellipsis),
+                      child: Text(label, overflow: TextOverflow.ellipsis),
                     );
                   }).toList(),
                   onChanged: (value) {
@@ -454,9 +471,9 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
               SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
               Row(
                 children: [
-                  _buildInfoChip(guide.type.name.toUpperCase(), Theme.of(context).colorScheme.primary),
+                  _buildInfoChip(TextFormatter.formatText(guide.type.name), Theme.of(context).colorScheme.primary),
                   SizedBox(width: ResponsiveUtils.getResponsiveValue(context: context, mobile: 8, tablet: 10, desktop: 12)),
-                  _buildInfoChip(guide.difficulty.name.toUpperCase(), Theme.of(context).colorScheme.secondary),
+                  _buildInfoChip(TextFormatter.formatText(guide.difficulty.name), Theme.of(context).colorScheme.secondary),
                   SizedBox(width: ResponsiveUtils.getResponsiveValue(context: context, mobile: 8, tablet: 10, desktop: 12)),
                   _buildInfoChip('${guide.estimatedDurationMinutes}min', Theme.of(context).colorScheme.tertiary),
                 ],

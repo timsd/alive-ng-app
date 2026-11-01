@@ -4,6 +4,7 @@ import '../../models/board_models.dart';
 import '../../services/appwrite_board_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/role_access_service.dart';
+import '../../utils/text_formatter.dart';
 
 class BoardDecisionsScreen extends StatefulWidget {
   const BoardDecisionsScreen({super.key});
@@ -727,13 +728,15 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
                     initialValue: selectedCat,
-                    dropdownColor: theme.cardColor,
+                    borderRadius: BorderRadius.circular(12),
+                    dropdownColor: theme.colorScheme.surfaceContainerHighest,
+                    icon: const Icon(Icons.arrow_drop_down_rounded),
                     style: TextStyle(color: theme.colorScheme.onSurface),
                     decoration: const InputDecoration(labelText: 'Category'),
                     items: ['policy', 'financial', 'strategic', 'operational']
                         .map((c) => DropdownMenuItem(
                               value: c,
-                              child: Text(c.toUpperCase()),
+                              child: Text(TextFormatter.formatText(c)),
                             ))
                         .toList(),
                     onChanged: (val) =>

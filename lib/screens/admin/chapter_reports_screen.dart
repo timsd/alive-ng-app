@@ -6,6 +6,7 @@ import '../../services/auth_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../constants/chapters.dart';
 import '../../utils/toast_utils.dart';
+import '../../utils/text_formatter.dart';
 
 class ChapterReportsScreen extends StatefulWidget {
   final String? initialChapter;
@@ -160,6 +161,9 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
                       child: DropdownButtonFormField<String>(
                         initialValue: _selectedStatus,
                         isExpanded: true,
+                        borderRadius: BorderRadius.circular(12),
+                        dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        icon: const Icon(Icons.arrow_drop_down_rounded),
                         decoration: const InputDecoration(
                           labelText: 'Status',
                           border: OutlineInputBorder(),
@@ -168,7 +172,7 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
                         items: _statuses
                             .map((s) => DropdownMenuItem(
                                   value: s,
-                                  child: Text(s.toUpperCase()),
+                                  child: Text(s == 'all' ? 'All Statuses' : TextFormatter.formatText(s)),
                                 ))
                             .toList(),
                         onChanged: (val) => setState(() => _selectedStatus = val ?? 'all'),

@@ -427,11 +427,11 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
 
   void _sharePrayerRequest(PrayerRequest request) {
     final text =
-        '🙏 Prayer Request: ${request.title}\n\n${request.description}\n\n— Join us in prayer on ALIVE Nigeria';
+        '🙏 *${request.title}*\n\n${request.description}\n\n— Shared from ALIVE Nigeria Prayer';
     SharePlus.instance.share(
       ShareParams(
         text: text,
-        subject: 'Prayer Request: ${request.title}',
+        subject: 'Prayer: ${request.title}',
       ),
     );
   }

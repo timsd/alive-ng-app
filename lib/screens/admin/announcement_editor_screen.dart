@@ -252,6 +252,9 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                           Expanded(
                             child: DropdownButtonFormField<String>(
                               initialValue: _priority,
+                              borderRadius: BorderRadius.circular(12),
+                              dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                              icon: const Icon(Icons.arrow_drop_down_rounded),
                               decoration: const InputDecoration(
                                 labelText: 'Priority',
                                 border: OutlineInputBorder(),
@@ -268,7 +271,7 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                                         size: 16,
                                       ),
                                       const SizedBox(width: 8),
-                                      Text(priority.toUpperCase()),
+                                      Text(TextFormatter.formatText(priority)),
                                     ],
                                   ),
                                 );
@@ -284,6 +287,9 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                           Expanded(
                             child: DropdownButtonFormField<String>(
                               initialValue: _type,
+                              borderRadius: BorderRadius.circular(12),
+                              dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                              icon: const Icon(Icons.arrow_drop_down_rounded),
                               decoration: const InputDecoration(
                                 labelText: 'Type',
                                 border: OutlineInputBorder(),
@@ -293,8 +299,7 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                                 return DropdownMenuItem(
                                   value: type,
                                   child: Text(
-                                      TextFormatter.formatNotificationType(type)
-                                          .toUpperCase()),
+                                      TextFormatter.formatNotificationType(type)),
                                 );
                               }).toList(),
                               onChanged: (value) {
@@ -311,6 +316,9 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
 
                       DropdownButtonFormField<String>(
                         initialValue: _targetAudience,
+                        borderRadius: BorderRadius.circular(12),
+                        dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        icon: const Icon(Icons.arrow_drop_down_rounded),
                         decoration: const InputDecoration(
                           labelText: 'Target Audience',
                           border: OutlineInputBorder(),
@@ -320,8 +328,7 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                         items: _audiences.map((audience) {
                           return DropdownMenuItem(
                             value: audience,
-                            child: Text(TextFormatter.formatRole(audience)
-                                .toUpperCase()),
+                            child: Text(TextFormatter.formatRole(audience)),
                           );
                         }).toList(),
                         onChanged: (value) {
