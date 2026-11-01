@@ -757,7 +757,7 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
                 _buildChapterDetailRow(
                     'Status', targetChapter.isActive ? 'Active' : 'Inactive'),
               ] else ...[
-                Text('Chapter ID: $chapterId'),
+                Text('Chapter: $displayName'),
                 const SizedBox(height: 8),
                 const Text(
                     'Chapter information could not be retrieved at this time.'),

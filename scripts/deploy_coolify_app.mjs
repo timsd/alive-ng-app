@@ -39,7 +39,34 @@ const call = async (method, path, body) => {
   return { status: res.status, text };
 };
 
-const force = process.argv.includes('--force') || process.argv.includes('--no-cache') || true; // User requested: remove all previous caches
+const force = process.argv.includes('--force') || process.argv.includes('--no-cache') || false;
+
+// 1. Guard against concurrent builds: Wait for any running build to finish before dispatching a new one
+try {
+  const activeCheck = await call('GET', '/deployments');
+  if (activeCheck.status === 200) {
+    const list = JSON.parse(activeCheck.text);
+    if (Array.isArray(list) && list.length > 0) {
+      console.log(`⏳ A build is already in progress on Coolify (#${list[0].id} - ${list[0].commit?.slice(0, 8)}). Waiting for it to finish...`);
+      let waitCount = 0;
+      while (waitCount < 30) {
+        await new Promise((r) => setTimeout(r, 10000));
+        waitCount++;
+        const poll = await call('GET', '/deployments');
+        if (poll.status === 200) {
+          const activeList = JSON.parse(poll.text);
+          if (!Array.isArray(activeList) || activeList.length === 0) {
+            console.log('✅ Previous build completed. Proceeding with deployment...');
+            break;
+          }
+          console.log(`... still waiting for build #${activeList[0].id} (${waitCount * 10}s elapsed)`);
+        }
+      }
+    }
+  }
+} catch (guardErr) {
+  console.log('Build concurrency check note:', guardErr.message);
+}
 
 // Coolify exposes several deploy entry points depending on version. Try them in
 // order and stop at the first that is accepted.

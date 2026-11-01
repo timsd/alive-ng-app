@@ -89,7 +89,7 @@ class DailyVerseGenerationService {
             reference: existingVerse.reference,
             translation: localVersion,
             date: existingVerse.date,
-            reflection: _generateReflection(null, languageCode: languageCode),
+            reflection: existingVerse.reflection,
             createdAt: existingVerse.createdAt,
           );
         }
@@ -167,7 +167,7 @@ class DailyVerseGenerationService {
   }
 
   /// Generate an inspiring reflection for the verse in the target language
-  String? _generateReflection(verse_data.BibleVerse verse, {String languageCode = 'en'}) {
+  String? _generateReflection(verse_data.BibleVerse? verse, {String languageCode = 'en'}) {
     switch (languageCode) {
       case 'yo':
         return 'Kí ọ̀rọ̀ Ọlọ́run jẹ́ ìmọ́lẹ̀ sí ipa-ọ̀nà rẹ lónìí. Gbẹ́kẹ̀lé Olúwa pẹ̀lú gbogbo àyà rẹ, kí o sì rìn nínú àlàáfíà àti ìfẹ́ Rẹ̀.';

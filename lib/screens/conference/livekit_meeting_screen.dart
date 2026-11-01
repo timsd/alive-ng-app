@@ -50,13 +50,18 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   String _initialRoomName() {
     if (widget.customRoomName != null) return widget.customRoomName!;
     if (widget.meetingType != null) {
-      final url = AliveMeetConfig.roomFor(widget.meetingType!);
-      final uri = Uri.tryParse(url);
-      return uri?.pathSegments.isNotEmpty == true
-          ? uri!.pathSegments.last
-          : widget.meetingType!.name;
+      return widget.meetingType!.displayName;
     }
-    return '';
+    return 'ALIVE Community Fellowship';
+  }
+
+  String _getRoomSlug() {
+    if (widget.meetingType != null) {
+      return AliveMeetConfig.roomFor(widget.meetingType!);
+    }
+    final text = _roomController.text.trim();
+    if (text.isEmpty) return 'alive-meet-community';
+    return text.replaceAll(' ', '-').toLowerCase();
   }
 
   Future<void> _joinMeeting(MeetingGateway gateway) async {
@@ -78,13 +83,16 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     setState(() => _isJoining = true);
     try {
       final isAdmin = RoleAccessService.instance.canAccessAdmin() || widget.isModerator;
+      final roomSlug = _getRoomSlug();
+      final roomTitle = widget.meetingType?.displayName ?? roomName;
+
       await gateway.executionAndJoin(
-        roomName: roomName,
+        roomName: roomSlug,
         userId: user.uid,
         userName: user.displayNameOrFallback,
         meetingType: widget.meetingType?.name ?? 'general',
         notifyMembers: isAdmin && _notifyMembers,
-        meetingTitle: roomName,
+        meetingTitle: roomTitle,
       );
     } catch (e) {
       final errStr = e.toString();
@@ -204,7 +212,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
             TextField(
               controller: _roomController,
               decoration: const InputDecoration(
-                labelText: 'ALIVE Meet room',
+                labelText: 'Meeting Room',
                 border: OutlineInputBorder(),
               ),
               readOnly: !isAdmin && (widget.meetingType != null || widget.customRoomName != null),
@@ -508,18 +516,19 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                     itemCount: session.participants.length,
                     itemBuilder: (context, index) {
                       final participant = session.participants[index];
+                      final displayName = _formatParticipantName(participant);
                       return ListTile(
                         leading: CircleAvatar(
                           child: Text(
-                            participant.name.isNotEmpty
-                                ? participant.name[0].toUpperCase()
-                                : '?',
+                            displayName.isNotEmpty
+                                ? displayName[0].toUpperCase()
+                                : 'M',
                           ),
                         ),
                         title: Text(
                           participant.isLocal
-                              ? '${participant.name} (You)'
-                              : participant.name,
+                              ? '$displayName (You)'
+                              : displayName,
                         ),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -577,6 +586,15 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
         ),
       ),
     );
+  }
+
+  String _formatParticipantName(ParticipantInfo p) {
+    if (p.isLocal) return 'You';
+    final raw = p.name.trim();
+    if (raw.isEmpty || raw == p.identity || (raw.length > 20 && !raw.contains(' '))) {
+      return 'ALIVE Member';
+    }
+    return raw;
   }
 
   Future<void> _startBroadcast(MeetingGateway gateway) async {
