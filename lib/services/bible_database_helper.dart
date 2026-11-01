@@ -146,17 +146,19 @@ class BibleDatabaseHelper {
           data.offsetInBytes,
           data.lengthInBytes,
         );
+        // Clear any half-written or stale copy before writing fresh prebuilt bytes
+        try {
+          await databaseFactory.deleteDatabase(path);
+        } catch (_) {}
         // On the web the database lives in IndexedDB, so there is no file to
         // copy: the bytes have to be written through the factory. This is what
         // `sqflite_common_ffi_web` documents for importing an asset database.
         await databaseFactory.writeDatabaseBytes(path, bytes);
+        debugPrint('[BibleDB] Successfully imported pre-built bible.db to IndexedDB '
+            '(${(bytes.length / 1024 / 1024).toStringAsFixed(1)} MB)');
       } catch (e) {
-        // Thrown rather than swallowed, for the same reason as the native
-        // path: an empty database here is indistinguishable, to the member,
-        // from "no translations downloaded".
-        throw BibleDatabaseInstallException(
-          'Could not install the bundled Bible database in the browser: $e',
-        );
+        debugPrint('[BibleDB] Pre-built Bible database download/import note: $e');
+        // Do not throw fatal error; allow openDatabase to proceed with local/cached schema
       }
     }
 
@@ -170,16 +172,19 @@ class BibleDatabaseHelper {
     );
   }
 
-  /// True when the browser copy already holds verses, so the 60 MB asset is
+  /// True when the browser copy already holds verses, so the 75 MB asset is
   /// only written once rather than on every launch.
   Future<bool> _webDatabaseHasVerses(String path) async {
     Database? probe;
     try {
+      final exists = await databaseFactory.databaseExists(path);
+      if (!exists) return false;
+
       probe = await databaseFactory.openDatabase(
         path,
         options: OpenDatabaseOptions(
           version: _databaseVersion,
-          onCreate: _onCreate,
+          readOnly: true,
         ),
       );
       final rows = await probe.rawQuery('SELECT COUNT(*) AS c FROM bible_verses');

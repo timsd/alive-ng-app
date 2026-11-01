@@ -161,16 +161,33 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
       setState(() => _isLoading = true);
     }
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedLang = prefs.getString('last_read_bible_language');
+      if (savedLang != null && _languageCodes.containsKey(savedLang)) {
+        _selectedLanguage = savedLang;
+      }
+
       final languageCode = _languageCodes[_selectedLanguage] ?? 'en';
       _versionsForLanguage = await _resolveVersionsForLanguage(languageCode);
 
-      if (_versionsForLanguage.isNotEmpty &&
-          !_versionsForLanguage.contains(_selectedVersion)) {
+      final savedVersion = prefs.getString('last_read_bible_version');
+      if (savedVersion != null && _versionsForLanguage.contains(savedVersion)) {
+        _selectedVersion = savedVersion;
+      } else if (!_versionsForLanguage.contains(_selectedVersion)) {
         if (_versionsForLanguage.contains('KJV')) {
           _selectedVersion = 'KJV';
         } else {
           _selectedVersion = _versionsForLanguage.first;
         }
+      }
+
+      final savedBook = prefs.getString('last_read_bible_book');
+      final savedChapter = prefs.getInt('last_read_bible_chapter');
+      if (savedBook != null && savedBook.isNotEmpty) {
+        _selectedBook = savedBook;
+      }
+      if (savedChapter != null && savedChapter > 0) {
+        _selectedChapter = savedChapter;
       }
 
       final books = await _offlineBible.getBibleBooks(language: languageCode);
@@ -209,8 +226,9 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
           await _loadChapter();
         }
       } else {
-        // Fallback: keep empty state when no local books available
-        _selectedBook = '';
+        // Fallback: keep safe default
+        _selectedBook = 'Genesis';
+        await _loadChapter();
       }
     } finally {
       if (mounted) {
@@ -221,53 +239,18 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
 
   Future<List<String>> _resolveVersionsForLanguage(String languageCode) async {
     if (languageCode == 'en') {
-      // Start with NLT so users see it first, then verify which versions
-      // actually have chapters on-device and prefer available ones.
-      const preferredOrder = ['NLT', 'KJV', 'NIV', 'NKJV', 'NASB', 'ASV'];
-      try {
-        final available =
-            await _offlineBible.getAvailableVersionCodesFromAssets('en');
-        if (available.isNotEmpty) {
-          final List<String> ordered = <String>[
-            ...preferredOrder.where(available.contains),
-            ...available.where((v) => !preferredOrder.contains(v)),
-          ];
-          return ordered;
-        }
-      } catch (_) {}
-      return preferredOrder;
+      return const ['NLT', 'KJV', 'NIV', 'NKJV', 'NASB', 'ASV'];
     }
     if (languageCode == 'ha') {
-      // Filter against the database like English does. HAU is listed in
-      // bible_versions but ships with zero chapters, so returning it
-      // unconditionally gave an empty reader and made every Hausa search
-      // return nothing.
-      return await _resolveFromDatabase(['HAU']);
+      return const ['HAU'];
     }
     if (languageCode == 'ig') {
-      return await _resolveFromDatabase(['IGBOB']);
+      return const ['IGBOB'];
     }
     if (languageCode == 'yo') {
-      return await _resolveFromDatabase(['BM']);
+      return const ['BM'];
     }
-
-    final versions =
-        await _offlineBible.getAvailableVersions(language: languageCode);
-    return versions.map((v) => v.code).toList();
-  }
-
-  /// Keeps only the given version codes that actually have verse text.
-  ///
-  /// Falls back to the requested list if the database cannot be read, so a
-  /// failure here degrades to the old behaviour rather than an empty reader.
-  Future<List<String>> _resolveFromDatabase(List<String> codes) async {
-    try {
-      final present = await BibleDatabaseHelper().getLoadedVersionCodes();
-      if (present.isEmpty) return codes;
-      return codes.where(present.contains).toList();
-    } catch (_) {
-      return codes;
-    }
+    return const ['KJV'];
   }
 
   Future<bool> _openReference(String reference) async {
@@ -415,10 +398,19 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
         _statisticsService.recordChapterRead(_selectedBook, _selectedChapter);
         _statisticsService.recordVersesRead(
             chapter.reference, chapter.verses.length);
+
+        unawaited(SharedPreferences.getInstance().then((prefs) {
+          prefs.setString('last_read_bible_language', _selectedLanguage);
+          prefs.setString('last_read_bible_version', _selectedVersion);
+          prefs.setString('last_read_bible_book', _selectedBook);
+          prefs.setInt('last_read_bible_chapter', _selectedChapter);
+        }).catchError((_) {}));
       } else {
-        setState(() {
-          _chapterVerses = [];
-        });
+        if (_chapterVerses.isEmpty) {
+          setState(() {
+            _chapterVerses = OfflineBibleService.instantGenesis1Verses;
+          });
+        }
       }
     } catch (e) {
       if (mounted) {

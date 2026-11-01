@@ -51,17 +51,28 @@
   <!-- Cache-busting: forces browsers to fetch fresh assets after each deploy -->
   <meta name="version" content="2.0.5+12">
   <script>
-    // Clear stale service-worker caches so users always get the latest build.
+    // Clean stale flutter service workers while protecting sqflite SQLite worker for offline Bible
     (function () {
       try {
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.getRegistrations().then(function (regs) {
-            regs.forEach(function (r) { r.unregister(); });
+            regs.forEach(function (r) {
+              var url = (r.active && r.active.scriptURL) || '';
+              // NEVER unregister sqflite worker; it is required for offline SQLite Bible reading!
+              if (url.indexOf('sqflite_sw.js') !== -1) return;
+              if (url.indexOf('flutter_service_worker') !== -1) {
+                r.unregister();
+              }
+            });
           });
         }
         if (window.caches && window.caches.keys) {
           caches.keys().then(function (keys) {
-            keys.forEach(function (k) { caches.delete(k); });
+            keys.forEach(function (k) {
+              // Never delete offline SQLite / Bible cache
+              if (k.indexOf('sqflite') !== -1 || k.indexOf('bible') !== -1) return;
+              caches.delete(k);
+            });
           });
         }
       } catch (_) { }
