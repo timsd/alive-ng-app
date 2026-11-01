@@ -8,3 +8,4 @@ void syncProjectsToWeb(String jsonString) {
     // ignore
   }
 }
+

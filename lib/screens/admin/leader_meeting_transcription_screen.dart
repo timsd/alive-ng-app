@@ -75,6 +75,34 @@ class MeetingActionItem {
   });
 }
 
+class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
+  final TabBar tabBar;
+  final Color backgroundColor;
+
+  _SliverTabBarDelegate(this.tabBar, {required this.backgroundColor});
+
+  @override
+  double get minExtent => tabBar.preferredSize.height;
+
+  @override
+  double get maxExtent => tabBar.preferredSize.height;
+
+  @override
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(
+      color: backgroundColor,
+      child: tabBar,
+    );
+  }
+
+  @override
+  bool shouldRebuild(_SliverTabBarDelegate oldDelegate) {
+    return tabBar != oldDelegate.tabBar ||
+        backgroundColor != oldDelegate.backgroundColor;
+  }
+}
+
 class LeaderMeetingTranscriptionScreen extends ConsumerStatefulWidget {
   final String? initialMeetingTitle;
   final String? initialMeetingType;
@@ -909,44 +937,64 @@ class _LeaderMeetingTranscriptionScreenState
           .replaceAll(RegExp(r'_+'), '_');
       final fileName = 'Minutes_${sanitizedTitle}_$dateClean.md';
 
+      // Always ensure notes are backed up locally first
+      await _backupDraftLocally(showNotification: false);
+
       final user = AuthService.instance.currentUser;
       final uploaderId = user?.uid ?? 'leader-scribe';
       final uploaderName = user?.displayName ?? 'ALIVE Scribe';
 
-      await AppwriteMeetingFileService.instance.uploadMeetingFileBytes(
-        bytes,
-        fileName: fileName,
-        description:
-            'Synthesized minutes, council resolutions & multi-speaker transcript for "$title" compiled by ALIVE Scribe.',
-        uploaderId: uploaderId,
-        uploadedBy: uploaderName,
-      );
+      bool cloudSuccess = false;
+      try {
+        await AppwriteMeetingFileService.instance.uploadMeetingFileBytes(
+          bytes,
+          fileName: fileName,
+          description:
+              'Synthesized minutes, council resolutions & multi-speaker transcript for "$title" compiled by ALIVE Scribe.',
+          uploaderId: uploaderId,
+          uploadedBy: uploaderName,
+        );
+        cloudSuccess = true;
+      } catch (uploadErr) {
+        debugPrint('Meeting file cloud upload error (falling back to local): $uploadErr');
+      }
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Saved "$fileName" directly to Meeting Files!'),
-          backgroundColor: Colors.green.shade800,
-          duration: const Duration(seconds: 6),
-          action: SnackBarAction(
-            label: 'View in Files',
-            textColor: Colors.white,
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const MeetingFileSharingScreen(),
-                ),
-              );
-            },
+      if (cloudSuccess) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Saved "$fileName" directly to Meeting Files!'),
+            backgroundColor: Colors.green.shade800,
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'View in Files',
+              textColor: Colors.white,
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const MeetingFileSharingScreen(),
+                  ),
+                );
+              },
+            ),
           ),
-        ),
-      );
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Minutes compiled & saved locally as "$fileName". Cloud repository sync will retry automatically.'),
+            backgroundColor: Colors.teal.shade800,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
 
-      _showShareOrCopyDialog(markdown, fileName);
+      // Always open share or copy dialog so user has immediate access to their minutes
+      _showShareOrCopyDialog(markdown, fileName, isCloudSaved: cloudSuccess);
     } catch (e) {
       if (mounted) {
-        _showFeedback('Failed to save to Meeting Files: $e');
+        _showFeedback('Failed to process minutes: $e');
       }
     } finally {
       if (mounted) {
@@ -955,9 +1003,10 @@ class _LeaderMeetingTranscriptionScreenState
     }
   }
 
-  void _showShareOrCopyDialog(String markdown, String fileName) {
+  void _showShareOrCopyDialog(String markdown, String fileName, {bool isCloudSaved = true}) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -968,17 +1017,24 @@ class _LeaderMeetingTranscriptionScreenState
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.check_circle, color: Colors.green, size: 48),
+                Icon(
+                  isCloudSaved ? Icons.check_circle : Icons.verified_user_outlined,
+                  color: isCloudSaved ? Colors.green : const Color(0xFF1B365D),
+                  size: 48,
+                ),
                 const SizedBox(height: 12),
                 Text(
-                  'Minutes Successfully Formatted!',
+                  isCloudSaved ? 'Minutes Successfully Formatted & Stored!' : 'Minutes Successfully Formatted & Backed Up!',
+                  textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'File "$fileName" is now stored in Meeting Files. You can also copy or distribute the formatted minutes directly.',
+                  isCloudSaved
+                      ? 'File "$fileName" is now stored in Meeting Files. You can also copy or distribute the formatted minutes directly.'
+                      : 'File "$fileName" is saved securely on your device. You can copy or distribute the formatted minutes directly.',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
@@ -1268,6 +1324,8 @@ class _LeaderMeetingTranscriptionScreenState
       appBar: CustomAppBar(
         title: 'Leader Scribe & Notes',
         showBackButton: true,
+        showThemeToggle: false,
+        showLanguageToggle: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.backup_outlined),
@@ -1299,36 +1357,49 @@ class _LeaderMeetingTranscriptionScreenState
           ),
         ],
       ),
-      body: Column(
-        children: [
-          _buildScribeHeaderCard(theme, colorScheme, isLiveKitActive),
-          _buildActiveSpeakerBar(colorScheme),
-          TabBar(
-            controller: _tabController,
-            labelColor: colorScheme.primary,
-            unselectedLabelColor: colorScheme.onSurfaceVariant,
-            indicatorColor: colorScheme.primary,
-            tabs: [
-              Tab(
-                icon: const Icon(Icons.chat_bubble_outline, size: 20),
-                text: 'Live Transcript (${_transcriptEntries.length})',
-              ),
-              Tab(
-                icon: const Icon(Icons.assignment_outlined, size: 20),
-                text: 'Summary & Decisions (${_decisions.length})',
-              ),
-            ],
-          ),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildTranscriptTab(theme, colorScheme),
-                _buildSummaryTab(theme, colorScheme),
-              ],
+      body: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) {
+          return [
+            SliverToBoxAdapter(
+              child: _buildScribeHeaderCard(theme, colorScheme, isLiveKitActive),
             ),
-          ),
-        ],
+            SliverToBoxAdapter(
+              child: _buildActiveSpeakerBar(colorScheme),
+            ),
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _SliverTabBarDelegate(
+                TabBar(
+                  controller: _tabController,
+                  isScrollable: true,
+                  tabAlignment: TabAlignment.start,
+                  labelColor: colorScheme.primary,
+                  unselectedLabelColor: colorScheme.onSurfaceVariant,
+                  indicatorColor: colorScheme.primary,
+                  labelPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  tabs: [
+                    Tab(
+                      icon: const Icon(Icons.chat_bubble_outline, size: 18),
+                      text: 'Live Transcript (${_transcriptEntries.length})',
+                    ),
+                    Tab(
+                      icon: const Icon(Icons.assignment_outlined, size: 18),
+                      text: 'Summary & Decisions (${_decisions.length})',
+                    ),
+                  ],
+                ),
+                backgroundColor: theme.scaffoldBackgroundColor,
+              ),
+            ),
+          ];
+        },
+        body: TabBarView(
+          controller: _tabController,
+          children: [
+            _buildTranscriptTab(theme, colorScheme),
+            _buildSummaryTab(theme, colorScheme),
+          ],
+        ),
       ),
     );
   }
@@ -1341,8 +1412,8 @@ class _LeaderMeetingTranscriptionScreenState
     final isListening = _isListening;
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(16),
@@ -1365,8 +1436,8 @@ class _LeaderMeetingTranscriptionScreenState
                 clipBehavior: Clip.none,
                 children: [
                   Container(
-                    width: 44,
-                    height: 44,
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
                       color: isLiveKitActive ? livekitGreen : brandColor,
                       shape: BoxShape.circle,
@@ -1374,7 +1445,7 @@ class _LeaderMeetingTranscriptionScreenState
                         BoxShadow(
                           color: (isLiveKitActive ? livekitGreen : brandColor)
                               .withValues(alpha: 0.35),
-                          blurRadius: 8,
+                          blurRadius: 6,
                           offset: const Offset(0, 2),
                         ),
                       ],
@@ -1382,15 +1453,15 @@ class _LeaderMeetingTranscriptionScreenState
                     child: const Icon(
                       Icons.record_voice_over,
                       color: Colors.white,
-                      size: 24,
+                      size: 20,
                     ),
                   ),
                   Positioned(
-                    bottom: -2,
-                    right: -2,
+                    bottom: -1,
+                    right: -1,
                     child: Container(
-                      width: 14,
-                      height: 14,
+                      width: 12,
+                      height: 12,
                       decoration: BoxDecoration(
                         color: isListening ? Colors.redAccent : Colors.green,
                         shape: BoxShape.circle,
@@ -1403,24 +1474,27 @@ class _LeaderMeetingTranscriptionScreenState
                   ),
                 ],
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        const Text(
-                          'ALIVE Meeting Scribe',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
+                        const Flexible(
+                          child: Text(
+                            'ALIVE Meeting Scribe',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 5),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
+                              horizontal: 5, vertical: 1.5),
                           decoration: BoxDecoration(
                             color: brandColor,
                             borderRadius: BorderRadius.circular(4),
@@ -1429,28 +1503,28 @@ class _LeaderMeetingTranscriptionScreenState
                             'SCRIBE',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 9,
+                              fontSize: 8.5,
                               fontWeight: FontWeight.w900,
-                              letterSpacing: 0.6,
+                              letterSpacing: 0.5,
                             ),
                           ),
                         ),
-                        const Spacer(),
+                        const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
+                              horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
                             color: isListening
                                 ? Colors.redAccent.withValues(alpha: 0.15)
                                 : Colors.green.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(10),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Container(
-                                width: 7,
-                                height: 7,
+                                width: 6,
+                                height: 6,
                                 decoration: BoxDecoration(
                                   color: isListening
                                       ? Colors.redAccent
@@ -1458,19 +1532,19 @@ class _LeaderMeetingTranscriptionScreenState
                                   shape: BoxShape.circle,
                                 ),
                               ),
-                              const SizedBox(width: 6),
+                              const SizedBox(width: 4),
                               Text(
                                 isListening
-                                    ? 'SCRIBE: RECORDING'
+                                    ? 'RECORDING'
                                     : (isLiveKitActive
-                                        ? 'LIVEKIT LINKED'
-                                        : 'ONLINE & READY'),
+                                        ? 'LIVEKIT'
+                                        : 'ONLINE'),
                                 style: TextStyle(
-                                  fontSize: 10,
+                                  fontSize: 9.5,
                                   fontWeight: FontWeight.w700,
                                   color: isListening
                                       ? Colors.redAccent
-                                      : Colors.green.shade700,
+                                      : Colors.green.shade800,
                                 ),
                               ),
                             ],
@@ -1481,11 +1555,12 @@ class _LeaderMeetingTranscriptionScreenState
                     const SizedBox(height: 2),
                     Text(
                       isLiveKitActive
-                          ? 'Synchronized with LiveKit room "${_connectedRoomName ?? 'Active Meet'}" • ${_attendees.length} Connected'
+                          ? 'Synchronized with "${_connectedRoomName ?? 'Active Meet'}" • ${_attendees.length} Connected'
                           : (isListening
                               ? 'Recording all conference room speakers simultaneously...'
                               : '100% On-Device Hybrid Scribe: private, offline, multi-speaker.'),
                       style: theme.textTheme.bodySmall?.copyWith(
+                        fontSize: 11,
                         color: isListening
                             ? colorScheme.primary
                             : colorScheme.onSurfaceVariant,
@@ -1499,48 +1574,49 @@ class _LeaderMeetingTranscriptionScreenState
             ],
           ),
           const SizedBox(height: 10),
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Expanded(
-                flex: 3,
-                child: FilledButton.icon(
-                  onPressed: _toggleScribeMode,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: isListening
-                        ? Colors.redAccent
-                        : const Color(0xFF1B365D),
-                    foregroundColor: Colors.white,
-                    visualDensity: VisualDensity.compact,
-                  ),
-                  icon: Icon(
-                    isListening
-                        ? Icons.stop_circle_outlined
-                        : Icons.mic_none_outlined,
-                    size: 18,
-                  ),
-                  label: Text(
-                    isListening ? 'Pause Recording' : 'Record All Speakers',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
+              FilledButton.icon(
+                onPressed: _toggleScribeMode,
+                style: FilledButton.styleFrom(
+                  backgroundColor: isListening
+                      ? Colors.redAccent
+                      : const Color(0xFF1B365D),
+                  foregroundColor: Colors.white,
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                ),
+                icon: Icon(
+                  isListening
+                      ? Icons.stop_circle_outlined
+                      : Icons.mic_none_outlined,
+                  size: 16,
+                ),
+                label: Text(
+                  isListening ? 'Pause Recording' : 'Record All Speakers',
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12.5),
                 ),
               ),
-              const SizedBox(width: 8),
               OutlinedButton.icon(
                 onPressed: _simulateMeetingDiscussion,
                 style: OutlinedButton.styleFrom(
                   visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 ),
-                icon: const Icon(Icons.science_outlined, size: 16),
-                label: const Text('Test Simulation'),
+                icon: const Icon(Icons.science_outlined, size: 15),
+                label: const Text('Test Simulation', style: TextStyle(fontSize: 12)),
               ),
-              const SizedBox(width: 8),
               OutlinedButton.icon(
                 onPressed: _autoSummarizeFromTranscript,
                 style: OutlinedButton.styleFrom(
                   visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 ),
-                icon: const Icon(Icons.auto_awesome, size: 16),
-                label: const Text('Compile Minutes'),
+                icon: const Icon(Icons.auto_awesome, size: 15),
+                label: const Text('Compile Minutes', style: TextStyle(fontSize: 12)),
               ),
             ],
           ),
@@ -1624,31 +1700,46 @@ class _LeaderMeetingTranscriptionScreenState
       children: [
         Expanded(
           child: _transcriptEntries.isEmpty && _interimWords.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.record_voice_over_outlined,
-                        size: 56,
-                        color:
-                            colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+              ? ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(
+                      vertical: 24, horizontal: 16),
+                  children: [
+                    Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.record_voice_over_outlined,
+                            size: 48,
+                            color: colorScheme.onSurfaceVariant
+                                .withValues(alpha: 0.4),
+                          ),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'No transcription entries yet.',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Tap "Record All Speakers" above to transcribe live speech, or "Test Simulation" to test minutes generation.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: colorScheme.onSurfaceVariant,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'No transcription entries yet.',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Tap "Record All Speakers" or "Test Simulation" above.',
-                        style: TextStyle(color: colorScheme.onSurfaceVariant),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 )
               : ListView.builder(
                   controller: _transcriptScrollController,
+                  physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.symmetric(
                       horizontal: 14, vertical: 10),
                   itemCount: _transcriptEntries.length +
@@ -1956,41 +2047,44 @@ class _LeaderMeetingTranscriptionScreenState
       ),
       child: Column(
         children: [
-          Row(
-            children: [
-              Text(
-                'Tag as:',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                Text(
+                  'Tag as:',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              _buildInputTagButton(
-                icon: Icons.check_circle_outline,
-                label: 'Decision',
-                color: Colors.green,
-                onTap: () => _submitManualInput(
-                    forcedType: TranscriptEntryType.decision),
-              ),
-              const SizedBox(width: 6),
-              _buildInputTagButton(
-                icon: Icons.assignment_outlined,
-                label: 'Action',
-                color: Colors.amber.shade900,
-                onTap: () => _submitManualInput(
-                    forcedType: TranscriptEntryType.actionItem),
-              ),
-              const SizedBox(width: 6),
-              _buildInputTagButton(
-                icon: Icons.gavel_outlined,
-                label: 'Motion',
-                color: Colors.deepPurple,
-                onTap: () =>
-                    _submitManualInput(forcedType: TranscriptEntryType.motion),
-              ),
-            ],
+                const SizedBox(width: 8),
+                _buildInputTagButton(
+                  icon: Icons.check_circle_outline,
+                  label: 'Decision',
+                  color: Colors.green,
+                  onTap: () => _submitManualInput(
+                      forcedType: TranscriptEntryType.decision),
+                ),
+                const SizedBox(width: 6),
+                _buildInputTagButton(
+                  icon: Icons.assignment_outlined,
+                  label: 'Action',
+                  color: Colors.amber.shade900,
+                  onTap: () => _submitManualInput(
+                      forcedType: TranscriptEntryType.actionItem),
+                ),
+                const SizedBox(width: 6),
+                _buildInputTagButton(
+                  icon: Icons.gavel_outlined,
+                  label: 'Motion',
+                  color: Colors.deepPurple,
+                  onTap: () =>
+                      _submitManualInput(forcedType: TranscriptEntryType.motion),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 6),
           Row(
@@ -2091,6 +2185,7 @@ class _LeaderMeetingTranscriptionScreenState
   /// Summary & Decisions Tab: Formatted Minutes
   Widget _buildSummaryTab(ThemeData theme, ColorScheme colorScheme) {
     return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
       children: [
         // Meeting Context Card

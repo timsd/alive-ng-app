@@ -54,17 +54,36 @@ class AppwriteMeetingFileService {
     try {
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final fileType = fileName.split('.').last.toLowerCase();
-      final fileId = ID.unique();
       final createdAt = DateTime.now().toUtc().toIso8601String();
 
-      await _storage.createFile(
-        bucketId: AppwriteBackendConfig.meetingFilesBucketId,
-        fileId: fileId,
-        file: InputFile.fromBytes(
-          bytes: data,
-          filename: '${timestamp}_$fileName',
-        ),
-      );
+      String uploadedBucketId = AppwriteBackendConfig.meetingFilesBucketId;
+      String fileId = ID.unique();
+
+      try {
+        await _storage.createFile(
+          bucketId: uploadedBucketId,
+          fileId: fileId,
+          file: InputFile.fromBytes(
+            bytes: data,
+            filename: '${timestamp}_$fileName',
+            contentType: 'text/markdown',
+          ),
+        );
+      } catch (storageErr) {
+        _logger.warning(
+            'Primary meeting_files bucket failed: $storageErr, trying content_media bucket...');
+        uploadedBucketId = AppwriteBackendConfig.contentMediaBucketId;
+        fileId = ID.unique();
+        await _storage.createFile(
+          bucketId: uploadedBucketId,
+          fileId: fileId,
+          file: InputFile.fromBytes(
+            bytes: data,
+            filename: '${timestamp}_$fileName',
+            contentType: 'text/markdown',
+          ),
+        );
+      }
 
       await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
@@ -89,8 +108,10 @@ class AppwriteMeetingFileService {
       );
     } catch (e) {
       _logger.error('Error uploading meeting file', e);
+      final msg =
+          e is AppwriteException ? (e.message ?? e.toString()) : e.toString();
       throw DatabaseException(
-        'Failed to upload meeting file',
+        'Failed to upload meeting file: $msg',
         originalError: e,
       );
     }
