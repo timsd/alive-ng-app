@@ -209,6 +209,8 @@ class AppwriteProfileService {
           'avatar_url': rawAvatar,
           'photo_url': rawAvatar,
         });
+        // Refresh local auth user so prefs take effect in memory immediately
+        await AppwriteAuthService.instance.reloadCurrentUser();
       } catch (e) {
         debugPrint('Account prefs avatar sync note: $e');
       }
@@ -418,16 +420,20 @@ class AppwriteProfileService {
     profileData.remove('\$databaseId');
     profileData.remove('\$collectionId');
 
-    // Appwrite ignores null values on update, so clear the avatar explicitly
-    // when the picture was removed, and keep avatar_url + photo_url in sync.
-    final resolvedPhoto =
+    // Keep avatar_url + photo_url in sync, and only wipe if explicitly cleared to empty string.
+    final String? resolvedPhoto =
         (profile.avatarUrl != null && profile.avatarUrl!.trim().isNotEmpty)
             ? profile.avatarUrl!.trim()
             : ((profile.photoUrl != null && profile.photoUrl!.trim().isNotEmpty)
                 ? profile.photoUrl!.trim()
-                : '');
-    profileData['avatar_url'] = resolvedPhoto;
-    profileData['photo_url'] = resolvedPhoto;
+                : (profile.avatarUrl == '' || profile.photoUrl == '' ? '' : null));
+    if (resolvedPhoto != null) {
+      profileData['avatar_url'] = resolvedPhoto;
+      profileData['photo_url'] = resolvedPhoto;
+    } else {
+      profileData.remove('avatar_url');
+      profileData.remove('photo_url');
+    }
     return _buildProfileData(
       email: profile.email,
       fullName: profile.fullName,

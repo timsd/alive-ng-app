@@ -188,6 +188,8 @@ class _LeaderMeetingTranscriptionScreenState
   }
 
   static const String _draftKey = 'alive_leader_scribe_backup_draft';
+  Map<String, dynamic>? _detectedDraft;
+  bool _dismissedDraftBanner = false;
 
   Future<void> _checkExistingDraft() async {
     try {
@@ -197,21 +199,9 @@ class _LeaderMeetingTranscriptionScreenState
         final draft = jsonDecode(draftStr) as Map<String, dynamic>;
         final count = (draft['entries'] as List?)?.length ?? 0;
         if (count > 0 && _transcriptEntries.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Found backed-up meeting draft ($count entries).'),
-              duration: const Duration(seconds: 5),
-              showCloseIcon: true,
-              action: SnackBarAction(
-                label: 'Restore',
-                textColor: Colors.amberAccent,
-                onPressed: () {
-                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                  _restoreDraftFromBackup(draft);
-                },
-              ),
-            ),
-          );
+          setState(() {
+            _detectedDraft = draft;
+          });
         }
       }
     } catch (e) {
@@ -1363,6 +1353,10 @@ class _LeaderMeetingTranscriptionScreenState
             SliverToBoxAdapter(
               child: _buildScribeHeaderCard(theme, colorScheme, isLiveKitActive),
             ),
+            if (_detectedDraft != null && !_dismissedDraftBanner)
+              SliverToBoxAdapter(
+                child: _buildDraftBanner(colorScheme),
+              ),
             SliverToBoxAdapter(
               child: _buildActiveSpeakerBar(colorScheme),
             ),
@@ -1626,6 +1620,54 @@ class _LeaderMeetingTranscriptionScreenState
   }
 
   /// Active Speaker Bar: Displays all meeting attendees / LiveKit participants
+  Widget _buildDraftBanner(ColorScheme colorScheme) {
+    final count = (_detectedDraft?['entries'] as List?)?.length ?? 0;
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colorScheme.primary.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.history_edu_rounded, color: colorScheme.primary, size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Found backed-up meeting draft ($count entries).',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: colorScheme.onSurface,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              final draft = _detectedDraft!;
+              setState(() {
+                _detectedDraft = null;
+              });
+              _restoreDraftFromBackup(draft);
+            },
+            child: const Text('Restore', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, size: 18),
+            onPressed: () {
+              setState(() {
+                _dismissedDraftBanner = true;
+                _detectedDraft = null;
+              });
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildActiveSpeakerBar(ColorScheme colorScheme) {
     return Container(
       height: 48,

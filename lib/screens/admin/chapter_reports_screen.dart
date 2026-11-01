@@ -138,7 +138,7 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
                     Expanded(
                       flex: 3,
                       child: DropdownButtonFormField<String>(
-                        initialValue: _selectedChapter,
+                        value: _selectedChapter,
                         isExpanded: true,
                         decoration: const InputDecoration(
                           labelText: 'Chapter',
@@ -159,7 +159,7 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
                     Expanded(
                       flex: 2,
                       child: DropdownButtonFormField<String>(
-                        initialValue: _selectedStatus,
+                        value: _selectedStatus,
                         isExpanded: true,
                         borderRadius: BorderRadius.circular(12),
                         dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,

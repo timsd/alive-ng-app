@@ -26,6 +26,7 @@ class AppwriteAdminExportService {
     'profiles': AppwriteBackendConfig.usersCollectionId,
     'users': AppwriteBackendConfig.usersCollectionId,
     'prayer_requests': AppwriteBackendConfig.prayerRequestsCollectionId,
+    'prayer_testimonies': AppwriteBackendConfig.testimoniesCollectionId,
     'chapters': AppwriteBackendConfig.chaptersCollectionId,
     'notification_settings':
         AppwriteBackendConfig.notificationSettingsCollectionId,
@@ -35,6 +36,20 @@ class AppwriteAdminExportService {
     'donation_records': AppwriteBackendConfig.donationRecordsCollectionId,
     'projects': AppwriteBackendConfig.projectsCollectionId,
     'payment_logs': AppwriteBackendConfig.paymentLogsCollectionId,
+    'app_settings': AppwriteBackendConfig.appSettingsCollectionId,
+    'board_reports': AppwriteBackendConfig.boardReportsCollectionId,
+    'board_documents': AppwriteBackendConfig.boardDocumentsCollectionId,
+    'board_decisions': AppwriteBackendConfig.boardDecisionsCollectionId,
+    'content_pages': AppwriteBackendConfig.contentPagesCollectionId,
+    'tracts': AppwriteBackendConfig.tractsCollectionId,
+    'tract_categories': AppwriteBackendConfig.tractCategoriesCollectionId,
+    'podcasts': AppwriteBackendConfig.podcastsCollectionId,
+    'podcast_episodes': AppwriteBackendConfig.podcastEpisodesCollectionId,
+    'podcast_categories': AppwriteBackendConfig.podcastCategoriesCollectionId,
+    'leadership_records': AppwriteBackendConfig.leadershipRecordsCollectionId,
+    'kids_stories': AppwriteBackendConfig.kidsStoriesCollectionId,
+    'kids_missions': AppwriteBackendConfig.kidsMissionsCollectionId,
+    'meeting_files': AppwriteBackendConfig.meetingFilesCollectionId,
   };
 
   Future<Map<String, dynamic>> exportDataBackup({

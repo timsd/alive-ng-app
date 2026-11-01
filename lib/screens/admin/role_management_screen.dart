@@ -193,7 +193,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
                     // Role Filter
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        initialValue: _selectedRole,
+                        value: _selectedRole,
                         borderRadius: BorderRadius.circular(12),
                         dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                         icon: const Icon(Icons.arrow_drop_down_rounded),
@@ -230,7 +230,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
                     // Chapter Filter
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        initialValue: _selectedChapter,
+                        value: _selectedChapter,
                         decoration: const InputDecoration(
                           labelText: 'Filter by Chapter',
                           border: OutlineInputBorder(),

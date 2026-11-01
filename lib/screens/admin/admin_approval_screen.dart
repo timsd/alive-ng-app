@@ -7,6 +7,7 @@ import '../../models/app_models.dart';
 import '../../services/auth_service.dart';
 import '../../services/appwrite_profile_service.dart';
 import '../../widgets/custom_image.dart';
+import '../../widgets/custom_app_bar.dart';
 
 class AdminApprovalScreen extends StatefulWidget {
   const AdminApprovalScreen({super.key});
@@ -481,8 +482,10 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('User Approval Management'),
+      appBar: CustomAppBar(
+        title: 'User Approval Management',
+        showBackButton: true,
+        showDonationButton: false,
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Theme.of(context).colorScheme.primary,

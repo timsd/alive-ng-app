@@ -105,6 +105,8 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
         return {
           'name': ref.name,
           'path': ref.fullPath,
+          'fileId': ref.fileId,
+          'bucketId': ref.bucketId,
           'size': md.size ?? 0,
           'updated': md.updated?.toLocal(),
           'contentType': md.contentType,
@@ -230,7 +232,7 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
     }
   }
 
-  Future<void> _deleteFile(String bucket, String fileName) async {
+  Future<void> _deleteFile(String bucket, String fileName, {String? fileId}) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -252,7 +254,12 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
 
     if (confirmed == true) {
       try {
-        await _storageService.deleteFile('${_resolveBucket(bucket)}/$fileName');
+        final resolved = _resolveBucket(bucket);
+        if (fileId != null && fileId.isNotEmpty) {
+          await _storageService.deleteFileById(resolved, fileId);
+        } else {
+          await _storageService.deleteFile('$resolved/$fileName');
+        }
         await _loadBucketFiles(bucket);
         ToastUtils.showSuccess('File deleted successfully');
       } catch (e) {
@@ -384,20 +391,23 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
         ),
         trailing: PopupMenuButton<String>(
           onSelected: (value) async {
+            final fileId = file['fileId'] as String?;
             switch (value) {
               case 'copy_url':
-                _copyPublicUrl(bucket, name);
+                _copyPublicUrl(bucket, name, fileId: fileId);
                 break;
               case 'download':
-                final url = await _storageService
-                    .getDownloadUrl('${_resolveBucket(bucket)}/$name');
+                final resolved = _resolveBucket(bucket);
+                final url = fileId != null && fileId.isNotEmpty
+                    ? AppwriteStorageCompatService.appwriteFileUrl(resolved, fileId)
+                    : await _storageService.getDownloadUrl('$resolved/$name');
                 if (await canLaunchUrl(Uri.parse(url))) {
                   await launchUrl(Uri.parse(url),
                       mode: LaunchMode.externalApplication);
                 }
                 break;
               case 'delete':
-                _deleteFile(bucket, name);
+                _deleteFile(bucket, name, fileId: fileId);
                 break;
             }
           },
@@ -483,10 +493,12 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
     }
   }
 
-  void _copyPublicUrl(String bucket, String fileName) async {
+  void _copyPublicUrl(String bucket, String fileName, {String? fileId}) async {
     try {
       final resolved = _resolveBucket(bucket);
-      final url = await _storageService.getDownloadUrl('$resolved/$fileName');
+      final url = fileId != null && fileId.isNotEmpty
+          ? AppwriteStorageCompatService.appwriteFileUrl(resolved, fileId)
+          : await _storageService.getDownloadUrl('$resolved/$fileName');
       await Clipboard.setData(ClipboardData(text: url));
       ToastUtils.showSuccess('URL copied to clipboard');
     } catch (e) {

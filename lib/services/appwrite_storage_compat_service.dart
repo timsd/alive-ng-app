@@ -85,6 +85,19 @@ class AppwriteStorageCompatService {
     }
   }
 
+  Future<void> deleteFileById(String bucketId, String fileId) async {
+    final resolvedBucket = _bucketIdFor(bucketId);
+    try {
+      await _storage.deleteFile(
+        bucketId: resolvedBucket,
+        fileId: fileId,
+      );
+    } catch (e) {
+      _logger.error('Error deleting Appwrite file by ID', e);
+      throw StorageException('Failed to delete file', originalError: e);
+    }
+  }
+
   Future<void> deleteFileByUrl(String downloadUrl) async {
     try {
       final uri = Uri.parse(downloadUrl);

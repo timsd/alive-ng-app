@@ -23,6 +23,9 @@ class _AdminHealthContentScreenState
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (mounted) setState(() {});
+    });
     _initData();
   }
 
@@ -63,6 +66,7 @@ class _AdminHealthContentScreenState
     return Scaffold(
       appBar: CustomAppBar(
         title: 'Health+ Content',
+        showBackButton: true,
         showDonationButton: false,
         bottom: TabBar(
           controller: _tabController,

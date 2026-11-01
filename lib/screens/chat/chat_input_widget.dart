@@ -8,7 +8,9 @@ import '../../services/auth_service.dart';
 import '../../services/appwrite_storage_service.dart';
 import '../../models/chat_models.dart';
 import '../../utils/responsive_utils.dart';
+import 'dart:io' as io;
 import '../../config/chat_config.dart';
+import '../../utils/image_compression_utils.dart';
 
 class ChatInputWidget extends StatefulWidget {
   final TextEditingController controller;
@@ -304,21 +306,29 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
     });
 
     try {
+      final rawBytes = await image.readAsBytes();
+      // Compress and resize image to max 1280px dimension at 80% quality
+      final compressedBytes = ImageCompressionUtils.compressChatImage(
+        rawBytes,
+        maxDimension: 1280,
+        quality: 80,
+      );
+
       final extension = image.name.split('.').last.toLowerCase();
-      final contentType = _getContentType(extension);
-      final Uint8List imageData = await image.readAsBytes();
+      const contentType = 'image/jpeg';
       _validateAttachment(
         fileName: image.name,
-        size: imageData.lengthInBytes,
+        size: compressedBytes.lengthInBytes,
         contentType: contentType,
         extension: extension,
       );
 
+      final cleanName = image.name.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
       final String fileName =
-          'chat_images/${DateTime.now().millisecondsSinceEpoch}_${image.name}';
+          'chat_img_${DateTime.now().millisecondsSinceEpoch}_$cleanName';
       final String downloadUrl =
           await AppwriteStorageService.instance.uploadChatFile(
-        bytes: imageData,
+        bytes: compressedBytes,
         fileName: fileName,
         contentType: contentType,
       );
@@ -359,22 +369,32 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
     try {
       final extension = (file.extension ?? '').toLowerCase();
       final contentType = _getContentType(extension);
+
+      Uint8List? fileBytes = file.bytes;
+      if (fileBytes == null && file.path != null && !kIsWeb) {
+        try {
+          fileBytes = await io.File(file.path!).readAsBytes();
+        } catch (_) {}
+      }
+
+      if (fileBytes == null || fileBytes.isEmpty) {
+        throw Exception('Failed to read file bytes. Please try again.');
+      }
+
       _validateAttachment(
         fileName: file.name,
-        size: file.size,
+        size: fileBytes.lengthInBytes,
         contentType: contentType,
         extension: extension,
       );
 
+      final cleanName = file.name.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
       final String fileName =
-          'chat_files/${DateTime.now().millisecondsSinceEpoch}_${file.name}';
-      if (file.bytes == null) {
-        throw Exception('Failed to read file bytes. Please try again.');
-      }
+          'chat_doc_${DateTime.now().millisecondsSinceEpoch}_$cleanName';
 
       final String downloadUrl =
           await AppwriteStorageService.instance.uploadChatFile(
-        bytes: file.bytes!,
+        bytes: fileBytes,
         fileName: fileName,
         contentType: contentType,
       );

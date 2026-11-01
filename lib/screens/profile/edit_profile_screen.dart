@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../utils/image_compression_utils.dart';
 import '../../models/app_models.dart';
 import '../../utils/responsive_utils.dart';
 import '../../utils/error_detail.dart';
@@ -179,7 +181,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
     try {
       String field(TextEditingController c) => c.text.trim();
-      final resolvedAvatar = _profilePictureUrl?.trim() ?? '';
+      final resolvedAvatar = (_profilePictureUrl != null && _profilePictureUrl!.trim().isNotEmpty)
+          ? _profilePictureUrl!.trim()
+          : (widget.userProfile.avatarUrl ?? widget.userProfile.photoUrl ?? '');
 
       // Create updated user profile
       final updatedProfile = widget.userProfile.copyWith(
@@ -955,29 +959,25 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         return; // User cancelled
       }
 
-      final extension = _detectImageExtension(imageBytes, rawExt);
+      // Automatically compress and resize to standard 512x512 avatar
+      final compressedBytes = ImageCompressionUtils.compressAvatar(imageBytes);
 
       // Show local bytes immediately while uploading
       setState(() {
-        _pendingPictureBytes = imageBytes;
+        _pendingPictureBytes = compressedBytes;
         _isUploadingPicture = true;
       });
 
       try {
         final userId = widget.userProfile.id;
         final timestamp = DateTime.now().millisecondsSinceEpoch;
-        final fileName = 'profile_${userId}_$timestamp.$extension';
-        final contentType = switch (extension) {
-          'png' => 'image/png',
-          'webp' => 'image/webp',
-          'gif' => 'image/gif',
-          _ => 'image/jpeg',
-        };
+        final fileName = 'profile_${userId}_$timestamp.jpg';
+        const contentType = 'image/jpeg';
 
         final previousUrl = _profilePictureUrl;
         final publicUrl =
             await AppwriteStorageService.instance.uploadProfileFile(
-          bytes: imageBytes,
+          bytes: compressedBytes,
           fileName: fileName,
           contentType: contentType,
         );
@@ -995,6 +995,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               },
             );
 
+        // Cache locally in SharedPreferences for instantaneous display across reloads
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('cached_avatar_url_${widget.userProfile.id}', publicUrl);
+        } catch (_) {}
+
         // Immediately propagate the new avatar URL to all screens (Home, Profile, etc.)
         ref.read(uploadedAvatarUrlProvider.notifier).state = publicUrl;
         RoleAccessService.instance.clearCache();
@@ -1002,6 +1008,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         if (!mounted) return;
         setState(() {
           _profilePictureUrl = publicUrl;
+          _pendingPictureBytes = null;
         });
 
         try {

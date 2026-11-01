@@ -116,7 +116,7 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
               children: [
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    initialValue: _selectedCategory,
+                    value: _selectedCategory,
                     borderRadius: BorderRadius.circular(12),
                     dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                     icon: const Icon(Icons.arrow_drop_down_rounded),
@@ -138,7 +138,7 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    initialValue: _selectedStatus,
+                    value: _selectedStatus,
                     borderRadius: BorderRadius.circular(12),
                     dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                     icon: const Icon(Icons.arrow_drop_down_rounded),

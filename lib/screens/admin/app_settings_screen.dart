@@ -157,6 +157,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       child: Scaffold(
         appBar: CustomAppBar(
           title: 'App Settings',
+          showBackButton: true,
           actions: [
             IconButton(
               icon: const Icon(Icons.add),
@@ -335,9 +336,13 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   Chip(
                     label: Text(
                       dataType.toUpperCase(),
-                      style: const TextStyle(fontSize: 10),
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: _getDataTypeTextColor(dataType, theme.brightness == Brightness.dark),
+                      ),
                     ),
-                    backgroundColor: _getDataTypeColor(dataType),
+                    backgroundColor: _getDataTypeColor(dataType, theme.brightness == Brightness.dark),
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                   const SizedBox(width: 8),
@@ -450,7 +455,19 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     }
   }
 
-  Color _getDataTypeColor(String dataType) {
+  Color _getDataTypeColor(String dataType, bool isDark) {
+    if (isDark) {
+      switch (dataType) {
+        case 'boolean':
+          return Colors.green.shade900.withValues(alpha: 0.5);
+        case 'number':
+          return Colors.blue.shade900.withValues(alpha: 0.5);
+        case 'json':
+          return Colors.orange.shade900.withValues(alpha: 0.5);
+        default:
+          return Colors.grey.shade800;
+      }
+    }
     switch (dataType) {
       case 'boolean':
         return Colors.green.shade100;
@@ -459,7 +476,32 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       case 'json':
         return Colors.orange.shade100;
       default:
-        return Colors.grey.shade100;
+        return Colors.grey.shade200;
+    }
+  }
+
+  Color _getDataTypeTextColor(String dataType, bool isDark) {
+    if (isDark) {
+      switch (dataType) {
+        case 'boolean':
+          return Colors.green.shade200;
+        case 'number':
+          return Colors.blue.shade200;
+        case 'json':
+          return Colors.orange.shade200;
+        default:
+          return Colors.grey.shade300;
+      }
+    }
+    switch (dataType) {
+      case 'boolean':
+        return Colors.green.shade900;
+      case 'number':
+        return Colors.blue.shade900;
+      case 'json':
+        return Colors.orange.shade900;
+      default:
+        return Colors.grey.shade800;
     }
   }
 

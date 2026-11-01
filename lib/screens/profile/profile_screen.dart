@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/language_provider.dart';
 import '../../l10n/supported_language.dart';
 import '../../providers/appwrite_auth_provider.dart';
@@ -18,6 +19,7 @@ import '../../services/biometric_auth_service.dart';
 import '../../services/role_access_service.dart';
 import '../../utils/error_detail.dart';
 import '../../utils/toast_utils.dart';
+import '../../utils/image_compression_utils.dart';
 import '../../config/appwrite_backend_config.dart';
 import '../../utils/responsive_utils.dart';
 import 'edit_profile_screen.dart';
@@ -713,25 +715,21 @@ class _ProfileHeaderCardState extends ConsumerState<_ProfileHeaderCard> {
 
       if (imageBytes == null || imageBytes.isEmpty) return;
 
-      final extension = _detectImageExtension(imageBytes, rawExt);
+      // Automatically compress and resize to standard 512x512 avatar
+      final compressedBytes = ImageCompressionUtils.compressAvatar(imageBytes);
 
       setState(() {
-        _pendingBytes = imageBytes;
+        _pendingBytes = compressedBytes;
         _isUploading = true;
       });
 
       final previousUrl = widget.profile.avatarUrl ?? widget.profile.photoUrl;
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final fileName = 'profile_${widget.profile.id}_$timestamp.$extension';
-      final contentType = switch (extension) {
-        'png' => 'image/png',
-        'webp' => 'image/webp',
-        'gif' => 'image/gif',
-        _ => 'image/jpeg',
-      };
+      final fileName = 'profile_${widget.profile.id}_$timestamp.jpg';
+      const contentType = 'image/jpeg';
 
       final publicUrl = await AppwriteStorageService.instance.uploadProfileFile(
-        bytes: imageBytes,
+        bytes: compressedBytes,
         fileName: fileName,
         contentType: contentType,
       );
@@ -746,6 +744,12 @@ class _ProfileHeaderCardState extends ConsumerState<_ProfileHeaderCard> {
             },
           );
 
+      // Cache locally in SharedPreferences for instantaneous display across reloads
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('cached_avatar_url_${widget.profile.id}', publicUrl);
+      } catch (_) {}
+
       ref.read(uploadedAvatarUrlProvider.notifier).state = publicUrl;
       RoleAccessService.instance.clearCache();
 
@@ -759,6 +763,9 @@ class _ProfileHeaderCardState extends ConsumerState<_ProfileHeaderCard> {
       } catch (_) {}
 
       ref.invalidate(currentUserProfileProvider);
+      if (mounted) {
+        setState(() => _pendingBytes = null);
+      }
       ToastUtils.showSuccess('Profile photo updated!');
 
       if (previousUrl != null &&

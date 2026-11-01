@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/appwrite_backend_config.dart';
 import '../models/app_models.dart';
@@ -43,7 +44,7 @@ final currentUserProfileProvider = FutureProvider<UserProfile?>((ref) async {
       email: user.email,
       fullName: user.displayName ?? user.email.split('@').first,
     );
-    final profile = profileService.userProfileFromDocument(
+    UserProfile profile = profileService.userProfileFromDocument(
       document,
       fallbackEmail: user.email,
       fallbackFullName: user.displayName,
@@ -51,6 +52,18 @@ final currentUserProfileProvider = FutureProvider<UserProfile?>((ref) async {
       isAnonymous: user.isAnonymous,
       photoUrl: user.photoUrl,
     );
+
+    // Fall back to locally cached avatar if remote document field is empty
+    if (profile.avatarUrl == null || profile.avatarUrl!.isEmpty) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final cached = prefs.getString('cached_avatar_url_${user.uid}');
+        if (cached != null && cached.isNotEmpty) {
+          profile = profile.copyWith(avatarUrl: cached, photoUrl: cached);
+        }
+      } catch (_) {}
+    }
+
     if (avatarOverride != null) {
       return profile.copyWith(
         avatarUrl: avatarOverride,

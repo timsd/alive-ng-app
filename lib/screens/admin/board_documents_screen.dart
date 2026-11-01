@@ -152,7 +152,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        initialValue: _selectedCategory,
+                        value: _selectedCategory,
                         borderRadius: BorderRadius.circular(12),
                         dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                         icon: const Icon(Icons.arrow_drop_down_rounded),
@@ -186,7 +186,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                             ResponsiveUtils.getResponsiveSpacing(context, 16)),
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        initialValue: _selectedAccessLevel,
+                        value: _selectedAccessLevel,
                         borderRadius: BorderRadius.circular(12),
                         dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                         icon: const Icon(Icons.arrow_drop_down_rounded),
