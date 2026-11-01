@@ -325,19 +325,84 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
             ],
             const SizedBox(height: 16),
             if (connected) ...[
+              // Audio Lock notice banner
+              if (session.isRoomAudioLocked) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.amber.shade700.withValues(alpha: 0.5)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.lock_rounded, size: 16, color: Colors.amber.shade800),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          isAdmin
+                              ? 'Room Audio Locked: Standard participants cannot unmute themselves.'
+                              : 'Microphones are locked by the host. Raise your hand to request to speak.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.amber.shade200
+                                : Colors.amber.shade900,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
               Wrap(
                 spacing: 12,
                 runSpacing: 12,
                 children: [
                   FilledButton.icon(
-                    onPressed: gateway.toggleAudio,
+                    onPressed: () async {
+                      if (!isAdmin && !widget.isModerator && session.isRoomAudioLocked && isAudioMuted) {
+                        _showMessage('The host has locked microphones. Raise your hand to ask to speak.');
+                        return;
+                      }
+                      try {
+                        await gateway.toggleAudio();
+                      } catch (e) {
+                        _showMessage(e.toString().replaceAll('Exception: ', ''));
+                      }
+                    },
                     icon: Icon(isAudioMuted ? Icons.mic_off : Icons.mic),
-                    label: Text(isAudioMuted ? 'Unmute' : 'Mute'),
+                    label: Text(
+                      !isAdmin && !widget.isModerator && session.isRoomAudioLocked && isAudioMuted
+                          ? 'Muted (Locked)'
+                          : (isAudioMuted ? 'Unmute' : 'Mute'),
+                    ),
+                    style: !isAdmin && !widget.isModerator && session.isRoomAudioLocked && isAudioMuted
+                        ? FilledButton.styleFrom(
+                            backgroundColor: Colors.grey.shade700,
+                          )
+                        : null,
                   ),
                   FilledButton.icon(
                     onPressed: gateway.toggleVideo,
                     icon: Icon(isVideoMuted ? Icons.videocam_off : Icons.videocam),
                     label: Text(isVideoMuted ? 'Camera On' : 'Camera Off'),
+                  ),
+                  // Raise Hand button for all attendees
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final newRaised = !session.isHandRaised;
+                      await gateway.raiseHand(raised: newRaised);
+                      _showMessage(newRaised ? 'Hand raised' : 'Hand lowered');
+                    },
+                    icon: Icon(
+                      session.isHandRaised ? Icons.pan_tool_rounded : Icons.pan_tool_outlined,
+                      color: session.isHandRaised ? const Color(0xFFD49B28) : null,
+                    ),
+                    label: Text(session.isHandRaised ? 'Lower Hand' : 'Raise Hand'),
                   ),
                   OutlinedButton.icon(
                     onPressed: gateway.leaveMeeting,
@@ -359,6 +424,78 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                     ),
                 ],
               ),
+
+              // Host / Moderator Controls Area
+              if (isAdmin || widget.isModerator) ...[
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? const Color(0xFF1B2432)
+                        : const Color(0xFFF3EBE0),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFFD49B28).withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.admin_panel_settings_rounded, size: 16, color: Color(0xFFD49B28)),
+                          SizedBox(width: 6),
+                          Text(
+                            'Host Moderation Controls',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFFD49B28),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: [
+                          // "Mute All" button
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              await gateway.muteAll();
+                              _showMessage('Broadcast command sent: All participants muted.');
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red.shade800,
+                              foregroundColor: Colors.white,
+                            ),
+                            icon: const Icon(Icons.volume_off_rounded, size: 16),
+                            label: const Text('Mute All'),
+                          ),
+                          // Hard Lockout toggle ("Disallow Participants to Unmute")
+                          OutlinedButton.icon(
+                            onPressed: () async {
+                              final newLock = !session.isRoomAudioLocked;
+                              await gateway.setRoomAudioLock(newLock);
+                              _showMessage(newLock
+                                  ? 'Host Hard Lockout activated: Participants cannot unmute.'
+                                  : 'Host Hard Lockout released: Participants can now unmute.');
+                            },
+                            icon: Icon(
+                              session.isRoomAudioLocked ? Icons.lock_open_rounded : Icons.lock_rounded,
+                              size: 16,
+                            ),
+                            label: Text(session.isRoomAudioLocked ? 'Unlock Mics' : 'Lock Mics'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
               if (session.participants.isNotEmpty) ...[
                 const SizedBox(height: 16),
                 Text(
@@ -387,6 +524,28 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            if (participant.isHandRaised) ...[
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                margin: const EdgeInsets.only(right: 8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFD49B28).withValues(alpha: 0.18),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: const Color(0xFFD49B28), width: 1),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.pan_tool_rounded, size: 13, color: Color(0xFFD49B28)),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Hand Raised',
+                                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFD49B28)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                             Icon(
                               participant.isAudioMuted
                                   ? Icons.mic_off

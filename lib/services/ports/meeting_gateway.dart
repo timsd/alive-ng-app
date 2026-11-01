@@ -31,6 +31,9 @@ abstract class MeetingGateway {
   /// Whether the local video camera is currently muted / disabled.
   bool get isVideoMuted;
 
+  /// Whether the host has locked audio for standard participants.
+  bool get isRoomAudioLocked;
+
   /// Requests a token from the backend for [roomName] and joins the meeting room.
   Future<void> executionAndJoin({
     required String roomName,
@@ -55,6 +58,15 @@ abstract class MeetingGateway {
 
   /// Leaves the current meeting room and resets local media state.
   Future<void> leaveMeeting();
+
+  /// Host / Moderator command: Mutes all remote participants in the room.
+  Future<void> muteAll();
+
+  /// Host / Moderator command: Hard-locks microphone unmuting for standard participants.
+  Future<void> setRoomAudioLock(bool locked);
+
+  /// Participant action: Raises or lowers hand to request permission to speak.
+  Future<void> raiseHand({bool raised = true});
 
   /// Releases resources, disconnects from room, and closes streams.
   void dispose();

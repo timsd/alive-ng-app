@@ -19,6 +19,7 @@ import '../../config/appwrite_backend_config.dart';
 import '../../main.dart';
 import '../../models/meeting_models.dart';
 import '../ports/meeting_gateway.dart';
+import '../role_access_service.dart';
 
 /// Appwrite Function ID for the LiveKit broadcast backend.
 const String _broadcastFunctionId = 'start_livekit_broadcast';
@@ -36,8 +37,11 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
   lk.Room? _room;
   lk.EventsListener<lk.RoomEvent>? _roomListener;
 
-  bool _isAudioMuted = false;
+  bool _isAudioMuted = true; // "Mute on Entry by Default"
   bool _isVideoMuted = false;
+  bool _isRoomAudioLocked = false;
+  bool _isHostOrModerator = false;
+  final Map<String, bool> _handsRaised = {};
 
   MeetingSession _currentSession = MeetingSession.initial();
 
@@ -81,6 +85,9 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
   @override
   bool get isVideoMuted => _isVideoMuted;
 
+  @override
+  bool get isRoomAudioLocked => _isRoomAudioLocked;
+
   /// Exposes the underlying room strictly for adapter-level consumers
   /// if specialized widgets need it, though UI should avoid direct usage.
   lk.Room? get rawRoom => _room;
@@ -120,13 +127,17 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       isVideoEnabled = false;
     }
 
+    final identity = participant.identity;
+    final isHandRaised = _handsRaised[identity] ?? false;
+
     return ParticipantInfo(
-      identity: participant.identity,
+      identity: identity,
       name: participant.name.isNotEmpty ? participant.name : participant.identity,
       isSpeaking: participant.isSpeaking,
       isAudioEnabled: isAudioEnabled,
       isVideoEnabled: isVideoEnabled,
       isLocal: isLocal,
+      isHandRaised: isHandRaised,
     );
   }
 
@@ -180,11 +191,14 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
           ? room.name!
           : _currentSession.roomName;
 
+      final localId = _room?.localParticipant?.identity ?? '';
       _currentSession = _currentSession.copyWith(
         roomName: roomName,
         status: status,
         isAudioMuted: _isAudioMuted,
         isVideoMuted: _isVideoMuted,
+        isRoomAudioLocked: _isRoomAudioLocked,
+        isHandRaised: _handsRaised[localId] ?? false,
         participants: _collectParticipants(),
       );
       _emitSession();
@@ -214,7 +228,46 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       ..on<lk.TrackUnsubscribedEvent>((_) => _syncStateFromRoom())
       ..on<lk.TrackMutedEvent>((_) => _syncStateFromRoom())
       ..on<lk.TrackUnmutedEvent>((_) => _syncStateFromRoom())
-      ..on<lk.SpeakingChangedEvent>((_) => _syncStateFromRoom());
+      ..on<lk.SpeakingChangedEvent>((_) => _syncStateFromRoom())
+      ..on<lk.DataReceivedEvent>((event) {
+        try {
+          final payloadStr = utf8.decode(event.data);
+          final map = jsonDecode(payloadStr);
+          if (map is Map<String, dynamic>) {
+            _handleControlMessage(map, sender: event.participant?.identity);
+          }
+        } catch (e) {
+          debugPrint('[LiveKitMeetingGateway] DataReceived parse note: $e');
+        }
+      });
+  }
+
+  void _handleControlMessage(Map<String, dynamic> msg, {String? sender}) {
+    final action = msg['action'];
+    if (action == 'mute_all') {
+      debugPrint('[LiveKitMeetingGateway] Received mute_all control message from $sender');
+      if (!_isHostOrModerator && !_isAudioMuted) {
+        _room?.localParticipant?.setMicrophoneEnabled(false);
+        _isAudioMuted = true;
+        _syncStateFromRoom();
+      }
+    } else if (action == 'room_audio_lock') {
+      final locked = msg['locked'] == true;
+      _isRoomAudioLocked = locked;
+      debugPrint('[LiveKitMeetingGateway] Received room_audio_lock: $locked from $sender');
+      if (locked && !_isHostOrModerator && !_isAudioMuted) {
+        _room?.localParticipant?.setMicrophoneEnabled(false);
+        _isAudioMuted = true;
+      }
+      _syncStateFromRoom();
+    } else if (action == 'raise_hand') {
+      final participantId = msg['participant_id']?.toString() ?? sender;
+      final raised = msg['raised'] == true;
+      if (participantId != null && participantId.isNotEmpty) {
+        _handsRaised[participantId] = raised;
+        _syncStateFromRoom();
+      }
+    }
   }
 
   // ──────────────────────────────────────────────────────────
@@ -316,6 +369,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
     String? meetingTitle,
   }) async {
     try {
+      _isHostOrModerator = RoleAccessService.instance.canAccessAdmin();
       _currentSession = _currentSession.copyWith(
         roomName: roomName,
         status: RoomStatus.connecting,
@@ -411,10 +465,12 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
 
       _room = room;
 
-      // Enable microphone defensively so hardware/permission absence does not abort meeting join
+      // ── MUTE ON ENTRY BY DEFAULT (Approach A from Video Architecture) ──
+      // Hardware access is primed in the browser/OS, but the audio track is initialized
+      // in disabled mode (audioTrack.enabled = false) to ensure a quiet, professional entry.
       try {
-        await _room!.localParticipant?.setMicrophoneEnabled(true);
-        _isAudioMuted = false;
+        await _room!.localParticipant?.setMicrophoneEnabled(false);
+        _isAudioMuted = true;
       } catch (audioErr) {
         debugPrint('Microphone unavailable or permission denied: $audioErr');
         _isAudioMuted = true;
@@ -484,6 +540,13 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
     final participant = _room?.localParticipant;
     if (participant == null) return;
 
+    // Hard Lockout enforcement: If room audio is locked by host and user is not a host/moderator,
+    // block unmuting and raise informative exception.
+    if (_isRoomAudioLocked && _isAudioMuted && !_isHostOrModerator) {
+      debugPrint('[LiveKitMeetingGateway] Unmute prevented: Room audio is locked by host.');
+      throw Exception('Microphones are locked by the host. Raise your hand to speak.');
+    }
+
     final targetState = !_isAudioMuted;
     try {
       await participant.setMicrophoneEnabled(targetState);
@@ -497,6 +560,53 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       participants: _collectParticipants(),
     );
     _emitSession();
+  }
+
+  @override
+  Future<void> muteAll() async {
+    try {
+      final payload = utf8.encode(jsonEncode({'action': 'mute_all'}));
+      await _room?.localParticipant?.publishData(payload, reliable: true);
+      debugPrint('[LiveKitMeetingGateway] Broadcast mute_all command dispatched');
+    } catch (e) {
+      debugPrint('[LiveKitMeetingGateway] muteAll error: $e');
+    }
+  }
+
+  @override
+  Future<void> setRoomAudioLock(bool locked) async {
+    _isRoomAudioLocked = locked;
+    try {
+      final payload = utf8.encode(jsonEncode({
+        'action': 'room_audio_lock',
+        'locked': locked,
+      }));
+      await _room?.localParticipant?.publishData(payload, reliable: true);
+      debugPrint('[LiveKitMeetingGateway] Broadcast room_audio_lock: $locked dispatched');
+    } catch (e) {
+      debugPrint('[LiveKitMeetingGateway] setRoomAudioLock error: $e');
+    }
+    _syncStateFromRoom();
+  }
+
+  @override
+  Future<void> raiseHand({bool raised = true}) async {
+    final identity = _room?.localParticipant?.identity ?? '';
+    if (identity.isNotEmpty) {
+      _handsRaised[identity] = raised;
+    }
+    try {
+      final payload = utf8.encode(jsonEncode({
+        'action': 'raise_hand',
+        'participant_id': identity,
+        'raised': raised,
+      }));
+      await _room?.localParticipant?.publishData(payload, reliable: true);
+      debugPrint('[LiveKitMeetingGateway] Hand raise status: $raised for $identity');
+    } catch (e) {
+      debugPrint('[LiveKitMeetingGateway] raiseHand error: $e');
+    }
+    _syncStateFromRoom();
   }
 
   @override
@@ -533,8 +643,10 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       debugPrint('Error leaving meeting: $e');
     } finally {
       _room = null;
-      _isAudioMuted = false;
+      _isAudioMuted = true;
       _isVideoMuted = false;
+      _isRoomAudioLocked = false;
+      _handsRaised.clear();
       _currentSession = MeetingSession.initial();
       _emitSession();
     }

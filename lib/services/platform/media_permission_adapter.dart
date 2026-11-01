@@ -8,3 +8,4 @@ class MediaPermissionService {
   static Future<bool> requestMediaPermissions() =>
       platform.requestMediaPermissions();
 }
+

@@ -22,3 +22,4 @@ Future<bool> requestMediaPermissions() async {
   }
   return false;
 }
+

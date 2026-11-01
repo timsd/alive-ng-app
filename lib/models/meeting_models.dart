@@ -30,8 +30,11 @@ class ParticipantInfo {
   /// Whether this participant's camera is enabled.
   final bool isVideoEnabled;
 
-  /// Whether this participant is the local user on this device.
+  /// Whether this participant the local user on this device.
   final bool isLocal;
+
+  /// Whether this participant currently has their hand raised.
+  final bool isHandRaised;
 
   const ParticipantInfo({
     required this.identity,
@@ -40,6 +43,7 @@ class ParticipantInfo {
     this.isAudioEnabled = true,
     this.isVideoEnabled = true,
     this.isLocal = false,
+    this.isHandRaised = false,
   });
 
   /// Convenience getter to check if audio is muted.
@@ -55,6 +59,7 @@ class ParticipantInfo {
     bool? isAudioEnabled,
     bool? isVideoEnabled,
     bool? isLocal,
+    bool? isHandRaised,
   }) {
     return ParticipantInfo(
       identity: identity ?? this.identity,
@@ -63,6 +68,7 @@ class ParticipantInfo {
       isAudioEnabled: isAudioEnabled ?? this.isAudioEnabled,
       isVideoEnabled: isVideoEnabled ?? this.isVideoEnabled,
       isLocal: isLocal ?? this.isLocal,
+      isHandRaised: isHandRaised ?? this.isHandRaised,
     );
   }
 
@@ -76,7 +82,8 @@ class ParticipantInfo {
           isSpeaking == other.isSpeaking &&
           isAudioEnabled == other.isAudioEnabled &&
           isVideoEnabled == other.isVideoEnabled &&
-          isLocal == other.isLocal;
+          isLocal == other.isLocal &&
+          isHandRaised == other.isHandRaised;
 
   @override
   int get hashCode => Object.hash(
@@ -86,12 +93,14 @@ class ParticipantInfo {
         isAudioEnabled,
         isVideoEnabled,
         isLocal,
+        isHandRaised,
       );
 
   @override
   String toString() =>
       'ParticipantInfo(identity: $identity, name: $name, isSpeaking: $isSpeaking, '
-      'isAudioEnabled: $isAudioEnabled, isVideoEnabled: $isVideoEnabled, isLocal: $isLocal)';
+      'isAudioEnabled: $isAudioEnabled, isVideoEnabled: $isVideoEnabled, isLocal: $isLocal, '
+      'isHandRaised: $isHandRaised)';
 }
 
 /// Snapshot of an active or pending meeting session.
@@ -111,15 +120,27 @@ class MeetingSession {
   /// List of all participants currently in the room (local + remote).
   final List<ParticipantInfo> participants;
 
+  /// Whether the host has locked audio (preventing standard participants from unmuting).
+  final bool isRoomAudioLocked;
+
+  /// Whether the session adheres to mute-on-entry policy.
+  final bool isMuteOnEntry;
+
+  /// Whether the local participant currently has their hand raised.
+  final bool isHandRaised;
+
   /// Optional error message if connection or operation failed.
   final String? error;
 
   const MeetingSession({
     this.roomName = '',
     this.status = RoomStatus.disconnected,
-    this.isAudioMuted = false,
+    this.isAudioMuted = true,
     this.isVideoMuted = false,
     this.participants = const [],
+    this.isRoomAudioLocked = false,
+    this.isMuteOnEntry = true,
+    this.isHandRaised = false,
     this.error,
   });
 
@@ -151,6 +172,9 @@ class MeetingSession {
     bool? isAudioMuted,
     bool? isVideoMuted,
     List<ParticipantInfo>? participants,
+    bool? isRoomAudioLocked,
+    bool? isMuteOnEntry,
+    bool? isHandRaised,
     String? error,
   }) {
     return MeetingSession(
@@ -159,6 +183,9 @@ class MeetingSession {
       isAudioMuted: isAudioMuted ?? this.isAudioMuted,
       isVideoMuted: isVideoMuted ?? this.isVideoMuted,
       participants: participants ?? this.participants,
+      isRoomAudioLocked: isRoomAudioLocked ?? this.isRoomAudioLocked,
+      isMuteOnEntry: isMuteOnEntry ?? this.isMuteOnEntry,
+      isHandRaised: isHandRaised ?? this.isHandRaised,
       error: error,
     );
   }
@@ -172,6 +199,9 @@ class MeetingSession {
           status == other.status &&
           isAudioMuted == other.isAudioMuted &&
           isVideoMuted == other.isVideoMuted &&
+          isRoomAudioLocked == other.isRoomAudioLocked &&
+          isMuteOnEntry == other.isMuteOnEntry &&
+          isHandRaised == other.isHandRaised &&
           error == other.error;
 
   @override
@@ -180,6 +210,9 @@ class MeetingSession {
         status,
         isAudioMuted,
         isVideoMuted,
+        isRoomAudioLocked,
+        isMuteOnEntry,
+        isHandRaised,
         error,
       );
 
@@ -187,5 +220,6 @@ class MeetingSession {
   String toString() =>
       'MeetingSession(roomName: $roomName, status: $status, '
       'isAudioMuted: $isAudioMuted, isVideoMuted: $isVideoMuted, '
+      'isRoomAudioLocked: $isRoomAudioLocked, '
       'participants: ${participants.length}, error: $error)';
 }
