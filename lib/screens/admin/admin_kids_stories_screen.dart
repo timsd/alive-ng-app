@@ -5,6 +5,7 @@ import '../../services/pdf_extractor_service.dart';
 import '../../services/appwrite_storage_service.dart';
 import '../../services/kids_content_service.dart';
 import '../../models/kids_models.dart';
+import '../../widgets/custom_app_bar.dart';
 
 class AdminKidsStoriesScreen extends StatefulWidget {
   const AdminKidsStoriesScreen({super.key});
@@ -195,8 +196,10 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Add Kids Story'),
+      appBar: const CustomAppBar(
+        title: 'Add Kids Story',
+        showBackButton: true,
+        showDonationButton: false,
       ),
       body: _isSaving
           ? Center(

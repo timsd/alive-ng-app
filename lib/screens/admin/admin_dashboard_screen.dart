@@ -13,7 +13,6 @@ import '../../widgets/role_guard.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../constants/chapters.dart';
 import '../../constants/app_constants.dart';
-import 'content_management_screen.dart';
 import 'admin_announcements_screen.dart';
 import 'admin_chapters_screen.dart';
 import 'chapter_reports_screen.dart';
@@ -795,15 +794,14 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
         _MgmtTile('Archived Users', 'View and manage archived user accounts', Icons.archive_outlined, () => _navigateToArchivedUsers()),
       ]),
       _MgmtSection('Content Management', Icons.library_books_outlined, [
+        _MgmtTile('Content Pages & Projects', 'Manage app content pages, core sections, and mission projects', Icons.post_add_outlined, () => context.push(AppConstants.contentManagementRoute)),
         _MgmtTile('Tract & Podcast Management', 'Manage tracts, podcasts, and categories', Icons.article_outlined, () => context.push(AppConstants.tractPodcastAdminRoute)),
         _MgmtTile('Sample Content (user-facing seeds)', 'Hide or restore sample podcasts & episodes users currently see', Icons.preview_outlined, () => context.push(AppConstants.sampleContentAdminRoute)),
         _MgmtTile('Monthly Support Reminder', 'Send on the 1st of each month. Enable to let members opt out.', Icons.notifications_active_outlined, () => _showMonthlyReminderControl()),
-        _MgmtTile('Featured Content', 'Manage featured content and highlights', Icons.star_outline, () => _navigateToContentManagement('featured')),
         _MgmtTile('App Broadcast', 'Create and manage app broadcasts and announcements', Icons.campaign_outlined, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminAnnouncementsScreen()))),
         _MgmtTile('Kids Stories', 'Upload PDF or type content with media', Icons.auto_stories, () => context.push(AppConstants.adminKidsStoriesRoute)),
         _MgmtTile('Kids Missions', 'Upload PDF or type content with media', Icons.assignment_turned_in, () => context.push(AppConstants.adminKidsMissionsRoute)),
         _MgmtTile('Study Guides', 'Upload PDF or type content with media', Icons.menu_book, () => context.push(AppConstants.adminStudyGuidesRoute)),
-        _MgmtTile('Content Pages & Projects', 'Manage app content pages, custom sections, and projects', Icons.post_add_outlined, () => context.push(AppConstants.contentManagementRoute)),
         _MgmtTile('Health+ Content', 'Manage plant-based recipes, remedies, and discussions', Icons.health_and_safety_rounded, () => context.push(AppConstants.adminHealthContentRoute)),
       ]),
       _MgmtSection('Chapter Management', Icons.location_city_outlined, [
@@ -1208,15 +1206,6 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
 
   void _navigateToArchivedUsers() {
     context.push(AppConstants.userArchiveRoute);
-  }
-
-  void _navigateToContentManagement(String type) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ContentManagementScreen(contentType: type),
-      ),
-    );
   }
 
   void _navigateToStorageAdmin() {

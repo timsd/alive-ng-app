@@ -34,13 +34,13 @@ const List<DonationPurposeOption> kAdministrativePurposes = [
     id: 'app_maintenance',
     label: 'App Maintenance',
     description: 'Hosting, push notifications and running costs of the app.',
-    icon: Icons.handyman_rounded,
+    icon: Icons.phonelink_setup_rounded,
   ),
   DonationPurposeOption(
     id: 'campus_workers',
     label: 'Campus Workers',
     description: 'Supporting full-time workers serving on campuses.',
-    icon: Icons.badge_outlined,
+    icon: Icons.badge_rounded,
   ),
   DonationPurposeOption(
     id: 'volunteers',
@@ -52,7 +52,7 @@ const List<DonationPurposeOption> kAdministrativePurposes = [
     id: 'media_and_equipment',
     label: 'Media & Equipment',
     description: 'Cameras, audio, production and ministry equipment.',
-    icon: Icons.videocam_rounded,
+    icon: Icons.video_camera_back_rounded,
   ),
 ];
 

@@ -6,6 +6,7 @@ import '../../widgets/role_guard.dart';
 import '../../widgets/loading_widget.dart';
 import '../../utils/toast_utils.dart';
 import '../../utils/text_formatter.dart';
+import '../../widgets/custom_app_bar.dart';
 
 class AnnouncementEditorScreen extends StatefulWidget {
   final Map<String, dynamic>? announcement;
@@ -110,12 +111,12 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
     return RoleVisibility(
       allowedRoles: const ['admin', 'super_admin', 'content_manager'],
       child: Scaffold(
-        appBar: AppBar(
-          title: Text(widget.announcement == null
+        appBar: CustomAppBar(
+          title: widget.announcement == null
               ? 'Create Announcement'
-              : 'Edit Announcement'),
-          backgroundColor: theme.colorScheme.surface,
-          foregroundColor: theme.colorScheme.onSurface,
+              : 'Edit Announcement',
+          showBackButton: true,
+          showDonationButton: false,
           actions: [
             IconButton(
               icon: const Icon(Icons.save),

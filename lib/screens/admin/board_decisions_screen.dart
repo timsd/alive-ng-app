@@ -5,6 +5,7 @@ import '../../services/appwrite_board_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/role_access_service.dart';
 import '../../utils/text_formatter.dart';
+import '../../widgets/custom_app_bar.dart';
 
 class BoardDecisionsScreen extends StatefulWidget {
   const BoardDecisionsScreen({super.key});
@@ -130,34 +131,15 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Board Decisions',
-          style: theme.textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: colorScheme.onPrimary,
-          ),
-        ),
-        centerTitle: true,
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                colorScheme.primary,
-                colorScheme.primary.withValues(alpha: 0.82),
-              ],
-            ),
-          ),
-        ),
-        elevation: 2,
-        shadowColor: colorScheme.shadow.withValues(alpha: 0.26),
+      appBar: CustomAppBar(
+        title: 'Board Decisions',
+        showBackButton: true,
+        showDonationButton: false,
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 8.0),
             child: IconButton(
-              icon: Icon(Icons.add_task, color: colorScheme.onPrimary),
+              icon: const Icon(Icons.add_task),
               onPressed: () => _showProposeDecisionDialog(),
               tooltip: 'Propose New Decision',
             ),

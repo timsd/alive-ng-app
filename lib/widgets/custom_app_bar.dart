@@ -118,7 +118,25 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
     final translate = ref.watch(translationProvider);
 
     Widget? effectiveLeading = leading;
-    if (showBackButton && leading == null) {
+    bool shouldShowBack = showBackButton;
+    if (!shouldShowBack && leading == null && automaticallyImplyLeading) {
+      try {
+        final canPop = GoRouter.of(context).canPop() || Navigator.of(context).canPop();
+        final uri = GoRouterState.of(context).uri.toString();
+        final isRootScreen = uri == '/' ||
+            uri == '/home' ||
+            uri == '/study' ||
+            uri == '/prayer' ||
+            uri == '/health' ||
+            uri == '/more' ||
+            uri == AppConstants.homeRoute;
+        shouldShowBack = canPop || !isRootScreen;
+      } catch (_) {
+        shouldShowBack = false;
+      }
+    }
+
+    if (shouldShowBack && leading == null) {
       effectiveLeading = IconButton(
         icon: LayoutFixUtils.responsiveIcon(
           Icons.chevron_left,
@@ -140,6 +158,38 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
                   final uri = GoRouterState.of(context).uri.toString();
                   if (uri.startsWith('/admin') && uri != AppConstants.adminRoute) {
                     context.go(AppConstants.adminRoute);
+                    return;
+                  }
+                  if (uri.startsWith('/board') && uri != '/board') {
+                    context.go('/board');
+                    return;
+                  }
+                  if (uri.startsWith('/study') && uri != '/study') {
+                    context.go('/study');
+                    return;
+                  }
+                  if (uri.startsWith('/tract') || uri.startsWith('/podcast')) {
+                    context.go('/study');
+                    return;
+                  }
+                  if (uri.startsWith('/prayer') && uri != '/prayer') {
+                    context.go('/prayer');
+                    return;
+                  }
+                  if (uri.startsWith('/health') && uri != '/health') {
+                    context.go('/health');
+                    return;
+                  }
+                  if (uri.startsWith('/discipleship') && uri != '/discipleship') {
+                    context.go('/discipleship');
+                    return;
+                  }
+                  if (uri.startsWith('/kids') && uri != '/kids') {
+                    context.go('/kids');
+                    return;
+                  }
+                  if (uri.startsWith('/more') && uri != '/more') {
+                    context.go('/more');
                     return;
                   }
                 } catch (_) {}
@@ -219,20 +269,23 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
         theme.appBarTheme.backgroundColor ??
         theme.colorScheme.primary;
 
-    // Choose a high-contrast foreground:
-    // - If background is the theme primary, use onPrimary.
-    // - Otherwise, fall back to black/white based on luminance.
-    Color computedContrast;
-    if (resolvedBackground.toARGB32() == theme.colorScheme.primary.toARGB32()) {
-      computedContrast = theme.colorScheme.onPrimary;
+    // Resolve foreground with strict contrast calculation
+    final Color resolvedForeground;
+    if (foregroundColor != null) {
+      resolvedForeground = foregroundColor!;
     } else {
       final double luminance = resolvedBackground.computeLuminance();
-      computedContrast = luminance > 0.5 ? Colors.black : Colors.white;
+      if (luminance < 0.5) {
+        // Dark background -> MUST use high-contrast light foreground
+        resolvedForeground = Colors.white;
+      } else {
+        // Light background -> MUST use high-contrast dark foreground
+        resolvedForeground = (theme.appBarTheme.foregroundColor != null &&
+                theme.appBarTheme.foregroundColor!.computeLuminance() < 0.5)
+            ? theme.appBarTheme.foregroundColor!
+            : const Color(0xFF17263B);
+      }
     }
-
-    final Color resolvedForeground = foregroundColor ??
-        theme.appBarTheme.foregroundColor ??
-        computedContrast;
 
     final TextStyle? resolvedTitleStyle = (titleTextStyle ??
             theme.appBarTheme.titleTextStyle ??
@@ -377,17 +430,23 @@ class SliverCustomAppBar extends StatelessWidget {
         theme.appBarTheme.backgroundColor ??
         theme.colorScheme.primary;
 
-    Color computedContrast;
-    if (resolvedBackground.toARGB32() == theme.colorScheme.primary.toARGB32()) {
-      computedContrast = theme.colorScheme.onPrimary;
+    // Resolve foreground with strict contrast calculation
+    final Color resolvedForeground;
+    if (foregroundColor != null) {
+      resolvedForeground = foregroundColor!;
     } else {
       final double luminance = resolvedBackground.computeLuminance();
-      computedContrast = luminance > 0.5 ? Colors.black : Colors.white;
+      if (luminance < 0.5) {
+        // Dark background -> MUST use high-contrast light foreground
+        resolvedForeground = Colors.white;
+      } else {
+        // Light background -> MUST use high-contrast dark foreground
+        resolvedForeground = (theme.appBarTheme.foregroundColor != null &&
+                theme.appBarTheme.foregroundColor!.computeLuminance() < 0.5)
+            ? theme.appBarTheme.foregroundColor!
+            : const Color(0xFF17263B);
+      }
     }
-
-    final Color resolvedForeground = foregroundColor ??
-        theme.appBarTheme.foregroundColor ??
-        computedContrast;
 
     final PreferredSizeWidget? effectiveBottom = bottom != null
         ? PreferredSize(

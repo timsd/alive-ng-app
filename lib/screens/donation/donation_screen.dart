@@ -724,7 +724,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                 context,
                 theme,
                 label: purpose.label,
-                icon: purpose.icon ?? Icons.apartment_rounded,
+                icon: purpose.icon ?? Icons.settings_suggest_rounded,
                 tooltip: purpose.description,
                 selected:
                     _selectedFundDesignations.contains(purpose.label),

@@ -6,6 +6,7 @@ import '../../services/appwrite_storage_service.dart';
 import '../../services/appwrite_study_service.dart';
 import '../../models/study_guide_models.dart';
 import '../../utils/text_formatter.dart';
+import '../../widgets/custom_app_bar.dart';
 
 class AdminStudyGuidesScreen extends StatefulWidget {
   const AdminStudyGuidesScreen({super.key});
@@ -202,8 +203,10 @@ class _AdminStudyGuidesScreenState extends State<AdminStudyGuidesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Study Guide Builder'),
+      appBar: const CustomAppBar(
+        title: 'Study Guide Builder',
+        showBackButton: true,
+        showDonationButton: false,
       ),
       body: _isSaving
           ? Center(

@@ -11,6 +11,7 @@ import '../../utils/toast_utils.dart';
 import '../../utils/text_formatter.dart';
 import '../../utils/layout_fix_utils.dart';
 import '../../utils/project_sync_bridge.dart';
+import '../../widgets/custom_app_bar.dart';
 
 class ContentManagementScreen extends StatefulWidget {
   final String? contentType;
@@ -31,9 +32,8 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
   final TablesDB _tables = TablesDB(appwriteClient);
 
   bool _isLoading = false;
-  List<Map<String, dynamic>> _contentPages = [];
-  List<Map<String, dynamic>> _featuredContent = [];
-  List<Map<String, dynamic>> _projects = [];
+  List<Map<String, dynamic>> _contentPages = List.from(_defaultContentPages);
+  List<Map<String, dynamic>> _projects = List.from(_defaultProjects);
 
   static final List<Map<String, dynamic>> _defaultContentPages = [
     {
@@ -91,53 +91,49 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
       'content':
           'ALIVE Nigeria values user trust, spiritual confidentiality, and Christian brotherhood.\n\nPrivate prayer rooms, intercession requests, and personal reflections are protected with role-based and cryptographic boundaries. Chat communication across local chapters, committees, and leadership bodies must reflect Christ-like decorum, mutual respect, and spiritual upliftment.',
     },
-  ];
-
-  static final List<Map<String, dynamic>> _defaultFeaturedContent = [
     {
-      'id': 'feat_annual_retreat',
+      'id': 'page_annual_retreat',
       'title': 'ALIVE Nigeria National Retreat 2026',
-      'description':
+      'slug': 'annual-retreat',
+      'language': 'en',
+      'is_published': true,
+      'publish_date': DateTime.now().toIso8601String(),
+      'created_at': DateTime.now().toIso8601String(),
+      'content':
           'Annual gathering of Adventist lay missionaries, working professionals, and students across Nigeria for spiritual revival, mission consecration, and evangelism training.',
-      'content_type': 'event',
-      'is_active': true,
-      'created_at': DateTime.now().toIso8601String(),
     },
     {
-      'id': 'feat_mission_outreaches',
+      'id': 'page_mission_outreaches',
       'title': 'Campus & Rural Mission Outreaches (STMs & LTMs)',
-      'description':
+      'slug': 'mission-outreaches',
+      'language': 'en',
+      'is_published': true,
+      'publish_date': DateTime.now().toIso8601String(),
+      'created_at': DateTime.now().toIso8601String(),
+      'content':
           'Deploying Short-Term Missionaries (STMs) and Long-Term Missionaries (LTMs) to unreached campus territories and rural outposts across Nigeria.',
-      'content_type': 'ministry',
-      'is_active': true,
-      'created_at': DateTime.now().toIso8601String(),
     },
     {
-      'id': 'feat_health_plus',
+      'id': 'page_health_plus',
       'title': 'Health+ Plant-Based Living & Remedies',
-      'description':
+      'slug': 'health-plus',
+      'language': 'en',
+      'is_published': true,
+      'publish_date': DateTime.now().toIso8601String(),
+      'created_at': DateTime.now().toIso8601String(),
+      'content':
           'Authentic Nigerian plant-based recipes, natural therapeutic remedies, and wholesome living resources reflecting stewardship of body, mind, and mission.',
-      'content_type': 'health',
-      'is_active': true,
-      'created_at': DateTime.now().toIso8601String(),
     },
     {
-      'id': 'feat_discipleship_daily',
+      'id': 'page_discipleship_daily',
       'title': 'Daily Word & Discipleship Growth',
-      'description':
+      'slug': 'discipleship-growth',
+      'language': 'en',
+      'is_published': true,
+      'publish_date': DateTime.now().toIso8601String(),
+      'created_at': DateTime.now().toIso8601String(),
+      'content':
           'Structured Bible study lessons, Daily Tasks, Instant Word memorization games, and spiritual progress tracking for personal and chapter development.',
-      'content_type': 'study',
-      'is_active': true,
-      'created_at': DateTime.now().toIso8601String(),
-    },
-    {
-      'id': 'feat_mission_projects',
-      'title': 'Kingdom Mission Projects & Impact Hub',
-      'description':
-          'Support the acquisition of mission outreach vehicles, media production studio equipment, and the construction of our discipleship training center.',
-      'content_type': 'project',
-      'is_active': true,
-      'created_at': DateTime.now().toIso8601String(),
     },
   ];
 
@@ -202,9 +198,12 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
   Widget _buildSectionHeader(
       BuildContext context, String title, Widget action) {
     return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 12,
+        runSpacing: 10,
         children: [
           LayoutFixUtils.safeText(
             title,
@@ -222,21 +221,12 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _loadAllContent();
 
     // Set initial tab based on content type
-    if (widget.contentType != null) {
-      switch (widget.contentType) {
-        case 'featured':
-          _tabController.index = 1;
-          break;
-        case 'projects':
-          _tabController.index = 2;
-          break;
-        default:
-          _tabController.index = 0;
-      }
+    if (widget.contentType == 'projects') {
+      _tabController.index = 1;
     }
   }
 
@@ -247,18 +237,13 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
   }
 
   Future<void> _loadAllContent() async {
-    setState(() => _isLoading = true);
-
     try {
       await Future.wait([
         _loadContentPages(),
-        _loadFeaturedContent(),
         _loadProjects(),
       ]);
     } catch (e) {
-      ToastUtils.showError('Error loading content: $e');
-    } finally {
-      setState(() => _isLoading = false);
+      debugPrint('Error loading content: $e');
     }
   }
 
@@ -266,13 +251,15 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     try {
       final pages = await _listAdminDocuments(
         AppwriteBackendConfig.contentPagesCollectionId,
-        queries: [Query.orderDesc('created_at'), Query.limit(100)],
       );
       if (!mounted) return;
       setState(() {
         _contentPages =
             pages.isNotEmpty ? pages : List.from(_defaultContentPages);
       });
+      if (pages.isEmpty) {
+        _seedSamplePages();
+      }
     } catch (e) {
       debugPrint('Error loading content pages: $e');
       if (mounted) {
@@ -283,24 +270,21 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     }
   }
 
-  Future<void> _loadFeaturedContent() async {
+  Future<void> _seedSamplePages() async {
     try {
-      final featured = await _listAdminDocuments(
-        AppwriteBackendConfig.featuredContentCollectionId,
-        queries: [Query.orderDesc('created_at'), Query.limit(100)],
-      );
-      if (!mounted) return;
-      setState(() {
-        _featuredContent =
-            featured.isNotEmpty ? featured : List.from(_defaultFeaturedContent);
-      });
-    } catch (e) {
-      debugPrint('Error loading featured content: $e');
-      if (mounted) {
-        setState(() {
-          _featuredContent = List.from(_defaultFeaturedContent);
-        });
+      for (var page in _defaultContentPages) {
+        final id = page['id'] as String;
+        final data = Map<String, dynamic>.from(page)..remove('id');
+        try {
+          await _createAdminDocument(
+            AppwriteBackendConfig.contentPagesCollectionId,
+            data,
+            documentId: id,
+          );
+        } catch (_) {}
       }
+    } catch (e) {
+      debugPrint('Error seeding sample pages: $e');
     }
   }
 
@@ -418,36 +402,24 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
         'president',
       ],
       child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            'Content Management',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onPrimary,
-                ),
-          ),
-          backgroundColor: Theme.of(context).colorScheme.primary,
-          elevation: 0,
-          shadowColor: Theme.of(context).colorScheme.shadow,
-          centerTitle: true,
+        appBar: CustomAppBar(
+          title: 'Content Management',
+          showBackButton: true,
+          showDonationButton: false,
           bottom: TabBar(
             controller: _tabController,
             labelStyle:
-                const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
             unselectedLabelStyle:
-                const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
-            indicatorColor: Theme.of(context).colorScheme.onPrimary,
-            labelColor: Theme.of(context).colorScheme.onPrimary,
+                const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+            indicatorColor: Theme.of(context).colorScheme.primary,
+            labelColor: Theme.of(context).colorScheme.primary,
             unselectedLabelColor:
-                Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.76),
-            indicatorWeight: 4,
-            indicatorSize: TabBarIndicatorSize.label,
+                Theme.of(context).colorScheme.onSurfaceVariant,
+            indicatorWeight: 3,
             tabs: const [
-              Tab(text: 'Pages', icon: Icon(Icons.article_outlined, size: 20)),
-              Tab(text: 'Featured', icon: Icon(Icons.star_outline, size: 20)),
-              Tab(
-                  text: 'Projects',
-                  icon: Icon(Icons.account_tree_outlined, size: 20)),
+              Tab(text: 'Content Pages', icon: Icon(Icons.article_outlined, size: 20)),
+              Tab(text: 'Projects', icon: Icon(Icons.account_tree_outlined, size: 20)),
             ],
           ),
         ),
@@ -457,7 +429,6 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                 controller: _tabController,
                 children: [
                   _buildContentPagesTab(),
-                  _buildFeaturedContentTab(),
                   _buildProjectsTab(),
                 ],
               ),
@@ -471,18 +442,27 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
         _buildSectionHeader(
           context,
           'Content Pages (${_contentPages.length})',
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
               ElevatedButton.icon(
                 onPressed: () => _showContentPageDialog(),
-                icon: const Icon(Icons.add),
+                icon: const Icon(Icons.add, size: 18),
                 label: const Text('New Page'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  visualDensity: VisualDensity.compact,
+                ),
               ),
-              const SizedBox(width: 12),
               OutlinedButton.icon(
                 onPressed: _editOnboardingPage,
-                icon: const Icon(Icons.flag),
+                icon: const Icon(Icons.flag, size: 18),
                 label: const Text('Edit Onboarding'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  visualDensity: VisualDensity.compact,
+                ),
               ),
             ],
           ),
@@ -606,119 +586,6 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     );
   }
 
-  Widget _buildFeaturedContentTab() {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Featured Content (${_featuredContent.length})',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5,
-                    ),
-              ),
-              ElevatedButton.icon(
-                onPressed: () => _showFeaturedContentDialog(),
-                icon: const Icon(Icons.add),
-                label: const Text('New Featured'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: _featuredContent.isEmpty
-              ? const Center(
-                  child: Text(
-                    'No featured content found.\nCreate your first featured item!',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  itemCount: _featuredContent.length,
-                  itemBuilder: (context, index) {
-                    final content = _featuredContent[index];
-                    return _buildFeaturedContentCard(content);
-                  },
-                ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFeaturedContentCard(Map<String, dynamic> content) {
-    final isActive = content['is_active'] ?? false;
-    final contentType = content['content_type'] ?? 'general';
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12.0),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: isActive ? Colors.green : Colors.grey,
-          child: const Icon(
-            Icons.star,
-            color: Colors.white,
-          ),
-        ),
-        title: Text(
-          content['title'] ?? 'Untitled',
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(content['description'] ?? ''),
-            const SizedBox(height: 4),
-            Text(
-              'Type: ${TextFormatter.formatCategory(contentType).toUpperCase()}',
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-          ],
-        ),
-        trailing: PopupMenuButton(
-          itemBuilder: (context) => [
-            const PopupMenuItem(
-              value: 'edit',
-              child: ListTile(
-                leading: Icon(Icons.edit),
-                title: Text('Edit'),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-            PopupMenuItem(
-              value: isActive ? 'deactivate' : 'activate',
-              child: ListTile(
-                leading: Icon(isActive ? Icons.pause : Icons.play_arrow),
-                title: Text(isActive ? 'Deactivate' : 'Activate'),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-            PopupMenuItem(
-              value: 'delete',
-              child: ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title: Text('Delete',
-                    style:
-                        TextStyle(color: Theme.of(context).colorScheme.error)),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-          ],
-          onSelected: (value) => _handleFeaturedContentAction(value, content),
-        ),
-      ),
-    );
-  }
-
   // Action handlers
   void _handleContentPageAction(String action, Map<String, dynamic> page) {
     switch (action) {
@@ -733,26 +600,6 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
         break;
       case 'delete':
         _deleteContentPage(page);
-        break;
-    }
-  }
-
-
-
-  void _handleFeaturedContentAction(
-      String action, Map<String, dynamic> content) {
-    switch (action) {
-      case 'edit':
-        _showFeaturedContentDialog(content: content);
-        break;
-      case 'activate':
-        _toggleFeaturedContentActive(content, true);
-        break;
-      case 'deactivate':
-        _toggleFeaturedContentActive(content, false);
-        break;
-      case 'delete':
-        _deleteFeaturedContent(content);
         break;
     }
   }
@@ -937,234 +784,34 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     );
   }
 
-  void _showFeaturedContentDialog({Map<String, dynamic>? content}) {
-    final isEditing = content != null && content.isNotEmpty;
-    final titleController =
-        TextEditingController(text: content?['title']?.toString() ?? '');
-    final descriptionController =
-        TextEditingController(text: content?['description']?.toString() ?? '');
-    final contentIdController =
-        TextEditingController(text: content?['content_id']?.toString() ?? '');
-    final priorityController =
-        TextEditingController(text: (content?['priority'] ?? 1).toString());
-    String contentType =
-        (content?['content_type']?.toString() ?? 'general').toLowerCase();
-    const validTypes = [
-      'general',
-      'tract',
-      'podcast',
-      'study_guide',
-      'kids_story',
-      'project',
-    ];
-    if (!validTypes.contains(contentType)) {
-      contentType = 'general';
-    }
-    bool isActive = content?['is_active'] ?? true;
-
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (dialogContext, setDialogState) {
-            return AlertDialog(
-              title: Text(
-                isEditing ? 'Edit Featured Content' : 'Create Featured Content',
-              ),
-              content: SizedBox(
-                width: 460,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      TextFormField(
-                        controller: titleController,
-                        decoration: const InputDecoration(
-                          labelText: 'Title *',
-                          prefixIcon: Icon(Icons.star_outline),
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
-                        initialValue: contentType,
-                        decoration: const InputDecoration(
-                          labelText: 'Content Type',
-                          prefixIcon: Icon(Icons.category_outlined),
-                          border: OutlineInputBorder(),
-                        ),
-                        items: validTypes
-                            .map((t) => DropdownMenuItem(
-                                  value: t,
-                                  child: Text(TextFormatter.formatCategory(t)),
-                                ))
-                            .toList(),
-                        onChanged: (val) {
-                          if (val != null) {
-                            setDialogState(() => contentType = val);
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: contentIdController,
-                        decoration: const InputDecoration(
-                          labelText: 'Target Content ID (optional)',
-                          prefixIcon: Icon(Icons.tag),
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: priorityController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Priority (1 = highest)',
-                          prefixIcon: Icon(Icons.low_priority),
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: descriptionController,
-                        maxLines: 3,
-                        decoration: const InputDecoration(
-                          labelText: 'Description',
-                          prefixIcon: Icon(Icons.description_outlined),
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      SwitchListTile(
-                        value: isActive,
-                        onChanged: (v) => setDialogState(() => isActive = v),
-                        title: const Text('Active'),
-                        subtitle: const Text('Show in featured highlights'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.save),
-                  label: Text(isEditing ? 'Update' : 'Create'),
-                  onPressed: () async {
-                    if (titleController.text.trim().isEmpty) {
-                      ToastUtils.showError('Title is required');
-                      return;
-                    }
-                    final payload = {
-                      'title': titleController.text.trim(),
-                      'description': descriptionController.text.trim(),
-                      'content_type': contentType,
-                      'content_id': contentIdController.text.trim(),
-                      'priority': int.tryParse(priorityController.text) ?? 1,
-                      'is_active': isActive,
-                      'updated_at': DateTime.now().toIso8601String(),
-                    };
-                    setState(() {
-                      if (isEditing) {
-                        final idx = _featuredContent
-                            .indexWhere((c) => c['id'] == content['id']);
-                        if (idx != -1) {
-                          _featuredContent[idx] = {
-                            ..._featuredContent[idx],
-                            ...payload
-                          };
-                        }
-                      } else {
-                        _featuredContent.insert(0, {
-                          ...payload,
-                          'id': 'feat_${DateTime.now().millisecondsSinceEpoch}',
-                          'created_at': DateTime.now().toIso8601String(),
-                        });
-                      }
-                    });
-
-                    try {
-                      if (isEditing) {
-                        await _updateAdminDocument(
-                          AppwriteBackendConfig.featuredContentCollectionId,
-                          content['id'],
-                          payload,
-                        );
-                        ToastUtils.showSuccess('Featured content updated');
-                      } else {
-                        await _createAdminDocument(
-                          AppwriteBackendConfig.featuredContentCollectionId,
-                          {
-                            ...payload,
-                            'created_at': DateTime.now().toIso8601String(),
-                          },
-                        );
-                        ToastUtils.showSuccess('Featured content created');
-                      }
-                      if (dialogContext.mounted) {
-                        Navigator.of(dialogContext).pop();
-                      }
-                    } catch (e) {
-                      debugPrint('Note: local featured saved, Appwrite sync: $e');
-                      if (dialogContext.mounted) {
-                        Navigator.of(dialogContext).pop();
-                      }
-                      ToastUtils.showSuccess(isEditing
-                          ? 'Featured content updated'
-                          : 'Featured content created');
-                    }
-                  },
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  // Database operations
   Future<void> _toggleContentPagePublish(
       Map<String, dynamic> page, bool publish) async {
+    final id = page['id'];
+    setState(() {
+      final idx = _contentPages.indexWhere((p) => p['id'] == id);
+      if (idx != -1) {
+        _contentPages[idx] = {
+          ..._contentPages[idx],
+          'is_published': publish,
+          'status': publish ? 'published' : 'draft',
+        };
+      }
+    });
     try {
       await _updateAdminDocument(
         AppwriteBackendConfig.contentPagesCollectionId,
-        page['id'],
+        id,
         {
           'is_published': publish,
-          'publish_date': publish ? DateTime.now().toIso8601String() : null,
+          'status': publish ? 'published' : 'draft',
           'updated_at': DateTime.now().toIso8601String(),
         },
       );
-
       ToastUtils.showSuccess(
-          'Page ${publish ? 'published' : 'unpublished'} successfully');
-      _loadContentPages();
-    } catch (e) {
-      ToastUtils.showError('Error updating page: $e');
-    }
-  }
-
-  Future<void> _toggleFeaturedContentActive(
-      Map<String, dynamic> content, bool active) async {
-    try {
-      await _updateAdminDocument(
-        AppwriteBackendConfig.featuredContentCollectionId,
-        content['id'],
-        {
-          'is_active': active,
-          'updated_at': DateTime.now().toIso8601String(),
-        },
+        publish ? 'Page published' : 'Page unpublished',
       );
-
-      ToastUtils.showSuccess(
-          'Featured content ${active ? 'activated' : 'deactivated'} successfully');
-      _loadFeaturedContent();
     } catch (e) {
-      ToastUtils.showError('Error updating featured content: $e');
+      debugPrint('Note: local page updated, Appwrite sync: $e');
     }
   }
 
@@ -1205,50 +852,16 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     }
   }
 
-  Future<void> _deleteFeaturedContent(Map<String, dynamic> content) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Featured Content'),
-        content: Text('Are you sure you want to delete "${content['title']}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      final id = content['id'];
-      setState(() {
-        _featuredContent.removeWhere((c) => c['id'] == id);
-      });
-      try {
-        await _deleteAdminDocument(
-          AppwriteBackendConfig.featuredContentCollectionId,
-          id,
-        );
-      } catch (e) {
-        debugPrint('Note: local featured removed, Appwrite sync: $e');
-      }
-      ToastUtils.showSuccess('Featured content deleted successfully');
-    }
-  }
-
   Widget _buildProjectsTab() {
     return LayoutFixUtils.safeColumn(
       children: [
         Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+          child: Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 8,
             children: [
               LayoutFixUtils.safeText(
                 'Projects (${_projects.length})',
@@ -1259,11 +872,13 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
               ),
               ElevatedButton.icon(
                 onPressed: () => _showProjectDialog(),
-                icon: const Icon(Icons.add),
+                icon: const Icon(Icons.add, size: 18),
                 label: const Text('New Project'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
                   foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  visualDensity: VisualDensity.compact,
                 ),
               ),
             ],

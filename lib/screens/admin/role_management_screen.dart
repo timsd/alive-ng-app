@@ -9,6 +9,7 @@ import '../../widgets/role_guard.dart';
 import '../../widgets/custom_image.dart';
 import '../../constants/chapters.dart';
 import '../../utils/text_formatter.dart';
+import '../../widgets/custom_app_bar.dart';
 import 'package:intl/intl.dart';
 
 class RoleManagementScreen extends StatefulWidget {
@@ -136,25 +137,13 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Role Management',
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onPrimary,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Theme.of(context).colorScheme.onPrimary,
-        iconTheme: IconThemeData(color: Theme.of(context).colorScheme.onPrimary),
-        actionsIconTheme:
-            IconThemeData(color: Theme.of(context).colorScheme.onPrimary),
+      appBar: CustomAppBar(
+        title: 'Role Management',
+        showBackButton: true,
+        showDonationButton: false,
         actions: [
           IconButton(
-            icon: Icon(
-              Icons.refresh,
-              color: Theme.of(context).colorScheme.onPrimary,
-            ),
+            icon: const Icon(Icons.refresh),
             tooltip: 'Refresh',
             onPressed: _loadUsers,
           ),

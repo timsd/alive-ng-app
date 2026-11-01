@@ -152,18 +152,18 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
             ),
             child: TabBar(
               controller: _tabController,
-              indicatorColor: Theme.of(context).colorScheme.primary,
+              indicatorColor: Theme.of(context).brightness == Brightness.dark
+                  ? AppTheme.darkGold
+                  : AppTheme.lightPrimary,
               indicatorWeight: 3,
-              labelColor: Theme.of(context).colorScheme.primary,
-              unselectedLabelColor: Theme.of(context)
-                  .colorScheme
-                  .onSurface
-                  .withValues(alpha: 0.65),
-              labelStyle: Theme.of(context)
-                  .textTheme
-                  .labelLarge
-                  ?.copyWith(fontWeight: FontWeight.bold),
-              unselectedLabelStyle: Theme.of(context).textTheme.labelLarge,
+              labelColor: Theme.of(context).brightness == Brightness.dark
+                  ? AppTheme.darkGold
+                  : AppTheme.lightPrimary,
+              unselectedLabelColor: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white70
+                  : const Color(0xFF475569),
+              labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
               isScrollable: true,
               tabAlignment: TabAlignment.start,
               tabs: const [
@@ -539,9 +539,17 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
       length: 2,
       child: Column(
         children: [
-          const TabBar(
-            labelColor: AppTheme.primaryColor,
-            tabs: [
+          TabBar(
+            labelColor: Theme.of(context).brightness == Brightness.dark
+                ? AppTheme.darkGold
+                : AppTheme.lightPrimary,
+            unselectedLabelColor: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white70
+                : const Color(0xFF475569),
+            indicatorColor: Theme.of(context).brightness == Brightness.dark
+                ? AppTheme.darkGold
+                : AppTheme.lightPrimary,
+            tabs: const [
               Tab(text: 'Interactions'),
               Tab(text: 'Study Sessions'),
             ],

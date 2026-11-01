@@ -7,6 +7,7 @@ import '../../services/appwrite_storage_service.dart';
 import '../../services/kids_content_service.dart';
 import '../../models/kids_missions.dart';
 import '../../utils/text_formatter.dart';
+import '../../widgets/custom_app_bar.dart';
 
 class AdminKidsMissionsScreen extends StatefulWidget {
   const AdminKidsMissionsScreen({super.key});
@@ -199,8 +200,10 @@ class _AdminKidsMissionsScreenState extends State<AdminKidsMissionsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Add Kids Mission'),
+      appBar: const CustomAppBar(
+        title: 'Add Kids Mission',
+        showBackButton: true,
+        showDonationButton: false,
       ),
       body: _isSaving
           ? Center(
