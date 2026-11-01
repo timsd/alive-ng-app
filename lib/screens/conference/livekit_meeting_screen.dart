@@ -67,7 +67,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       return;
     }
 
-    // Standard Zoom/Meet flow: Activate real system permission prompt immediately
+    // Google Meet flow: Request microphone & camera upfront so browser/OS prompt triggers automatically
     if (!kIsWeb) {
       try {
         final micStatus = await Permission.microphone.status;
@@ -80,10 +80,10 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
           ].request();
           debugPrint('Media permissions requested directly: $statuses');
 
+          // Defensively allow meeting entry in listen-only mode if permissions are denied (Google Meet behavior)
           if (statuses[Permission.microphone]?.isPermanentlyDenied == true ||
               statuses[Permission.camera]?.isPermanentlyDenied == true) {
-            _showPermanentlyDeniedDialog();
-            return;
+            _showMessage('Microphone or camera is restricted in settings. Joining in listen-only mode.');
           }
         }
       } catch (permErr) {
@@ -123,17 +123,9 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       } else if (errStr.contains('No element') ||
           errStr.contains('Bad state')) {
         errorMessage =
-            'Audio/video device not detected. Please verify microphone and camera permissions.';
+            'LiveKit meeting connection interrupted. Please check your network and try again.';
       } else if (errStr.contains('permission') || errStr.contains('NotAllowedError')) {
-        if (!kIsWeb) {
-          final isPermanent = await Permission.microphone.isPermanentlyDenied ||
-              await Permission.camera.isPermanentlyDenied;
-          if (isPermanent) {
-            _showPermanentlyDeniedDialog();
-            return;
-          }
-        }
-        errorMessage = 'Camera or microphone access was denied.';
+        errorMessage = 'Camera or microphone access was restricted. Joining in muted / listen-only mode.';
       } else if (e is Exception) {
         final cleanMsg = errStr.replaceAll('Exception: ', '').trim();
         if (cleanMsg.isNotEmpty && cleanMsg.length < 120) {

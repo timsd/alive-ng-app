@@ -59,6 +59,7 @@ class AppwriteMeetingFileService {
       String uploadedBucketId = AppwriteBackendConfig.meetingFilesBucketId;
       String fileId = ID.unique();
 
+      bool storageSucceeded = false;
       try {
         await _storage.createFile(
           bucketId: uploadedBucketId,
@@ -68,22 +69,38 @@ class AppwriteMeetingFileService {
             filename: '${timestamp}_$fileName',
             contentType: 'text/markdown',
           ),
+          permissions: [
+            Permission.read(Role.any()),
+          ],
         );
+        storageSucceeded = true;
       } catch (storageErr) {
         _logger.warning(
             'Primary meeting_files bucket failed: $storageErr, trying content_media bucket...');
-        uploadedBucketId = AppwriteBackendConfig.contentMediaBucketId;
-        fileId = ID.unique();
-        await _storage.createFile(
-          bucketId: uploadedBucketId,
-          fileId: fileId,
-          file: InputFile.fromBytes(
-            bytes: data,
-            filename: '${timestamp}_$fileName',
-            contentType: 'text/markdown',
-          ),
-        );
+        try {
+          uploadedBucketId = AppwriteBackendConfig.contentMediaBucketId;
+          fileId = ID.unique();
+          await _storage.createFile(
+            bucketId: uploadedBucketId,
+            fileId: fileId,
+            file: InputFile.fromBytes(
+              bytes: data,
+              filename: '${timestamp}_$fileName',
+              contentType: 'text/markdown',
+            ),
+            permissions: [
+              Permission.read(Role.any()),
+            ],
+          );
+          storageSucceeded = true;
+        } catch (secondaryErr) {
+          _logger.warning('Secondary bucket also failed: $secondaryErr. Proceeding with database record.');
+        }
       }
+
+      final fileUrl = storageSucceeded
+          ? getMeetingFileDownloadUrl(fileId)
+          : '';
 
       await _tables.createRow(
         databaseId: AppwriteBackendConfig.databaseId,
@@ -92,7 +109,7 @@ class AppwriteMeetingFileService {
         data: {
           'meeting_id': 'general',
           'name': fileName,
-          'file_url': getMeetingFileDownloadUrl(fileId),
+          'file_url': fileUrl,
           'file_path': fileId,
           'file_name': fileName,
           'file_type': fileType,

@@ -282,7 +282,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       String errStr = e.toString().replaceAll('Exception: ', '').trim();
       if (errStr.contains('No element') || errStr.contains('Bad state')) {
         errStr =
-            'Audio/video device not detected. Please verify your camera and microphone permissions.';
+            'LiveKit meeting connection interrupted. Please check your network and try again.';
       }
       _currentSession = _currentSession.copyWith(
         status: RoomStatus.disconnected,
@@ -398,7 +398,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       } else if (e.toString().contains('No element') ||
           e.toString().contains('Bad state')) {
         errorMessage =
-            'Audio/video device not detected. Please verify your camera and microphone connections.';
+            'LiveKit meeting connection interrupted. Please check your network and try again.';
       }
 
       _currentSession = MeetingSession(
@@ -416,8 +416,14 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
     final participant = _room?.localParticipant;
     if (participant == null) return;
 
-    _isAudioMuted = !_isAudioMuted;
-    await participant.setMicrophoneEnabled(!_isAudioMuted);
+    final targetState = !_isAudioMuted;
+    try {
+      await participant.setMicrophoneEnabled(targetState);
+      _isAudioMuted = !targetState;
+    } catch (e) {
+      debugPrint('[LiveKitMeetingGateway] toggleAudio note: $e');
+      _isAudioMuted = true;
+    }
     _currentSession = _currentSession.copyWith(
       isAudioMuted: _isAudioMuted,
       participants: _collectParticipants(),
@@ -430,8 +436,14 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
     final participant = _room?.localParticipant;
     if (participant == null) return;
 
-    _isVideoMuted = !_isVideoMuted;
-    await participant.setCameraEnabled(!_isVideoMuted);
+    final targetState = !_isVideoMuted;
+    try {
+      await participant.setCameraEnabled(targetState);
+      _isVideoMuted = !targetState;
+    } catch (e) {
+      debugPrint('[LiveKitMeetingGateway] toggleVideo note: $e');
+      _isVideoMuted = true;
+    }
     _currentSession = _currentSession.copyWith(
       isVideoMuted: _isVideoMuted,
       participants: _collectParticipants(),
