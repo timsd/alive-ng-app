@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../utils/responsive_utils.dart';
 import '../../services/appwrite_library_service.dart';
-import 'package:just_audio/just_audio.dart';
+import '../../widgets/standard_video_player_modal.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class LibraryScreen extends ConsumerStatefulWidget {
@@ -42,20 +42,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     },
   ];
 
-  final List<Map<String, dynamic>> _allAudio = [
-    {
-      'title': 'Daily Devotional Podcast',
-      'author': 'ALIVE Audio',
-      'category': 'Devotional',
-      'language': 'en'
-    },
-  ];
-
   final List<Map<String, dynamic>> _allVideos = [
     {
       'title': 'Bible Study Methods',
       'author': 'ALIVE Media',
-      'category': 'Bible',
+      'category': 'Bible Study',
+      'duration': '18:30',
       'language': 'en'
     },
   ];
@@ -63,7 +55,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _loadLibraryContent();
   }
 
@@ -72,7 +64,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
       final results = await Future.wait([
         _libraryService.listBooks(),
         _libraryService.listArticles(),
-        _libraryService.listAudio(),
         _libraryService.listVideos(),
       ]);
       if (!mounted) return;
@@ -88,14 +79,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
             ..addAll(results[1]);
         }
         if (results[2].isNotEmpty) {
-          _allAudio
-            ..clear()
-            ..addAll(results[2]);
-        }
-        if (results[3].isNotEmpty) {
           _allVideos
             ..clear()
-            ..addAll(results[3]);
+            ..addAll(results[2]);
         }
       });
     } catch (_) {}
@@ -103,7 +89,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
 
   @override
   void dispose() {
-    _audioPlayer.dispose();
     _tabController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -121,7 +106,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
           tabs: const [
             Tab(icon: Icon(Icons.library_books), text: 'Books'),
             Tab(icon: Icon(Icons.article), text: 'Articles'),
-            Tab(icon: Icon(Icons.headphones), text: 'Audio'),
             Tab(icon: Icon(Icons.video_library), text: 'Videos'),
           ],
         ),
@@ -165,7 +149,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               children: [
                 _buildBooksTab(),
                 _buildArticlesTab(),
-                _buildAudioTab(),
                 _buildVideosTab(),
               ],
             ),
@@ -227,30 +210,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               itemCount: filteredArticles.length,
               itemBuilder: (context, index) {
                 return _buildArticleCard(context, filteredArticles[index]);
-              },
-            ),
-    );
-  }
-
-  Widget _buildAudioTab() {
-    final filteredAudio = _getFilteredContent(_allAudio);
-
-    return Padding(
-      padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(
-          context: context, mobile: 16, tablet: 20, desktop: 24)),
-      child: filteredAudio.isEmpty
-          ? Center(
-              child: Text(
-                'No audio content found matching your search criteria',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-              ),
-            )
-          : ListView.builder(
-              itemCount: filteredAudio.length,
-              itemBuilder: (context, index) {
-                return _buildAudioCard(context, filteredAudio[index]);
               },
             ),
     );
@@ -467,94 +426,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAudioCard(BuildContext context, Map<String, dynamic> audio) {
-    return Card(
-      elevation: 2,
-      margin: EdgeInsets.only(
-          bottom: ResponsiveUtils.getResponsiveValue(
-              context: context, mobile: 8, tablet: 10, desktop: 12)),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: InkWell(
-        onTap: () => _playAudio((audio['id'] ?? audio['title']).toString()),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .primary
-                      .withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .primary
-                        .withValues(alpha: 0.3),
-                    width: 1,
-                  ),
-                ),
-                child: Icon(
-                  Icons.play_arrow,
-                  size: 32,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      audio['title'],
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            fontSize: ResponsiveUtils.getResponsiveValue(
-                                context: context,
-                                mobile: 16,
-                                tablet: 18,
-                                desktop: 20),
-                          ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'By ${audio['author']}',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.color
-                                ?.withValues(alpha: 0.7),
-                            fontSize: ResponsiveUtils.getResponsiveValue(
-                                context: context,
-                                mobile: 14,
-                                tablet: 15,
-                                desktop: 16),
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-              IconButton(
-                onPressed: () => _downloadAudio((audio['id'] ?? audio['title']).toString()),
-                icon: const Icon(Icons.download),
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ],
           ),
@@ -827,114 +698,23 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     }
   }
 
-  // Audio methods
-  // Audio player instance
-  final AudioPlayer _audioPlayer = AudioPlayer();
-
-  Future<void> _playAudio(String audioId) async {
-    debugPrint('Playing audio for audio ID: $audioId');
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      final episodeData = await _libraryService.getPodcastEpisode(audioId);
-
-      if (episodeData == null ||
-          _contentUrl(episodeData, 'audioUrl', 'audio_url') == null) {
-        messenger.showSnackBar(
-          const SnackBar(content: Text('No audio available for this episode')),
-        );
-        return;
-      }
-
-      final audioUrl = _contentUrl(episodeData, 'audioUrl', 'audio_url')!;
-
-      // Show loading indicator
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Loading audio...')),
-      );
-
-      // Play the audio
-      await _audioPlayer.setUrl(audioUrl);
-      await _audioPlayer.play();
-
-      // Show now playing notification
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('Playing audio: ${episodeData['title'] ?? audioId}'),
-          action: SnackBarAction(
-            label: 'Pause',
-            onPressed: () {
-              _audioPlayer.pause();
-              messenger.showSnackBar(
-                const SnackBar(content: Text('Audio paused')),
-              );
-            },
-          ),
-          duration: const Duration(seconds: 4),
-        ),
-      );
-    } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('Error playing audio: $e')),
-      );
-    }
-  }
-
-  Future<void> _downloadAudio(String audioId) async {
-    debugPrint('Downloading audio for audio ID: $audioId');
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      // Show downloading notification
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('Downloading audio: $audioId'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-
-      final episodeData = await _libraryService.getPodcastEpisode(audioId);
-
-      if (episodeData == null ||
-          _contentUrl(episodeData, 'audioUrl', 'audio_url') == null) {
-        messenger.showSnackBar(
-          const SnackBar(content: Text('No audio available for this episode')),
-        );
-        return;
-      }
-
-      final audioUrl = _contentUrl(episodeData, 'audioUrl', 'audio_url')!;
-      final uri = Uri.parse(audioUrl);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
-
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('Downloaded: ${episodeData['title'] ?? audioId}'),
-          action: SnackBarAction(
-            label: 'Play',
-            onPressed: () {
-              _playAudio(audioId);
-            },
-          ),
-        ),
-      );
-    } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('Error downloading audio: $e')),
-      );
-    }
-  }
-
   // Video methods
   void _playVideo(String videoId) async {
     debugPrint('Playing video for video ID: $videoId');
     try {
       final doc = await _libraryService.getVideo(videoId);
-      if (doc != null && mounted) {
-        // In a real app, launch video player
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Playing video: ${doc['title']}')),
-        );
+      final videoData = doc ??
+          _allVideos.firstWhere(
+            (v) => (v['id'] ?? v['title']).toString() == videoId,
+            orElse: () => {
+              'title': 'Bible Study Methods',
+              'author': 'ALIVE Media',
+              'category': 'Bible Study',
+              'duration': '18:30',
+            },
+          );
+      if (mounted) {
+        StandardVideoPlayerModal.show(context, videoData: videoData);
       }
     } catch (e) {
       if (mounted) {

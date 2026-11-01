@@ -72,7 +72,7 @@ class AppTourSteps {
       highlights: [
         'Daily Bible verse with multilingual audio TTS playback',
         'Quick shortcuts to Bible Study, Tracts, Podcasts, and Kids Missions',
-        'Personalized profile hub and church community updates',
+        'Personalized profile hub and ministry updates',
       ],
     ),
 
@@ -143,7 +143,7 @@ class AppTourSteps {
       targetArea: 'more',
       highlights: [
         'Digital tracts with in-app PDF view and sharing',
-        'Audio podcasts with uplifting sermons and Christian music',
+        'Audio podcasts with uplifting sermons and past ALIVE recordings',
         'Kids missions with illustrated stories and achievement badges',
         'Directory connecting you to campus and regional chapter units',
       ],
@@ -161,7 +161,7 @@ class AppTourSteps {
       route: '/conference',
       targetArea: 'conference',
       highlights: [
-        'Low-latency LiveKit audio/video conference rooms',
+        'Low-latency audio/video conference rooms',
         'Automated minutes capturing resolutions and action items',
         'Encrypted leader collaboration and meeting file sharing',
       ],
@@ -171,7 +171,7 @@ class AppTourSteps {
     AppTourStep(
       id: 'step_donations',
       title: 'Giving & Ministry Partnership',
-      subtitle: 'Secure Giving via Paystack & Gift Pledges',
+      subtitle: 'Secure Giving & Gift Pledges',
       description:
           'Accessible anytime from the top bar. Partner in literature evangelism, campus missions, and community outreach with secure Paystack payments or non-monetary gift pledges.',
       icon: Icons.volunteer_activism_rounded,
@@ -180,6 +180,7 @@ class AppTourSteps {
       targetArea: 'donations',
       highlights: [
         'Direct fund designations: General Ministry, Tract Production, Campus Outreaches',
+        'Ability to split your donation to other areas of the ministry and projects',
         'Instant receipt generation and personal giving history',
         'Registry for non-monetary equipment and mission supplies',
       ],
@@ -207,15 +208,15 @@ class AppTourSteps {
     AppTourStep(
       id: 'step_profile',
       title: 'Profile & Account Hub',
-      subtitle: 'Avatar, Chapter Affiliation & Settings',
+      subtitle: 'Shortcut to Settings',
       description:
-          'Tap your avatar and curved chevron pill in the greeting header to view your member profile, track discipleship progress, manage chapter affiliation, and configure account security.',
+          'Tap your avatar in the greeting header to view your member profile, track discipleship progress, manage chapter affiliation, and configure account security.',
       icon: Icons.account_circle_rounded,
       accentColor: Color(0xFFD49B28), // Warm Gold
       route: '/profile',
       targetArea: 'profile',
       highlights: [
-        'Interactive profile pill reachable directly from the greeting header',
+        'Profile reachable directly from the greeting header',
         'Update personal milestones, spiritual growth track, and contact details',
         'Manage security settings, linked devices, and notification alerts',
       ],

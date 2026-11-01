@@ -19,7 +19,13 @@ const headers = { Authorization: `Bearer ${token}`, Accept: 'application/json' }
 const depRes = await fetch(`${base}/api/v1/deployments`, { headers });
 console.log('Deployments list status:', depRes.status);
 if (depRes.ok) {
-  const deps = await depRes.json();
+  let deps = await depRes.json();
+  if (!deps || deps.length === 0) {
+    const appRes = await fetch(`${base}/api/v1/applications/${uuid}/deployments`, { headers });
+    if (appRes.ok) {
+      deps = await appRes.json();
+    }
+  }
   const latest = deps?.[0];
   if (latest) {
     console.log('Latest deployment:', {
@@ -40,7 +46,7 @@ if (depRes.ok) {
       }
     }
   } else {
-    console.log('No deployments found in active queue.');
+    console.log('No deployments found in active queue or history.');
   }
 } else {
   console.log(await depRes.text());

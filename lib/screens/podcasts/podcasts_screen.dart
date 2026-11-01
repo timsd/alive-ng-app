@@ -434,44 +434,39 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
   }
 
   void _showPodcastDetails(BuildContext context, Podcast podcast) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (context) => SafeArea(
         top: true,
-        child: Align(
-          alignment: Alignment.bottomCenter,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: 640,
-              maxHeight: MediaQuery.of(context).size.height * 0.88,
-            ),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).scaffoldBackgroundColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Handle
-                  Center(
-                    child: Container(
-                      width: 44,
-                      height: 5,
-                      margin: const EdgeInsets.only(top: 12, bottom: 8),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                    ),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.88,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 4,
+                  margin: const EdgeInsets.only(top: 12, bottom: 8),
+                  decoration: BoxDecoration(
+                    color: colorScheme.onSurface.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(2),
                   ),
+                ),
+              ),
 
-                // Podcast Header
+              // Podcast Header
                 Padding(
                   padding:
                       ResponsiveUtils.getResponsivePaddingWithBase(context, 16),
@@ -638,9 +633,8 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   /// Episode actions, as a popup menu anchored to the "more" button.
   ///
@@ -941,57 +935,133 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
   }
 
   void _showSamplePodcastDetails(BuildContext context, Podcast sample) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => SafeArea(
-        child: Align(
-          alignment: Alignment.bottomCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 640),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).scaffoldBackgroundColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      backgroundColor: colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: colorScheme.onSurface.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
               ),
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
                 children: [
-                  Center(
-                    child: Container(
-                      width: 44,
-                      height: 5,
-                      margin: const EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(3),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      sample.category.name.toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.primary,
                       ),
                     ),
                   ),
-                  Text(sample.title,
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleLarge
-                          ?.copyWith(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 6),
-                  Text('Hosted by ${sample.host}'),
-                  const SizedBox(height: 6),
-                  Text(sample.description),
-                  const SizedBox(height: 10),
-                  const Text(
-                      'Sample content. Publish a real podcast with the same title in admin to replace it.'),
+                  const Spacer(),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'SAMPLE AUDIO',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.amber,
+                      ),
+                    ),
+                  ),
                 ],
               ),
-            ),
+              const SizedBox(height: 12),
+              Text(
+                sample.title,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Hosted by ${sample.host}',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                sample.description,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: FilledButton.icon(
+                  onPressed: () {
+                    Navigator.of(sheetContext).pop();
+                    _playSamplePodcast(context, sample);
+                  },
+                  icon: const Icon(Icons.play_circle_fill_rounded, size: 22),
+                  label: const Text(
+                    'Play in Modern Player',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
+  }
+
+  void _playSamplePodcast(BuildContext context, Podcast sample) {
+    final matchingEpisode = _samples.visibleEpisodes.firstWhere(
+      (ep) =>
+          ep['podcastTitle'] == sample.title ||
+          ep['podcast_title'] == sample.title,
+      orElse: () => {
+        'id': 'sample-ep-${sample.id}',
+        'title': sample.title,
+        'podcastTitle': sample.title,
+        'duration': '15 min',
+        'category': sample.category.name,
+        'hasAudio': true,
+        'audioUrl':
+            'https://api.alivenigeria.org/v1/storage/buckets/podcast_media/files/test_podcast_agana_01/view?project=6a3bef53002f5090dedf',
+        'description': sample.description,
+      },
+    );
+    _playEpisode(context, matchingEpisode);
   }
 
   String _episodeAudioUrl(Map<String, dynamic> episode) {
