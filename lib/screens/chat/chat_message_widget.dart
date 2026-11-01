@@ -247,7 +247,6 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                     height: 40,
                     fit: BoxFit.cover,
                     placeholder: _buildFallbackAvatar(theme, isDark),
-                    errorWidget: _buildFallbackAvatar(theme, isDark),
                   )
                 : _buildFallbackAvatar(theme, isDark),
           ),

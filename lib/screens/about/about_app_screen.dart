@@ -99,7 +99,7 @@ class AboutAppScreen extends ConsumerWidget {
                         icon: Icons.groups_2_rounded,
                         title: 'Built for real ministry use',
                         body:
-                            'From chapters and conference access to testimonies, donation, kids content, and support, the app is structured to serve both everyday spiritual habits and ministry coordination.',
+                            'From all Alms of leadership from the grassroot upward given access to conference call, testimonies, donation, kids content, and support, the app is structured to serve both everyday spiritual habits and ministry coordination.',
                       ),
                     ];
 
@@ -239,7 +239,7 @@ class AboutAppScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'Created by Timothy Olodude as his way to see the organization marching forward. For suggestions and feedback, please contact:',
+                        'Created by Timothy Olodude as his way to see the organization marching forward. (c) Project 2025/2026. To contact the developer, use the Feedback for all your suggestion',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           height: 1.6,
                           color: colorScheme.onSurfaceVariant,

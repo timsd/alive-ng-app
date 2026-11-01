@@ -632,7 +632,6 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
             ),
           ),
         ),
-      ),
     );
   }
 

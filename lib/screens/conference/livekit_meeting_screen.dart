@@ -374,7 +374,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          isAdmin
+                          isLeader
                               ? 'Room Audio Locked: Standard participants cannot unmute themselves.'
                               : 'Microphones are locked by the host. Raise your hand to request to speak.',
                           style: TextStyle(

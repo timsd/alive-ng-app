@@ -562,3 +562,4 @@ class _StandardVideoPlayerModalState extends State<StandardVideoPlayerModal> {
     );
   }
 }
+

@@ -16,39 +16,29 @@ const uuid = process.env.COOLIFY_SERVICE_UUID;
 
 const headers = { Authorization: `Bearer ${token}`, Accept: 'application/json' };
 
-const depRes = await fetch(`${base}/api/v1/deployments`, { headers });
-console.log('Deployments list status:', depRes.status);
-if (depRes.ok) {
-  let deps = await depRes.json();
-  if (!deps || deps.length === 0) {
-    const appRes = await fetch(`${base}/api/v1/applications/${uuid}/deployments`, { headers });
-    if (appRes.ok) {
-      deps = await appRes.json();
+// First try specific deployment id if passed, or default to eqr8mtu34gysv0vwihfwn2nr or latest
+const depId = process.argv[2] || 'eqr8mtu34gysv0vwihfwn2nr';
+const singleRes = await fetch(`${base}/api/v1/deployments/${depId}`, { headers });
+if (singleRes.ok) {
+  const single = await singleRes.json();
+  console.log('Single deployment check:', {
+    id: single.id,
+    commit: single.commit?.slice(0, 8),
+    status: single.status,
+    finished_at: single.finished_at,
+    created_at: single.created_at,
+    updated_at: single.updated_at
+  });
+  if (single.logs) {
+    try {
+      const logs = JSON.parse(single.logs);
+      console.log('--- Last 15 log entries ---');
+      logs.slice(-15).forEach(l => console.log(l.output));
+    } catch(e) {
+      console.log('Logs slice:', single.logs.slice(-300));
     }
-  }
-  const latest = deps?.[0];
-  if (latest) {
-    console.log('Latest deployment:', {
-      id: latest.id,
-      commit: latest.commit?.slice(0, 8),
-      status: latest.status,
-      finished_at: latest.finished_at,
-      created_at: latest.created_at,
-      updated_at: latest.updated_at
-    });
-    if (latest.logs) {
-      try {
-        const logs = JSON.parse(latest.logs);
-        console.log('--- Last 10 log entries ---');
-        logs.slice(-10).forEach(l => console.log(l.output));
-      } catch(e) {
-        console.log('Logs slice:', latest.logs.slice(-300));
-      }
-    }
-  } else {
-    console.log('No deployments found in active queue or history.');
   }
 } else {
-  console.log(await depRes.text());
+  console.log('Deployments by id failed with status:', singleRes.status);
 }
 
