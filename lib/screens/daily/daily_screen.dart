@@ -17,28 +17,9 @@ import '../../utils/text_formatter.dart';
 import '../../utils/responsive_utils.dart';
 import '../../constants/app_constants.dart';
 
-// Localized verse helper
+// Localized verse helper - uses BibleSource as Single Source of Truth
 String? _getTranslatedVerseText(String reference, String langCode) {
-  if (langCode == 'en') return null;
-  if (dailyVerseTranslations.containsKey(reference)) {
-    final t = dailyVerseTranslations[reference]?[langCode];
-    if (t != null && t.trim().isNotEmpty) return t;
-  }
-  final cleanRef = reference.trim().toLowerCase();
-  for (final entry in dailyVerseTranslations.entries) {
-    if (entry.key.trim().toLowerCase() == cleanRef) {
-      final t = entry.value[langCode];
-      if (t != null && t.trim().isNotEmpty) return t;
-    }
-  }
-  final localVersion = {'yo': 'BM', 'ha': 'HAU', 'ig': 'IGBOB'}[langCode] ?? 'KJV';
-  final corpus = BibleSource.instance.dailyCorpus;
-  final matching = corpus.where((cv) => cv.reference.trim().toLowerCase() == cleanRef).firstOrNull;
-  final matchText = matching?.text[localVersion] ?? matching?.text[langCode];
-  if (matchText != null && matchText.trim().isNotEmpty) return matchText;
-
-  // Never fall back to a different verse text under this reference!
-  return null;
+  return BibleSource.instance.getTranslatedText(reference, langCode);
 }
 
 String _getLocalizedReflection(String langCode) {

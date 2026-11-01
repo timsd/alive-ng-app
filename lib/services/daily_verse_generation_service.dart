@@ -79,14 +79,9 @@ class DailyVerseGenerationService {
           return existingVerse;
         }
         // Non-English users map the EXACT existing verse reference into their language
-        // so every language sees the identical scripture on the same calendar date.
+        // using BibleSource as the single source of truth.
         final localVersion = {'yo': 'BM', 'ha': 'HAU', 'ig': 'IGBOB'}[languageCode] ?? 'KJV';
-        String? translatedText = dailyVerseTranslations[existingVerse.reference]?[languageCode];
-        if (translatedText == null || translatedText.trim().isEmpty) {
-          final corpus = BibleSource.instance.dailyCorpus;
-          final match = corpus.where((v) => v.reference.trim().toLowerCase() == existingVerse.reference.trim().toLowerCase()).firstOrNull;
-          translatedText = match?.text[localVersion] ?? match?.text[languageCode];
-        }
+        final translatedText = BibleSource.instance.getTranslatedText(existingVerse.reference, languageCode);
         if (translatedText != null && translatedText.trim().isNotEmpty) {
           return DailyVerse(
             id: existingVerse.id,
