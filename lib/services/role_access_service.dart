@@ -49,7 +49,9 @@ class RoleAccessService {
     'director',
     'bod',
     'trustee',
-    'admin'
+    'admin',
+    'super_admin',
+    'superadmin',
   ];
 
   /// Cache duration - standard 5 minutes for balanced performance
@@ -61,14 +63,14 @@ class RoleAccessService {
     if (user == null) return null;
 
     if (AppwriteBackendConfig.isSuperAdminEmail(user.email)) {
-      return 'admin';
+      return 'super_admin';
     }
 
     // Get role from cached user profile or fetch from database
     final profile = _getCachedUserProfile();
     if (profile != null &&
         AppwriteBackendConfig.isSuperAdminEmail(profile.email)) {
-      return 'admin';
+      return 'super_admin';
     }
 
     if (profile != null) {
@@ -82,7 +84,9 @@ class RoleAccessService {
           'director',
           'bod',
           'trustee',
-          'admin'
+          'admin',
+          'super_admin',
+          'superadmin',
         };
         if (elevatedRoles.contains(normalized)) {
           return 'member';
@@ -178,12 +182,23 @@ class RoleAccessService {
 
   String? _normalizeRole(String? role) {
     if (role == null || role.trim().isEmpty) return null;
-    final normalized = role.trim().toLowerCase();
+    final normalized = role.trim().toLowerCase().replaceAll('-', '_');
+    if (normalized == 'superadmin') return 'super_admin';
     return normalized == 'user' ? 'member' : normalized;
+  }
+
+  /// Whether current user is a super admin
+  bool isSuperAdmin() {
+    final role = getCurrentUserRole();
+    final normalized = _normalizeRole(role);
+    if (normalized == 'super_admin') return true;
+    final user = _authService.currentUser;
+    return AppwriteBackendConfig.isSuperAdminEmail(user?.email);
   }
 
   /// Check if user can access admin features
   bool canAccessAdmin() {
+    if (isSuperAdmin()) return true;
     return hasRole('admin');
   }
 
@@ -193,6 +208,7 @@ class RoleAccessService {
   /// [canAccessLeadership]: a `dietist` gets the Health+ editor and
   /// nothing else. Admins and the leadership roles keep their existing access.
   bool canManageHealthContent() {
+    if (isSuperAdmin()) return true;
     final role = _normalizeRole(getCurrentUserRole());
     if (role == null) return false;
     return ChapterConstants.healthContentRoles.contains(role);
@@ -204,9 +220,9 @@ class RoleAccessService {
   }
 
   /// Check if user can start/host an ALIVE Meet conference.
-  /// Only leaders (coordinator, chapter leader, director, bod, trustee, admin) can start a meeting.
+  /// Only leaders (coordinator, chapter leader, director, bod, trustee, admin, super_admin) can start a meeting.
   bool canStartConferencing() {
-    if (canAccessAdmin()) return true;
+    if (canAccessAdmin() || isSuperAdmin()) return true;
     final role = getCurrentUserRole();
     if (role == null) return false;
     const conferenceLeaderRoles = {
@@ -216,6 +232,8 @@ class RoleAccessService {
       'bod',
       'trustee',
       'admin',
+      'super_admin',
+      'superadmin',
     };
     return conferenceLeaderRoles.contains(role);
   }

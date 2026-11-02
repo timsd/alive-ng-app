@@ -3,6 +3,7 @@ class Podcast {
   final String title;
   final String description;
   final PodcastCategory category;
+  final String? customCategory;
   final String host;
   final int episodes;
   final double rating;
@@ -11,11 +12,15 @@ class Podcast {
   final String? coverImage;
   final String? audioUrl;
 
+  String get categoryDisplayName =>
+      customCategory?.isNotEmpty == true ? customCategory! : category.displayName;
+
   const Podcast({
     required this.id,
     required this.title,
     required this.description,
     required this.category,
+    this.customCategory,
     required this.host,
     required this.episodes,
     required this.rating,
@@ -27,14 +32,18 @@ class Podcast {
 
   factory Podcast.fromJson(Map<String, dynamic> json) {
     final categoryName = (json['category'] ?? '').toString();
+    final matchedCategory = PodcastCategory.values.firstWhere(
+      (e) =>
+          e.name.toLowerCase() == categoryName.toLowerCase() ||
+          e.displayName.toLowerCase() == categoryName.toLowerCase(),
+      orElse: () => PodcastCategory.devotional,
+    );
     return Podcast(
       id: json['id'] as String,
       title: json['title'] as String? ?? 'Podcast',
       description: json['description'] as String? ?? '',
-      category: PodcastCategory.values.firstWhere(
-        (e) => e.name == categoryName || e.displayName == categoryName,
-        orElse: () => PodcastCategory.devotional,
-      ),
+      category: matchedCategory,
+      customCategory: categoryName.isNotEmpty ? categoryName : null,
       host: json['host'] as String? ?? '',
       episodes: _int(json['episodes']),
       rating: _double(json['rating']),
@@ -52,7 +61,7 @@ class Podcast {
       'id': id,
       'title': title,
       'description': description,
-      'category': category.name,
+      'category': customCategory ?? category.displayName,
       'host': host,
       'episodes': episodes,
       'rating': rating,
@@ -68,6 +77,7 @@ class Podcast {
     String? title,
     String? description,
     PodcastCategory? category,
+    String? customCategory,
     String? host,
     int? episodes,
     double? rating,
@@ -81,8 +91,16 @@ class Podcast {
       title: title ?? this.title,
       description: description ?? this.description,
       category: category ?? this.category,
+      customCategory: customCategory ?? this.customCategory,
       host: host ?? this.host,
       episodes: episodes ?? this.episodes,
+      rating: rating ?? this.rating,
+      isSubscribed: isSubscribed ?? this.isSubscribed,
+      tags: tags ?? this.tags,
+      coverImage: coverImage ?? this.coverImage,
+      audioUrl: audioUrl ?? this.audioUrl,
+    );
+  }
       rating: rating ?? this.rating,
       isSubscribed: isSubscribed ?? this.isSubscribed,
       tags: tags ?? this.tags,

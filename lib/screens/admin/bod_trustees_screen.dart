@@ -50,9 +50,12 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
         // Only admin, leader, and BOD members can access this page
         final role = userProfile?.role ?? '';
         _hasAccess = role == 'admin' ||
+            role == 'super_admin' ||
+            role == 'superadmin' ||
             role == 'leader' ||
             role == 'bod' ||
-            role == 'trustee';
+            role == 'trustee' ||
+            RoleAccessService.instance.canAccessAdmin();
         _isAdmin = RoleAccessService.instance.hasRole('admin');
         if (_hasAccess) await _loadLeadership();
       }

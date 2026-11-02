@@ -723,61 +723,40 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
   }
 
   void _viewOriginalPDF() async {
-        try {
-      final donationService = DonationService();
-      DownloadableMaterial? fetched;
-      try {
-        fetched = await donationService.getMaterialById(widget.tract.id);
-      } catch (_) {
-        fetched = null;
-      }
+    try {
+      final pdfUrl = await _resolveDirectPdfUrl();
 
-      final material = fetched ??
-          DownloadableMaterial(
-            id: widget.tract.id,
-            title: widget.tract.title,
-            description: widget.tract.description,
-            category: 'tracts',
-            fileSizeBytes: 0,
-            fileType: 'pdf',
-            downloadCount: 0,
-            fileUrl: await _resolveDirectPdfUrl() ?? '',
-            minimumDonation: DonationConstants.tractDonationByRegion['NG'] ??
-                DonationConstants.minimumTractDonation,
-            requiresDonation: true,
-            isActive: true,
-            createdAt: widget.tract.createdAt ?? DateTime.now(),
-            updatedAt: widget.tract.updatedAt ?? DateTime.now(),
-          );
-
-      bool canDownload = false;
-      try {
-        canDownload = await donationService.canUserDownloadMaterial(material.id);
-      } catch (_) {
-        canDownload = false;
-      }
-
-      if (!canDownload && material.requiresDonation) {
+      if (pdfUrl != null && pdfUrl.isNotEmpty) {
         if (!mounted) return;
-        final donated = await showDialog<bool>(
-          context: context,
-          builder: (context) => DonationDialog(
-            material: material,
-            donationType: DonationType.tractProduction,
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => InAppPdfViewerScreen(
+              title: widget.tract.title,
+              pdfUrl: pdfUrl,
+            ),
           ),
         );
-        if (donated != true) return;
+      } else {
+        throw 'Could not locate PDF document';
       }
-
-      String? downloadUrl;
-      try {
-        downloadUrl = await donationService.generateDownloadUrl(material.id);
-      } catch (_) {
-        downloadUrl = null;
-      }
-      downloadUrl ??= await _resolveDirectPdfUrl();
-
-      if (downloadUrl != null && downloadUrl.isNotEmpty) {
+    } catch (_) {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Error'),
+          content: const Text(
+              'Unable to open the PDF document at this time. Please check your internet connection or try again later.'),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK')),
+          ],
+        ),
+      );
+    }
+  }
         if (!mounted) return;
         Navigator.push(
           context,

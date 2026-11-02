@@ -287,6 +287,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         }
       });
     } catch (e) {
+      debugPrint('Failed to send message: $e');
       _showError('Your message could not be sent. Please try again.');
     }
   }
@@ -328,6 +329,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         }
       });
     } catch (e) {
+      debugPrint('Failed to send attachment: $e');
       _showError('Your attachment could not be sent. Please try again.');
     }
   }
@@ -455,6 +457,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       final profile = userProfileAsync.value!;
       final role = (profile.role).toLowerCase();
       const allowedRoles = [
+        'super_admin',
+        'superadmin',
         'admin',
         'bod',
         'director',
@@ -467,6 +471,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         'trustee',
       ];
       const moderatorRoles = [
+        'super_admin',
+        'superadmin',
         'admin',
         'bod',
         'director',

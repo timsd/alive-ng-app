@@ -14,12 +14,34 @@ import '../../widgets/custom_image.dart';
 import '../../widgets/custom_app_bar.dart';
 import 'podcast_episode_form_dialog.dart';
 
+const List<String> _defaultTractCategoryNames = [
+  'What the Bible Says',
+  'Doctrine',
+  'Prophecy',
+  'Health',
+  'Family',
+  'Evangelism',
+  'Youth',
+  'Missions',
+];
+
+const List<String> _defaultPodcastCategoryNames = [
+  'MEC',
+  'Devotional',
+  'Prophecy',
+  'Health',
+  'Youth',
+  'Family',
+  'Leadership',
+  'Evangelism',
+];
+
 Map<String, dynamic> _podcastPayload(Podcast podcast, {String? category}) {
   final now = DateTime.now().toUtc().toIso8601String();
   return {
     'title': podcast.title,
     'description': podcast.description,
-    'category': category ?? podcast.category.displayName,
+    'category': category ?? podcast.categoryDisplayName,
     'host': podcast.host,
     'episodes': podcast.episodes,
     'rating': podcast.rating,
@@ -397,11 +419,11 @@ class _TractFormDialogState extends State<_TractFormDialog> {
   final _pagesController = TextEditingController();
   final _tagsController = TextEditingController();
 
-  // Dynamic tract categories from Appwrite
-  List<String> _tractCategories = [];
+  // Dynamic tract categories from Appwrite with robust defaults
+  List<String> _tractCategories = List<String>.from(_defaultTractCategoryNames);
   String? _selectedCategoryName;
   bool _loadingTractCategories = true;
-  String _selectedCategory = 'biblesays'; // fallback for local UI
+  String _selectedCategory = 'What the Bible Says'; // fallback for local UI
   bool _isFeatured = false;
   Uint8List? _selectedPdfBytes;
   String? _selectedPdfName;
@@ -419,10 +441,10 @@ class _TractFormDialogState extends State<_TractFormDialog> {
       _titleController.text = widget.tract!.title;
       _authorController.text = widget.tract!.author ?? '';
       _descriptionController.text = widget.tract!.description;
-      _pagesController.text = widget.tract!.pages.toString();
+      _pagesController.text = widget.tract!.pages?.toString() ?? '6';
       _tagsController.text = widget.tract!.tags.join(', ');
       _selectedCategory = widget.tract!.category;
-      _selectedCategoryName = widget.tract!.category;
+      _selectedCategoryName = widget.tract!.category.tractDisplayName;
       _isFeatured = widget.tract!.featured;
       // Prefill existing cover image name (display only)
       _selectedCoverImageName = widget.tract!.coverImage;
@@ -430,6 +452,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
       _selectedCoverNames = List<String>.from(widget.tract!.coverImages);
     } else {
       _pagesController.text = '6'; // Default bulletin format
+      _selectedCategoryName = _defaultTractCategoryNames.first;
     }
 
     // Load tract categories from Appwrite
@@ -450,21 +473,33 @@ class _TractFormDialogState extends State<_TractFormDialog> {
     try {
       final docs = await AppwriteAdminContentService.instance
           .listCollection('tract_categories', orderBy: 'order');
-      final categoryNames =
-          docs.where(_activeFlag).map((d) => d['name'] as String).toList();
+      final categoryNames = docs
+          .where(_activeFlag)
+          .map((d) => (d['name'] as String?)?.trim() ?? '')
+          .where((n) => n.isNotEmpty)
+          .toList();
       if (!mounted) return;
       setState(() {
-        _tractCategories = categoryNames;
-        if (_selectedCategoryName == null && categoryNames.isNotEmpty) {
-          _selectedCategoryName = categoryNames.first;
-        }
+        final merged = <String>{
+          ..._defaultTractCategoryNames,
+          ...categoryNames,
+          if (_selectedCategoryName != null && _selectedCategoryName!.isNotEmpty)
+            _selectedCategoryName!,
+        };
+        _tractCategories = merged.toList();
+        _selectedCategoryName ??= _tractCategories.first;
         _loadingTractCategories = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _tractCategories = [];
-        _selectedCategoryName ??= null;
+        final merged = <String>{
+          ..._defaultTractCategoryNames,
+          if (_selectedCategoryName != null && _selectedCategoryName!.isNotEmpty)
+            _selectedCategoryName!,
+        };
+        _tractCategories = merged.toList();
+        _selectedCategoryName ??= _tractCategories.first;
         _loadingTractCategories = false;
       });
     }
@@ -561,51 +596,49 @@ class _TractFormDialogState extends State<_TractFormDialog> {
                       const SizedBox(height: 16),
 
                       // Category (dynamic from Appwrite)
-                      _loadingTractCategories
-                          ? const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 12.0),
-                              child: Row(
-                                children: [
-                                  SizedBox(
-                                    width: 16,
-                                    height: 16,
+                      DropdownButtonFormField<String>(
+                        value: _selectedCategoryName,
+                        decoration: InputDecoration(
+                          labelText: 'Category *',
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.category),
+                          suffixIcon: _loadingTractCategories
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: Center(
                                     child: CircularProgressIndicator(
-                                        strokeWidth: 2),
+                                      strokeWidth: 2,
+                                    ),
                                   ),
-                                  SizedBox(width: 12),
-                                  Text('Loading categories...'),
-                                ],
-                              ),
-                            )
-                          : DropdownButtonFormField<String>(
-                              initialValue: _selectedCategoryName,
-                              decoration: const InputDecoration(
-                                labelText: 'Category *',
-                                border: OutlineInputBorder(),
-                                prefixIcon: Icon(Icons.category),
-                              ),
-                              items: _tractCategories.map((name) {
-                                return DropdownMenuItem(
-                                  value: name,
-                                  child: Text(name),
-                                );
-                              }).toList(),
-                              onChanged: (value) {
-                                setState(() {
-                                  _selectedCategoryName = value;
-                                  _selectedCategory = value
-                                          ?.toLowerCase()
-                                          .replaceAll(' ', '') ??
-                                      'biblesays';
-                                });
-                              },
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please select a category';
-                                }
-                                return null;
-                              },
-                            ),
+                                )
+                              : null,
+                        ),
+                        items: <String>{
+                          if (_selectedCategoryName != null &&
+                              _selectedCategoryName!.isNotEmpty)
+                            _selectedCategoryName!,
+                          ..._tractCategories,
+                          ..._defaultTractCategoryNames,
+                        }.map((name) {
+                          return DropdownMenuItem(
+                            value: name,
+                            child: Text(name),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedCategoryName = value;
+                            _selectedCategory = value ?? 'biblesays';
+                          });
+                        },
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please select a category';
+                          }
+                          return null;
+                        },
+                      ),
                       const SizedBox(height: 16),
 
                       // Description
@@ -1940,8 +1973,9 @@ class _PodcastFormDialogState extends State<_PodcastFormDialog> {
   final _descriptionController = TextEditingController();
   final _tagsController = TextEditingController();
 
-  // Dynamic podcast categories from Appwrite
-  List<String> _podcastCategories = [];
+  // Dynamic podcast categories from Appwrite with robust defaults
+  List<String> _podcastCategories =
+      List<String>.from(_defaultPodcastCategoryNames);
   String? _selectedPodcastCategoryName;
   bool _loadingPodcastCategories = true;
   PodcastCategory _selectedCategory =
@@ -1962,7 +1996,9 @@ class _PodcastFormDialogState extends State<_PodcastFormDialog> {
       _descriptionController.text = widget.podcast!.description;
       _tagsController.text = widget.podcast!.tags.join(', ');
       _selectedCategory = widget.podcast!.category;
-      _selectedPodcastCategoryName = widget.podcast!.category.displayName;
+      _selectedPodcastCategoryName = widget.podcast!.categoryDisplayName;
+    } else {
+      _selectedPodcastCategoryName = _defaultPodcastCategoryNames.first;
     }
     _loadPodcastCategories();
   }
@@ -1975,17 +2011,33 @@ class _PodcastFormDialogState extends State<_PodcastFormDialog> {
       final docs = await AppwriteAdminContentService.instance
           .listCollection('podcast_categories', orderBy: 'order');
       final names = docs
-          .map((d) => (d['name'] as String?) ?? '')
+          .map((d) => (d['name'] as String?)?.trim() ?? '')
           .where((n) => n.isNotEmpty)
           .toList();
+      if (!mounted) return;
       setState(() {
-        _podcastCategories = names;
-        _selectedPodcastCategoryName ??= names.isNotEmpty ? names.first : null;
+        final merged = <String>{
+          ..._defaultPodcastCategoryNames,
+          ...names,
+          if (_selectedPodcastCategoryName != null &&
+              _selectedPodcastCategoryName!.isNotEmpty)
+            _selectedPodcastCategoryName!,
+        };
+        _podcastCategories = merged.toList();
+        _selectedPodcastCategoryName ??= _podcastCategories.first;
         _loadingPodcastCategories = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
-        _podcastCategories = [];
+        final merged = <String>{
+          ..._defaultPodcastCategoryNames,
+          if (_selectedPodcastCategoryName != null &&
+              _selectedPodcastCategoryName!.isNotEmpty)
+            _selectedPodcastCategoryName!,
+        };
+        _podcastCategories = merged.toList();
+        _selectedPodcastCategoryName ??= _podcastCategories.first;
         _loadingPodcastCategories = false;
       });
     }
@@ -2091,53 +2143,56 @@ class _PodcastFormDialogState extends State<_PodcastFormDialog> {
                       const SizedBox(height: 16),
 
                       // Category (dynamic from Appwrite)
-                      _loadingPodcastCategories
-                          ? const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 12.0),
-                              child: Row(
-                                children: [
-                                  SizedBox(
-                                    width: 16,
-                                    height: 16,
+                      DropdownButtonFormField<String>(
+                        value: _selectedPodcastCategoryName,
+                        decoration: InputDecoration(
+                          labelText: 'Category *',
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.category),
+                          suffixIcon: _loadingPodcastCategories
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: Center(
                                     child: CircularProgressIndicator(
-                                        strokeWidth: 2),
+                                      strokeWidth: 2,
+                                    ),
                                   ),
-                                  SizedBox(width: 12),
-                                  Text('Loading categories...'),
-                                ],
-                              ),
-                            )
-                          : DropdownButtonFormField<String>(
-                              initialValue: _selectedPodcastCategoryName,
-                              decoration: const InputDecoration(
-                                labelText: 'Category *',
-                                border: OutlineInputBorder(),
-                                prefixIcon: Icon(Icons.category),
-                              ),
-                              items: _podcastCategories.map((name) {
-                                return DropdownMenuItem(
-                                  value: name,
-                                  child: Text(name),
-                                );
-                              }).toList(),
-                              onChanged: (value) {
-                                setState(() {
-                                  _selectedPodcastCategoryName = value;
-                                  final match =
-                                      PodcastCategory.values.firstWhere(
-                                    (c) => c.displayName == value,
-                                    orElse: () => _selectedCategory,
-                                  );
-                                  _selectedCategory = match;
-                                });
-                              },
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please select a category';
-                                }
-                                return null;
-                              },
-                            ),
+                                )
+                              : null,
+                        ),
+                        items: <String>{
+                          if (_selectedPodcastCategoryName != null &&
+                              _selectedPodcastCategoryName!.isNotEmpty)
+                            _selectedPodcastCategoryName!,
+                          ..._podcastCategories,
+                          ..._defaultPodcastCategoryNames,
+                        }.map((name) {
+                          return DropdownMenuItem(
+                            value: name,
+                            child: Text(name),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedPodcastCategoryName = value;
+                            final match =
+                                PodcastCategory.values.firstWhere(
+                              (c) =>
+                                  c.displayName.toLowerCase() ==
+                                  (value ?? '').toLowerCase(),
+                              orElse: () => _selectedCategory,
+                            );
+                            _selectedCategory = match;
+                          });
+                        },
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please select a category';
+                          }
+                          return null;
+                        },
+                      ),
                       const SizedBox(height: 16),
 
                       // Description
@@ -2455,6 +2510,8 @@ class _PodcastFormDialogState extends State<_PodcastFormDialog> {
           title: _titleController.text,
           description: _descriptionController.text,
           category: _selectedCategory,
+          customCategory: _selectedPodcastCategoryName ??
+              widget.podcast?.categoryDisplayName,
           host: _hostController.text,
           episodes: widget.podcast?.episodes ?? 0,
           rating: widget.podcast?.rating ?? 0.0,
@@ -2471,7 +2528,7 @@ class _PodcastFormDialogState extends State<_PodcastFormDialog> {
         final payload = _podcastPayload(
           podcast,
           category:
-              _selectedPodcastCategoryName ?? podcast.category.displayName,
+              _selectedPodcastCategoryName ?? podcast.categoryDisplayName,
         );
         await contentService.upsertDocument(
           'podcasts',

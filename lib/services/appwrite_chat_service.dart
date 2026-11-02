@@ -255,7 +255,6 @@ class AppwriteChatService extends ChangeNotifier {
           'sender_name':
               user.name.isNotEmpty ? user.name : user.email.split('@').first,
           'sender_avatar': senderAvatar,
-          'senderAvatar': senderAvatar,
           'content': content,
           'messageText': content,
           'timestamp': now.millisecondsSinceEpoch,

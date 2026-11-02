@@ -18,12 +18,35 @@ class AppwriteAdminContentService {
     bool descending = false,
     int limit = 500,
   }) async {
-    final queries = <String>[Query.limit(limit)];
-    if (orderBy != null) {
-      queries
-          .add(descending ? Query.orderDesc(orderBy) : Query.orderAsc(orderBy));
+    final collectionId = _collectionId(collection);
+    try {
+      final queries = <String>[Query.limit(limit)];
+      if (orderBy != null) {
+        queries.add(descending ? Query.orderDesc(orderBy) : Query.orderAsc(orderBy));
+      }
+      return await _list(collectionId, queries);
+    } catch (_) {
+      // Fallback: list without orderBy if index is absent, then sort in memory
+      try {
+        final items = await _list(collectionId, [Query.limit(limit)]);
+        if (orderBy != null) {
+          items.sort((a, b) {
+            final valA = a[orderBy];
+            final valB = b[orderBy];
+            if (valA == null && valB == null) return 0;
+            if (valA == null) return descending ? 1 : -1;
+            if (valB == null) return descending ? -1 : 1;
+            if (valA is Comparable && valB is Comparable) {
+              return descending ? valB.compareTo(valA) : valA.compareTo(valB);
+            }
+            return 0;
+          });
+        }
+        return items;
+      } catch (e) {
+        return [];
+      }
     }
-    return _list(_collectionId(collection), queries);
   }
 
   Future<List<Map<String, dynamic>>> listWhere(

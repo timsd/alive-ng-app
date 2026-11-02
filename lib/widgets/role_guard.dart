@@ -123,8 +123,24 @@ class RoleVisibility extends StatelessWidget {
   Widget build(BuildContext context) {
     final roleService = RoleAccessService.instance;
     final currentRole = roleService.getCurrentUserRole();
+    final normalized = currentRole?.trim().toLowerCase().replaceAll('-', '_');
 
-    if (currentRole != null && allowedRoles.contains(currentRole)) {
+    // Super Admin has universal access across all administrative and leadership surfaces
+    if (normalized == 'super_admin' ||
+        normalized == 'superadmin' ||
+        roleService.isSuperAdmin()) {
+      return child;
+    }
+
+    final normalizedAllowed = allowedRoles
+        .map((r) => r.trim().toLowerCase().replaceAll('-', '_'))
+        .toSet();
+
+    if (normalized != null &&
+        (normalizedAllowed.contains(normalized) ||
+            (normalized == 'admin' &&
+                (normalizedAllowed.contains('super_admin') ||
+                    normalizedAllowed.contains('superadmin'))))) {
       return child;
     }
 

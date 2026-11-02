@@ -49,7 +49,7 @@ Map<String, dynamic> podcastPayload(Podcast podcast, {String? category}) {
   return {
     'title': podcast.title,
     'description': podcast.description,
-    'category': category ?? podcast.category.displayName,
+    'category': category ?? podcast.categoryDisplayName,
     'host': podcast.host,
     'episodes': podcast.episodes,
     'rating': podcast.rating,

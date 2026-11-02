@@ -142,13 +142,38 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
     int minuteCounter = 0;
 
     for (int i = 0; i < paragraphs.length; i++) {
-      final p = paragraphs[i].trim();
+      var p = paragraphs[i].trim();
       if (p.isEmpty) continue;
-      final timeStr =
+
+      // Strip leading bullet markers like "* ****" or "* "
+      p = p.replaceAll(RegExp(r'^\*+\s*(\*+\s*)*'), '').trim();
+
+      String timeStr =
           '${(minuteCounter ~/ 60).toString().padLeft(2, '0')}:${(minuteCounter % 60).toString().padLeft(2, '0')}';
+      String speaker = i % 2 == 0 ? 'Speaker' : 'Reflection';
+
+      // Check if line starts with [mm:ss]
+      final timeMatch = RegExp(r'^\[(\d{1,3}:\d{2})\]\s*').firstMatch(p);
+      if (timeMatch != null) {
+        timeStr = timeMatch.group(1)!;
+        p = p.substring(timeMatch.end).trim();
+      }
+
+      // Check for speaker pattern like **Speaker**: or *Intro Announcement*: or Audience member:
+      final speakerMatch =
+          RegExp(r'^\*?\*?([A-Za-z0-9\s]+)\*?\*?:\s*').firstMatch(p);
+      if (speakerMatch != null && speakerMatch.group(1)!.length < 32) {
+        speaker = speakerMatch.group(1)!.trim();
+        p = p.substring(speakerMatch.end).trim();
+      }
+
+      // Clean remaining asterisks
+      p = p.replaceAll('**', '').replaceAll('*', '').trim();
+      if (p.isEmpty) continue;
+
       results.add({
         'time': timeStr,
-        'speaker': i % 2 == 0 ? 'Speaker' : 'Reflection',
+        'speaker': speaker,
         'text': p,
       });
       minuteCounter += 2;
@@ -851,6 +876,11 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
   Widget _buildNotesView(ThemeData theme, ColorScheme colorScheme) {
     final description = widget.episodeData['description']?.toString() ??
         'No detailed show notes provided for this episode.';
+    final customNotes = widget.episodeData['notes']?.toString();
+    final scripture = widget.episodeData['scripture']?.toString() ??
+        'Romans 10:14-15 — "How then shall they call on Him in whom they have not believed? And how shall they believe in Him of whom they have not heard?"';
+    final callToAction = widget.episodeData['call_to_action']?.toString() ??
+        'Pray for groundbreakers and volunteer teams distributing tracts and proclaiming the everlasting gospel across Nigerian campuses and rural communities.';
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -868,6 +898,20 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
             description,
             style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
           ),
+          if (customNotes != null && customNotes.trim().isNotEmpty) ...[
+            const SizedBox(height: 20),
+            Text(
+              'Key Notes & Insights',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              customNotes,
+              style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
+            ),
+          ],
           const SizedBox(height: 24),
           Text(
             'Scripture & Ministry Takeaways',
@@ -881,7 +925,7 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
             colorScheme,
             Icons.menu_book_rounded,
             'Scripture Foundation',
-            'Romans 10:14-15 — "How then shall they call on Him in whom they have not believed? And how shall they believe in Him of whom they have not heard?"',
+            scripture,
           ),
           const SizedBox(height: 12),
           _buildTakeawayCard(
@@ -889,7 +933,7 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
             colorScheme,
             Icons.lightbulb_outline_rounded,
             'Call to Action',
-            'Pray for groundbreakers and volunteer teams distributing tracts and proclaiming the everlasting gospel across Nigerian campuses and rural communities.',
+            callToAction,
           ),
         ],
       ),
