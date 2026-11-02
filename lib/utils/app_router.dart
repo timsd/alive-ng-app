@@ -91,7 +91,6 @@ bool _isGuestAccessibleRoute(String path) {
     '/bible',
     '/bible-game',
     '/kids-mission',
-    '/kid-mission',
     '/recipes',
     '/healthy-recipes',
     '/library',
