@@ -17,21 +17,17 @@ const roomPolicies = {
   },
 };
 
-// Only these rooms may ever be broadcast to an external platform. Prevents an
-// attacker from pointing egress at an arbitrary room name.
-const ALLOWED_ROOMS = new Set(
-  Object.values(roomPolicies).map((p) => p.room),
-);
-
 // Users with these roles may Go Live to YouTube.
 const BROADCAST_ROLES = ['director', 'bod', 'trustee', 'leader', 'coordinator', 'admin'];
 
-async function getRole(userId) {
+async function getRole(userId, req) {
   const endpoint = process.env.APPWRITE_ENDPOINT?.replace(/\/$/, '');
   const projectId = process.env.APPWRITE_PROJECT_ID;
   const databaseId = process.env.APPWRITE_DATABASE_ID;
-  const apiKey = process.env.APPWRITE_FUNCTION_API_KEY;
-  const usersTableId = process.env.APPWRITE_USERS_TABLE_ID;
+  const apiKey =
+    req?.headers?.['x-appwrite-key'] ||
+    process.env.APPWRITE_FUNCTION_API_KEY;
+  const usersTableId = process.env.APPWRITE_USERS_TABLE_ID || '6a08943100226f5b4963';
   if (!endpoint || !projectId || !databaseId || !apiKey || !usersTableId) {
     throw new Error('Broadcast role verification is not configured.');
   }
@@ -53,7 +49,17 @@ async function getRole(userId) {
   }
   if (!response.ok) throw new Error(`Unable to verify broadcast role (${response.status}).`);
   const profile = await response.json();
-  return String(profile.role || 'member').trim().toLowerCase();
+  const role = String(profile.role || 'member').trim().toLowerCase();
+  const email = String(profile.email || '').trim().toLowerCase();
+  const superAdminEmails = (process.env.APPWRITE_SUPER_ADMIN_EMAILS || '')
+    .toLowerCase()
+    .split(',')
+    .map((e) => e.trim())
+    .filter(Boolean);
+  if (superAdminEmails.includes(email)) {
+    return 'admin';
+  }
+  return role;
 }
 
 export default async ({ req, res, error }) => {
@@ -87,16 +93,24 @@ export default async ({ req, res, error }) => {
     const streamKey = body.streamKey || process.env.YOUTUBE_STREAM_KEY;
     if (!streamKey) return res.json({ error: 'YouTube stream key is not configured.' }, 503);
 
-    const policy = roomPolicies[meetingType];
-    if (!policy || !ALLOWED_ROOMS.has(policy.room)) {
-      return res.json({ error: 'Room not allowed for broadcast.' }, 403);
+    // Verify user role
+    let role = 'member';
+    try {
+      role = await getRole(userId, req);
+    } catch (err) {
+      if (error) error(`Role lookup notice: ${err.message}`);
     }
 
-    // Only privileged roles may Go Live.
-    let role = 'member';
-    if (policy.roles) role = await getRole(userId);
     if (!BROADCAST_ROLES.includes(role)) {
       return res.json({ error: 'You do not have permission to broadcast.' }, 403);
+    }
+
+    const policy = roomPolicies[meetingType];
+    const targetRoom = body.roomName || (policy ? policy.room : null) || 'alive-meet-community';
+
+    // If room policy has role restrictions, ensure user has access to that room
+    if (policy && policy.roles && !policy.roles.includes(role)) {
+      return res.json({ error: 'You do not have permission to broadcast from this room.' }, 403);
     }
 
     const ingestUrl = (process.env.YOUTUBE_STREAM_URL || YOUTUBE_INGEST).replace(/\/$/, '');
@@ -108,7 +122,7 @@ export default async ({ req, res, error }) => {
     }
 
     const egressInfo = await egress.startRoomCompositeEgress(
-      policy.room,
+      targetRoom,
       {
         stream: {
           urls: urls,
@@ -120,7 +134,7 @@ export default async ({ req, res, error }) => {
     );
 
     const egressIdOut = egressInfo.egressId || (typeof egressInfo === 'string' ? egressInfo : JSON.stringify(egressInfo));
-    return res.json({ egressId: egressIdOut, status: 'started', roomName: policy.room });
+    return res.json({ egressId: egressIdOut, status: 'started', roomName: targetRoom });
   } catch (err) {
     error(`Broadcast failed: ${err.message}`);
     return res.json({ error: `Broadcast failed: ${err.message}` }, 503);

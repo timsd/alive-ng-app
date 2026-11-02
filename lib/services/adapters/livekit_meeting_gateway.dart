@@ -968,9 +968,14 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
   @override
   Future<String> startBroadcast({required String meetingType}) async {
     try {
+      final activeRoom = _room?.name;
       final response = await _executeFunctionSafely(
         functionId: _broadcastFunctionId,
-        body: {'action': 'start', 'meetingType': meetingType},
+        body: {
+          'action': 'start',
+          'meetingType': meetingType,
+          if (activeRoom != null && activeRoom.isNotEmpty) 'roomName': activeRoom,
+        },
       );
 
       if (response['error'] != null) {

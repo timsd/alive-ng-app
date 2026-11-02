@@ -719,7 +719,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                       ),
                     ),
                   // Go Live button — streams to YouTube via LiveKit egress
-                  if (widget.isModerator)
+                  if (isLeader)
                     FilledButton.icon(
                       onPressed: _isBroadcasting
                           ? () => _stopBroadcast(gateway)
