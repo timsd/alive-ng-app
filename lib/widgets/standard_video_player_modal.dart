@@ -522,6 +522,9 @@ class _StandardVideoPlayerModalState extends State<StandardVideoPlayerModal> {
                   ),
                 ),
               ),
+            ),
+          ),
+        ),
 
               // Scrollable Details & Study Notes
               Expanded(

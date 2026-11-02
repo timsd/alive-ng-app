@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:just_audio/just_audio.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,7 +15,6 @@ import '../../providers/meeting_provider.dart';
 import '../../services/appwrite_meeting_file_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/on_device_meeting_synthesizer.dart';
-import '../../services/scribe_audio_specimen.dart';
 import '../../widgets/custom_app_bar.dart';
 import 'meeting_file_sharing_screen.dart';
 
@@ -153,11 +151,7 @@ class _LeaderMeetingTranscriptionScreenState
       const OnDeviceMeetingSynthesizer();
 
   bool _isSavingToFileArea = false;
-
-  AudioPlayer? _specimenPlayer;
-  StreamSubscription? _specimenPositionSub;
-  bool _isSpecimenSimulating = false;
-  final Set<int> _simulatedSegmentIndexes = {};
+  bool _isRearmingSpeech = false;
 
   static const List<Color> _colorPalette = [
     Color(0xFF1B365D), // Host Navy
@@ -367,9 +361,7 @@ class _LeaderMeetingTranscriptionScreenState
         onError: (err) {
           debugPrint('Scribe speech engine note: ${err.errorMsg}');
           if (mounted && _isListening) {
-            Future.delayed(const Duration(seconds: 1), () {
-              if (mounted && _isListening) _startContinuousScribe();
-            });
+            _rearmContinuousScribe();
           }
         },
         onStatus: (status) {
@@ -377,9 +369,7 @@ class _LeaderMeetingTranscriptionScreenState
           if (status == 'done' || status == 'notListening') {
             if (mounted && _isListening) {
               _commitInterimWords();
-              Future.delayed(const Duration(milliseconds: 300), () {
-                if (mounted && _isListening) _startContinuousScribe();
-              });
+              _rearmContinuousScribe();
             }
           }
         },
@@ -392,9 +382,28 @@ class _LeaderMeetingTranscriptionScreenState
     }
   }
 
+  void _rearmContinuousScribe() {
+    if (!mounted || !_isListening || _isRearmingSpeech) return;
+    _isRearmingSpeech = true;
+    Future.delayed(const Duration(milliseconds: 150), () async {
+      if (!mounted || !_isListening) {
+        _isRearmingSpeech = false;
+        return;
+      }
+      try {
+        if (!_speech.isListening) {
+          await _startContinuousScribe();
+        }
+      } catch (e) {
+        debugPrint('Rearm continuous scribe error: $e');
+      } finally {
+        _isRearmingSpeech = false;
+      }
+    });
+  }
+
   @override
   void dispose() {
-    _stopSpecimenSimulation();
     ScaffoldMessenger.of(context).clearSnackBars();
     _tabController.dispose();
     _transcriptScrollController.dispose();
@@ -403,126 +412,6 @@ class _LeaderMeetingTranscriptionScreenState
     _meetingTitleController.dispose();
     _speech.stop();
     super.dispose();
-  }
-
-  /// Streams the audio specimen and simulates multi-speaker transcription in ALIVE Scribe
-  Future<void> _startSpecimenSimulation() async {
-    HapticFeedback.mediumImpact();
-    _stopSpecimenSimulation();
-
-    _specimenPlayer = AudioPlayer();
-    _simulatedSegmentIndexes.clear();
-
-    setState(() {
-      _isSpecimenSimulating = true;
-      _interimWords = 'Streaming audio specimen & initializing ALIVE Scribe...';
-    });
-
-    _showFeedback('Playing audio specimen: ALIVE Scribe capturing speech...');
-
-    try {
-      await _specimenPlayer!.setUrl(ScribeAudioSpecimen.specimenAudioUrl);
-      await _specimenPlayer!.play();
-
-      _specimenPositionSub = _specimenPlayer!.positionStream.listen((position) {
-        if (!mounted || !_isSpecimenSimulating) return;
-
-        final currentSeconds = position.inSeconds;
-
-        for (int i = 0; i < ScribeAudioSpecimen.timedSegments.length; i++) {
-          final seg = ScribeAudioSpecimen.timedSegments[i];
-          final segSeconds = seg['seconds'] as int;
-
-          if (currentSeconds >= segSeconds &&
-              !_simulatedSegmentIndexes.contains(i)) {
-            _simulatedSegmentIndexes.add(i);
-
-            // Find or add attendee
-            final speakerName = seg['speaker'] as String;
-            final speakerRole = seg['role'] as String;
-            final speakerColor = Color(seg['color'] as int);
-
-            final attendee = _attendees.firstWhere(
-              (a) => a.name.toLowerCase() == speakerName.toLowerCase(),
-              orElse: () {
-                final newAttendee = MeetingAttendee(
-                  id: 'specimen-${speakerName.replaceAll(' ', '-').toLowerCase()}',
-                  name: speakerName,
-                  role: speakerRole,
-                  color: speakerColor,
-                );
-                _attendees.add(newAttendee);
-                return newAttendee;
-              },
-            );
-
-            // Determine entry type
-            TranscriptEntryType entryType = TranscriptEntryType.general;
-            if (seg['type'] == 'motion') entryType = TranscriptEntryType.motion;
-            if (seg['type'] == 'decision') {
-              entryType = TranscriptEntryType.decision;
-              if (!_decisions.contains(seg['text'])) {
-                _decisions.add(seg['text'] as String);
-              }
-            }
-            if (seg['type'] == 'actionItem') {
-              entryType = TranscriptEntryType.actionItem;
-              if (seg['task'] != null) {
-                _actionItems.add(MeetingActionItem(
-                  id: 'action-specimen-$i',
-                  task: seg['task'] as String,
-                  assignee: seg['assignee'] as String? ?? speakerName,
-                ));
-              }
-            }
-
-            final entry = MeetingTranscriptEntry(
-              id: 'specimen-entry-$i-${DateTime.now().millisecondsSinceEpoch}',
-              speakerName: attendee.name,
-              speakerRole: attendee.role,
-              speakerColor: attendee.color,
-              content: seg['text'] as String,
-              timestamp: DateTime.now(),
-              type: entryType,
-            );
-
-            setState(() {
-              _transcriptEntries.add(entry);
-              _interimWords = '${attendee.name}: ${seg['text']}';
-            });
-
-            _autoScrollTranscript();
-          }
-        }
-      });
-
-      _specimenPlayer!.playerStateStream.listen((state) {
-        if (state.processingState == ProcessingState.completed) {
-          _stopSpecimenSimulation();
-          _showFeedback(
-              'Specimen playback completed. Tap "Compile Minutes" to synthesize!');
-        }
-      });
-    } catch (e) {
-      debugPrint('Specimen simulation error: $e');
-      _stopSpecimenSimulation();
-      _showFeedback('Could not stream audio specimen: $e');
-    }
-  }
-
-  void _stopSpecimenSimulation() {
-    _specimenPositionSub?.cancel();
-    _specimenPositionSub = null;
-    _specimenPlayer?.stop();
-    _specimenPlayer?.dispose();
-    _specimenPlayer = null;
-
-    if (mounted) {
-      setState(() {
-        _isSpecimenSimulating = false;
-        _interimWords = '';
-      });
-    }
   }
 
   void _showFeedback(String message) {
@@ -592,9 +481,10 @@ class _LeaderMeetingTranscriptionScreenState
             _commitInterimWords();
           }
         },
+        listenMode: stt.ListenMode.dictation,
         listenOptions: stt.SpeechListenOptions(
-          listenFor: const Duration(minutes: 30),
-          pauseFor: const Duration(seconds: 3),
+          listenFor: const Duration(hours: 4),
+          pauseFor: const Duration(seconds: 25),
           cancelOnError: false,
           partialResults: true,
         ),
@@ -628,46 +518,34 @@ class _LeaderMeetingTranscriptionScreenState
     );
 
     // Auto-extract Decisions on-the-fly into Key Decisions list
-    if (entryType == TranscriptEntryType.decision) {
-      final decisions = _synthesizer.extractDecisions(
-        entries: [
-          MeetingTranscriptEntry(
-            id: 'temp',
-            speakerName: speaker.name,
-            speakerRole: speaker.role,
-            speakerColor: speaker.color,
-            content: text,
-            timestamp: DateTime.now(),
-            type: entryType,
-          )
-        ],
-        existingDecisions: _decisions,
-      );
-      for (final d in decisions) {
-        if (!_decisions.contains(d)) {
-          setState(() => _decisions.add(d));
-        }
+    final tempEntry = MeetingTranscriptEntry(
+      id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
+      speakerName: speaker.name,
+      speakerRole: speaker.role,
+      speakerColor: speaker.color,
+      content: text,
+      timestamp: DateTime.now(),
+      type: entryType,
+    );
+
+    final decisions = _synthesizer.extractDecisions(
+      entries: [tempEntry],
+      existingDecisions: _decisions,
+    );
+    for (final d in decisions) {
+      if (!_decisions.contains(d)) {
+        setState(() => _decisions.add(d));
       }
     }
 
     // Auto-extract Action Items on-the-fly into Action Items list
-    if (entryType == TranscriptEntryType.actionItem) {
-      final actionItems = _synthesizer.extractActionItems(
-        entries: [
-          MeetingTranscriptEntry(
-            id: 'temp',
-            speakerName: speaker.name,
-            speakerRole: speaker.role,
-            speakerColor: speaker.color,
-            content: text,
-            timestamp: DateTime.now(),
-            type: entryType,
-          )
-        ],
-        attendees: _attendees,
-        meetingDate: DateTime.now(),
-        existingActionItems: _actionItems,
-      );
+    final actionItems = _synthesizer.extractActionItems(
+      entries: [tempEntry],
+      attendees: _attendees,
+      meetingDate: DateTime.now(),
+      existingActionItems: _actionItems,
+    );
+    if (actionItems.length > _actionItems.length) {
       setState(() {
         _actionItems
           ..clear()
@@ -682,20 +560,51 @@ class _LeaderMeetingTranscriptionScreenState
 
   TranscriptEntryType _inferEntryType(String text) {
     final lower = text.toLowerCase();
-    if (lower.startsWith('decision:') ||
-        lower.startsWith('resolution:') ||
+    if (lower.contains('decision:') ||
+        lower.contains('resolution:') ||
+        lower.contains('consensus:') ||
         lower.contains('it is decided') ||
+        lower.contains('it was decided') ||
+        lower.contains('we decided') ||
+        lower.contains('we have decided') ||
+        lower.contains('we have agreed') ||
+        lower.contains('we agreed') ||
+        lower.contains('agreed that') ||
         lower.contains('approved unanimously') ||
+        lower.contains('unanimously approved') ||
         lower.contains('motion passed') ||
-        lower.contains('council resolved that') ||
+        lower.contains('motion carried') ||
+        lower.contains('motion adopted') ||
+        lower.contains('board approved') ||
+        lower.contains('council approved') ||
+        lower.contains('council resolved') ||
         lower.contains('resolved that')) {
       return TranscriptEntryType.decision;
     }
-    if (lower.startsWith('action:') ||
-        lower.startsWith('action item:') ||
+    if (lower.contains('action:') ||
+        lower.contains('action item:') ||
+        lower.contains('action point:') ||
+        lower.contains('action points:') ||
+        lower.contains('todo:') ||
+        lower.contains('next step:') ||
         lower.contains('will follow up') ||
         lower.contains('assigned to') ||
-        lower.contains('task for')) {
+        lower.contains('task for') ||
+        lower.contains('we need to') ||
+        lower.contains('let us') ||
+        lower.contains("let's") ||
+        lower.contains('please make sure') ||
+        lower.contains('will coordinate') ||
+        lower.contains('will prepare') ||
+        lower.contains('will handle') ||
+        lower.contains('will send') ||
+        lower.contains('will organize') ||
+        lower.contains('will submit') ||
+        lower.contains('will finalize') ||
+        lower.contains('will review') ||
+        lower.contains('will check') ||
+        lower.contains('will write') ||
+        lower.contains('will contact')) {
       return TranscriptEntryType.actionItem;
     }
     if (lower.startsWith('motion:') || lower.contains('i move that')) {
@@ -1367,7 +1276,7 @@ class _LeaderMeetingTranscriptionScreenState
 
     return Scaffold(
       appBar: CustomAppBar(
-        title: 'Leader Scribe & Notes',
+        title: 'Scribe & Notes',
         showBackButton: true,
         showThemeToggle: false,
         showLanguageToggle: false,
@@ -1658,31 +1567,6 @@ class _LeaderMeetingTranscriptionScreenState
                 icon: const Icon(Icons.auto_awesome, size: 15),
                 label: const Text('Compile Minutes', style: TextStyle(fontSize: 12)),
               ),
-              if (ScribeAudioSpecimen.isSpecimenEnabled)
-                OutlinedButton.icon(
-                  onPressed: _isSpecimenSimulating
-                      ? _stopSpecimenSimulation
-                      : _startSpecimenSimulation,
-                  style: OutlinedButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    foregroundColor:
-                        _isSpecimenSimulating ? Colors.orange : null,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  ),
-                  icon: Icon(
-                    _isSpecimenSimulating
-                        ? Icons.stop_rounded
-                        : Icons.science_outlined,
-                    size: 15,
-                  ),
-                  label: Text(
-                    _isSpecimenSimulating
-                        ? 'Stop Specimen'
-                        : 'Test Audio Specimen',
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                ),
             ],
           ),
         ],

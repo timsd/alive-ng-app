@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
-import '../services/scribe_audio_specimen.dart';
 import '../widgets/custom_image.dart';
 
 /// Fullscreen modern podcast player modal with live transcription,
@@ -101,18 +100,6 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
             widget.episodeData['audio_url'] ??
             '')
         .toString();
-
-    // If using the audio specimen or sample audio, load the rich multi-speaker timeline
-    if (audioUrl.contains('test_podcast_agana_01') ||
-        audioUrl == ScribeAudioSpecimen.specimenAudioUrl) {
-      return ScribeAudioSpecimen.timedSegments
-          .map((s) => {
-                'time': s['time'] as String,
-                'speaker': s['speaker'] as String,
-                'text': s['text'] as String,
-              })
-          .toList();
-    }
 
     final raw = (widget.episodeData['transcript'] ??
             widget.episodeData['transcription'] ??

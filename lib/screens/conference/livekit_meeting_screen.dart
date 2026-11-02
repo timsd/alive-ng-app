@@ -273,16 +273,6 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
               tooltip: 'Projector / Stage Display',
               onPressed: () => setState(() => _isProjectorMode = true),
             ),
-            IconButton(
-              icon: const Icon(Icons.settings_voice_outlined),
-              tooltip: 'Smoke Test: AV & Screen Check',
-              onPressed: () => _showDeviceSmokeTestModal(
-                context,
-                gateway,
-                session,
-                canShareScreen,
-              ),
-            ),
           ],
           IconButton(
             icon: const Icon(Icons.note_alt_outlined),
@@ -756,17 +746,6 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                     onPressed: () => setState(() => _isProjectorMode = true),
                     icon: const Icon(Icons.tv_rounded),
                     label: const Text('Projector Display'),
-                  ),
-                  // AV & Screen Smoke Test button
-                  OutlinedButton.icon(
-                    onPressed: () => _showDeviceSmokeTestModal(
-                      context,
-                      gateway,
-                      session,
-                      canShareScreen,
-                    ),
-                    icon: const Icon(Icons.settings_voice_outlined),
-                    label: const Text('AV Smoke Test'),
                   ),
                   // Raise Hand button for all attendees
                   OutlinedButton.icon(
@@ -1425,11 +1404,6 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.settings_voice_outlined, color: Colors.white70),
-                      tooltip: 'Smoke Test AV & Screen',
-                      onPressed: () => _showDeviceSmokeTestModal(context, gateway, session, canShareScreen),
-                    ),
-                    IconButton(
                       icon: const Icon(Icons.fullscreen_exit_rounded, color: Colors.white),
                       tooltip: 'Exit Projector Display',
                       onPressed: () => setState(() => _isProjectorMode = false),
@@ -1765,199 +1739,6 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                                 size: 14, color: Color(0xFFD49B28)),
                         ],
                       ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _showDeviceSmokeTestModal(
-    BuildContext context,
-    MeetingGateway gateway,
-    MeetingSession session,
-    bool canShareScreen,
-  ) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (modalCtx, setModalState) {
-            final isAudioOk = !session.isAudioMuted;
-            final isVideoOk = !session.isVideoMuted;
-
-            return Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.health_and_safety_outlined, color: Colors.green, size: 22),
-                          SizedBox(width: 8),
-                          Text(
-                            'AV & Screen Smoke Test',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.of(ctx).pop(),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Diagnostic verification for camera feed, microphone transmission, and screen sharing readiness for this meeting.',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // 1. Microphone Audio Smoke Test
-                  Card(
-                    elevation: 0,
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                    child: ListTile(
-                      leading: Icon(
-                        isAudioOk ? Icons.mic : Icons.mic_off,
-                        color: isAudioOk ? Colors.green : Colors.red,
-                        size: 28,
-                      ),
-                      title: const Text('Audio Microphone', style: TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Text(
-                        isAudioOk
-                            ? 'Microphone active • Audio input transmitting'
-                            : 'Microphone muted • Tap Unmute to test voice audio',
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                      trailing: FilledButton.tonal(
-                        onPressed: () async {
-                          try {
-                            await gateway.toggleAudio();
-                            setModalState(() {});
-                          } catch (e) {
-                            _showMessage('$e');
-                          }
-                        },
-                        child: Text(session.isAudioMuted ? 'Test Unmute' : 'Mute'),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-
-                  // 2. Video Camera Smoke Test
-                  Card(
-                    elevation: 0,
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                    child: ListTile(
-                      leading: Icon(
-                        isVideoOk ? Icons.videocam : Icons.videocam_off,
-                        color: isVideoOk ? Colors.blue : Colors.red,
-                        size: 28,
-                      ),
-                      title: const Text('Video Camera', style: TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Text(
-                        isVideoOk
-                            ? 'Camera enabled • Video stream transmitting'
-                            : 'Camera off • Tap Enable to test camera preview',
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                      trailing: FilledButton.tonal(
-                        onPressed: () async {
-                          try {
-                            await gateway.toggleVideo();
-                            setModalState(() {});
-                          } catch (e) {
-                            _showMessage('$e');
-                          }
-                        },
-                        child: Text(session.isVideoMuted ? 'Test Camera' : 'Turn Off'),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-
-                  // 3. Screen Share Smoke Test
-                  Card(
-                    elevation: 0,
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                    child: ListTile(
-                      leading: Icon(
-                        session.isScreenShareEnabled
-                            ? Icons.screen_share
-                            : (canShareScreen ? Icons.desktop_windows_outlined : Icons.block),
-                        color: session.isScreenShareEnabled
-                            ? Colors.teal
-                            : (canShareScreen ? Colors.indigo : Colors.grey),
-                        size: 28,
-                      ),
-                      title: const Text('Screen Share Display', style: TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Text(
-                        session.isScreenShareEnabled
-                            ? 'Screen presenting actively to room'
-                            : (canShareScreen
-                                ? 'Host/Co-Host permission granted • Ready to project'
-                                : 'Screen sharing restricted to Host & Co-Hosts'),
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                      trailing: canShareScreen
-                          ? FilledButton.tonal(
-                              onPressed: () async {
-                                try {
-                                  await gateway.toggleScreenShare();
-                                  setModalState(() {});
-                                } catch (e) {
-                                  _showMessage('Screen share: $e');
-                                }
-                              },
-                              child: Text(session.isScreenShareEnabled ? 'Stop Share' : 'Test Share'),
-                            )
-                          : null,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Overall diagnostic result badge
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.green.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(Icons.check_circle_rounded, color: Colors.green, size: 20),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Smoke Test Passed: Camera, Audio & Screen Share subsystems are functional.',
-                            style: TextStyle(
-                              color: Colors.green,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      ],
                     ),
                   ),
                 ],

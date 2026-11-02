@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../models/chat_models.dart';
+import '../../providers/appwrite_auth_provider.dart';
+import '../../services/appwrite_chat_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/role_access_service.dart';
 import '../../utils/logger.dart';
@@ -18,7 +21,7 @@ import '../../widgets/custom_image.dart';
 /// - Flat Discord dark/light background without artificial message bubble containers
 /// - Inline blurple mention pills (`@User`) without duplicate boxed chip footers
 /// - Clickable avatar/username/mentions to view user profile and Direct Message directly
-class ChatMessageWidget extends StatefulWidget {
+class ChatMessageWidget extends ConsumerStatefulWidget {
   final ChatMessage message;
   final ChatMessage? repliedMessage;
   final bool isConsecutive;
@@ -41,10 +44,11 @@ class ChatMessageWidget extends StatefulWidget {
   });
 
   @override
-  State<ChatMessageWidget> createState() => _ChatMessageWidgetState();
+  ConsumerState<ChatMessageWidget> createState() => _ChatMessageWidgetState();
 }
 
-class _ChatMessageWidgetState extends State<ChatMessageWidget> {
+class _ChatMessageWidgetState extends ConsumerState<ChatMessageWidget> {
+  static final Map<String, String> _userAvatarCache = {};
   bool _isHovered = false;
   bool _showActions = false;
   final Logger _logger = Logger('ChatMessageWidget');
@@ -133,6 +137,37 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
     );
   }
 
+  String? _resolveAvatar(String senderId, String? senderAvatar) {
+    if (senderAvatar != null && senderAvatar.trim().isNotEmpty) {
+      _userAvatarCache[senderId] = senderAvatar.trim();
+      return senderAvatar.trim();
+    }
+    final currentUserId = AuthService.instance.currentUser?.uid;
+    if (senderId == currentUserId) {
+      final myAvatar = ref.watch(currentUserAvatarUrlProvider);
+      if (myAvatar != null && myAvatar.trim().isNotEmpty) {
+        _userAvatarCache[senderId] = myAvatar.trim();
+        return myAvatar.trim();
+      }
+    }
+    if (_userAvatarCache.containsKey(senderId)) {
+      return _userAvatarCache[senderId];
+    }
+    _lookupAvatar(senderId);
+    return null;
+  }
+
+  void _lookupAvatar(String senderId) {
+    if (senderId.isEmpty || _userAvatarCache.containsKey(senderId)) return;
+    AppwriteChatService().getChatUser(senderId).then((user) {
+      if (user?.avatar != null && user!.avatar!.trim().isNotEmpty && mounted) {
+        setState(() {
+          _userAvatarCache[senderId] = user.avatar!.trim();
+        });
+      }
+    }).catchError((_) {});
+  }
+
   /// Discord-style curved reply spine (`┌─`) with mini-avatar, `@target` mention, and snippet
   Widget _buildDiscordReplyHeader(ThemeData theme, bool isDark) {
     final spineColor = isDark
@@ -141,6 +176,9 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
     final replied = widget.repliedMessage;
     final repliedSender = replied?.senderName ?? 'User';
     final snippet = replied?.content.replaceAll('\n', ' ') ?? 'Original message';
+    final resolvedRepliedAvatar = replied != null
+        ? _resolveAvatar(replied.senderId, replied.senderAvatar)
+        : null;
 
     return Padding(
       padding: const EdgeInsets.only(left: 6, bottom: 4),
@@ -157,10 +195,10 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
             child: SizedBox(
               width: 16,
               height: 16,
-              child: replied?.senderAvatar != null &&
-                      replied!.senderAvatar.trim().isNotEmpty
+              child: resolvedRepliedAvatar != null &&
+                      resolvedRepliedAvatar.trim().isNotEmpty
                   ? CustomImage(
-                      imageUrl: replied.senderAvatar,
+                      imageUrl: resolvedRepliedAvatar,
                       width: 16,
                       height: 16,
                       fit: BoxFit.cover,
@@ -190,7 +228,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                   context,
                   replied.senderId,
                   replied.senderName,
-                  replied.senderAvatar,
+                  resolvedRepliedAvatar,
                 );
               }
             },
@@ -228,21 +266,24 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
   /// Left column: 40px avatar on non-consecutive; or blank spacing with hover timestamp on consecutive
   Widget _buildLeftColumn(ThemeData theme, bool isDark, bool hasReply) {
     if (!widget.isConsecutive || hasReply) {
+      final resolvedAvatar =
+          _resolveAvatar(widget.message.senderId, widget.message.senderAvatar);
+
       return InkWell(
         onTap: () => _showUserCardModal(
           context,
           widget.message.senderId,
           widget.message.senderName,
-          widget.message.senderAvatar,
+          resolvedAvatar,
         ),
         borderRadius: BorderRadius.circular(20),
         child: SizedBox(
           width: 40,
           height: 40,
           child: ClipOval(
-            child: widget.message.senderAvatar.trim().isNotEmpty
+            child: resolvedAvatar != null && resolvedAvatar.trim().isNotEmpty
                 ? CustomImage(
-                    imageUrl: widget.message.senderAvatar,
+                    imageUrl: resolvedAvatar,
                     width: 40,
                     height: 40,
                     fit: BoxFit.cover,
@@ -312,7 +353,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
               context,
               widget.message.senderId,
               widget.message.senderName,
-              widget.message.senderAvatar,
+              _resolveAvatar(widget.message.senderId, widget.message.senderAvatar),
             ),
             borderRadius: BorderRadius.circular(4),
             child: Text(

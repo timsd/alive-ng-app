@@ -14,14 +14,17 @@ Map<String, dynamic> _parseSettings(dynamic value) {
 }
 
 DateTime _parseDateTime(dynamic value) {
-  if (value is String) {
-    return DateTime.parse(value);
-  } else if (value is DateTime) {
-    return value;
-  } else if (value is int) {
+  if (value == null) return DateTime.now();
+  if (value is DateTime) return value;
+  if (value is int) {
     return DateTime.fromMillisecondsSinceEpoch(value);
   } else if (value is num) {
     return DateTime.fromMillisecondsSinceEpoch(value.toInt());
+  } else if (value is String) {
+    final asInt = int.tryParse(value);
+    if (asInt != null) return DateTime.fromMillisecondsSinceEpoch(asInt);
+    final parsed = DateTime.tryParse(value);
+    if (parsed != null) return parsed;
   }
   return DateTime.now(); // Fallback
 }
@@ -59,20 +62,28 @@ class ChatMessage {
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
     return ChatMessage(
-      id: json['id'] as String,
-      senderId: json['sender_id'] as String,
-      senderName: json['sender_name'] as String,
-      senderAvatar: json['sender_avatar'] as String? ?? '',
-      content: json['content'] as String,
+      id: (json['id'] ?? json[r'$id'] ?? '').toString(),
+      senderId: (json['sender_id'] ?? json['senderId'] ?? '').toString(),
+      senderName: (json['sender_name'] ?? json['senderName'] ?? 'User').toString(),
+      senderAvatar: (json['sender_avatar'] ?? json['senderAvatar'] ?? '').toString(),
+      content: (json['content'] ?? json['messageText'] ?? '').toString(),
       timestamp: _parseDateTime(json['timestamp']),
       type: MessageType.values.firstWhere(
         (e) => e.name == json['type'],
         orElse: () => MessageType.text,
       ),
-      taggedUsers: List<String>.from(json['tagged_users'] ?? []),
-      taggedGroups: List<String>.from(json['tagged_groups'] ?? []),
-      replyToId: json['reply_to_id'] as String?,
-      attachments: List<String>.from(json['attachments'] ?? []),
+      taggedUsers: (json['tagged_users'] is List)
+          ? List<String>.from((json['tagged_users'] as List).map((e) => e.toString()))
+          : const <String>[],
+      taggedGroups: (json['tagged_groups'] is List)
+          ? List<String>.from((json['tagged_groups'] as List).map((e) => e.toString()))
+          : const <String>[],
+      replyToId: json['reply_to_id']?.toString(),
+      attachments: (json['attachments'] is List)
+          ? List<String>.from((json['attachments'] as List).map((e) => e.toString()))
+          : ((json['attachments'] is String && (json['attachments'] as String).isNotEmpty)
+              ? [json['attachments'].toString()]
+              : const <String>[]),
       isEdited: json['is_edited'] as bool? ?? false,
       editedAt: json['edited_at'] != null
           ? _parseDateTime(json['edited_at'])

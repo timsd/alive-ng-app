@@ -21,12 +21,31 @@ class AppwriteStorageService {
     required String fileName,
     required String contentType,
   }) async {
-    return _uploadFile(
-      bucketId: AppwriteBackendConfig.chatFilesBucketId,
-      bytes: bytes,
-      fileName: fileName,
-      contentType: contentType,
-    );
+    // Primary: dedicated chat files bucket.
+    // Fallback: content media or profile files bucket to ensure resilient uploads
+    // even if the primary bucket is undergoing maintenance, permission updates, or schema changes.
+    final candidateBuckets = [
+      AppwriteBackendConfig.chatFilesBucketId,
+      AppwriteBackendConfig.contentMediaBucketId,
+      AppwriteBackendConfig.profileFilesBucketId,
+    ];
+
+    Object? lastError;
+    for (final bucketId in candidateBuckets) {
+      try {
+        return await _uploadFile(
+          bucketId: bucketId,
+          bytes: bytes,
+          fileName: fileName,
+          contentType: contentType,
+        );
+      } catch (e) {
+        lastError = e;
+        debugPrint(
+            '[AppwriteStorageService] uploadChatFile failed for bucket $bucketId: $e, trying candidate fallback...');
+      }
+    }
+    throw lastError ?? Exception('Failed to upload chat file to any storage bucket');
   }
 
   Future<String> uploadProfileFile({
@@ -87,35 +106,36 @@ class AppwriteStorageService {
           contentType: contentType,
         );
 
-    String fileId;
+    final fileId = ID.unique();
     try {
       final file = await _storage.createFile(
         bucketId: bucketId,
-        fileId: ID.unique(),
+        fileId: fileId,
         file: buildInput(),
         permissions: permissions,
       );
-      fileId = file.$id;
-    } on AppwriteException catch (e) {
-      // Buckets with `fileSecurity` disabled reject file level permissions.
-      // Fall back to the bucket defaults instead of failing the upload.
-      if (permissions == null ||
-          permissions.isEmpty ||
-          !_isPermissionError(e)) {
-        rethrow;
+      final resolvedId = file.$id.isNotEmpty ? file.$id : fileId;
+      return '${AppwriteBackendConfig.endpoint}/storage/buckets/'
+          '$bucketId/files/$resolvedId/view'
+          '?project=${AppwriteBackendConfig.projectId}';
+    } catch (e) {
+      // If permissions caused rejection or bucket has fileSecurity disabled, retry with bucket defaults
+      if (permissions != null && permissions.isNotEmpty) {
+        try {
+          debugPrint(
+              'Retrying upload without permissions for bucket $bucketId due to: $e');
+          final file = await _storage.createFile(
+            bucketId: bucketId,
+            fileId: fileId,
+            file: buildInput(),
+          );
+          final resolvedId = file.$id.isNotEmpty ? file.$id : fileId;
+          return '${AppwriteBackendConfig.endpoint}/storage/buckets/'
+              '$bucketId/files/$resolvedId/view'
+              '?project=${AppwriteBackendConfig.projectId}';
+        } catch (_) {}
       }
-      debugPrint(
-          'File permissions rejected for bucket $bucketId; retrying with bucket defaults: $e');
-      final file = await _storage.createFile(
-        bucketId: bucketId,
-        fileId: ID.unique(),
-        file: buildInput(),
-      );
-      fileId = file.$id;
+      rethrow;
     }
-
-    return '${AppwriteBackendConfig.endpoint}/storage/buckets/'
-        '$bucketId/files/$fileId/view'
-        '?project=${AppwriteBackendConfig.projectId}';
   }
 }

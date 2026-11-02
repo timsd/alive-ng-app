@@ -93,14 +93,17 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         (widget.userProfile.maritalStatus ?? 'single').toLowerCase();
     if (_maritalStatus != 'married') _maritalStatus = 'single';
 
-    // Initialize profile picture URL from either avatarUrl or photoUrl
+    // Initialize profile picture URL from avatarUrl, photoUrl, or central avatar provider
+    final centralAvatar = ref.read(currentUserAvatarUrlProvider);
     _profilePictureUrl = (widget.userProfile.avatarUrl != null &&
             widget.userProfile.avatarUrl!.trim().isNotEmpty)
         ? widget.userProfile.avatarUrl!.trim()
         : ((widget.userProfile.photoUrl != null &&
                 widget.userProfile.photoUrl!.trim().isNotEmpty)
             ? widget.userProfile.photoUrl!.trim()
-            : null);
+            : ((centralAvatar != null && centralAvatar.trim().isNotEmpty)
+                ? centralAvatar.trim()
+                : null));
 
     // Add listeners to detect changes
     _addChangeListeners();

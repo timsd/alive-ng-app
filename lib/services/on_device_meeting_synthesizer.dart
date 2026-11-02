@@ -101,14 +101,15 @@ class OnDeviceMeetingSynthesizer {
     }
 
     final decisionPatterns = [
-      RegExp(r'^(?:decision|resolution):\s*(.+)$', caseSensitive: false),
-      RegExp(r'^(?:it is decided that|it was decided that)\s*(.+)$', caseSensitive: false),
-      RegExp(r'^(?:council resolved that|resolved that|resolved:)\s*(.+)$', caseSensitive: false),
-      RegExp(r'^(?:approved unanimously|unanimously approved)\s*(?:that|to)?\s*(.+)$', caseSensitive: false),
-      RegExp(r'^(?:agreed that|it was agreed that|agreed to)\s*(.+)$', caseSensitive: false),
-      RegExp(r'^(?:board approved|council approved|approved:)\s*(.+)$', caseSensitive: false),
-      RegExp(r'^(?:motion (?:passed|carried|adopted))\s*(?:that|to)?\s*(.+)$', caseSensitive: false),
-      RegExp(r'^(?:duly adopted:?)\s*(.+)$', caseSensitive: false),
+      RegExp(r'(?:^|\b)(?:decision|resolution|consensus):\s*(.+)$', caseSensitive: false),
+      RegExp(r'(?:^|\b)(?:it (?:is|was) decided that|we (?:have )?decided that|we decided to)\s*(.+)$', caseSensitive: false),
+      RegExp(r'(?:^|\b)(?:council resolved that|resolved that|resolved:)\s*(.+)$', caseSensitive: false),
+      RegExp(r'(?:^|\b)(?:approved unanimously|unanimously approved)\s*(?:that|to)?\s*(.+)$', caseSensitive: false),
+      RegExp(r'(?:^|\b)(?:we (?:have )?agreed (?:that|to)|it (?:is|was) agreed (?:that|to)|agreed that|agreed to)\s*(.+)$', caseSensitive: false),
+      RegExp(r'(?:^|\b)(?:board approved|council approved|approved:)\s*(.+)$', caseSensitive: false),
+      RegExp(r'(?:^|\b)(?:motion (?:passed|carried|adopted))\s*(?:that|to)?\s*(.+)$', caseSensitive: false),
+      RegExp(r'(?:^|\b)(?:duly adopted:?)\s*(.+)$', caseSensitive: false),
+      RegExp(r'(?:^|\b)(?:the decision is (?:that|to))\s*(.+)$', caseSensitive: false),
     ];
 
     for (final entry in entries) {
@@ -162,10 +163,11 @@ class OnDeviceMeetingSynthesizer {
     final actionItems = <MeetingActionItem>[...existingActionItems];
 
     final actionPatterns = [
-      RegExp(r'^(?:action item|action):\s*(.+)$', caseSensitive: false),
-      RegExp(r'^(?:task for|assigned to)\s+([A-Za-z\s]+?):\s*(.+)$', caseSensitive: false),
-      RegExp(r'^([A-Za-z\s]+?)\s+(?:will|shall|to)\s+(?:coordinate|follow up on|prepare|submit|finalize|organize|contact|deliver|review)\s*(.+)$', caseSensitive: false),
-      RegExp(r'^(?:assigned to)\s+([A-Za-z\s]+?)\s+to\s+(.+)$', caseSensitive: false),
+      RegExp(r'(?:^|\b)(?:action item|action point|action|task|todo|next step):\s*(.+)$', caseSensitive: false),
+      RegExp(r'(?:^|\b)(?:task for|assigned to)\s+([A-Za-z\s]+?):\s*(.+)$', caseSensitive: false),
+      RegExp(r'(?:^|\b)([A-Za-z\s]+?)\s+(?:will|shall|to|is going to|needs to|should)\s+(?:coordinate|follow up on|follow up with|follow up|prepare|submit|finalize|organize|contact|deliver|review|handle|send|check|write|lead|buy|share|print|setup|reach out to|take care of|ensure|call|update|draft)\s*(.+)$', caseSensitive: false),
+      RegExp(r'(?:^|\b)(?:assigned to)\s+([A-Za-z\s]+?)\s+to\s+(.+)$', caseSensitive: false),
+      RegExp(r'(?:^|\b)(?:we need to|let us|let\'s|please make sure to)\s+(?:coordinate|follow up on|follow up|prepare|submit|finalize|organize|contact|deliver|review|handle|send|check|write|lead|buy|share|print|setup|reach out to|take care of|ensure|call|update|draft)\s*(.+)$', caseSensitive: false),
     ];
 
     for (final entry in entries) {
@@ -289,7 +291,7 @@ class OnDeviceMeetingSynthesizer {
     return text
         .replaceAll(
             RegExp(
-                r'^(?:decision:|resolution:|it is decided that|it was decided that|council resolved that|resolved that|resolved:|approved unanimously\s*(?:that|to)?|unanimously approved\s*(?:that|to)?|agreed that|it was agreed that|agreed to|board approved|council approved|approved:|motion (?:passed|carried|adopted)\s*(?:that|to)?)\s*',
+                r'^(?:decision:|resolution:|consensus:|it is decided that|it was decided that|we have decided that|we decided to|council resolved that|resolved that|resolved:|approved unanimously\s*(?:that|to)?|unanimously approved\s*(?:that|to)?|we have agreed that|we agreed to|agreed that|it was agreed that|agreed to|board approved|council approved|approved:|the decision is (?:that|to)|motion (?:passed|carried|adopted)\s*(?:that|to)?)\s*',
                 caseSensitive: false),
             '')
         .trim();
@@ -302,7 +304,7 @@ class OnDeviceMeetingSynthesizer {
     required DateTime baseDate,
   }) {
     String text = rawText
-        .replaceAll(RegExp(r'^(?:action item:|action:)\s*', caseSensitive: false), '')
+        .replaceAll(RegExp(r'^(?:action item|action items|action point|action points|action|task|todo|next step):\s*', caseSensitive: false), '')
         .trim();
 
     String detectedAssignee = defaultAssignee;

@@ -15,7 +15,7 @@ import '../../utils/image_compression_utils.dart';
 class ChatInputWidget extends StatefulWidget {
   final TextEditingController controller;
   final Function(String) onSendMessage;
-  final Function(String, MessageType, List<String>)?
+  final Future<void> Function(String, MessageType, List<String>)?
       onSendMessageWithAttachments;
   final Future<List<TaggedEntity>> Function(String) onTagSearch;
 
@@ -335,7 +335,7 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
 
       // Send message with image attachment
       if (widget.onSendMessageWithAttachments != null) {
-        widget.onSendMessageWithAttachments!(
+        await widget.onSendMessageWithAttachments!(
             'Image shared', MessageType.image, [downloadUrl]);
       } else {
         widget.onSendMessage('Image shared: ${image.name}');
@@ -401,7 +401,7 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
 
       // Send message with file attachment
       if (widget.onSendMessageWithAttachments != null) {
-        widget.onSendMessageWithAttachments!(
+        await widget.onSendMessageWithAttachments!(
             'File shared: ${file.name}', MessageType.file, [downloadUrl]);
       } else {
         widget.onSendMessage('File shared: ${file.name}');

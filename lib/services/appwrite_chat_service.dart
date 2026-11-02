@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/models.dart' as models;
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';
@@ -195,6 +196,21 @@ class AppwriteChatService extends ChangeNotifier {
           .toList();
       final now = DateTime.now();
 
+      String senderAvatar = '';
+      final authUser = AuthService.instance.currentUser;
+      if (authUser?.photoUrl != null && authUser!.photoUrl!.trim().isNotEmpty) {
+        senderAvatar = authUser.photoUrl!.trim();
+      }
+      if (senderAvatar.isEmpty) {
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          final cached = prefs.getString('cached_avatar_url_${user.$id}');
+          if (cached != null && cached.trim().isNotEmpty) {
+            senderAvatar = cached.trim();
+          }
+        } catch (_) {}
+      }
+
       final row = await _tables.createRow(
         databaseId: databaseId,
         tableId: messagesCollectionId,
@@ -206,7 +222,8 @@ class AppwriteChatService extends ChangeNotifier {
           'senderId': user.$id,
           'sender_name':
               user.name.isNotEmpty ? user.name : user.email.split('@').first,
-          'sender_avatar': '',
+          'sender_avatar': senderAvatar,
+          'senderAvatar': senderAvatar,
           'content': content,
           'messageText': content,
           'timestamp': now.millisecondsSinceEpoch,

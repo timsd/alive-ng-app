@@ -590,6 +590,24 @@ class _ProfileHeaderCardState extends ConsumerState<_ProfileHeaderCard> {
   Uint8List? _pendingBytes;
   bool _isUploading = false;
 
+  @override
+  void initState() {
+    super.initState();
+    _loadCachedAvatar();
+  }
+
+  Future<void> _loadCachedAvatar() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cached = prefs.getString('cached_avatar_url_${widget.profile.id}');
+      if (cached != null && cached.isNotEmpty && mounted) {
+        if (ref.read(uploadedAvatarUrlProvider) == null) {
+          ref.read(uploadedAvatarUrlProvider.notifier).state = cached;
+        }
+      }
+    } catch (_) {}
+  }
+
   static String _detectImageExtension(Uint8List bytes, String rawExt) {
     if (bytes.length >= 4) {
       if (bytes[0] == 0x89 &&
@@ -797,17 +815,26 @@ class _ProfileHeaderCardState extends ConsumerState<_ProfileHeaderCard> {
     final theme = Theme.of(context);
     final avatarRadius = ResponsiveUtils.getResponsiveValue(
         context: context, mobile: 44.0, tablet: 54.0, desktop: 64.0);
+    final centralAvatar = ref.watch(currentUserAvatarUrlProvider);
     final avatarOverride = ref.watch(uploadedAvatarUrlProvider);
+    final pendingAvatarBytes = ref.watch(pendingAvatarBytesProvider);
+    final authUser = ref.watch(currentUserProvider);
+    final effectivePendingBytes = _pendingBytes ?? pendingAvatarBytes;
 
-    final avatar = avatarOverride != null
-        ? (avatarOverride.trim().isEmpty ? null : avatarOverride.trim())
-        : ((widget.profile.avatarUrl != null &&
-                widget.profile.avatarUrl!.trim().isNotEmpty)
-            ? widget.profile.avatarUrl!.trim()
-            : ((widget.profile.photoUrl != null &&
-                    widget.profile.photoUrl!.trim().isNotEmpty)
-                ? widget.profile.photoUrl!.trim()
-                : null));
+    final avatar = (centralAvatar != null && centralAvatar.trim().isNotEmpty)
+        ? centralAvatar.trim()
+        : (avatarOverride != null
+            ? (avatarOverride.trim().isEmpty ? null : avatarOverride.trim())
+            : ((widget.profile.avatarUrl != null &&
+                    widget.profile.avatarUrl!.trim().isNotEmpty)
+                ? widget.profile.avatarUrl!.trim()
+                : ((widget.profile.photoUrl != null &&
+                        widget.profile.photoUrl!.trim().isNotEmpty)
+                    ? widget.profile.photoUrl!.trim()
+                    : ((authUser?.photoUrl != null &&
+                            authUser!.photoUrl!.trim().isNotEmpty)
+                        ? authUser.photoUrl!.trim()
+                        : null))));
 
     final displayName = (widget.profile.fullName ?? '').trim();
     final initialLetter = displayName.isNotEmpty
@@ -856,11 +883,11 @@ class _ProfileHeaderCardState extends ConsumerState<_ProfileHeaderCard> {
                 CircleAvatar(
                   radius: avatarRadius,
                   backgroundColor: theme.colorScheme.primary,
-                  child: _pendingBytes != null
+                  child: effectivePendingBytes != null
                       ? ClipOval(
                           child: Image.memory(
-                            _pendingBytes!,
-                            key: ValueKey(_pendingBytes.hashCode),
+                            effectivePendingBytes,
+                            key: ValueKey(effectivePendingBytes.hashCode),
                             width: avatarRadius * 2,
                             height: avatarRadius * 2,
                             fit: BoxFit.cover,
