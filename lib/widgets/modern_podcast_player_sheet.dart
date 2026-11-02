@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
+import '../services/scribe_audio_specimen.dart';
 import '../widgets/custom_image.dart';
 
 /// Fullscreen modern podcast player modal with live transcription,
@@ -96,6 +97,23 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
   }
 
   List<Map<String, String>> _getFormattedTranscript() {
+    final audioUrl = (widget.episodeData['audioUrl'] ??
+            widget.episodeData['audio_url'] ??
+            '')
+        .toString();
+
+    // If using the audio specimen or sample audio, load the rich multi-speaker timeline
+    if (audioUrl.contains('test_podcast_agana_01') ||
+        audioUrl == ScribeAudioSpecimen.specimenAudioUrl) {
+      return ScribeAudioSpecimen.timedSegments
+          .map((s) => {
+                'time': s['time'] as String,
+                'speaker': s['speaker'] as String,
+                'text': s['text'] as String,
+              })
+          .toList();
+    }
+
     final raw = (widget.episodeData['transcript'] ??
             widget.episodeData['transcription'] ??
             widget.episodeData['description'] ??
@@ -631,93 +649,175 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
 
           const SizedBox(height: 12),
 
-          // Transcript List
+          // Transcript List with Spotify-style live time synchronization
           Expanded(
-            child: ListView.separated(
-              itemCount: filtered.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final item = filtered[index];
-                return InkWell(
-                  onTap: () {
-                    // Tap timestamp to seek
+            child: StreamBuilder<Duration>(
+              stream: widget.audioPlayer.positionStream,
+              builder: (context, snapshot) {
+                final currentSeconds = snapshot.data?.inSeconds ?? 0;
+
+                return ListView.separated(
+                  itemCount: filtered.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final item = filtered[index];
                     final parts = (item['time'] ?? '00:00').split(':');
-                    if (parts.length == 2) {
-                      final mins = int.tryParse(parts[0]) ?? 0;
-                      final secs = int.tryParse(parts[1]) ?? 0;
-                      widget.audioPlayer.seek(Duration(minutes: mins, seconds: secs));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Jumped to ${item['time']}'),
-                          duration: const Duration(seconds: 1),
-                        ),
-                      );
+                    final itemSeconds = parts.length == 2
+                        ? ((int.tryParse(parts[0]) ?? 0) * 60) +
+                            (int.tryParse(parts[1]) ?? 0)
+                        : 0;
+
+                    int? nextSeconds;
+                    if (index + 1 < filtered.length) {
+                      final nextParts =
+                          (filtered[index + 1]['time'] ?? '00:00').split(':');
+                      if (nextParts.length == 2) {
+                        nextSeconds =
+                            ((int.tryParse(nextParts[0]) ?? 0) * 60) +
+                                (int.tryParse(nextParts[1]) ?? 0);
+                      }
                     }
-                  },
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+
+                    final isActive = currentSeconds >= itemSeconds &&
+                        (nextSeconds == null || currentSeconds < nextSeconds);
+
+                    return InkWell(
+                      onTap: () {
+                        // Tap timestamp to seek
+                        widget.audioPlayer
+                            .seek(Duration(seconds: itemSeconds));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Jumped to ${item['time']}'),
+                            duration: const Duration(seconds: 1),
+                          ),
+                        );
+                      },
                       borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isActive
+                              ? colorScheme.primary.withValues(
+                                  alpha: isDark ? 0.22 : 0.12)
+                              : colorScheme.surfaceContainerHighest
+                                  .withValues(alpha: 0.4),
+                          border: Border.all(
+                            color: isActive
+                                ? colorScheme.primary
+                                : Colors.transparent,
+                            width: isActive ? 1.5 : 1.0,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: colorScheme.primary.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                item['time'] ?? '00:00',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: colorScheme.primary,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              item['speaker'] ?? 'Speaker',
-                              style: theme.textTheme.labelMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const Spacer(),
-                            IconButton(
-                              icon: const Icon(Icons.copy_rounded, size: 16),
-                              onPressed: () {
-                                Clipboard.setData(
-                                    ClipboardData(text: item['text'] ?? ''));
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Quote copied to clipboard'),
-                                    duration: Duration(seconds: 1),
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: isActive
+                                        ? colorScheme.primary
+                                        : colorScheme.primary
+                                            .withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(6),
                                   ),
-                                );
-                              },
-                              tooltip: 'Copy quote',
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
+                                  child: Text(
+                                    item['time'] ?? '00:00',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: isActive
+                                          ? colorScheme.onPrimary
+                                          : colorScheme.primary,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  item['speaker'] ?? 'Speaker',
+                                  style: theme.textTheme.labelMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: isActive
+                                        ? colorScheme.primary
+                                        : null,
+                                  ),
+                                ),
+                                if (isActive) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: colorScheme.primary
+                                          .withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.graphic_eq_rounded,
+                                            size: 11,
+                                            color: colorScheme.primary),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'PLAYING',
+                                          style: TextStyle(
+                                            fontSize: 9.5,
+                                            fontWeight: FontWeight.bold,
+                                            color: colorScheme.primary,
+                                            letterSpacing: 0.5,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                                const Spacer(),
+                                IconButton(
+                                  icon:
+                                      const Icon(Icons.copy_rounded, size: 16),
+                                  onPressed: () {
+                                    Clipboard.setData(ClipboardData(
+                                        text: item['text'] ?? ''));
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content:
+                                            Text('Quote copied to clipboard'),
+                                        duration: Duration(seconds: 1),
+                                      ),
+                                    );
+                                  },
+                                  tooltip: 'Copy quote',
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              item['text'] ?? '',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                height: 1.5,
+                                fontWeight: isActive
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
+                                color: isActive
+                                    ? (isDark
+                                        ? Colors.white
+                                        : colorScheme.onSurface)
+                                    : null,
+                              ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          item['text'] ?? '',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            height: 1.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                      ),
+                    );
+                  },
                 );
               },
             ),
