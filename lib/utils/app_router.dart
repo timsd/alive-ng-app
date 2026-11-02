@@ -71,6 +71,7 @@ import '../utils/navigation_keys.dart';
 
 // New screen imports
 import '../screens/admin/leadership_archive_screen.dart';
+import '../screens/admin/video_content_admin_screen.dart';
 import '../screens/admin/sample_content_admin_screen.dart';
 import '../screens/profile/profile_completion_screen.dart';
 
@@ -711,10 +712,14 @@ final routerProvider = Provider<GoRouter>((ref) {
             },
           ),
 
-          // Admin Sample Content management (soft-delete built-in samples)
+          // Admin Video Content management (single source of truth for videos)
+          GoRoute(
+            path: AppConstants.videoContentAdminRoute,
+            builder: (context, state) => const VideoContentAdminScreen(),
+          ),
           GoRoute(
             path: AppConstants.sampleContentAdminRoute,
-            builder: (context, state) => const SampleContentAdminScreen(),
+            builder: (context, state) => const VideoContentAdminScreen(),
           ),
         ],
       ),

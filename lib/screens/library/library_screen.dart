@@ -4,6 +4,7 @@ import '../../widgets/custom_app_bar.dart';
 import '../../utils/responsive_utils.dart';
 import '../../services/appwrite_library_service.dart';
 import '../../widgets/standard_video_player_modal.dart';
+import '../../widgets/custom_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class LibraryScreen extends ConsumerStatefulWidget {
@@ -468,15 +469,30 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    Icon(
-                      Icons.video_library,
-                      size: ResponsiveUtils.getResponsiveValue(
-                          context: context,
-                          mobile: 48,
-                          tablet: 56,
-                          desktop: 64),
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                    if ((video['thumbnail_url'] ?? video['thumbnailUrl']) != null &&
+                        (video['thumbnail_url'] ?? video['thumbnailUrl']).toString().isNotEmpty)
+                      ClipRRect(
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(ResponsiveUtils.getResponsiveValue(
+                              context: context, mobile: 12, tablet: 14, desktop: 16)),
+                        ),
+                        child: CustomImage(
+                          imageUrl: (video['thumbnail_url'] ?? video['thumbnailUrl']).toString(),
+                          width: double.infinity,
+                          height: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
+                      )
+                    else
+                      Icon(
+                        Icons.video_library,
+                        size: ResponsiveUtils.getResponsiveValue(
+                            context: context,
+                            mobile: 48,
+                            tablet: 56,
+                            desktop: 64),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     Container(
                       padding: EdgeInsets.all(
                           ResponsiveUtils.getResponsiveValue(
@@ -501,6 +517,26 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                             desktop: 32),
                       ),
                     ),
+                    if (video['duration'] != null && video['duration'].toString().isNotEmpty)
+                      Positioned(
+                        bottom: 6,
+                        right: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.8),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            video['duration'].toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),

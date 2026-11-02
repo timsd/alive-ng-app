@@ -31,6 +31,7 @@ class AppConstants {
   static const String adminApprovalLinkRoute = '/admin-approve';
   static const String leadershipArchiveRoute = '/leadership-archive';
   static const String sampleContentAdminRoute = '/admin-sample-content';
+  static const String videoContentAdminRoute = '/admin-videos';
   static const String studyGuideRoute = '/study-guide';
   static const String tractPodcastAdminRoute = '/tract-podcast-admin';
   static const String meetingFileSharingRoute = '/meeting-file-sharing';

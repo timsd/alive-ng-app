@@ -533,18 +533,9 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
 
           const SizedBox(height: 24),
 
-          // ─── Podcast breakdown (collapsible) ───
-          if (_totalPodcasts > 0) ...[
-            _buildStaggeredChild(
-              index: 2,
-              child: _buildPodcastBreakdownPanel(context),
-            ),
-            const SizedBox(height: 24),
-          ],
-
           // ─── Management tools search ───
           _buildStaggeredChild(
-            index: 3,
+            index: 2,
             child: _buildManagementHeader(context),
           ),
 
@@ -552,7 +543,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
 
           // ─── Management sections ───
           _buildStaggeredChild(
-            index: 4,
+            index: 3,
             child: _buildFilteredManagementSections(context),
           ),
         ],
@@ -796,7 +787,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
       _MgmtSection('Content Management', Icons.library_books_outlined, [
         _MgmtTile('Content Pages & Projects', 'Manage app content pages, core sections, and mission projects', Icons.post_add_outlined, () => context.push(AppConstants.contentManagementRoute)),
         _MgmtTile('Tract & Podcast Management', 'Manage tracts, podcasts, and categories', Icons.article_outlined, () => context.push(AppConstants.tractPodcastAdminRoute)),
-        _MgmtTile('Sample Content (user-facing seeds)', 'Hide or restore sample podcasts & episodes users currently see', Icons.preview_outlined, () => context.push(AppConstants.sampleContentAdminRoute)),
+        _MgmtTile('Video Content Management', 'Upload and manage videos, categories, and media playback', Icons.video_library_outlined, () => context.push(AppConstants.videoContentAdminRoute)),
         _MgmtTile('Monthly Support Reminder', 'Send on the 1st of each month. Enable to let members opt out.', Icons.notifications_active_outlined, () => _showMonthlyReminderControl()),
         _MgmtTile('App Broadcast', 'Create and manage app broadcasts and announcements', Icons.campaign_outlined, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminAnnouncementsScreen()))),
         _MgmtTile('Kids Stories', 'Upload PDF or type content with media', Icons.auto_stories, () => context.push(AppConstants.adminKidsStoriesRoute)),
