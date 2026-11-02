@@ -303,304 +303,337 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
     String category,
     String durationStr,
   ) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          const SizedBox(height: 12),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableHeight = constraints.maxHeight;
+        final isCompact = availableHeight < 560;
 
-          // Animated Cover Artwork
-          StreamBuilder<PlayerState>(
-            stream: widget.audioPlayer.playerStateStream,
-            builder: (context, snapshot) {
-              final isPlaying = snapshot.data?.playing ?? false;
-              return AnimatedContainer(
-                duration: const Duration(milliseconds: 350),
-                width: isPlaying ? 240 : 210,
-                height: isPlaying ? 240 : 210,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: colorScheme.primary.withValues(alpha: isPlaying ? 0.35 : 0.15),
-                      blurRadius: isPlaying ? 24 : 12,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: widget.coverImage != null &&
-                          widget.coverImage!.isNotEmpty
-                      ? CustomImage(
-                          imageUrl: widget.coverImage!,
-                          fit: BoxFit.cover,
-                        )
-                      : Container(
-                          color: colorScheme.primary.withValues(alpha: 0.15),
-                          child: Icon(
-                            Icons.podcasts_rounded,
-                            size: 80,
-                            color: colorScheme.primary,
-                          ),
-                        ),
-                ),
-              );
-            },
+        // Proportional sizing so all controls ALWAYS fit without vertical scrolling
+        final maxArtwork = (availableHeight - (isCompact ? 220 : 255)).clamp(100.0, 220.0);
+        final titleFontSize = isCompact ? 17.0 : 19.0;
+        final fabSize = isCompact ? 58.0 : 64.0;
+        final fabIconSize = isCompact ? 32.0 : 36.0;
+        final controlIconSize = isCompact ? 30.0 : 34.0;
+
+        return Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: isCompact ? 4 : 8,
           ),
-
-          const SizedBox(height: 24),
-
-          // Category Badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            decoration: BoxDecoration(
-              color: colorScheme.primaryContainer,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Text(
-              category.toUpperCase(),
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.8,
-                color: colorScheme.onPrimaryContainer,
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          // Title & Show
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              fontSize: 20,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            widget.podcastTitle,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurface.withValues(alpha: 0.65),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-
-          const SizedBox(height: 24),
-
-          // Scrubbable Progress Bar
-          StreamBuilder<Duration>(
-            stream: widget.audioPlayer.positionStream,
-            builder: (context, positionSnapshot) {
-              final position = positionSnapshot.data ?? Duration.zero;
-              final duration = widget.audioPlayer.duration ??
-                  Duration(minutes: int.tryParse(durationStr.split(':').first) ?? 15);
-
-              final totalMs = duration.inMilliseconds.toDouble();
-              final posMs = _isSeeking
-                  ? _dragPosition
-                  : position.inMilliseconds
-                      .toDouble()
-                      .clamp(0.0, totalMs > 0 ? totalMs : 1.0);
-
-              return Column(
-                children: [
-                  SliderTheme(
-                    data: SliderTheme.of(context).copyWith(
-                      trackHeight: 4,
-                      thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
-                      overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
-                      activeTrackColor: colorScheme.primary,
-                      inactiveTrackColor: colorScheme.onSurface.withValues(alpha: 0.15),
-                      thumbColor: colorScheme.primary,
-                    ),
-                    child: Slider(
-                      min: 0.0,
-                      max: totalMs > 0 ? totalMs : 1.0,
-                      value: posMs,
-                      onChangeStart: (val) {
-                        setState(() {
-                          _isSeeking = true;
-                          _dragPosition = val;
-                        });
-                      },
-                      onChanged: (val) {
-                        setState(() {
-                          _dragPosition = val;
-                        });
-                      },
-                      onChangeEnd: (val) {
-                        _isSeeking = false;
-                        widget.audioPlayer.seek(Duration(milliseconds: val.round()));
-                      },
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          _formatDuration(_isSeeking
-                              ? Duration(milliseconds: _dragPosition.round())
-                              : position),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurface.withValues(alpha: 0.6),
-                          ),
-                        ),
-                        Text(
-                          '-${_formatDuration(duration > position ? duration - position : Duration.zero)}',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurface.withValues(alpha: 0.6),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-
-          const SizedBox(height: 16),
-
-          // Lively Playback Controls
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Speed Pill
-              InkWell(
-                onTap: _cycleSpeed,
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Text(
-                    '${_currentSpeed}x',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(width: 20),
-
-              // Skip Backward 15s
-              IconButton(
-                iconSize: 36,
-                icon: const Icon(Icons.replay_10),
-                onPressed: () {
-                  final newPos = widget.audioPlayer.position -
-                      const Duration(seconds: 10);
-                  widget.audioPlayer.seek(newPos < Duration.zero ? Duration.zero : newPos);
-                },
-                tooltip: 'Rewind 10 seconds',
-              ),
-
-              const SizedBox(width: 12),
-
-              // Play / Pause Large FAB
+              // 1. Responsive Animated Cover Artwork (fits dynamically into screen height)
               StreamBuilder<PlayerState>(
                 stream: widget.audioPlayer.playerStateStream,
                 builder: (context, snapshot) {
-                  final state = snapshot.data;
-                  final isPlaying = state?.playing ?? false;
-                  final isBuffering =
-                      state?.processingState == ProcessingState.buffering;
+                  final isPlaying = snapshot.data?.playing ?? false;
+                  final size = isPlaying ? maxArtwork : (maxArtwork * 0.90);
 
-                  return Container(
-                    width: 68,
-                    height: 68,
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 350),
+                    width: size,
+                    height: size,
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        colors: [colorScheme.primary, colorScheme.primary.withValues(alpha: 0.85)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
+                      borderRadius: BorderRadius.circular(18),
                       boxShadow: [
                         BoxShadow(
-                          color: colorScheme.primary.withValues(alpha: 0.4),
-                          blurRadius: 16,
-                          offset: const Offset(0, 6),
+                          color: colorScheme.primary
+                              .withValues(alpha: isPlaying ? 0.35 : 0.15),
+                          blurRadius: isPlaying ? 20 : 10,
+                          offset: const Offset(0, 8),
                         ),
                       ],
                     ),
-                    child: IconButton(
-                      iconSize: 36,
-                      color: colorScheme.onPrimary,
-                      icon: isBuffering
-                          ? SizedBox(
-                              width: 28,
-                              height: 28,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 3,
-                                color: colorScheme.onPrimary,
-                              ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(18),
+                      child: widget.coverImage != null &&
+                              widget.coverImage!.isNotEmpty
+                          ? CustomImage(
+                              imageUrl: widget.coverImage!,
+                              fit: BoxFit.cover,
                             )
-                          : Icon(isPlaying
-                              ? Icons.pause_rounded
-                              : Icons.play_arrow_rounded),
-                      onPressed: () {
-                        if (isPlaying) {
-                          widget.audioPlayer.pause();
-                        } else {
-                          widget.audioPlayer.play();
-                        }
-                      },
+                          : Container(
+                              color: colorScheme.primary.withValues(alpha: 0.15),
+                              child: Icon(
+                                Icons.podcasts_rounded,
+                                size: (size * 0.4).clamp(36.0, 72.0),
+                                color: colorScheme.primary,
+                              ),
+                            ),
                     ),
                   );
                 },
               ),
 
-              const SizedBox(width: 12),
-
-              // Skip Forward 30s
-              IconButton(
-                iconSize: 36,
-                icon: const Icon(Icons.forward_30_rounded),
-                onPressed: () {
-                  final duration = widget.audioPlayer.duration ?? const Duration(hours: 1);
-                  final newPos = widget.audioPlayer.position +
-                      const Duration(seconds: 30);
-                  widget.audioPlayer.seek(newPos > duration ? duration : newPos);
-                },
-                tooltip: 'Forward 30 seconds',
+              // 2. Category Badge & Title & Podcast Name
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      category.toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.8,
+                        color: colorScheme.onPrimaryContainer,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      fontSize: titleFontSize,
+                      height: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    widget.podcastTitle,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurface.withValues(alpha: 0.65),
+                      fontWeight: FontWeight.w500,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
               ),
 
-              const SizedBox(width: 20),
+              // 3. Scrubbable Progress Bar & Duration
+              StreamBuilder<Duration>(
+                stream: widget.audioPlayer.positionStream,
+                builder: (context, positionSnapshot) {
+                  final position = positionSnapshot.data ?? Duration.zero;
+                  final duration = widget.audioPlayer.duration ??
+                      Duration(
+                          minutes:
+                              int.tryParse(durationStr.split(':').first) ?? 15);
 
-              // Share Episode
-              IconButton(
-                iconSize: 24,
-                icon: const Icon(Icons.share_outlined),
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Sharing: $title')),
+                  final totalMs = duration.inMilliseconds.toDouble();
+                  final posMs = _isSeeking
+                      ? _dragPosition
+                      : position.inMilliseconds
+                          .toDouble()
+                          .clamp(0.0, totalMs > 0 ? totalMs : 1.0);
+
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          trackHeight: 4,
+                          thumbShape: const RoundSliderThumbShape(
+                              enabledThumbRadius: 6),
+                          overlayShape:
+                              const RoundSliderOverlayShape(overlayRadius: 14),
+                          activeTrackColor: colorScheme.primary,
+                          inactiveTrackColor:
+                              colorScheme.onSurface.withValues(alpha: 0.15),
+                          thumbColor: colorScheme.primary,
+                        ),
+                        child: Slider(
+                          min: 0.0,
+                          max: totalMs > 0 ? totalMs : 1.0,
+                          value: posMs,
+                          onChangeStart: (val) {
+                            setState(() {
+                              _isSeeking = true;
+                              _dragPosition = val;
+                            });
+                          },
+                          onChanged: (val) {
+                            setState(() {
+                              _dragPosition = val;
+                            });
+                          },
+                          onChangeEnd: (val) {
+                            _isSeeking = false;
+                            widget.audioPlayer
+                                .seek(Duration(milliseconds: val.round()));
+                          },
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              _formatDuration(_isSeeking
+                                  ? Duration(milliseconds: _dragPosition.round())
+                                  : position),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color:
+                                    colorScheme.onSurface.withValues(alpha: 0.6),
+                              ),
+                            ),
+                            Text(
+                              '-${_formatDuration(duration > position ? duration - position : Duration.zero)}',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color:
+                                    colorScheme.onSurface.withValues(alpha: 0.6),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   );
                 },
-                tooltip: 'Share',
+              ),
+
+              // 4. Playback Controls Row (Speed, Rewind 10, Play/Pause FAB, Forward 30, Share)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Speed Pill
+                  InkWell(
+                    onTap: _cycleSpeed,
+                    borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Text(
+                        '${_currentSpeed}x',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(width: 14),
+
+                  // Skip Backward 10s
+                  IconButton(
+                    iconSize: controlIconSize,
+                    icon: const Icon(Icons.replay_10),
+                    onPressed: () {
+                      final newPos = widget.audioPlayer.position -
+                          const Duration(seconds: 10);
+                      widget.audioPlayer.seek(
+                          newPos < Duration.zero ? Duration.zero : newPos);
+                    },
+                    tooltip: 'Rewind 10 seconds',
+                  ),
+
+                  const SizedBox(width: 8),
+
+                  // Play / Pause Large FAB
+                  StreamBuilder<PlayerState>(
+                    stream: widget.audioPlayer.playerStateStream,
+                    builder: (context, snapshot) {
+                      final state = snapshot.data;
+                      final isPlaying = state?.playing ?? false;
+                      final isBuffering =
+                          state?.processingState == ProcessingState.buffering;
+
+                      return Container(
+                        width: fabSize,
+                        height: fabSize,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [
+                              colorScheme.primary,
+                              colorScheme.primary.withValues(alpha: 0.85)
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: colorScheme.primary.withValues(alpha: 0.4),
+                              blurRadius: 14,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: IconButton(
+                          iconSize: fabIconSize,
+                          color: colorScheme.onPrimary,
+                          icon: isBuffering
+                              ? SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: colorScheme.onPrimary,
+                                  ),
+                                )
+                              : Icon(isPlaying
+                                  ? Icons.pause_rounded
+                                  : Icons.play_arrow_rounded),
+                          onPressed: () {
+                            if (isPlaying) {
+                              widget.audioPlayer.pause();
+                            } else {
+                              widget.audioPlayer.play();
+                            }
+                          },
+                        ),
+                      );
+                    },
+                  ),
+
+                  const SizedBox(width: 8),
+
+                  // Skip Forward 30s
+                  IconButton(
+                    iconSize: controlIconSize,
+                    icon: const Icon(Icons.forward_30_rounded),
+                    onPressed: () {
+                      final duration = widget.audioPlayer.duration ??
+                          const Duration(hours: 1);
+                      final newPos = widget.audioPlayer.position +
+                          const Duration(seconds: 30);
+                      widget.audioPlayer
+                          .seek(newPos > duration ? duration : newPos);
+                    },
+                    tooltip: 'Forward 30 seconds',
+                  ),
+
+                  const SizedBox(width: 14),
+
+                  // Share Episode
+                  IconButton(
+                    iconSize: 22,
+                    icon: const Icon(Icons.share_outlined),
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Sharing: $title')),
+                      );
+                    },
+                    tooltip: 'Share',
+                  ),
+                ],
               ),
             ],
           ),
-
-          const SizedBox(height: 20),
-        ],
-      ),
+        );
+      },
     );
   }
 
