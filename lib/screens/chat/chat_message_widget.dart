@@ -429,6 +429,13 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
         final cleanDisplay = matchText.replaceAll('_', ' ');
         final rawUserHandle = matchText.substring(1);
 
+        final pillBg = isDark
+            ? const Color(0xFF5865F2).withValues(alpha: 0.30)
+            : const Color(0xFF5865F2).withValues(alpha: 0.15);
+        final pillTextColor = isDark
+            ? const Color(0xFFC9CDFB)
+            : const Color(0xFF3730A3);
+
         spans.add(
           WidgetSpan(
             alignment: PlaceholderAlignment.middle,
@@ -446,15 +453,15 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                 margin: const EdgeInsets.symmetric(horizontal: 1.5, vertical: 1.0),
                 padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF5865F2).withValues(alpha: 0.24),
+                  color: pillBg,
                   borderRadius: BorderRadius.circular(3),
                 ),
                 child: Text(
                   cleanDisplay,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFFC9CDFB),
+                    color: pillTextColor,
                   ),
                 ),
               ),
@@ -464,10 +471,10 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
       } else if (matchText.startsWith('#')) {
         spans.add(TextSpan(
           text: matchText,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14.5,
             fontWeight: FontWeight.w600,
-            color: Color(0xFF5865F2),
+            color: isDark ? const Color(0xFF5865F2) : const Color(0xFF3730A3),
           ),
           recognizer: TapGestureRecognizer()
             ..onTap = () {
@@ -477,10 +484,10 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
       } else if (matchText.startsWith('!')) {
         spans.add(TextSpan(
           text: matchText,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14.5,
             fontWeight: FontWeight.w600,
-            color: Color(0xFF57F287), // Discord green
+            color: isDark ? const Color(0xFF57F287) : const Color(0xFF15803D), // Forest green in light, Discord green in dark
           ),
         ));
       } else if (matchText.startsWith('http')) {
