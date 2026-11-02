@@ -29,7 +29,7 @@ class SampleContentService {
           'In this presentation from the 2019 Alive Nigeria Mission Empowerment Conference, the speaker explores the biblical blueprint for mission and evangelism through centers of influence and the W3 class.',
       'host': 'Pastor Agana',
       'category': 'MEC',
-      'episodes': 3W's,
+      'episodes': 1,
       'rating': 5.0,
       'hasAudio': true,
       'audioUrl':

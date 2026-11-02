@@ -47,8 +47,9 @@ if (singleRes.ok) {
   if (single.logs) {
     try {
       const logs = JSON.parse(single.logs);
-      console.log('--- Last 15 log entries ---');
-      logs.slice(-15).forEach(l => console.log(l.output));
+      const count = parseInt(process.env.LOG_COUNT || '40', 10);
+      console.log(`--- Last ${count} log entries ---`);
+      logs.slice(-count).forEach(l => console.log(l.output));
     } catch(e) {
       console.log('Logs slice:', single.logs.slice(-300));
     }

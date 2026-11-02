@@ -757,36 +757,6 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
       );
     }
   }
-        if (!mounted) return;
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => InAppPdfViewerScreen(
-              title: widget.tract.title,
-              pdfUrl: downloadUrl!,
-            ),
-          ),
-        );
-      } else {
-        throw 'Could not locate PDF document';
-      }
-    } catch (_) {
-      if (!mounted) return;
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Error'),
-          content: const Text(
-              'Unable to open the PDF document at this time. Please check your internet connection or try again later.'),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('OK')),
-          ],
-        ),
-      );
-    }
-  }
 
   void _downloadTract() async {
         try {
