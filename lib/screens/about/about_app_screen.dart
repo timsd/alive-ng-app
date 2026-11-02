@@ -93,13 +93,13 @@ class AboutAppScreen extends ConsumerWidget {
                         icon: Icons.auto_stories_rounded,
                         title: 'Why this app exists',
                         body:
-                            'The app helps members and guests stay connected to ALIVE wherever they are. It makes it easier to learn, pray, listen, read, and participate without depending on one physical location.',
+                            'The app centralizes ALIVE Nigeria\'s ministry initiatives, local chapters, and member activities into an integrated in-house digital community ecosystem. It empowers members, leaders, and guests to study, pray, fellowship, and collaborate seamlessly without geographical barriers.',
                       ),
                       _InfoBlock(
                         icon: Icons.groups_2_rounded,
                         title: 'Built for real ministry use',
                         body:
-                            'From all Alms of leadership from the grassroot upward given access to conference call, testimonies, donation, kids content, and support, the app is structured to serve both everyday spiritual habits and ministry coordination.',
+                            'Engineered for all arms of leadership from grassroots chapters to the national executive council, providing unified access to live conferencing with automated ALIVE Scribe minutes, fellowship channels, testimonies, multi-project giving, children\'s curriculum, and wellness tracking.',
                       ),
                     ];
 
@@ -239,7 +239,7 @@ class AboutAppScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'Created by Timothy Olodude as his way to see the organization marching forward. (c) Project 2025/2026. To contact the developer, use the Feedback for all your suggestion',
+                        'Architected and engineered by Timothy Olodude as a dedicated contribution to advancing ALIVE Nigeria\'s missionary mandate, operational excellence, and technological self-reliance. © Project 2025/2026. For feedback, feature suggestions, or technical support, please use the in-app Feedback section.',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           height: 1.6,
                           color: colorScheme.onSurfaceVariant,

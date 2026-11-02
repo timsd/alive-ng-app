@@ -259,7 +259,7 @@ class AppTourSteps {
       highlights: [
         'Ẹsẹ Bíbélì ojoojúmọ́ pẹ̀lú ohùn kíkà ní èdè Yorùbá',
         'Àwọn ọ̀nà ìkékúrú sí Ẹkọ Bíbélì, Ìwé Àṣàrò, àti Àdúrà',
-        'Àwọn ìròyìn àti àbójútó iṣẹ́ ìránṣẹ́ ALIVE Nigeria',
+        'Ibùdó profaili àti àwọn ìròyìn iṣẹ́ ìránṣẹ́ tuntun',
       ],
     ),
 
@@ -330,7 +330,7 @@ class AppTourSteps {
       targetArea: 'more',
       highlights: [
         'Ìwé Àṣàrò ìhìnrere pẹ̀lú kíkà PDF ní tààràtà nínú àpù',
-        'Pọ́díkáàsì orin àti ìwàásù tí a lè tẹ́tí sí nígbàkúgbà',
+        'Pọ́díkáàsì ohùn pẹ̀lú ìwàásù àti àwọn àkọsílẹ̀ àgbébọ̀ ALIVE',
         'Ìtàn Bíbélì fún àwọn ọmọdé pẹ̀lú àmì ẹ̀yẹ àṣeyọrí',
         'Àkójọ àwọn ẹ̀ka iṣẹ́ ìránṣẹ́ ní àwọn ilé-ẹ̀kọ́ gíga',
       ],
@@ -340,7 +340,7 @@ class AppTourSteps {
     AppTourStep(
       id: 'step_conference',
       title: 'Àkójọ Ìpàdé & Akọsílẹ̀',
-      subtitle: 'Fídíò LiveKit & Àwọn Ìpinnu Ìpàdé',
+      subtitle: 'Fídíò Lójú-ẹsẹ̀ & Akọsílẹ̀ Ìpàdé ALIVE Scribe',
       description:
           'Wà lábẹ́ àkójọ Púpọ̀ sí i, Ìpàdé Orí-afẹ́fẹ́ ALIVE ń so àwọn ọmọ ìjọ àti àwọn aṣáájú pọ̀ ní fídíò lójú ẹsẹ̀ pẹ̀lú akọsílẹ̀ àti àwọn ìpinnu ìpàdé.',
       icon: Icons.video_camera_front_rounded,
@@ -348,7 +348,7 @@ class AppTourSteps {
       route: '/conference',
       targetArea: 'conference',
       highlights: [
-        'Yàrá fídíò àti ohùn tó yára pẹ̀lú ìmọ̀-ẹ̀rọ LiveKit',
+        'Yàrá fídíò àti ohùn tó yára pẹ̀lú ààbò kíkún',
         'Akọsílẹ̀ àwọn ìpinnu ìpàdé ní àkókò gidi láìsí àṣìṣe',
         'Pípín àwọn fáìlì àti ìfọwọ́sowọ́pọ̀ láàárín àwọn aṣáájú',
       ],
@@ -358,15 +358,16 @@ class AppTourSteps {
     AppTourStep(
       id: 'step_donations',
       title: 'Ìtọrẹ Àánú & Ìfọwọ́sowọ́pọ̀',
-      subtitle: 'Ìtọrẹ Lójú-ẹsẹ̀ nípasẹ̀ Paystack & Ẹ̀bùn Ohun-ìní',
+      subtitle: 'Ìtọrẹ Lójú-ẹsẹ̀ & Ẹ̀bùn Ohun-ìní',
       description:
-          'Wà lórí pẹpẹ lókè nígbàkúgbà. Ṣe àtìlẹ́yìn fún títẹ ìwé àṣàrò jáde, iṣẹ́ ìránṣẹ́ ní àwọn ilé-ẹ̀kọ́, àti ìrànwọ́ àwùjọ nípasẹ̀ Paystack.',
+          'Wà lórí pẹpẹ lókè nígbàkúgbà. Ṣe àtìlẹ́yìn fún títẹ ìwé àṣàrò jáde, iṣẹ́ ìránṣẹ́ ní àwọn ilé-ẹ̀kọ́, àti ìrànwọ́ àwùjọ pẹ̀lú ìtọrẹ lójú-ẹsẹ̀ tàbí ẹ̀bùn ohun-ìní.',
       icon: Icons.volunteer_activism_rounded,
       accentColor: Color(0xFFE11D48),
       route: '/donation',
       targetArea: 'donations',
       highlights: [
         'Yíyàn ibi tí ìtọrẹ ń lọ: Iṣẹ́ Ìránṣẹ́ Gbogbogbò, Ìwé Àṣàrò, Ìwàásù',
+        'Ànfààní láti pín ìtọrẹ rẹ sí àwọn ẹ̀ka iṣẹ́ ìránṣẹ́ àti iṣẹ́ àkànṣe ọ̀tọ̀ọ̀tọ̀',
         'Rísíìtì lójú ẹsẹ̀ àti àkọsílẹ̀ gbogbo ìtọrẹ rẹ',
         'Àyè fún ìtọrẹ àwọn ohun-èlò bíi kọ̀mpútà, ẹ̀rọ orin, àti àwọn ohun èlò iṣẹ́',
       ],
@@ -394,15 +395,15 @@ class AppTourSteps {
     AppTourStep(
       id: 'step_profile',
       title: 'Profaili & Ètò Rẹ',
-      subtitle: 'Àwòrán, Ẹka Ìjọ & Ààbò',
+      subtitle: 'Ọ̀nà Ìkékúrú sí Ètò Rẹ',
       description:
-          'Tẹ àwòrán rẹ pẹ̀lú ọfà kọ́ọ̀bù lórí àkọlé ilé láti wo profaili rẹ, ìlọsíwájú ẹ̀mí rẹ, àti àwọn ètò ààbò àkọọ́lẹ̀ rẹ.',
+          'Tẹ àwòrán rẹ lórí àkọlé ilé láti wo profaili rẹ, ìlọsíwájú ẹ̀mí rẹ, ẹ̀ka ìjọ rẹ, àti àwọn ètò ààbò rẹ.',
       icon: Icons.account_circle_rounded,
       accentColor: Color(0xFFD49B28),
       route: '/profile',
       targetArea: 'profile',
       highlights: [
-        'Ọ̀nà tààrà sí profaili rẹ láti orí àkọlé ilé',
+        'Profaili rẹ wà lárọ̀ọ́wọ́tó ní tààràtà láti orí àkọlé ilé',
         'Ṣíṣe àtúnṣe orúkọ, ẹ̀ka ìjọ, àti àwọn àfojúsùn tẹ̀mí',
         'Àbójútó àwọn ẹ̀rọ tí ó wọlé àti àwọn ìfitilétí',
       ],
@@ -444,7 +445,7 @@ class AppTourSteps {
       highlights: [
         'Ayar kullum tare da sautin karatu a Hausa',
         'Hanyoyi masu sauri zuwa Nazarin Littafi Mai Tsarki da Addu\'a',
-        'Labaran ma\'aikatar ALIVE Nigeria',
+        'Sashen bayanin martaba da sabbin labaran ma\'aikata',
       ],
     ),
     AppTourStep(
@@ -507,14 +508,15 @@ class AppTourSteps {
       targetArea: 'more',
       highlights: [
         'Warƙoƙin bishara a cikin PDF',
-        'Podcasts na wa\'azi da waƙoƙi',
-        'Sashen yara mai kayatarwa',
+        'Podcasts na wa\'azi masu ƙarfafawa da tsofaffin sautin ALIVE',
+        'Sashen yara mai kayatarwa tare da labarai da lambobin yabo',
+        'Jerin rassan ma\'aikata a makarantun gaba da sakandare',
       ],
     ),
     AppTourStep(
       id: 'step_conference',
       title: 'Taron Kai Tsaye & Rubuce-rubuce',
-      subtitle: 'Bidiyo na LiveKit & Shawarwari',
+      subtitle: 'Bidiyo na Kai Tsaye & ALIVE Scribe Mai Karatu',
       description:
           'Haɗu da shugabanni da membobi a cikin tarurrukan bidiyo na kai tsaye tare da rubuta shawarwari.',
       icon: Icons.video_camera_front_rounded,
@@ -522,25 +524,26 @@ class AppTourSteps {
       route: '/conference',
       targetArea: 'conference',
       highlights: [
-        'Dakin taro mai sauri ta LiveKit',
-        'Rubuta shawarwarin taro nan take',
-        'Raba fayiloli tsakanin shugabanni',
+        'Dakin taro na bidiyo da sauti mai sauri da aminci',
+        'Rubuta shawarwarin taro nan take ta atomatik',
+        'Raba fayiloli cikin aminci tsakanin shugabanni',
       ],
     ),
     AppTourStep(
       id: 'step_donations',
       title: 'Gudunmawa & Haɗin Gwiwa',
-      subtitle: 'Ba da Gudunmawa ta Paystack',
+      subtitle: 'Ba da Gudunmawa & Alƙawarin Kyauta',
       description:
-          'Taimaka wa buga warƙoƙi da aikin bishara a Najeriya ta hanyar Paystack cikin kwanciyar hankali.',
+          'Taimaka wa buga warƙoƙi da aikin bishara a Najeriya ta hanyar gudunmawa mai aminci ko alƙawarin kayan aiki.',
       icon: Icons.volunteer_activism_rounded,
       accentColor: Color(0xFFE11D48),
       route: '/donation',
       targetArea: 'donations',
       highlights: [
-        'Zaɓi inda gudunmawar ke zuwa',
-        'Samun rasit nan take',
-        'Ba da gudunmawar kayan aiki',
+        'Zaɓi inda gudunmawar ke zuwa: Ma\'aikata, Warƙoƙi, ko Wa\'azi',
+        'Ikon raba gudunmawarka zuwa sassa daban-daban na ma\'aikata da ayyuka',
+        'Samun rasit da tarihin bayarwa nan take',
+        'Ba da gudunmawar kayan aiki da kayayyakin aikin bishara',
       ],
     ),
     AppTourStep(
@@ -562,15 +565,15 @@ class AppTourSteps {
     AppTourStep(
       id: 'step_profile',
       title: 'Bayanin Martaba & Saituna',
-      subtitle: 'Hotonku, Reshe & Tsaro',
+      subtitle: 'Hanyar Sauri zuwa Saituna',
       description:
-          'Taɓa hotonku tare da kibiyar lanƙwasa a saman shafin farko don duba bayananku, ci gaban ruhaniya da saitunan tsaro.',
+          'Taɓa hotonku a saman shafin farko don duba bayananku, ci gaban ruhaniya, reshenku da saitunan tsaro.',
       icon: Icons.account_circle_rounded,
       accentColor: Color(0xFFD49B28),
       route: '/profile',
       targetArea: 'profile',
       highlights: [
-        'Hanya mai sauri zuwa bayanan martaba daga shafin farko',
+        'Hanya mai sauƙi zuwa bayanan martaba kai tsaye daga shafin farko',
         'Sabunta bayanan sirri da ci gaban ruhaniya',
         'Kula da saitunan tsaro da na\'urori',
       ],
@@ -610,7 +613,7 @@ class AppTourSteps {
       highlights: [
         'Amaokwu Baịbụl kwa ụbọchị n\'asụsụ Igbo',
         'Ụzọ ngwa ngwa gaa Ọmụmụ Baịbụl na Ekpere',
-        'Akụkọ na ọrụ ALIVE Nigeria',
+        'Ebe profaịlụ nke gị na mmelite ozi ọma kachasị ọhụrụ',
       ],
     ),
     AppTourStep(
@@ -673,14 +676,15 @@ class AppTourSteps {
       targetArea: 'more',
       highlights: [
         'Traktị ozi ọma n\'ụdị PDF na ngwa',
-        'Podcasts nke nkuzi na egwu',
+        'Podcasts nke nkuzi na-ewuli elu na ihe ndekọ ALIVE gara aga',
         'Akụkọ Baịbụl maka ụmụaka nwere ihe nrite',
+        'Akwụkwọ ndekọ na-ejikọ gị na ngalaba alaka na mahadum',
       ],
     ),
     AppTourStep(
       id: 'step_conference',
       title: 'Nzukọ Ndụ & Ndekọ',
-      subtitle: 'Vidio LiveKit & Mkpebi Nzukọ',
+      subtitle: 'Vidio Ndụ & Onye Ndekọ Nzukọ ALIVE Scribe',
       description:
           'Jikọọ na ndị isi na ndị otu na nzukọ vidio ozugbo yana idekọ mkpebi nzukọ.',
       icon: Icons.video_camera_front_rounded,
@@ -688,15 +692,15 @@ class AppTourSteps {
       route: '/conference',
       targetArea: 'conference',
       highlights: [
-        'Ọnụ ụlọ nzukọ vidio ngwa ngwa LiveKit',
-        'Ndekọ mkpebi nzukọ ozugbo',
+        'Ọnụ ụlọ nzukọ vidio na ọdịyo dị ngwa ma dị nchebe',
+        'Ndekọ mkpebi nzukọ na omume ozugbo na-akpaghị aka',
         'Ịkekọrịta faịlụ n\'etiti ndị isi',
       ],
     ),
     AppTourStep(
       id: 'step_donations',
       title: 'Inye Onyinye & Mmekọrịta Ozi',
-      subtitle: 'Inye Onyinye site na Paystack',
+      subtitle: 'Inye Onyinye & Nkwa Onyinye',
       description:
           'Kwado ibipụta traktị na ozi ọma na Mahadum na Nigeria site na Paystack na nchekwa.',
       icon: Icons.volunteer_activism_rounded,
@@ -704,9 +708,10 @@ class AppTourSteps {
       route: '/donation',
       targetArea: 'donations',
       highlights: [
-        'Họrọ ebe onyinye gị ga-aga',
-        'Nweta akwụkwọ ọnụahịa ozugbo',
-        'Inye onyinye nke ngwa ọrụ na akụrụngwa',
+        'Họrọ ebe onyinye gị ga-aga: Ozi Gbogbogbò, Traktị, ma ọ bụ Ozi Mahadum',
+        'Ikike ịkewapụta onyinye gị gaa n\'akụkụ dị iche iche nke ozi na ọrụ ngo',
+        'Nweta akwụkwọ ọnụahịa ozugbo na akụkọ inye onyinye gị',
+        'Inye onyinye nke ngwa ọrụ na akụrụngwa ozi ọma',
       ],
     ),
     AppTourStep(
@@ -728,15 +733,15 @@ class AppTourSteps {
     AppTourStep(
       id: 'step_profile',
       title: 'Profaịlụ & Ntọala Akaụntụ',
-      subtitle: 'Foto Gị, Alaka Ụka & Nchebe',
+      subtitle: 'Ụzọ Mkpirisi gaa na Ntọala',
       description:
-          'Kpatụ foto gị nwere akụ gbagọrọ agbagọ n\'isi akụkọ ihu iji lelee profaịlụ gị, ntolite ime mmụọ gị na ntọala nchebe akaụntụ gị.',
+          'Kpatụ foto gị n\'isi akụkọ ihu iji lelee profaịlụ gị, ntolite ime mmụọ gị na ntọala nchebe akaụntụ gị.',
       icon: Icons.account_circle_rounded,
       accentColor: Color(0xFFD49B28),
       route: '/profile',
       targetArea: 'profile',
       highlights: [
-        'Ụzọ ngwa ngwa na profaịlụ gị ozugbo na mbido ihuenyo',
+        'Enwere ike iru profaịlụ gị ozugbo site na isi akụkọ ihu',
         'Mmelite ozi nke gị na ọganihu ime mmụọ',
         'Nlekọta ntọala nchebe na ngwaọrụ',
       ],

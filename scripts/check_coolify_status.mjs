@@ -16,8 +16,23 @@ const uuid = process.env.COOLIFY_SERVICE_UUID;
 
 const headers = { Authorization: `Bearer ${token}`, Accept: 'application/json' };
 
-// First try specific deployment id if passed, or default to eqr8mtu34gysv0vwihfwn2nr or latest
-const depId = process.argv[2] || 'eqr8mtu34gysv0vwihfwn2nr';
+let depId = process.argv[2];
+if (!depId) {
+  // Fetch latest deployment for this application
+  const appDepsRes = await fetch(`${base}/api/v1/applications/${uuid}/deployments`, { headers });
+  if (appDepsRes.ok) {
+    const list = await appDepsRes.json();
+    if (list && list.length > 0) {
+      depId = list[0].deployment_uuid || list[0].id;
+    }
+  }
+}
+
+if (!depId) {
+  console.log('No deployment id found');
+  process.exit(1);
+}
+
 const singleRes = await fetch(`${base}/api/v1/deployments/${depId}`, { headers });
 if (singleRes.ok) {
   const single = await singleRes.json();
