@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
 import '../widgets/custom_image.dart';
+import '../utils/podcast_share_helper.dart';
 
 /// Fullscreen modern podcast player modal with live transcription,
 /// interactive seeking, playback speed controls, and lively animations.
@@ -634,8 +635,10 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
                     iconSize: 22,
                     icon: const Icon(Icons.share_outlined),
                     onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Sharing: $title')),
+                      PodcastShareHelper.shareEpisode(
+                        context,
+                        episode: widget.episodeData,
+                        podcastTitle: widget.podcastTitle,
                       );
                     },
                     tooltip: 'Share',

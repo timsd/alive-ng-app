@@ -12,9 +12,17 @@ import '../../models/podcast_models.dart';
 import '../../widgets/custom_image.dart';
 import '../../services/sample_content_service.dart';
 import '../../widgets/modern_podcast_player_sheet.dart';
+import '../../utils/podcast_share_helper.dart';
 
 class PodcastsScreen extends ConsumerStatefulWidget {
-  const PodcastsScreen({super.key});
+  final String? initialEpisodeId;
+  final String? initialPodcastId;
+
+  const PodcastsScreen({
+    super.key,
+    this.initialEpisodeId,
+    this.initialPodcastId,
+  });
 
   @override
   ConsumerState<PodcastsScreen> createState() => _PodcastsScreenState();
@@ -45,7 +53,19 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _samples.ensureLoaded().then((_) {
-      if (mounted) setState(() {});
+      if (mounted) {
+        setState(() {});
+        if (widget.initialEpisodeId != null &&
+            widget.initialEpisodeId!.isNotEmpty) {
+          final target = _samples.visibleEpisodes.firstWhere(
+            (e) => (e['id']?.toString() == widget.initialEpisodeId),
+            orElse: () => <String, dynamic>{},
+          );
+          if (target.isNotEmpty) {
+            _playEpisode(context, target);
+          }
+        }
+      }
     });
   }
 
@@ -422,10 +442,9 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
           onPlay: () => _playEpisode(context, filteredEpisodes[index]),
           onDownload: () => _downloadEpisode(context, filteredEpisodes[index]),
           onShare: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                  content:
-                      Text('Sharing: ${filteredEpisodes[index]['title']}')),
+            PodcastShareHelper.shareEpisode(
+              context,
+              episode: filteredEpisodes[index],
             );
           },
         );
@@ -684,7 +703,7 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
         case 'download':
           download(context, episode);
         case 'share':
-          messenger.showSnackBar(SnackBar(content: Text(shareLabel)));
+          PodcastShareHelper.shareEpisode(context, episode: episode);
       }
     });
   }

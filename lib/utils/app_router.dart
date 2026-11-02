@@ -600,7 +600,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           // Podcasts Route
           GoRoute(
             path: AppConstants.podcastsRoute,
-            builder: (context, state) => const PodcastsScreen(),
+            builder: (context, state) {
+              final episodeId = state.uri.queryParameters['episodeId'];
+              final podcastId = state.uri.queryParameters['podcastId'];
+              return PodcastsScreen(
+                initialEpisodeId: episodeId,
+                initialPodcastId: podcastId,
+              );
+            },
           ),
 
           // Interactive Lessons Route
