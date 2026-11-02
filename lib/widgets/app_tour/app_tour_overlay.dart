@@ -104,7 +104,11 @@ class _AppTourOverlayState extends ConsumerState<AppTourOverlay>
         return Offset(width - 118, topPadding + 28);
       case 'profile':
         // Profile pill with curved chevron on the top right of the Greeting Header
-        return Offset(width - 56, topPadding + kToolbarHeight + 54);
+        final responsiveSide =
+            width < 600 ? 56.0 : (width < 1024 ? 66.0 : 74.0);
+        final responsiveTop = width < 600 ? 86.0 : 94.0;
+        return Offset(
+            width - responsiveSide, topPadding + kToolbarHeight + responsiveTop);
       default:
         return Offset(width * 0.10, bottomNavY);
     }
@@ -117,7 +121,7 @@ class _AppTourOverlayState extends ConsumerState<AppTourOverlay>
       case 'theme':
         return 22.0;
       case 'profile':
-        return 38.0;
+        return 40.0;
       default:
         return 27.0; // Bottom nav tab circle spotlight
     }
@@ -140,10 +144,11 @@ class _AppTourOverlayState extends ConsumerState<AppTourOverlay>
       viewPadding.bottom,
     );
     final targetRadius = _getTargetRadius(step.targetArea);
-    final isTopTarget = step.targetArea == 'donations' ||
-        step.targetArea == 'language' ||
-        step.targetArea == 'theme' ||
-        step.targetArea == 'profile';
+    final isProfileTarget = step.targetArea == 'profile';
+    final isTopTarget = (step.targetArea == 'donations' ||
+            step.targetArea == 'language' ||
+            step.targetArea == 'theme') &&
+        !isProfileTarget;
 
     // Localized UI labels
     final skipLabel = {'yo': 'Kọjá', 'ha': 'Tsallake', 'ig': 'Gbanahụ'}[langCode] ?? 'Skip tour';
@@ -159,7 +164,7 @@ class _AppTourOverlayState extends ConsumerState<AppTourOverlay>
       child: Stack(
         children: [
           // 1. Dark Backdrop with Cutout Spotlight Hole over Target
-          // 1. Full-screen Spotlight Painter with crystal-clear transparent cutout & exterior glow ring
+          // Full-screen Spotlight Painter with crystal-clear transparent cutout, penetrating light beam & exterior glow ring
           AnimatedBuilder(
             animation: _pulseController,
             builder: (context, _) {
@@ -176,12 +181,14 @@ class _AppTourOverlayState extends ConsumerState<AppTourOverlay>
             },
           ),
 
-          // 2. Anchored Tour Modal Dialog (position adjusts so spotlight is never obscured)
+          // 2. Anchored Tour Modal Dialog (shifts down below profile spotlight so it is never obscured)
           Positioned(
             left: 16,
             right: 16,
-            top: isTopTarget ? (viewPadding.top + 64) : null,
-            bottom: !isTopTarget ? (viewPadding.bottom + 68) : null,
+            top: isProfileTarget
+                ? (targetCenter.dy + targetRadius + 20)
+                : (isTopTarget ? (viewPadding.top + 64) : null),
+            bottom: !isTopTarget && !isProfileTarget ? (viewPadding.bottom + 68) : null,
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 480),
@@ -488,37 +495,64 @@ class _SpotlightPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final bgPaint = Paint()..color = const Color(0xE8080E17); // Dark translucent backdrop
-
-    // Combine entire screen rect with cutout circle over the target
-    final fullScreenPath = Path()..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
     final holeRadius = targetRadius * pulseScale;
-    final holePath = Path()
-      ..addOval(
-        Rect.fromCircle(center: targetCenter, radius: holeRadius),
-      );
 
-    // Difference leaves the target element 100% transparent and visible
-    final overlayPath = Path.combine(PathOperation.difference, fullScreenPath, holePath);
-    canvas.drawPath(overlayPath, bgPaint);
+    // 1. Porter-Duff true penetration: cut out the hole cleanly with BlendMode.clear
+    // This penetrates the dark mask completely with zero residual darkness inside the circle
+    canvas.saveLayer(Rect.fromLTWH(0, 0, size.width, size.height), Paint());
 
-    // Exterior-only accent glow ring (never fills or obscures the interior target)
-    final outerGlowPaint = Paint()
-      ..color = accentColor.withValues(alpha: glowOpacity * 0.75)
+    // Dark backdrop overlay mask
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      Paint()..color = const Color(0xEE070C14),
+    );
+
+    // Punch out the crystal-clear spotlight hole
+    final clearPaint = Paint()..blendMode = BlendMode.clear;
+    canvas.drawCircle(targetCenter, holeRadius, clearPaint);
+
+    canvas.restore();
+
+    // 2. Luminous penetrating spotlight beam inside the circle:
+    // When the underlying icon or avatar is dark in dark mode or on dark surfaces,
+    // this radial white/accent illumination penetrates from behind and spotlights the icon,
+    // making it vividly visible, bright, and contrasted against the dark surroundings.
+    final innerBeamPaint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          Colors.white.withValues(alpha: 0.32),
+          Colors.white.withValues(alpha: 0.16),
+          accentColor.withValues(alpha: 0.08),
+          Colors.transparent,
+        ],
+        stops: const [0.0, 0.55, 0.85, 1.0],
+      ).createShader(Rect.fromCircle(center: targetCenter, radius: holeRadius));
+    canvas.drawCircle(targetCenter, holeRadius, innerBeamPaint);
+
+    // 3. Delicate inner accent ring delineating the inner perimeter
+    final innerRingPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.35)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 5.0
+      ..strokeWidth = 1.5;
+    canvas.drawCircle(targetCenter, holeRadius - 2.5, innerRingPaint);
+
+    // 4. Exterior accent glow ring
+    final outerGlowPaint = Paint()
+      ..color = accentColor.withValues(alpha: glowOpacity * 0.90)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4.5
       ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 12);
     canvas.drawCircle(targetCenter, holeRadius, outerGlowPaint);
 
-    // Exterior-only white halo for extra vibrancy
+    // 5. Exterior white halo for extra vibrancy
     final whiteHaloPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.8)
+      ..color = Colors.white.withValues(alpha: 0.85)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.0
+      ..strokeWidth = 2.5
       ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 5);
     canvas.drawCircle(targetCenter, holeRadius, whiteHaloPaint);
 
-    // Crisp white border ring delineating the target
+    // 6. Crisp white border ring delineating the spotlight boundary
     final borderPaint = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.stroke
