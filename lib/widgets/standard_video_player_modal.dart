@@ -38,6 +38,7 @@ class StandardVideoPlayerModal extends StatefulWidget {
 
 class _StandardVideoPlayerModalState extends State<StandardVideoPlayerModal> {
   bool _isPlaying = true;
+  bool _isVertical = false;
   double _currentSeconds = 0.0;
   double _totalSeconds = 600.0; // Default 10 minutes
   double _playbackSpeed = 1.0;
@@ -50,6 +51,13 @@ class _StandardVideoPlayerModalState extends State<StandardVideoPlayerModal> {
   @override
   void initState() {
     super.initState();
+    final rawRatio =
+        widget.videoData['aspectRatio']?.toString().toLowerCase() ?? '';
+    final isExplicitVertical = widget.videoData['isVertical'] == true ||
+        rawRatio.contains('9:16') ||
+        rawRatio.contains('9/16') ||
+        rawRatio.contains('portrait');
+    _isVertical = isExplicitVertical;
     _parseDuration();
     _startPlayback();
     _scheduleHideControls();
@@ -251,6 +259,26 @@ class _StandardVideoPlayerModalState extends State<StandardVideoPlayerModal> {
                         tooltip: 'Open in Fullscreen / Browser',
                         onPressed: _launchExternalVideo,
                       ),
+                    // 16:9 Landscape vs 9:16 Portrait / Reels Toggle
+                    IconButton(
+                      icon: Icon(
+                        _isVertical
+                            ? Icons.stay_current_portrait_rounded
+                            : Icons.stay_current_landscape_rounded,
+                        size: 20,
+                        color: _isVertical
+                            ? colorScheme.primary
+                            : colorScheme.onSurfaceVariant,
+                      ),
+                      tooltip: _isVertical
+                          ? 'Switch to 16:9 Landscape'
+                          : 'Switch to 9:16 Portrait / Reels',
+                      onPressed: () {
+                        setState(() {
+                          _isVertical = !_isVertical;
+                        });
+                      },
+                    ),
                     IconButton(
                       icon: const Icon(Icons.close_rounded, size: 22),
                       tooltip: 'Close Player',
@@ -260,15 +288,21 @@ class _StandardVideoPlayerModalState extends State<StandardVideoPlayerModal> {
                 ),
               ),
 
-              // Video Player Stage (16:9 Aspect Ratio)
+              // Video Player Stage (16:9 or 9:16 Aspect Ratio)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-                child: AspectRatio(
-                  aspectRatio: 16 / 9,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      color: Colors.black,
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.of(context).size.height *
+                          (_isVertical ? 0.60 : 0.40),
+                    ),
+                    child: AspectRatio(
+                      aspectRatio: _isVertical ? (9 / 16) : (16 / 9),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          color: Colors.black,
                       child: GestureDetector(
                         onTap: () {
                           setState(() {

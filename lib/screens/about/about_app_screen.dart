@@ -239,7 +239,7 @@ class AboutAppScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'Architected and engineered by Timothy Olodude as a dedicated contribution to advancing ALIVE Nigeria\'s missionary mandate, operational excellence, and technological self-reliance. © Project 2025/2026. For feedback, feature suggestions, or technical support, please use the in-app Feedback section.',
+                        'Developed by Timothy Olodude as a dedicated contribution to advancing ALIVE Nigeria\'s missionary mandate, operational excellence, and technological self-reliance. © Project 2025/2026. For feedback, feature suggestions, or technical support, please use the in-app Feedback section.',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           height: 1.6,
                           color: colorScheme.onSurfaceVariant,

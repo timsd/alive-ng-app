@@ -166,28 +166,45 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
     } catch (_) {}
   }
 
-  Future<void> _loadBooksAndInit() async {
+  Future<void> _loadBooksAndInit({String? targetLanguage, String? targetVersion}) async {
     if (_chapterVerses.isEmpty) {
       setState(() => _isLoading = true);
     }
     try {
       final prefs = await SharedPreferences.getInstance();
-      final savedLang = prefs.getString('last_read_bible_language');
-      if (savedLang != null && _languageCodes.containsKey(savedLang)) {
-        _selectedLanguage = savedLang;
+      if (targetLanguage != null && _languageCodes.containsKey(targetLanguage)) {
+        _selectedLanguage = targetLanguage;
+        await prefs.setString('last_read_bible_language', targetLanguage);
+      } else {
+        final savedLang = prefs.getString('last_read_bible_language');
+        if (savedLang != null && _languageCodes.containsKey(savedLang)) {
+          _selectedLanguage = savedLang;
+        }
       }
 
       final languageCode = _languageCodes[_selectedLanguage] ?? 'en';
       _versionsForLanguage = await _resolveVersionsForLanguage(languageCode);
 
-      final savedVersion = prefs.getString('last_read_bible_version');
-      if (savedVersion != null && _versionsForLanguage.contains(savedVersion)) {
-        _selectedVersion = savedVersion;
-      } else if (!_versionsForLanguage.contains(_selectedVersion)) {
-        if (_versionsForLanguage.contains('KJV')) {
-          _selectedVersion = 'KJV';
-        } else {
-          _selectedVersion = _versionsForLanguage.first;
+      if (targetVersion != null && _versionsForLanguage.contains(targetVersion)) {
+        _selectedVersion = targetVersion;
+        await prefs.setString('last_read_bible_version', targetVersion);
+      } else {
+        final savedVersion = prefs.getString('last_read_bible_version');
+        if (savedVersion != null && _versionsForLanguage.contains(savedVersion)) {
+          _selectedVersion = savedVersion;
+        } else if (!_versionsForLanguage.contains(_selectedVersion)) {
+          if (languageCode == 'yo') {
+            _selectedVersion = 'BM';
+          } else if (languageCode == 'ha') {
+            _selectedVersion = 'HAU';
+          } else if (languageCode == 'ig') {
+            _selectedVersion = 'IGBOB';
+          } else if (_versionsForLanguage.contains('KJV')) {
+            _selectedVersion = 'KJV';
+          } else {
+            _selectedVersion = _versionsForLanguage.first;
+          }
+          await prefs.setString('last_read_bible_version', _selectedVersion);
         }
       }
 
@@ -1423,12 +1440,14 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                             size: isSmallScreen ? 20 : 24,
                           )
                         : null,
-                    onTap: () {
+                    onTap: () async {
                       setState(() {
                         _selectedVersion = version;
                       });
                       Navigator.pop(context);
-                      _loadChapter();
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setString('last_read_bible_version', version);
+                      await _loadChapter();
                     },
                   );
                 },
@@ -1438,6 +1457,36 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
         ),
       ),
     );
+  }
+
+  Future<void> _selectLanguage(String language) async {
+    if (_selectedLanguage == language && _chapterVerses.isNotEmpty) return;
+    setState(() {
+      _selectedLanguage = language;
+      _isLoading = true;
+    });
+
+    final languageCode = _languageCodes[language] ?? 'en';
+    final versions = await _resolveVersionsForLanguage(languageCode);
+    _versionsForLanguage = versions;
+
+    String nextVersion = versions.first;
+    if (languageCode == 'yo') {
+      nextVersion = 'BM';
+    } else if (languageCode == 'ha') {
+      nextVersion = 'HAU';
+    } else if (languageCode == 'ig') {
+      nextVersion = 'IGBOB';
+    } else if (versions.contains('KJV')) {
+      nextVersion = 'KJV';
+    }
+    _selectedVersion = nextVersion;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('last_read_bible_language', language);
+    await prefs.setString('last_read_bible_version', nextVersion);
+
+    await _loadBooksAndInit(targetLanguage: language, targetVersion: nextVersion);
   }
 
   void _showLanguageSelector(BuildContext context) {
@@ -1502,11 +1551,8 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                           )
                         : null,
                     onTap: () async {
-                      setState(() {
-                        _selectedLanguage = language;
-                      });
                       Navigator.pop(context);
-                      await _loadBooksAndInit();
+                      await _selectLanguage(language);
                     },
                   );
                 },

@@ -463,6 +463,12 @@ class BibleData {
     for (final entry in _rawAliases.entries) {
       map[_normalizeAliasKey(entry.key)] = entry.value;
     }
+    for (final entry in canonicalToYoruba.entries) {
+      map[_normalizeAliasKey(entry.value)] = entry.key;
+    }
+    for (final entry in canonicalToIgbo.entries) {
+      map[_normalizeAliasKey(entry.value)] = entry.key;
+    }
     return map;
   }();
 
