@@ -12,11 +12,20 @@ if (existsSync(resolve(process.cwd(), '.env'))) {
 
 const base = (process.env.COOLIFY_API_URL || '').replace(/\/+$/, '');
 const token = process.env.COOLIFY_API_TOKEN;
-const uuid = process.env.COOLIFY_SERVICE_UUID;
+const uuid = process.env.COOLIFY_APP_UUID || process.env.COOLIFY_SERVICE_UUID;
 
 const headers = { Authorization: `Bearer ${token}`, Accept: 'application/json' };
 
 let depId = process.argv[2];
+if (!depId) {
+  const activeRes = await fetch(`${base}/api/v1/deployments`, { headers });
+  if (activeRes.ok) {
+    const activeList = await activeRes.json();
+    if (Array.isArray(activeList) && activeList.length > 0) {
+      depId = activeList[0].deployment_uuid || activeList[0].id;
+    }
+  }
+}
 if (!depId) {
   // Fetch latest deployment for this application
   const appDepsRes = await fetch(`${base}/api/v1/applications/${uuid}/deployments`, { headers });

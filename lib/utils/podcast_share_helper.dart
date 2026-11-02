@@ -38,7 +38,7 @@ class PodcastShareHelper {
         .trim();
     final host =
         (episode['host'] ?? episode['author'] ?? episode['speaker'] ?? '').toString().trim();
-    final episodeId = (episode['id'] ?? episode['$id'] ?? '').toString().trim();
+    final episodeId = (episode['id'] ?? episode[r'$id'] ?? '').toString().trim();
     final podcastId = (episode['podcastId'] ?? episode['podcast_id'] ?? '').toString().trim();
 
     final shareUrl = buildEpisodeShareUrl(episodeId: episodeId, podcastId: podcastId);
@@ -92,3 +92,4 @@ class PodcastShareHelper {
     }
   }
 }
+
