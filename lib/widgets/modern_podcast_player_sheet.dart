@@ -605,6 +605,7 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
   }
 
   Widget _buildTranscriptView(ThemeData theme, ColorScheme colorScheme) {
+    final isDark = theme.brightness == Brightness.dark;
     final transcriptItems = _getFormattedTranscript();
     final filtered = _transcriptQuery.isEmpty
         ? transcriptItems
