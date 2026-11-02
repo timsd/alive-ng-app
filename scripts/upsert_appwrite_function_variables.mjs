@@ -69,12 +69,13 @@ async function upsertVariable(functions, functionId, variable) {
     (item) => item.key === variable.key,
   );
   if (existingByKey) {
+    const isSecret = existingByKey.secret || variable.secret || false;
     await functions.updateVariable({
       functionId,
       variableId: existingByKey.$id,
       key: variable.key,
       value: variable.value,
-      secret: variable.secret,
+      secret: isSecret,
     });
     console.log(`Updated ${functionId} variable ${variable.key}.`);
     return;

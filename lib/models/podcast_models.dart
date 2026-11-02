@@ -101,13 +101,6 @@ class Podcast {
       audioUrl: audioUrl ?? this.audioUrl,
     );
   }
-      rating: rating ?? this.rating,
-      isSubscribed: isSubscribed ?? this.isSubscribed,
-      tags: tags ?? this.tags,
-      coverImage: coverImage ?? this.coverImage,
-      audioUrl: audioUrl ?? this.audioUrl,
-    );
-  }
 }
 
 class PodcastEpisode {

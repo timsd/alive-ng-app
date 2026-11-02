@@ -32,6 +32,7 @@ import '../screens/admin/role_management_screen.dart';
 import '../services/role_access_service.dart';
 import '../providers/guest_provider.dart';
 import '../screens/conference/conference_platform_screen.dart';
+import '../screens/admin/leader_meeting_transcription_screen.dart';
 import '../screens/bible/bible_game_screen.dart';
 import '../screens/bible/bible_reader_screen.dart';
 import '../screens/chat/chat_screen.dart';
@@ -525,6 +526,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppConstants.conferenceRoute,
             builder: (context, state) => const ConferencePlatformScreen(),
+          ),
+
+          // Leader Scribe & Meeting Notes Route
+          GoRoute(
+            path: AppConstants.scribeRoute,
+            builder: (context, state) => const LeaderMeetingTranscriptionScreen(),
           ),
 
           // Bible Game Route
