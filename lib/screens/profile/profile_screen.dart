@@ -818,7 +818,7 @@ class _ProfileHeaderCardState extends ConsumerState<_ProfileHeaderCard> {
     final centralAvatar = ref.watch(currentUserAvatarUrlProvider);
     final avatarOverride = ref.watch(uploadedAvatarUrlProvider);
     final pendingAvatarBytes = ref.watch(pendingAvatarBytesProvider);
-    final authUser = ref.watch(currentUserProvider);
+    final authUser = AuthService.instance.currentUser;
     final effectivePendingBytes = _pendingBytes ?? pendingAvatarBytes;
 
     final avatar = (centralAvatar != null && centralAvatar.trim().isNotEmpty)

@@ -167,7 +167,7 @@ class OnDeviceMeetingSynthesizer {
       RegExp(r'(?:^|\b)(?:task for|assigned to)\s+([A-Za-z\s]+?):\s*(.+)$', caseSensitive: false),
       RegExp(r'(?:^|\b)([A-Za-z\s]+?)\s+(?:will|shall|to|is going to|needs to|should)\s+(?:coordinate|follow up on|follow up with|follow up|prepare|submit|finalize|organize|contact|deliver|review|handle|send|check|write|lead|buy|share|print|setup|reach out to|take care of|ensure|call|update|draft)\s*(.+)$', caseSensitive: false),
       RegExp(r'(?:^|\b)(?:assigned to)\s+([A-Za-z\s]+?)\s+to\s+(.+)$', caseSensitive: false),
-      RegExp(r'(?:^|\b)(?:we need to|let us|let\'s|please make sure to)\s+(?:coordinate|follow up on|follow up|prepare|submit|finalize|organize|contact|deliver|review|handle|send|check|write|lead|buy|share|print|setup|reach out to|take care of|ensure|call|update|draft)\s*(.+)$', caseSensitive: false),
+      RegExp(r"(?:^|\b)(?:we need to|let us|let's|please make sure to)\s+(?:coordinate|follow up on|follow up|prepare|submit|finalize|organize|contact|deliver|review|handle|send|check|write|lead|buy|share|print|setup|reach out to|take care of|ensure|call|update|draft)\s*(.+)$", caseSensitive: false),
     ];
 
     for (final entry in entries) {
