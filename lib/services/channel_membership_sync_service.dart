@@ -91,10 +91,9 @@ class ChannelMembershipSyncService {
       );
 
       // 5. Board of Directors (BOD) Channel
+      final role = profile.role.toLowerCase();
       final isBod = !profile.isArchived &&
-          (profile.role.toLowerCase() == 'bod' ||
-              profile.role.toLowerCase() == 'admin' ||
-              profile.roles.contains('bod'));
+          (role == 'bod' || role == 'admin' || role.contains('bod'));
 
       await _ensureMembership(
         tables: tables,
