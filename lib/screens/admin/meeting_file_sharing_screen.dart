@@ -46,15 +46,19 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
   }
 
   void _setupRealtimeSubscription() {
-    // Set up real-time subscription for file changes
-    _filesSubscription =
-        _meetingFileService.getMeetingFilesStream().listen((files) {
-      if (mounted) {
-        setState(() {
-          _files = files.map((json) => MeetingFile.fromJson(json)).toList();
-        });
-      }
-    });
+    // Set up real-time subscription for file changes with defensive error handling
+    _filesSubscription = _meetingFileService.getMeetingFilesStream().listen(
+      (files) {
+        if (mounted) {
+          setState(() {
+            _files = files.map((json) => MeetingFile.fromJson(json)).toList();
+          });
+        }
+      },
+      onError: (err) {
+        debugPrint('Meeting files stream warning: $err');
+      },
+    );
   }
 
   Future<void> _loadFiles() async {
@@ -95,6 +99,8 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
     return Scaffold(
       appBar: CustomAppBar(
         title: 'Meeting File Sharing',
+        showBackButton: true,
+        onBackPressed: () => Navigator.of(context).pop(),
         actions: [
           IconButton(
             icon: const Icon(Icons.mic_none_outlined),
@@ -642,9 +648,9 @@ class MeetingFile {
 
   factory MeetingFile.fromJson(Map<String, dynamic> json) {
     DateTime uploadedAt;
-    final rawUploadedAt = json['uploaded_at'];
+    final rawUploadedAt = json['uploaded_at'] ?? json['created_at'];
     if (rawUploadedAt is String) {
-      uploadedAt = DateTime.parse(rawUploadedAt);
+      uploadedAt = DateTime.tryParse(rawUploadedAt) ?? DateTime.now();
     } else if (rawUploadedAt is DateTime) {
       uploadedAt = rawUploadedAt;
     } else {
@@ -652,11 +658,11 @@ class MeetingFile {
     }
 
     return MeetingFile(
-      id: json['id'].toString(),
-      fileName: json['file_name'] ?? '',
-      filePath: json['file_path'] ?? '',
+      id: (json['id'] ?? json['\$id'] ?? json['file_name'] ?? '').toString(),
+      fileName: json['file_name'] ?? json['name'] ?? '',
+      filePath: json['file_path'] ?? json['file_url'] ?? '',
       fileType: json['file_type'] ?? '',
-      fileSize: json['file_size'] ?? 0,
+      fileSize: (json['file_size'] is num) ? (json['file_size'] as num).toInt() : 0,
       description: json['description'] ?? '',
       uploadedBy: json['uploaded_by'] ?? '',
       uploaderId: json['uploader_id'] ?? '',

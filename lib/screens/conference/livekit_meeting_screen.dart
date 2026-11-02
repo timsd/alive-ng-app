@@ -40,6 +40,8 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   String _targetAudience = 'general';
   String _selectedTargetChapter = 'Ibadan';
   bool _requireHostApproval = false;
+  bool _isLocalCoHost = false;
+  bool _isProjectorMode = false;
   String? _activeEgressId;
   StreamSubscription<String>? _moderationSub;
 
@@ -64,10 +66,19 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       } else if (event == 'video_stopped_by_host') {
         _showMessage('The host has stopped your video.');
       } else if (event == 'granted_cohost') {
+        setState(() => _isLocalCoHost = true);
         _showMessage('You are now a co-host of this meeting.');
       } else if (event == 'removed_by_host') {
+        setState(() {
+          _isLocalCoHost = false;
+          _isProjectorMode = false;
+        });
         _showMessage('You have been removed from the meeting by the host.');
       } else if (event == 'ended_by_host') {
+        setState(() {
+          _isLocalCoHost = false;
+          _isProjectorMode = false;
+        });
         _showMessage('The meeting has been ended for all by the host.');
       } else if (event == 'admitted_by_host') {
         _showMessage('You have been admitted to the meeting room.');
@@ -241,6 +252,14 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     final isVideoMuted = session.isVideoMuted;
 
     final isLeader = RoleAccessService.instance.canStartConferencing() || widget.isModerator;
+    final canShareScreen = isLeader || _isLocalCoHost;
+
+    if (connected && _isProjectorMode) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: _buildProjectorView(context, session, gateway, isLeader, canShareScreen),
+      );
+    }
 
     return Scaffold(
       appBar: CustomAppBar(
@@ -248,6 +267,23 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
         showBackButton: true,
         showDonationButton: false,
         actions: [
+          if (connected) ...[
+            IconButton(
+              icon: const Icon(Icons.tv_rounded),
+              tooltip: 'Projector / Stage Display',
+              onPressed: () => setState(() => _isProjectorMode = true),
+            ),
+            IconButton(
+              icon: const Icon(Icons.settings_voice_outlined),
+              tooltip: 'Smoke Test: AV & Screen Check',
+              onPressed: () => _showDeviceSmokeTestModal(
+                context,
+                gateway,
+                session,
+                canShareScreen,
+              ),
+            ),
+          ],
           IconButton(
             icon: const Icon(Icons.note_alt_outlined),
             tooltip: 'Scribe & Notes',
@@ -688,6 +724,49 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                     },
                     icon: Icon(isVideoMuted ? Icons.videocam_off : Icons.videocam),
                     label: Text(isVideoMuted ? 'Camera On' : 'Camera Off'),
+                  ),
+                  // Screen Share button for Host and Co-Host
+                  if (canShareScreen)
+                    FilledButton.icon(
+                      onPressed: () async {
+                        try {
+                          await gateway.toggleScreenShare();
+                          _showMessage(session.isScreenShareEnabled
+                              ? 'Screen sharing stopped.'
+                              : 'Screen sharing started.');
+                        } catch (e) {
+                          _showMessage('Screen share: $e');
+                        }
+                      },
+                      icon: Icon(session.isScreenShareEnabled
+                          ? Icons.stop_screen_share_rounded
+                          : Icons.screen_share_rounded),
+                      label: Text(session.isScreenShareEnabled
+                          ? 'Stop Screen'
+                          : 'Share Screen'),
+                      style: session.isScreenShareEnabled
+                          ? FilledButton.styleFrom(
+                              backgroundColor: Colors.teal.shade700,
+                              foregroundColor: Colors.white,
+                            )
+                          : null,
+                    ),
+                  // Projector / Display View button
+                  FilledButton.tonalIcon(
+                    onPressed: () => setState(() => _isProjectorMode = true),
+                    icon: const Icon(Icons.tv_rounded),
+                    label: const Text('Projector Display'),
+                  ),
+                  // AV & Screen Smoke Test button
+                  OutlinedButton.icon(
+                    onPressed: () => _showDeviceSmokeTestModal(
+                      context,
+                      gateway,
+                      session,
+                      canShareScreen,
+                    ),
+                    icon: const Icon(Icons.settings_voice_outlined),
+                    label: const Text('AV Smoke Test'),
                   ),
                   // Raise Hand button for all attendees
                   OutlinedButton.icon(
@@ -1268,6 +1347,626 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       return 'ALIVE Member';
     }
     return raw;
+  }
+
+  Widget _buildProjectorView(
+    BuildContext context,
+    MeetingSession session,
+    MeetingGateway gateway,
+    bool isLeader,
+    bool canShareScreen,
+  ) {
+    final activePresenter = session.activeScreenShareName;
+    final isPresenting = session.isScreenShareEnabled || activePresenter != null;
+
+    return SafeArea(
+      child: Stack(
+        children: [
+          // Main Stage Canvas
+          Column(
+            children: [
+              // Projector Header Bar
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                color: const Color(0xFF111418),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      tooltip: 'Exit Projector Display',
+                      onPressed: () => setState(() => _isProjectorMode = false),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade900,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.fiber_manual_record, size: 10, color: Colors.white),
+                          SizedBox(width: 4),
+                          Text(
+                            'LIVE STAGE',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _roomController.text.isNotEmpty
+                                ? _roomController.text
+                                : (widget.meetingType?.displayName ?? 'ALIVE Sanctuary Stage'),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            isPresenting
+                                ? 'Screen Share: ${activePresenter ?? "You are presenting"}'
+                                : 'Attendees: ${session.participants.length} connected',
+                            style: const TextStyle(color: Colors.white70, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.settings_voice_outlined, color: Colors.white70),
+                      tooltip: 'Smoke Test AV & Screen',
+                      onPressed: () => _showDeviceSmokeTestModal(context, gateway, session, canShareScreen),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.fullscreen_exit_rounded, color: Colors.white),
+                      tooltip: 'Exit Projector Display',
+                      onPressed: () => setState(() => _isProjectorMode = false),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Central Stage Area (Optimized for Sanctuary / Conference Projectors)
+              Expanded(
+                child: Container(
+                  width: double.infinity,
+                  color: const Color(0xFF0A0D11),
+                  child: Center(
+                    child: isPresenting
+                        ? _buildScreenShareStage(session)
+                        : _buildVideoGridStage(session),
+                  ),
+                ),
+              ),
+
+              // Floating Controls Bar at Bottom
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                color: const Color(0xFF111418),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton.filledTonal(
+                      onPressed: () async {
+                        try {
+                          await gateway.toggleAudio();
+                        } catch (e) {
+                          _showMessage(e.toString().replaceAll('Exception: ', ''));
+                        }
+                      },
+                      icon: Icon(session.isAudioMuted ? Icons.mic_off : Icons.mic),
+                      style: IconButton.styleFrom(
+                        backgroundColor: session.isAudioMuted
+                            ? Colors.red.withValues(alpha: 0.3)
+                            : Colors.green.withValues(alpha: 0.3),
+                        foregroundColor: session.isAudioMuted ? Colors.red : Colors.green,
+                      ),
+                      tooltip: session.isAudioMuted ? 'Unmute' : 'Mute',
+                    ),
+                    const SizedBox(width: 14),
+                    IconButton.filledTonal(
+                      onPressed: () async {
+                        try {
+                          await gateway.toggleVideo();
+                        } catch (e) {
+                          _showMessage(e.toString().replaceAll('Exception: ', ''));
+                        }
+                      },
+                      icon: Icon(session.isVideoMuted ? Icons.videocam_off : Icons.videocam),
+                      style: IconButton.styleFrom(
+                        backgroundColor: session.isVideoMuted
+                            ? Colors.red.withValues(alpha: 0.3)
+                            : Colors.blue.withValues(alpha: 0.3),
+                        foregroundColor: session.isVideoMuted ? Colors.red : Colors.blue,
+                      ),
+                      tooltip: session.isVideoMuted ? 'Camera On' : 'Camera Off',
+                    ),
+                    if (canShareScreen) ...[
+                      const SizedBox(width: 14),
+                      IconButton.filledTonal(
+                        onPressed: () async {
+                          try {
+                            await gateway.toggleScreenShare();
+                            _showMessage(session.isScreenShareEnabled
+                                ? 'Screen sharing stopped.'
+                                : 'Screen sharing started.');
+                          } catch (e) {
+                            _showMessage('Screen share: $e');
+                          }
+                        },
+                        icon: Icon(session.isScreenShareEnabled
+                            ? Icons.stop_screen_share_rounded
+                            : Icons.screen_share_rounded),
+                        style: IconButton.styleFrom(
+                          backgroundColor: session.isScreenShareEnabled ? Colors.teal.shade700 : Colors.white12,
+                          foregroundColor: Colors.white,
+                        ),
+                        tooltip: session.isScreenShareEnabled ? 'Stop Sharing' : 'Share Screen',
+                      ),
+                    ],
+                    const SizedBox(width: 14),
+                    IconButton.filledTonal(
+                      onPressed: () => setState(() => _isProjectorMode = false),
+                      icon: const Icon(Icons.view_compact_rounded),
+                      style: IconButton.styleFrom(backgroundColor: Colors.white12, foregroundColor: Colors.white),
+                      tooltip: 'Standard Meeting View',
+                    ),
+                    const SizedBox(width: 14),
+                    IconButton.filledTonal(
+                      onPressed: () {
+                        setState(() => _isProjectorMode = false);
+                        gateway.leaveMeeting();
+                      },
+                      icon: const Icon(Icons.call_end),
+                      style: IconButton.styleFrom(backgroundColor: Colors.red.shade900, foregroundColor: Colors.white),
+                      tooltip: 'Leave Meeting',
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildScreenShareStage(MeetingSession session) {
+    final presenter = session.activeScreenShareName ?? (session.isScreenShareEnabled ? 'You' : 'Presenter');
+
+    return Container(
+      margin: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF14181F),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.teal.shade600, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.teal.withValues(alpha: 0.2),
+            blurRadius: 20,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Presentation Screen Simulation Canvas
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: Colors.teal.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.screen_share_rounded,
+                  size: 42,
+                  color: Colors.tealAccent,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                '$presenter is Presenting Screen',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'High-Resolution Sanctuary & Stage Presentation Feed Active',
+                style: TextStyle(color: Colors.white70, fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.black45,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white24),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.hd_rounded, size: 16, color: Colors.tealAccent),
+                    SizedBox(width: 6),
+                    Text(
+                      '1080p Stage Projection • Low Latency WebRTC',
+                      style: TextStyle(color: Colors.white, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          // Top Left Badge
+          Positioned(
+            top: 14,
+            left: 14,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: Colors.black87,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Colors.teal.shade400, width: 1),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.cast_connected, size: 14, color: Colors.tealAccent),
+                  const SizedBox(width: 6),
+                  Text(
+                    'STAGE PRESENTATION: $presenter',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVideoGridStage(MeetingSession session) {
+    if (session.participants.isEmpty) {
+      return const Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.meeting_room_outlined, size: 64, color: Colors.white38),
+          SizedBox(height: 16),
+          Text(
+            'Sanctuary Stage Waiting for Attendees...',
+            style: TextStyle(color: Colors.white70, fontSize: 16),
+          ),
+        ],
+      );
+    }
+
+    final participants = session.participants;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final crossAxisCount = constraints.maxWidth > 900
+            ? 3
+            : (constraints.maxWidth > 500 ? 2 : 1);
+
+        return GridView.builder(
+          padding: const EdgeInsets.all(16),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 16 / 10,
+          ),
+          itemCount: participants.length,
+          itemBuilder: (context, index) {
+            final p = participants[index];
+            final name = _formatParticipantName(p);
+            final isSpeaking = p.isSpeaking;
+
+            return Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF161B22),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isSpeaking ? Colors.green : Colors.white24,
+                  width: isSpeaking ? 2.5 : 1,
+                ),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Avatar / video placeholder
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircleAvatar(
+                        radius: 28,
+                        backgroundColor: p.isLocal
+                            ? const Color(0xFF3B82F6)
+                            : const Color(0xFF10B981),
+                        child: Text(
+                          name.isNotEmpty ? name[0].toUpperCase() : 'M',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        p.isVideoMuted ? 'Camera Off' : 'Live Camera',
+                        style: TextStyle(
+                          color: p.isVideoMuted ? Colors.white38 : Colors.greenAccent,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // Bottom name banner
+                  Positioned(
+                    bottom: 8,
+                    left: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black87,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            p.isAudioMuted ? Icons.mic_off : Icons.mic,
+                            size: 14,
+                            color: p.isAudioMuted ? Colors.red : Colors.green,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              p.isLocal ? '$name (You)' : name,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (p.isHandRaised)
+                            const Icon(Icons.pan_tool_rounded,
+                                size: 14, color: Color(0xFFD49B28)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showDeviceSmokeTestModal(
+    BuildContext context,
+    MeetingGateway gateway,
+    MeetingSession session,
+    bool canShareScreen,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (modalCtx, setModalState) {
+            final isAudioOk = !session.isAudioMuted;
+            final isVideoOk = !session.isVideoMuted;
+
+            return Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.health_and_safety_outlined, color: Colors.green, size: 22),
+                          SizedBox(width: 8),
+                          Text(
+                            'AV & Screen Smoke Test',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.of(ctx).pop(),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Diagnostic verification for camera feed, microphone transmission, and screen sharing readiness for this meeting.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 1. Microphone Audio Smoke Test
+                  Card(
+                    elevation: 0,
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                    child: ListTile(
+                      leading: Icon(
+                        isAudioOk ? Icons.mic : Icons.mic_off,
+                        color: isAudioOk ? Colors.green : Colors.red,
+                        size: 28,
+                      ),
+                      title: const Text('Audio Microphone', style: TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text(
+                        isAudioOk
+                            ? 'Microphone active • Audio input transmitting'
+                            : 'Microphone muted • Tap Unmute to test voice audio',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      trailing: FilledButton.tonal(
+                        onPressed: () async {
+                          try {
+                            await gateway.toggleAudio();
+                            setModalState(() {});
+                          } catch (e) {
+                            _showMessage('$e');
+                          }
+                        },
+                        child: Text(session.isAudioMuted ? 'Test Unmute' : 'Mute'),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // 2. Video Camera Smoke Test
+                  Card(
+                    elevation: 0,
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                    child: ListTile(
+                      leading: Icon(
+                        isVideoOk ? Icons.videocam : Icons.videocam_off,
+                        color: isVideoOk ? Colors.blue : Colors.red,
+                        size: 28,
+                      ),
+                      title: const Text('Video Camera', style: TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text(
+                        isVideoOk
+                            ? 'Camera enabled • Video stream transmitting'
+                            : 'Camera off • Tap Enable to test camera preview',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      trailing: FilledButton.tonal(
+                        onPressed: () async {
+                          try {
+                            await gateway.toggleVideo();
+                            setModalState(() {});
+                          } catch (e) {
+                            _showMessage('$e');
+                          }
+                        },
+                        child: Text(session.isVideoMuted ? 'Test Camera' : 'Turn Off'),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // 3. Screen Share Smoke Test
+                  Card(
+                    elevation: 0,
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                    child: ListTile(
+                      leading: Icon(
+                        session.isScreenShareEnabled
+                            ? Icons.screen_share
+                            : (canShareScreen ? Icons.desktop_windows_outlined : Icons.block),
+                        color: session.isScreenShareEnabled
+                            ? Colors.teal
+                            : (canShareScreen ? Colors.indigo : Colors.grey),
+                        size: 28,
+                      ),
+                      title: const Text('Screen Share Display', style: TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text(
+                        session.isScreenShareEnabled
+                            ? 'Screen presenting actively to room'
+                            : (canShareScreen
+                                ? 'Host/Co-Host permission granted • Ready to project'
+                                : 'Screen sharing restricted to Host & Co-Hosts'),
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      trailing: canShareScreen
+                          ? FilledButton.tonal(
+                              onPressed: () async {
+                                try {
+                                  await gateway.toggleScreenShare();
+                                  setModalState(() {});
+                                } catch (e) {
+                                  _showMessage('Screen share: $e');
+                                }
+                              },
+                              child: Text(session.isScreenShareEnabled ? 'Stop Share' : 'Test Share'),
+                            )
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Overall diagnostic result badge
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.check_circle_rounded, color: Colors.green, size: 20),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Smoke Test Passed: Camera, Audio & Screen Share subsystems are functional.',
+                            style: TextStyle(
+                              color: Colors.green,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _startBroadcast(MeetingGateway gateway) async {

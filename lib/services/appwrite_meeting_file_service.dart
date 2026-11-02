@@ -33,7 +33,7 @@ class AppwriteMeetingFileService {
           Query.orderDesc('created_at'),
           Query.limit(100),
         ],
-      );
+      ).timeout(const Duration(seconds: 6));
       results = snapshot.rows.map(_rowData).toList();
     } catch (e) {
       _logger.warning('TablesDB listRows failed: $e, trying Databases.listDocuments...');
@@ -45,7 +45,7 @@ class AppwriteMeetingFileService {
             Query.orderDesc('created_at'),
             Query.limit(100),
           ],
-        );
+        ).timeout(const Duration(seconds: 6));
         results = docSnapshot.documents
             .map((doc) => {'id': doc.$id, ...doc.data})
             .toList();

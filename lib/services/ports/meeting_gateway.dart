@@ -31,6 +31,9 @@ abstract class MeetingGateway {
   /// Whether the local video camera is currently muted / disabled.
   bool get isVideoMuted;
 
+  /// Whether screen sharing is currently active on this device.
+  bool get isScreenShareEnabled;
+
   /// Whether the host has locked audio for standard participants.
   bool get isRoomAudioLocked;
 
@@ -58,6 +61,9 @@ abstract class MeetingGateway {
 
   /// Enables or disables the local participant's video camera.
   Future<void> toggleVideo();
+
+  /// Toggles screen sharing for host or co-host.
+  Future<void> toggleScreenShare();
 
   /// Leaves the current meeting room and resets local media state.
   Future<void> leaveMeeting();

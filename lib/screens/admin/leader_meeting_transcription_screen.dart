@@ -2443,22 +2443,34 @@ class _LeaderMeetingTranscriptionScreenState
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.summarize_outlined, size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Executive Summary',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
+                    Expanded(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.summarize_outlined, size: 20),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              'Summary',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                    TextButton.icon(
+                    const SizedBox(width: 8),
+                    FilledButton.tonalIcon(
                       onPressed: _autoSummarizeFromTranscript,
-                      icon: const Icon(Icons.auto_awesome, size: 16),
+                      icon: const Icon(Icons.auto_awesome, size: 15),
                       label: const Text('Auto-Compile'),
+                      style: FilledButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6),
+                      ),
                     ),
                   ],
                 ),
@@ -2490,23 +2502,33 @@ class _LeaderMeetingTranscriptionScreenState
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.gavel_rounded,
-                            size: 20, color: Colors.green),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Key Decisions & Resolutions (${_decisions.length})',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
+                    Expanded(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.gavel_rounded,
+                              size: 20, color: Colors.green),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              'Key Decisions (${_decisions.length})',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.add),
+                    const SizedBox(width: 8),
+                    IconButton.filledTonal(
+                      icon: const Icon(Icons.add, size: 20),
                       tooltip: 'Record Resolution',
                       onPressed: _showAddDecisionDialog,
+                      style: IconButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                      ),
                     ),
                   ],
                 ),
@@ -2590,23 +2612,33 @@ class _LeaderMeetingTranscriptionScreenState
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        Icon(Icons.checklist_rounded,
-                            size: 20, color: Colors.amber.shade900),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Action Items & Target Deadlines (${_actionItems.length})',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
+                    Expanded(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.checklist_rounded,
+                              size: 20, color: Colors.amber.shade900),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              'Action Items (${_actionItems.length})',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.add),
+                    const SizedBox(width: 8),
+                    IconButton.filledTonal(
+                      icon: const Icon(Icons.add, size: 20),
                       tooltip: 'Add Action Item',
                       onPressed: _showAddActionItemDialog,
+                      style: IconButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                      ),
                     ),
                   ],
                 ),

@@ -36,6 +36,9 @@ class ParticipantInfo {
   /// Whether this participant currently has their hand raised.
   final bool isHandRaised;
 
+  /// Whether this participant is currently sharing their screen.
+  final bool isScreenShareEnabled;
+
   const ParticipantInfo({
     required this.identity,
     required this.name,
@@ -44,6 +47,7 @@ class ParticipantInfo {
     this.isVideoEnabled = true,
     this.isLocal = false,
     this.isHandRaised = false,
+    this.isScreenShareEnabled = false,
   });
 
   /// Convenience getter to check if audio is muted.
@@ -60,6 +64,7 @@ class ParticipantInfo {
     bool? isVideoEnabled,
     bool? isLocal,
     bool? isHandRaised,
+    bool? isScreenShareEnabled,
   }) {
     return ParticipantInfo(
       identity: identity ?? this.identity,
@@ -69,6 +74,7 @@ class ParticipantInfo {
       isVideoEnabled: isVideoEnabled ?? this.isVideoEnabled,
       isLocal: isLocal ?? this.isLocal,
       isHandRaised: isHandRaised ?? this.isHandRaised,
+      isScreenShareEnabled: isScreenShareEnabled ?? this.isScreenShareEnabled,
     );
   }
 
@@ -135,6 +141,12 @@ class MeetingSession {
   /// Whether this participant has been admitted to the live meeting.
   final bool isAdmitted;
 
+  /// Whether local screen sharing is active.
+  final bool isScreenShareEnabled;
+
+  /// Display name of the participant currently presenting their screen, if any.
+  final String? activeScreenShareName;
+
   /// Waiting knocks for hosts to approve (list of maps with id, name).
   final List<Map<String, String>> waitingKnocks;
 
@@ -152,6 +164,8 @@ class MeetingSession {
     this.isHandRaised = false,
     this.isWaitingRoomEnabled = false,
     this.isAdmitted = true,
+    this.isScreenShareEnabled = false,
+    this.activeScreenShareName,
     this.waitingKnocks = const [],
     this.error,
   });
@@ -189,6 +203,8 @@ class MeetingSession {
     bool? isHandRaised,
     bool? isWaitingRoomEnabled,
     bool? isAdmitted,
+    bool? isScreenShareEnabled,
+    String? activeScreenShareName,
     List<Map<String, String>>? waitingKnocks,
     String? error,
   }) {
@@ -203,6 +219,8 @@ class MeetingSession {
       isHandRaised: isHandRaised ?? this.isHandRaised,
       isWaitingRoomEnabled: isWaitingRoomEnabled ?? this.isWaitingRoomEnabled,
       isAdmitted: isAdmitted ?? this.isAdmitted,
+      isScreenShareEnabled: isScreenShareEnabled ?? this.isScreenShareEnabled,
+      activeScreenShareName: activeScreenShareName ?? this.activeScreenShareName,
       waitingKnocks: waitingKnocks ?? this.waitingKnocks,
       error: error,
     );

@@ -39,6 +39,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
 
   bool _isAudioMuted = true; // "Mute on Entry by Default"
   bool _isVideoMuted = false;
+  bool _isScreenShareEnabled = false;
   bool _isRoomAudioLocked = false;
   bool _isHostOrModerator = false;
   bool _isWaitingRoomEnabled = false;
@@ -96,6 +97,9 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
   bool get isVideoMuted => _isVideoMuted;
 
   @override
+  bool get isScreenShareEnabled => _isScreenShareEnabled;
+
+  @override
   bool get isRoomAudioLocked => _isRoomAudioLocked;
 
   /// Exposes the underlying room strictly for adapter-level consumers
@@ -137,6 +141,13 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       isVideoEnabled = isLocal ? !_isVideoMuted : false;
     }
 
+    bool isScreenShare = false;
+    try {
+      isScreenShare = isLocal ? _isScreenShareEnabled : participant.isScreenShareEnabled();
+    } catch (_) {
+      isScreenShare = isLocal ? _isScreenShareEnabled : false;
+    }
+
     final identity = participant.identity;
     final isHandRaised = _handsRaised[identity] ?? false;
 
@@ -148,6 +159,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       isVideoEnabled: isVideoEnabled,
       isLocal: isLocal,
       isHandRaised: isHandRaised,
+      isScreenShareEnabled: isScreenShare,
     );
   }
 
@@ -201,18 +213,29 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
           ? room.name!
           : _currentSession.roomName;
 
+      final participants = _collectParticipants();
+      String? activeScreenShareName;
+      for (final p in participants) {
+        if (p.isScreenShareEnabled) {
+          activeScreenShareName = p.name;
+          break;
+        }
+      }
+
       final localId = _room?.localParticipant?.identity ?? '';
       _currentSession = _currentSession.copyWith(
         roomName: roomName,
         status: status,
         isAudioMuted: _isAudioMuted,
         isVideoMuted: _isVideoMuted,
+        isScreenShareEnabled: _isScreenShareEnabled,
+        activeScreenShareName: activeScreenShareName,
         isRoomAudioLocked: _isRoomAudioLocked,
         isHandRaised: _handsRaised[localId] ?? false,
         isWaitingRoomEnabled: _isWaitingRoomEnabled,
         isAdmitted: _isAdmitted,
         waitingKnocks: List<Map<String, String>>.from(_waitingKnocks),
-        participants: _collectParticipants(),
+        participants: participants,
       );
       _emitSession();
     } catch (e) {
@@ -716,6 +739,23 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
   }
 
   @override
+  Future<void> toggleScreenShare() async {
+    final participant = _room?.localParticipant;
+    if (participant == null) return;
+
+    final shouldEnable = !_isScreenShareEnabled;
+    try {
+      await participant.setScreenShareEnabled(shouldEnable);
+      _isScreenShareEnabled = shouldEnable;
+    } catch (e) {
+      debugPrint('[LiveKitMeetingGateway] toggleScreenShare note: $e');
+      _isScreenShareEnabled = false;
+      rethrow;
+    }
+    _syncStateFromRoom();
+  }
+
+  @override
   Future<void> muteAll() async {
     try {
       final payload = utf8.encode(jsonEncode({'action': 'mute_all'}));
@@ -944,6 +984,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       _room = null;
       _isAudioMuted = true;
       _isVideoMuted = false;
+      _isScreenShareEnabled = false;
       _isRoomAudioLocked = false;
       _isWaitingRoomEnabled = false;
       _isAdmitted = true;
