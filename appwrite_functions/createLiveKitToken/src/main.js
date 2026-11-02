@@ -109,6 +109,15 @@ async function getTargetUsers(endpoint, projectId, databaseId, serverApiKey, use
         .map((r) => r.$id || r.id);
       break;
     }
+    case 'married':
+    case 'couples':
+    case 'channel_married': {
+      topics = ['married', 'fellowship_married', 'couples'];
+      matchedIds = rows
+        .filter((r) => ['married', 'couple'].includes(norm(r.marital_status || r.maritalStatus)))
+        .map((r) => r.$id || r.id);
+      break;
+    }
     case 'directors': {
       topics = ['directors'];
       matchedIds = rows
@@ -116,11 +125,18 @@ async function getTargetUsers(endpoint, projectId, databaseId, serverApiKey, use
         .map((r) => r.$id || r.id);
       break;
     }
+    case 'bod_only': {
+      topics = ['bod', 'board_only'];
+      matchedIds = rows
+        .filter((r) => ['bod', 'admin'].includes(norm(r.role)) || (Array.isArray(r.roles) && r.roles.map(norm).includes('bod')))
+        .map((r) => r.$id || r.id);
+      break;
+    }
     case 'board':
     case 'bod': {
       topics = ['board', 'bod'];
       matchedIds = rows
-        .filter((r) => ['bod', 'trustee', 'admin'].includes(norm(r.role)))
+        .filter((r) => ['bod', 'trustee', 'admin'].includes(norm(r.role)) || (Array.isArray(r.roles) && (r.roles.map(norm).includes('bod') || r.roles.map(norm).includes('trustee'))))
         .map((r) => r.$id || r.id);
       break;
     }
@@ -131,9 +147,36 @@ async function getTargetUsers(endpoint, projectId, databaseId, serverApiKey, use
         .map((r) => r.$id || r.id);
       break;
     }
-    default:
-      topics = ['all_users'];
+    default: {
+      if (targetAudience && (targetAudience.startsWith('channel_') || targetAudience.length === 20)) {
+        const channelId = targetAudience;
+        const channelSlug = channelId.replace(/[^a-z0-9]/g, '_');
+        topics = [`channel_${channelSlug}`];
+        try {
+          const chatChannelsTableId = '6a08f1c70032affbc00d';
+          let chRes = await fetch(
+            `${endpoint}/databases/${databaseId}/collections/${chatChannelsTableId}/documents/${channelId}`,
+            { headers }
+          );
+          if (chRes.status === 404) {
+            chRes = await fetch(
+              `${endpoint}/tablesdb/${databaseId}/tables/${chatChannelsTableId}/rows/${channelId}`,
+              { headers }
+            );
+          }
+          if (chRes.ok) {
+            const chData = await chRes.json();
+            const members = Array.isArray(chData.members) ? chData.members : [];
+            matchedIds = members;
+          }
+        } catch (chErr) {
+          // Fall back to channel topic
+        }
+      } else {
+        topics = ['all_users'];
+      }
       break;
+    }
   }
 
   return { users: matchedIds.slice(0, 100), topics };
@@ -219,15 +262,24 @@ export default async ({ req, res, log, error }) => {
           } else if (targetAudience === 'singles') {
             notificationTitle = 'ALIVE Meet: Singles Fellowship';
             notificationBody = `${host} has started Singles Fellowship. Tap to join!`;
+          } else if (targetAudience === 'married' || targetAudience === 'couples' || targetAudience === 'channel_married') {
+            notificationTitle = 'ALIVE Meet: Couples & Married Fellowship';
+            notificationBody = `${host} has started Couples & Married Fellowship. Tap to join!`;
           } else if (targetAudience === 'directors') {
             notificationTitle = 'ALIVE Meet: Directors Meeting';
             notificationBody = `${host} has started the Directors Meeting. Tap to join!`;
+          } else if (targetAudience === 'bod_only') {
+            notificationTitle = 'ALIVE Meet: Board of Directors (BOD) Meeting';
+            notificationBody = `${host} has convened the Board of Directors (BOD). Tap to join!`;
           } else if (targetAudience === 'board' || targetAudience === 'bod') {
-            notificationTitle = 'ALIVE Meet: Board of Directors Meeting';
-            notificationBody = `${host} has started the Board Meeting. Tap to join!`;
+            notificationTitle = 'ALIVE Meet: Board & Trustees Meeting';
+            notificationBody = `${host} has convened the Board of Directors & Trustees. Tap to join!`;
           } else if (targetAudience === 'leadership') {
             notificationTitle = 'ALIVE Meet: Leadership Meeting';
             notificationBody = `${host} has started the Leadership Meeting. Tap to join!`;
+          } else if (targetAudience && targetAudience.startsWith('channel_')) {
+            notificationTitle = `ALIVE Meet: ${meetingTitle}`;
+            notificationBody = `${host} has started a meeting for this channel. Tap to join!`;
           }
 
           const pushPayload = {

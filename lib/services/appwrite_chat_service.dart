@@ -70,6 +70,38 @@ class AppwriteChatService extends ChangeNotifier {
     }
   }
 
+  /// Fetches all active non-archived chat channels (General, Singles, Married, BOD, custom channels)
+  Future<List<ChatChannel>> getActiveChannels() async {
+    try {
+      final response = await _tables.listRows(
+        databaseId: databaseId,
+        tableId: channelsCollectionId,
+        queries: [
+          Query.equal('is_archived', false),
+          Query.orderAsc('name'),
+          Query.limit(100),
+        ],
+      );
+      return response.rows.map(_channelFromRow).toList();
+    } catch (e) {
+      _logger.warning('Active channels query failed, falling back to full list: $e');
+      try {
+        final fallback = await _tables.listRows(
+          databaseId: databaseId,
+          tableId: channelsCollectionId,
+          queries: [Query.limit(100)],
+        );
+        return fallback.rows
+            .map(_channelFromRow)
+            .where((c) => !c.isArchived)
+            .toList();
+      } catch (inner) {
+        _logger.error('Error fetching all active channels: $inner');
+        return [];
+      }
+    }
+  }
+
   Future<List<ChatMessage>> getChannelMessages(
     String channelId, {
     int limit = 50,

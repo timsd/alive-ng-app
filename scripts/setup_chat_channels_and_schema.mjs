@@ -153,6 +153,12 @@ const TARGET_CHANNELS = [
     description: 'Special channel for donors, partners, and supporters of ALIVE Nigeria ministry.',
     type: 'team',
   },
+  {
+    $id: 'channel_bod',
+    name: 'Board of Directors (BOD)',
+    description: 'Executive governance channel for ALIVE Nigeria Board of Directors.',
+    type: 'bod',
+  },
 ];
 
 async function syncChannels(users) {
@@ -175,8 +181,11 @@ async function syncChannels(users) {
   const donorUserIds = users
     .filter((u) => !u.is_archived && (u.commitment_type === 'financial' || u.commitment_type === 'both' || u.role === 'admin'))
     .map((u) => u.$id);
+  const bodUserIds = users
+    .filter((u) => !u.is_archived && (u.role === 'bod' || u.role === 'admin' || (u.roles && u.roles.includes('bod'))))
+    .map((u) => u.$id);
 
-  console.log(`Distribution: Total=${allUserIds.length}, Singles=${singleUserIds.length}, Married=${marriedUserIds.length}, Coordinators=${coordinatorUserIds.length}, Donors=${donorUserIds.length}`);
+  console.log(`Distribution: Total=${allUserIds.length}, Singles=${singleUserIds.length}, Married=${marriedUserIds.length}, BOD=${bodUserIds.length}, Coordinators=${coordinatorUserIds.length}, Donors=${donorUserIds.length}`);
 
   for (const def of TARGET_CHANNELS) {
     let members = [];
@@ -185,6 +194,7 @@ async function syncChannels(users) {
     else if (def.$id === 'channel_married') members = marriedUserIds;
     else if (def.$id === 'channel_coordinators') members = coordinatorUserIds;
     else if (def.$id === 'channel_donors') members = donorUserIds;
+    else if (def.$id === 'channel_bod') members = bodUserIds;
 
     const getRes = await appwriteReq(
       `/databases/${databaseId}/collections/${chatChannelsCollectionId}/documents/${def.$id}`

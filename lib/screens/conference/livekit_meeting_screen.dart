@@ -6,9 +6,11 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../../config/meeting_links_config.dart';
 import '../../constants/chapters.dart';
+import '../../models/chat_models.dart';
 import '../../models/meeting_models.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/meeting_provider.dart';
+import '../../services/chat_service.dart';
 import '../../services/platform/media_permission_adapter.dart';
 import '../../services/ports/meeting_gateway.dart';
 import '../../services/role_access_service.dart';
@@ -34,6 +36,9 @@ class LiveKitMeetingScreen extends ConsumerStatefulWidget {
 
 class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   late final TextEditingController _roomController;
+  final ChatService _chatService = ChatService();
+  List<ChatChannel> _availableChannels = [];
+  bool _isLoadingChannels = false;
   bool _isJoining = false;
   bool _isBroadcasting = false;
   bool _notifyMembers = true;
@@ -49,6 +54,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   void initState() {
     super.initState();
     _roomController = TextEditingController(text: _initialRoomName());
+    _loadAvailableChannels();
     // Auto-prompt media permissions upfront (Google Meet flow)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       MediaPermissionService.requestMediaPermissions();
@@ -241,6 +247,94 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     );
   }
 
+  Future<void> _loadAvailableChannels() async {
+    try {
+      if (mounted) setState(() => _isLoadingChannels = true);
+      final channels = await _chatService.getActiveChannels();
+      if (mounted) {
+        setState(() {
+          _availableChannels = channels;
+          _isLoadingChannels = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Load channels for meeting notification note: $e');
+      if (mounted) setState(() => _isLoadingChannels = false);
+    }
+  }
+
+  List<DropdownMenuItem<String>> _buildTargetAudienceItems() {
+    final items = <DropdownMenuItem<String>>[
+      const DropdownMenuItem(
+        value: 'general',
+        child: Text('General (All Members)'),
+      ),
+      const DropdownMenuItem(
+        value: 'chapter',
+        child: Text('Selected Chapter Members Only'),
+      ),
+      const DropdownMenuItem(
+        value: 'singles',
+        child: Text('Singles Fellowship Platform Only'),
+      ),
+      const DropdownMenuItem(
+        value: 'married',
+        child: Text('Couples & Married Fellowship Only'),
+      ),
+      const DropdownMenuItem(
+        value: 'bod_only',
+        child: Text('Board of Directors (BOD) Only'),
+      ),
+      const DropdownMenuItem(
+        value: 'board',
+        child: Text('Board of Directors (BOD) & Trustees'),
+      ),
+      const DropdownMenuItem(
+        value: 'directors',
+        child: Text('Directors Only'),
+      ),
+      const DropdownMenuItem(
+        value: 'leadership',
+        child: Text('Coordinators & Leaders Only'),
+      ),
+    ];
+
+    // Auto-add dynamic custom & newly created channels
+    final customChannels = _availableChannels.where((c) {
+      if (c.type == ChannelType.direct) return false;
+      if (c.id == 'channel_general' ||
+          c.id == 'channel_singles' ||
+          c.id == 'channel_married' ||
+          c.id == 'channel_bod') {
+        return false;
+      }
+      return true;
+    }).toList();
+
+    for (final ch in customChannels) {
+      if (!items.any((it) => it.value == ch.id)) {
+        items.add(
+          DropdownMenuItem<String>(
+            value: ch.id,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.tag_rounded, size: 16, color: Colors.blueAccent),
+                const SizedBox(width: 8),
+                Text(
+                  'Channel: ${ch.name}',
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    }
+
+    return items;
+  }
+
   @override
   Widget build(BuildContext context) {
     final gateway = ref.watch(meetingGatewayProvider);
@@ -331,42 +425,42 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
               ),
               if (_notifyMembers) ...[
                 const SizedBox(height: 8),
-                DropdownButtonFormField<String>(
-                  value: _targetAudience,
-                  decoration: const InputDecoration(
-                    labelText: 'Notification Target Audience',
-                    prefixIcon: Icon(Icons.group_outlined),
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  ),
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'general',
-                      child: Text('General (All Members)'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'chapter',
-                      child: Text('Selected Chapter Members Only'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'singles',
-                      child: Text('Singles Fellowship Platform Only'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'directors',
-                      child: Text('Directors Only'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'board',
-                      child: Text('Board of Directors (BOD) & Trustees'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'leadership',
-                      child: Text('Coordinators & Leaders Only'),
-                    ),
-                  ],
-                  onChanged: (val) {
-                    if (val != null) setState(() => _targetAudience = val);
+                Builder(
+                  builder: (context) {
+                    final audienceItems = _buildTargetAudienceItems();
+                    final effectiveAudience =
+                        audienceItems.any((i) => i.value == _targetAudience)
+                            ? _targetAudience
+                            : 'general';
+
+                    return DropdownButtonFormField<String>(
+                      value: effectiveAudience,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: 'Notification Target Audience',
+                        prefixIcon: const Icon(Icons.group_outlined),
+                        suffixIcon: IconButton(
+                          icon: _isLoadingChannels
+                              ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.refresh_rounded, size: 18),
+                          tooltip: 'Refresh Channels',
+                          onPressed: _isLoadingChannels
+                              ? null
+                              : _loadAvailableChannels,
+                        ),
+                        border: const OutlineInputBorder(),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 10),
+                      ),
+                      items: audienceItems,
+                      onChanged: (val) {
+                        if (val != null) setState(() => _targetAudience = val);
+                      },
+                    );
                   },
                 ),
                 if (_targetAudience == 'chapter') ...[

@@ -19,6 +19,10 @@ class ChatService {
     return _appwrite.getUserChannels(userId);
   }
 
+  Future<List<ChatChannel>> getActiveChannels() {
+    return _appwrite.getActiveChannels();
+  }
+
   Future<List<ChatMessage>> getChannelMessages(
     String channelId, {
     int limit = 50,

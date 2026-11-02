@@ -25,6 +25,7 @@ class ChannelMembershipSyncService {
   static const String channelMarriedId = 'channel_married';
   static const String channelCoordinatorsId = 'channel_coordinators';
   static const String channelDonorsId = 'channel_donors';
+  static const String channelBodId = 'channel_bod';
 
   /// Synchronize a user's channel memberships based on their current profile.
   /// Automatically handles:
@@ -89,7 +90,20 @@ class ChannelMembershipSyncService {
         shouldBeMember: isDonor,
       );
 
-      _logger.info('Synced channel memberships for user: $userId (married=$isMarried, coordinator=$isCoordinator, donor=$isDonor)');
+      // 5. Board of Directors (BOD) Channel
+      final isBod = !profile.isArchived &&
+          (profile.role.toLowerCase() == 'bod' ||
+              profile.role.toLowerCase() == 'admin' ||
+              profile.roles.contains('bod'));
+
+      await _ensureMembership(
+        tables: tables,
+        channelId: channelBodId,
+        userId: userId,
+        shouldBeMember: isBod,
+      );
+
+      _logger.info('Synced channel memberships for user: $userId (married=$isMarried, bod=$isBod, coordinator=$isCoordinator, donor=$isDonor)');
     } catch (e) {
       _logger.warning('Channel sync note: $e');
     }
