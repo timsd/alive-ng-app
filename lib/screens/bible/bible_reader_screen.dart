@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../services/bible_source.dart';
 import '../../models/bible_models.dart' as models;
@@ -60,6 +61,15 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
   // Available versions for the current language, loaded from service
   List<String> _versionsForLanguage = [];
 
+  // My Study State (Notes, Highlights, Bookmarks)
+  int _studySubTabIndex = 0; // 0 = Notes, 1 = Highlights, 2 = Bookmarks
+  List<Map<String, dynamic>> _userNotes = [];
+  List<Map<String, dynamic>> _userHighlights = [];
+  List<Map<String, dynamic>> _userBookmarks = [];
+  bool _isLoadingStudy = false;
+  final TextEditingController _studySearchController = TextEditingController();
+  String _studySearchQuery = '';
+
   final OfflineBibleService _offlineBible = OfflineBibleService();
   String _selectedLanguage = 'English';
   bool _didApplyInitialReference = false;
@@ -77,11 +87,17 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.index == 2 && !_tabController.indexIsChanging) {
+        _loadStudyItems();
+      }
+    });
     _ttsService.initialize();
     _ttsService.addCompletionListener(_onTtsComplete);
     _statisticsService.startReadingSession();
     _loadHighlights();
+    _loadStudyItems();
     _loadBooksAndInit();
     // Prewarm only the default KJV bundle; full search indexes are built
     // lazily per selected version on first search to keep startup fast.
@@ -111,6 +127,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
     _scrollController.dispose();
     _tabController.dispose();
     _searchController.dispose();
+    _studySearchController.dispose();
     _ttsService.removeCompletionListener(_onTtsComplete);
     _ttsService.dispose();
     _statisticsService.stopReadingSession();
@@ -694,6 +711,17 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
         showDonationButton: true,
         actions: [
           IconButton(
+            icon: const Icon(Icons.collections_bookmark_outlined),
+            onPressed: () {
+              if (_tabController.index == 2) {
+                _tabController.animateTo(0);
+              } else {
+                _tabController.animateTo(2);
+              }
+            },
+            tooltip: 'My Study (Notes, Highlights & Bookmarks)',
+          ),
+          IconButton(
             icon: Icon(_isSpeaking ? Icons.stop : Icons.volume_up),
             onPressed: () {
               if (_isSpeaking) {
@@ -713,6 +741,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
           tabs: const [
             Tab(text: 'Reader'),
             Tab(text: 'Search'),
+            Tab(text: 'My Study'),
           ],
         ),
       ),
@@ -721,6 +750,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
         children: [
           _buildReaderTab(),
           _buildSearchTab(),
+          _buildMyStudyTab(),
         ],
       ),
     );
@@ -1852,6 +1882,11 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                         _highlightedVerses.remove(verseKey);
                       });
                       _saveHighlights();
+                      SharedPreferences.getInstance().then((prefs) {
+                        prefs.remove('highlight_$verseKey');
+                        prefs.remove('highlight_text_$verseKey');
+                        _loadStudyItems();
+                      });
                       Navigator.pop(ctx);
                     },
                     child: Container(
@@ -1876,6 +1911,10 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                             _highlightedVerses.add(verseKey);
                           });
                           _saveHighlights();
+                          SharedPreferences.getInstance().then((prefs) {
+                            prefs.setString('highlight_text_$verseKey', verseText);
+                            _loadStudyItems();
+                          });
                           Navigator.pop(ctx);
                         },
                         child: Container(
@@ -1939,6 +1978,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                       if (!bookmarks.any((b) => b.startsWith(reference))) {
                         bookmarks.add(entry);
                         await prefs.setStringList('bible_bookmarks', bookmarks);
+                        await _loadStudyItems();
                       }
                       if (ctx.mounted) Navigator.pop(ctx);
                       if (mounted) {
@@ -2049,12 +2089,22 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
           ),
           ElevatedButton(
             onPressed: () async {
-              await prefs.setString('note_$reference', controller.text);
+              final text = controller.text.trim();
+              if (text.isEmpty) {
+                await prefs.remove('note_$reference');
+                await prefs.remove('note_verse_$reference');
+              } else {
+                await prefs.setString('note_$reference', text);
+                if (verseText.isNotEmpty) {
+                  await prefs.setString('note_verse_$reference', verseText);
+                }
+              }
+              await _loadStudyItems();
               if (ctx.mounted) Navigator.pop(ctx);
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: const Text('Note saved!'),
+                    content: Text(text.isEmpty ? 'Note removed' : 'Note saved!'),
                     backgroundColor: colorScheme.primary,
                   ),
                 );
@@ -2094,5 +2144,748 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
         );
       }
     }
+  }
+
+  // ==========================================
+  // MY STUDY (Notes, Highlights & Bookmarks)
+  // ==========================================
+
+  Future<void> _loadStudyItems() async {
+    setState(() => _isLoadingStudy = true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // 1. Bookmarks from 'bible_bookmarks'
+      final rawBookmarks = prefs.getStringList('bible_bookmarks') ?? [];
+      final parsedBookmarks = <Map<String, dynamic>>[];
+      for (final raw in rawBookmarks) {
+        final parts = raw.split('|');
+        if (parts.isNotEmpty && parts[0].trim().isNotEmpty) {
+          final ref = parts[0].trim();
+          final text = parts.length > 1 ? parts[1].trim() : '';
+          final dateStr = parts.length > 2 ? parts[2].trim() : '';
+          DateTime? date;
+          if (dateStr.isNotEmpty) {
+            date = DateTime.tryParse(dateStr);
+          }
+          parsedBookmarks.add({
+            'reference': ref,
+            'text': text.isNotEmpty ? text : (_findVerseInLocalData(ref)?.text ?? 'Bookmarked Scripture'),
+            'date': date ?? DateTime.now(),
+            'raw': raw,
+          });
+        }
+      }
+
+      // 2. Highlights from _verseHighlightColors & SharedPreferences
+      final parsedHighlights = <Map<String, dynamic>>[];
+      for (final entry in _verseHighlightColors.entries) {
+        final ref = entry.key;
+        final color = entry.value;
+        final savedText = prefs.getString('highlight_text_$ref');
+        final text = (savedText != null && savedText.isNotEmpty)
+            ? savedText
+            : (_findVerseInLocalData(ref)?.text ?? 'Highlighted Scripture');
+        parsedHighlights.add({
+          'reference': ref,
+          'color': color,
+          'text': text,
+        });
+      }
+
+      // 3. Notes from keys starting with 'note_'
+      final noteKeys = prefs
+          .getKeys()
+          .where((k) => k.startsWith('note_') && !k.startsWith('note_verse_'))
+          .toList();
+      final parsedNotes = <Map<String, dynamic>>[];
+      for (final k in noteKeys) {
+        final ref = k.replaceFirst('note_', '');
+        final noteText = prefs.getString(k) ?? '';
+        if (noteText.trim().isNotEmpty) {
+          final verseText = prefs.getString('note_verse_$ref') ??
+              _findVerseInLocalData(ref)?.text ??
+              '';
+          parsedNotes.add({
+            'reference': ref,
+            'note': noteText,
+            'verseText': verseText,
+          });
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _userBookmarks = parsedBookmarks;
+          _userHighlights = parsedHighlights;
+          _userNotes = parsedNotes;
+          _isLoadingStudy = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingStudy = false);
+    }
+  }
+
+  Future<void> _deleteBookmark(String raw) async {
+    final prefs = await SharedPreferences.getInstance();
+    final bookmarks = prefs.getStringList('bible_bookmarks') ?? [];
+    bookmarks.remove(raw);
+    await prefs.setStringList('bible_bookmarks', bookmarks);
+    await _loadStudyItems();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Bookmark removed'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  Future<void> _deleteHighlight(String verseKey) async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _verseHighlightColors.remove(verseKey);
+      _highlightedVerses.remove(verseKey);
+    });
+    await _saveHighlights();
+    await prefs.remove('highlight_$verseKey');
+    await prefs.remove('highlight_text_$verseKey');
+    await _loadStudyItems();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Highlight cleared'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  Future<void> _deleteNote(String reference) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('note_$reference');
+    await prefs.remove('note_verse_$reference');
+    await _loadStudyItems();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Note deleted'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  Widget _buildMyStudyTab() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 600;
+
+    return Container(
+      color: theme.scaffoldBackgroundColor,
+      child: Column(
+        children: [
+          // 1. Sub-Tabs Segmented Bar: Notes, Highlights, Bookmarks
+          Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: isSmallScreen ? 12 : 16,
+              vertical: 10,
+            ),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? colorScheme.surface
+                  : colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+              border: Border(
+                bottom: BorderSide(
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.35),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildStudyPill(
+                    index: 0,
+                    icon: Icons.note_alt_outlined,
+                    label: 'Notes',
+                    count: _userNotes.length,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildStudyPill(
+                    index: 1,
+                    icon: Icons.border_color_outlined,
+                    label: 'Highlights',
+                    count: _userHighlights.length,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildStudyPill(
+                    index: 2,
+                    icon: Icons.bookmark_border_rounded,
+                    label: 'Bookmarks',
+                    count: _userBookmarks.length,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // 2. Search / Filter Field
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              isSmallScreen ? 12 : 16,
+              10,
+              isSmallScreen ? 12 : 16,
+              6,
+            ),
+            child: TextField(
+              controller: _studySearchController,
+              onChanged: (val) {
+                setState(() {
+                  _studySearchQuery = val.trim().toLowerCase();
+                });
+              },
+              decoration: InputDecoration(
+                hintText: _studySubTabIndex == 0
+                    ? 'Search notes & reflections...'
+                    : _studySubTabIndex == 1
+                        ? 'Search highlighted verses...'
+                        : 'Search bookmarked scriptures...',
+                prefixIcon: const Icon(Icons.search, size: 20),
+                suffixIcon: _studySearchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 18),
+                        onPressed: () {
+                          _studySearchController.clear();
+                          setState(() {
+                            _studySearchQuery = '';
+                          });
+                        },
+                      )
+                    : null,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                  ),
+                ),
+                filled: true,
+                fillColor: isDark
+                    ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.25)
+                    : colorScheme.surface,
+              ),
+            ),
+          ),
+
+          // 3. Tab Body
+          Expanded(
+            child: _isLoadingStudy
+                ? const Center(child: CircularProgressIndicator())
+                : RefreshIndicator(
+                    onRefresh: _loadStudyItems,
+                    child: _buildStudyContent(isSmallScreen),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStudyPill({
+    required int index,
+    required IconData icon,
+    required String label,
+    required int count,
+  }) {
+    final isSelected = _studySubTabIndex == index;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _studySubTabIndex = index;
+        });
+      },
+      borderRadius: BorderRadius.circular(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? colorScheme.primary
+              : colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected
+                ? colorScheme.primary
+                : colorScheme.outlineVariant.withValues(alpha: 0.35),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: isSelected ? colorScheme.onPrimary : colorScheme.onSurface,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                fontSize: 13,
+                color:
+                    isSelected ? colorScheme.onPrimary : colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? colorScheme.onPrimary.withValues(alpha: 0.25)
+                    : colorScheme.onSurface.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '$count',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: isSelected
+                      ? colorScheme.onPrimary
+                      : colorScheme.onSurface,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStudyContent(bool isSmallScreen) {
+    switch (_studySubTabIndex) {
+      case 0:
+        return _buildNotesList(isSmallScreen);
+      case 1:
+        return _buildHighlightsList(isSmallScreen);
+      case 2:
+      default:
+        return _buildBookmarksList(isSmallScreen);
+    }
+  }
+
+  Widget _buildNotesList(bool isSmallScreen) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final filtered = _studySearchQuery.isEmpty
+        ? _userNotes
+        : _userNotes.where((item) {
+            final ref = (item['reference'] ?? '').toString().toLowerCase();
+            final note = (item['note'] ?? '').toString().toLowerCase();
+            final verse = (item['verseText'] ?? '').toString().toLowerCase();
+            return ref.contains(_studySearchQuery) ||
+                note.contains(_studySearchQuery) ||
+                verse.contains(_studySearchQuery);
+          }).toList();
+
+    if (filtered.isEmpty) {
+      return _buildEmptyStudyState(
+        icon: Icons.note_alt_outlined,
+        title: _studySearchQuery.isEmpty
+            ? 'No Notes Saved'
+            : 'No matching notes found',
+        description: _studySearchQuery.isEmpty
+            ? 'Tap any verse while reading the Bible and select "Notes" to record personal revelations, insights, and study notes.'
+            : 'Try a different search term or book reference.',
+      );
+    }
+
+    return ListView.builder(
+      padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+      itemCount: filtered.length,
+      itemBuilder: (context, index) {
+        final item = filtered[index];
+        final reference = item['reference'] as String;
+        final note = item['note'] as String;
+        final verseText = item['verseText'] as String;
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+            side: BorderSide(
+              color: colorScheme.outlineVariant.withValues(alpha: 0.45),
+            ),
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: () => _openReference(reference),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          reference,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            color: colorScheme.onPrimaryContainer,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined, size: 18),
+                        tooltip: 'Edit Note',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () => _showNotesDialog(reference, verseText),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, size: 18),
+                        tooltip: 'Delete Note',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () => _deleteNote(reference),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerHighest
+                          .withValues(alpha: 0.35),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border(
+                        left: BorderSide(
+                          color: colorScheme.primary,
+                          width: 3.5,
+                        ),
+                      ),
+                    ),
+                    child: Text(
+                      note,
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 13.5 : 14.5,
+                        height: 1.4,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                  if (verseText.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      '“$verseText”',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontStyle: FontStyle.italic,
+                        fontSize: 12.5,
+                        color: colorScheme.onSurfaceVariant.withValues(alpha: 0.75),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildHighlightsList(bool isSmallScreen) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final filtered = _studySearchQuery.isEmpty
+        ? _userHighlights
+        : _userHighlights.where((item) {
+            final ref = (item['reference'] ?? '').toString().toLowerCase();
+            final text = (item['text'] ?? '').toString().toLowerCase();
+            return ref.contains(_studySearchQuery) ||
+                text.contains(_studySearchQuery);
+          }).toList();
+
+    if (filtered.isEmpty) {
+      return _buildEmptyStudyState(
+        icon: Icons.border_color_outlined,
+        title: _studySearchQuery.isEmpty
+            ? 'No Highlights Yet'
+            : 'No matching highlights found',
+        description: _studySearchQuery.isEmpty
+            ? 'Highlight meaningful verses by tapping any verse in the reader and choosing a color.'
+            : 'Try searching for another book or verse.',
+      );
+    }
+
+    return ListView.builder(
+      padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+      itemCount: filtered.length,
+      itemBuilder: (context, index) {
+        final item = filtered[index];
+        final reference = item['reference'] as String;
+        final color = item['color'] as Color;
+        final text = item['text'] as String;
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+            side: BorderSide(
+              color: colorScheme.outlineVariant.withValues(alpha: 0.45),
+            ),
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: () => _openReference(reference),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 14,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        reference,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: colorScheme.primary,
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.share_outlined, size: 18),
+                        tooltip: 'Share Highlight',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () {
+                          SharePlus.instance.share(
+                            ShareParams(text: '$reference\n$text'),
+                          );
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, size: 18),
+                        tooltip: 'Clear Highlight',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () => _deleteHighlight(reference),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.16),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      text,
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 13.5 : 14.5,
+                        height: 1.4,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildBookmarksList(bool isSmallScreen) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final filtered = _studySearchQuery.isEmpty
+        ? _userBookmarks
+        : _userBookmarks.where((item) {
+            final ref = (item['reference'] ?? '').toString().toLowerCase();
+            final text = (item['text'] ?? '').toString().toLowerCase();
+            return ref.contains(_studySearchQuery) ||
+                text.contains(_studySearchQuery);
+          }).toList();
+
+    if (filtered.isEmpty) {
+      return _buildEmptyStudyState(
+        icon: Icons.bookmark_border_rounded,
+        title: _studySearchQuery.isEmpty
+            ? 'No Bookmarks Saved'
+            : 'No matching bookmarks found',
+        description: _studySearchQuery.isEmpty
+            ? 'Save verses for fast reference by tapping any verse in the reader and selecting "Bookmark".'
+            : 'Try a different search term or book reference.',
+      );
+    }
+
+    return ListView.builder(
+      padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+      itemCount: filtered.length,
+      itemBuilder: (context, index) {
+        final item = filtered[index];
+        final reference = item['reference'] as String;
+        final text = item['text'] as String;
+        final date = item['date'] as DateTime;
+        final raw = item['raw'] as String;
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+            side: BorderSide(
+              color: colorScheme.outlineVariant.withValues(alpha: 0.45),
+            ),
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: () => _openReference(reference),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.bookmark_added,
+                          size: 18, color: colorScheme.primary),
+                      const SizedBox(width: 8),
+                      Text(
+                        reference,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: colorScheme.primary,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        DateFormat('MMM d, y').format(date),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.65),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      IconButton(
+                        icon: const Icon(Icons.share_outlined, size: 18),
+                        tooltip: 'Share',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () {
+                          SharePlus.instance.share(
+                            ShareParams(text: '$reference\n$text'),
+                          );
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, size: 18),
+                        tooltip: 'Remove Bookmark',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () => _deleteBookmark(raw),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    text,
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 13.5 : 14.5,
+                      height: 1.4,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildEmptyStudyState({
+    required IconData icon,
+    required String title,
+    required String description,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: colorScheme.primary.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 36, color: colorScheme.primary),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              description,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13.5,
+                height: 1.45,
+                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.75),
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.auto_stories, size: 18),
+              label: const Text('Open Bible Reader'),
+              onPressed: () => _tabController.animateTo(0),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
