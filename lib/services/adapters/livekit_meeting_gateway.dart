@@ -128,14 +128,17 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
     );
 
     final track = pub?.track;
-    if (track == null) return null;
+    if (track is! lk.VideoTrack) return null;
+
+    final isLocal = participant is lk.LocalParticipant ||
+        participant == room.localParticipant;
 
     return lk.VideoTrackRenderer(
       track,
       fit: lk.VideoViewFit.cover,
       mirrorMode: mirror
           ? lk.VideoViewMirrorMode.mirror
-          : (participant.isLocal
+          : (isLocal
               ? lk.VideoViewMirrorMode.mirror
               : lk.VideoViewMirrorMode.off),
     );
@@ -154,9 +157,9 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
           p.track != null &&
           !p.muted,
     );
-    if (localPub?.track != null) {
+    if (localPub?.track is lk.VideoTrack) {
       return lk.VideoTrackRenderer(
-        localPub!.track!,
+        localPub!.track as lk.VideoTrack,
         fit: lk.VideoViewFit.contain,
         mirrorMode: lk.VideoViewMirrorMode.off,
       );
@@ -170,9 +173,9 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
             p.track != null &&
             !p.muted,
       );
-      if (remotePub?.track != null) {
+      if (remotePub?.track is lk.VideoTrack) {
         return lk.VideoTrackRenderer(
-          remotePub!.track!,
+          remotePub!.track as lk.VideoTrack,
           fit: lk.VideoViewFit.contain,
           mirrorMode: lk.VideoViewMirrorMode.off,
         );
@@ -361,7 +364,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       ..on<lk.TrackMutedEvent>((_) => _syncStateFromRoom())
       ..on<lk.TrackUnmutedEvent>((event) async {
         try {
-          if (event.track is lk.AudioTrack) {
+          if (event.publication.track is lk.AudioTrack) {
             await room.startAudio();
             await room.setSpeakerOn(true);
           }

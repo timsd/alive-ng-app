@@ -13,6 +13,7 @@ import '../../providers/meeting_provider.dart';
 import '../../services/chat_service.dart';
 import '../../services/platform/media_permission_adapter.dart';
 import '../../services/ports/meeting_gateway.dart';
+import '../../services/adapters/livekit_meeting_gateway.dart';
 import '../../services/role_access_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../admin/leader_meeting_transcription_screen.dart';
@@ -1855,14 +1856,6 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                       ),
                     ),
                   ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
                 ],
               ),
             );
