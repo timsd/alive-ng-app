@@ -1,5 +1,4 @@
-import '../constants/bible_verses.dart' show BibleVerse;
-import '../constants/daily_verses.dart' as daily_data;
+import '../constants/bible_verses.dart' show BibleVerse, dailyVerses;
 import '../utils/search_utils.dart';
 
 /// BibleSource provides a unified interface for accessing Bible verses
@@ -551,7 +550,7 @@ class BibleSource {
   static List<BibleVerse> get _allVerses {
     final list = <BibleVerse>[];
     final seen = <String>{};
-    for (final v in daily_data.dailyVerses) {
+    for (final v in dailyVerses) {
       final key = v.reference.toLowerCase();
       if (seen.add(key)) list.add(v);
     }
