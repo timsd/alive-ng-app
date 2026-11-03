@@ -97,11 +97,6 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
   }
 
   List<Map<String, String>> _getFormattedTranscript() {
-    final audioUrl = (widget.episodeData['audioUrl'] ??
-            widget.episodeData['audio_url'] ??
-            '')
-        .toString();
-
     final raw = (widget.episodeData['transcript'] ??
             widget.episodeData['transcription'] ??
             widget.episodeData['description'] ??

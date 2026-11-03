@@ -67,19 +67,22 @@ class NotificationService {
         onDidReceiveNotificationResponse: _onNotificationTapped,
       );
 
+      // Listen for auth state changes BEFORE the (slow) permission/token steps.
+      // The session restore on startup emits its event while those steps are
+      // still awaiting, and a broadcast stream does not replay it -- attaching
+      // the listener afterwards meant returning members never got a push target.
+      _authService.authStateChanges.listen((user) {
+        if (user != null && _currentToken != null && _currentToken!.isNotEmpty) {
+          _logger.info('User authenticated; registering push token for ${user.uid}');
+          _safeRegister(_currentToken!);
+        }
+      });
+
       // Request notification permissions
       await _requestPermissions();
 
       // Register push token with Appwrite via FCM transport
       await _registerPushToken();
-
-      // Listen for auth state changes so newly logged-in users get their push target registered
-      _authService.authStateChanges.listen((user) {
-        if (user != null && _currentToken != null && _currentToken!.isNotEmpty) {
-          _logger.info('User authenticated; registering push token for ${user.uid}');
-          AppwritePushService.instance.registerToken(_currentToken!);
-        }
-      });
 
       _isInitialized = true;
     } catch (e) {
@@ -117,6 +120,17 @@ class NotificationService {
 
   Future<String?> registerPushToken() => _registerPushToken();
 
+  /// Registers [token] with Appwrite and logs (rather than drops) any failure.
+  /// Used from stream listeners, where an unawaited throw would vanish.
+  Future<String?> _safeRegister(String token) async {
+    try {
+      return await AppwritePushService.instance.registerToken(token);
+    } catch (e) {
+      _logger.error('Appwrite push target registration failed', e);
+      return null;
+    }
+  }
+
   Future<String?> _registerPushToken() async {
     if (kIsWeb) {
       return _registerWebPushToken();
@@ -147,13 +161,13 @@ class NotificationService {
       if (token != null && token.isNotEmpty) {
         _currentToken = token;
         _logger.info('FCM token acquired: ${token.substring(0, token.length > 8 ? 8 : token.length)}...');
-        final targetId = await AppwritePushService.instance.registerToken(token);
+        final targetId = await _safeRegister(token);
 
         // Listen for token refreshes
         fcm.onTokenRefresh.listen((newToken) async {
           _logger.info('FCM token refreshed');
           _currentToken = newToken;
-          await AppwritePushService.instance.registerToken(newToken);
+          await _safeRegister(newToken);
         });
 
         // Listen for foreground FCM messages

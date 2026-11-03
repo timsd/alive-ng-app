@@ -12,7 +12,6 @@ import '../../models/app_models.dart';
 import '../../widgets/daily_verse_card.dart';
 import '../../services/daily_verse_generation_service.dart';
 import '../../services/bible_source.dart';
-import '../../constants/daily_verses_translations.dart';
 import '../../utils/text_formatter.dart';
 import '../../utils/responsive_utils.dart';
 import '../../constants/app_constants.dart';

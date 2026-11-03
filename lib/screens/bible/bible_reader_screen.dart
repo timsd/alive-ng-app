@@ -15,7 +15,6 @@ import '../../services/tts_service.dart';
 import '../../services/user_statistics_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
-import '../../services/bible_database_helper.dart';
 
 class BibleReaderScreen extends ConsumerStatefulWidget {
   final String? initialReference;

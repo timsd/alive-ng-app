@@ -20,7 +20,10 @@ class AppwritePushService {
   final Logger _logger = Logger('AppwritePushService');
 
   Future<String?> registerToken(String token) async {
-    final user = AuthService.instance.currentUser;
+    // On a cold start the cached user is still null while the session is
+    // restored, so ask the server before concluding nobody is signed in.
+    final user = AuthService.instance.currentUser ??
+        await AuthService.instance.getCurrentUser();
     if (user == null) {
       _logger.warning('No authenticated user to register push token for');
       return null;
@@ -75,7 +78,12 @@ class AppwritePushService {
         targetId: resolvedTargetId,
       );
     } on AppwriteException catch (e) {
-      if (e.code != 409) rethrow;
+      // 409 = already subscribed. Anything else is logged, not rethrown: the
+      // push target itself is already registered and can still be addressed
+      // directly, so a topic failure must not undo the whole registration.
+      if (e.code != 409) {
+        _logger.warning('Could not subscribe target to topic $topicId: ${e.code} ${e.message}');
+      }
     } catch (e) {
       _logger.warning('Could not subscribe target to topic $topicId: $e');
     }

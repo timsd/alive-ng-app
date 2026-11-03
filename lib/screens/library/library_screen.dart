@@ -5,7 +5,6 @@ import '../../utils/responsive_utils.dart';
 import '../../services/appwrite_library_service.dart';
 import '../../widgets/standard_video_player_modal.dart';
 import '../../widgets/custom_image.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class LibraryScreen extends ConsumerStatefulWidget {
   const LibraryScreen({super.key});

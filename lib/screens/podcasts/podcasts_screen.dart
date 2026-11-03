@@ -669,10 +669,8 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
     Map<String, dynamic> episode, {
     Offset? anchor,
   }) {
-    final messenger = ScaffoldMessenger.of(context);
     final play = _playEpisode;
     final download = _downloadEpisode;
-    final shareLabel = 'Sharing: ${episode['title']}';
 
     // Without an anchor the menu is centred, which reads as detached from the
     // button. Fall back to the middle of the screen when the caller has no
