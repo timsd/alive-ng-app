@@ -72,7 +72,6 @@ import '../utils/navigation_keys.dart';
 // New screen imports
 import '../screens/admin/leadership_archive_screen.dart';
 import '../screens/admin/video_content_admin_screen.dart';
-import '../screens/admin/sample_content_admin_screen.dart';
 import '../screens/profile/profile_completion_screen.dart';
 
 const bool kMinimalRouterMode = false;
