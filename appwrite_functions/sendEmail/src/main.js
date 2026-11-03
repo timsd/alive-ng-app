@@ -86,26 +86,58 @@ export default async ({ req, res, log, error }) => {
         return res.json({ ok: true, skipped: true, reason: 'welcome_already_sent_in_prefs' });
       }
 
+      // Appwrite Admin endpoints configuration
+      const appwriteEndpoint = process.env.APPWRITE_ENDPOINT || process.env.APPWRITE_FUNCTION_API_ENDPOINT;
+      const appwriteProject = process.env.APPWRITE_PROJECT_ID || process.env.APPWRITE_FUNCTION_PROJECT_ID;
+      const appwriteKey = process.env.APPWRITE_API_KEY || req.headers['x-appwrite-key'];
+
+      let targetUserId = body.$id;
+      let targetCreatedAtStr = body.$createdAt || body.registration;
+      let targetPrefs = body.prefs;
+
+      // If $id or registration is missing, look up user by email from Appwrite Auth
+      if ((!targetUserId || !targetCreatedAtStr || !targetPrefs) && appwriteEndpoint && appwriteProject && appwriteKey) {
+        try {
+          const searchRes = await fetch(`${appwriteEndpoint.replace(/\/v1\/?$/, '')}/v1/users?search=${encodeURIComponent(recipientEmail)}`, {
+            headers: {
+              'X-Appwrite-Project': appwriteProject,
+              'X-Appwrite-Key': appwriteKey,
+            },
+          });
+          if (searchRes.ok) {
+            const searchData = await searchRes.json();
+            const foundUser = (searchData.users || []).find(u => (u.email || '').toLowerCase() === recipientEmail.toLowerCase());
+            if (foundUser) {
+              targetUserId = targetUserId || foundUser.$id;
+              targetCreatedAtStr = targetCreatedAtStr || foundUser.registration || foundUser.$createdAt;
+              targetPrefs = targetPrefs || foundUser.prefs;
+            }
+          }
+        } catch (searchErr) {
+          log(`Note: user lookup by email: ${searchErr.message}`);
+        }
+      }
+
       // GUARD 2: Age check on registration/createdAt. Returning users whose account was
-      // created over 15 minutes ago must NOT receive a welcome email.
-      const createdAtStr = body.$createdAt || body.registration;
-      if (createdAtStr) {
-        const createdTime = new Date(createdAtStr).getTime();
+      // created over 15 minutes ago must NEVER receive a welcome email.
+      if (targetCreatedAtStr) {
+        const createdTime = new Date(targetCreatedAtStr).getTime();
         const now = Date.now();
         if (!isNaN(createdTime) && (now - createdTime > 15 * 60 * 1000)) {
-          log(`User ${recipientEmail} account was created at ${createdAtStr} (${Math.round((now - createdTime)/60000)} mins ago). Skipping returning user welcome email.`);
+          log(`User ${recipientEmail} account was created at ${targetCreatedAtStr} (${Math.round((now - createdTime)/60000)} mins ago). Skipping returning user welcome email.`);
           return res.json({ ok: true, skipped: true, reason: 'returning_user_account_age' });
         }
       }
 
       // GUARD 3: Remote Appwrite user preferences check
-      const appwriteEndpoint = process.env.APPWRITE_ENDPOINT || process.env.APPWRITE_FUNCTION_API_ENDPOINT;
-      const appwriteProject = process.env.APPWRITE_PROJECT_ID || process.env.APPWRITE_FUNCTION_PROJECT_ID;
-      const appwriteKey = process.env.APPWRITE_API_KEY || req.headers['x-appwrite-key'];
+      if (targetPrefs && (targetPrefs.welcome_email_sent === true || targetPrefs.welcome_email_sent === 'true')) {
+        log(`User ${recipientEmail} already has welcome_email_sent=true in user prefs. Skipping returning user.`);
+        return res.json({ ok: true, skipped: true, reason: 'welcome_already_sent_remote' });
+      }
 
-      if (appwriteEndpoint && appwriteProject && appwriteKey && body.$id) {
+      if (appwriteEndpoint && appwriteProject && appwriteKey && targetUserId && !targetPrefs) {
         try {
-          const userRes = await fetch(`${appwriteEndpoint.replace(/\/v1\/?$/, '')}/v1/users/${body.$id}/prefs`, {
+          const userRes = await fetch(`${appwriteEndpoint.replace(/\/v1\/?$/, '')}/v1/users/${targetUserId}/prefs`, {
             headers: {
               'X-Appwrite-Project': appwriteProject,
               'X-Appwrite-Key': appwriteKey,
@@ -114,12 +146,12 @@ export default async ({ req, res, log, error }) => {
           if (userRes.ok) {
             const remotePrefs = await userRes.json();
             if (remotePrefs.welcome_email_sent === true || remotePrefs.welcome_email_sent === 'true') {
-              log(`User ${body.$id} (${recipientEmail}) already has welcome_email_sent=true in remote prefs. Skipping returning user.`);
+              log(`User ${targetUserId} (${recipientEmail}) already has welcome_email_sent=true in remote prefs. Skipping returning user.`);
               return res.json({ ok: true, skipped: true, reason: 'welcome_already_sent_remote' });
             }
           }
         } catch (prefErr) {
-          log(`Note: could not check remote prefs for user ${body.$id}: ${prefErr.message}`);
+          log(`Note: could not check remote prefs for user ${targetUserId}: ${prefErr.message}`);
         }
       }
 
@@ -152,9 +184,9 @@ export default async ({ req, res, log, error }) => {
       }
 
       // Mark welcome_email_sent: true in user's Appwrite preferences so it never fires again
-      if (appwriteEndpoint && appwriteProject && appwriteKey && body.$id) {
+      if (appwriteEndpoint && appwriteProject && appwriteKey && targetUserId) {
         try {
-          await fetch(`${appwriteEndpoint.replace(/\/v1\/?$/, '')}/v1/users/${body.$id}/prefs`, {
+          await fetch(`${appwriteEndpoint.replace(/\/v1\/?$/, '')}/v1/users/${targetUserId}/prefs`, {
             method: 'PATCH',
             headers: {
               'X-Appwrite-Project': appwriteProject,
@@ -162,14 +194,14 @@ export default async ({ req, res, log, error }) => {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              ...(body.prefs || {}),
+              ...(body.prefs || targetPrefs || {}),
               welcome_email_sent: true,
               welcome_email_sent_at: new Date().toISOString(),
             }),
           });
-          log(`Marked welcome_email_sent=true in prefs for user ${body.$id}.`);
+          log(`Marked welcome_email_sent=true in prefs for user ${targetUserId}.`);
         } catch (updateErr) {
-          log(`Note: could not update prefs for user ${body.$id}: ${updateErr.message}`);
+          log(`Note: could not update prefs for user ${targetUserId}: ${updateErr.message}`);
         }
       }
 
