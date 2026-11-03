@@ -817,6 +817,16 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
   }
 
   @override
+  Future<void> unlockAudio() async {
+    try {
+      await _room?.startAudio();
+      await _room?.setSpeakerOn(true);
+    } catch (e) {
+      debugPrint('[LiveKitMeetingGateway] unlockAudio error: $e');
+    }
+  }
+
+  @override
   Future<void> toggleAudio() async {
     final participant = _room?.localParticipant;
     if (participant == null) return;

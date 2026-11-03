@@ -64,6 +64,9 @@ abstract class MeetingGateway {
     String? roomName,
   });
 
+  /// Unlocks audio playback and ensures speaker routing is active (e.g. after user gesture on join).
+  Future<void> unlockAudio();
+
   /// Mutes or unmutes the local participant's microphone.
   Future<void> toggleAudio();
 

@@ -13,7 +13,6 @@ import '../../providers/meeting_provider.dart';
 import '../../services/chat_service.dart';
 import '../../services/platform/media_permission_adapter.dart';
 import '../../services/ports/meeting_gateway.dart';
-import '../../services/adapters/livekit_meeting_gateway.dart';
 import '../../services/role_access_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../admin/leader_meeting_transcription_screen.dart';
@@ -148,10 +147,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
 
       // User gesture: Unlock audio playback & speaker routing immediately on entry
       try {
-        if (gateway is LiveKitMeetingGateway) {
-          await gateway.rawRoom?.startAudio();
-          await gateway.rawRoom?.setSpeakerOn(true);
-        }
+        await gateway.unlockAudio();
       } catch (_) {}
     } catch (e) {
       final errStr = e.toString();
