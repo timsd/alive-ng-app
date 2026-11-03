@@ -144,6 +144,14 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
         targetChapter: _targetAudience == 'chapter' ? _selectedTargetChapter : null,
         isWaitingRoomEnabled: _requireHostApproval,
       );
+
+      // User gesture: Unlock audio playback & speaker routing immediately on entry
+      try {
+        if (gateway is LiveKitMeetingGateway) {
+          await gateway.rawRoom?.startAudio();
+          await gateway.rawRoom?.setSpeakerOn(true);
+        }
+      } catch (_) {}
     } catch (e) {
       final errStr = e.toString();
       debugPrint('[LiveKitMeetingScreen] Join error: $e');
@@ -1513,8 +1521,8 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                   color: const Color(0xFF0A0D11),
                   child: Center(
                     child: isPresenting
-                        ? _buildScreenShareStage(session)
-                        : _buildVideoGridStage(session),
+                        ? _buildScreenShareStage(session, gateway)
+                        : _buildVideoGridStage(session, gateway),
                   ),
                 ),
               ),
@@ -1611,8 +1619,9 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     );
   }
 
-  Widget _buildScreenShareStage(MeetingSession session) {
+  Widget _buildScreenShareStage(MeetingSession session, MeetingGateway gateway) {
     final presenter = session.activeScreenShareName ?? (session.isScreenShareEnabled ? 'You' : 'Presenter');
+    final screenVideoWidget = gateway.buildScreenShareVideoWidget();
 
     return Container(
       margin: const EdgeInsets.all(16),
@@ -1630,62 +1639,66 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
+        fit: StackFit.expand,
         alignment: Alignment.center,
         children: [
-          // Presentation Screen Simulation Canvas
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: Colors.teal.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
+          if (screenVideoWidget != null)
+            screenVideoWidget
+          else
+            // Presentation Screen Fallback Canvas
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: Colors.teal.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.screen_share_rounded,
+                    size: 42,
+                    color: Colors.tealAccent,
+                  ),
                 ),
-                child: const Icon(
-                  Icons.screen_share_rounded,
-                  size: 42,
-                  color: Colors.tealAccent,
+                const SizedBox(height: 16),
+                Text(
+                  '$presenter is Presenting Screen',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                '$presenter is Presenting Screen',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5,
+                const SizedBox(height: 6),
+                const Text(
+                  'High-Resolution Sanctuary & Stage Presentation Feed Active',
+                  style: TextStyle(color: Colors.white70, fontSize: 13),
                 ),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'High-Resolution Sanctuary & Stage Presentation Feed Active',
-                style: TextStyle(color: Colors.white70, fontSize: 13),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.black45,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white24),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.black45,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white24),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.hd_rounded, size: 16, color: Colors.tealAccent),
+                      SizedBox(width: 6),
+                      Text(
+                        '1080p Stage Projection • Low Latency WebRTC',
+                        style: TextStyle(color: Colors.white, fontSize: 11),
+                      ),
+                    ],
+                  ),
                 ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.hd_rounded, size: 16, color: Colors.tealAccent),
-                    SizedBox(width: 6),
-                    Text(
-                      '1080p Stage Projection • Low Latency WebRTC',
-                      style: TextStyle(color: Colors.white, fontSize: 11),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+              ],
+            ),
 
           // Top Left Badge
           Positioned(
@@ -1720,7 +1733,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     );
   }
 
-  Widget _buildVideoGridStage(MeetingSession session) {
+  Widget _buildVideoGridStage(MeetingSession session, MeetingGateway gateway) {
     if (session.participants.isEmpty) {
       return const Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -1755,6 +1768,9 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
             final p = participants[index];
             final name = _formatParticipantName(p);
             final isSpeaking = p.isSpeaking;
+            final liveVideo = !p.isVideoMuted
+                ? gateway.buildParticipantVideoWidget(p.identity)
+                : null;
 
             return Container(
               decoration: BoxDecoration(
@@ -1767,36 +1783,40 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
               ),
               clipBehavior: Clip.antiAlias,
               child: Stack(
+                fit: StackFit.expand,
                 alignment: Alignment.center,
                 children: [
-                  // Avatar / video placeholder
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CircleAvatar(
-                        radius: 28,
-                        backgroundColor: p.isLocal
-                            ? const Color(0xFF3B82F6)
-                            : const Color(0xFF10B981),
-                        child: Text(
-                          name.isNotEmpty ? name[0].toUpperCase() : 'M',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
+                  if (liveVideo != null)
+                    liveVideo
+                  else
+                    // Avatar / camera off placeholder
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircleAvatar(
+                          radius: 28,
+                          backgroundColor: p.isLocal
+                              ? const Color(0xFF3B82F6)
+                              : const Color(0xFF10B981),
+                          child: Text(
+                            name.isNotEmpty ? name[0].toUpperCase() : 'M',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        p.isVideoMuted ? 'Camera Off' : 'Live Camera',
-                        style: TextStyle(
-                          color: p.isVideoMuted ? Colors.white38 : Colors.greenAccent,
-                          fontSize: 11,
+                        const SizedBox(height: 8),
+                        Text(
+                          p.isVideoMuted ? 'Camera Off' : 'Starting Camera...',
+                          style: TextStyle(
+                            color: p.isVideoMuted ? Colors.white38 : Colors.greenAccent,
+                            fontSize: 11,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
 
                   // Bottom name banner
                   Positioned(
@@ -1835,6 +1855,14 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                       ),
                     ),
                   ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
                 ],
               ),
             );

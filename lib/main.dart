@@ -30,6 +30,7 @@ import 'widgets/app_tour/app_tour_service.dart';
 
 export 'services/appwrite_client.dart';
 import 'services/appwrite_client.dart';
+import 'services/onboarding_service.dart';
 
 void main() {
   runZonedGuarded(() async {
@@ -61,8 +62,9 @@ void main() {
     // Restore the preference before the first frame; ARB messages are compiled.
     try {
       await LocaleNotifier.loadSavedLocale();
+      await OnboardingService.initialize();
     } catch (e) {
-      debugPrint('I18n initialization failed: $e');
+      debugPrint('Startup preferences initialization failed: $e');
     }
 
     FlutterError.onError = (details) {

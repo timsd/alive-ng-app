@@ -181,6 +181,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         return null;
       }
 
+      // If onboarding hasn't been completed and user is not authenticated,
+      // route to onboarding first so first-time visitors always get the intro.
+      if (!isAuthenticated &&
+          !OnboardingService.isCompleted &&
+          state.uri.path != '/oath' &&
+          state.uri.path != AppConstants.resetPasswordRoute &&
+          state.uri.path != AppConstants.authRoute) {
+        debugPrint('First-time visitor: redirecting to onboarding');
+        return AppConstants.onboardingRoute;
+      }
+
       // Allow guest-accessible routes for unauthenticated users.
       if (!isAuthenticated && isGuestAccessibleRoute) {
         debugPrint('Route is guest accessible: ${state.uri.path}');
@@ -544,7 +555,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           // Bible Reader Route
           GoRoute(
             path: AppConstants.bibleRoute,
-            builder: (context, state) => const BibleReaderScreen(),
+            builder: (context, state) {
+              final tab = state.uri.queryParameters['tab'];
+              return BibleReaderScreen(
+                initialTab: tab == 'study' ? 2 : (tab == 'search' ? 1 : 0),
+              );
+            },
           ),
 
           // Chat Route (Auth Required)

@@ -41,6 +41,8 @@ Map<String, dynamic> podcastEpisodePayload(PodcastEpisode episode) {
     'is_downloaded': episode.isDownloaded,
     'local_path': episode.localPath,
     'transcript': episode.transcript,
+    if (episode.notes != null && episode.notes!.isNotEmpty)
+      'notes': episode.notes,
   };
 }
 
@@ -85,6 +87,7 @@ class _PodcastEpisodeFormDialogState extends State<PodcastEpisodeFormDialog> {
   final _descriptionController = TextEditingController();
   final _durationController = TextEditingController();
   final _audioContentController = TextEditingController();
+  final _notesController = TextEditingController();
   final _transcriptController = TextEditingController();
 
   DateTime _publishDate = DateTime.now();
@@ -101,6 +104,7 @@ class _PodcastEpisodeFormDialogState extends State<PodcastEpisodeFormDialog> {
       _durationController.text = widget.episode!.duration;
       _publishDate = widget.episode!.publishDate;
       _audioContentController.text = widget.episode!.audioUrl;
+      _notesController.text = widget.episode!.notes ?? '';
       _transcriptController.text = widget.episode!.transcript ?? '';
     }
   }
@@ -111,6 +115,7 @@ class _PodcastEpisodeFormDialogState extends State<PodcastEpisodeFormDialog> {
     _descriptionController.dispose();
     _durationController.dispose();
     _audioContentController.dispose();
+    _notesController.dispose();
     _transcriptController.dispose();
     super.dispose();
   }
@@ -211,6 +216,7 @@ class _PodcastEpisodeFormDialogState extends State<PodcastEpisodeFormDialog> {
         isDownloaded: false,
         localPath: null,
         transcript: _transcriptController.text.trim().isEmpty ? null : _transcriptController.text.trim(),
+        notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
       );
 
       await contentService.upsertDocument(
@@ -386,10 +392,22 @@ class _PodcastEpisodeFormDialogState extends State<PodcastEpisodeFormDialog> {
 
 
                       TextFormField(
+                        controller: _notesController,
+                        decoration: const InputDecoration(
+                          labelText: 'Episode Study Notes & Outline (Optional)',
+                          hintText: 'Paste overview, key scriptural references, sermon outline, or study points...',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.sticky_note_2_outlined),
+                        ),
+                        maxLines: 4,
+                      ),
+                      const SizedBox(height: 16),
+
+                      TextFormField(
                         controller: _transcriptController,
                         decoration: const InputDecoration(
-                          labelText: 'Episode Transcript & Show Notes (Optional)',
-                          hintText: 'Paste transcription or key sermon timestamps...',
+                          labelText: 'Full Audio Transcript (Optional)',
+                          hintText: 'Paste audio transcription with speaker tags and timestamps...',
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.subtitles_outlined),
                         ),

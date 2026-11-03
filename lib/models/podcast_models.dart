@@ -11,6 +11,8 @@ class Podcast {
   final List<String> tags;
   final String? coverImage;
   final String? audioUrl;
+  final String? notes;
+  final String? transcript;
 
   String get categoryDisplayName =>
       customCategory?.isNotEmpty == true ? customCategory! : category.displayName;
@@ -28,6 +30,8 @@ class Podcast {
     required this.tags,
     this.coverImage,
     this.audioUrl,
+    this.notes,
+    this.transcript,
   });
 
   factory Podcast.fromJson(Map<String, dynamic> json) {
@@ -53,6 +57,8 @@ class Podcast {
       tags: _stringList(json['tags']),
       coverImage: json['coverImage'] as String? ?? json['cover_image'] as String?,
       audioUrl: json['audioUrl'] as String? ?? json['audio_url'] as String?,
+      notes: json['notes'] as String?,
+      transcript: json['transcript'] as String? ?? json['transcription'] as String?,
     );
   }
 
@@ -69,6 +75,8 @@ class Podcast {
       'tags': tags,
       'coverImage': coverImage,
       'audioUrl': audioUrl,
+      'notes': notes,
+      'transcript': transcript,
     };
   }
 
@@ -85,6 +93,8 @@ class Podcast {
     List<String>? tags,
     String? coverImage,
     String? audioUrl,
+    String? notes,
+    String? transcript,
   }) {
     return Podcast(
       id: id ?? this.id,
@@ -99,6 +109,8 @@ class Podcast {
       tags: tags ?? this.tags,
       coverImage: coverImage ?? this.coverImage,
       audioUrl: audioUrl ?? this.audioUrl,
+      notes: notes ?? this.notes,
+      transcript: transcript ?? this.transcript,
     );
   }
 }
@@ -115,6 +127,7 @@ class PodcastEpisode {
   final bool isDownloaded;
   final String? localPath;
   final String? transcript;
+  final String? notes;
 
   const PodcastEpisode({
     required this.id,
@@ -128,6 +141,7 @@ class PodcastEpisode {
     required this.isDownloaded,
     this.localPath,
     this.transcript,
+    this.notes,
   });
 
   factory PodcastEpisode.fromJson(Map<String, dynamic> json) {
@@ -149,6 +163,7 @@ class PodcastEpisode {
           false,
       localPath: json['localPath'] as String? ?? json['local_path'] as String?,
       transcript: json['transcript'] as String? ?? json['transcription'] as String?,
+      notes: json['notes'] as String?,
     );
   }
 
@@ -165,6 +180,7 @@ class PodcastEpisode {
       'isDownloaded': isDownloaded,
       'localPath': localPath,
       'transcript': transcript,
+      'notes': notes,
     };
   }
 }

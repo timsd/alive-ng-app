@@ -132,14 +132,14 @@ class AppTourSteps {
 
     // 5. More
     AppTourStep(
-      id: 'step_home',
+      id: 'step_more',
       title: 'More Ministry Resources',
       subtitle: 'Tracts, Podcasts, Kids & Chapters',
       description:
           'Explore the complete ALIVE ministry toolbox. Access digital tracts for evangelism, uplifting audio podcasts, interactive kids Bible stories, and directory of campus and regional chapters.',
       icon: Icons.grid_view_rounded,
       accentColor: Color(0xFFF59E0B), // Radiant Amber
-      route: '/home',
+      route: '/more',
       targetArea: 'more',
       highlights: [
         'Digital tracts with in-app PDF view and sharing',
@@ -237,6 +237,42 @@ class AppTourSteps {
         'Instant one-tap toggle between Light and Dark mode',
         'High-contrast typography optimized for scripture reading in low light',
         'Visual preference is automatically remembered on your device',
+      ],
+    ),
+
+    // 11. My Study Hub (Notes, Highlights & Bookmarks)
+    AppTourStep(
+      id: 'step_my_study',
+      title: 'My Study Hub',
+      subtitle: 'Notes, Highlights & Bookmarks',
+      description:
+          'Quickly access all your personal study notes, highlighted Bible verses, and saved bookmarks in one unified place directly from the Home top bar.',
+      icon: Icons.collections_bookmark_outlined,
+      accentColor: Color(0xFF0D9488), // Teal 600
+      route: '/bible?tab=study',
+      targetArea: 'my_study',
+      highlights: [
+        'Review and edit all personal verse study notes',
+        'Filter your color-coded highlights across Old and New Testaments',
+        'One-tap jump straight back to saved Bible chapter bookmarks',
+      ],
+    ),
+
+    // 12. News Feed & Broadcasts
+    AppTourStep(
+      id: 'step_news_feed',
+      title: 'News Feed & Broadcasts',
+      subtitle: 'Events, Announcements & Live Meetings',
+      description:
+          'Never miss a ministry update. The top header shows unread alerts whenever new events, broadcasts, or live meetings are dropped.',
+      icon: Icons.newspaper_rounded,
+      accentColor: Color(0xFFE11D48), // Rose Red
+      route: '/events',
+      targetArea: 'news_feed',
+      highlights: [
+        'Real-time badge counter showing newly dropped information',
+        'Direct access to announcements, upcoming events, and chapter activities',
+        'Join active live meetings directly from broadcast notices',
       ],
     ),
   ];
@@ -426,6 +462,42 @@ class AppTourSteps {
         'Àpù ń fipamọ́ àwọ̀ tí o yàn',
       ],
     ),
+
+    // 11. Ibùdó Ẹ̀kọ́ Mi (My Study Hub)
+    AppTourStep(
+      id: 'step_my_study',
+      title: 'Ibùdó Ẹ̀kọ́ Mi',
+      subtitle: 'Àkọsílẹ̀, Àmì Ẹsẹ & Àkọsílẹ̀ Ojú-ewé',
+      description:
+          'Tètè dé gbogbo àwọn àkọsílẹ̀ ẹkọ rẹ, àwọn ẹsẹ Bíbélì tí o fi àmì sí, àti àwọn ojú-ewé tí o fipamọ́ lẹ́ẹ̀kan ṣoṣo láti orí pẹpẹ ilé.',
+      icon: Icons.collections_bookmark_outlined,
+      accentColor: Color(0xFF0D9488),
+      route: '/bible?tab=study',
+      targetArea: 'my_study',
+      highlights: [
+        'Àtúnyẹ̀wò àti ṣíṣe àtúnṣe gbogbo àkọsílẹ̀ ẹsẹ Bíbélì rẹ',
+        'Wíwá àwọn ẹsẹ tí a fàmìsí ní Májẹ̀mú Láéláé àti Májẹ̀mú Tuntun',
+        'Fífọwọ́tẹ́ lẹ́ẹ̀kan láti padà sí àwọn orí Bíbélì tí o fipamọ́',
+      ],
+    ),
+
+    // 12. Àwọn Ìròyìn & Ìkéde (News Feed)
+    AppTourStep(
+      id: 'step_news_feed',
+      title: 'Àwọn Ìròyìn & Ìkéde',
+      subtitle: 'Àwọn Ètò, Ìkéde & Àpéjọ Lórí Ayélujára',
+      description:
+          'Má ṣe pàdánù ìròyìn iṣẹ́ ìránṣẹ́ kankan. Àkọlé òkè ń fi àmì àwọn ìròyìn tuntun hàn nígbàkígbà tí ètò tàbí ìkéde tuntun bá dé.',
+      icon: Icons.newspaper_rounded,
+      accentColor: Color(0xFFE11D48),
+      route: '/events',
+      targetArea: 'news_feed',
+      highlights: [
+        'Àmì kíkà ní àkókò gidi tí ń fi àwọn ìkéde tuntun hàn',
+        'Wíwọlé ní tààràtà sí àwọn ètò àti ìgbòkègbodò ẹ̀ka ìjọ',
+        'Dídarapọ̀ mọ́ àwọn àpéjọ lórí ayélujára tí ń lọ lọ́wọ́',
+      ],
+    ),
   ];
 
   // -------------------------------------------------------------
@@ -594,6 +666,42 @@ class AppTourSteps {
         'Adana zaɓinku na gani a kowane lokaci',
       ],
     ),
+
+    // 11. Wurin Nazarina (My Study Hub)
+    AppTourStep(
+      id: 'step_my_study',
+      title: 'Wurin Nazarina',
+      subtitle: 'Bayanai, Alamu & Shafukan Littafi',
+      description:
+          'Shiga cikin sauƙi zuwa duk bayanan nazarin Littafi Mai Tsarki, ayoyin da kuka yi wa alama, da shafukan da aka adana kai tsaye daga shafin farko.',
+      icon: Icons.collections_bookmark_outlined,
+      accentColor: Color(0xFF0D9488),
+      route: '/bible?tab=study',
+      targetArea: 'my_study',
+      highlights: [
+        'Duba da gyara duk bayanan ayoyin Littafi Mai Tsarki',
+        'Tace ayoyin da kuka yi wa alama a Tsohon da Sabon Alkawari',
+        'Komawa cikin sauƙi zuwa shafukan Littafi Mai Tsarki da aka adana',
+      ],
+    ),
+
+    // 12. Labarai & Sanarwa (News Feed)
+    AppTourStep(
+      id: 'step_news_feed',
+      title: 'Labarai & Sanarwa',
+      subtitle: 'Tarurruka, Sanarwa & Taro Kai Tsaye',
+      description:
+          'Kada a rasa kowane labarin hidima. Alamar sama tana nuna sanarwar sabbin tarurruka, shirye-shirye da taron kai tsaye.',
+      icon: Icons.newspaper_rounded,
+      accentColor: Color(0xFFE11D48),
+      route: '/events',
+      targetArea: 'news_feed',
+      highlights: [
+        'Alamar lissafi mai nuna sabbin sanarwa nan take',
+        'Shiga kai tsaye zuwa tarurruka da ayyukan rassan hidima',
+        'Shiga taron kai tsaye kai tsaye daga sanarwa',
+      ],
+    ),
   ];
 
   // -------------------------------------------------------------
@@ -760,6 +868,42 @@ class AppTourSteps {
         'Otu mmetụ iji gbanwee Ìhè na Ọchịchịrị',
         'Mkpuruokwu doro anya dabara maka anya gị',
         'Na-echekwa nhọrọ gị ozugbo na ngwaọrụ gị',
+      ],
+    ),
+
+    // 11. Ebe Ọmụmụ Baịbụl M (My Study Hub)
+    AppTourStep(
+      id: 'step_my_study',
+      title: 'Ebe Ọmụmụ Baịbụl M',
+      subtitle: 'Ihe Edeturu, Ihe Ndekọ & Ibe E Chekwara',
+      description:
+          'Nweta ngwa ngwa ihe niile ị deturu n\'onwe gị, amaokwu Baịbụl ị kara akara, na ibe akwụkwọ echekwara site na isi akụkọ ihu.',
+      icon: Icons.collections_bookmark_outlined,
+      accentColor: Color(0xFF0D9488),
+      route: '/bible?tab=study',
+      targetArea: 'my_study',
+      highlights: [
+        'Nyochaa ma dezie ihe niile ị deturu na Baịbụl',
+        'Hazi amaokwu ị kara akara n\'Agba Ochie na Agba Ọhụrụ',
+        'Otu mmetụ iji laghachi na isi Baịbụl echekwara',
+      ],
+    ),
+
+    // 12. Akụkọ Ọhụrụ & Ọkwa (News Feed)
+    AppTourStep(
+      id: 'step_news_feed',
+      title: 'Akụkọ Ọhụrụ & Ọkwa',
+      subtitle: 'Mmemme, Ọkwa & Nzukọ Ihu na Ihu',
+      description:
+          'Agbagharala ozi ọma ọ bụla nke ozi a. Akara elu na-egosi gị mmelite oge niile enwere mmemme, ozi ọkwa ma ọ bụ nzukọ dị ndụ.',
+      icon: Icons.newspaper_rounded,
+      accentColor: Color(0xFFE11D48),
+      route: '/events',
+      targetArea: 'news_feed',
+      highlights: [
+        'Akara na-agụ ozi ọhụrụ n\'oge ahụ',
+        'Ọbịbịa ozugbo na mmemme na ọrụ nke alaka dị iche iche',
+        'Isoro na nzukọ dị ndụ ozugbo site na ọkwa',
       ],
     ),
   ];

@@ -75,14 +75,15 @@ class EmailService {
         '<h2 style="color:#233E5F;margin:0 0 16px;">Account deletion confirmed</h2>'
         '<p>Dear $safeName,</p>'
         '<p>This confirms that your ALIVE Nigeria App account and all associated '
-        'profile data, reading history and achievements have been permanently '
+        'profile data, reading history, and achievements have been permanently '
         'deleted at your request.</p>'
-        '<p>If you did not request this deletion, or if you believe this was a '
-        'mistake, contact us immediately at $supportLink so we can assist you.</p>'
-        '<p>Thank you for being part of the ALIVE Nigeria community. You are '
-        'always welcome to create a new account at '
-        '<a href="https://app.alivenigeria.org">app.alivenigeria.org</a>.</p>'
-        '<p style="color:#64748B;font-size:13px;">— ALIVE Nigeria App Support</p>'
+        '<p>Please note that this action is final and permanent; deleted accounts '
+        'cannot be restored. If you wish to rejoin ALIVE Nigeria in the future, '
+        'you are always warmly welcome to register afresh with a new account on a '
+        'clean slate at <a href="https://app.alivenigeria.org">app.alivenigeria.org</a>.</p>'
+        '<p>For any general inquiries, our team is available at $supportLink.</p>'
+        '<p>Thank you for the time you shared with us, and may God bless your journey.</p>'
+        '<p style="color:#64748B;font-size:13px;">— ALIVE Nigeria App Ministry</p>'
         '</body></html>';
 
     await sendCustomEmail(

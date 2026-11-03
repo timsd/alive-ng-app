@@ -20,7 +20,10 @@ import '../../services/bible_database_helper.dart';
 class BibleReaderScreen extends ConsumerStatefulWidget {
   final String? initialReference;
 
-  const BibleReaderScreen({super.key, this.initialReference});
+  /// Initial tab index: 0 = Reader, 1 = Search, 2 = My Study.
+  final int initialTab;
+
+  const BibleReaderScreen({super.key, this.initialReference, this.initialTab = 0});
 
   @override
   ConsumerState<BibleReaderScreen> createState() => _BibleReaderScreenState();
@@ -87,7 +90,11 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(
+      length: 3,
+      vsync: this,
+      initialIndex: widget.initialTab.clamp(0, 2),
+    );
     _tabController.addListener(() {
       if (_tabController.index == 2 && !_tabController.indexIsChanging) {
         _loadStudyItems();

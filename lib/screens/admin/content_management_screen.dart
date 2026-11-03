@@ -1150,8 +1150,11 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                 ),
                 TextField(
                   controller: raisedController,
-                  decoration:
-                      const InputDecoration(labelText: 'Amount Raised (NGN)'),
+                  decoration: const InputDecoration(
+                    labelText: 'Amount Raised (NGN)',
+                    helperText:
+                        'Total raised (Paystack auto checkout + direct bank transfers)',
+                  ),
                   keyboardType: TextInputType.number,
                 ),
                 TextField(
@@ -1235,7 +1238,9 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
         'summary': summaryController.text,
         'description': descriptionController.text,
         'goal': double.tryParse(goalController.text) ?? 0,
+        'target_amount': double.tryParse(goalController.text) ?? 0,
         'raised': double.tryParse(raisedController.text) ?? 0,
+        'amount_raised': double.tryParse(raisedController.text) ?? 0,
         'image_url': imageUrlController.text,
         'fund_update_title': fundUpdateTitleController.text,
         'fund_update_text': fundUpdateTextController.text,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../constants/app_constants.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -23,7 +24,8 @@ class OathScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: CustomAppBar(
-        title: 'Community Covenant',
+        title: 'Community Guidelines',
+        showDonationButton: false,
         onBackPressed: () {
           if (context.canPop()) {
             context.pop();
@@ -39,10 +41,32 @@ class OathScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Spacer(),
-              Icon(
-                Icons.handshake_rounded,
-                size: 72,
-                color: theme.colorScheme.primary,
+              Center(
+                child: Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        theme.colorScheme.primary.withValues(alpha: 0.18),
+                        theme.colorScheme.primary.withValues(alpha: 0.05),
+                      ],
+                    ),
+                    border: Border.all(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.35),
+                      width: 1.5,
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: FaIcon(
+                    FontAwesomeIcons.handshakeSimple,
+                    size: 52,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
               ),
               const SizedBox(height: 24),
               Text(

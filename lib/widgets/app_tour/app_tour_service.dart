@@ -6,10 +6,10 @@ import 'app_tour_overlay.dart';
 class AppTourService {
   /// Bump this integer whenever you introduce new major features or workflows
   /// and want all users (even existing devices) to see the updated tour once.
-  static const int currentTourVersion = 2;
+  static const int currentTourVersion = 3;
 
   static const String _tourVersionKey = 'app_tour_seen_version';
-  static const String tourCompletedKey = 'app_feature_tour_v2_completed';
+  static const String tourCompletedKey = 'app_feature_tour_v3_completed';
   static bool _isTourActive = false;
 
   /// Returns true if the user has already viewed or dismissed the app tour

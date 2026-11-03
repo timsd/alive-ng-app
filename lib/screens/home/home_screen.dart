@@ -17,6 +17,8 @@ import '../../services/role_access_service.dart';
 import '../../config/appwrite_backend_config.dart';
 import '../../widgets/shimmer_loading.dart';
 import '../../widgets/app_tour/app_tour_service.dart';
+import '../../constants/app_constants.dart';
+import '../../providers/news_feed_provider.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -52,6 +54,39 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         title: l10n.home,
         showThemeToggle: true,
         showLanguageToggle: true,
+        actions: [
+          // My Study: Notes, Highlights & Bookmarks hub inside the Bible
+          IconButton(
+            icon: const Icon(Icons.collections_bookmark_outlined),
+            tooltip: 'My Study (Notes, Highlights & Bookmarks)',
+            onPressed: () => context.push('${AppConstants.bibleRoute}?tab=study'),
+          ),
+          // News Feed with unread badge
+          Consumer(
+            builder: (context, ref, _) {
+              final unread = ref.watch(newsFeedUnreadProvider);
+              return IconButton(
+                tooltip: unread > 0
+                    ? 'News Feed ($unread new)'
+                    : 'News Feed',
+                onPressed: () async {
+                  await ref.read(newsFeedUnreadProvider.notifier).markAllSeen();
+                  if (context.mounted) {
+                    await context.push(AppConstants.eventsRoute);
+                  }
+                  ref.read(newsFeedUnreadProvider.notifier).refresh();
+                },
+                icon: Badge(
+                  isLabelVisible: unread > 0,
+                  label: Text(unread > 99 ? '99+' : '$unread'),
+                  backgroundColor: const Color(0xFFE11D48),
+                  textColor: Colors.white,
+                  child: const Icon(Icons.newspaper_rounded),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: authState.when(
           data: (user) => _buildHomeContent(context, ref, user, isGuest),

@@ -26,7 +26,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       'title': 'Welcome to ALIVE Nigeria',
       'body':
           'Join our vibrant community united in deep Prayer, Scripture Study, Campus & Global Missions, and Wholistic Health.',
-      'icon': Icons.volunteer_activism_rounded,
+      'icon': Icons.sentiment_very_satisfied,
       'color': const Color(0xFFD49B28),
     },
     {
@@ -106,6 +106,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       appBar: CustomAppBar(
         title: 'Getting Started',
         showBackButton: false,
+        showDonationButton: false,
         actions: [
           if (_currentPage < _steps.length - 1)
             TextButton(

@@ -11,7 +11,9 @@ import 'dart:convert';
 
 import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/enums.dart' as appwrite_enums;
+import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:http/http.dart' as http;
 import 'package:livekit_client/livekit_client.dart' as lk;
 
@@ -105,6 +107,80 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
   /// Exposes the underlying room strictly for adapter-level consumers
   /// if specialized widgets need it, though UI should avoid direct usage.
   lk.Room? get rawRoom => _room;
+
+  @override
+  Widget? buildParticipantVideoWidget(String identity, {bool mirror = false}) {
+    final room = _room;
+    if (room == null) return null;
+
+    lk.Participant? participant;
+    if (room.localParticipant?.identity == identity) {
+      participant = room.localParticipant;
+    } else {
+      participant = room.remoteParticipants.values
+          .firstWhereOrNull((p) => p.identity == identity);
+    }
+
+    if (participant == null) return null;
+
+    final pub = participant.videoTrackPublications.firstWhereOrNull(
+      (p) => p.source == lk.TrackSource.camera && p.track != null && !p.muted,
+    );
+
+    final track = pub?.track;
+    if (track == null) return null;
+
+    return lk.VideoTrackRenderer(
+      track,
+      fit: lk.VideoViewFit.cover,
+      mirrorMode: mirror
+          ? lk.VideoViewMirrorMode.mirror
+          : (participant.isLocal
+              ? lk.VideoViewMirrorMode.mirror
+              : lk.VideoViewMirrorMode.off),
+    );
+  }
+
+  @override
+  Widget? buildScreenShareVideoWidget() {
+    final room = _room;
+    if (room == null) return null;
+
+    // Check local participant first
+    final localPub = room.localParticipant?.videoTrackPublications
+        .firstWhereOrNull(
+      (p) =>
+          p.source == lk.TrackSource.screenShareVideo &&
+          p.track != null &&
+          !p.muted,
+    );
+    if (localPub?.track != null) {
+      return lk.VideoTrackRenderer(
+        localPub!.track!,
+        fit: lk.VideoViewFit.contain,
+        mirrorMode: lk.VideoViewMirrorMode.off,
+      );
+    }
+
+    // Check remote participants
+    for (final remote in room.remoteParticipants.values) {
+      final remotePub = remote.videoTrackPublications.firstWhereOrNull(
+        (p) =>
+            p.source == lk.TrackSource.screenShareVideo &&
+            p.track != null &&
+            !p.muted,
+      );
+      if (remotePub?.track != null) {
+        return lk.VideoTrackRenderer(
+          remotePub!.track!,
+          fit: lk.VideoViewFit.contain,
+          mirrorMode: lk.VideoViewMirrorMode.off,
+        );
+      }
+    }
+
+    return null;
+  }
 
   // ──────────────────────────────────────────────────────────
   //  Broadcast getters
@@ -248,7 +324,13 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
     _roomListener = room.createListener();
 
     _roomListener!
-      ..on<lk.RoomConnectedEvent>((_) => _syncStateFromRoom())
+      ..on<lk.RoomConnectedEvent>((_) async {
+        try {
+          await room.startAudio();
+          await room.setSpeakerOn(true);
+        } catch (_) {}
+        _syncStateFromRoom();
+      })
       ..on<lk.RoomDisconnectedEvent>((_) {
         _currentSession = MeetingSession.initial();
         _emitSession();
@@ -257,13 +339,38 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         _currentSession = _currentSession.copyWith(status: RoomStatus.reconnecting);
         _emitSession();
       })
-      ..on<lk.RoomReconnectedEvent>((_) => _syncStateFromRoom())
+      ..on<lk.RoomReconnectedEvent>((_) async {
+        try {
+          await room.startAudio();
+          await room.setSpeakerOn(true);
+        } catch (_) {}
+        _syncStateFromRoom();
+      })
       ..on<lk.ParticipantConnectedEvent>((_) => _syncStateFromRoom())
       ..on<lk.ParticipantDisconnectedEvent>((_) => _syncStateFromRoom())
-      ..on<lk.TrackSubscribedEvent>((_) => _syncStateFromRoom())
+      ..on<lk.TrackSubscribedEvent>((event) async {
+        try {
+          if (event.track is lk.AudioTrack) {
+            await room.startAudio();
+            await room.setSpeakerOn(true);
+          }
+        } catch (_) {}
+        _syncStateFromRoom();
+      })
       ..on<lk.TrackUnsubscribedEvent>((_) => _syncStateFromRoom())
       ..on<lk.TrackMutedEvent>((_) => _syncStateFromRoom())
-      ..on<lk.TrackUnmutedEvent>((_) => _syncStateFromRoom())
+      ..on<lk.TrackUnmutedEvent>((event) async {
+        try {
+          if (event.track is lk.AudioTrack) {
+            await room.startAudio();
+            await room.setSpeakerOn(true);
+          }
+        } catch (_) {}
+        _syncStateFromRoom();
+      })
+      ..on<lk.AudioPlaybackStatusChanged>((event) {
+        debugPrint('[LiveKitMeetingGateway] AudioPlaybackStatusChanged: isPlaying=${event.isPlaying}');
+      })
       ..on<lk.SpeakingChangedEvent>((_) => _syncStateFromRoom())
       ..on<lk.DataReceivedEvent>((event) {
         try {
@@ -576,12 +683,23 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
 
       final room = lk.Room(
         roomOptions: const lk.RoomOptions(
-          defaultAudioPublishOptions: lk.AudioPublishOptions(),
+          defaultAudioPublishOptions: lk.AudioPublishOptions(
+            dtx: true,
+          ),
+          defaultAudioCaptureOptions: lk.AudioCaptureOptions(
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            highPassFilter: true,
+          ),
           defaultVideoPublishOptions: lk.VideoPublishOptions(
             videoEncoding: lk.VideoEncoding(
               maxFramerate: 30,
               maxBitrate: 1500000,
             ),
+          ),
+          defaultScreenShareCaptureOptions: lk.ScreenShareCaptureOptions(
+            captureScreenAudio: true,
           ),
           // Enable adaptive stream for better connection quality
           adaptiveStream: true,
@@ -609,11 +727,27 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
 
       _room = room;
 
+      // Prime audio playback & speaker routing immediately on connection
+      try {
+        await room.startAudio();
+        await room.setSpeakerOn(true);
+      } catch (audioInitErr) {
+        debugPrint('[LiveKitMeetingGateway] Audio prime note: $audioInitErr');
+      }
+
       // ── MUTE ON ENTRY BY DEFAULT (Approach A from Video Architecture) ──
       // Hardware access is primed in the browser/OS, but the audio track is initialized
       // in disabled mode (audioTrack.enabled = false) to ensure a quiet, professional entry.
       try {
-        await _room!.localParticipant?.setMicrophoneEnabled(false);
+        await _room!.localParticipant?.setMicrophoneEnabled(
+          false,
+          audioCaptureOptions: const lk.AudioCaptureOptions(
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            highPassFilter: true,
+          ),
+        );
         _isAudioMuted = true;
       } catch (audioErr) {
         debugPrint('Microphone unavailable or permission denied: $audioErr');
@@ -696,7 +830,21 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
     // If currently unmuted (_isAudioMuted == false), disable microphone (false).
     final shouldEnableMicrophone = _isAudioMuted;
     try {
-      await participant.setMicrophoneEnabled(shouldEnableMicrophone);
+      // Ensure audio context is running and speakerphone routing is enabled
+      try {
+        await _room?.startAudio();
+        await _room?.setSpeakerOn(true);
+      } catch (_) {}
+
+      await participant.setMicrophoneEnabled(
+        shouldEnableMicrophone,
+        audioCaptureOptions: const lk.AudioCaptureOptions(
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          highPassFilter: true,
+        ),
+      );
       _isAudioMuted = !shouldEnableMicrophone;
     } catch (e) {
       debugPrint('[LiveKitMeetingGateway] toggleAudio note: $e');
@@ -745,12 +893,29 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
 
     final shouldEnable = !_isScreenShareEnabled;
     try {
-      await participant.setScreenShareEnabled(shouldEnable);
+      // Standard conferencing: stream screen video AND computer/tab audio together
+      await participant.setScreenShareEnabled(
+        shouldEnable,
+        captureScreenAudio: true,
+        screenShareCaptureOptions: const lk.ScreenShareCaptureOptions(
+          captureScreenAudio: true,
+        ),
+      );
       _isScreenShareEnabled = shouldEnable;
     } catch (e) {
-      debugPrint('[LiveKitMeetingGateway] toggleScreenShare note: $e');
-      _isScreenShareEnabled = false;
-      rethrow;
+      debugPrint('[LiveKitMeetingGateway] toggleScreenShare with audio note: $e');
+      if (shouldEnable) {
+        // Fallback: If browser/platform denies screen audio capture, continue with video share
+        try {
+          await participant.setScreenShareEnabled(shouldEnable);
+          _isScreenShareEnabled = true;
+        } catch (innerErr) {
+          _isScreenShareEnabled = false;
+          rethrow;
+        }
+      } else {
+        _isScreenShareEnabled = false;
+      }
     }
     _syncStateFromRoom();
   }

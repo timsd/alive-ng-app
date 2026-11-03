@@ -136,8 +136,8 @@ export default async ({ req, res, log, error }) => {
               <p>Your profile and sign-in details have been removed. This also
                  means you will no longer receive ministry reminders or updates
                  on this account.</p>
-              <p>If you did not request this, or if you change your mind, you
-                 are welcome to create a new account or reply to this email.</p>
+              <p>All associated profile data, reading history, and achievements have been permanently erased. Please note that this action is irreversible and no account restoration is possible.</p>
+              <p>If you wish to return to ALIVE Nigeria in the future, you are always welcome to register afresh with a new account on a clean slate at <a href="https://app.alivenigeria.org">app.alivenigeria.org</a>.</p>
               <p>&mdash; ALIVE Nigeria</p>
             `.replace(/\n\s+/g, ' '),
           }),

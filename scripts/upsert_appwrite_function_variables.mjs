@@ -266,11 +266,14 @@ const functionConfigs = [
       envVariable('RECEIPT_SENDER_EMAIL', { secret: false }),
       envVariable('SENDER_EMAIL', { secret: false }),
       envVariable('REPLY_TO_EMAIL', { secret: false }),
+      envVariable('APPWRITE_ENDPOINT', { secret: false, fallback: endpoint }),
+      envVariable('APPWRITE_PROJECT_ID', { secret: false, fallback: projectId }),
+      envVariable('APPWRITE_API_KEY', { required: true, secret: true }),
     ],
     create: {
       runtime: 'node-20.0',
       execute: ['users'],
-      scopes: [],
+      scopes: ['users.read', 'users.write'],
     },
   },
 ];

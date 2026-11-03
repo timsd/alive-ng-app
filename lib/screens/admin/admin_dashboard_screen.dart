@@ -78,7 +78,6 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
   int _activeReports = 0;
   int _archivedUsers = 0;
   int _totalPodcasts = 0;
-  Map<String, int> _podcastCategoryCounts = {};
   int _dailyUsers = 0;
   int _totalPrayerRequests = 0;
   int _answeredPrayers = 0;
@@ -219,7 +218,6 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
         _activeReports = totalReports;
         _totalChapters = totalChapters;
         _totalPodcasts = podcasts.length;
-        _podcastCategoryCounts = categoryCounts;
         _dailyUsers = dailyUsers;
         _totalPrayerRequests = totalPrayers;
         _answeredPrayers = answeredPrayers;
@@ -306,16 +304,6 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
         .toList();
   }
 
-  String _displayPodcastCategory(String key) {
-    try {
-      final cat = PodcastCategory.values.firstWhere((c) => c.name == key);
-      return cat.displayName;
-    } catch (_) {
-      if (key.isEmpty) return 'Uncategorized';
-      final humanized = key.replaceAll('_', ' ');
-      return humanized[0].toUpperCase() + humanized.substring(1);
-    }
-  }
 
   BoxDecoration _panelDecoration(BuildContext context, {Color? tint}) {
     final theme = Theme.of(context);
@@ -688,56 +676,6 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
     return _buildStatCard(item.title, item.value, item.icon, item.color);
   }
 
-  // ─── Podcast categories breakdown ───
-
-  Widget _buildPodcastBreakdownPanel(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      decoration: _panelDecoration(context),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.legend_toggle, color: theme.colorScheme.primary, size: 20),
-                const SizedBox(width: 8),
-                Text(
-                  'Podcast Categories',
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const Spacer(),
-                Text(
-                  '$_totalPodcasts total',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _podcastCategoryCounts.entries.map((e) {
-                final display = _displayPodcastCategory(e.key);
-                return Chip(
-                  avatar: Icon(Icons.label, size: 16, color: theme.colorScheme.primary),
-                  label: Text('$display: ${e.value}',
-                    style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500),
-                  ),
-                  side: BorderSide(color: theme.colorScheme.outlineVariant),
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  visualDensity: VisualDensity.compact,
-                );
-              }).toList(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   // ─── Management header with search ───
 

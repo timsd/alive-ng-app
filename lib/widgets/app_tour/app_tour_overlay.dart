@@ -94,14 +94,20 @@ class _AppTourOverlayState extends ConsumerState<AppTourOverlay>
       case 'conference':
         return Offset(width * 0.90, bottomNavY);
       case 'donations':
-        // CompactDonationButton is the rightmost IconButton (48px wide -> center at width - 24)
+        // CompactDonationButton is the rightmost action (center at width - 24)
         return Offset(width - 24, topPadding + 28);
       case 'language':
-        // Language toggle is the second IconButton from the right (center at width - 72)
+        // Language toggle is second from right (center at width - 72)
         return Offset(width - 72, topPadding + 28);
       case 'theme':
-        // Theme toggle is the third IconButton from the right (center at width - 118)
-        return Offset(width - 118, topPadding + 28);
+        // Theme toggle is third from right (center at width - 120)
+        return Offset(width - 120, topPadding + 28);
+      case 'news_feed':
+        // News Feed bell/newspaper icon with unread badge (center at width - 168)
+        return Offset(width - 168, topPadding + 28);
+      case 'my_study':
+        // My Study bookmarks icon on Home header (center at width - 216)
+        return Offset(width - 216, topPadding + 28);
       case 'profile':
         // Profile pill with curved chevron on the top right of the Greeting Header
         final responsiveSide =
@@ -119,6 +125,8 @@ class _AppTourOverlayState extends ConsumerState<AppTourOverlay>
       case 'donations':
       case 'language':
       case 'theme':
+      case 'news_feed':
+      case 'my_study':
         return 22.0;
       case 'profile':
         return 40.0;
@@ -147,7 +155,9 @@ class _AppTourOverlayState extends ConsumerState<AppTourOverlay>
     final isProfileTarget = step.targetArea == 'profile';
     final isTopTarget = (step.targetArea == 'donations' ||
             step.targetArea == 'language' ||
-            step.targetArea == 'theme') &&
+            step.targetArea == 'theme' ||
+            step.targetArea == 'news_feed' ||
+            step.targetArea == 'my_study') &&
         !isProfileTarget;
 
     // Localized UI labels

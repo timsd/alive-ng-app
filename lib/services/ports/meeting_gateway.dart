@@ -9,6 +9,8 @@
 /// ```
 library;
 
+import 'package:flutter/widgets.dart';
+
 import '../../models/meeting_models.dart';
 
 /// Abstract gateway representing video/audio conferencing capabilities.
@@ -21,6 +23,12 @@ abstract class MeetingGateway {
 
   /// Stream of room connection status changes.
   Stream<RoomStatus> get roomStatus;
+
+  /// Returns a widget rendering the participant's camera video, or null if no active video track exists.
+  Widget? buildParticipantVideoWidget(String identity, {bool mirror = false});
+
+  /// Returns a widget rendering the active screen share video feed, or null if no screen is being shared.
+  Widget? buildScreenShareVideoWidget();
 
   /// Whether the client is currently connected to an active room.
   bool get isConnected;

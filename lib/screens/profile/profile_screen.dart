@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/language_provider.dart';
 import '../../l10n/supported_language.dart';
 import '../../providers/appwrite_auth_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../models/app_models.dart';
 import '../../services/appwrite_profile_service.dart';
 import '../../services/appwrite_storage_service.dart';
@@ -543,7 +544,40 @@ class ProfileScreen extends ConsumerWidget {
               deleteController.dispose();
               if (confirmed == true) {
                 try {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Row(
+                          children: [
+                            SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            ),
+                            SizedBox(width: 12),
+                            Text('Deleting account and clearing session...'),
+                          ],
+                        ),
+                        duration: Duration(seconds: 4),
+                      ),
+                    );
+                  }
                   await AuthService.instance.deleteAccount();
+
+                  // Immediately reset in-memory avatar overrides, session cache & providers
+                  ref.read(uploadedAvatarUrlProvider.notifier).state = null;
+                  ref.read(pendingAvatarBytesProvider.notifier).state = null;
+                  RoleAccessService.instance.clearCache();
+                  try {
+                    await ref.read(authGatewayProvider).signOut();
+                  } catch (_) {}
+                  ref.invalidate(currentUserProfileProvider);
+                  ref.invalidate(currentUserProvider);
+                  ref.invalidate(authStateProvider);
+
                   if (context.mounted) {
                     context.go(AppConstants.authRoute);
                   }

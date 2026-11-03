@@ -36,7 +36,7 @@ const List<String> _defaultPodcastCategoryNames = [
   'Evangelism',
 ];
 
-Map<String, dynamic> _podcastPayload(Podcast podcast, {String? category}) {
+Map<String, dynamic> _podcastPayload(Podcast podcast, {String? category, String? notes, String? transcript}) {
   final now = DateTime.now().toUtc().toIso8601String();
   return {
     'title': podcast.title,
@@ -49,6 +49,10 @@ Map<String, dynamic> _podcastPayload(Podcast podcast, {String? category}) {
     'tags': podcast.tags,
     'cover_image': podcast.coverImage,
     'audio_url': podcast.audioUrl,
+    if ((notes ?? podcast.notes) != null && (notes ?? podcast.notes)!.isNotEmpty)
+      'notes': notes ?? podcast.notes,
+    if ((transcript ?? podcast.transcript) != null && (transcript ?? podcast.transcript)!.isNotEmpty)
+      'transcript': transcript ?? podcast.transcript,
     'created_at': now,
     'updated_at': now,
   };
@@ -1863,63 +1867,47 @@ class _CategoryManagementTabState extends State<_CategoryManagementTab> {
   Future<void> _attemptDeleteCategory(
       String type, String name, String id) async {
     final messenger = ScaffoldMessenger.of(context);
-    final navigator = Navigator.of(context);
     try {
       final contentService = AppwriteAdminContentService.instance;
-      // Check usage in related collections
       int usageCount = 0;
-      if (type == 'tract') {
-        final tractsUsing =
-            await contentService.listWhere('tracts', 'category', name);
-        usageCount = tractsUsing.length;
-      } else {
-        // Podcast category may be stored as enum name or display name
-        final byDisplay =
-            await contentService.listWhere('podcasts', 'category', name);
-        final byEnum = await contentService.listWhere(
-            'podcasts', 'category', name.toLowerCase());
-        usageCount = byDisplay.length + byEnum.length;
+      try {
+        if (type == 'tract') {
+          final tractsUsing =
+              await contentService.listWhere('tracts', 'category', name);
+          usageCount = tractsUsing.length;
+        } else {
+          final byDisplay =
+              await contentService.listWhere('podcasts', 'category', name);
+          final byEnum = await contentService.listWhere(
+              'podcasts', 'category', name.toLowerCase());
+          usageCount = byDisplay.length + byEnum.length;
+        }
+      } catch (_) {
+        usageCount = 0;
       }
 
-      if (usageCount > 0) {
-        // Show usage warning and block deletion
-        if (!mounted) return;
-        await showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Cannot Delete Category'),
-            content: Text(
-              'The $type category "$name" is currently used by $usageCount item(s).\n\n'
-              'Please reassign or remove those items before deleting this category.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => navigator.pop(),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        );
-        return;
-      }
-
-      // Confirm deletion
       if (!mounted) return;
       final confirmed = await showDialog<bool>(
         context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Delete Category'),
+        builder: (dialogCtx) => AlertDialog(
+          title: Text('Delete $name?'),
           content: Text(
-              'Are you sure you want to delete "$name"? This action cannot be undone.'),
+            usageCount > 0
+                ? 'The $type category "$name" is currently assigned to $usageCount item(s).\n\n'
+                  'Deleting it will remove the category from the list. Are you sure you want to proceed?'
+                : 'Are you sure you want to delete "$name"? This action cannot be undone.',
+          ),
           actions: [
             TextButton(
-              onPressed: () => navigator.pop(false),
+              onPressed: () => Navigator.of(dialogCtx).pop(false),
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () => navigator.pop(true),
+              onPressed: () => Navigator.of(dialogCtx).pop(true),
               style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red, foregroundColor: Colors.white),
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
               child: const Text('Delete'),
             ),
           ],
@@ -1929,6 +1917,15 @@ class _CategoryManagementTabState extends State<_CategoryManagementTab> {
       if (confirmed != true) return;
       if (!mounted) return;
 
+      // Optimistically remove from state immediately
+      setState(() {
+        if (type == 'tract') {
+          _tractCategoryDocs.removeWhere((c) => c['id'] == id || c['name'] == name);
+        } else {
+          _podcastCategoryDocs.removeWhere((c) => c['id'] == id || c['name'] == name);
+        }
+      });
+
       final collection =
           type == 'tract' ? 'tract_categories' : 'podcast_categories';
       await contentService.deleteDocument(collection, id);
@@ -1937,15 +1934,17 @@ class _CategoryManagementTabState extends State<_CategoryManagementTab> {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-            content: Text('${type.capitalize()} category "$name" deleted'),
-            backgroundColor: Colors.red),
+          content: Text('${type.capitalize()} category "$name" deleted'),
+          backgroundColor: Colors.green,
+        ),
       );
     } catch (e) {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-            content: Text('Error deleting category: $e'),
-            backgroundColor: Colors.red),
+          content: Text('Error deleting category: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -1972,6 +1971,8 @@ class _PodcastFormDialogState extends State<_PodcastFormDialog> {
   final _hostController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _tagsController = TextEditingController();
+  final _notesController = TextEditingController();
+  final _transcriptController = TextEditingController();
 
   // Dynamic podcast categories from Appwrite with robust defaults
   List<String> _podcastCategories =
@@ -1995,6 +1996,8 @@ class _PodcastFormDialogState extends State<_PodcastFormDialog> {
       _hostController.text = widget.podcast!.host;
       _descriptionController.text = widget.podcast!.description;
       _tagsController.text = widget.podcast!.tags.join(', ');
+      _notesController.text = widget.podcast!.notes ?? '';
+      _transcriptController.text = widget.podcast!.transcript ?? '';
       _selectedCategory = widget.podcast!.category;
       _selectedPodcastCategoryName = widget.podcast!.categoryDisplayName;
     } else {
@@ -2049,6 +2052,8 @@ class _PodcastFormDialogState extends State<_PodcastFormDialog> {
     _hostController.dispose();
     _descriptionController.dispose();
     _tagsController.dispose();
+    _notesController.dispose();
+    _transcriptController.dispose();
     super.dispose();
   }
 
@@ -2222,6 +2227,32 @@ class _PodcastFormDialogState extends State<_PodcastFormDialog> {
                           prefixIcon: Icon(Icons.tag),
                           helperText: 'e.g., sermon, teaching, worship',
                         ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Study Notes & Overview
+                      TextFormField(
+                        controller: _notesController,
+                        decoration: const InputDecoration(
+                          labelText: 'Study Notes & Ministry Summary',
+                          hintText: 'Paste overview, key scriptural references, sermon outline, or study points...',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.sticky_note_2_outlined),
+                        ),
+                        maxLines: 4,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Audio Transcript
+                      TextFormField(
+                        controller: _transcriptController,
+                        decoration: const InputDecoration(
+                          labelText: 'Audio Transcript (Timestamped)',
+                          hintText: 'Paste audio transcription with speaker tags and timestamps...',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.subtitles_outlined),
+                        ),
+                        maxLines: 4,
                       ),
                       const SizedBox(height: 16),
 
@@ -2523,12 +2554,20 @@ class _PodcastFormDialogState extends State<_PodcastFormDialog> {
               .toList(),
           coverImage: coverImageUrl ?? widget.podcast?.coverImage,
           audioUrl: audioUrl ?? widget.podcast?.audioUrl,
+          notes: _notesController.text.trim().isNotEmpty
+              ? _notesController.text.trim()
+              : widget.podcast?.notes,
+          transcript: _transcriptController.text.trim().isNotEmpty
+              ? _transcriptController.text.trim()
+              : widget.podcast?.transcript,
         );
 
         final payload = _podcastPayload(
           podcast,
           category:
               _selectedPodcastCategoryName ?? podcast.categoryDisplayName,
+          notes: _notesController.text.trim(),
+          transcript: _transcriptController.text.trim(),
         );
         await contentService.upsertDocument(
           'podcasts',

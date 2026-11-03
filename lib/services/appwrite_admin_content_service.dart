@@ -11,6 +11,7 @@ class AppwriteAdminContentService {
       AppwriteAdminContentService._();
 
   final TablesDB _tables = TablesDB(appwriteClient);
+  final Databases _databases = Databases(appwriteClient);
 
   Future<List<Map<String, dynamic>>> listCollection(
     String collection, {
@@ -54,11 +55,26 @@ class AppwriteAdminContentService {
     String field,
     dynamic value, {
     int limit = 500,
-  }) {
-    return _list(_collectionId(collection), [
-      Query.equal(field, value),
-      Query.limit(limit),
-    ]);
+  }) async {
+    final collectionId = _collectionId(collection);
+    try {
+      return await _list(collectionId, [
+        Query.equal(field, value),
+        Query.limit(limit),
+      ]);
+    } catch (_) {
+      // Robust in-memory fallback if index is missing or query syntax error
+      try {
+        final all = await _list(collectionId, [Query.limit(limit)]);
+        return all.where((item) {
+          final itemVal = item[field]?.toString().toLowerCase();
+          final targetVal = value?.toString().toLowerCase();
+          return itemVal == targetVal;
+        }).toList();
+      } catch (_) {
+        return [];
+      }
+    }
   }
 
   Future<void> upsertDocument(
@@ -91,11 +107,39 @@ class AppwriteAdminContentService {
   }
 
   Future<void> deleteDocument(String collection, String documentId) async {
-    await _tables.deleteRow(
-      databaseId: AppwriteBackendConfig.databaseId,
-      tableId: _collectionId(collection),
-      rowId: AppwriteIdUtils.toValidUid(documentId),
-    );
+    final collectionId = _collectionId(collection);
+    final rowId = AppwriteIdUtils.toValidUid(documentId);
+    try {
+      await _tables.deleteRow(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: collectionId,
+        rowId: rowId,
+      );
+    } catch (_) {
+      try {
+        await _databases.deleteDocument(
+          databaseId: AppwriteBackendConfig.databaseId,
+          collectionId: collectionId,
+          documentId: rowId,
+        );
+      } catch (_) {
+        if (rowId != documentId) {
+          try {
+            await _tables.deleteRow(
+              databaseId: AppwriteBackendConfig.databaseId,
+              tableId: collectionId,
+              rowId: documentId,
+            );
+          } catch (_) {
+            await _databases.deleteDocument(
+              databaseId: AppwriteBackendConfig.databaseId,
+              collectionId: collectionId,
+              documentId: documentId,
+            );
+          }
+        }
+      }
+    }
   }
 
   Future<List<Map<String, dynamic>>> _list(
