@@ -419,7 +419,7 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
 
         // Author
         Text(
-          'By ${widget.tract.author}',
+          'By ${widget.tract.author?.trim().isNotEmpty == true ? widget.tract.author : "ALIVE Nigeria"}',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
                 fontSize: ResponsiveUtils.getResponsiveValue(
@@ -639,6 +639,20 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
 
   // Helper method to build passport-sized avatars
   Widget _buildPassportAvatar(String imagePath) {
+    final iconFallback = Container(
+      color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+      child: Icon(
+        Icons.auto_stories,
+        size: ResponsiveUtils.getResponsiveValue(
+          context: context,
+          mobile: 32.0,
+          tablet: 36.0,
+          desktop: 40.0,
+        ),
+        color: Theme.of(context).primaryColor,
+      ),
+    );
+
     return Container(
       width: ResponsiveUtils.getResponsiveValue(
         context: context,
@@ -668,25 +682,13 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(6),
-        child: Image.asset(
-          imagePath,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return Container(
-              color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
-              child: Icon(
-                Icons.auto_stories,
-                size: ResponsiveUtils.getResponsiveValue(
-                  context: context,
-                  mobile: 32.0,
-                  tablet: 36.0,
-                  desktop: 40.0,
-                ),
-                color: Theme.of(context).primaryColor,
+        child: imagePath.trim().isEmpty
+            ? iconFallback
+            : Image.asset(
+                imagePath,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => iconFallback,
               ),
-            );
-          },
-        ),
       ),
     );
   }

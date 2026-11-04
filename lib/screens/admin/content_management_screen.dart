@@ -12,6 +12,7 @@ import '../../utils/text_formatter.dart';
 import '../../utils/layout_fix_utils.dart';
 import '../../utils/project_sync_bridge.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../services/interactive_lessons_service.dart';
 
 class ContentManagementScreen extends StatefulWidget {
   final String? contentType;
@@ -235,12 +236,14 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _loadAllContent();
 
     // Set initial tab based on content type
     if (widget.contentType == 'projects') {
       _tabController.index = 1;
+    } else if (widget.contentType == 'lessons') {
+      _tabController.index = 2;
     }
   }
 
@@ -434,6 +437,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
             tabs: const [
               Tab(text: 'Content Pages', icon: Icon(Icons.article_outlined, size: 20)),
               Tab(text: 'Projects', icon: Icon(Icons.account_tree_outlined, size: 20)),
+              Tab(text: 'Lessons', icon: Icon(Icons.school_outlined, size: 20)),
             ],
           ),
         ),
@@ -444,6 +448,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                 children: [
                   _buildContentPagesTab(),
                   _buildProjectsTab(),
+                  _buildInteractiveLessonsTab(),
                 ],
               ),
       ),
@@ -1389,5 +1394,296 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     } finally {
       setState(() => _isLoading = false);
     }
+  }
+
+  // -------------------------------------------------------------
+  // TAB 3: Interactive Lessons Management
+  // -------------------------------------------------------------
+
+  Widget _buildInteractiveLessonsTab() {
+    final lessonsService = InteractiveLessonsService.instance;
+    return AnimatedBuilder(
+      animation: lessonsService,
+      builder: (context, _) {
+        final lessons = lessonsService.lessons;
+        return LayoutFixUtils.safeColumn(
+          children: [
+            _buildSectionHeader(
+              context,
+              'Interactive Lessons (${lessons.length})',
+              ElevatedButton.icon(
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Add Lesson'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: () => _showLessonEditorDialog(),
+              ),
+            ),
+            if (lessons.isEmpty)
+              const Expanded(
+                child: Center(
+                  child: Text('No interactive lessons yet. Tap + to create one.'),
+                ),
+              )
+            else
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  itemCount: lessons.length,
+                  itemBuilder: (context, index) {
+                    final lesson = lessons[index];
+                    return Card(
+                      elevation: 0,
+                      margin: const EdgeInsets.only(bottom: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        side: BorderSide(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .outline
+                              .withValues(alpha: 0.15),
+                        ),
+                      ),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: Theme.of(context)
+                              .colorScheme
+                              .primary
+                              .withValues(alpha: 0.12),
+                          child: Icon(
+                            Icons.school_outlined,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                        title: Text(
+                          lesson.title,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Text(
+                          '${lesson.category} • ${lesson.level} • ${lesson.duration}\n${lesson.description}',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: Icon(
+                                lesson.isActive
+                                    ? Icons.visibility_rounded
+                                    : Icons.visibility_off_rounded,
+                                color: lesson.isActive ? Colors.green : Colors.grey,
+                                size: 20,
+                              ),
+                              tooltip: lesson.isActive ? 'Hide' : 'Publish',
+                              onPressed: () {
+                                lessonsService.saveLesson(
+                                  lesson.copyWith(isActive: !lesson.isActive),
+                                );
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined, size: 20),
+                              tooltip: 'Edit Lesson',
+                              onPressed: () =>
+                                  _showLessonEditorDialog(lesson: lesson),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline_rounded,
+                                  color: Colors.redAccent, size: 20),
+                              tooltip: 'Delete Lesson',
+                              onPressed: () =>
+                                  _showDeleteLessonDialog(lesson),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showLessonEditorDialog({InteractiveLessonItem? lesson}) {
+    final isEditing = lesson != null;
+    final titleController = TextEditingController(text: lesson?.title ?? '');
+    final descriptionController =
+        TextEditingController(text: lesson?.description ?? '');
+    final durationController =
+        TextEditingController(text: lesson?.duration ?? '30 min');
+    final contentController =
+        TextEditingController(text: lesson?.content ?? '');
+
+    String selectedCategory = lesson?.category ?? 'Bible Study';
+    String selectedLevel = lesson?.level ?? 'Beginner';
+    bool isActive = lesson?.isActive ?? true;
+
+    final categories = ['Bible Study', 'Prophecy', 'Health', 'Missions', 'Discipleship', 'Doctrine'];
+    final levels = ['Beginner', 'Intermediate', 'Advanced'];
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(isEditing ? 'Edit Interactive Lesson' : 'New Interactive Lesson'),
+          content: SizedBox(
+            width: 500,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: titleController,
+                    decoration: const InputDecoration(
+                      labelText: 'Lesson Title *',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: selectedCategory,
+                          decoration: const InputDecoration(
+                            labelText: 'Category',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: categories
+                              .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                              .toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setDialogState(() => selectedCategory = val);
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: selectedLevel,
+                          decoration: const InputDecoration(
+                            labelText: 'Level',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: levels
+                              .map((l) => DropdownMenuItem(value: l, child: Text(l)))
+                              .toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setDialogState(() => selectedLevel = val);
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: durationController,
+                    decoration: const InputDecoration(
+                      labelText: 'Estimated Duration',
+                      hintText: 'e.g. 35 min',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: descriptionController,
+                    maxLines: 2,
+                    decoration: const InputDecoration(
+                      labelText: 'Short Description',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: contentController,
+                    maxLines: 5,
+                    decoration: const InputDecoration(
+                      labelText: 'Lesson Content (Markdown)',
+                      hintText: '# Title\n\nLesson content and scripture references...',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SwitchListTile(
+                    title: const Text('Published (Visible to members)'),
+                    value: isActive,
+                    onChanged: (v) => setDialogState(() => isActive = v),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (titleController.text.trim().isEmpty) {
+                  ToastUtils.showError('Please enter a lesson title');
+                  return;
+                }
+                final updated = InteractiveLessonItem(
+                  id: lesson?.id ?? 'lesson_${DateTime.now().millisecondsSinceEpoch}',
+                  title: titleController.text.trim(),
+                  description: descriptionController.text.trim(),
+                  category: selectedCategory,
+                  level: selectedLevel,
+                  duration: durationController.text.trim(),
+                  content: contentController.text.trim(),
+                  isActive: isActive,
+                  isFavorite: lesson?.isFavorite ?? false,
+                  progress: lesson?.progress ?? 0.0,
+                  isCompleted: lesson?.isCompleted ?? false,
+                );
+                InteractiveLessonsService.instance.saveLesson(updated);
+                Navigator.pop(ctx);
+                ToastUtils.showSuccess(isEditing ? 'Lesson updated!' : 'Lesson created!');
+              },
+              child: Text(isEditing ? 'Save Changes' : 'Create Lesson'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDeleteLessonDialog(InteractiveLessonItem lesson) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Lesson?'),
+        content: Text('Are you sure you want to delete "${lesson.title}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
+              InteractiveLessonsService.instance.deleteLesson(lesson.id);
+              Navigator.pop(ctx);
+              ToastUtils.showSuccess('Lesson deleted');
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
   }
 }

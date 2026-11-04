@@ -1,8 +1,20 @@
+import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../widgets/custom_app_bar.dart';
+
+/// Whether the current platform supports in-app WebView rendering.
+/// Only Android and iOS have reliable webview_flutter support.
+bool get _supportsInAppWebView {
+  if (kIsWeb) return false;
+  try {
+    return Platform.isAndroid || Platform.isIOS;
+  } catch (_) {
+    return false;
+  }
+}
 
 /// In-app PDF Viewer Screen that renders documents directly within the app
 /// without launching external browser apps or forcing file downloads on mobile,
@@ -39,7 +51,7 @@ class _InAppPdfViewerScreenState extends State<InAppPdfViewerScreen> {
       _errorMessage = null;
     });
 
-    if (kIsWeb) {
+    if (!_supportsInAppWebView) {
       _openExternal();
       setState(() {
         _isLoading = false;

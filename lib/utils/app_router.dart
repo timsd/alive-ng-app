@@ -286,20 +286,48 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppConstants.resetPasswordRoute,
         builder: (context, state) {
-          // Appwrite's own recovery mail and our branded Resend mail can both
-          // arrive, and they build the link differently. Read the token from
-          // the query string first, then fall back to the fragment, because
-          // this app also routes with `/#/path`, where anything after `#`
-          // is a fragment rather than a query. Reading only one of the two is
-          // what made the reset screen appear to have no secret.
+          // Appwrite's own recovery mail and branded mail can both arrive, and
+          // links may be formatted either with standard query string or fragment:
+          // 1. https://app.alivenigeria.org/reset-password?userId=..&secret=..
+          // 2. https://app.alivenigeria.org/#/reset-password?userId=..&secret=..
+          // 3. https://app.alivenigeria.org/?userId=..&secret=..#/reset-password
           final query = state.uri.queryParameters;
           final fragment = state.uri.fragment;
           final fromFragment = fragment.contains('?')
               ? Uri.splitQueryString(fragment.split('?').last)
               : const <String, String>{};
+
+          final baseQuery = Uri.base.queryParameters;
+          final baseFrag = Uri.base.fragment;
+          final fromBaseFrag = baseFrag.contains('?')
+              ? Uri.splitQueryString(baseFrag.split('?').last)
+              : const <String, String>{};
+
+          final resolvedUserId = query['userId'] ??
+              query['user_id'] ??
+              query['id'] ??
+              fromFragment['userId'] ??
+              fromFragment['user_id'] ??
+              fromFragment['id'] ??
+              baseQuery['userId'] ??
+              baseQuery['user_id'] ??
+              baseQuery['id'] ??
+              fromBaseFrag['userId'] ??
+              fromBaseFrag['user_id'] ??
+              fromBaseFrag['id'];
+
+          final resolvedSecret = query['secret'] ??
+              query['token'] ??
+              fromFragment['secret'] ??
+              fromFragment['token'] ??
+              baseQuery['secret'] ??
+              baseQuery['token'] ??
+              fromBaseFrag['secret'] ??
+              fromBaseFrag['token'];
+
           return ResetPasswordScreen(
-            userId: query['userId'] ?? fromFragment['userId'],
-            secret: query['secret'] ?? fromFragment['secret'],
+            userId: resolvedUserId,
+            secret: resolvedSecret,
           );
         },
       ),
@@ -652,6 +680,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/discipleship',
             redirect: (context, state) => AppConstants.discipleshipTrackerRoute,
+          ),
+          GoRoute(
+            path: '/more',
+            redirect: (context, state) => AppConstants.homeRoute,
           ),
 
           // Events Route

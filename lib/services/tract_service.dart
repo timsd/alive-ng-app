@@ -117,29 +117,42 @@ class TractService {
   Future<TractContent?> getTractContent(String tractId) async {
     try {
       if (kIsWeb) {
-        final remoteContent = await _fetchTractContentFromAppwrite(tractId);
+        final remoteContent = await _fetchTractContentFromAppwrite(tractId)
+            .timeout(const Duration(seconds: 4), onTimeout: () => null);
         return remoteContent ?? _getDefaultTractContent(tractId);
       }
 
-      // Try local database first
-      final localContent = await _dbHelper.getTractContent(tractId);
-      if (localContent != null) {
-        return localContent;
+      // Try local database first with timeout
+      try {
+        final localContent = await _dbHelper
+            .getTractContent(tractId)
+            .timeout(const Duration(seconds: 2), onTimeout: () => null);
+        if (localContent != null) {
+          return localContent;
+        }
+      } catch (e) {
+        _logger.warning('Local db getTractContent failed or timed out: $e');
       }
 
-      // Fetch from Appwrite if not found locally.
-      final remoteContent = await _fetchTractContentFromAppwrite(tractId);
-      if (remoteContent != null) {
-        await _dbHelper.insertTractContent(remoteContent);
-        return remoteContent;
+      // Fetch from Appwrite if not found locally with timeout
+      try {
+        final remoteContent = await _fetchTractContentFromAppwrite(tractId)
+            .timeout(const Duration(seconds: 4), onTimeout: () => null);
+        if (remoteContent != null) {
+          try {
+            await _dbHelper.insertTractContent(remoteContent);
+          } catch (_) {}
+          return remoteContent;
+        }
+      } catch (e) {
+        _logger.warning('Appwrite getTractContent failed or timed out: $e');
       }
 
       // Fallback to default lesson content if not yet provisioned in Appwrite
       return _getDefaultTractContent(tractId);
     } catch (e) {
-      if (e is AppException) rethrow;
-      _logger.error('Error getting tract content', e);
-      throw DatabaseException('Failed to get tract content', originalError: e);
+      _logger.error('Error getting tract content, falling back to default', e);
+      return _getDefaultTractContent(tractId);
     }
   }
 

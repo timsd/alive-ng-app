@@ -6,6 +6,7 @@ import '../../utils/responsive_utils.dart';
 import '../../utils/search_utils.dart';
 import '../../utils/text_formatter.dart';
 import '../../services/role_access_service.dart';
+import '../../services/interactive_lessons_service.dart';
 import '../../models/tract_models.dart';
 import '../books/tract_reader_screen.dart';
 
@@ -31,77 +32,35 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
   List<Map<String, dynamic>> _progressLessons = [];
   List<Map<String, dynamic>> _favoriteLessons = [];
   List<Map<String, dynamic>> _completedLessons = [];
+  final InteractiveLessonsService _lessonsService =
+      InteractiveLessonsService.instance;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     _checkAdminStatus();
-    
-    // Initialize sample lesson data
-    _allLessons = [
-      {
-        'title': 'The Great Controversy',
-        'description': 'Understanding the cosmic conflict between good and evil',
-        'category': 'Bible Study',
-        'level': 'Intermediate',
-        'duration': '45 min',
-        'isFavorite': false,
-        'progress': 0.0,
-        'isCompleted': false,
-        'isDemo': false,
-      },
-      {
-        'title': 'Daniel and Revelation',
-        'description': 'Exploring apocalyptic prophecies and their meanings',
-        'category': 'Prophecy',
-        'level': 'Advanced',
-        'duration': '60 min',
-        'isFavorite': true,
-        'progress': 0.7,
-        'isCompleted': false,
-        'isDemo': false,
-      },
-      {
-        'title': 'Steps to Christ',
-        'description': 'A guide to finding Jesus and growing in faith',
-        'category': 'Bible Study',
-        'level': 'Beginner',
-        'duration': '30 min',
-        'isFavorite': false,
-        'progress': 1.0,
-        'isCompleted': true,
-        'isDemo': false,
-      },
-      {
-        'title': 'Healthy Living Principles',
-        'description': 'Biblical principles for physical and mental health',
-        'category': 'Health',
-        'level': 'Beginner',
-        'duration': '40 min',
-        'isFavorite': true,
-        'progress': 0.3,
-        'isCompleted': false,
-        'isDemo': false,
-      },
-      {
-        'title': 'Prayer and Meditation',
-        'description': 'Deepening your relationship with God through prayer',
-        'category': 'Bible Study',
-        'level': 'Beginner',
-        'duration': '35 min',
-        'isFavorite': true,
-        'progress': 1.0,
-        'isCompleted': true,
-        'isDemo': false,
-      },
-    ];
-    
-    _updateFilteredLessons();
+    _loadFromService();
+    _lessonsService.addListener(_onServiceUpdate);
+  }
+
+  void _onServiceUpdate() {
+    if (mounted) {
+      _loadFromService();
+    }
+  }
+
+  void _loadFromService() {
+    setState(() {
+      _allLessons =
+          _lessonsService.activeLessons.map((l) => l.toJson()).toList();
+      _updateFilteredLessons();
+    });
   }
 
   @override
   void dispose() {
+    _lessonsService.removeListener(_onServiceUpdate);
     _tabController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -530,10 +489,13 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
   }
 
   void _toggleFavorite(int index) {
-    setState(() {
-      _allLessons[index]['isFavorite'] = !_allLessons[index]['isFavorite'];
-      _updateFilteredLessons();
-    });
+    if (index >= 0 && index < _filteredLessons.length) {
+      final lesson = _filteredLessons[index];
+      final id = lesson['id']?.toString();
+      if (id != null) {
+        _lessonsService.toggleFavorite(id);
+      }
+    }
   }
 
   void _showLessonDetails(Map<String, dynamic> lesson) {
@@ -610,8 +572,11 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
           ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
+              final lessonId = lesson['id']?.toString() ??
+                  'lesson_${(lesson['title'] ?? '').toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_')}';
+              _lessonsService.updateLessonProgress(lessonId, 0.5);
               final tract = Tract(
-                id: 'lesson_${(lesson['title'] ?? '').toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_')}',
+                id: lessonId,
                 title: lesson['title'] ?? 'Interactive Lesson',
                 description: lesson['description'] ?? '',
                 category: lesson['category'] ?? 'Bible Study',

@@ -4,6 +4,7 @@ import '../models/app_models.dart';
 import 'appwrite_admin_notification_store.dart';
 import 'approval_link_service.dart';
 import 'email_service.dart';
+import 'notification_service.dart';
 
 /// Service for sending admin notifications for new user registrations
 class AdminNotificationService {
@@ -88,6 +89,30 @@ class AdminNotificationService {
           if (approvalUrl != null) 'approval_url': approvalUrl,
         },
       );
+
+      if (requiresApproval) {
+        final applicantName = userProfile.fullName ?? userProfile.email;
+        final requestedRole = userProfile.requestedRole ?? userProfile.role;
+        final pushTitle = 'Action Required: New Coordinator Registration';
+        final pushBody = '$applicantName requested approval for $requestedRole. Tap to review.';
+
+        try {
+          await NotificationService.instance.showNotification(
+            id: userProfile.id.hashCode,
+            title: pushTitle,
+            body: pushBody,
+            payload: jsonEncode({
+              'type': 'pending_registration_approval',
+              'route': '/admin-approval',
+              'id': userProfile.id,
+              'role': requestedRole,
+            }),
+          );
+          _logger.info('Dispatched admin approval push notification for $applicantName');
+        } catch (pushErr) {
+          _logger.warning('Admin approval push dispatch note: $pushErr');
+        }
+      }
 
       if (anySuccess) {
         _logger.info(

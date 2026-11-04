@@ -51,15 +51,38 @@ class ModernPodcastPlayerSheet extends StatefulWidget {
       _ModernPodcastPlayerSheetState();
 }
 
+/// Structured transcript line model with pre-parsed playback seconds for instant Spotify-style sync.
+class _PodcastTranscriptLine {
+  final int seconds;
+  final String time;
+  final String speaker;
+  final String text;
+
+  const _PodcastTranscriptLine({
+    required this.seconds,
+    required this.time,
+    required this.speaker,
+    required this.text,
+  });
+}
+
 class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final TextEditingController _transcriptSearchController =
       TextEditingController();
+  final ScrollController _transcriptScrollController = ScrollController();
+  StreamSubscription<Duration>? _positionSubscription;
+
   String _transcriptQuery = '';
   double _currentSpeed = 1.0;
   bool _isSeeking = false;
   double _dragPosition = 0.0;
+
+  // Transcript Sync State (Spotify-style)
+  List<_PodcastTranscriptLine> _transcriptLines = [];
+  int _activeTranscriptIndex = -1;
+  bool _userIsScrollingTranscript = false;
 
   // Personal Notes State
   String _userNote = '';
@@ -81,13 +104,62 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _currentSpeed = widget.audioPlayer.speed;
+    _transcriptLines = _parseTranscriptLines();
     _loadUserNote();
+    _startPositionSync();
+  }
+
+  void _startPositionSync() {
+    _positionSubscription = widget.audioPlayer.positionStream.listen((pos) {
+      if (!mounted || _transcriptLines.isEmpty) return;
+      final currentSeconds = pos.inSeconds;
+      final newIndex = _findActiveTranscriptIndex(currentSeconds);
+
+      if (newIndex != _activeTranscriptIndex) {
+        setState(() {
+          _activeTranscriptIndex = newIndex;
+        });
+
+        // Instant Spotify-style scroll sync when viewing Transcript tab
+        if (_tabController.index == 1 &&
+            !_userIsScrollingTranscript &&
+            _transcriptScrollController.hasClients &&
+            newIndex >= 0) {
+          final targetOffset = (newIndex * 92.0)
+              .clamp(0.0, _transcriptScrollController.position.maxScrollExtent);
+          _transcriptScrollController.animateTo(
+            targetOffset,
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeOutCubic,
+          );
+        }
+      }
+    });
+  }
+
+  int _findActiveTranscriptIndex(int currentSeconds) {
+    if (_transcriptLines.isEmpty) return -1;
+    for (int i = 0; i < _transcriptLines.length; i++) {
+      final lineSec = _transcriptLines[i].seconds;
+      final nextSec = (i + 1 < _transcriptLines.length)
+          ? _transcriptLines[i + 1].seconds
+          : null;
+
+      if (currentSeconds >= lineSec && (nextSec == null || currentSeconds < nextSec)) {
+        return i;
+      }
+    }
+    return _transcriptLines.isNotEmpty && currentSeconds >= _transcriptLines.last.seconds
+        ? _transcriptLines.length - 1
+        : 0;
   }
 
   @override
   void dispose() {
+    _positionSubscription?.cancel();
     _tabController.dispose();
     _transcriptSearchController.dispose();
+    _transcriptScrollController.dispose();
     _noteController.dispose();
     super.dispose();
   }
@@ -208,7 +280,7 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
     widget.audioPlayer.setSpeed(newSpeed);
   }
 
-  List<Map<String, String>> _getFormattedTranscript() {
+  List<_PodcastTranscriptLine> _parseTranscriptLines() {
     final raw = (widget.episodeData['transcript'] ??
             widget.episodeData['transcription'] ??
             widget.episodeData['description'] ??
@@ -217,37 +289,20 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
         .trim();
 
     if (raw.isEmpty) {
-      return [
-        {
-          'time': '00:00',
-          'speaker': 'Speaker',
-          'text':
-              'Welcome to this episode of ${widget.podcastTitle}. In this message, we unpack foundational truths for discipleship and spiritual growth.',
-        },
-        {
-          'time': '01:15',
-          'speaker': 'Speaker',
-          'text':
-              'Scripture reminds us in Proverbs 3:5-6: "Trust in the Lord with all your heart, and lean not on your own understanding; in all your ways acknowledge Him, and He shall direct your paths."',
-        },
-        {
-          'time': '04:30',
-          'speaker': 'Speaker',
-          'text':
-              'When we surrender our plans to Christ, we find true purpose and peace in missionary service.',
-        },
-        {
-          'time': '08:00',
-          'speaker': 'Speaker',
-          'text':
-              'Thank you for listening. Keep sharing the gospel truth across Nigeria and beyond.',
-        },
+      return const [
+        _PodcastTranscriptLine(
+          seconds: 0,
+          time: '00:00',
+          speaker: 'Speaker',
+          text:
+              'Welcome to this episode. Foundational truths for discipleship and spiritual growth.',
+        ),
       ];
     }
 
     final paragraphs = raw.split(RegExp(r'\n+'));
-    final results = <Map<String, String>>[];
-    int minuteCounter = 0;
+    final results = <_PodcastTranscriptLine>[];
+    int syntheticSeconds = 0;
 
     for (int i = 0; i < paragraphs.length; i++) {
       var p = paragraphs[i].trim();
@@ -257,17 +312,21 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
       p = p.replaceAll(RegExp(r'^\*+\s*(\*+\s*)*'), '').trim();
 
       String timeStr =
-          '${(minuteCounter ~/ 60).toString().padLeft(2, '0')}:${(minuteCounter % 60).toString().padLeft(2, '0')}';
+          '${(syntheticSeconds ~/ 60).toString().padLeft(2, '0')}:${(syntheticSeconds % 60).toString().padLeft(2, '0')}';
+      int itemSeconds = syntheticSeconds;
       String speaker = i % 2 == 0 ? 'Speaker' : 'Reflection';
 
-      // Check if line starts with [mm:ss]
-      final timeMatch = RegExp(r'^\[(\d{1,3}:\d{2})\]\s*').firstMatch(p);
+      // Check if line starts with [mm:ss] or [hh:mm:ss]
+      final timeMatch = RegExp(r'^\[(\d{1,3}):(\d{2})\]\s*').firstMatch(p);
       if (timeMatch != null) {
-        timeStr = timeMatch.group(1)!;
+        final mins = int.tryParse(timeMatch.group(1)!) ?? 0;
+        final secs = int.tryParse(timeMatch.group(2)!) ?? 0;
+        itemSeconds = (mins * 60) + secs;
+        timeStr = '${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
         p = p.substring(timeMatch.end).trim();
       }
 
-      // Check for speaker pattern like **Speaker**: or *Intro Announcement*: or Audience member:
+      // Check for speaker pattern like **Speaker**: or *Intro Announcement*:
       final speakerMatch =
           RegExp(r'^\*?\*?([A-Za-z0-9\s]+)\*?\*?:\s*').firstMatch(p);
       if (speakerMatch != null && speakerMatch.group(1)!.length < 32) {
@@ -275,16 +334,17 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
         p = p.substring(speakerMatch.end).trim();
       }
 
-      // Clean remaining asterisks
+      // Clean remaining asterisks and artifacts
       p = p.replaceAll('**', '').replaceAll('*', '').trim();
       if (p.isEmpty) continue;
 
-      results.add({
-        'time': timeStr,
-        'speaker': speaker,
-        'text': p,
-      });
-      minuteCounter += 2;
+      results.add(_PodcastTranscriptLine(
+        seconds: itemSeconds,
+        time: timeStr,
+        speaker: speaker,
+        text: p,
+      ));
+      syntheticSeconds += 30; // 30s step if timestamps absent
     }
     return results;
   }
@@ -761,11 +821,10 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
 
   Widget _buildTranscriptView(ThemeData theme, ColorScheme colorScheme) {
     final isDark = theme.brightness == Brightness.dark;
-    final transcriptItems = _getFormattedTranscript();
     final filtered = _transcriptQuery.isEmpty
-        ? transcriptItems
-        : transcriptItems.where((item) {
-            return (item['text'] ?? '')
+        ? _transcriptLines
+        : _transcriptLines.where((item) {
+            return item.text
                 .toLowerCase()
                 .contains(_transcriptQuery.toLowerCase());
           }).toList();
@@ -807,175 +866,162 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
 
           // Transcript List with Spotify-style live time synchronization
           Expanded(
-            child: StreamBuilder<Duration>(
-              stream: widget.audioPlayer.positionStream,
-              builder: (context, snapshot) {
-                final currentSeconds = snapshot.data?.inSeconds ?? 0;
-
-                return ListView.separated(
-                  itemCount: filtered.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final item = filtered[index];
-                    final parts = (item['time'] ?? '00:00').split(':');
-                    final itemSeconds = parts.length == 2
-                        ? ((int.tryParse(parts[0]) ?? 0) * 60) +
-                            (int.tryParse(parts[1]) ?? 0)
-                        : 0;
-
-                    int? nextSeconds;
-                    if (index + 1 < filtered.length) {
-                      final nextParts =
-                          (filtered[index + 1]['time'] ?? '00:00').split(':');
-                      if (nextParts.length == 2) {
-                        nextSeconds =
-                            ((int.tryParse(nextParts[0]) ?? 0) * 60) +
-                                (int.tryParse(nextParts[1]) ?? 0);
-                      }
+            child: NotificationListener<ScrollNotification>(
+              onNotification: (notification) {
+                if (notification is ScrollStartNotification) {
+                  _userIsScrollingTranscript = true;
+                } else if (notification is ScrollEndNotification) {
+                  // Re-enable auto-scroll after a short delay
+                  Future.delayed(const Duration(seconds: 3), () {
+                    if (mounted) {
+                      _userIsScrollingTranscript = false;
                     }
+                  });
+                }
+                return false;
+              },
+              child: ListView.separated(
+                controller: _transcriptScrollController,
+                itemCount: filtered.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                itemBuilder: (context, index) {
+                  final item = filtered[index];
+                  final isActive = _transcriptQuery.isEmpty &&
+                      index == _activeTranscriptIndex;
 
-                    final isActive = currentSeconds >= itemSeconds &&
-                        (nextSeconds == null || currentSeconds < nextSeconds);
-
-                    return InkWell(
-                      onTap: () {
-                        // Tap timestamp to seek
-                        widget.audioPlayer
-                            .seek(Duration(seconds: itemSeconds));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Jumped to ${item['time']}'),
-                            duration: const Duration(seconds: 1),
-                          ),
-                        );
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 250),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
+                  return InkWell(
+                    onTap: () {
+                      // Tap timestamp or line to seek instantly
+                      widget.audioPlayer
+                          .seek(Duration(seconds: item.seconds));
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isActive
+                            ? colorScheme.primary.withValues(
+                                alpha: isDark ? 0.25 : 0.14)
+                            : colorScheme.surfaceContainerHighest
+                                .withValues(alpha: isDark ? 0.3 : 0.45),
+                        border: Border.all(
                           color: isActive
-                              ? colorScheme.primary.withValues(
-                                  alpha: isDark ? 0.22 : 0.12)
-                              : colorScheme.surfaceContainerHighest
-                                  .withValues(alpha: 0.4),
-                          border: Border.all(
-                            color: isActive
-                                ? colorScheme.primary
-                                : Colors.transparent,
-                            width: isActive ? 1.5 : 1.0,
-                          ),
-                          borderRadius: BorderRadius.circular(12),
+                              ? colorScheme.primary
+                              : Colors.transparent,
+                          width: isActive ? 1.8 : 1.0,
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: isActive
-                                        ? colorScheme.primary
-                                        : colorScheme.primary
-                                            .withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    item['time'] ?? '00:00',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: isActive
-                                          ? colorScheme.onPrimary
-                                          : colorScheme.primary,
-                                    ),
-                                  ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: isActive
+                                      ? colorScheme.primary
+                                      : colorScheme.primary
+                                          .withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(6),
                                 ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  item['speaker'] ?? 'Speaker',
-                                  style: theme.textTheme.labelMedium?.copyWith(
+                                child: Text(
+                                  item.time,
+                                  style: TextStyle(
+                                    fontSize: 12,
                                     fontWeight: FontWeight.bold,
                                     color: isActive
-                                        ? colorScheme.primary
-                                        : null,
+                                        ? colorScheme.onPrimary
+                                        : colorScheme.primary,
                                   ),
                                 ),
-                                if (isActive) ...[
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: colorScheme.primary
-                                          .withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(Icons.graphic_eq_rounded,
-                                            size: 11,
-                                            color: colorScheme.primary),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          'PLAYING',
-                                          style: TextStyle(
-                                            fontSize: 9.5,
-                                            fontWeight: FontWeight.bold,
-                                            color: colorScheme.primary,
-                                            letterSpacing: 0.5,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                item.speaker,
+                                style: theme.textTheme.labelMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: isActive
+                                      ? colorScheme.primary
+                                      : null,
+                                ),
+                              ),
+                              if (isActive) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.primary
+                                        .withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(4),
                                   ),
-                                ],
-                                const Spacer(),
-                                IconButton(
-                                  icon:
-                                      const Icon(Icons.copy_rounded, size: 16),
-                                  onPressed: () {
-                                    Clipboard.setData(ClipboardData(
-                                        text: item['text'] ?? ''));
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content:
-                                            Text('Quote copied to clipboard'),
-                                        duration: Duration(seconds: 1),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.graphic_eq_rounded,
+                                          size: 11,
+                                          color: colorScheme.primary),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'PLAYING',
+                                        style: TextStyle(
+                                          fontSize: 9.5,
+                                          fontWeight: FontWeight.bold,
+                                          color: colorScheme.primary,
+                                          letterSpacing: 0.5,
+                                        ),
                                       ),
-                                    );
-                                  },
-                                  tooltip: 'Copy quote',
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
+                                    ],
+                                  ),
                                 ),
                               ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              item['text'] ?? '',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                height: 1.5,
-                                fontWeight: isActive
-                                    ? FontWeight.w600
-                                    : FontWeight.normal,
-                                color: isActive
-                                    ? (isDark
-                                        ? Colors.white
-                                        : colorScheme.onSurface)
-                                    : null,
+                              const Spacer(),
+                              IconButton(
+                                icon:
+                                    const Icon(Icons.copy_rounded, size: 16),
+                                onPressed: () {
+                                  Clipboard.setData(ClipboardData(
+                                      text: item.text));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content:
+                                          Text('Quote copied to clipboard'),
+                                      duration: Duration(seconds: 1),
+                                    ),
+                                  );
+                                },
+                                tooltip: 'Copy quote',
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
                               ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            item.text,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              height: 1.5,
+                              fontWeight: isActive
+                                  ? FontWeight.w600
+                                  : FontWeight.normal,
+                              color: isActive
+                                  ? (isDark
+                                      ? Colors.white
+                                      : colorScheme.onSurface)
+                                  : colorScheme.onSurface
+                                      .withValues(alpha: 0.72),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    );
-                  },
-                );
-              },
+                    ),
+                  );
+                },
+              ),
             ),
           ),
         ],
@@ -1018,20 +1064,7 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
               ),
             ),
             const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color:
-                    colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                    color: colorScheme.outline.withValues(alpha: 0.15)),
-              ),
-              child: SelectableText(
-                customNotes.trim(),
-                style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
-              ),
-            ),
+            _buildFormattedMarkdownNotes(context, theme, colorScheme, customNotes),
           ],
 
           const SizedBox(height: 24),
@@ -1189,6 +1222,218 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
           ],
         ],
       ),
+    );
+  }
+
+  Widget _buildFormattedMarkdownNotes(
+    BuildContext context,
+    ThemeData theme,
+    ColorScheme colorScheme,
+    String rawNotes,
+  ) {
+    final lines = rawNotes.split(RegExp(r'\r?\n'));
+    final widgets = <Widget>[];
+
+    for (int i = 0; i < lines.length; i++) {
+      final line = lines[i].trim();
+      if (line.isEmpty) continue;
+
+      if (line.startsWith('---') || line.startsWith('___') || line.startsWith('***')) {
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Divider(
+              height: 1,
+              thickness: 1,
+              color: colorScheme.outline.withValues(alpha: 0.18),
+            ),
+          ),
+        );
+      } else if (line.startsWith('### ')) {
+        final title = line.substring(4).replaceAll(RegExp(r'\*+'), '').trim();
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.only(top: 14, bottom: 6),
+            child: Text(
+              title,
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: colorScheme.primary,
+              ),
+            ),
+          ),
+        );
+      } else if (line.startsWith('## ')) {
+        final title = line.substring(3).replaceAll(RegExp(r'\*+'), '').trim();
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.only(top: 18, bottom: 8),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.bookmark_border_rounded,
+                  size: 18,
+                  color: colorScheme.primary,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.primary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      } else if (line.startsWith('# ')) {
+        final title = line.substring(2).replaceAll(RegExp(r'\*+'), '').trim();
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.only(top: 20, bottom: 10),
+            child: Text(
+              title,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        );
+      } else if (line.startsWith('* ') || line.startsWith('- ')) {
+        final content = line.substring(2).trim();
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 8, right: 10),
+                  child: Container(
+                    width: 5.5,
+                    height: 5.5,
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: _buildInlineMarkdownRichText(theme, colorScheme, content),
+                ),
+              ],
+            ),
+          ),
+        );
+      } else if (RegExp(r'^\d+\.\s+').hasMatch(line)) {
+        final match = RegExp(r'^(\d+)\.\s+').firstMatch(line)!;
+        final numStr = match.group(1)!;
+        final content = line.substring(match.end).trim();
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 5),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  margin: const EdgeInsets.only(right: 10, top: 2),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    numStr,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.primary,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: _buildInlineMarkdownRichText(theme, colorScheme, content),
+                ),
+              ],
+            ),
+          ),
+        );
+      } else {
+        // Standard body paragraph
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: _buildInlineMarkdownRichText(theme, colorScheme, line),
+          ),
+        );
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: widgets,
+      ),
+    );
+  }
+
+  Widget _buildInlineMarkdownRichText(
+    ThemeData theme,
+    ColorScheme colorScheme,
+    String text,
+  ) {
+    final spans = <TextSpan>[];
+    final pattern = RegExp(r'(\*\*[^*]+\*\*|\*[^*]+\*)');
+    int lastEnd = 0;
+
+    for (final match in pattern.allMatches(text)) {
+      if (match.start > lastEnd) {
+        spans.add(TextSpan(
+          text: text.substring(lastEnd, match.start),
+          style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
+        ));
+      }
+
+      final matchedText = match.group(0)!;
+      if (matchedText.startsWith('**') && matchedText.endsWith('**')) {
+        spans.add(TextSpan(
+          text: matchedText.substring(2, matchedText.length - 2),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+            height: 1.6,
+            color: colorScheme.onSurface,
+          ),
+        ));
+      } else if (matchedText.startsWith('*') && matchedText.endsWith('*')) {
+        spans.add(TextSpan(
+          text: matchedText.substring(1, matchedText.length - 1),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontStyle: FontStyle.italic,
+            height: 1.6,
+          ),
+        ));
+      }
+      lastEnd = match.end;
+    }
+
+    if (lastEnd < text.length) {
+      spans.add(TextSpan(
+        text: text.substring(lastEnd),
+        style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
+      ));
+    }
+
+    return SelectableText.rich(
+      TextSpan(children: spans),
     );
   }
 

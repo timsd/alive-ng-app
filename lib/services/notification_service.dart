@@ -71,10 +71,20 @@ class NotificationService {
       // The session restore on startup emits its event while those steps are
       // still awaiting, and a broadcast stream does not replay it -- attaching
       // the listener afterwards meant returning members never got a push target.
-      _authService.authStateChanges.listen((user) {
+      _authService.authStateChanges.listen((user) async {
         if (user != null && _currentToken != null && _currentToken!.isNotEmpty) {
           _logger.info('User authenticated; registering push token for ${user.uid}');
           _safeRegister(_currentToken!);
+        }
+        if (user != null) {
+          try {
+            final profile = await _authService.getCurrentUserProfile();
+            await updateAdminTopicSubscriptions(profile?.role);
+          } catch (e) {
+            _logger.warning('Could not resolve user profile for admin topics: $e');
+          }
+        } else {
+          await updateAdminTopicSubscriptions(null);
         }
       });
 
@@ -206,6 +216,30 @@ class NotificationService {
     } catch (e) {
       _logger.error('Failed to register push token with Appwrite via FCM', e);
       return null;
+    }
+  }
+
+  /// Automatically subscribes or unsubscribes the current device to the
+  /// 'admins' and 'approvals' FCM topics based on the authenticated user's role.
+  Future<void> updateAdminTopicSubscriptions(String? role) async {
+    if (kIsWeb) return;
+    try {
+      final fcm = FirebaseMessaging.instance;
+      final normalizedRole = (role ?? '').trim().toLowerCase();
+      final isAdmin = normalizedRole == 'admin' ||
+          normalizedRole == 'super_admin' ||
+          normalizedRole == 'coordinator';
+
+      if (isAdmin) {
+        _logger.info('Subscribing admin user ($normalizedRole) to topics: admins, approvals');
+        await fcm.subscribeToTopic('admins');
+        await fcm.subscribeToTopic('approvals');
+      } else {
+        await fcm.unsubscribeFromTopic('admins');
+        await fcm.unsubscribeFromTopic('approvals');
+      }
+    } catch (e) {
+      _logger.warning('Failed to update admin topic subscriptions: $e');
     }
   }
 
@@ -395,6 +429,10 @@ class NotificationService {
         _logger.info('Navigated to board decisions');
         break;
       case 'admin_approval':
+      case 'approvals':
+      case 'approval':
+      case 'pending_registration_approval':
+      case 'coordinator_approval':
         context.go('/admin-approval');
         _logger.info('Navigated to admin approval');
         break;
