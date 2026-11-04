@@ -1,4 +1,5 @@
 import '../../widgets/in_app_pdf_viewer.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -728,6 +729,13 @@ class _TractReaderScreenState extends State<TractReaderScreen> {
 
       if (pdfUrl != null && pdfUrl.isNotEmpty) {
         if (!mounted) return;
+        if (kIsWeb) {
+          final uri = Uri.tryParse(pdfUrl);
+          if (uri != null) {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+            return;
+          }
+        }
         Navigator.push(
           context,
           MaterialPageRoute(

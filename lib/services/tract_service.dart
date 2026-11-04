@@ -134,7 +134,8 @@ class TractService {
         return remoteContent;
       }
 
-      throw NotFoundException('Tract content not found');
+      // Fallback to default lesson content if not yet provisioned in Appwrite
+      return _getDefaultTractContent(tractId);
     } catch (e) {
       if (e is AppException) rethrow;
       _logger.error('Error getting tract content', e);

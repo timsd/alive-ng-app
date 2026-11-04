@@ -6,6 +6,8 @@ import '../../utils/responsive_utils.dart';
 import '../../utils/search_utils.dart';
 import '../../utils/text_formatter.dart';
 import '../../services/role_access_service.dart';
+import '../../models/tract_models.dart';
+import '../books/tract_reader_screen.dart';
 
 class InteractiveLessonsScreen extends ConsumerStatefulWidget {
   const InteractiveLessonsScreen({super.key});
@@ -47,7 +49,7 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
         'isFavorite': false,
         'progress': 0.0,
         'isCompleted': false,
-        'isDemo': true,
+        'isDemo': false,
       },
       {
         'title': 'Daniel and Revelation',
@@ -58,7 +60,7 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
         'isFavorite': true,
         'progress': 0.7,
         'isCompleted': false,
-        'isDemo': true,
+        'isDemo': false,
       },
       {
         'title': 'Steps to Christ',
@@ -69,7 +71,7 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
         'isFavorite': false,
         'progress': 1.0,
         'isCompleted': true,
-        'isDemo': true,
+        'isDemo': false,
       },
       {
         'title': 'Healthy Living Principles',
@@ -80,7 +82,7 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
         'isFavorite': true,
         'progress': 0.3,
         'isCompleted': false,
-        'isDemo': true,
+        'isDemo': false,
       },
       {
         'title': 'Prayer and Meditation',
@@ -91,7 +93,7 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
         'isFavorite': true,
         'progress': 1.0,
         'isCompleted': true,
-        'isDemo': true,
+        'isDemo': false,
       },
     ];
     
@@ -608,10 +610,18 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
           ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Opening lesson: ${lesson['title']}'),
-                  backgroundColor: Theme.of(context).colorScheme.tertiary,
+              final tract = Tract(
+                id: 'lesson_${(lesson['title'] ?? '').toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_')}',
+                title: lesson['title'] ?? 'Interactive Lesson',
+                description: lesson['description'] ?? '',
+                category: lesson['category'] ?? 'Bible Study',
+                pages: 8,
+                createdAt: DateTime.now(),
+                updatedAt: DateTime.now(),
+              );
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => TractReaderScreen(tract: tract),
                 ),
               );
             },

@@ -9,6 +9,7 @@ class TractDatabaseHelper {
   TractDatabaseHelper._internal();
 
   static Database? _database;
+  static Future<Database>? _initDatabaseFuture;
   static const String _databaseName = 'tracts.db';
   static const int _databaseVersion = 1;
 
@@ -22,7 +23,8 @@ class TractDatabaseHelper {
 
   Future<Database> get database async {
     if (_database != null) return _database!;
-    _database = await _initDatabase();
+    _initDatabaseFuture ??= _initDatabase();
+    _database = await _initDatabaseFuture;
     return _database!;
   }
 

@@ -1,9 +1,12 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../widgets/custom_app_bar.dart';
 
 /// In-app PDF Viewer Screen that renders documents directly within the app
-/// without launching external browser apps or forcing file downloads.
+/// without launching external browser apps or forcing file downloads on mobile,
+/// while safely launching browser viewer on web without platform view deadlocks.
 class InAppPdfViewerScreen extends StatefulWidget {
   final String title;
   final String pdfUrl;
@@ -19,7 +22,7 @@ class InAppPdfViewerScreen extends StatefulWidget {
 }
 
 class _InAppPdfViewerScreenState extends State<InAppPdfViewerScreen> {
-  late final WebViewController _controller;
+  WebViewController? _controller;
   bool _isLoading = true;
   double _loadingProgress = 0.0;
   String? _errorMessage;
@@ -36,46 +39,68 @@ class _InAppPdfViewerScreenState extends State<InAppPdfViewerScreen> {
       _errorMessage = null;
     });
 
-    final targetUrl = _getViewerUrl(widget.pdfUrl);
+    if (kIsWeb) {
+      _openExternal();
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
 
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(const Color(0xFFF8F9FA))
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onProgress: (int progress) {
-            if (mounted) {
-              setState(() {
-                _loadingProgress = progress / 100.0;
-              });
-            }
-          },
-          onPageStarted: (String url) {
-            if (mounted) {
-              setState(() {
-                _isLoading = true;
-              });
-            }
-          },
-          onPageFinished: (String url) {
-            if (mounted) {
-              setState(() {
-                _isLoading = false;
-              });
-            }
-          },
-          onWebResourceError: (WebResourceError error) {
-            if (mounted) {
-              setState(() {
-                _isLoading = false;
-                _errorMessage =
-                    'Unable to load document in viewer. (${error.description})';
-              });
-            }
-          },
-        ),
-      )
-      ..loadRequest(Uri.parse(targetUrl));
+    try {
+      final targetUrl = _getViewerUrl(widget.pdfUrl);
+
+      _controller = WebViewController()
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..setBackgroundColor(const Color(0xFFF8F9FA))
+        ..setNavigationDelegate(
+          NavigationDelegate(
+            onProgress: (int progress) {
+              if (mounted) {
+                setState(() {
+                  _loadingProgress = progress / 100.0;
+                });
+              }
+            },
+            onPageStarted: (String url) {
+              if (mounted) {
+                setState(() {
+                  _isLoading = true;
+                });
+              }
+            },
+            onPageFinished: (String url) {
+              if (mounted) {
+                setState(() {
+                  _isLoading = false;
+                });
+              }
+            },
+            onWebResourceError: (WebResourceError error) {
+              if (mounted) {
+                setState(() {
+                  _isLoading = false;
+                  _errorMessage =
+                      'Unable to load document in mobile viewer. (${error.description})';
+                });
+              }
+            },
+          ),
+        )
+        ..loadRequest(Uri.parse(targetUrl));
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Could not initialize PDF viewer: $e';
+      });
+    }
+  }
+
+  Future<void> _openExternal() async {
+    final uri = Uri.tryParse(widget.pdfUrl);
+    if (uri != null) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 
   String _getViewerUrl(String originalUrl) {
@@ -142,8 +167,45 @@ class _InAppPdfViewerScreenState extends State<InAppPdfViewerScreen> {
                 ),
               ),
             )
+          else if (_controller != null)
+            WebViewWidget(controller: _controller!)
           else
-            WebViewWidget(controller: _controller),
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.picture_as_pdf_rounded,
+                      size: 64,
+                      color: Colors.redAccent,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      widget.title,
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Document opened in browser. Tap below if not displayed automatically.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 20),
+                    FilledButton.icon(
+                      onPressed: _openExternal,
+                      icon: const Icon(Icons.open_in_browser_rounded),
+                      label: const Text('Open Document in New Tab'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           if (_isLoading)
             Positioned(
               top: 0,

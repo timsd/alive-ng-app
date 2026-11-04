@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/custom_image.dart';
 import '../utils/podcast_share_helper.dart';
 
@@ -60,20 +61,131 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
   bool _isSeeking = false;
   double _dragPosition = 0.0;
 
+  // Personal Notes State
+  String _userNote = '';
+  bool _isEditingNote = false;
+  final TextEditingController _noteController = TextEditingController();
+
   final List<double> _speeds = [0.75, 1.0, 1.25, 1.5, 2.0];
+
+  String get _episodeStorageKey {
+    final epId = widget.episodeData['id'] ??
+        widget.episodeData[r'$id'] ??
+        widget.episodeData['title'] ??
+        'unknown';
+    return 'podcast_note_$epId';
+  }
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _currentSpeed = widget.audioPlayer.speed;
+    _loadUserNote();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     _transcriptSearchController.dispose();
+    _noteController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadUserNote() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getString(_episodeStorageKey) ?? '';
+      if (mounted) {
+        setState(() {
+          _userNote = saved;
+          _noteController.text = saved;
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to load podcast note: $e');
+    }
+  }
+
+  Future<void> _saveUserNote(String text) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final trimmed = text.trim();
+      if (trimmed.isEmpty) {
+        await prefs.remove(_episodeStorageKey);
+      } else {
+        await prefs.setString(_episodeStorageKey, trimmed);
+      }
+      if (mounted) {
+        setState(() {
+          _userNote = trimmed;
+          _isEditingNote = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(trimmed.isEmpty ? 'Note cleared' : 'Note saved!'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Failed to save podcast note: $e');
+    }
+  }
+
+  Future<void> _deleteUserNote() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_episodeStorageKey);
+      if (mounted) {
+        setState(() {
+          _userNote = '';
+          _noteController.clear();
+          _isEditingNote = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Note deleted'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Failed to delete podcast note: $e');
+    }
+  }
+
+  void _insertCurrentTimestamp() {
+    final pos = widget.audioPlayer.position;
+    final stamp = '[${_formatDuration(pos)}] ';
+    final currentText = _noteController.text;
+    final selection = _noteController.selection;
+    if (selection.isValid && selection.start >= 0) {
+      final newText =
+          currentText.replaceRange(selection.start, selection.end, stamp);
+      _noteController.value = TextEditingValue(
+        text: newText,
+        selection:
+            TextSelection.collapsed(offset: selection.start + stamp.length),
+      );
+    } else {
+      _noteController.text = '$currentText\n$stamp';
+      _noteController.selection =
+          TextSelection.collapsed(offset: _noteController.text.length);
+    }
+  }
+
+  String _cleanMojibake(String text) {
+    return text
+        .replaceAll('â€™', "'")
+        .replaceAll('â€˜', "'")
+        .replaceAll('â€œ', '"')
+        .replaceAll('â€\u009d', '"')
+        .replaceAll('â€"', '"')
+        .replaceAll('â€”', ' — ')
+        .replaceAll('â€“', ' - ')
+        .replaceAll('Â', '')
+        .replaceAll('\uFFFD', "'");
   }
 
   String _formatDuration(Duration duration) {
@@ -872,19 +984,18 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
   }
 
   Widget _buildNotesView(ThemeData theme, ColorScheme colorScheme) {
-    final description = widget.episodeData['description']?.toString() ??
+    final rawDescription = widget.episodeData['description']?.toString() ??
         'No detailed show notes provided for this episode.';
-    final customNotes = widget.episodeData['notes']?.toString();
-    final scripture = widget.episodeData['scripture']?.toString() ??
-        'Romans 10:14-15 — "How then shall they call on Him in whom they have not believed? And how shall they believe in Him of whom they have not heard?"';
-    final callToAction = widget.episodeData['call_to_action']?.toString() ??
-        'Pray for groundbreakers and volunteer teams distributing tracts and proclaiming the everlasting gospel across Nigerian campuses and rural communities.';
+    final description = _cleanMojibake(rawDescription);
+    final rawNotes = widget.episodeData['notes']?.toString();
+    final customNotes = rawNotes != null ? _cleanMojibake(rawNotes) : null;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 1. Episode Overview
           Text(
             'Episode Overview',
             style: theme.textTheme.titleMedium?.copyWith(
@@ -896,81 +1007,209 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
             description,
             style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
           ),
+
+          // 2. Published Key Notes & Outline (from Appwrite)
           if (customNotes != null && customNotes.trim().isNotEmpty) ...[
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             Text(
-              'Key Notes & Insights',
+              'Show Notes & Outline',
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 8),
-            Text(
-              customNotes,
-              style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color:
+                    colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                    color: colorScheme.outline.withValues(alpha: 0.15)),
+              ),
+              child: SelectableText(
+                customNotes.trim(),
+                style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
+              ),
             ),
           ],
+
           const SizedBox(height: 24),
-          Text(
-            'Scripture & Ministry Takeaways',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
+
+          // 3. Member Personal Notes (Saved locally like Bible Notes)
+          Row(
+            children: [
+              Icon(Icons.edit_note_rounded,
+                  color: colorScheme.primary, size: 24),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'My Notes & Insights',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              if (_userNote.isNotEmpty && !_isEditingNote)
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined, size: 20),
+                  tooltip: 'Edit Note',
+                  onPressed: () {
+                    setState(() {
+                      _isEditingNote = true;
+                      _noteController.text = _userNote;
+                    });
+                  },
+                ),
+              if (_userNote.isNotEmpty && !_isEditingNote)
+                IconButton(
+                  icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                  tooltip: 'Delete Note',
+                  onPressed: () => _confirmDeleteUserNote(context),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          // Active Note Editor or Display Card
+          if (_isEditingNote || _userNote.isEmpty) ...[
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: theme.brightness == Brightness.dark
+                    ? const Color(0xFF16202C)
+                    : Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                    color: colorScheme.primary.withValues(alpha: 0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextField(
+                    controller: _noteController,
+                    maxLines: 5,
+                    decoration: InputDecoration(
+                      hintText:
+                          'Record your personal takeaways, study reflections, or revelations while listening...',
+                      hintStyle: TextStyle(
+                        fontSize: 13,
+                        color: colorScheme.onSurface.withValues(alpha: 0.5),
+                      ),
+                      border: InputBorder.none,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      // Timestamp stamp button
+                      OutlinedButton.icon(
+                        onPressed: _insertCurrentTimestamp,
+                        icon: const Icon(Icons.timer_outlined, size: 16),
+                        label: Text(
+                          'Stamp ${_formatDuration(widget.audioPlayer.position)}',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 6),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                      const Spacer(),
+                      if (_userNote.isNotEmpty)
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _isEditingNote = false;
+                              _noteController.text = _userNote;
+                            });
+                          },
+                          child: const Text('Cancel'),
+                        ),
+                      const SizedBox(width: 8),
+                      FilledButton.icon(
+                        onPressed: () => _saveUserNote(_noteController.text),
+                        icon: const Icon(Icons.check_rounded, size: 16),
+                        label: const Text('Save Note'),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 8),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          _buildTakeawayCard(
-            context,
-            colorScheme,
-            Icons.menu_book_rounded,
-            'Scripture Foundation',
-            scripture,
-          ),
-          const SizedBox(height: 12),
-          _buildTakeawayCard(
-            context,
-            colorScheme,
-            Icons.lightbulb_outline_rounded,
-            'Call to Action',
-            callToAction,
-          ),
+          ] else ...[
+            // Saved Note Card
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: colorScheme.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                    color: colorScheme.primary.withValues(alpha: 0.25)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SelectableText(
+                    _userNote,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      height: 1.5,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton.icon(
+                        icon: const Icon(Icons.copy_rounded, size: 14),
+                        label: const Text('Copy Note',
+                            style: TextStyle(fontSize: 12)),
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: _userNote));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Note copied to clipboard'),
+                              duration: Duration(seconds: 1),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildTakeawayCard(BuildContext context, ColorScheme colorScheme,
-      IconData icon, String title, String body) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.15)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: colorScheme.primary, size: 22),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  body,
-                  style: TextStyle(
-                    fontSize: 13,
-                    height: 1.45,
-                    color: colorScheme.onSurface.withValues(alpha: 0.8),
-                  ),
-                ),
-              ],
-            ),
+  void _confirmDeleteUserNote(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Note?'),
+        content: const Text(
+            'Are you sure you want to delete your personal note for this episode?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _deleteUserNote();
+            },
+            child: const Text('Delete'),
           ),
         ],
       ),

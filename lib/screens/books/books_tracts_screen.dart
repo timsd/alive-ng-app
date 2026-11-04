@@ -1,4 +1,5 @@
 import '../../widgets/in_app_pdf_viewer.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -707,6 +708,13 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
 
       if (downloadUrl != null && downloadUrl.isNotEmpty) {
         if (!mounted) return;
+        if (kIsWeb) {
+          final uri = Uri.tryParse(downloadUrl);
+          if (uri != null) {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+            return;
+          }
+        }
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -1254,33 +1262,17 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
   }
 
   void _openReader(BuildContext context, String title, bool isBook) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Open ${isBook ? 'Book' : 'Tract'}'),
-        content: Text(
-          'Opening "$title" in the reader. This will provide a full reading experience with bookmarks, notes, and highlighting.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _navigateToReader(context, title);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Opening "$title" in reader...'),
-                ),
-              );
-            },
-            child: const Text('Open'),
-          ),
-        ],
-      ),
+    final tract = Tract(
+      id: 'book_${title.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_')}',
+      title: title,
+      description:
+          'Classic Christian reading and spiritual growth book by inspired authors.',
+      category: isBook ? 'Books' : 'Tracts',
+      pages: 12,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
     );
+    _openTractReader(context, tract);
   }
 
   void _applyCategoryFilter(String category) {

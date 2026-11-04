@@ -25,62 +25,40 @@ const databaseId = process.env.APPWRITE_DATABASE_ID;
 const standardVideos = [
   {
     id: 'vid_bible_study_methods',
-    title: 'Bible Study Methods: Discovering Truth in Scripture',
-    author: 'ALIVE Media',
+    title: "I Searched for Real Worship... Then My Life Changed Forever | Comfort's Testimony",
+    author: 'Comfort / ALIVE-Nigeria',
     category: 'Bible Study',
     language: 'en',
-    duration: '18:30',
+    duration: '14:22',
     description:
-      'A comprehensive biblical guide to studying Scripture with authentic context, cross-referencing, and prayerful reflection. Learn inductive study methods and personal devotional depth.',
+      'Comfort shares her powerful testimony with ALIVE-Nigeria of searching for authentic biblical worship, discovering Christ, and how truth transformed her life and purpose.',
     aspect_ratio: '16:9',
-    video_url:
-      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-    thumbnail_url:
-      'https://images.unsplash.com/photo-1507692049790-de58290a4334?q=80&w=870&auto=format&fit=crop',
+    video_url: 'https://youtu.be/5SRS-q6g2TE',
+    thumbnail_url: 'https://img.youtube.com/vi/5SRS-q6g2TE/hqdefault.jpg',
     notes:
-      "Key takeaways: 1. Pray before opening God's Word. 2. Observe historical context. 3. Correlate with Spirit of Prophecy and Scripture cross-references. 4. Apply directly to daily Christian life.",
+      "Comfort's personal testimony from ALIVE-Nigeria. Highlights the joy of finding biblical truth, surrendering to Jesus Christ, and sharing the Gospel across campuses and cities.",
     is_active: true,
   },
   {
     id: 'vid_reclaiming_gods_pattern',
-    title: "Reclaiming God's Pattern: The Biblical Strategy for Mission",
-    author: 'Pastor Agana',
-    category: 'MEC',
-    language: 'en',
-    duration: '48:15',
-    description:
-      "Presented at the Alive Nigeria Mission Empowerment Conference 2019, 'All or Nothing,' in Owerri, Nigeria. Explores God's blueprint for reaching the unreached through centers of influence and consecrated professional talent.",
-    aspect_ratio: '16:9',
-    video_url:
-      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
-    thumbnail_url:
-      'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?q=80&w=870&auto=format&fit=crop',
-    notes:
-      "Key points: Biblical tour of W3 evangelism; reaching higher classes first to mobilize resources for the wider population; Adam and Eve's surrendered dominion restored through the Gospel.",
-    is_active: true,
-  },
-  {
-    id: 'vid_ministry_of_healing',
-    title: 'The Ministry of Healing: Medical Missionary Evangelism',
-    author: 'ALIVE Health Ministry',
+    title: "God's gift of health - Rodney Bowes",
+    author: 'Rodney Bowes',
     category: 'Health & Wholeness',
     language: 'en',
-    duration: '24:40',
+    duration: '43:50',
     description:
-      'Discover how plant-based nutrition, natural therapeutic remedies, and compassionate health outreach serve as the right arm of the Gospel message across Nigerian communities.',
+      "Brother Rodney Bowes presents God's timeless design for physical, mental, and spiritual health, showing how the health message acts as the entering wedge for the Gospel.",
     aspect_ratio: '16:9',
-    video_url:
-      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-    thumbnail_url:
-      'https://images.unsplash.com/photo-1498837167922-ddd27525d352?q=80&w=870&auto=format&fit=crop',
+    video_url: 'https://youtu.be/NZjz4qSr6NQ',
+    thumbnail_url: 'https://img.youtube.com/vi/NZjz4qSr6NQ/hqdefault.jpg',
     notes:
-      'Core Principles: NEWSTART (Nutrition, Exercise, Water, Sunlight, Temperance, Air, Rest, Trust in Divine Power). Practical plant-based demonstrations included.',
+      "Core principles of God's design for health: nutrition, lifestyle restoration, disease prevention, and using health evangelism to open hearts for Christ.",
     is_active: true,
   },
 ];
 
 async function seedVideos() {
-  console.log('Seeding standard videos into Appwrite collection `videos`...');
+  console.log('Updating standard videos in Appwrite collection `videos`...');
   for (const v of standardVideos) {
     const documentId = v.id;
     const body = {
@@ -92,37 +70,50 @@ async function seedVideos() {
       thumbnail_url: v.thumbnail_url,
       description: v.description,
       is_active: v.is_active,
-      created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-    // Include optional fields if already active
     if (v.duration) body.duration = v.duration;
     if (v.aspect_ratio) body.aspect_ratio = v.aspect_ratio;
     if (v.notes) body.notes = v.notes;
 
     try {
-      const res = await fetch(
+      // First try to PATCH (update existing)
+      const patchRes = await fetch(
+        `${endpoint}/v1/databases/${databaseId}/collections/videos/documents/${documentId}`,
+        {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({ data: body }),
+        }
+      );
+      if (patchRes.ok) {
+        console.log(`+ Updated video metadata: "${v.title}" (ID: ${documentId})`);
+        continue;
+      }
+
+      // If document didn't exist, create it
+      const createRes = await fetch(
         `${endpoint}/v1/databases/${databaseId}/collections/videos/documents`,
         {
           method: 'POST',
           headers,
-          body: JSON.stringify({ documentId, data: body }),
+          body: JSON.stringify({
+            documentId,
+            data: { ...body, created_at: new Date().toISOString() },
+          }),
         }
       );
-      const data = await res.json();
-      if (res.ok) {
+      const data = await createRes.json();
+      if (createRes.ok) {
         console.log(`+ Created video: "${v.title}" (ID: ${documentId})`);
-      } else if (res.status === 409) {
-        console.log(`= Video already exists: "${v.title}" (ID: ${documentId})`);
       } else {
-        console.error(`! Error creating "${v.title}":`, data.message || data);
+        console.error(`! Error on "${v.title}":`, data.message || data);
       }
     } catch (e) {
-      console.error(`! Network error creating "${v.title}":`, e.message);
+      console.error(`! Network error updating "${v.title}":`, e.message);
     }
   }
-  console.log('Video seeding complete.');
+  console.log('Video sync complete.');
 }
 
 seedVideos();
-

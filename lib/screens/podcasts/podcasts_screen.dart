@@ -5,6 +5,7 @@ import '../../widgets/custom_app_bar.dart';
 import '../../utils/responsive_utils.dart';
 import '../../providers/podcast_provider.dart';
 import 'package:just_audio/just_audio.dart';
+import '../../services/podcast_audio_service.dart';
 import '../../widgets/podcast_search_bar.dart';
 import '../../widgets/podcast_card.dart';
 import '../../widgets/podcast_episode_card.dart';
@@ -39,10 +40,16 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _audioService.addListener(_onAudioUpdate);
+  }
+
+  void _onAudioUpdate() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    _audioService.removeListener(_onAudioUpdate);
     _tabController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -111,7 +118,7 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
               ],
             ),
           ),
-          if (_currentPlayingEpisode != null) _buildMiniPlayer(),
+          if (_audioService.hasActiveEpisode) _buildMiniPlayer(),
         ],
       ),
     );
@@ -655,18 +662,20 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
     });
   }
 
-  // Audio player instance & active episode
-  final AudioPlayer _audioPlayer = AudioPlayer();
-  Map<String, dynamic>? _currentPlayingEpisode;
+  // Persistent audio service instance
+  final PodcastAudioService _audioService = PodcastAudioService();
 
   Widget _buildMiniPlayer() {
-    if (_currentPlayingEpisode == null) return const SizedBox.shrink();
+    if (!_audioService.hasActiveEpisode) return const SizedBox.shrink();
+    final activeEpisode = _audioService.currentEpisode!;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final title = _currentPlayingEpisode!['title']?.toString() ?? 'Episode';
-    final podcastTitle =
-        _currentPlayingEpisode!['podcastTitle']?.toString() ?? 'Podcast';
-    final coverImage = _currentPlayingEpisode!['coverImage']?.toString();
+    final title = activeEpisode['title']?.toString() ?? 'Episode';
+    final podcastTitle = _audioService.currentPodcastTitle ??
+        activeEpisode['podcastTitle']?.toString() ??
+        'Podcast';
+    final coverImage = _audioService.currentCoverImage ??
+        activeEpisode['coverImage']?.toString();
 
     return SafeArea(
       top: false,
@@ -674,12 +683,11 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
         onTap: () {
           ModernPodcastPlayerSheet.show(
             context,
-            audioPlayer: _audioPlayer,
-            episodeData: _currentPlayingEpisode!,
+            audioPlayer: _audioService.player,
+            episodeData: activeEpisode,
             podcastTitle: podcastTitle,
             coverImage: coverImage,
-            onDownload: () =>
-                _downloadEpisode(context, _currentPlayingEpisode!),
+            onDownload: () => _downloadEpisode(context, activeEpisode),
           );
         },
         child: Container(
@@ -741,7 +749,7 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
                 ),
               ),
               StreamBuilder<PlayerState>(
-                stream: _audioPlayer.playerStateStream,
+                stream: _audioService.player.playerStateStream,
                 builder: (context, snapshot) {
                   final isPlaying = snapshot.data?.playing ?? false;
                   return IconButton(
@@ -752,9 +760,9 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
                     color: colorScheme.primary,
                     onPressed: () {
                       if (isPlaying) {
-                        _audioPlayer.pause();
+                        _audioService.pause();
                       } else {
-                        _audioPlayer.play();
+                        _audioService.resume();
                       }
                     },
                   );
@@ -763,10 +771,7 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
               IconButton(
                 icon: const Icon(Icons.close_rounded, size: 20),
                 onPressed: () {
-                  _audioPlayer.stop();
-                  setState(() {
-                    _currentPlayingEpisode = null;
-                  });
+                  _audioService.stop();
                 },
               ),
             ],
@@ -789,20 +794,20 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
         return;
       }
 
-      setState(() {
-        _currentPlayingEpisode = episode;
-      });
-
-      // Play audio
-      await _audioPlayer.setUrl(audioUrl);
-      await _audioPlayer.play();
+      await _audioService.playOrResumeEpisode(
+        episode: episode,
+        audioUrl: audioUrl,
+        podcastTitle:
+            episode['podcastTitle']?.toString() ?? 'ALIVE Nigeria Podcast',
+        coverImage: episode['coverImage']?.toString(),
+      );
 
       if (!context.mounted) return;
 
       // Automatically present lively modern player modal with live transcript & seekbar
       ModernPodcastPlayerSheet.show(
         context,
-        audioPlayer: _audioPlayer,
+        audioPlayer: _audioService.player,
         episodeData: episode,
         podcastTitle:
             episode['podcastTitle']?.toString() ?? 'ALIVE Nigeria Podcast',
@@ -892,8 +897,11 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
       'id': episode.id,
       'title': episode.title,
       'podcastTitle': episode.podcastTitle,
+      'description': episode.description,
       'duration': episode.duration,
       'audioUrl': episode.audioUrl,
+      'transcript': episode.transcript,
+      'notes': episode.notes,
       'downloadDate': '',
       'category': '',
     };

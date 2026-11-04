@@ -644,10 +644,14 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const KidsStoriesScreen(),
           ),
 
-          // Discipleship Tracker Route
+          // Discipleship Tracker Route & Alias
           GoRoute(
             path: AppConstants.discipleshipTrackerRoute,
             builder: (context, state) => const DiscipleshipScreen(),
+          ),
+          GoRoute(
+            path: '/discipleship',
+            redirect: (context, state) => AppConstants.discipleshipTrackerRoute,
           ),
 
           // Events Route
