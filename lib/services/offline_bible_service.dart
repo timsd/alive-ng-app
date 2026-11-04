@@ -1202,10 +1202,10 @@ class OfflineBibleService {
     });
   }
 
-  /// Pre-warm a bundle in background so chapter loads are instant
+  /// Pre-warm the Bible database in background so chapter loads are instant
   Future<void> prewarmBundle({String language = 'en', String version = 'KJV'}) async {
     try {
-      await _loadVersionBundle(language, version);
+      unawaited(_dbHelper.database.catchError((_) => null as dynamic));
     } catch (_) {}
   }
 

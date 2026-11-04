@@ -778,14 +778,4 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
       const SnackBar(content: Text('Filters applied successfully')),
     );
   }
-
-  String? _contentUrl(
-    Map<String, dynamic> data,
-    String camelCaseKey,
-    String snakeCaseKey,
-  ) {
-    final value = data[camelCaseKey] ?? data[snakeCaseKey];
-    if (value is String && value.trim().isNotEmpty) return value.trim();
-    return null;
-  }
 }

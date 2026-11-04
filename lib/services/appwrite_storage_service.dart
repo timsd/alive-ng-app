@@ -11,11 +11,6 @@ class AppwriteStorageService {
 
   final Storage _storage = Storage(appwriteClient);
 
-  static bool _isPermissionError(AppwriteException error) {
-    final message = (error.message ?? '').toLowerCase();
-    return message.contains('permission') || message.contains('forbidden');
-  }
-
   Future<String> uploadChatFile({
     required Uint8List bytes,
     required String fileName,

@@ -49,10 +49,18 @@ class BibleDatabaseHelper {
   static const String _readingDaysTable = 'reading_days';
   static const String _userProgressTable = 'user_progress';
 
+  Future<Database>? _initDatabaseFuture;
+
   Future<Database> get database async {
     if (_database != null) return _database!;
-    _database = await _initDatabase();
-    return _database!;
+    _initDatabaseFuture ??= _initDatabase();
+    try {
+      _database = await _initDatabaseFuture;
+      return _database!;
+    } catch (e) {
+      _initDatabaseFuture = null;
+      rethrow;
+    }
   }
 
   Future<Database> _initDatabase() async {
@@ -187,8 +195,8 @@ class BibleDatabaseHelper {
           readOnly: true,
         ),
       );
-      final rows = await probe.rawQuery('SELECT COUNT(*) AS c FROM bible_verses');
-      return ((rows.first['c'] as int?) ?? 0) > 0;
+      final rows = await probe.rawQuery('SELECT 1 FROM bible_verses LIMIT 1');
+      return rows.isNotEmpty;
     } catch (_) {
       return false;
     } finally {
@@ -215,9 +223,8 @@ class BibleDatabaseHelper {
         // otherwise mutate what we are about to decide to replace.
         readOnly: true,
       );
-      final rows = await probe.rawQuery('SELECT COUNT(*) AS c FROM $_versesTable');
-      final count = rows.first['c'];
-      return count is int && count > 0;
+      final rows = await probe.rawQuery('SELECT 1 FROM $_versesTable LIMIT 1');
+      return rows.isNotEmpty;
     } catch (_) {
       // Unreadable, corrupt, or missing the table: treat as not installed.
       return false;

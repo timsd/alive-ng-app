@@ -394,6 +394,14 @@ class NotificationService {
         context.go('/admin/board-decisions');
         _logger.info('Navigated to board decisions');
         break;
+      case 'admin_approval':
+        context.go('/admin-approval');
+        _logger.info('Navigated to admin approval');
+        break;
+      case 'announcement':
+        context.go('/home');
+        _logger.info('Navigated to announcement');
+        break;
       default:
         // Navigate to home
         context.go('/home');

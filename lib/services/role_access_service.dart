@@ -3,6 +3,7 @@ import 'dart:async';
 import '../models/app_models.dart';
 import '../utils/logger.dart';
 import 'auth_service.dart';
+import 'appwrite_push_service.dart';
 import '../config/appwrite_backend_config.dart';
 import '../constants/chapters.dart';
 
@@ -32,6 +33,7 @@ class RoleAccessService {
     _cachedUserProfile = updatedProfile;
     _cacheTimestamp = DateTime.now();
     _roleChangeController.add(updatedProfile);
+    AppwritePushService.instance.subscribeAdminTopicsIfEligible();
   }
 
   /// User roles in hierarchical order (lowest to highest privilege)

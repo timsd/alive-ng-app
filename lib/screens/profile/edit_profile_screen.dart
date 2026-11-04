@@ -877,51 +877,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     );
   }
 
-  /// Detects a safe, Appwrite-allowed image file extension from magic bytes
-  /// or fallback extension string.
-  static String _detectImageExtension(Uint8List bytes, String rawExt) {
-    if (bytes.length >= 4) {
-      // PNG: 89 50 4E 47
-      if (bytes[0] == 0x89 &&
-          bytes[1] == 0x50 &&
-          bytes[2] == 0x4E &&
-          bytes[3] == 0x47) {
-        return 'png';
-      }
-      // JPEG: FF D8 FF
-      if (bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF) {
-        return 'jpg';
-      }
-      // GIF: 47 49 46 38
-      if (bytes[0] == 0x47 &&
-          bytes[1] == 0x49 &&
-          bytes[2] == 0x46 &&
-          bytes[3] == 0x38) {
-        return 'gif';
-      }
-      // WEBP: RIFF....WEBP
-      if (bytes.length >= 12 &&
-          bytes[0] == 0x52 &&
-          bytes[1] == 0x49 &&
-          bytes[2] == 0x46 &&
-          bytes[3] == 0x46 &&
-          bytes[8] == 0x57 &&
-          bytes[9] == 0x45 &&
-          bytes[10] == 0x42 &&
-          bytes[11] == 0x50) {
-        return 'webp';
-      }
-    }
-    final cleaned = rawExt.trim().toLowerCase();
-    const allowed = {'jpg', 'jpeg', 'png', 'webp', 'gif'};
-    if (allowed.contains(cleaned)) return cleaned;
-    return 'jpg';
-  }
-
   Future<void> _pickAndUploadImage(ImageSource source) async {
     try {
       Uint8List? imageBytes;
-      String rawExt = 'jpg';
 
       try {
         final picker = ImagePicker();
@@ -933,12 +891,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         );
         if (pickedFile != null) {
           imageBytes = await pickedFile.readAsBytes();
-          if (pickedFile.name.contains('.')) {
-            rawExt = pickedFile.name.split('.').last.toLowerCase();
-          } else if (pickedFile.mimeType != null &&
-              pickedFile.mimeType!.contains('/')) {
-            rawExt = pickedFile.mimeType!.split('/').last.toLowerCase();
-          }
         }
       } catch (pickerErr) {
         debugPrint('[ProfilePicture] ImagePicker fallback: $pickerErr');
@@ -954,7 +906,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           } else if (f.path != null && !kIsWeb) {
             imageBytes = await io.File(f.path!).readAsBytes();
           }
-          if (f.extension != null) rawExt = f.extension!.toLowerCase();
         }
       }
 

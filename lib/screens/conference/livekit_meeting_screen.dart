@@ -1,8 +1,6 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 import '../../config/meeting_links_config.dart';
 import '../../constants/chapters.dart';
@@ -188,32 +186,6 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     } finally {
       if (mounted) setState(() => _isJoining = false);
     }
-  }
-
-  void _showPermanentlyDeniedDialog() {
-    if (!mounted) return;
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Permissions Required'),
-        content: const Text(
-          'Microphone or camera permission is permanently disabled. Please allow access in App Settings to participate with audio and video.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              Navigator.of(ctx).pop();
-              await openAppSettings();
-            },
-            child: const Text('Open Settings'),
-          ),
-        ],
-      ),
-    );
   }
 
   void _showDeclinedDialog() {

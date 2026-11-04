@@ -10,7 +10,6 @@ import '../../widgets/podcast_card.dart';
 import '../../widgets/podcast_episode_card.dart';
 import '../../models/podcast_models.dart';
 import '../../widgets/custom_image.dart';
-import '../../services/sample_content_service.dart';
 import '../../widgets/modern_podcast_player_sheet.dart';
 import '../../utils/podcast_share_helper.dart';
 
@@ -34,39 +33,12 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _selectedCategory = 'all';
-  final SampleContentService _samples = SampleContentService();
-
-  List<Map<String, dynamic>> get _downloadedEpisodes =>
-      _samples.visibleEpisodes
-          .map((e) => {
-                'id': e['id'],
-                'title': e['title'],
-                'podcastTitle': e['podcastTitle'],
-                'duration': e['duration'],
-                'downloadDate': e['downloadDate'],
-                'category': e['category'],
-              })
-          .toList();
+  final List<Map<String, dynamic>> _downloadedEpisodes = const [];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _samples.ensureLoaded().then((_) {
-      if (mounted) {
-        setState(() {});
-        if (widget.initialEpisodeId != null &&
-            widget.initialEpisodeId!.isNotEmpty) {
-          final target = _samples.visibleEpisodes.firstWhere(
-            (e) => (e['id']?.toString() == widget.initialEpisodeId),
-            orElse: () => <String, dynamic>{},
-          );
-          if (target.isNotEmpty) {
-            _playEpisode(context, target);
-          }
-        }
-      }
-    });
   }
 
   @override
@@ -218,26 +190,13 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
     return Consumer(
       builder: (context, ref, child) {
         final backendPodcasts = ref.watch(podcastProvider);
-        final samplePodcasts = _samples.visibleSamplePodcasts;
 
-        if (backendPodcasts.isEmpty && samplePodcasts.isEmpty) {
+        if (backendPodcasts.isEmpty) {
           return _buildEmptyPodcastState(context);
         }
 
         return Builder(
           builder: (context) {
-            final filteredSamplePodcasts =
-                samplePodcasts.where((podcast) {
-              final matchesSearch = _searchQuery.isEmpty ||
-                  podcast.title.toLowerCase().contains(_searchQuery) ||
-                  podcast.description.toLowerCase().contains(_searchQuery) ||
-                  podcast.host.toLowerCase().contains(_searchQuery);
-
-              final matchesCategory = _selectedCategory == 'all' ||
-                  podcast.category.name == _selectedCategory;
-
-              return matchesSearch && matchesCategory;
-            }).toList();
             final filteredPodcasts = backendPodcasts.where((podcast) {
               final matchesSearch = _searchQuery.isEmpty ||
                   podcast.title.toLowerCase().contains(_searchQuery) ||
@@ -252,8 +211,7 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
               return matchesSearch && matchesCategory;
             }).toList();
 
-            if (filteredPodcasts.isEmpty &&
-                filteredSamplePodcasts.isEmpty) {
+            if (filteredPodcasts.isEmpty) {
               return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -295,18 +253,9 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
             return ListView.builder(
               padding:
                   ResponsiveUtils.getResponsivePaddingWithBase(context, 16),
-              itemCount:
-                  filteredSamplePodcasts.length + filteredPodcasts.length,
+              itemCount: filteredPodcasts.length,
               itemBuilder: (context, index) {
-                if (index < filteredSamplePodcasts.length) {
-                  final sample = filteredSamplePodcasts[index];
-                  return _SamplePodcastCard(
-                    sample: sample,
-                    onTap: () => _showSamplePodcastDetails(context, sample),
-                  );
-                }
-                final podcast =
-                    filteredPodcasts[index - filteredSamplePodcasts.length];
+                final podcast = filteredPodcasts[index];
                 return PodcastCard(
                   podcast: podcast,
                   onTap: () => _showPodcastDetails(context, podcast),
@@ -950,160 +899,7 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
     };
   }
 
-  void _showSamplePodcastDetails(BuildContext context, Podcast sample) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 44,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: colorScheme.onSurface.withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              Row(
-                children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: colorScheme.primary.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      sample.category.name.toUpperCase(),
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: colorScheme.primary,
-                      ),
-                    ),
-                  ),
-                  const Spacer(),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: Colors.amber.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Text(
-                      'SAMPLE AUDIO',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.amber,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                sample.title,
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Hosted by ${sample.host}',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.primary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                sample.description,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: FilledButton.icon(
-                  onPressed: () {
-                    Navigator.of(sheetContext).pop();
-                    _playSamplePodcast(context, sample);
-                  },
-                  icon: const Icon(Icons.play_circle_fill_rounded, size: 22),
-                  label: const Text(
-                    'Play',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _playSamplePodcast(BuildContext context, Podcast sample) {
-    final matchingEpisode = _samples.visibleEpisodes.firstWhere(
-      (ep) =>
-          ep['podcastTitle'] == sample.title ||
-          ep['podcast_title'] == sample.title,
-      orElse: () => {
-        'id': 'sample-ep-${sample.id}',
-        'title': sample.title,
-        'podcastTitle': sample.title,
-        'duration': '15 min',
-        'category': sample.category.name,
-        'hasAudio': true,
-        'audioUrl':
-            'https://api.alivenigeria.org/v1/storage/buckets/podcast_media/files/test_podcast_agana_01/view?project=6a3bef53002f5090dedf',
-        'description': sample.description,
-      },
-    );
-    _playEpisode(context, matchingEpisode);
-  }
-
   String _episodeAudioUrl(Map<String, dynamic> episode) {
     return (episode['audioUrl'] ?? episode['audio_url'] ?? '').toString();
-  }
-}
-
-class _SamplePodcastCard extends StatelessWidget {
-  final Podcast sample;
-  final VoidCallback onTap;
-
-  const _SamplePodcastCard({required this.sample, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: const Icon(Icons.podcasts_outlined),
-        title: Text(sample.title,
-            maxLines: 1, overflow: TextOverflow.ellipsis),
-        subtitle: Text('${sample.host} · SAMPLE',
-            maxLines: 1, overflow: TextOverflow.ellipsis),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: onTap,
-      ),
-    );
   }
 }

@@ -59,7 +59,37 @@ class AppwritePushService {
     await StorageService.instance.setString(StorageKeys.appwritePushTargetId, targetId);
 
     await subscribeCurrentTarget('all_users', targetId: targetId);
+    await subscribeAdminTopicsIfEligible(targetId: targetId);
     return targetId;
+  }
+
+  /// Automatically subscribes current user device to 'admins' and 'approvals' topics
+  /// if they hold an administrator or super_admin role.
+  Future<void> subscribeAdminTopicsIfEligible({String? targetId}) async {
+    try {
+      final user = AuthService.instance.currentUser ??
+          await AuthService.instance.getCurrentUser();
+      if (user == null) return;
+
+      final isSuperAdmin = AppwriteBackendConfig.isSuperAdminEmail(user.email);
+      bool isAdmin = isSuperAdmin;
+
+      if (!isAdmin) {
+        final profile = await AuthService.instance.getCurrentUserProfile();
+        final role = profile?.role.toLowerCase().trim() ?? '';
+        if (role == 'admin' || role == 'super_admin' || role == 'superadmin') {
+          isAdmin = true;
+        }
+      }
+
+      if (isAdmin) {
+        _logger.info('User is admin/super_admin; subscribing target to admins and approvals topics');
+        await subscribeCurrentTarget('admins', targetId: targetId);
+        await subscribeCurrentTarget('approvals', targetId: targetId);
+      }
+    } catch (e) {
+      _logger.warning('Failed to subscribe admin topics: $e');
+    }
   }
 
   Future<void> subscribeCurrentTarget(
