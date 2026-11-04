@@ -135,28 +135,24 @@ class AppwriteBackendConfig {
       'user_submitted_health_tips';
   /// The link the recovery email points at.
   ///
-  /// This MUST use the fragment form. The app never calls
-  /// `usePathUrlStrategy()`, so Flutter web keeps the default hash-based URL
-  /// strategy and go_router reads the route from `window.location.hash` only.
+  /// Uses clean path-based URLs (no hash `/#/`). The app calls
+  /// `usePathUrlStrategy()` in main.dart so Flutter Web uses HTML5 history
+  /// instead of hash-based URL fragments.
   ///
-  /// With a path-style URL such as `https://app.alivenigeria.org/reset-password`,
-  /// nginx serves index.html (its `try_files $uri $uri/ /index.html`), Flutter
-  /// boots, and go_router finds an EMPTY fragment -- so it renders its default
-  /// route and the recovery screen is never reached. The member clicks a valid
-  /// link, lands on the home screen, and the reset silently does nothing. That
-  /// is the actual cause of "the reset link does not work", not the missing
-  /// secret: the secret was arriving fine and being dropped on the floor.
+  /// Path-based URLs are required for:
+  /// - Android App Links (.well-known/assetlinks.json matching)
+  /// - iOS Universal Links
+  /// - Email client compatibility (Outlook strips URL fragments after `#`)
   ///
-  /// Appwrite appends `?userId=..&secret=..` to whatever this is set to, giving
-  /// `https://app.alivenigeria.org/#/reset-password?userId=..&secret=..`. Those
-  /// parameters live in the fragment, which is exactly what the reset route
-  /// reads them from, so the values arrive intact.
+  /// Nginx is configured with `try_files $uri $uri/ /index.html;` which
+  /// serves index.html for any path, so go_router handles all routes.
   ///
-  /// This matches oauthSuccessUrl/oauthFailureUrl, which already use `/#/...`.
+  /// Appwrite appends `?userId=..&secret=..` to whatever this is set to,
+  /// giving `https://app.alivenigeria.org/reset-password?userId=..&secret=..`.
   static const String passwordRecoveryUrl =
-      'https://app.alivenigeria.org/#/reset-password';
-  static const String oauthSuccessUrl = 'https://app.alivenigeria.org/#/home';
-  static const String oauthFailureUrl = 'https://app.alivenigeria.org/#/auth';
+      'https://app.alivenigeria.org/reset-password';
+  static const String oauthSuccessUrl = 'https://app.alivenigeria.org/home';
+  static const String oauthFailureUrl = 'https://app.alivenigeria.org/auth';
 
   /// Monitored support mailbox. Every transactional email sent through the
   /// `send_email` Appwrite Function is configured with this address as its

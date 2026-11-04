@@ -31,10 +31,12 @@ import 'widgets/app_tour/app_tour_service.dart';
 export 'services/appwrite_client.dart';
 import 'services/appwrite_client.dart';
 import 'services/onboarding_service.dart';
+import 'utils/url_strategy.dart';
 
 void main() {
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
+    configureUrlStrategy();
     if (!kIsWeb) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
       SystemChrome.setSystemUIOverlayStyle(

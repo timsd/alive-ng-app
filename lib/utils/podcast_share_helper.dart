@@ -14,13 +14,13 @@ class PodcastShareHelper {
     String? podcastId,
   }) {
     if (episodeId.isEmpty) {
-      return '$webBaseUrl/#/podcasts';
+      return '$webBaseUrl/podcasts';
     }
     final encodedId = Uri.encodeComponent(episodeId);
     if (podcastId != null && podcastId.isNotEmpty) {
-      return '$webBaseUrl/#/podcasts?episodeId=$encodedId&podcastId=${Uri.encodeComponent(podcastId)}';
+      return '$webBaseUrl/podcasts?episodeId=$encodedId&podcastId=${Uri.encodeComponent(podcastId)}';
     }
-    return '$webBaseUrl/#/podcasts?episodeId=$encodedId';
+    return '$webBaseUrl/podcasts?episodeId=$encodedId';
   }
 
   /// Shares a podcast episode across social platforms, messaging apps, and clipboard.
