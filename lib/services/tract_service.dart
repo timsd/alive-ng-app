@@ -601,6 +601,12 @@ class TractService {
             'Bible study lesson ${index + 1} from the "What the Bible Says" series',
         category: 'Bible Study',
         pdfUrl: '$_remoteTractPath/bible_says_lesson_${index + 1}.pdf',
+        coverImage: index == 0
+            ? 'assets/images/series/what_the_bible_says_lesson_1.jpg'
+            : null,
+        imageUrl: index == 0
+            ? 'assets/images/series/what_the_bible_says_lesson_1.jpg'
+            : null,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
         isDownloaded: false,

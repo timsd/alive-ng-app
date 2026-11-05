@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../widgets/custom_image.dart';
 import '../../utils/responsive_utils.dart';
 import '../../models/tract_models.dart';
 import '../../services/tract_service.dart';
@@ -65,7 +66,6 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
         bottom: TabBar(
           controller: _tabController,
           tabs: [
-            Tab(icon: const Icon(Icons.book), text: translate('books')),
             Tab(icon: const Icon(Icons.article), text: translate('tracts')),
             Tab(
                 icon: const Icon(Icons.download),
@@ -167,7 +167,6 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
             child: TabBarView(
               controller: _tabController,
               children: [
-                _buildBooksTab(translate),
                 _buildTractsTab(translate),
                 _buildDownloadedTab(translate),
               ],
@@ -216,12 +215,22 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
           return GridView.builder(
             padding: context.responsivePadding,
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 0.8,
+              crossAxisCount: ResponsiveUtils.getResponsiveValue(
+                context: context,
+                mobile: 2,
+                tablet: 3,
+                desktop: 4,
+              ),
+              childAspectRatio: ResponsiveUtils.getResponsiveValue(
+                context: context,
+                mobile: 0.58,
+                tablet: 0.64,
+                desktop: 0.70,
+              ),
               crossAxisSpacing: ResponsiveUtils.getResponsiveValue(
                   context: context, mobile: 12.0, tablet: 16.0, desktop: 20.0),
               mainAxisSpacing: ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 12.0, tablet: 16.0, desktop: 20.0),
+                  context: context, mobile: 14.0, tablet: 18.0, desktop: 20.0),
             ),
             itemCount: filtered.length,
             itemBuilder: (context, index) {
@@ -302,9 +311,119 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
     );
   }
 
+  Widget _buildRealDownloadedItem(BuildContext context, UserDownload download) {
+    return Card(
+      margin: EdgeInsets.only(
+        bottom: ResponsiveUtils.getResponsiveValue(
+            context: context, mobile: 10.0, tablet: 12.0, desktop: 14.0),
+      ),
+      child: ListTile(
+        leading: Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: Colors.green.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Center(
+            child: Icon(Icons.article_rounded, color: Colors.green, size: 24),
+          ),
+        ),
+        title: Text(
+          download.materialTitle,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text(
+          'Downloaded on ${download.downloadedAt.day}/${download.downloadedAt.month}/${download.downloadedAt.year}',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Colors.grey[600],
+              ),
+        ),
+        trailing: IconButton(
+          icon: const Icon(Icons.download_rounded),
+          tooltip: 'Re-download',
+          onPressed: () => _redownloadMaterial(download),
+        ),
+        onTap: () => _redownloadMaterial(download),
+      ),
+    );
+  }
+
+  Widget _buildTractCoverWidget(BuildContext context, Tract tract) {
+    String coverUrl = '';
+    if (tract.coverImage != null && tract.coverImage!.trim().isNotEmpty) {
+      coverUrl = tract.coverImage!.trim();
+    } else if (tract.imageUrl != null && tract.imageUrl!.trim().isNotEmpty) {
+      coverUrl = tract.imageUrl!.trim();
+    } else if (tract.coverImages.isNotEmpty && tract.coverImages.first.trim().isNotEmpty) {
+      coverUrl = tract.coverImages.first.trim();
+    } else if (tract.id.contains('lesson_1') ||
+        tract.id.contains('bible_says_1') ||
+        tract.title.toLowerCase().contains('something we can trust')) {
+      coverUrl = 'assets/images/series/what_the_bible_says_lesson_1.jpg';
+    }
+
+    if (coverUrl.isNotEmpty) {
+      if (coverUrl.startsWith('assets/')) {
+        return Image.asset(
+          coverUrl,
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: double.infinity,
+        );
+      }
+      return CustomImage(
+        imageUrl: coverUrl,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      decoration: BoxDecoration(
+        color: Theme.of(context).primaryColor.withValues(alpha: 0.12),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.article_rounded,
+              size: ResponsiveUtils.getResponsiveValue(
+                  context: context, mobile: 36.0, tablet: 40.0, desktop: 44.0),
+              color: Theme.of(context).primaryColor,
+            ),
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.secondary,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                'TRACT',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSecondary,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildTractGridItem(BuildContext context, Tract tract) {
     return Card(
       elevation: 2,
+      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
@@ -312,112 +431,68 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
         onTap: () {
           _openTractReader(context, tract);
         },
-        borderRadius: BorderRadius.circular(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Tract Cover
+            // Tract Cover (Top of card)
             Expanded(
-              flex: 3,
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(12),
-                  ),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.article,
-                      size: ResponsiveUtils.getResponsiveValue(
-                          context: context,
-                          mobile: 36.0,
-                          tablet: 40.0,
-                          desktop: 44.0),
-                      color: Theme.of(context).primaryColor,
-                    ),
-                    SizedBox(
-                        height: ResponsiveUtils.getResponsiveValue(
-                            context: context,
-                            mobile: 6.0,
-                            tablet: 8.0,
-                            desktop: 10.0)),
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: ResponsiveUtils.getResponsiveValue(
-                            context: context,
-                            mobile: 6.0,
-                            tablet: 8.0,
-                            desktop: 10.0),
-                        vertical: ResponsiveUtils.getResponsiveValue(
-                            context: context,
-                            mobile: 3.0,
-                            tablet: 4.0,
-                            desktop: 5.0),
-                      ),
+              flex: 12,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  _buildTractCoverWidget(context, tract),
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.secondary,
-                        borderRadius: BorderRadius.circular(
-                            ResponsiveUtils.getResponsiveValue(
-                                context: context,
-                                mobile: 10.0,
-                                tablet: 12.0,
-                                desktop: 14.0)),
+                        color: Colors.black.withValues(alpha: 0.65),
+                        borderRadius: BorderRadius.circular(6),
                       ),
-                      child: Text(
+                      child: const Text(
                         'TRACT',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSecondary,
-                              fontSize: ResponsiveUtils.getResponsiveValue(
-                                  context: context,
-                                  mobile: 9.0,
-                                  tablet: 10.0,
-                                  desktop: 11.0),
-                              fontWeight: FontWeight.bold,
-                            ),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
 
-            // Tract Info
+            // Tract Info (Bottom of card)
             Expanded(
-              flex: 2,
+              flex: 9,
               child: Padding(
-                padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(
-                    context: context,
-                    mobile: 10.0,
-                    tablet: 12.0,
-                    desktop: 14.0)),
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Title in full without clipping
                     Text(
                       tract.title,
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.bold,
+                            fontSize: 12.5,
+                            height: 1.22,
                           ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                      maxLines: 3,
+                      softWrap: true,
                     ),
-                    SizedBox(
-                        height: ResponsiveUtils.getResponsiveValue(
-                            context: context,
-                            mobile: 3.0,
-                            tablet: 4.0,
-                            desktop: 5.0)),
+                    const SizedBox(height: 3),
                     Text(
-                      tract.author ?? '',
+                      tract.author ?? 'Alive by the Truth',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: Theme.of(context)
                                 .colorScheme
                                 .onSurface
                                 .withValues(alpha: 0.6),
+                            fontSize: 11,
                           ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -430,31 +505,25 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
                           children: [
                             Icon(
                               Icons.pages,
-                              size: ResponsiveUtils.getResponsiveValue(
-                                  context: context,
-                                  mobile: 14.0,
-                                  tablet: 16.0,
-                                  desktop: 18.0),
+                              size: 14,
                               color: Theme.of(context)
                                   .colorScheme
                                   .onSurfaceVariant,
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              '${tract.pages ?? 0}',
-                              style: Theme.of(context).textTheme.bodySmall,
+                              '${tract.pages ?? 6}',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(fontSize: 11),
                             ),
                           ],
                         ),
                         Row(
                           children: [
                             IconButton(
-                              icon: Icon(Icons.picture_as_pdf,
-                                  size: ResponsiveUtils.getResponsiveValue(
-                                      context: context,
-                                      mobile: 18.0,
-                                      tablet: 20.0,
-                                      desktop: 22.0)),
+                              icon: const Icon(Icons.picture_as_pdf, size: 18),
                               onPressed: () {
                                 _viewOriginalPDF(tract);
                               },
@@ -462,13 +531,9 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
                               constraints: const BoxConstraints(),
                               tooltip: 'View PDF',
                             ),
+                            const SizedBox(width: 10),
                             IconButton(
-                              icon: Icon(Icons.download,
-                                  size: ResponsiveUtils.getResponsiveValue(
-                                      context: context,
-                                      mobile: 18.0,
-                                      tablet: 20.0,
-                                      desktop: 22.0)),
+                              icon: const Icon(Icons.download, size: 18),
                               onPressed: () {
                                 _downloadTract(tract);
                               },
@@ -496,45 +561,12 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
           bottom: ResponsiveUtils.getResponsiveValue(
               context: context, mobile: 10.0, tablet: 12.0, desktop: 14.0)),
       child: ListTile(
-        leading: Container(
-          width: ResponsiveUtils.getResponsiveValue(
-              context: context, mobile: 50.0, tablet: 56.0, desktop: 62.0),
-          height: ResponsiveUtils.getResponsiveValue(
-              context: context, mobile: 50.0, tablet: 56.0, desktop: 62.0),
-          decoration: BoxDecoration(
-            color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(
-                ResponsiveUtils.getResponsiveValue(
-                    context: context, mobile: 6.0, tablet: 8.0, desktop: 10.0)),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.article,
-                color: Theme.of(context).primaryColor,
-                size: ResponsiveUtils.getResponsiveValue(
-                    context: context,
-                    mobile: 20.0,
-                    tablet: 24.0,
-                    desktop: 28.0),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.orange,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  'TRACT',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: Colors.white,
-                        fontSize: 8,
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-              ),
-            ],
+        leading: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: SizedBox(
+            width: 48,
+            height: 60,
+            child: _buildTractCoverWidget(context, tract),
           ),
         ),
         title: Text(

@@ -11,6 +11,7 @@ class InteractiveLessonItem {
   final String duration;
   final String content;
   final String? tractId;
+  final String? coverImage;
   final bool isFavorite;
   final double progress;
   final bool isCompleted;
@@ -25,6 +26,7 @@ class InteractiveLessonItem {
     required this.duration,
     required this.content,
     this.tractId,
+    this.coverImage,
     this.isFavorite = false,
     this.progress = 0.0,
     this.isCompleted = false,
@@ -40,6 +42,7 @@ class InteractiveLessonItem {
         'duration': duration,
         'content': content,
         'tractId': tractId,
+        'coverImage': coverImage,
         'isFavorite': isFavorite,
         'progress': progress,
         'isCompleted': isCompleted,
@@ -56,6 +59,9 @@ class InteractiveLessonItem {
         duration: json['duration'] as String? ?? '30 min',
         content: json['content'] as String? ?? '',
         tractId: json['tractId'] as String?,
+        coverImage: json['coverImage'] as String? ??
+            json['cover_image'] as String? ??
+            json['imageUrl'] as String?,
         isFavorite: json['isFavorite'] as bool? ?? false,
         progress: (json['progress'] as num?)?.toDouble() ?? 0.0,
         isCompleted: json['isCompleted'] as bool? ?? false,
@@ -71,6 +77,7 @@ class InteractiveLessonItem {
     String? duration,
     String? content,
     String? tractId,
+    String? coverImage,
     bool? isFavorite,
     double? progress,
     bool? isCompleted,
@@ -85,6 +92,7 @@ class InteractiveLessonItem {
       duration: duration ?? this.duration,
       content: content ?? this.content,
       tractId: tractId ?? this.tractId,
+      coverImage: coverImage ?? this.coverImage,
       isFavorite: isFavorite ?? this.isFavorite,
       progress: progress ?? this.progress,
       isCompleted: isCompleted ?? this.isCompleted,
@@ -233,6 +241,7 @@ class InteractiveLessonsService extends ChangeNotifier {
       level: 'Beginner',
       duration: '20 min',
       tractId: 'tract_lesson_1',
+      coverImage: 'assets/images/series/what_the_bible_says_lesson_1.jpg',
       content: '''# Lesson 1: Something We Can Trust
 
 ## 1. What does the Bible claim about itself?

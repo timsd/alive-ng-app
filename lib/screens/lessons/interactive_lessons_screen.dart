@@ -7,6 +7,7 @@ import '../../utils/search_utils.dart';
 import '../../utils/text_formatter.dart';
 import '../../services/interactive_lessons_service.dart';
 import '../../models/tract_models.dart';
+import '../../widgets/custom_image.dart';
 import '../books/tract_reader_screen.dart';
 import 'interactive_lesson_reader_screen.dart';
 
@@ -267,8 +268,34 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
       );
     }
 
-    return ListView.builder(
+    return GridView.builder(
       padding: context.responsivePadding,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: ResponsiveUtils.getResponsiveValue(
+          context: context,
+          mobile: 2,
+          tablet: 2,
+          desktop: 3,
+        ),
+        childAspectRatio: ResponsiveUtils.getResponsiveValue(
+          context: context,
+          mobile: 0.58,
+          tablet: 0.65,
+          desktop: 0.72,
+        ),
+        crossAxisSpacing: ResponsiveUtils.getResponsiveValue(
+          context: context,
+          mobile: 12.0,
+          tablet: 16.0,
+          desktop: 20.0,
+        ),
+        mainAxisSpacing: ResponsiveUtils.getResponsiveValue(
+          context: context,
+          mobile: 14.0,
+          tablet: 18.0,
+          desktop: 22.0,
+        ),
+      ),
       itemCount: lessons.length,
       itemBuilder: (context, index) {
         final lesson = lessons[index];
@@ -278,192 +305,208 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
   }
 
   Widget _buildLessonCard(Map<String, dynamic> lesson, int index) {
-    final progress = lesson['progress'] as double;
-    final isFavorite = lesson['isFavorite'] as bool;
-    final isCompleted = lesson['isCompleted'] as bool;
+    final progress = (lesson['progress'] as num?)?.toDouble() ?? 0.0;
+    final isFavorite = lesson['isFavorite'] == true;
+    final isCompleted = lesson['isCompleted'] == true;
+    final coverUrl = (lesson['coverImage'] ?? lesson['cover_image'] ?? lesson['imageUrl'])?.toString() ?? '';
+    final effectiveCover = coverUrl.isNotEmpty
+        ? coverUrl
+        : ((lesson['title'] ?? '').toString().toLowerCase().contains('something we can trust')
+            ? 'assets/images/series/what_the_bible_says_lesson_1.jpg'
+            : '');
 
     return Card(
-      margin: EdgeInsets.only(
-        bottom: ResponsiveUtils.getResponsiveValue(
-          context: context,
-          mobile: 16.0,
-          tablet: 18.0,
-          desktop: 20.0,
-        ),
-      ),
       elevation: 2,
+      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        borderRadius: context.responsiveBorderRadius,
+        borderRadius: BorderRadius.circular(14),
       ),
       child: InkWell(
-        borderRadius: context.responsiveBorderRadius,
+        borderRadius: BorderRadius.circular(14),
         onTap: () => _showLessonDetails(lesson),
-        child: Padding(
-          padding: context.responsivePadding,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header Row
-              Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 1. Cover Image (4:3 aspect ratio)
+            AspectRatio(
+              aspectRatio: 1.15,
+              child: Stack(
+                fit: StackFit.expand,
                 children: [
-                  Expanded(
-                    child: Text(
-                      lesson['title'],
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      isFavorite ? Icons.favorite : Icons.favorite_border,
-                      color: isFavorite ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.outline,
-                    ),
-                    onPressed: () => _toggleFavorite(index),
-                  ),
-                ],
-              ),
-              SizedBox(height: ResponsiveUtils.getResponsiveValue(
-                context: context,
-                mobile: 8.0,
-                tablet: 10.0,
-                desktop: 12.0,
-              )),
-              // Description
-              Text(
-                lesson['description'],
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              SizedBox(height: ResponsiveUtils.getResponsiveValue(
-                context: context,
-                mobile: 12.0,
-                tablet: 14.0,
-                desktop: 16.0,
-              )),
-              // Tags Row
-              Row(
-                children: [
-                  _buildTag(lesson['category'], Colors.blue),
-                  SizedBox(width: ResponsiveUtils.getResponsiveValue(
-                    context: context,
-                    mobile: 8.0,
-                    tablet: 10.0,
-                    desktop: 12.0,
-                  )),
-                  _buildTag(lesson['level'], Colors.green),
-                  SizedBox(width: ResponsiveUtils.getResponsiveValue(
-                    context: context,
-                    mobile: 8.0,
-                    tablet: 10.0,
-                    desktop: 12.0,
-                  )),
-                  _buildTag(lesson['duration'], Colors.orange),
-                ],
-              ),
-              SizedBox(height: ResponsiveUtils.getResponsiveValue(
-                context: context,
-                mobile: 12.0,
-                tablet: 14.0,
-                desktop: 16.0,
-              )),
-              // Progress Bar
-              if (progress > 0) ...[
-                Row(
-                  children: [
-                    Expanded(
-                      child: LinearProgressIndicator(
-                        value: progress,
-                        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          isCompleted ? Theme.of(context).colorScheme.tertiary : Theme.of(context).colorScheme.primary,
+                  if (effectiveCover.isNotEmpty)
+                    effectiveCover.startsWith('assets/')
+                        ? Image.asset(
+                            effectiveCover,
+                            fit: BoxFit.cover,
+                          )
+                        : CustomImage(
+                            imageUrl: effectiveCover,
+                            fit: BoxFit.cover,
+                          )
+                  else
+                    Container(
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+                      child: Center(
+                        child: Icon(
+                          Icons.menu_book_rounded,
+                          size: 40,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
                     ),
-                    SizedBox(width: ResponsiveUtils.getResponsiveValue(
-                      context: context,
-                      mobile: 8.0,
-                      tablet: 10.0,
-                      desktop: 12.0,
-                    )),
-                    Text(
-                      '${(progress * 100).toInt()}%',
-                      style: TextStyle(
-                        fontSize: context.responsiveFontSize(12),
-                        fontWeight: FontWeight.w500,
+
+                  // Favorite button top-right
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.45),
+                        shape: BoxShape.circle,
+                      ),
+                      child: IconButton(
+                        iconSize: 18,
+                        padding: const EdgeInsets.all(6),
+                        constraints: const BoxConstraints(),
+                        icon: Icon(
+                          isFavorite ? Icons.favorite : Icons.favorite_border,
+                          color: isFavorite ? Colors.redAccent : Colors.white,
+                        ),
+                        onPressed: () => _toggleFavorite(index),
                       ),
                     ),
-                  ],
-                ),
-                SizedBox(height: ResponsiveUtils.getResponsiveValue(
-                  context: context,
-                  mobile: 8.0,
-                  tablet: 10.0,
-                  desktop: 12.0,
-                )),
-              ],
-              // Status
-              if (isCompleted)
-                Row(
+                  ),
+
+                  // Completed check badge
+                  if (isCompleted)
+                    Positioned(
+                      top: 6,
+                      left: 6,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade700,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.check_circle_rounded, size: 12, color: Colors.white),
+                            SizedBox(width: 3),
+                            Text(
+                              'COMPLETED',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+
+            // 2. Info Content
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      Icons.check_circle,
-                      color: Colors.green,
-                      size: context.responsiveIconSize(16),
-                    ),
-                    SizedBox(width: ResponsiveUtils.getResponsiveValue(
-                      context: context,
-                      mobile: 4.0,
-                      tablet: 5.0,
-                      desktop: 6.0,
-                    )),
+                    // Title (shows in full)
                     Text(
-                      'Completed',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.tertiary,
-                        fontWeight: FontWeight.w500,
+                      lesson['title']?.toString() ?? '',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12.5,
+                            height: 1.25,
+                          ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+
+                    // Category tag
+                    if (lesson['category'] != null && lesson['category'].toString().isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          lesson['category'].toString(),
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+
+                    const Spacer(),
+
+                    // Level & Duration line
+                    Row(
+                      children: [
+                        Text(
+                          lesson['level']?.toString() ?? 'Beginner',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '•',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.outline,
+                            fontSize: 10,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          lesson['duration']?.toString() ?? '20 min',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+
+                    // Progress Bar
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: progress.clamp(0.0, 1.0),
+                        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          isCompleted
+                              ? Colors.green
+                              : Theme.of(context).colorScheme.primary,
+                        ),
+                        minHeight: 4,
                       ),
                     ),
                   ],
                 ),
-            ],
-          ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildTag(String text, Color color) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: ResponsiveUtils.getResponsiveValue(
-          context: context,
-          mobile: 8.0,
-          tablet: 10.0,
-          desktop: 12.0,
-        ),
-        vertical: ResponsiveUtils.getResponsiveValue(
-          context: context,
-          mobile: 4.0,
-          tablet: 5.0,
-          desktop: 6.0,
-        ),
-      ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: context.responsiveBorderRadius,
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Text(
-        text,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
 
   void _toggleFavorite(int index) {
     if (index >= 0 && index < _filteredLessons.length) {
