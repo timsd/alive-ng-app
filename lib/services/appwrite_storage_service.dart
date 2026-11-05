@@ -56,6 +56,34 @@ class AppwriteStorageService {
     );
   }
 
+  /// Uploads a new profile image and automatically cleans up the old one from Appwrite Storage.
+  Future<String> replaceProfileFile({
+    required Uint8List bytes,
+    required String fileName,
+    required String contentType,
+    String? previousUrl,
+  }) async {
+    // 1. Upload new image first to ensure availability
+    final newUrl = await uploadProfileFile(
+      bytes: bytes,
+      fileName: fileName,
+      contentType: contentType,
+    );
+
+    // 2. Auto-delete old profile image if it exists and is an Appwrite storage file
+    if (previousUrl != null &&
+        previousUrl.isNotEmpty &&
+        previousUrl != newUrl) {
+      try {
+        await deleteFileByUrl(previousUrl);
+      } catch (e) {
+        debugPrint('[AppwriteStorageService] Warning: Could not delete previous profile image: $e');
+      }
+    }
+
+    return newUrl;
+  }
+
   Future<String> uploadContentFile({
     required Uint8List bytes,
     required String fileName,
@@ -82,10 +110,17 @@ class AppwriteStorageService {
       return;
     }
 
-    await _storage.deleteFile(
-      bucketId: segments[bucketIndex + 1],
-      fileId: segments[fileIndex + 1],
-    );
+    try {
+      final bucketId = segments[bucketIndex + 1];
+      final fileId = segments[fileIndex + 1];
+      await _storage.deleteFile(
+        bucketId: bucketId,
+        fileId: fileId,
+      );
+      debugPrint('[AppwriteStorageService] Cleaned up previous profile file: $fileId from $bucketId');
+    } catch (e) {
+      debugPrint('[AppwriteStorageService] Error deleting file by URL ($fileUrl): $e');
+    }
   }
 
   Future<String> _uploadFile({

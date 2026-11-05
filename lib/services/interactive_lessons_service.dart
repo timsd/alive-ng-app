@@ -123,10 +123,26 @@ class InteractiveLessonsService extends ChangeNotifier {
         _lessons = savedJsonList
             .map((s) => InteractiveLessonItem.fromJson(jsonDecode(s)))
             .toList();
+        // Purge legacy demo / mock items so the screen is 100% production-ready
+        _lessons.removeWhere((l) =>
+            l.id == 'lesson_intro_prayer' ||
+            l.id == 'lesson_faith_works' ||
+            l.id == 'lesson_gospel_peace' ||
+            l.id.contains('_demo_') ||
+            l.title.toLowerCase().contains('demo'));
+
         // Ensure standard default lessons (like Lesson 1) are present even for existing local storage
         for (final defaultLesson in _defaultLessons.reversed) {
-          if (!_lessons.any((l) => l.id == defaultLesson.id)) {
+          final existingIdx = _lessons.indexWhere((l) => l.id == defaultLesson.id);
+          if (existingIdx == -1) {
             _lessons.insert(0, defaultLesson);
+          } else {
+            // Update tractId or metadata if changed
+            _lessons[existingIdx] = _lessons[existingIdx].copyWith(
+              tractId: defaultLesson.tractId,
+              title: defaultLesson.title,
+              category: defaultLesson.category,
+            );
           }
         }
       } else {
@@ -216,7 +232,7 @@ class InteractiveLessonsService extends ChangeNotifier {
       category: 'What the Bible Says',
       level: 'Beginner',
       duration: '20 min',
-      tractId: 'test_tract_lesson_1',
+      tractId: 'tract_lesson_1',
       content: '''# Lesson 1: Something We Can Trust
 
 ## 1. What does the Bible claim about itself?

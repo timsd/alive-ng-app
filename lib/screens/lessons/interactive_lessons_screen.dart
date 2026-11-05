@@ -5,7 +5,6 @@ import '../../widgets/custom_app_bar.dart';
 import '../../utils/responsive_utils.dart';
 import '../../utils/search_utils.dart';
 import '../../utils/text_formatter.dart';
-import '../../services/role_access_service.dart';
 import '../../services/interactive_lessons_service.dart';
 import '../../models/tract_models.dart';
 import '../books/tract_reader_screen.dart';
@@ -25,8 +24,6 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
   String _selectedCategory = 'All';
   String _selectedLevel = 'All';
   String _searchQuery = '';
-  bool _showDemoContent = false;
-  bool _isAdmin = false;
 
   // Define lesson lists
   List<Map<String, dynamic>> _allLessons = [];
@@ -40,7 +37,6 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
-    _checkAdminStatus();
     _loadFromService();
     _lessonsService.addListener(_onServiceUpdate);
   }
@@ -73,20 +69,8 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
     _completedLessons = _allLessons.where((lesson) => lesson['isCompleted'] == true).toList();
   }
 
-  void _checkAdminStatus() {
-    _isAdmin = RoleAccessService.instance.canAccessAdmin();
-  }
-
-  void _toggleDemoContent() {
-    setState(() {
-      _showDemoContent = !_showDemoContent;
-    });
-  }
-
   List<Map<String, dynamic>> get _filteredLessons {
-    var lessons = _showDemoContent 
-        ? _allLessons 
-        : _allLessons.where((lesson) => lesson['isDemo'] != true).toList();
+    var lessons = List<Map<String, dynamic>>.from(_allLessons);
     
     if (_selectedCategory != 'All') {
       lessons = lessons.where((lesson) => lesson['category'] == _selectedCategory).toList();
@@ -115,15 +99,7 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
       appBar: CustomAppBar(
         title: translate('interactive_lessons'),
         showBackButton: true,
-        actions: _isAdmin
-            ? [
-                IconButton(
-                  icon: Icon(_showDemoContent ? Icons.visibility_off : Icons.visibility),
-                  onPressed: _toggleDemoContent,
-                  tooltip: _showDemoContent ? 'Hide Demo Content' : 'Show Demo Content',
-                ),
-              ]
-            : null,
+
       ),
       body: Column(
         children: [

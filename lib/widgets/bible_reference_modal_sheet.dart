@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../services/bible_database_helper.dart';
-import '../../constants/bible_data.dart';
-import '../../models/bible_models.dart' as bible_models;
+import '../services/bible_database_helper.dart';
+import '../services/offline_bible_service.dart';
+import '../constants/bible_data.dart';
+import '../models/bible_models.dart' as bible_models;
 import '../screens/bible/bible_reader_screen.dart';
 
 /// Bottom sheet dialog matching the Bible reader aesthetic (dark theme, version selector, clean typography)
@@ -40,8 +41,9 @@ class BibleReferenceModalSheet extends StatefulWidget {
 
 class _BibleReferenceModalSheetState extends State<BibleReferenceModalSheet> {
   late String _selectedVersion;
-  final List<String> _availableVersions = ['NKJV', 'KJV', 'NIV', 'NLT', 'NASB', 'ASV'];
+  List<String> _availableVersions = ['NKJV', 'KJV', 'NIV', 'NLT', 'NASB', 'ASV'];
   final BibleDatabaseHelper _dbHelper = BibleDatabaseHelper();
+  final OfflineBibleService _offlineBible = OfflineBibleService();
 
   bool _isLoading = true;
   String _referenceTitle = '';
@@ -53,7 +55,30 @@ class _BibleReferenceModalSheetState extends State<BibleReferenceModalSheet> {
     super.initState();
     _selectedVersion = widget.initialVersion;
     _referenceTitle = widget.reference;
+    _initAvailableVersions();
     _loadVerseText();
+  }
+
+  Future<void> _initAvailableVersions() async {
+    try {
+      final loaded = await _dbHelper.getLoadedVersionCodes();
+      if (loaded.isNotEmpty && mounted) {
+        setState(() {
+          final sorted = loaded.toList();
+          sorted.sort((a, b) {
+            if (a == 'NKJV') return -1;
+            if (b == 'NKJV') return 1;
+            if (a == 'KJV') return -1;
+            if (b == 'KJV') return 1;
+            return a.compareTo(b);
+          });
+          _availableVersions = sorted;
+          if (!_availableVersions.contains(_selectedVersion)) {
+            _selectedVersion = _availableVersions.first;
+          }
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadVerseText() async {
@@ -68,55 +93,77 @@ class _BibleReferenceModalSheetState extends State<BibleReferenceModalSheet> {
         throw 'Invalid Bible reference format';
       }
 
-      final book = parsed['book'] as String;
+      final rawBook = parsed['book'] as String;
+      final canonBook = BibleData.canonicalBookName(rawBook) ?? rawBook;
       final chapter = parsed['chapter'] as int;
       final startVerse = (parsed['verse'] as int?) ?? 1;
 
-      // Extract range end verse if present (e.g. John 17:15-17 -> 17)
-      int endVerse = startVerse;
+      // Extract target verses (ranges or comma-separated lists)
+      final Set<int> targetVerses = {};
       final rangeMatch = RegExp(r'[-–](\d+)').firstMatch(widget.reference);
       if (rangeMatch != null) {
-        endVerse = int.tryParse(rangeMatch.group(1)!) ?? startVerse;
+        final endVerse = int.tryParse(rangeMatch.group(1)!) ?? startVerse;
+        for (int i = startVerse; i <= endVerse; i++) {
+          targetVerses.add(i);
+        }
+      } else {
+        final commaMatches = RegExp(r'[:,]\s*(\d+)').allMatches(widget.reference);
+        if (commaMatches.length > 1) {
+          for (final m in commaMatches) {
+            final v = int.tryParse(m.group(1)!);
+            if (v != null) targetVerses.add(v);
+          }
+        } else {
+          targetVerses.add(startVerse);
+        }
       }
 
-      final chapterData = await _dbHelper.getChapter(
-        book,
+      // Query offline Bible service (checks in-memory cache, local prebuilt SQLite, and asset bundles)
+      var chapterData = await _offlineBible.getBibleChapter(
+        book: canonBook,
+        chapter: chapter,
+        version: _selectedVersion,
+        language: 'en',
+      );
+
+      // Direct fallback to database helper
+      chapterData ??= await _dbHelper.getChapter(
+        canonBook,
         chapter,
         _selectedVersion,
         'English',
       );
 
+      // If version is missing this chapter, fallback seamlessly to KJV
+      if ((chapterData == null || chapterData.verses.isEmpty) && _selectedVersion != 'KJV') {
+        chapterData = await _offlineBible.getBibleChapter(
+          book: canonBook,
+          chapter: chapter,
+          version: 'KJV',
+          language: 'en',
+        );
+        chapterData ??= await _dbHelper.getChapter(
+          canonBook,
+          chapter,
+          'KJV',
+          'English',
+        );
+        if (chapterData != null && chapterData.verses.isNotEmpty) {
+          _selectedVersion = 'KJV';
+        }
+      }
+
       if (chapterData != null && chapterData.verses.isNotEmpty) {
         final filtered = chapterData.verses
-            .where((v) => v.number >= startVerse && v.number <= endVerse)
+            .where((v) => targetVerses.contains(v.number))
             .toList();
 
         setState(() {
-          _verses = filtered.isNotEmpty ? filtered : chapterData.verses.take(3).toList();
+          _verses = filtered.isNotEmpty ? filtered : chapterData!.verses.take(3).toList();
           _isLoading = false;
         });
       } else {
-        // Fallback: Try with KJV
-        if (_selectedVersion != 'KJV') {
-          final kjvChapter = await _dbHelper.getChapter(
-            book,
-            chapter,
-            'KJV',
-            'English',
-          );
-          if (kjvChapter != null && kjvChapter.verses.isNotEmpty) {
-            final filtered = kjvChapter.verses
-                .where((v) => v.number >= startVerse && v.number <= endVerse)
-                .toList();
-            setState(() {
-              _verses = filtered.isNotEmpty ? filtered : kjvChapter.verses.take(3).toList();
-              _selectedVersion = 'KJV';
-              _isLoading = false;
-            });
-            return;
-          }
-        }
-        throw 'Could not load verses for $book $chapter:$_selectedVersion';
+        throw 'No offline verses found for $canonBook $chapter';
       }
     } catch (e) {
       setState(() {
