@@ -55,6 +55,7 @@ class AppConstants {
   static const String interactiveLessonsRoute = '/interactive-lessons';
   static const String libraryRoute = '/library';
   static const String booksTractsRoute = '/books-tracts';
+  static const String tractsRoute = '/tracts';
   static const String kidsStoriesRoute = '/kids-stories';
   static const String prayerWallRoute = '/prayer-wall';
   static const String privatePrayerRoomRoute = '/private-prayer-room';

@@ -455,6 +455,7 @@ class RoleAccessService {
       '/testimonies',
       '/library',
       '/books-tracts',
+      '/tracts',
     ];
 
     if (canCreateContent()) {

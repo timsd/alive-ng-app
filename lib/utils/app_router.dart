@@ -98,6 +98,7 @@ bool _isGuestAccessibleRoute(String path) {
     '/podcasts',
     '/interactive-lessons',
     '/books-tracts',
+    '/tracts',
     '/kids-stories',
     '/testimonies',
     '/help-support',
@@ -660,7 +661,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const InteractiveLessonsScreen(),
           ),
 
-          // Books & Tracts Route
+          // Tracts Route & Alias
+          GoRoute(
+            path: AppConstants.tractsRoute,
+            builder: (context, state) => const BooksTractsScreen(),
+          ),
           GoRoute(
             path: AppConstants.booksTractsRoute,
             builder: (context, state) => const BooksTractsScreen(),
