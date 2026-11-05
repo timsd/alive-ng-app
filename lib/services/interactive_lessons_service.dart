@@ -123,6 +123,12 @@ class InteractiveLessonsService extends ChangeNotifier {
         _lessons = savedJsonList
             .map((s) => InteractiveLessonItem.fromJson(jsonDecode(s)))
             .toList();
+        // Ensure standard default lessons (like Lesson 1) are present even for existing local storage
+        for (final defaultLesson in _defaultLessons.reversed) {
+          if (!_lessons.any((l) => l.id == defaultLesson.id)) {
+            _lessons.insert(0, defaultLesson);
+          }
+        }
       } else {
         _lessons = List.from(_defaultLessons);
         await _persistLessons();
@@ -204,124 +210,45 @@ class InteractiveLessonsService extends ChangeNotifier {
   // Pre-populated Curated Production Lessons
   static final List<InteractiveLessonItem> _defaultLessons = [
     const InteractiveLessonItem(
-      id: 'lesson_great_controversy',
-      title: 'The Great Controversy',
-      description: 'Understanding the cosmic conflict between Christ and Satan, and the ultimate triumph of God\'s love and justice.',
-      category: 'Bible Study',
-      level: 'Intermediate',
-      duration: '45 min',
-      tractId: 'tract_great_controversy',
-      content: '''# The Great Controversy
-
-## 1. The Origin of Evil
-Before the entrance of evil there was peace and joy throughout the universe. All was in perfect harmony with the Creator's will. Love to God was supreme, love for one another impartial.
-
-> "How art thou fallen from heaven, O Lucifer, son of the morning! how art thou cut down to the ground, which didst weaken the nations!" — Isaiah 14:12
-
-## 2. The Conflict on Earth
-Sin entered our world through deception in Eden. But God immediately revealed His eternal plan of redemption through Jesus Christ (Genesis 3:15).
-
-## 3. The Final Triumph
-At the cross, Satan's character was unmasked before the unfallen universe. Christ declared, "It is finished!" Victory is assured for every believer who overcomes by the blood of the Lamb.''',
-      isFavorite: true,
-      progress: 0.0,
-      isCompleted: false,
-      isActive: true,
-    ),
-    const InteractiveLessonItem(
-      id: 'lesson_daniel_revelation',
-      title: 'Daniel and Revelation',
-      description: 'Exploring apocalyptic prophecies, the 2300-day sanctuary timeline, and the Three Angels\' Messages for our time.',
-      category: 'Prophecy',
-      level: 'Advanced',
-      duration: '60 min',
-      tractId: 'tract_daniel_prophecy',
-      content: '''# Daniel and Revelation: Prophetic Foundations
-
-## 1. The Multi-Metal Statue (Daniel 2)
-God outlines the sequence of world empires from Babylon, Medo-Persia, Greece, and Rome, down to the divided nations of Europe—culminating in the everlasting Kingdom of God.
-
-## 2. The 2300-Day Prophecy (Daniel 8:14)
-"Unto two thousand and three hundred days; then shall the sanctuary be cleansed." This historic prophecy points directly to the Investigative Judgment beginning in 1844.
-
-## 3. The Three Angels' Messages (Revelation 14:6–12)
-1. **First Angel:** The Everlasting Gospel, the hour of His judgment is come, worship the Creator.
-2. **Second Angel:** Babylon is fallen.
-3. **Third Angel:** Warning against the mark of the beast, and upholding the commandments of God and the faith of Jesus.''',
-      isFavorite: false,
-      progress: 0.0,
-      isCompleted: false,
-      isActive: true,
-    ),
-    const InteractiveLessonItem(
-      id: 'lesson_steps_to_christ',
-      title: 'Steps to Christ',
-      description: 'A transformative study on repentance, surrender, the test of discipleship, and growing up in Christ.',
-      category: 'Bible Study',
+      id: 'lesson_something_we_can_trust',
+      title: 'Lesson 1: Something We Can Trust',
+      description: 'What The Bible Says Series - Lesson 1. An interactive study on the truth, inspiration, and evidence of God\'s Word.',
+      category: 'What the Bible Says',
       level: 'Beginner',
-      duration: '30 min',
-      tractId: 'tract_steps_to_christ',
-      content: '''# Steps to Christ
+      duration: '20 min',
+      tractId: 'test_tract_lesson_1',
+      content: '''# Lesson 1: Something We Can Trust
 
-## 1. God's Love for Man
-Nature and revelation alike testify of God's love. Our heavenly Father is the source of life, of wisdom, and of joy.
+## 1. What does the Bible claim about itself?
+"All scripture is given by inspiration of God." (2 Timothy 3:16)
+"Prophecy came not in old time by the will of man: but holy men of God spake as they were moved by the Holy Ghost." (2 Peter 1:21)
+"The scripture cannot be broken." (John 10:35)
 
-## 2. The Sinner's Need of Christ
-Man was originally endowed with noble powers and a well-balanced mind. Through disobedience, his powers became perverted. Christ alone can renew the heart.
+## 2. How did Jesus demonstrate His confidence in Scripture?
+Jesus quoted Scripture when meeting the temptations of Satan: "It is written, Man shall not live by bread alone." (Matthew 4:4, 7, 10). He also stated that God's Word is truth (John 17:17).
 
-## 3. Repentance and Confession
-Repentance includes sorrow for sin and a turning away from it. True confession is always specific and acknowledges the sins committed.
+## 3. Fulfilled Prophecies
+Bible predictions confirm inspiration as they come to pass:
+* Four world empires: Babylon, Medo-Persia, Greece, and Rome (Daniel 2, 7, 8)
+* Cyrus named 150 years beforehand (Isaiah 45:1-3)
+* Babylon destroyed, never inhabited again (Isaiah 13:19, 20)
 
-## 4. Growing in Grace
-A life in Christ is a life of restfulness. There may be no ecstasy of feeling, but there should be an abiding, peaceful trust.''',
-      isFavorite: true,
-      progress: 0.0,
-      isCompleted: false,
-      isActive: true,
-    ),
-    const InteractiveLessonItem(
-      id: 'lesson_biblical_health',
-      title: 'Biblical Health & Wholeness',
-      description: 'Principles of God\'s health blueprint: nutrition, natural therapeutic remedies, and health as the right arm of the Gospel.',
-      category: 'Health',
-      level: 'Beginner',
-      duration: '40 min',
-      content: '''# Biblical Health & Wholeness
+## 4. Scientific Accuracy
+* Earth hung upon nothing: Job 26:7
+* Earth is a sphere: Isaiah 40:22
+* Atomic power holding together: Colossians 1:17
 
-## 1. The Body as God's Temple
-"What? know ye not that your body is the temple of the Holy Ghost which is in you, which ye have of God, and ye are not your own?" (1 Corinthians 6:19)
+## 5. Transformed Lives
+"Therefore if any man be in Christ, he is a new creature: old things are passed away; behold, all things are become new." (2 Corinthians 5:17)
 
-## 2. The NEWSTART Principles
-* **N**utrition — Clean, plant-based whole foods
-* **E**xercise — Daily purposeful movement
-* **W**ater — Abundant internal hydration & hydrotherapy
-* **S**unlight — Natural vitamin D & immune uplift
-* **T**emperance — Self-control in all good things, avoiding harmful substances
-* **A**ir — Fresh outdoor oxygenation
-* **R**est — Quality sleep and the Sabbath rest
-* **T**rust in Divine Power — Peace through complete faith in God''',
-      isFavorite: false,
-      progress: 0.0,
-      isCompleted: false,
-      isActive: true,
-    ),
-    const InteractiveLessonItem(
-      id: 'lesson_personal_evangelism',
-      title: 'Personal Evangelism & Discipleship',
-      description: 'Equipping lay missionaries to share Scripture effectively across Nigerian campuses, rural towns, and marketplaces.',
-      category: 'Missions',
-      level: 'Intermediate',
-      duration: '35 min',
-      content: '''# Personal Evangelism & Discipleship
+## 6. Messianic Prophecies
+More than 125 Old Testament prophecies were fulfilled in Jesus Christ (Luke 24:27; Acts 18:28).
 
-## 1. Christ's Method Alone
-"Christ's method alone will give true success in reaching the people. The Saviour mingled with men as one who desired their good. He showed His sympathy for them, ministered to their needs, and won their confidence. Then He bade them, 'Follow Me.'" — Ministry of Healing, p. 143.
+## 7. Advantage of Accepting God's Word
+"I understand more than the ancients, because I keep thy precepts." (Psalms 119:100)
 
-## 2. Practical Door-to-Door & Campus Outreach
-* Lead with a listening ear and prayer.
-* Meet felt needs through health advice, food, and emotional support.
-* Share your personal testimony of what Christ has done in your life.
-* Introduce inductive Bible study guides.''',
+## 8. Universal Appeal
+The Bible answers life's three most puzzling questions: Where did I come from? Why am I here? What does the future hold for me? (Psalms 119:105; Galatians 3:26; John 14:1-3)''',
       isFavorite: true,
       progress: 0.0,
       isCompleted: false,

@@ -10,6 +10,7 @@ import '../../widgets/role_guard.dart';
 import '../../services/appwrite_admin_content_service.dart';
 import '../../services/appwrite_storage_compat_service.dart';
 import '../../services/pdf_extractor_service.dart';
+import '../../services/interactive_lessons_service.dart';
 import '../../widgets/custom_image.dart';
 import '../../widgets/custom_app_bar.dart';
 import 'podcast_episode_form_dialog.dart';
@@ -164,21 +165,37 @@ class _TractManagementTabState extends State<_TractManagementTab> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Add new tract button
+        // Add new tract and interactive study buttons
         Container(
           padding: const EdgeInsets.all(16),
-          child: SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () => _showAddTractDialog(),
-              icon: const Icon(Icons.add),
-              label: const Text('Add New Tract'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
+          child: Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => _showAddTractDialog(),
+                  icon: const Icon(Icons.picture_as_pdf),
+                  label: const Text('Add Tract (PDF)'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _showAddStandaloneLessonDialog(),
+                  icon: const Icon(Icons.school),
+                  label: const Text('Add Interactive Study'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    foregroundColor: Colors.green,
+                    side: const BorderSide(color: Colors.green, width: 1.5),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
 
@@ -293,6 +310,24 @@ class _TractManagementTabState extends State<_TractManagementTab> {
         messenger.showSnackBar(
           SnackBar(
             content: Text('Tract "${result.title}" added successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    });
+  }
+
+  void _showAddStandaloneLessonDialog() {
+    final messenger = ScaffoldMessenger.of(context);
+    showDialog(
+      context: context,
+      builder: (context) => const _StandaloneLessonFormDialog(),
+    ).then((result) {
+      if (result == true) {
+        if (!mounted) return;
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Interactive Bible study lesson added successfully!'),
             backgroundColor: Colors.green,
           ),
         );
@@ -437,6 +472,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
   final List<Uint8List> _selectedCoverImages = [];
   List<String> _selectedCoverNames = [];
   bool _isUploading = false;
+  bool _createInteractiveLesson = true;
 
   @override
   void initState() {
@@ -704,6 +740,21 @@ class _TractFormDialogState extends State<_TractFormDialog> {
                         onChanged: (value) {
                           setState(() {
                             _isFeatured = value;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Also create Interactive Bible Study switch
+                      SwitchListTile(
+                        title: const Text('Also Create Interactive Bible Study Lesson'),
+                        subtitle: const Text(
+                            'Extracts PDF text into an interactive lesson so users can study interactively'),
+                        value: _createInteractiveLesson,
+                        activeThumbColor: Colors.green,
+                        onChanged: (value) {
+                          setState(() {
+                            _createInteractiveLesson = value;
                           });
                         },
                       ),
@@ -1079,6 +1130,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
           payload,
         );
 
+        String? extractedBody;
         if (_selectedPdfBytes != null && _selectedPdfName != null) {
           try {
             final article = await PdfExtractorService().extractAndFormatArticle(
@@ -1086,13 +1138,14 @@ class _TractFormDialogState extends State<_TractFormDialog> {
               _selectedPdfName!,
               fallbackTitle: tract.title,
             );
-            if (article.fullFormattedBody.trim().isNotEmpty) {
+            extractedBody = article.fullFormattedBody.trim();
+            if (extractedBody.isNotEmpty) {
               await contentService.upsertDocument(
                 'tract_contents',
                 tract.id,
                 {
                   'tract_id': tract.id,
-                  'content': article.fullFormattedBody.trim(),
+                  'content': extractedBody,
                   'questions': jsonEncode(const []),
                   'metadata': jsonEncode({
                     'source_file': _selectedPdfName,
@@ -1128,6 +1181,30 @@ class _TractFormDialogState extends State<_TractFormDialog> {
             } catch (_) {}
           } catch (e) {
             debugPrint('Warning: Could not extract tract PDF text: $e');
+          }
+        }
+
+        // If admin opted to also create/update an interactive lesson
+        if (_createInteractiveLesson) {
+          try {
+            final lessonContent = (extractedBody != null && extractedBody.isNotEmpty)
+                ? extractedBody
+                : tract.description;
+
+            final interactiveLesson = InteractiveLessonItem(
+              id: 'lesson_${tract.id}',
+              title: tract.title,
+              description: tract.description,
+              category: _selectedCategoryName ?? 'What the Bible Says',
+              level: 'Beginner',
+              duration: '${((tract.pages ?? 6) * 3).clamp(15, 45)} min',
+              content: lessonContent,
+              tractId: tract.id,
+              isActive: true,
+            );
+            await InteractiveLessonsService.instance.saveLesson(interactiveLesson);
+          } catch (e) {
+            debugPrint('Warning: Could not save interactive lesson: $e');
           }
         }
 
@@ -1174,6 +1251,311 @@ class _TractFormDialogState extends State<_TractFormDialog> {
       {required List<String> existing, required List<String> uploaded}) {
     final set = <String>{...existing, ...uploaded};
     return set.toList();
+  }
+}
+
+class _StandaloneLessonFormDialog extends StatefulWidget {
+  const _StandaloneLessonFormDialog();
+
+  @override
+  State<_StandaloneLessonFormDialog> createState() =>
+      _StandaloneLessonFormDialogState();
+}
+
+class _StandaloneLessonFormDialogState
+    extends State<_StandaloneLessonFormDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _titleController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  final _contentController = TextEditingController();
+  final _durationController = TextEditingController(text: '20 min');
+
+  String _selectedCategory = 'What the Bible Says';
+  String _selectedLevel = 'Beginner';
+  bool _isSaving = false;
+
+  final List<String> _categories = [
+    'What the Bible Says',
+    'Bible Study',
+    'Prophecy',
+    'Doctrine',
+    'Christian Living',
+    'Health',
+    'Youth',
+    'Evangelism',
+  ];
+
+  final List<String> _levels = [
+    'Beginner',
+    'Intermediate',
+    'Advanced',
+  ];
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _contentController.dispose();
+    _durationController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveLesson() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      final id =
+          'lesson_${DateTime.now().millisecondsSinceEpoch}_${_titleController.text.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_')}';
+
+      final lesson = InteractiveLessonItem(
+        id: id,
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
+        category: _selectedCategory,
+        level: _selectedLevel,
+        duration: _durationController.text.trim(),
+        content: _contentController.text.trim(),
+        isActive: true,
+      );
+
+      await InteractiveLessonsService.instance.saveLesson(lesson);
+
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to save interactive lesson: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      child: Container(
+        width: ResponsiveUtils.getResponsiveValue(
+          context: context,
+          mobile: MediaQuery.of(context).size.width * 0.9,
+          tablet: 600,
+          desktop: 700,
+        ),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: const BoxDecoration(
+                color: Colors.green,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(4)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.school, color: Colors.white),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'Add Interactive Bible Study',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close, color: Colors.white),
+                  ),
+                ],
+              ),
+            ),
+
+            // Form content
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextFormField(
+                        controller: _titleController,
+                        decoration: const InputDecoration(
+                          labelText: 'Lesson Title *',
+                          hintText: 'e.g., Lesson 2: Keys to Answered Prayer',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.title),
+                        ),
+                        validator: (value) =>
+                            value == null || value.trim().isEmpty
+                                ? 'Please enter a title'
+                                : null,
+                      ),
+                      const SizedBox(height: 16),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              initialValue: _selectedCategory,
+                              decoration: const InputDecoration(
+                                labelText: 'Category *',
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.category),
+                              ),
+                              items: _categories.map((c) {
+                                return DropdownMenuItem(
+                                  value: c,
+                                  child: Text(c, overflow: TextOverflow.ellipsis),
+                                );
+                              }).toList(),
+                              onChanged: (val) {
+                                if (val != null) {
+                                  setState(() => _selectedCategory = val);
+                                }
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              initialValue: _selectedLevel,
+                              decoration: const InputDecoration(
+                                labelText: 'Level *',
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.signal_cellular_alt),
+                              ),
+                              items: _levels.map((l) {
+                                return DropdownMenuItem(value: l, child: Text(l));
+                              }).toList(),
+                              onChanged: (val) {
+                                if (val != null) {
+                                  setState(() => _selectedLevel = val);
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      TextFormField(
+                        controller: _durationController,
+                        decoration: const InputDecoration(
+                          labelText: 'Estimated Duration *',
+                          hintText: 'e.g. 20 min',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.access_time),
+                        ),
+                        validator: (value) =>
+                            value == null || value.trim().isEmpty
+                                ? 'Please specify duration'
+                                : null,
+                      ),
+                      const SizedBox(height: 16),
+
+                      TextFormField(
+                        controller: _descriptionController,
+                        maxLines: 2,
+                        decoration: const InputDecoration(
+                          labelText: 'Description / Summary *',
+                          hintText: 'A brief summary of what this study covers...',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.description),
+                        ),
+                        validator: (value) =>
+                            value == null || value.trim().isEmpty
+                                ? 'Please enter a summary'
+                                : null,
+                      ),
+                      const SizedBox(height: 16),
+
+                      TextFormField(
+                        controller: _contentController,
+                        maxLines: 8,
+                        decoration: const InputDecoration(
+                          labelText: 'Study Content / Lesson Body *',
+                          hintText:
+                              'Paste study content, scripture questions, reflections, or markdown...',
+                          border: OutlineInputBorder(),
+                          alignLabelWithHint: true,
+                        ),
+                        validator: (value) =>
+                            value == null || value.trim().isEmpty
+                                ? 'Please enter lesson content'
+                                : null,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Action buttons
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: Colors.grey[300]!)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton(
+                    onPressed: _isSaving ? null : _saveLesson,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: _isSaving
+                        ? const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white),
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              Text('Saving...'),
+                            ],
+                          )
+                        : const Text('Save Study Lesson'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

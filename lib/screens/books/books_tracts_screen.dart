@@ -11,7 +11,6 @@ import '../../services/appwrite_storage_compat_service.dart';
 import '../../services/donation_service.dart';
 import '../../models/donation_models.dart';
 import '../../screens/materials/donation_dialog.dart';
-import 'tract_reader_screen.dart';
 import '../../providers/language_provider.dart';
 
 class BooksTractsScreen extends ConsumerStatefulWidget {
@@ -637,12 +636,8 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
 
   // Tract interaction methods
   void _openTractReader(BuildContext context, Tract tract) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => TractReaderScreen(tract: tract),
-      ),
-    );
+    // Open in-app PDF preview directly for uploaded tracts
+    _viewOriginalPDF(tract);
   }
 
   Future<String?> _resolveTractPdfUrl(Tract tract) async {
@@ -1322,54 +1317,4 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
     );
   }
 
-  // Navigation Methods
-  void _navigateToReader(BuildContext context, String title) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Open Reader'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Opening "$title" in the digital reader...'),
-            const SizedBox(height: 16),
-            const Text('Features available:'),
-            const SizedBox(height: 8),
-            const Text('• Adjustable font size'),
-            const Text('• Night mode'),
-            const Text('• Bookmarks'),
-            const Text('• Search functionality'),
-            const Text('• Offline reading'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Reader opened for: $title'),
-                  action: SnackBarAction(
-                    label: 'Settings',
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Opening reader settings...')),
-                      );
-                    },
-                  ),
-                ),
-              );
-            },
-            child: const Text('Open Reader'),
-          ),
-        ],
-      ),
-    );
-  }
 }

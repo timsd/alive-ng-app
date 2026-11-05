@@ -9,6 +9,7 @@ import '../../services/role_access_service.dart';
 import '../../services/interactive_lessons_service.dart';
 import '../../models/tract_models.dart';
 import '../books/tract_reader_screen.dart';
+import 'interactive_lesson_reader_screen.dart';
 
 class InteractiveLessonsScreen extends ConsumerStatefulWidget {
   const InteractiveLessonsScreen({super.key});
@@ -575,6 +576,17 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
               final lessonId = lesson['id']?.toString() ??
                   'lesson_${(lesson['title'] ?? '').toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_')}';
               _lessonsService.updateLessonProgress(lessonId, 0.5);
+              if (lessonId == "lesson_something_we_can_trust" || (lesson["title"] ?? "").toString().toLowerCase().contains("something we can trust")) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => InteractiveLessonReaderScreen(
+                      lessonId: lessonId,
+                      title: lesson["title"] ?? "Lesson 1: Something We Can Trust",
+                    ),
+                  ),
+                );
+                return;
+              }
               final tract = Tract(
                 id: lessonId,
                 title: lesson['title'] ?? 'Interactive Lesson',

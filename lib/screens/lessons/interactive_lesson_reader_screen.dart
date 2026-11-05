@@ -1,0 +1,1239 @@
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../widgets/custom_app_bar.dart';
+import '../../widgets/bible_reference_modal_sheet.dart';
+import '../../services/interactive_lessons_service.dart';
+
+/// Full interactive study screen for Lesson 1: Something We Can Trust (What The Bible Says Series).
+/// Implements all 9 sections, interactive reflection inputs, prophecy checklist, filterable Messianic table,
+/// decision buttons, study commitment, local persistence, and instant clickable Bible verse popups.
+class InteractiveLessonReaderScreen extends StatefulWidget {
+  final String lessonId;
+  final String title;
+
+  const InteractiveLessonReaderScreen({
+    super.key,
+    this.lessonId = 'lesson_something_we_can_trust',
+    this.title = 'Lesson 1: Something We Can Trust',
+  });
+
+  @override
+  State<InteractiveLessonReaderScreen> createState() =>
+      _InteractiveLessonReaderScreenState();
+}
+
+class _InteractiveLessonReaderScreenState
+    extends State<InteractiveLessonReaderScreen> {
+  final Map<String, TextEditingController> _controllers = {};
+  final Map<String, bool> _prophecyChecked = {};
+  final Map<int, bool> _messianicStudied = {};
+
+  bool? _haveBible;
+  bool? _studyBible;
+  bool? _believeBible;
+  bool _commitmentPrayer = false;
+
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _prophecySearchController = TextEditingController();
+
+  double _progress = 0.0;
+  bool _showSavedNotification = false;
+
+  // Messianic prophecies table
+  final List<Map<String, String>> _allMessianicProphecies = [
+    {
+      'subject': 'Born in Bethlehem',
+      'ot': 'Micah 5:2',
+      'nt': 'Matthew 2:1',
+    },
+    {
+      'subject': 'Born of a virgin',
+      'ot': 'Isaiah 7:14',
+      'nt': 'Matthew 1:18-23',
+    },
+    {
+      'subject': "David's lineage",
+      'ot': 'Jeremiah 23:5',
+      'nt': 'Revelation 22:16',
+    },
+    {
+      'subject': "Herod's murder attempt",
+      'ot': 'Jeremiah 31:15',
+      'nt': 'Matthew 2:16-18',
+    },
+    {
+      'subject': 'Betrayed by friend',
+      'ot': 'Psalm 41:9',
+      'nt': 'John 13:18, 19, 26',
+    },
+    {
+      'subject': 'Sold for 30 silver coins',
+      'ot': 'Zechariah 11:12',
+      'nt': 'Matthew 26:14-16',
+    },
+    {
+      'subject': 'Crucified',
+      'ot': 'Zechariah 12:10',
+      'nt': 'John 19:16-18, 37',
+    },
+    {
+      'subject': 'Lots cast on His clothes',
+      'ot': 'Psalm 22:18',
+      'nt': 'Matthew 27:35',
+    },
+    {
+      'subject': 'No bones broken',
+      'ot': 'Psalm 34:20',
+      'nt': 'John 19:31-36',
+    },
+    {
+      'subject': "Buried in rich man's tomb",
+      'ot': 'Isaiah 53:9',
+      'nt': 'Matthew 27:57-60',
+    },
+    {
+      'subject': 'Year, day, hour of death',
+      'ot': 'Daniel 9:26, 27',
+      'nt': 'Matthew 27:45-50',
+    },
+    {
+      'subject': 'Raised the third day',
+      'ot': 'Hosea 6:2',
+      'nt': 'Acts 10:38-40',
+    },
+  ];
+
+  List<Map<String, String>> _filteredMessianicProphecies = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _filteredMessianicProphecies = List.from(_allMessianicProphecies);
+
+    for (int i = 1; i <= 7; i++) {
+      _controllers['q$i'] = TextEditingController();
+    }
+    _controllers['q8_a'] = TextEditingController();
+    _controllers['q8_b'] = TextEditingController();
+    _controllers['q8_c'] = TextEditingController();
+
+    _loadSavedResponses();
+  }
+
+  @override
+  void dispose() {
+    for (var c in _controllers.values) {
+      c.dispose();
+    }
+    _nameController.dispose();
+    _phoneController.dispose();
+    _prophecySearchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadSavedResponses() async {
+    final prefs = await SharedPreferences.getInstance();
+    final prefix = 'interactive_lesson_1_';
+
+    setState(() {
+      for (final key in _controllers.keys) {
+        final val = prefs.getString('$prefix$key');
+        if (val != null) _controllers[key]?.text = val;
+      }
+
+      _nameController.text = prefs.getString('${prefix}name') ?? '';
+      _phoneController.text = prefs.getString('${prefix}phone') ?? '';
+
+      if (prefs.containsKey('${prefix}haveBible')) {
+        _haveBible = prefs.getBool('${prefix}haveBible');
+      }
+      if (prefs.containsKey('${prefix}studyBible')) {
+        _studyBible = prefs.getBool('${prefix}studyBible');
+      }
+      if (prefs.containsKey('${prefix}believeBible')) {
+        _believeBible = prefs.getBool('${prefix}believeBible');
+      }
+      _commitmentPrayer = prefs.getBool('${prefix}commitmentPrayer') ?? false;
+
+      _calculateProgress();
+    });
+  }
+
+  Future<void> _saveResponses() async {
+    final prefs = await SharedPreferences.getInstance();
+    final prefix = 'interactive_lesson_1_';
+
+    for (final entry in _controllers.entries) {
+      await prefs.setString('$prefix${entry.key}', entry.value.text);
+    }
+
+    await prefs.setString('${prefix}name', _nameController.text);
+    await prefs.setString('${prefix}phone', _phoneController.text);
+
+    if (_haveBible != null) {
+      await prefs.setBool('${prefix}haveBible', _haveBible!);
+    }
+    if (_studyBible != null) {
+      await prefs.setBool('${prefix}studyBible', _studyBible!);
+    }
+    if (_believeBible != null) {
+      await prefs.setBool('${prefix}believeBible', _believeBible!);
+    }
+    await prefs.setBool('${prefix}commitmentPrayer', _commitmentPrayer);
+
+    _calculateProgress();
+
+    // Sync progress to InteractiveLessonsService
+    await InteractiveLessonsService.instance.updateLessonProgress(
+      widget.lessonId,
+      _progress,
+    );
+
+    if (mounted) {
+      setState(() {
+        _showSavedNotification = true;
+      });
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) {
+          setState(() {
+            _showSavedNotification = false;
+          });
+        }
+      });
+    }
+  }
+
+  void _calculateProgress() {
+    int totalItems = _controllers.length + 4; // text fields + 3 toggles + prayer
+    int filled = 0;
+
+    for (var c in _controllers.values) {
+      if (c.text.trim().isNotEmpty) filled++;
+    }
+    if (_haveBible != null) filled++;
+    if (_studyBible != null) filled++;
+    if (_believeBible != null) filled++;
+    if (_commitmentPrayer) filled++;
+
+    setState(() {
+      _progress = (filled / totalItems).clamp(0.0, 1.0);
+    });
+  }
+
+  void _filterProphecies(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        _filteredMessianicProphecies = List.from(_allMessianicProphecies);
+      } else {
+        final q = query.toLowerCase();
+        _filteredMessianicProphecies = _allMessianicProphecies.where((p) {
+          return (p['subject'] ?? '').toLowerCase().contains(q) ||
+              (p['ot'] ?? '').toLowerCase().contains(q) ||
+              (p['nt'] ?? '').toLowerCase().contains(q);
+        }).toList();
+      }
+    });
+  }
+
+  void _openScripture(String reference) {
+    BibleReferenceModalSheet.show(
+      context,
+      reference: reference,
+      initialVersion: 'NKJV',
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Scaffold(
+      appBar: CustomAppBar(
+        title: 'What The Bible Says: Lesson 1',
+        showBackButton: true,
+      ),
+      body: Column(
+        children: [
+          // Sticky Top Progress Bar
+          LinearProgressIndicator(
+            value: _progress,
+            backgroundColor: isDark ? Colors.grey[800] : Colors.grey[300],
+            valueColor: const AlwaysStoppedAnimation<Color>(Colors.green),
+            minHeight: 5,
+          ),
+          Container(
+            color: isDark ? const Color(0xFF1B2E1E) : const Color(0xFFE8F5E9),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.menu_book, color: Colors.green, size: 16),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Interactive Study Guide',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white70 : Colors.green[900],
+                      ),
+                    ),
+                  ],
+                ),
+                Text(
+                  '${(_progress * 100).toInt()}% Completed',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Main Study Content Body
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                _buildHeroBanner(isDark),
+                const SizedBox(height: 16),
+                _buildSection1(isDark),
+                const SizedBox(height: 16),
+                _buildSection2(isDark),
+                const SizedBox(height: 16),
+                _buildSection3(isDark),
+                const SizedBox(height: 16),
+                _buildSection4(isDark),
+                const SizedBox(height: 16),
+                _buildSection5(isDark),
+                const SizedBox(height: 16),
+                _buildSection6(isDark),
+                const SizedBox(height: 16),
+                _buildSection7(isDark),
+                const SizedBox(height: 16),
+                _buildSection8(isDark),
+                const SizedBox(height: 16),
+                _buildSection9Commitment(isDark),
+                const SizedBox(height: 24),
+                _buildSaveButtonSection(isDark),
+                const SizedBox(height: 32),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeroBanner(bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isDark
+              ? [const Color(0xFF0F3D24), const Color(0xFF072415)]
+              : [const Color(0xFF14532D), const Color(0xFF064E3B)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 4))
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black38,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white24),
+                      ),
+                      child: const Text(
+                        'ALIVE NIGERIA SERIES',
+                        style: TextStyle(
+                          color: Colors.amberAccent,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 10,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Something We Can Trust',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildScriptureChip('Psalms 119:105'),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.asset(
+                  'assets/images/series/what_the_bible_says_lesson_1.jpg',
+                  width: 90,
+                  height: 115,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    width: 90,
+                    height: 115,
+                    color: Colors.white12,
+                    child: const Icon(Icons.book, color: Colors.white, size: 40),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white10 : const Color(0xFFFFFBEB),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              'In these morally challenged times when billions are embezzled through corporate fraud; when trusted spiritual leaders prove false; when lying in politics seems to be the norm... is there anything left you can trust?\n\nYes! You can fully trust the Bible! Just look at the evidence:',
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.45,
+                color: isDark ? Colors.white : const Color(0xFF451A03),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionCard({
+    required int number,
+    required String title,
+    required List<Widget> children,
+    required bool isDark,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isDark ? Colors.white12 : const Color(0xFFE2E8F0),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 14,
+                backgroundColor: const Color(0xFF166534),
+                child: Text(
+                  '$number',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVerseQuoteCard({
+    required String quote,
+    required String reference,
+    required bool isDark,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF14241B) : const Color(0xFFF0FDF4),
+        borderRadius: BorderRadius.circular(8),
+        border: const Border(
+          left: BorderSide(color: Color(0xFF166534), width: 4),
+        ),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '"$quote"',
+            style: TextStyle(
+              fontSize: 14,
+              fontStyle: FontStyle.italic,
+              height: 1.4,
+              color: isDark ? Colors.white : const Color(0xFF1F2937),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Align(
+            alignment: Alignment.centerRight,
+            child: _buildScriptureChip(reference),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildScriptureChip(String reference) {
+    return InkWell(
+      onTap: () => _openScripture(reference),
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: Colors.green.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.open_in_new, color: Colors.green, size: 12),
+            const SizedBox(width: 4),
+            Text(
+              reference,
+              style: const TextStyle(
+                color: Colors.green,
+                fontWeight: FontWeight.bold,
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReflectionInput({
+    required String label,
+    required String hint,
+    required TextEditingController controller,
+    required bool isDark,
+    int maxLines = 2,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 8),
+        Text(
+          label.toUpperCase(),
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.5,
+            color: isDark ? Colors.white60 : Colors.grey[700],
+          ),
+        ),
+        const SizedBox(height: 6),
+        TextField(
+          controller: controller,
+          maxLines: maxLines,
+          onChanged: (_) => _calculateProgress(),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(
+              fontSize: 13,
+              color: isDark ? Colors.white30 : Colors.grey[400],
+            ),
+            filled: true,
+            fillColor: isDark ? Colors.white10 : const Color(0xFFF8FAFC),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(
+                color: isDark ? Colors.white12 : const Color(0xFFCBD5E1),
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Colors.green, width: 1.5),
+            ),
+            contentPadding: const EdgeInsets.all(12),
+          ),
+          style: const TextStyle(fontSize: 14),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSection1(bool isDark) {
+    return _buildSectionCard(
+      number: 1,
+      title: 'What does the Bible claim about itself?',
+      isDark: isDark,
+      children: [
+        _buildVerseQuoteCard(
+          quote: 'All scripture is given by inspiration of God.',
+          reference: '2 Timothy 3:16',
+          isDark: isDark,
+        ),
+        _buildVerseQuoteCard(
+          quote:
+              'Prophecy came not in old time by the will of man: but holy men of God spake as they were moved by the Holy Ghost.',
+          reference: '2 Peter 1:21',
+          isDark: isDark,
+        ),
+        _buildVerseQuoteCard(
+          quote: 'The scripture cannot be broken.',
+          reference: 'John 10:35',
+          isDark: isDark,
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'It claims to be inspired. It was written by men who were guided by the Holy Ghost. It cannot be broken or fail.',
+          style: TextStyle(fontSize: 13, height: 1.4),
+        ),
+        _buildReflectionInput(
+          label: 'Your Personal Reflection / Summary',
+          hint: 'What does divine inspiration mean to your confidence in Scripture?',
+          controller: _controllers['q1']!,
+          isDark: isDark,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSection2(bool isDark) {
+    return _buildSectionCard(
+      number: 2,
+      title: 'How did Jesus demonstrate His confidence and belief in Scripture?',
+      isDark: isDark,
+      children: [
+        _buildVerseQuoteCard(
+          quote:
+              'Jesus said, "It is written, Man shall not live by bread alone." "It is written again, Thou shalt not tempt the Lord thy God." "It is written, Thou shalt worship the Lord thy God, and him only shalt thou serve."',
+          reference: 'Matthew 4:4, 7, 10',
+          isDark: isDark,
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Jesus quoted Scripture when meeting the temptations of Satan. He also stated that the Bible is truth (John 17:17). Jesus often quoted Scripture as authority for the truth He taught.',
+          style: TextStyle(fontSize: 13, height: 1.4),
+        ),
+        _buildReflectionInput(
+          label: 'Practical Application',
+          hint: 'How can you apply "It is written" in your daily temptations?',
+          controller: _controllers['q2']!,
+          isDark: isDark,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSection3(bool isDark) {
+    final prophecies = [
+      {'title': 'Four world empires', 'detail': 'Babylon, Medo-Persia, Greece, and Rome (Daniel 2, 7, 8)'},
+      {'title': 'Cyrus named', 'detail': 'Named 150 years beforehand to conquer Babylon (Isaiah 45:1-3)'},
+      {'title': 'Babylon destroyed', 'detail': 'Never to be inhabited again (Isaiah 13:19, 20; Jeremiah 51:37)'},
+      {'title': "Egypt's status", 'detail': 'Never again to rule among nations (Ezekiel 29:14, 15)'},
+      {'title': 'End-time fear', 'detail': 'Earth-shaking distress of nations with perplexity (Luke 21:25, 26)'},
+      {'title': 'Moral decline', 'detail': 'Spiritual decay in the last days (2 Timothy 3:1-5)'},
+    ];
+
+    return _buildSectionCard(
+      number: 3,
+      title: 'Do Bible prophecies confirm inspiration?',
+      isDark: isDark,
+      children: [
+        _buildVerseQuoteCard(
+          quote: 'I am the Lord... new things do I declare: before they spring forth I tell you of them.',
+          reference: 'Isaiah 42:8, 9',
+          isDark: isDark,
+        ),
+        _buildVerseQuoteCard(
+          quote: 'Declaring the end from the beginning, and from ancient times the things that are not yet done.',
+          reference: 'Isaiah 46:9, 10',
+          isDark: isDark,
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Bible predictions confirm inspiration as they come to pass. Check the fulfilled prophecies you have studied:',
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        ...prophecies.map((p) {
+          final isChecked = _prophecyChecked[p['title']] ?? false;
+          return CheckboxListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            activeColor: Colors.green,
+            title: Text(p['title']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+            subtitle: Text(p['detail']!, style: const TextStyle(fontSize: 12)),
+            value: isChecked,
+            onChanged: (val) {
+              setState(() {
+                _prophecyChecked[p['title']!] = val ?? false;
+              });
+            },
+          );
+        }),
+        _buildReflectionInput(
+          label: 'Fulfilled Prophecy Reflection',
+          hint: 'Which fulfilled prophecy gives you the greatest conviction?',
+          controller: _controllers['q3']!,
+          isDark: isDark,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSection4(bool isDark) {
+    return _buildSectionCard(
+      number: 4,
+      title: 'Can we expect scientific statements in the Bible to be accurate?',
+      isDark: isDark,
+      children: [
+        _buildVerseQuoteCard(
+          quote: 'Thy word is true from the beginning.',
+          reference: 'Psalms 119:160',
+          isDark: isDark,
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.white10 : const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Scientific Facts Confirmed by the Bible:',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              const SizedBox(height: 6),
+              const Text('• Earth hung on nothing: Job 26:7', style: TextStyle(fontSize: 13)),
+              const Text('• Earth is a sphere: Isaiah 40:22', style: TextStyle(fontSize: 13)),
+              const Text('• Why the atom holds together: Colossians 1:17 ("By Him all things hold together")',
+                  style: TextStyle(fontSize: 13)),
+            ],
+          ),
+        ),
+        _buildReflectionInput(
+          label: 'Science & Faith Reflection',
+          hint: 'How does scientific foreknowledge strengthen your trust in Scripture?',
+          controller: _controllers['q4']!,
+          isDark: isDark,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSection5(bool isDark) {
+    return _buildSectionCard(
+      number: 5,
+      title: 'What evidence of Bible inspiration is found in transformed lives?',
+      isDark: isDark,
+      children: [
+        _buildVerseQuoteCard(
+          quote:
+              'Therefore if any man be in Christ, he is a new creature: old things are passed away; behold, all things are become new.',
+          reference: '2 Corinthians 5:17',
+          isDark: isDark,
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF262314) : const Color(0xFFFEF3C7),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.format_quote, color: Colors.amber, size: 20),
+                  SizedBox(width: 6),
+                  Text('A Father Transformed (1998 Testimony)',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '"For many years our father lived a drunkard and traditional community leader. In 1998 the truth of the Bible was revealed to our family. Everything changed. He became a faithful preacher of the Gospel until his death. The Bible truly does change people."',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic,
+                  color: isDark ? Colors.white70 : const Color(0xFF78350F),
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
+        ),
+        _buildReflectionInput(
+          label: 'Your Personal Experience',
+          hint: 'Have you witnessed God\'s Word transform a life or your own habits?',
+          controller: _controllers['q5']!,
+          isDark: isDark,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSection6(bool isDark) {
+    return _buildSectionCard(
+      number: 6,
+      title: 'What evidence for Bible inspiration emerges from Messianic prophecies?',
+      isDark: isDark,
+      children: [
+        _buildVerseQuoteCard(
+          quote:
+              'And beginning at Moses and all the prophets, He expounded unto them in all the Scriptures the things concerning Himself.',
+          reference: 'Luke 24:27',
+          isDark: isDark,
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'More than 125 Old Testament prophecies were fulfilled in Jesus Christ down to exact detail.',
+          style: TextStyle(fontSize: 13),
+        ),
+        const SizedBox(height: 10),
+
+        // Filter search field
+        TextField(
+          controller: _prophecySearchController,
+          onChanged: _filterProphecies,
+          decoration: InputDecoration(
+            hintText: 'Filter prophecy (e.g. Bethlehem, Virgin, 30 silver)...',
+            prefixIcon: const Icon(Icons.search, size: 18),
+            isDense: true,
+            filled: true,
+            fillColor: isDark ? Colors.white10 : const Color(0xFFF1F5F9),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide.none,
+            ),
+          ),
+          style: const TextStyle(fontSize: 12),
+        ),
+        const SizedBox(height: 10),
+
+        // Prophecies Table Card
+        Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: isDark ? Colors.white12 : Colors.grey[300]!),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            children: _filteredMessianicProphecies.asMap().entries.map((entry) {
+              final idx = entry.key;
+              final p = entry.value;
+              final isStudied = _messianicStudied[idx] ?? false;
+
+              return Container(
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: isDark ? Colors.white10 : Colors.grey[200]!,
+                    ),
+                  ),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 4,
+                      child: Text(
+                        p['subject']!,
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 3,
+                      child: InkWell(
+                        onTap: () => _openScripture(p['ot']!),
+                        child: Text(
+                          p['ot']!,
+                          style: const TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 3,
+                      child: InkWell(
+                        onTap: () => _openScripture(p['nt']!),
+                        child: Text(
+                          p['nt']!,
+                          style: TextStyle(
+                            color: isDark ? Colors.blue[300] : Colors.blue[800],
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Checkbox(
+                      value: isStudied,
+                      activeColor: Colors.green,
+                      visualDensity: VisualDensity.compact,
+                      onChanged: (val) {
+                        setState(() {
+                          _messianicStudied[idx] = val ?? false;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        _buildReflectionInput(
+          label: 'Conclusion Regarding Jesus',
+          hint: 'Does mathematical and historical fulfillment prove Jesus is the Son of God?',
+          controller: _controllers['q6']!,
+          isDark: isDark,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSection7(bool isDark) {
+    return _buildSectionCard(
+      number: 7,
+      title: 'What advantage does a person have who accepts the Bible as God\'s Word?',
+      isDark: isDark,
+      children: [
+        _buildVerseQuoteCard(
+          quote: 'I understand more than the ancients, because I keep thy precepts.',
+          reference: 'Psalms 119:100',
+          isDark: isDark,
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Answers to life\'s foundational questions:\n1. Creation in 6 literal days (Exodus 20:11)\n2. Universal Flood answering geological mysteries (Genesis 7)\n3. Origin of languages at Babel (Genesis 11)',
+          style: TextStyle(fontSize: 13, height: 1.45),
+        ),
+        _buildReflectionInput(
+          label: 'Biblical Worldview Reflection',
+          hint: 'Which area of God\'s revelation guides your worldview most?',
+          controller: _controllers['q7']!,
+          isDark: isDark,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSection8(bool isDark) {
+    return _buildSectionCard(
+      number: 8,
+      title: 'What is the Bible\'s universal appeal to life\'s 3 puzzling questions?',
+      isDark: isDark,
+      children: [
+        _buildVerseQuoteCard(
+          quote: 'Thy word is a lamp unto my feet, and a light unto my path.',
+          reference: 'Psalms 119:105',
+          isDark: isDark,
+        ),
+        const SizedBox(height: 8),
+        _buildSubQuestion(
+          letter: 'A',
+          title: 'Where did I come from?',
+          answer:
+              'God created us in His image. We are sons and daughters of God (Galatians 3:26).',
+          controller: _controllers['q8_a']!,
+          isDark: isDark,
+        ),
+        const SizedBox(height: 10),
+        _buildSubQuestion(
+          letter: 'B',
+          title: 'Why am I here?',
+          answer:
+              'To discover God\'s truth and accept Jesus\' offer to restore us into His image (Romans 8:29).',
+          controller: _controllers['q8_b']!,
+          isDark: isDark,
+        ),
+        const SizedBox(height: 10),
+        _buildSubQuestion(
+          letter: 'C',
+          title: 'What does the future hold for me?',
+          answer:
+              'Jesus will return very soon to take His redeemed home to heaven for eternity (John 14:1-3; Revelation 21:3, 4).',
+          controller: _controllers['q8_c']!,
+          isDark: isDark,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSubQuestion({
+    required String letter,
+    required String title,
+    required String answer,
+    required TextEditingController controller,
+    required bool isDark,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white10 : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 10,
+                backgroundColor: Colors.green[800],
+                child: Text(letter,
+                    style: const TextStyle(color: Colors.white, fontSize: 10)),
+              ),
+              const SizedBox(width: 8),
+              Text(title,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(answer, style: const TextStyle(fontSize: 12, height: 1.4)),
+          const SizedBox(height: 6),
+          TextField(
+            controller: controller,
+            onChanged: (_) => _calculateProgress(),
+            decoration: InputDecoration(
+              hintText: 'Enter your note on this question...',
+              isDense: true,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
+              contentPadding: const EdgeInsets.all(8),
+            ),
+            style: const TextStyle(fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSection9Commitment(bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isDark
+              ? [const Color(0xFF0F3D24), const Color(0xFF072415)]
+              : [const Color(0xFF14532D), const Color(0xFF064E3B)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Personal Response & Commitment',
+            style: TextStyle(
+              color: Colors.amberAccent,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Making God\'s Word Your Foundation',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Three Yes/No buttons
+          _buildYesNoDecision('Do you have a Bible?', _haveBible, (v) {
+            setState(() => _haveBible = v);
+            _calculateProgress();
+          }),
+          const SizedBox(height: 8),
+          _buildYesNoDecision('Do you study the Bible?', _studyBible, (v) {
+            setState(() => _studyBible = v);
+            _calculateProgress();
+          }),
+          const SizedBox(height: 8),
+          _buildYesNoDecision('Do you believe the Bible?', _believeBible, (v) {
+            setState(() => _believeBible = v);
+            _calculateProgress();
+          }),
+          const SizedBox(height: 14),
+
+          // Prayer commitment
+          CheckboxListTile(
+            dense: true,
+            activeColor: Colors.amber,
+            contentPadding: EdgeInsets.zero,
+            value: _commitmentPrayer,
+            onChanged: (val) {
+              setState(() => _commitmentPrayer = val ?? false);
+              _calculateProgress();
+            },
+            title: const Text(
+              'My Study Commitment',
+              style: TextStyle(
+                color: Colors.amberAccent,
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
+            ),
+            subtitle: const Text(
+              'I commit to prayerful study of the Bible from today. Lord, grant me the enabling power of Your Holy Spirit.',
+              style: TextStyle(color: Colors.white70, fontSize: 12),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Optional follow up inputs
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(
+                    hintText: 'Your Name',
+                    hintStyle: TextStyle(color: Colors.white54, fontSize: 12),
+                    isDense: true,
+                    filled: true,
+                    fillColor: Colors.black26,
+                    border: OutlineInputBorder(),
+                  ),
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: _phoneController,
+                  decoration: const InputDecoration(
+                    hintText: 'Phone / WhatsApp',
+                    hintStyle: TextStyle(color: Colors.white54, fontSize: 12),
+                    isDense: true,
+                    filled: true,
+                    fillColor: Colors.black26,
+                    border: OutlineInputBorder(),
+                  ),
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildYesNoDecision(
+      String question, bool? currentVal, Function(bool) onSelect) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: Text(
+            question,
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+          ),
+        ),
+        Row(
+          children: [
+            ElevatedButton(
+              onPressed: () => onSelect(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: currentVal == true ? Colors.green : Colors.white24,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                minimumSize: const Size(50, 32),
+              ),
+              child: const Text('YES', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+            ),
+            const SizedBox(width: 8),
+            ElevatedButton(
+              onPressed: () => onSelect(false),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: currentVal == false ? Colors.red : Colors.white24,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                minimumSize: const Size(50, 32),
+              ),
+              child: const Text('NO', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        )
+      ],
+    );
+  }
+
+  Widget _buildSaveButtonSection(bool isDark) {
+    return Column(
+      children: [
+        ElevatedButton.icon(
+          onPressed: _saveResponses,
+          icon: const Icon(Icons.save, color: Colors.white),
+          label: const Text(
+            'Save My Lesson Answers & Progress',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF166534),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        ),
+        if (_showSavedNotification) ...[
+          const SizedBox(height: 10),
+          const Text(
+            '✓ Your responses have been saved to your device!',
+            style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 13),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
