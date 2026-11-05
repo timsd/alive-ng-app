@@ -230,21 +230,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     ),
               ),
             )
-          : GridView.builder(
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: ResponsiveUtils.getResponsiveValue(
-                    context: context, mobile: 1, tablet: 2, desktop: 3),
-                crossAxisSpacing: ResponsiveUtils.getResponsiveValue(
-                    context: context, mobile: 16, tablet: 20, desktop: 24),
-                mainAxisSpacing: ResponsiveUtils.getResponsiveValue(
-                    context: context, mobile: 16, tablet: 20, desktop: 24),
-                childAspectRatio: ResponsiveUtils.getResponsiveValue(
-                    context: context,
-                    mobile: 16 / 9,
-                    tablet: 16 / 9,
-                    desktop: 16 / 9),
-              ),
+          : ListView.separated(
               itemCount: filteredVideos.length,
+              separatorBuilder: (_, __) => SizedBox(
+                height: ResponsiveUtils.getResponsiveValue(
+                    context: context, mobile: 16, tablet: 20, desktop: 24),
+              ),
               itemBuilder: (context, index) {
                 return _buildVideoCard(context, filteredVideos[index]);
               },
@@ -435,178 +426,134 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   }
 
   Widget _buildVideoCard(BuildContext context, Map<String, dynamic> video) {
+    final thumbnailUrl =
+        (video['thumbnail_url'] ?? video['thumbnailUrl'])?.toString();
+
     return Card(
-      elevation: 4,
+      elevation: 2,
+      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
       child: InkWell(
         onTap: () => _playVideo((video['id'] ?? video['title']).toString()),
-        borderRadius: BorderRadius.circular(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Video Thumbnail
-            Expanded(
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .primary
-                      .withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(ResponsiveUtils.getResponsiveValue(
-                        context: context, mobile: 12, tablet: 14, desktop: 16)),
-                  ),
-                  border: Border.all(
-                    color:
-                        Theme.of(context).primaryColor.withValues(alpha: 0.3),
-                    width: 1,
-                  ),
-                ),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    if ((video['thumbnail_url'] ?? video['thumbnailUrl']) != null &&
-                        (video['thumbnail_url'] ?? video['thumbnailUrl']).toString().isNotEmpty)
-                      ClipRRect(
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(ResponsiveUtils.getResponsiveValue(
-                              context: context, mobile: 12, tablet: 14, desktop: 16)),
-                        ),
-                        child: CustomImage(
-                          imageUrl: (video['thumbnail_url'] ?? video['thumbnailUrl']).toString(),
-                          width: double.infinity,
-                          height: double.infinity,
-                          fit: BoxFit.cover,
-                        ),
-                      )
-                    else
-                      Icon(
+            // 16:9 Thumbnail
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (thumbnailUrl != null && thumbnailUrl.trim().isNotEmpty)
+                    CustomImage(
+                      imageUrl: thumbnailUrl,
+                      width: double.infinity,
+                      height: double.infinity,
+                      fit: BoxFit.cover,
+                    )
+                  else
+                    Container(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withValues(alpha: 0.1),
+                      child: Icon(
                         Icons.video_library,
-                        size: ResponsiveUtils.getResponsiveValue(
-                            context: context,
-                            mobile: 48,
-                            tablet: 56,
-                            desktop: 64),
+                        size: 48,
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
-                    Container(
-                      padding: EdgeInsets.all(
-                          ResponsiveUtils.getResponsiveValue(
-                              context: context,
-                              mobile: 8,
-                              tablet: 10,
-                              desktop: 12)),
+                    ),
+                  // Center play icon
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .shadow
-                            .withValues(alpha: 0.7),
+                        color: Colors.black.withValues(alpha: 0.6),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(
-                        Icons.play_arrow,
+                      child: const Icon(
+                        Icons.play_arrow_rounded,
                         color: Colors.white,
-                        size: ResponsiveUtils.getResponsiveValue(
-                            context: context,
-                            mobile: 24,
-                            tablet: 28,
-                            desktop: 32),
+                        size: 28,
                       ),
                     ),
-                    if (video['duration'] != null && video['duration'].toString().isNotEmpty)
-                      Positioned(
-                        bottom: 6,
-                        right: 8,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.8),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            video['duration'].toString(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
+                  ),
+                  // Duration badge
+                  if (video['duration'] != null &&
+                      video['duration'].toString().isNotEmpty)
+                    Positioned(
+                      bottom: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.85),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          video['duration'].toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
             ),
 
             // Video Info
             Padding(
-              padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 8, tablet: 10, desktop: 12)),
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    video['title'],
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    video['title'] ?? '',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.bold,
-                          fontSize: ResponsiveUtils.getResponsiveValue(
-                              context: context,
-                              mobile: 16,
-                              tablet: 18,
-                              desktop: 20),
                         ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  SizedBox(
-                      height: ResponsiveUtils.getResponsiveValue(
-                          context: context, mobile: 4, tablet: 5, desktop: 6)),
+                  const SizedBox(height: 4),
                   Text(
-                    'By ${video['author']}',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.color
-                              ?.withValues(alpha: 0.7),
-                          fontSize: ResponsiveUtils.getResponsiveValue(
-                              context: context,
-                              mobile: 14,
-                              tablet: 15,
-                              desktop: 16),
-                        ),
-                  ),
-                  SizedBox(
-                      height: ResponsiveUtils.getResponsiveValue(
-                          context: context, mobile: 4, tablet: 5, desktop: 6)),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
+                    'By ${video['author'] ?? 'ALIVE Media'}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Theme.of(context)
                               .colorScheme
-                              .primary
-                              .withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
+                              .onSurface
+                              .withValues(alpha: 0.6),
                         ),
-                        child: Text(
-                          video['category'],
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
-                              ?.copyWith(
-                                color: Theme.of(context).colorScheme.primary,
-                                fontSize: 12,
-                              ),
-                        ),
-                      ),
-                    ],
                   ),
+                  if (video['category'] != null &&
+                      video['category'].toString().isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .primary
+                            .withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        video['category'].toString(),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.primary,
+                              fontSize: 11,
+                            ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

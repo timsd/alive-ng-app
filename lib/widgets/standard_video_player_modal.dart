@@ -4,13 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../widgets/custom_image.dart';
+import '../widgets/video_embed_view.dart';
 
 /// A modern, standard video player modal featuring:
+/// - Embedded YouTube playback (iframe on web, WebView on mobile)
 /// - 16:9 video frame with clean dark cinematic backdrop
-/// - Interactive controls: Play/Pause, Rewind 10s, Fast-Forward 10s
-/// - Interactive seek bar (timeline slider) with current position and total duration
-/// - Playback speed selector (0.75x, 1.0x, 1.25x, 1.5x, 2.0x)
-/// - Fullscreen toggle and external video launcher (for YouTube/mp4 links)
+/// - Interactive controls for non-YouTube sources
 /// - Title, presenter, category metadata, and study notes
 class StandardVideoPlayerModal extends StatefulWidget {
   final Map<String, dynamic> videoData;
@@ -77,17 +76,21 @@ class _StandardVideoPlayerModalState extends State<StandardVideoPlayerModal> {
     final videoUrl = _resolveVideoUrl();
     _youTubeId = extractYouTubeId(videoUrl);
 
-    if (!kIsWeb && _youTubeId != null) {
-      try {
-        final embedUrl =
-            'https://www.youtube.com/embed/$_youTubeId?autoplay=1&playsinline=1';
-        _webViewController = WebViewController()
-          ..setJavaScriptMode(JavaScriptMode.unrestricted)
-          ..setBackgroundColor(Colors.black)
-          ..loadRequest(Uri.parse(embedUrl));
-      } catch (e) {
-        debugPrint('Failed to initialize mobile video player: $e');
+    if (_youTubeId != null) {
+      if (!kIsWeb) {
+        // Mobile: use WebView for YouTube
+        try {
+          final embedUrl =
+              'https://www.youtube.com/embed/$_youTubeId?autoplay=1&playsinline=1';
+          _webViewController = WebViewController()
+            ..setJavaScriptMode(JavaScriptMode.unrestricted)
+            ..setBackgroundColor(Colors.black)
+            ..loadRequest(Uri.parse(embedUrl));
+        } catch (e) {
+          debugPrint('Failed to initialize mobile video player: $e');
+        }
       }
+      // Web: will use HtmlElementView iframe (no timer needed)
     } else {
       _startPlayback();
       _scheduleHideControls();
@@ -209,6 +212,9 @@ class _StandardVideoPlayerModalState extends State<StandardVideoPlayerModal> {
     }
   }
 
+  /// True when the video is a YouTube embed (web iframe or mobile WebView)
+  bool get _isEmbedded => _youTubeId != null;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -257,22 +263,23 @@ class _StandardVideoPlayerModalState extends State<StandardVideoPlayerModal> {
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 child: Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: colorScheme.primary.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        category.toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: colorScheme.primary,
+                    if (category.trim().isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primary.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          category.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.primary,
+                          ),
                         ),
                       ),
-                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -287,29 +294,30 @@ class _StandardVideoPlayerModalState extends State<StandardVideoPlayerModal> {
                     if (externalUrl != null)
                       IconButton(
                         icon: const Icon(Icons.open_in_new_rounded, size: 20),
-                        tooltip: 'Open in Fullscreen / Browser',
+                        tooltip: 'Open in Browser',
                         onPressed: _launchExternalVideo,
                       ),
                     // 16:9 Landscape vs 9:16 Portrait / Reels Toggle
-                    IconButton(
-                      icon: Icon(
-                        _isVertical
-                            ? Icons.stay_current_portrait_rounded
-                            : Icons.stay_current_landscape_rounded,
-                        size: 20,
-                        color: _isVertical
-                            ? colorScheme.primary
-                            : colorScheme.onSurfaceVariant,
+                    if (!_isEmbedded)
+                      IconButton(
+                        icon: Icon(
+                          _isVertical
+                              ? Icons.stay_current_portrait_rounded
+                              : Icons.stay_current_landscape_rounded,
+                          size: 20,
+                          color: _isVertical
+                              ? colorScheme.primary
+                              : colorScheme.onSurfaceVariant,
+                        ),
+                        tooltip: _isVertical
+                            ? 'Switch to 16:9 Landscape'
+                            : 'Switch to 9:16 Portrait / Reels',
+                        onPressed: () {
+                          setState(() {
+                            _isVertical = !_isVertical;
+                          });
+                        },
                       ),
-                      tooltip: _isVertical
-                          ? 'Switch to 16:9 Landscape'
-                          : 'Switch to 9:16 Portrait / Reels',
-                      onPressed: () {
-                        setState(() {
-                          _isVertical = !_isVertical;
-                        });
-                      },
-                    ),
                     IconButton(
                       icon: const Icon(Icons.close_rounded, size: 22),
                       tooltip: 'Close Player',
@@ -319,7 +327,7 @@ class _StandardVideoPlayerModalState extends State<StandardVideoPlayerModal> {
                 ),
               ),
 
-              // Video Player Stage (16:9 or 9:16 Aspect Ratio)
+              // Video Player Stage
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
                 child: Center(
@@ -334,282 +342,17 @@ class _StandardVideoPlayerModalState extends State<StandardVideoPlayerModal> {
                         borderRadius: BorderRadius.circular(16),
                         child: Container(
                           color: Colors.black,
-                      child: _webViewController != null
-                          ? WebViewWidget(controller: _webViewController!)
-                          : GestureDetector(
-                              onTap: () {
-                                if (kIsWeb && _youTubeId != null) {
-                                  _launchExternalVideo();
-                                  return;
-                                }
-                                setState(() {
-                                  _showControls = !_showControls;
-                                });
-                                if (_showControls) _scheduleHideControls();
-                              },
-                              child: Stack(
-                                fit: StackFit.expand,
-                                children: [
-                                  // Thumbnail / Poster Backdrop
-                                  if (thumbnailUrl != null &&
-                                      thumbnailUrl.trim().isNotEmpty)
-                                    CustomImage(
-                                      imageUrl: thumbnailUrl,
-                                      fit: BoxFit.cover,
-                                    )
-                                  else if (_youTubeId != null)
-                                    CustomImage(
-                                      imageUrl:
-                                          'https://img.youtube.com/vi/$_youTubeId/hqdefault.jpg',
-                                      fit: BoxFit.cover,
-                                    )
-                                  else
-                                    Container(
-                                      decoration: const BoxDecoration(
-                                        gradient: LinearGradient(
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                          colors: [
-                                            Color(0xFF1E293B),
-                                            Color(0xFF0F172A),
-                                          ],
-                                        ),
-                                      ),
-                                      child: Center(
-                                        child: Icon(
-                                          Icons.video_library_rounded,
-                                          size: 64,
-                                          color: Colors.white
-                                              .withValues(alpha: 0.18),
-                                        ),
-                                      ),
-                                    ),
-
-                                  if (kIsWeb && _youTubeId != null)
-                                    Center(
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 20, vertical: 12),
-                                        decoration: BoxDecoration(
-                                          color: Colors.red.shade700,
-                                          borderRadius:
-                                              BorderRadius.circular(30),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.black
-                                                  .withValues(alpha: 0.4),
-                                              blurRadius: 12,
-                                              offset: const Offset(0, 4),
-                                            ),
-                                          ],
-                                        ),
-                                        child: const Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(Icons.play_arrow_rounded,
-                                                color: Colors.white, size: 28),
-                                            SizedBox(width: 8),
-                                            Text(
-                                              'Watch on YouTube',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-
-                                  // Dark overlay when paused or showing controls
-                                  if (!kIsWeb || _youTubeId == null)
-                                    AnimatedContainer(
-                                      duration:
-                                          const Duration(milliseconds: 200),
-                                      color: (_showControls || !_isPlaying)
-                                          ? Colors.black.withValues(alpha: 0.55)
-                                          : Colors.transparent,
-                                    ),
-
-                                  // Center Play / Pause Indicator
-                                  if ((!kIsWeb || _youTubeId == null) &&
-                                      (_showControls || !_isPlaying))
-                                    Center(
-                                      child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          // Rewind 10s
-                                          IconButton(
-                                            iconSize: 36,
-                                            icon: const Icon(
-                                              Icons.replay_10_rounded,
-                                              color: Colors.white,
-                                            ),
-                                            tooltip: 'Rewind 10 seconds',
-                                            onPressed: () => _seekBy(-10),
-                                          ),
-                                          const SizedBox(width: 20),
-                                          // Big Play / Pause
-                                          GestureDetector(
-                                            onTap: _togglePlayPause,
-                                            child: Container(
-                                              width: 64,
-                                              height: 64,
-                                              decoration: BoxDecoration(
-                                                color: colorScheme.primary,
-                                                shape: BoxShape.circle,
-                                                boxShadow: [
-                                                  BoxShadow(
-                                                    color: colorScheme.primary
-                                                        .withValues(alpha: 0.4),
-                                                    blurRadius: 18,
-                                                    spreadRadius: 2,
-                                                  ),
-                                                ],
-                                              ),
-                                              child: Icon(
-                                                _isPlaying
-                                                    ? Icons.pause_rounded
-                                                    : Icons.play_arrow_rounded,
-                                                size: 38,
-                                                color: colorScheme.onPrimary,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 20),
-                                          // Fast forward 10s
-                                          IconButton(
-                                            iconSize: 36,
-                                            icon: const Icon(
-                                              Icons.forward_10_rounded,
-                                              color: Colors.white,
-                                            ),
-                                            tooltip: 'Fast forward 10 seconds',
-                                            onPressed: () => _seekBy(10),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-
-                                   // Bottom Standard Controls Bar
-                                   if ((!kIsWeb || _youTubeId == null) &&
-                                       (_showControls || !_isPlaying))
-                                     Positioned(
-                                       left: 0,
-                                       right: 0,
-                                       bottom: 0,
-                                       child: Container(
-                                         padding: const EdgeInsets.fromLTRB(
-                                             14, 18, 14, 8),
-                                         decoration: BoxDecoration(
-                                           gradient: LinearGradient(
-                                             begin: Alignment.bottomCenter,
-                                             end: Alignment.topCenter,
-                                             colors: [
-                                               Colors.black.withValues(alpha: 0.9),
-                                               Colors.transparent,
-                                             ],
-                                           ),
-                                         ),
-                                         child: Column(
-                                           mainAxisSize: MainAxisSize.min,
-                                           children: [
-                                             // Progress Scrubber Slider
-                                             SliderTheme(
-                                               data: SliderTheme.of(context).copyWith(
-                                                 trackHeight: 3.5,
-                                                 thumbShape:
-                                                     const RoundSliderThumbShape(
-                                                         enabledThumbRadius: 6.5),
-                                                 overlayShape:
-                                                     const RoundSliderOverlayShape(
-                                                         overlayRadius: 14),
-                                                 activeTrackColor: colorScheme.primary,
-                                                 inactiveTrackColor: Colors.white30,
-                                                 thumbColor: colorScheme.primary,
-                                               ),
-                                               child: Slider(
-                                                 value: _currentSeconds.clamp(
-                                                     0.0, _totalSeconds),
-                                                 min: 0.0,
-                                                 max: _totalSeconds,
-                                                 onChanged: (val) {
-                                                   setState(() {
-                                                     _currentSeconds = val;
-                                                   });
-                                                 },
-                                               ),
-                                             ),
-
-                                             // Time display & quick toggles
-                                             Row(
-                                               children: [
-                                                 Text(
-                                                   '${_formatTime(_currentSeconds)} / ${_formatTime(_totalSeconds)}',
-                                                   style: const TextStyle(
-                                                     color: Colors.white,
-                                                     fontSize: 12,
-                                                     fontWeight: FontWeight.w500,
-                                                   ),
-                                                 ),
-                                                 const Spacer(),
-                                                 // Speed button
-                                                 InkWell(
-                                                   onTap: _cycleSpeed,
-                                                   borderRadius:
-                                                       BorderRadius.circular(6),
-                                                   child: Container(
-                                                     padding:
-                                                         const EdgeInsets.symmetric(
-                                                             horizontal: 6,
-                                                             vertical: 2),
-                                                     decoration: BoxDecoration(
-                                                       color: Colors.white24,
-                                                       borderRadius:
-                                                           BorderRadius.circular(6),
-                                                     ),
-                                                     child: Text(
-                                                       '${_playbackSpeed}x',
-                                                       style: const TextStyle(
-                                                         color: Colors.white,
-                                                         fontSize: 11,
-                                                         fontWeight: FontWeight.bold,
-                                                       ),
-                                                     ),
-                                                   ),
-                                                 ),
-                                                 const SizedBox(width: 10),
-                                                 // Fullscreen external launcher
-                                                 if (externalUrl != null)
-                                                   IconButton(
-                                                     icon: const Icon(
-                                                       Icons.fullscreen_rounded,
-                                                       color: Colors.white,
-                                                       size: 22,
-                                                     ),
-                                                     padding: EdgeInsets.zero,
-                                                     constraints:
-                                                         const BoxConstraints(),
-                                                     tooltip: 'Fullscreen',
-                                                     onPressed: _launchExternalVideo,
-                                                   ),
-                                               ],
-                                             ),
-                                           ],
-                                         ),
-                                       ),
-                                     ),
-                                ],
-                              ),
-                            ),
+                          child: _buildVideoContent(
+                            colorScheme: colorScheme,
+                            thumbnailUrl: thumbnailUrl,
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
               ),
+
               // Scrollable Details & Study Notes
               Expanded(
                 child: ListView(
@@ -647,32 +390,6 @@ class _StandardVideoPlayerModalState extends State<StandardVideoPlayerModal> {
                         height: 1.45,
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    // Action Buttons
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _togglePlayPause,
-                            icon: Icon(_isPlaying
-                                ? Icons.pause_rounded
-                                : Icons.play_arrow_rounded),
-                            label: Text(_isPlaying ? 'Pause' : 'Play'),
-                          ),
-                        ),
-                        if (externalUrl != null) ...[
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: FilledButton.icon(
-                              onPressed: _launchExternalVideo,
-                              icon: const Icon(Icons.open_in_new_rounded,
-                                  size: 18),
-                              label: const Text('Open Stream'),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
                   ],
                 ),
               ),
@@ -682,5 +399,217 @@ class _StandardVideoPlayerModalState extends State<StandardVideoPlayerModal> {
       },
     );
   }
-}
 
+  /// Builds the video content widget based on source type.
+  Widget _buildVideoContent({
+    required ColorScheme colorScheme,
+    String? thumbnailUrl,
+  }) {
+    // YouTube on Web: embed iframe directly
+    if (kIsWeb && _youTubeId != null) {
+      final embedUrl =
+          'https://www.youtube.com/embed/$_youTubeId?autoplay=1&playsinline=1&rel=0';
+      return buildVideoEmbed(
+        videoId: _youTubeId!,
+        embedUrl: embedUrl,
+      );
+    }
+
+    // YouTube on Mobile: use WebView
+    if (_webViewController != null) {
+      return WebViewWidget(controller: _webViewController!);
+    }
+
+    // Non-YouTube fallback: thumbnail with overlay controls
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _showControls = !_showControls;
+        });
+        if (_showControls) _scheduleHideControls();
+      },
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Thumbnail / Poster Backdrop
+          if (thumbnailUrl != null && thumbnailUrl.trim().isNotEmpty)
+            CustomImage(
+              imageUrl: thumbnailUrl,
+              fit: BoxFit.cover,
+            )
+          else
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF1E293B),
+                    Color(0xFF0F172A),
+                  ],
+                ),
+              ),
+              child: Center(
+                child: Icon(
+                  Icons.video_library_rounded,
+                  size: 64,
+                  color: Colors.white.withValues(alpha: 0.18),
+                ),
+              ),
+            ),
+
+          // Dark overlay when paused or showing controls
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            color: (_showControls || !_isPlaying)
+                ? Colors.black.withValues(alpha: 0.55)
+                : Colors.transparent,
+          ),
+
+          // Center Play / Pause / Seek Controls
+          if (_showControls || !_isPlaying)
+            Center(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Rewind 10s
+                  IconButton(
+                    iconSize: 36,
+                    icon: const Icon(
+                      Icons.replay_10_rounded,
+                      color: Colors.white,
+                    ),
+                    tooltip: 'Rewind 10 seconds',
+                    onPressed: () => _seekBy(-10),
+                  ),
+                  const SizedBox(width: 20),
+                  // Big Play / Pause
+                  GestureDetector(
+                    onTap: _togglePlayPause,
+                    child: Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: colorScheme.primary.withValues(alpha: 0.4),
+                            blurRadius: 18,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        _isPlaying
+                            ? Icons.pause_rounded
+                            : Icons.play_arrow_rounded,
+                        size: 38,
+                        color: colorScheme.onPrimary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 20),
+                  // Fast forward 10s
+                  IconButton(
+                    iconSize: 36,
+                    icon: const Icon(
+                      Icons.forward_10_rounded,
+                      color: Colors.white,
+                    ),
+                    tooltip: 'Fast forward 10 seconds',
+                    onPressed: () => _seekBy(10),
+                  ),
+                ],
+              ),
+            ),
+
+          // Bottom Standard Controls Bar
+          if (_showControls || !_isPlaying)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(14, 18, 14, 8),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.9),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Progress Scrubber Slider
+                    SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        trackHeight: 3.5,
+                        thumbShape: const RoundSliderThumbShape(
+                            enabledThumbRadius: 6.5),
+                        overlayShape: const RoundSliderOverlayShape(
+                            overlayRadius: 14),
+                        activeTrackColor: colorScheme.primary,
+                        inactiveTrackColor: Colors.white30,
+                        thumbColor: colorScheme.primary,
+                      ),
+                      child: Slider(
+                        value: _currentSeconds.clamp(0.0, _totalSeconds),
+                        min: 0.0,
+                        max: _totalSeconds,
+                        onChanged: (val) {
+                          setState(() {
+                            _currentSeconds = val;
+                          });
+                        },
+                      ),
+                    ),
+
+                    // Time display & quick toggles
+                    Row(
+                      children: [
+                        Text(
+                          '${_formatTime(_currentSeconds)} / ${_formatTime(_totalSeconds)}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const Spacer(),
+                        // Speed button
+                        InkWell(
+                          onTap: _cycleSpeed,
+                          borderRadius: BorderRadius.circular(6),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.white24,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '${_playbackSpeed}x',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
