@@ -46,14 +46,15 @@ class _DonationDialogState extends State<DonationDialog> {
   }
 
   double get _minimumForCurrentCurrency {
-    if (widget.donationType == DonationType.tractProduction) {
-      if (_selectedCurrency == 'NGN') {
-        return DonationConstants.tractDonationByRegion['NG'] ?? 7500.0;
-      } else {
-        return DonationConstants.tractDonationByRegion['US'] ?? 12.0;
-      }
+    final serviceMin = _donationService.getMinimumDonationAmount(
+      widget.donationType,
+      currency: _selectedCurrency,
+    );
+    if (_selectedCurrency == 'NGN' &&
+        widget.material.minimumDonation > serviceMin) {
+      return widget.material.minimumDonation;
     }
-    return _selectedCurrency == 'NGN' ? 5000.0 : 5.0;
+    return serviceMin;
   }
 
   List<double> get _quickPresets {
@@ -110,8 +111,10 @@ class _DonationDialogState extends State<DonationDialog> {
             ? null
             : _notesController.text.trim(),
         metadata: {
-          'category': 'tract_distribution',
-          'purpose': 'Tract Distribution: ${widget.material.title}',
+          'category': 'tract_production',
+          'purpose': 'Tract Production: ${widget.material.title}',
+          'fund_designation': 'Tract Production: ${widget.material.title}',
+          'donation_type': 'tractProduction',
           'material_id': widget.material.id,
           'material_title': widget.material.title,
           'currency': _selectedCurrency,
@@ -285,7 +288,7 @@ class _DonationDialogState extends State<DonationDialog> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Support Tract Ministry',
+                            'Support Tract Production',
                             style: Theme.of(context)
                                 .textTheme
                                 .titleMedium

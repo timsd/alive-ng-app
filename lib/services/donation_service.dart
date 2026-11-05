@@ -360,6 +360,12 @@ class DonationService {
         }
       }
 
+      final resolvedPurpose = metadata?['purpose'] as String? ??
+          metadata?['fund_designation'] as String? ??
+          (type == DonationType.tractProduction && materialTitle != null && materialTitle.isNotEmpty
+              ? 'Tract Production: $materialTitle'
+              : (metadata?['project_title'] as String?));
+
       final donation = DonationRecord(
         id: AppwriteIdUtils.uniqueId(),
         userId: userId,
@@ -373,6 +379,8 @@ class DonationService {
         materialId: materialId,
         materialTitle: materialTitle,
         notes: notes,
+        purpose: resolvedPurpose,
+        projectTitle: metadata?['project_title'] as String? ?? resolvedPurpose,
         metadata: metadata,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),

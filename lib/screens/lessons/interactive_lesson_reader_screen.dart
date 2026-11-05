@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/bible_reference_modal_sheet.dart';
 import '../../services/interactive_lessons_service.dart';
-import '../../services/appwrite_auth_service.dart';
+import '../../services/auth_service.dart';
 import '../../services/discipleship_service.dart';
 import '../../models/discipleship_models.dart';
 
@@ -182,7 +182,7 @@ class _InteractiveLessonReaderScreenState
 
   Future<void> _loadDisciples() async {
     try {
-      final authService = AppwriteAuthService.instance;
+      final authService = AuthService.instance;
       final user = authService.currentUser ?? await authService.getCurrentUser();
       if (user != null) {
         final contacts = await DiscipleshipService.instance.getContacts(
@@ -330,7 +330,7 @@ class _InteractiveLessonReaderScreenState
 
     if (fullName.isNotEmpty) {
       try {
-        final authService = AppwriteAuthService.instance;
+        final authService = AuthService.instance;
         final authUser = authService.currentUser ?? await authService.getCurrentUser();
         if (authUser != null) {
           final discipleship = DiscipleshipService.instance;
@@ -487,8 +487,7 @@ class _InteractiveLessonReaderScreenState
         }
       });
     }
-  });
-    }
+  }
 
   void _calculateProgress() {
     int totalItems = _controllers.length + 4; // text fields + 3 toggles + prayer

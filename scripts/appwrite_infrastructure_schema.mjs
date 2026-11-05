@@ -188,6 +188,7 @@ export const tables = [
       s('type', 64), i('amount_kobo', true), f('amount'), s('currency', 16), s('reference', 128, true),
       s('payment_method', 64), s('payment_intent_id', 255), s('transaction_id', 128), s('status', 64, true),
       s('processor', 64), s('material_id', 128), s('material_title'), text('notes'), mediumtext('metadata'),
+      s('purpose', 255), s('project_title', 255),
       dt('created_at'), dt('updated_at'), dt('completed_at'),
     ],
     indexes: [{ key: 'donations_reference_idx', type: 'unique', columns: ['reference'] }, { key: 'donations_status_idx', type: 'key', columns: ['status'] }],
