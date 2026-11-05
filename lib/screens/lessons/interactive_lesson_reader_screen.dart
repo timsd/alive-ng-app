@@ -276,8 +276,6 @@ class _InteractiveLessonReaderScreenState
     switch (level) {
       case DiscipleshipLevel.prospect:
         return 'Prospect';
-      case DiscipleshipLevel.interested:
-        return 'Interested';
       case DiscipleshipLevel.studying:
         return 'Studying';
       case DiscipleshipLevel.convinced:
@@ -288,8 +286,6 @@ class _InteractiveLessonReaderScreenState
         return 'Baptized';
       case DiscipleshipLevel.disciple:
         return 'Disciple';
-      case DiscipleshipLevel.leader:
-        return 'Leader';
     }
   }
 

@@ -1379,8 +1379,6 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
     switch (level) {
       case DiscipleshipLevel.prospect:
         return Colors.grey;
-      case DiscipleshipLevel.interested:
-        return Colors.blue;
       case DiscipleshipLevel.studying:
         return Colors.orange;
       case DiscipleshipLevel.convinced:
@@ -1391,8 +1389,6 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
         return Colors.green;
       case DiscipleshipLevel.disciple:
         return Colors.teal;
-      case DiscipleshipLevel.leader:
-        return Colors.indigo;
     }
   }
 

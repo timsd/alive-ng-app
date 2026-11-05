@@ -1,13 +1,11 @@
 // Enums for discipleship tracking
 enum DiscipleshipLevel {
   prospect,
-  interested,
   studying,
   convinced,
   committed,
   baptized,
   disciple,
-  leader
 }
 
 enum ContactMethod { inPerson, phone, video, email, text, socialMedia, other }
@@ -510,7 +508,7 @@ class ProgressMilestone {
       ),
       toLevel: DiscipleshipLevel.values.firstWhere(
         (level) => level.name == json['to_level'],
-        orElse: () => DiscipleshipLevel.interested,
+        orElse: () => DiscipleshipLevel.studying,
       ),
       date: DateTime.parse(json['date'] as String),
       notes: json['notes'] as String?,
@@ -717,7 +715,6 @@ class DiscipleshipReport {
 class DiscipleshipConstants {
   static const Map<DiscipleshipLevel, String> levelDescriptions = {
     DiscipleshipLevel.prospect: 'Initial contact, showing some interest',
-    DiscipleshipLevel.interested: 'Actively interested in learning more',
     DiscipleshipLevel.studying: 'Regularly attending Bible studies',
     DiscipleshipLevel.convinced:
         'Convinced of Bible truths, considering commitment',
@@ -725,19 +722,15 @@ class DiscipleshipConstants {
         'Committed to following Christ, preparing for baptism',
     DiscipleshipLevel.baptized: 'Baptized member of the church',
     DiscipleshipLevel.disciple: 'Growing disciple, actively serving',
-    DiscipleshipLevel.leader: 'Leading others in discipleship',
   };
 
   static const Map<DiscipleshipLevel, String> nextSteps = {
     DiscipleshipLevel.prospect: 'Build relationship, assess interest level',
-    DiscipleshipLevel.interested:
-        'Invite to Bible study or evangelistic series',
     DiscipleshipLevel.studying: 'Continue regular studies, address questions',
     DiscipleshipLevel.convinced: 'Discuss commitment and baptism',
     DiscipleshipLevel.committed: 'Prepare for baptism, connect with church',
     DiscipleshipLevel.baptized: 'Provide discipleship training and mentoring',
     DiscipleshipLevel.disciple: 'Encourage service and leadership development',
-    DiscipleshipLevel.leader: 'Support in training others',
   };
 
   static const List<String> studyTopics = [

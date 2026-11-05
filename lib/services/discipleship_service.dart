@@ -1072,8 +1072,7 @@ class DiscipleshipService {
         totalBaptisms: contacts
             .where((c) =>
                 c.currentLevel == DiscipleshipLevel.baptized ||
-                c.currentLevel == DiscipleshipLevel.disciple ||
-                c.currentLevel == DiscipleshipLevel.leader)
+                c.currentLevel == DiscipleshipLevel.disciple)
             .length,
         levelDistribution: levelCounts,
         totalInteractions: interactions.length,
