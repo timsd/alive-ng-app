@@ -291,11 +291,6 @@ class _InteractiveLessonReaderScreenState
         }
       });
     }
-  });
-        }
-      });
-    }
-  }
 
   void _calculateProgress() {
     int totalItems = _controllers.length + 4; // text fields + 3 toggles + prayer
