@@ -102,7 +102,7 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
                         tablet: 14.0,
                         desktop: 16.0)),
                 DropdownButtonFormField<String>(
-                  initialValue: _selectedCategory,
+                  value: _selectedCategory,
                   decoration: InputDecoration(
                     labelText: 'Category',
                     border: OutlineInputBorder(
@@ -650,60 +650,22 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
     return AppwriteStorageCompatService().getTractDownloadURL('${tract.id}.pdf');
   }
 
-    void _viewOriginalPDF(Tract tract) async {
+  /// Opens the tract PDF directly in the in-app viewer without requiring
+  /// a donation. The PDF icon is for previewing/reading only.
+  void _viewOriginalPDF(Tract tract) async {
     try {
-      final donationService = DonationService();
-      DownloadableMaterial? fetched;
-      try {
-        fetched = await donationService.getMaterialById(tract.id);
-      } catch (_) {
-        fetched = null;
-      }
+      // Resolve the PDF URL directly - no donation check needed for viewing
+      String? downloadUrl = await _resolveTractPdfUrl(tract);
 
-      final material = fetched ??
-          DownloadableMaterial(
-            id: tract.id,
-            title: tract.title,
-            description: tract.description,
-            category: 'tracts',
-            fileSizeBytes: 0,
-            fileType: 'pdf',
-            downloadCount: 0,
-            fileUrl: await _resolveTractPdfUrl(tract) ?? '',
-            minimumDonation: DonationConstants.tractDonationByRegion['NG'] ??
-                DonationConstants.minimumTractDonation,
-            requiresDonation: true,
-            isActive: true,
-            createdAt: tract.createdAt ?? DateTime.now(),
-            updatedAt: tract.updatedAt ?? DateTime.now(),
-          );
-
-      bool canDownload = false;
-      try {
-        canDownload = await donationService.canUserDownloadMaterial(material.id);
-      } catch (_) {
-        canDownload = false;
+      // Fallback: try to get URL from donation service if storage lookup fails
+      if (downloadUrl == null || downloadUrl.isEmpty) {
+        try {
+          downloadUrl =
+              await DonationService().generateDownloadUrl(tract.id);
+        } catch (_) {
+          downloadUrl = null;
+        }
       }
-
-      if (!canDownload && material.requiresDonation) {
-        if (!mounted) return;
-        final donated = await showDialog<bool>(
-          context: context,
-          builder: (context) => DonationDialog(
-            material: material,
-            donationType: DonationType.tractProduction,
-          ),
-        );
-        if (donated != true) return;
-      }
-
-      String? downloadUrl;
-      try {
-        downloadUrl = await donationService.generateDownloadUrl(material.id);
-      } catch (_) {
-        downloadUrl = null;
-      }
-      downloadUrl ??= await _resolveTractPdfUrl(tract);
 
       if (downloadUrl != null && downloadUrl.isNotEmpty) {
         if (!mounted) return;
@@ -743,6 +705,26 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
     }
   }
 
+  /// Resolves the tract cover image URL for passing to the DonationDialog.
+  String? _resolveTractCoverImage(Tract tract) {
+    if (tract.coverImage != null && tract.coverImage!.trim().isNotEmpty) {
+      return tract.coverImage!.trim();
+    } else if (tract.imageUrl != null && tract.imageUrl!.trim().isNotEmpty) {
+      return tract.imageUrl!.trim();
+    } else if (tract.coverImages.isNotEmpty && tract.coverImages.first.trim().isNotEmpty) {
+      return tract.coverImages.first.trim();
+    } else if (tract.id.contains('lesson_1') ||
+        tract.id.contains('bible_says_1') ||
+        tract.title.toLowerCase().contains('something we can trust')) {
+      return 'assets/images/series/what_the_bible_says_lesson_1.jpg';
+    }
+    return null;
+  }
+
+  /// Downloads a tract after prompting for a donation (if required).
+  /// The download icon triggers the donation dialog with the tract cover image
+  /// and currency toggle. After successful payment, the tract is downloaded
+  /// and recorded in the user's downloads list.
   void _downloadTract(Tract tract) async {
     try {
       final donationService = DonationService();
@@ -753,12 +735,15 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
         fetched = null;
       }
 
-      final material = fetched ??
+      // Build the material with thumbnailUrl from the tract cover image
+      final tractCoverUrl = _resolveTractCoverImage(tract);
+      final material = fetched?.copyWith(thumbnailUrl: tractCoverUrl) ??
           DownloadableMaterial(
             id: tract.id,
             title: tract.title,
             description: tract.description,
             category: 'tracts',
+            thumbnailUrl: tractCoverUrl,
             fileSizeBytes: 0,
             fileType: 'pdf',
             downloadCount: 0,
