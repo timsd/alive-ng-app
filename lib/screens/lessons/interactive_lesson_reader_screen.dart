@@ -3,6 +3,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/bible_reference_modal_sheet.dart';
 import '../../services/interactive_lessons_service.dart';
+import '../../services/appwrite_auth_service.dart';
+import '../../services/discipleship_service.dart';
+import '../../models/discipleship_models.dart';
 
 /// Full interactive study screen for Lesson 1: Something We Can Trust (What The Bible Says Series).
 /// Implements all 9 sections, interactive reflection inputs, prophecy checklist, filterable Messianic table,
@@ -39,6 +42,7 @@ class _InteractiveLessonReaderScreenState
 
   double _progress = 0.0;
   bool _showSavedNotification = false;
+  bool _isSaving = false;
 
   // Messianic prophecies table
   final List<Map<String, String>> _allMessianicProphecies = [
@@ -161,6 +165,8 @@ class _InteractiveLessonReaderScreenState
   }
 
   Future<void> _saveResponses() async {
+    setState(() => _isSaving = true);
+
     final prefs = await SharedPreferences.getInstance();
     final prefix = 'interactive_lesson_1_';
 
@@ -190,15 +196,102 @@ class _InteractiveLessonReaderScreenState
       _progress,
     );
 
+    // Sync to Discipleship Tracker if disciple name/phone is provided
+    bool discipleshipSynced = false;
+    final fullName = _nameController.text.trim();
+    if (fullName.isNotEmpty) {
+      try {
+        final authService = AppwriteAuthService.instance;
+        final authUser = authService.currentUser ?? await authService.getCurrentUser();
+        if (authUser != null) {
+          final discipleship = DiscipleshipService.instance;
+          final existingContacts = await discipleship.getContacts(
+            discipleMakerId: authUser.uid,
+            searchQuery: fullName,
+          );
+
+          DiscipleshipContact? targetContact;
+          for (final c in existingContacts) {
+            if (c.fullName.toLowerCase() == fullName.toLowerCase() ||
+                (_phoneController.text.trim().isNotEmpty &&
+                    c.phone == _phoneController.text.trim())) {
+              targetContact = c;
+              break;
+            }
+          }
+
+          if (targetContact == null) {
+            final nameParts = fullName.split(' ');
+            final first = nameParts.first;
+            final last = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : 'Disciple';
+            targetContact = await discipleship.createContact(
+              DiscipleshipContact(
+                id: '',
+                discipleMakerId: authUser.uid,
+                firstName: first,
+                lastName: last,
+                phone: _phoneController.text.trim().isNotEmpty
+                    ? _phoneController.text.trim()
+                    : null,
+                currentLevel: DiscipleshipLevel.studying,
+                firstContact: DateTime.now(),
+                notes: 'Enrolled via interactive study: ${widget.title}',
+                createdAt: DateTime.now(),
+                updatedAt: DateTime.now(),
+              ),
+            );
+          }
+
+          await discipleship.createStudySession(
+            StudySession(
+              id: '',
+              contactId: targetContact.id,
+              discipleMakerId: authUser.uid,
+              type: StudyType.bibleStudy,
+              title: widget.title,
+              topic: 'What The Bible Says Series',
+              bibleTexts: '2 Tim 3:16, 2 Pet 1:21, Dan 9:26-27, John 17:17',
+              date: DateTime.now(),
+              durationMinutes: 20,
+              completed: _progress >= 0.8,
+              notes: 'Interactive study responses saved. Progress: ${(_progress * 100).toInt()}% completed.',
+              createdAt: DateTime.now(),
+            ),
+          );
+          discipleshipSynced = true;
+        }
+      } catch (e) {
+        debugPrint('Discipleship sync error (will continue local save): $e');
+      }
+    }
+
     if (mounted) {
       setState(() {
+        _isSaving = false;
         _showSavedNotification = true;
       });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            discipleshipSynced
+                ? '✓ Progress saved & synced to Discipleship Tracker!'
+                : '✓ Study responses saved to your device!',
+          ),
+          backgroundColor: const Color(0xFF166534),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+
       Future.delayed(const Duration(seconds: 3), () {
         if (mounted) {
           setState(() {
             _showSavedNotification = false;
           });
+        }
+      });
+    }
+  });
         }
       });
     }
@@ -321,11 +414,105 @@ class _InteractiveLessonReaderScreenState
                 _buildSection9Commitment(isDark),
                 const SizedBox(height: 24),
                 _buildSaveButtonSection(isDark),
-                const SizedBox(height: 32),
+                const SizedBox(height: 40),
               ],
             ),
           ),
         ],
+      ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF0F1E16) : Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.12),
+              blurRadius: 10,
+              offset: const Offset(0, -3),
+            ),
+          ],
+          border: Border(
+            top: BorderSide(
+              color: isDark ? const Color(0xFF1E3D2B) : const Color(0xFFE2E8F0),
+              width: 1,
+            ),
+          ),
+        ),
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 10,
+          bottom: MediaQuery.of(context).padding.bottom + 10,
+        ),
+        child: Row(
+          children: [
+            // Progress Indicator Badge
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF143021) : const Color(0xFFDCFCE7),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isDark ? const Color(0xFF22C55E).withValues(alpha: 0.4) : const Color(0xFF86EFAC),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    _progress >= 1.0 ? Icons.check_circle : Icons.trending_up,
+                    size: 16,
+                    color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF15803D),
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    '${(_progress * 100).toInt()}%',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF15803D),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Persistent Save Button
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: _isSaving ? null : _saveResponses,
+                icon: _isSaving
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Icon(Icons.cloud_done_outlined, size: 18, color: Colors.white),
+                label: Text(
+                  _isSaving
+                      ? 'Saving...'
+                      : (_showSavedNotification ? 'Saved Successfully!' : 'Save Lesson Progress'),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _showSavedNotification
+                      ? const Color(0xFF047857)
+                      : const Color(0xFF166534),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

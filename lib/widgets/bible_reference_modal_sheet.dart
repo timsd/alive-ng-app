@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/app_theme.dart';
 import '../services/bible_database_helper.dart';
 import '../services/offline_bible_service.dart';
 import '../constants/bible_data.dart';
@@ -175,13 +176,20 @@ class _BibleReferenceModalSheetState extends State<BibleReferenceModalSheet> {
 
   @override
   Widget build(BuildContext context) {
-    const darkBg = Color(0xFF1E1E1E);
-    const cardBg = Color(0xFF252526);
-    const borderCol = Color(0xFF333333);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final sheetBg = isDark ? AppTheme.darkBackground : AppTheme.lightBackground;
+    final cardBg = isDark ? AppTheme.darkCard : AppTheme.lightCard;
+    final borderCol = isDark ? AppTheme.darkBorder : AppTheme.lightBorder;
+    final textColor = isDark ? AppTheme.darkForeground : AppTheme.lightForeground;
+    final textMuted = isDark ? AppTheme.darkMutedForeground : AppTheme.lightMutedForeground;
+    final accentGold = isDark ? AppTheme.darkGold : const Color(0xFFB45309);
+    final accentEmerald = isDark ? AppTheme.darkEmerald : AppTheme.lightEmerald;
 
     return Container(
-      decoration: const BoxDecoration(
-        color: darkBg,
+      decoration: BoxDecoration(
+        color: sheetBg,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         boxShadow: [
           BoxShadow(
@@ -219,7 +227,7 @@ class _BibleReferenceModalSheetState extends State<BibleReferenceModalSheet> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                icon: const Icon(Icons.close, color: Colors.white70, size: 22),
+                icon: Icon(Icons.close, color: textMuted, size: 22),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
                 onPressed: () => Navigator.of(context).pop(),
@@ -230,9 +238,9 @@ class _BibleReferenceModalSheetState extends State<BibleReferenceModalSheet> {
                       ? _selectedVersion
                       : _availableVersions.first,
                   dropdownColor: cardBg,
-                  icon: const Icon(Icons.arrow_drop_down, color: Colors.white70),
-                  style: const TextStyle(
-                    color: Colors.white,
+                  icon: Icon(Icons.arrow_drop_down, color: textMuted),
+                  style: TextStyle(
+                    color: textColor,
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
                   ),
@@ -284,7 +292,7 @@ class _BibleReferenceModalSheetState extends State<BibleReferenceModalSheet> {
                       padding: EdgeInsets.symmetric(vertical: 24),
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+                        valueColor: AlwaysStoppedAnimation<Color>(accentEmerald),
                       ),
                     ),
                   )
@@ -351,7 +359,7 @@ class _BibleReferenceModalSheetState extends State<BibleReferenceModalSheet> {
                   ),
                 );
               },
-              icon: const Icon(Icons.menu_book, color: Colors.greenAccent, size: 18),
+              icon: Icon(Icons.menu_book, color: accentEmerald, size: 18),
               label: const Text(
                 'Open in Bible Reader',
                 style: TextStyle(
