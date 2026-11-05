@@ -38,7 +38,13 @@ class _InteractiveLessonReaderScreenState
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _addressController = TextEditingController();
   final TextEditingController _prophecySearchController = TextEditingController();
+
+  DiscipleshipLevel _selectedDiscipleshipLevel = DiscipleshipLevel.prospect;
+  List<DiscipleshipContact> _userContacts = [];
+  DiscipleshipContact? _matchedContact;
+  int _matchedContactStudyCount = 0;
 
   double _progress = 0.0;
   bool _showSavedNotification = false;
@@ -123,6 +129,7 @@ class _InteractiveLessonReaderScreenState
     _controllers['q8_c'] = TextEditingController();
 
     _loadSavedResponses();
+    _loadDisciples();
   }
 
   @override
@@ -132,6 +139,7 @@ class _InteractiveLessonReaderScreenState
     }
     _nameController.dispose();
     _phoneController.dispose();
+    _addressController.dispose();
     _prophecySearchController.dispose();
     super.dispose();
   }
@@ -159,9 +167,130 @@ class _InteractiveLessonReaderScreenState
         _believeBible = prefs.getBool('${prefix}believeBible');
       }
       _commitmentPrayer = prefs.getBool('${prefix}commitmentPrayer') ?? false;
+      _addressController.text = prefs.getString('${prefix}address') ?? '';
+      final savedLevel = prefs.getString('${prefix}level');
+      if (savedLevel != null) {
+        _selectedDiscipleshipLevel = DiscipleshipLevel.values.firstWhere(
+          (lvl) => lvl.name == savedLevel,
+          orElse: () => DiscipleshipLevel.prospect,
+        );
+      }
 
       _calculateProgress();
     });
+  }
+
+  Future<void> _loadDisciples() async {
+    try {
+      final authService = AppwriteAuthService.instance;
+      final user = authService.currentUser ?? await authService.getCurrentUser();
+      if (user != null) {
+        final contacts = await DiscipleshipService.instance.getContacts(
+          discipleMakerId: user.uid,
+        );
+        if (mounted) {
+          setState(() {
+            _userContacts = contacts;
+          });
+          if (_nameController.text.trim().isNotEmpty) {
+            _checkExistingDiscipleMatch(_nameController.text.trim());
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Could not load existing disciples: $e');
+    }
+  }
+
+  void _onNameChanged(String query) {
+    _checkExistingDiscipleMatch(query.trim());
+  }
+
+  void _checkExistingDiscipleMatch(String query) {
+    if (query.isEmpty) {
+      if (_matchedContact != null) {
+        setState(() {
+          _matchedContact = null;
+          _matchedContactStudyCount = 0;
+        });
+      }
+      return;
+    }
+
+    final q = query.toLowerCase();
+    DiscipleshipContact? found;
+    for (final c in _userContacts) {
+      if (c.fullName.toLowerCase() == q) {
+        found = c;
+        break;
+      }
+    }
+
+    if (found != null && found != _matchedContact) {
+      _selectContact(found);
+    } else if (found == null && _matchedContact != null) {
+      setState(() {
+        _matchedContact = null;
+        _matchedContactStudyCount = 0;
+      });
+    }
+  }
+
+  Future<void> _selectContact(DiscipleshipContact contact) async {
+    setState(() {
+      _matchedContact = contact;
+      _nameController.text = contact.fullName;
+      if (contact.phone != null && contact.phone!.isNotEmpty) {
+        _phoneController.text = contact.phone!;
+      }
+      if (contact.address != null && contact.address!.isNotEmpty) {
+        _addressController.text = contact.address!;
+      }
+      _selectedDiscipleshipLevel = contact.currentLevel;
+    });
+
+    try {
+      final sessions = await DiscipleshipService.instance.getStudySessions(
+        contactId: contact.id,
+      );
+      if (mounted) {
+        setState(() {
+          _matchedContactStudyCount = sessions.length;
+        });
+      }
+    } catch (_) {}
+  }
+
+  void _clearMatchedContact() {
+    setState(() {
+      _matchedContact = null;
+      _matchedContactStudyCount = 0;
+      _nameController.clear();
+      _phoneController.clear();
+      _addressController.clear();
+      _selectedDiscipleshipLevel = DiscipleshipLevel.prospect;
+    });
+  }
+
+  String _formatLevelName(DiscipleshipLevel level) {
+    switch (level) {
+      case DiscipleshipLevel.prospect:
+        return 'Prospect';
+      case DiscipleshipLevel.interested:
+        return 'Interested';
+      case DiscipleshipLevel.studying:
+        return 'Studying';
+      case DiscipleshipLevel.convinced:
+        return 'Convinced';
+      case DiscipleshipLevel.committed:
+        return 'Committed';
+      case DiscipleshipLevel.baptized:
+        return 'Baptized';
+      case DiscipleshipLevel.disciple:
+        return 'Disciple';
+      case DiscipleshipLevel.leader:
+        return 'Leader';
+    }
   }
 
   Future<void> _saveResponses() async {
@@ -176,6 +305,8 @@ class _InteractiveLessonReaderScreenState
 
     await prefs.setString('${prefix}name', _nameController.text);
     await prefs.setString('${prefix}phone', _phoneController.text);
+    await prefs.setString('${prefix}address', _addressController.text);
+    await prefs.setString('${prefix}level', _selectedDiscipleshipLevel.name);
 
     if (_haveBible != null) {
       await prefs.setBool('${prefix}haveBible', _haveBible!);
@@ -196,35 +327,93 @@ class _InteractiveLessonReaderScreenState
       _progress,
     );
 
-    // Sync to Discipleship Tracker if disciple name/phone is provided
+    // Sync to Discipleship Tracker if disciple name is provided
     bool discipleshipSynced = false;
+    String discipleshipNotice = '';
     final fullName = _nameController.text.trim();
+
     if (fullName.isNotEmpty) {
       try {
         final authService = AppwriteAuthService.instance;
         final authUser = authService.currentUser ?? await authService.getCurrentUser();
         if (authUser != null) {
           final discipleship = DiscipleshipService.instance;
-          final existingContacts = await discipleship.getContacts(
-            discipleMakerId: authUser.uid,
-            searchQuery: fullName,
-          );
 
-          DiscipleshipContact? targetContact;
-          for (final c in existingContacts) {
-            if (c.fullName.toLowerCase() == fullName.toLowerCase() ||
-                (_phoneController.text.trim().isNotEmpty &&
-                    c.phone == _phoneController.text.trim())) {
-              targetContact = c;
-              break;
+          // Check if contact already exists
+          DiscipleshipContact? contact = _matchedContact;
+          if (contact == null) {
+            final existing = await discipleship.getContacts(
+              discipleMakerId: authUser.uid,
+              searchQuery: fullName,
+            );
+            for (final c in existing) {
+              if (c.fullName.toLowerCase() == fullName.toLowerCase() ||
+                  (_phoneController.text.trim().isNotEmpty &&
+                      c.phone == _phoneController.text.trim())) {
+                contact = c;
+                break;
+              }
             }
           }
 
-          if (targetContact == null) {
+          if (contact != null) {
+            // ── EXISTING DISCIPLE ──
+            // 1. If stage / level changed, promote them in Discipleship Tracker!
+            if (contact.currentLevel != _selectedDiscipleshipLevel) {
+              contact = await discipleship.updateContactLevel(
+                contact.id,
+                _selectedDiscipleshipLevel,
+              );
+            }
+
+            // 2. Update address or phone if newly provided
+            final updatedPhone = _phoneController.text.trim().isNotEmpty
+                ? _phoneController.text.trim()
+                : contact.phone;
+            final updatedAddress = _addressController.text.trim().isNotEmpty
+                ? _addressController.text.trim()
+                : contact.address;
+
+            if (updatedPhone != contact.phone || updatedAddress != contact.address) {
+              contact = await discipleship.updateContact(contact.copyWith(
+                phone: updatedPhone,
+                address: updatedAddress,
+                lastContact: DateTime.now().toUtc(),
+              ));
+            }
+
+            // 3. Log the new study session (increments study count!)
+            await discipleship.createStudySession(
+              StudySession(
+                id: '',
+                contactId: contact.id,
+                discipleMakerId: authUser.uid,
+                type: StudyType.bibleStudy,
+                title: widget.title,
+                topic: 'What The Bible Says Series',
+                bibleTexts: '2 Tim 3:16, 2 Pet 1:21, Dan 9:26-27, John 17:17',
+                date: DateTime.now(),
+                durationMinutes: 20,
+                completed: _progress >= 0.8,
+                notes: 'Completed: ${(_progress * 100).toInt()}%. Lesson answers recorded.',
+                createdAt: DateTime.now(),
+              ),
+            );
+
+            // Fetch updated study count
+            final sessions = await discipleship.getStudySessions(contactId: contact.id);
+            _matchedContactStudyCount = sessions.length;
+            _matchedContact = contact;
+
+            discipleshipSynced = true;
+            discipleshipNotice = '✓ Logged study #${sessions.length} for ${contact.fullName} (${_formatLevelName(_selectedDiscipleshipLevel)}) in Discipleship Tracker!';
+          } else {
+            // ── NEW DISCIPLE ──
             final nameParts = fullName.split(' ');
             final first = nameParts.first;
             final last = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : 'Disciple';
-            targetContact = await discipleship.createContact(
+
+            final newContact = await discipleship.createContact(
               DiscipleshipContact(
                 id: '',
                 discipleMakerId: authUser.uid,
@@ -233,35 +422,46 @@ class _InteractiveLessonReaderScreenState
                 phone: _phoneController.text.trim().isNotEmpty
                     ? _phoneController.text.trim()
                     : null,
-                currentLevel: DiscipleshipLevel.studying,
+                address: _addressController.text.trim().isNotEmpty
+                    ? _addressController.text.trim()
+                    : null,
+                currentLevel: _selectedDiscipleshipLevel,
                 firstContact: DateTime.now(),
-                notes: 'Enrolled via interactive study: ${widget.title}',
+                lastContact: DateTime.now(),
+                notes: 'Enrolled via interactive lesson: ${widget.title}',
                 createdAt: DateTime.now(),
                 updatedAt: DateTime.now(),
               ),
             );
-          }
 
-          await discipleship.createStudySession(
-            StudySession(
-              id: '',
-              contactId: targetContact.id,
-              discipleMakerId: authUser.uid,
-              type: StudyType.bibleStudy,
-              title: widget.title,
-              topic: 'What The Bible Says Series',
-              bibleTexts: '2 Tim 3:16, 2 Pet 1:21, Dan 9:26-27, John 17:17',
-              date: DateTime.now(),
-              durationMinutes: 20,
-              completed: _progress >= 0.8,
-              notes: 'Interactive study responses saved. Progress: ${(_progress * 100).toInt()}% completed.',
-              createdAt: DateTime.now(),
-            ),
-          );
-          discipleshipSynced = true;
+            // Log their first study session
+            await discipleship.createStudySession(
+              StudySession(
+                id: '',
+                contactId: newContact.id,
+                discipleMakerId: authUser.uid,
+                type: StudyType.bibleStudy,
+                title: widget.title,
+                topic: 'What The Bible Says Series',
+                bibleTexts: '2 Tim 3:16, 2 Pet 1:21, Dan 9:26-27, John 17:17',
+                date: DateTime.now(),
+                durationMinutes: 20,
+                completed: _progress >= 0.8,
+                notes: 'Initial study: 100% completed. Enrolled at ${_formatLevelName(_selectedDiscipleshipLevel)} stage.',
+                createdAt: DateTime.now(),
+              ),
+            );
+
+            _matchedContact = newContact;
+            _matchedContactStudyCount = 1;
+            _userContacts.add(newContact);
+
+            discipleshipSynced = true;
+            discipleshipNotice = '✓ Enrolled ${newContact.fullName} as ${_formatLevelName(_selectedDiscipleshipLevel)} & logged Study #1!';
+          }
         }
       } catch (e) {
-        debugPrint('Discipleship sync error (will continue local save): $e');
+        debugPrint('Discipleship sync error (saved locally): $e');
       }
     }
 
@@ -275,11 +475,11 @@ class _InteractiveLessonReaderScreenState
         SnackBar(
           content: Text(
             discipleshipSynced
-                ? '✓ Progress saved & synced to Discipleship Tracker!'
+                ? discipleshipNotice
                 : '✓ Study responses saved to your device!',
           ),
           backgroundColor: const Color(0xFF166534),
-          duration: const Duration(seconds: 3),
+          duration: const Duration(seconds: 4),
         ),
       );
 
@@ -290,6 +490,8 @@ class _InteractiveLessonReaderScreenState
           });
         }
       });
+    }
+  });
     }
 
   void _calculateProgress() {
@@ -1312,42 +1514,276 @@ class _InteractiveLessonReaderScreenState
           ),
           const SizedBox(height: 12),
 
-          // Optional follow up inputs
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(
-                    hintText: 'Your Name',
-                    hintStyle: TextStyle(color: Colors.white54, fontSize: 12),
-                    isDense: true,
-                    filled: true,
-                    fillColor: Colors.black26,
-                    border: OutlineInputBorder(),
-                  ),
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
-                ),
+          // ── Discipleship Tracker Integration Card ──
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.25),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.15),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextField(
-                  controller: _phoneController,
-                  decoration: const InputDecoration(
-                    hintText: 'Phone / WhatsApp',
-                    hintStyle: TextStyle(color: Colors.white54, fontSize: 12),
-                    isDense: true,
-                    filled: true,
-                    fillColor: Colors.black26,
-                    border: OutlineInputBorder(),
-                  ),
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.people_alt, color: Colors.amberAccent, size: 18),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Disciple Details (Discipleship Tracker)',
+                        style: TextStyle(
+                          color: Colors.amberAccent,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    if (_matchedContact != null)
+                      IconButton(
+                        icon: const Icon(Icons.clear, color: Colors.white70, size: 18),
+                        tooltip: 'Clear selection',
+                        onPressed: _clearMatchedContact,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                  ],
                 ),
-              ),
-            ],
-          ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Record who you studied with. Existing disciples will be updated with this new study; new persons will be enrolled into your Discipleship Tracker.',
+                  style: TextStyle(color: Colors.white70, fontSize: 11, height: 1.3),
+                ),
+                const SizedBox(height: 12),
+
+                // Match status pill/badge if existing disciple is matched
+                if (_matchedContact != null) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF14532D),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.6)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.verified, color: Colors.greenAccent, size: 16),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Matched: ${_matchedContact!.fullName}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              Text(
+                                '$_matchedContactStudyCount prior studies logged • Current Stage: ${_formatLevelName(_matchedContact!.currentLevel)}',
+                                style: const TextStyle(color: Colors.white70, fontSize: 11),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+
+                // Name field with autocomplete from existing contacts
+                _buildDiscipleNameAutocomplete(),
+                const SizedBox(height: 10),
+
+                // Phone and Address Row
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _phoneController,
+                        keyboardType: TextInputType.phone,
+                        decoration: const InputDecoration(
+                          labelText: 'Phone / WhatsApp',
+                          labelStyle: TextStyle(color: Colors.white70, fontSize: 12),
+                          hintText: 'e.g. 08012345678',
+                          hintStyle: TextStyle(color: Colors.white38, fontSize: 11),
+                          isDense: true,
+                          filled: true,
+                          fillColor: Colors.black26,
+                          border: OutlineInputBorder(),
+                        ),
+                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: _addressController,
+                        decoration: const InputDecoration(
+                          labelText: 'Campus / Location',
+                          labelStyle: TextStyle(color: Colors.white70, fontSize: 12),
+                          hintText: 'e.g. UNILAG / Hall 3',
+                          hintStyle: TextStyle(color: Colors.white38, fontSize: 11),
+                          isDense: true,
+                          filled: true,
+                          fillColor: Colors.black26,
+                          border: OutlineInputBorder(),
+                        ),
+                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Discipleship Stage / Level Dropdown
+                Row(
+                  children: [
+                    const Text(
+                      'Stage / Level:',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.black38,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: Colors.white30),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<DiscipleshipLevel>(
+                            value: _selectedDiscipleshipLevel,
+                            dropdownColor: const Color(0xFF14241B),
+                            isExpanded: true,
+                            icon: const Icon(Icons.arrow_drop_down, color: Colors.amberAccent),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            items: DiscipleshipLevel.values.map((lvl) {
+                              return DropdownMenuItem<DiscipleshipLevel>(
+                                value: lvl,
+                                child: Text(_formatLevelName(lvl)),
+                              );
+                            }).toList(),
+                            onChanged: (lvl) {
+                              if (lvl != null) {
+                                setState(() => _selectedDiscipleshipLevel = lvl);
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          )
         ],
       ),
+    );
+  }
+
+  Widget _buildDiscipleNameAutocomplete() {
+    return Autocomplete<DiscipleshipContact>(
+      initialValue: TextEditingValue(text: _nameController.text),
+      displayStringForOption: (contact) => contact.fullName,
+      optionsBuilder: (TextEditingValue textEditingValue) {
+        if (textEditingValue.text.trim().isEmpty) {
+          return _userContacts;
+        }
+        final q = textEditingValue.text.trim().toLowerCase();
+        return _userContacts.where((c) {
+          return c.fullName.toLowerCase().contains(q) ||
+              (c.phone != null && c.phone!.contains(q));
+        });
+      },
+      onSelected: (contact) {
+        _selectContact(contact);
+      },
+      fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
+        return TextField(
+          controller: textEditingController,
+          focusNode: focusNode,
+          onChanged: (val) {
+            _nameController.text = val;
+            _onNameChanged(val);
+          },
+          decoration: InputDecoration(
+            labelText: 'Disciple Name (or search existing)',
+            labelStyle: const TextStyle(color: Colors.white70, fontSize: 12),
+            hintText: 'Type to search or enter new name',
+            hintStyle: const TextStyle(color: Colors.white38, fontSize: 11),
+            prefixIcon: const Icon(Icons.person_search, color: Colors.amberAccent, size: 20),
+            suffixIcon: _userContacts.isNotEmpty
+                ? PopupMenuButton<DiscipleshipContact>(
+                    icon: const Icon(Icons.arrow_drop_down, color: Colors.white70),
+                    tooltip: 'Choose existing disciple',
+                    onSelected: (c) {
+                      textEditingController.text = c.fullName;
+                      _selectContact(c);
+                    },
+                    itemBuilder: (ctx) => _userContacts.map((c) {
+                      return PopupMenuItem<DiscipleshipContact>(
+                        value: c,
+                        child: Text('${c.fullName} (${_formatLevelName(c.currentLevel)})'),
+                      );
+                    }).toList(),
+                  )
+                : null,
+            isDense: true,
+            filled: true,
+            fillColor: Colors.black26,
+            border: const OutlineInputBorder(),
+          ),
+          style: const TextStyle(color: Colors.white, fontSize: 12),
+        );
+      },
+      optionsViewBuilder: (context, onSelected, options) {
+        return Align(
+          alignment: Alignment.topLeft,
+          child: Material(
+            elevation: 8,
+            color: const Color(0xFF162E20),
+            borderRadius: BorderRadius.circular(8),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 200, maxWidth: 320),
+              child: ListView.builder(
+                padding: EdgeInsets.zero,
+                shrinkWrap: true,
+                itemCount: options.length,
+                itemBuilder: (context, index) {
+                  final contact = options.elementAt(index);
+                  return ListTile(
+                    dense: true,
+                    title: Text(contact.fullName,
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                    subtitle: Text(
+                      '${_formatLevelName(contact.currentLevel)}${contact.phone != null ? ' • ${contact.phone}' : ''}',
+                      style: const TextStyle(color: Colors.white60, fontSize: 10),
+                    ),
+                    trailing: const Icon(Icons.add_task, color: Colors.greenAccent, size: 16),
+                    onTap: () => onSelected(contact),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
