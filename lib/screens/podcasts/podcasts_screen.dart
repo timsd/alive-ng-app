@@ -550,7 +550,7 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
                           itemCount: episodes.length,
                           itemBuilder: (context, episodeIndex) {
                             final episodeModel = episodes[episodeIndex];
-                            final episode = _episodeToMap(episodeModel);
+                            final episode = _episodeToMap(episodeModel, podcast: podcast);
                             return ListTile(
                               leading: Container(
                                 width: 40,
@@ -589,7 +589,7 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
                                 ),
                               ),
                               onTap: () {
-                                _playEpisode(context, episode);
+                                _playEpisode(context, episode, coverImage: podcast.coverImage);
                               },
                             );
                           },
@@ -783,7 +783,7 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
 
   // Episode Methods
   Future<void> _playEpisode(
-      BuildContext context, Map<String, dynamic> episode) async {
+      BuildContext context, Map<String, dynamic> episode, {String? coverImage}) async {
     try {
       final audioUrl = _episodeAudioUrl(episode);
       if (audioUrl.isEmpty) {
@@ -794,12 +794,16 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
         return;
       }
 
+      final resolvedCover = coverImage ??
+          episode['coverImage']?.toString() ??
+          episode['cover_image']?.toString();
+
       await _audioService.playOrResumeEpisode(
         episode: episode,
         audioUrl: audioUrl,
         podcastTitle:
             episode['podcastTitle']?.toString() ?? 'ALIVE Nigeria Podcast',
-        coverImage: episode['coverImage']?.toString(),
+        coverImage: resolvedCover,
       );
 
       if (!context.mounted) return;
@@ -811,7 +815,7 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
         episodeData: episode,
         podcastTitle:
             episode['podcastTitle']?.toString() ?? 'ALIVE Nigeria Podcast',
-        coverImage: episode['coverImage']?.toString(),
+        coverImage: resolvedCover,
         onDownload: () => _downloadEpisode(context, episode),
       );
     } catch (e) {
@@ -892,18 +896,22 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
     );
   }
 
-  Map<String, dynamic> _episodeToMap(PodcastEpisode episode) {
+  Map<String, dynamic> _episodeToMap(PodcastEpisode episode, {Podcast? podcast}) {
     return {
       'id': episode.id,
       'title': episode.title,
-      'podcastTitle': episode.podcastTitle,
+      'podcastTitle': episode.podcastTitle.isNotEmpty
+          ? episode.podcastTitle
+          : (podcast?.title ?? ''),
       'description': episode.description,
       'duration': episode.duration,
       'audioUrl': episode.audioUrl,
       'transcript': episode.transcript,
       'notes': episode.notes,
       'downloadDate': '',
-      'category': '',
+      'category': podcast?.categoryDisplayName ?? '',
+      'coverImage': podcast?.coverImage ?? '',
+      'cover_image': podcast?.coverImage ?? '',
     };
   }
 

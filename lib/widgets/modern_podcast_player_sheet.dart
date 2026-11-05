@@ -528,10 +528,13 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(18),
-                      child: widget.coverImage != null &&
-                              widget.coverImage!.isNotEmpty
+                      child: ((widget.coverImage != null && widget.coverImage!.isNotEmpty) ||
+                              (widget.episodeData['coverImage'] != null && widget.episodeData['coverImage'].toString().isNotEmpty) ||
+                              (widget.episodeData['cover_image'] != null && widget.episodeData['cover_image'].toString().isNotEmpty))
                           ? CustomImage(
-                              imageUrl: widget.coverImage!,
+                              imageUrl: (widget.coverImage != null && widget.coverImage!.isNotEmpty)
+                                  ? widget.coverImage!
+                                  : (widget.episodeData['coverImage'] ?? widget.episodeData['cover_image']).toString(),
                               fit: BoxFit.cover,
                             )
                           : Container(
@@ -551,24 +554,26 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      category.toUpperCase(),
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.8,
-                        color: colorScheme.onPrimaryContainer,
+                  if (category.trim().isNotEmpty) ...[
+                    Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        category.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.8,
+                          color: colorScheme.onPrimaryContainer,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 6),
+                    const SizedBox(height: 6),
+                  ],
                   Text(
                     title,
                     textAlign: TextAlign.center,
@@ -1049,10 +1054,12 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            description,
-            style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
-          ),
+          _hasMarkdownSyntax(description)
+              ? _buildFormattedMarkdownNotes(context, theme, colorScheme, description)
+              : Text(
+                  description,
+                  style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
+                ),
 
           // 2. Published Key Notes & Outline (from Appwrite)
           if (customNotes != null && customNotes.trim().isNotEmpty) ...[
@@ -1225,6 +1232,15 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
     );
   }
 
+  bool _hasMarkdownSyntax(String text) {
+    return text.contains('##') ||
+        text.contains('# ') ||
+        text.contains('**') ||
+        text.contains('* ') ||
+        text.contains('- ') ||
+        text.contains('• ');
+  }
+
   Widget _buildFormattedMarkdownNotes(
     BuildContext context,
     ThemeData theme,
@@ -1238,6 +1254,7 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
       final line = lines[i].trim();
       if (line.isEmpty) continue;
 
+      // Divider lines
       if (line.startsWith('---') || line.startsWith('___') || line.startsWith('***')) {
         widgets.add(
           Padding(
@@ -1249,60 +1266,118 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
             ),
           ),
         );
-      } else if (line.startsWith('### ')) {
-        final title = line.substring(4).replaceAll(RegExp(r'\*+'), '').trim();
-        widgets.add(
-          Padding(
-            padding: const EdgeInsets.only(top: 14, bottom: 6),
-            child: Text(
-              title,
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: colorScheme.primary,
-              ),
-            ),
-          ),
-        );
-      } else if (line.startsWith('## ')) {
-        final title = line.substring(3).replaceAll(RegExp(r'\*+'), '').trim();
-        widgets.add(
-          Padding(
-            padding: const EdgeInsets.only(top: 18, bottom: 8),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.bookmark_border_rounded,
-                  size: 18,
-                  color: colorScheme.primary,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: colorScheme.primary,
+        continue;
+      }
+
+      // Isolated heading marker (e.g. "##" alone on a line without title)
+      if (RegExp(r'^#{1,6}$').hasMatch(line)) {
+        if (i + 1 < lines.length && lines[i + 1].trim().isNotEmpty) {
+          i++; // Consume next line as the heading title
+          final title = lines[i].trim().replaceAll(RegExp(r'\*+'), '').trim();
+          widgets.add(
+            Padding(
+              padding: const EdgeInsets.only(top: 18, bottom: 8),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.bookmark_border_rounded,
+                    size: 18,
+                    color: colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.primary,
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-        );
-      } else if (line.startsWith('# ')) {
-        final title = line.substring(2).replaceAll(RegExp(r'\*+'), '').trim();
-        widgets.add(
-          Padding(
-            padding: const EdgeInsets.only(top: 20, bottom: 10),
-            child: Text(
-              title,
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
+                ],
               ),
             ),
-          ),
-        );
-      } else if (line.startsWith('* ') || line.startsWith('- ')) {
+          );
+        }
+        continue;
+      }
+
+      // Level 3 heading: ### Title or ###Title
+      if (RegExp(r'^###\s*(.*)$').hasMatch(line)) {
+        final match = RegExp(r'^###\s*(.*)$').firstMatch(line)!;
+        final title = match.group(1)!.replaceAll(RegExp(r'\*+'), '').trim();
+        if (title.isNotEmpty) {
+          widgets.add(
+            Padding(
+              padding: const EdgeInsets.only(top: 14, bottom: 6),
+              child: Text(
+                title,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.primary,
+                ),
+              ),
+            ),
+          );
+          continue;
+        }
+      }
+
+      // Level 2 heading: ## Title or ##Title
+      if (RegExp(r'^##\s*(.*)$').hasMatch(line)) {
+        final match = RegExp(r'^##\s*(.*)$').firstMatch(line)!;
+        final title = match.group(1)!.replaceAll(RegExp(r'\*+'), '').trim();
+        if (title.isNotEmpty) {
+          widgets.add(
+            Padding(
+              padding: const EdgeInsets.only(top: 18, bottom: 8),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.bookmark_border_rounded,
+                    size: 18,
+                    color: colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+          continue;
+        }
+      }
+
+      // Level 1 heading: # Title or #Title
+      if (RegExp(r'^#\s*(.*)$').hasMatch(line)) {
+        final match = RegExp(r'^#\s*(.*)$').firstMatch(line)!;
+        final title = match.group(1)!.replaceAll(RegExp(r'\*+'), '').trim();
+        if (title.isNotEmpty) {
+          widgets.add(
+            Padding(
+              padding: const EdgeInsets.only(top: 20, bottom: 10),
+              child: Text(
+                title,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          );
+          continue;
+        }
+      }
+
+      // Bullet lists: * item, - item, • item, + item
+      if (line.startsWith('* ') || line.startsWith('- ') || line.startsWith('• ') || line.startsWith('+ ')) {
         final content = line.substring(2).trim();
         widgets.add(
           Padding(
@@ -1328,7 +1403,11 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
             ),
           ),
         );
-      } else if (RegExp(r'^\d+\.\s+').hasMatch(line)) {
+        continue;
+      }
+
+      // Numbered lists: 1. item
+      if (RegExp(r'^\d+\.\s+').hasMatch(line)) {
         final match = RegExp(r'^(\d+)\.\s+').firstMatch(line)!;
         final numStr = match.group(1)!;
         final content = line.substring(match.end).trim();
@@ -1361,15 +1440,16 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
             ),
           ),
         );
-      } else {
-        // Standard body paragraph
-        widgets.add(
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: _buildInlineMarkdownRichText(theme, colorScheme, line),
-          ),
-        );
+        continue;
       }
+
+      // Standard body paragraph
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: _buildInlineMarkdownRichText(theme, colorScheme, line),
+        ),
+      );
     }
 
     return Container(
