@@ -287,9 +287,9 @@ class _BibleReferenceModalSheetState extends State<BibleReferenceModalSheet> {
                 const SizedBox(height: 14),
 
                 if (_isLoading)
-                  const Center(
+                  Center(
                     child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 24),
+                      padding: const EdgeInsets.symmetric(vertical: 24),
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
                         valueColor: AlwaysStoppedAnimation<Color>(accentEmerald),
