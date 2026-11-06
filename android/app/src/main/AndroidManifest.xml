@@ -10,14 +10,16 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     
-    <!-- Storage Permissions (conditional based on Android version)
-         Google Play Photo & Video Policy (mandatory 2024-2026):
-         Apps must use the Android Photo Picker (via image_picker) for user-selected
-         media rather than requesting broad READ_MEDIA_IMAGES / READ_MEDIA_AUDIO permissions. -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
-    
-    <!-- Scoped storage is automatically handled for Android 10+ -->
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+    <!-- Google Play Photo & Video Policy (Android 13+ / mandatory 2024-2026):
+         The app uses the system Android Photo Picker (via image_picker) for user-selected
+         photos/videos, requiring zero runtime permissions. Explicitly strip all broad
+         storage and media permissions so neither app nor transitive libraries can inject them. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" tools:node="remove" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove" />
     
     <!-- Camera & Audio permissions for LiveKit video meetings and profiles -->
     <uses-permission android:name="android.permission.CAMERA" />

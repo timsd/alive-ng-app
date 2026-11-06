@@ -45,7 +45,7 @@ import '../screens/prayer/private_prayer_room_screen.dart';
 import '../screens/library/library_screen.dart';
 import '../screens/podcasts/podcasts_screen.dart';
 import '../screens/lessons/interactive_lessons_screen.dart';
-import '../screens/books/books_tracts_screen.dart';
+import '../screens/tracts/tracts_screen.dart';
 import '../screens/study_guides/study_guide_screen.dart';
 import '../screens/kids/kids_stories_screen.dart';
 import '../screens/discipleship/discipleship_screen.dart';

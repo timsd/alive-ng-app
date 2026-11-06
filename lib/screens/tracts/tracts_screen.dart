@@ -1,4 +1,4 @@
-import '../../widgets/in_app_pdf_viewer.dart';
+﻿import '../../widgets/in_app_pdf_viewer.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,8 +20,6 @@ class TractsScreen extends ConsumerStatefulWidget {
   @override
   ConsumerState<TractsScreen> createState() => _TractsScreenState();
 }
-
-typedef BooksTractsScreen = TractsScreen;
 
 class _TractsScreenState extends ConsumerState<TractsScreen>
 

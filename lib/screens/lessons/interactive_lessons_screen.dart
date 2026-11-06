@@ -8,7 +8,7 @@ import '../../utils/text_formatter.dart';
 import '../../services/interactive_lessons_service.dart';
 import '../../models/tract_models.dart';
 import '../../widgets/custom_image.dart';
-import '../books/tract_reader_screen.dart';
+import '../tracts/tract_reader_screen.dart';
 import 'interactive_lesson_reader_screen.dart';
 
 class InteractiveLessonsScreen extends ConsumerStatefulWidget {
