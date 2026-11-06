@@ -83,6 +83,8 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
   List<_PodcastTranscriptLine> _transcriptLines = [];
   int _activeTranscriptIndex = -1;
   bool _userIsScrollingTranscript = false;
+  Timer? _userScrollTimer;
+  final Map<int, GlobalKey> _transcriptItemKeys = {};
 
   // Personal Notes State
   String _userNote = '';
@@ -103,10 +105,22 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(_onTabChanged);
     _currentSpeed = widget.audioPlayer.speed;
     _transcriptLines = _parseTranscriptLines();
     _loadUserNote();
     _startPositionSync();
+  }
+
+  void _onTabChanged() {
+    if (_tabController.index == 1 && !_tabController.indexIsChanging) {
+      // Switched to Transcript tab: immediately center current playing line
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _scrollToActiveIndex(_activeTranscriptIndex, animate: false);
+        }
+      });
+    }
   }
 
   void _startPositionSync() {
@@ -123,40 +137,70 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
         // Instant Spotify-style scroll sync when viewing Transcript tab
         if (_tabController.index == 1 &&
             !_userIsScrollingTranscript &&
-            _transcriptScrollController.hasClients &&
+            _transcriptQuery.isEmpty &&
             newIndex >= 0) {
-          final targetOffset = (newIndex * 92.0)
-              .clamp(0.0, _transcriptScrollController.position.maxScrollExtent);
-          _transcriptScrollController.animateTo(
-            targetOffset,
-            duration: const Duration(milliseconds: 280),
-            curve: Curves.easeOutCubic,
-          );
+          _scrollToActiveIndex(newIndex, animate: true);
         }
       }
     });
   }
 
-  int _findActiveTranscriptIndex(int currentSeconds) {
-    if (_transcriptLines.isEmpty) return -1;
-    for (int i = 0; i < _transcriptLines.length; i++) {
-      final lineSec = _transcriptLines[i].seconds;
-      final nextSec = (i + 1 < _transcriptLines.length)
-          ? _transcriptLines[i + 1].seconds
-          : null;
+  void _scrollToActiveIndex(int index, {bool animate = true}) {
+    if (!_transcriptScrollController.hasClients || index < 0) return;
+    if (_userIsScrollingTranscript) return;
 
-      if (currentSeconds >= lineSec && (nextSec == null || currentSeconds < nextSec)) {
-        return i;
+    final key = _transcriptItemKeys[index];
+    final keyContext = key?.currentContext;
+    if (keyContext != null) {
+      Scrollable.ensureVisible(
+        keyContext,
+        alignment: 0.32, // Centered nicely ~32% from the top
+        duration: animate ? const Duration(milliseconds: 260) : Duration.zero,
+        curve: Curves.easeOutCubic,
+      );
+    } else {
+      // Fallback estimate if item is not rendered yet
+      if (_transcriptLines.isNotEmpty &&
+          _transcriptScrollController.position.maxScrollExtent > 0) {
+        final ratio = (index / _transcriptLines.length).clamp(0.0, 1.0);
+        final targetOffset = ratio * _transcriptScrollController.position.maxScrollExtent;
+        if (animate) {
+          _transcriptScrollController.animateTo(
+            targetOffset,
+            duration: const Duration(milliseconds: 260),
+            curve: Curves.easeOutCubic,
+          );
+        } else {
+          _transcriptScrollController.jumpTo(targetOffset);
+        }
       }
     }
-    return _transcriptLines.isNotEmpty && currentSeconds >= _transcriptLines.last.seconds
-        ? _transcriptLines.length - 1
-        : 0;
+  }
+
+  int _findActiveTranscriptIndex(int currentSeconds) {
+    if (_transcriptLines.isEmpty) return -1;
+    // O(log n) binary search for instant real-time lookup
+    int low = 0;
+    int high = _transcriptLines.length - 1;
+    int best = 0;
+
+    while (low <= high) {
+      final mid = (low + high) ~/ 2;
+      if (_transcriptLines[mid].seconds <= currentSeconds) {
+        best = mid;
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+    return best;
   }
 
   @override
   void dispose() {
     _positionSubscription?.cancel();
+    _userScrollTimer?.cancel();
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     _transcriptSearchController.dispose();
     _transcriptScrollController.dispose();
@@ -280,6 +324,25 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
     widget.audioPlayer.setSpeed(newSpeed);
   }
 
+  int _parseSecondsFromString(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return 0;
+    final clean = raw.trim();
+    final parts = clean.split(':');
+    if (parts.length == 3) {
+      final h = int.tryParse(parts[0]) ?? 0;
+      final m = int.tryParse(parts[1]) ?? 0;
+      final s = int.tryParse(parts[2].split('.')[0]) ?? 0;
+      return (h * 3600) + (m * 60) + s;
+    } else if (parts.length == 2) {
+      final m = int.tryParse(parts[0]) ?? 0;
+      final s = int.tryParse(parts[1].split('.')[0]) ?? 0;
+      return (m * 60) + s;
+    }
+    final numSec = double.tryParse(clean);
+    if (numSec != null) return numSec.toInt();
+    return 0;
+  }
+
   List<_PodcastTranscriptLine> _parseTranscriptLines() {
     final raw = (widget.episodeData['transcript'] ??
             widget.episodeData['transcription'] ??
@@ -301,8 +364,19 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
     }
 
     final paragraphs = raw.split(RegExp(r'\n+'));
-    final results = <_PodcastTranscriptLine>[];
-    int syntheticSeconds = 0;
+    final parsedItems = <_PodcastTranscriptLine>[];
+    bool hasExplicitTimestamps = false;
+
+    // Matches [hh:mm:ss], (hh:mm:ss), hh:mm:ss, [mm:ss], (mm:ss), mm:ss, with optional milliseconds
+    final timestampRegex = RegExp(
+      r'^(?:\[|\()?(?:(\d{1,2}):)?(\d{1,3}):(\d{2})(?:\.\d{1,3})?(?:\]|\))?\s*[-–—:]?\s*',
+    );
+    final cueRegex = RegExp(
+      r'^(?:(?:\d{1,2}:)?\d{2}:\d{2}(?:[.,]\d+)?)\s*-->\s*(?:(?:\d{1,2}:)?\d{2}:\d{2}(?:[.,]\d+)?)\s*',
+    );
+    final speakerRegex = RegExp(
+      r'^\*?\*?([A-Za-z0-9\s_]+)\*?\*?:\s*',
+    );
 
     for (int i = 0; i < paragraphs.length; i++) {
       var p = paragraphs[i].trim();
@@ -311,42 +385,118 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
       // Strip leading bullet markers like "* ****" or "* "
       p = p.replaceAll(RegExp(r'^\*+\s*(\*+\s*)*'), '').trim();
 
-      String timeStr =
-          '${(syntheticSeconds ~/ 60).toString().padLeft(2, '0')}:${(syntheticSeconds % 60).toString().padLeft(2, '0')}';
-      int itemSeconds = syntheticSeconds;
-      String speaker = i % 2 == 0 ? 'Speaker' : 'Reflection';
-
-      // Check if line starts with [mm:ss] or [hh:mm:ss]
-      final timeMatch = RegExp(r'^\[(\d{1,3}):(\d{2})\]\s*').firstMatch(p);
-      if (timeMatch != null) {
-        final mins = int.tryParse(timeMatch.group(1)!) ?? 0;
-        final secs = int.tryParse(timeMatch.group(2)!) ?? 0;
-        itemSeconds = (mins * 60) + secs;
-        timeStr = '${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
-        p = p.substring(timeMatch.end).trim();
+      // Check and strip SRT/VTT cue headers if present
+      final cueMatch = cueRegex.firstMatch(p);
+      if (cueMatch != null) {
+        p = p.substring(cueMatch.end).trim();
       }
 
-      // Check for speaker pattern like **Speaker**: or *Intro Announcement*:
-      final speakerMatch =
-          RegExp(r'^\*?\*?([A-Za-z0-9\s]+)\*?\*?:\s*').firstMatch(p);
+      int? itemSeconds;
+      String? timeStr;
+
+      // Match timestamp at the beginning of the line
+      final timeMatch = timestampRegex.firstMatch(p);
+      if (timeMatch != null) {
+        final hStr = timeMatch.group(1);
+        final mStr = timeMatch.group(2);
+        final sStr = timeMatch.group(3);
+
+        final h = hStr != null ? (int.tryParse(hStr) ?? 0) : 0;
+        final m = int.tryParse(mStr ?? '0') ?? 0;
+        final s = int.tryParse(sStr ?? '0') ?? 0;
+
+        itemSeconds = (h * 3600) + (m * 60) + s;
+        if (h > 0) {
+          timeStr = '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+        } else {
+          timeStr = '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+        }
+        p = p.substring(timeMatch.end).trim();
+        hasExplicitTimestamps = true;
+      }
+
+      String speaker = i % 2 == 0 ? 'Speaker' : 'Reflection';
+      final speakerMatch = speakerRegex.firstMatch(p);
       if (speakerMatch != null && speakerMatch.group(1)!.length < 32) {
         speaker = speakerMatch.group(1)!.trim();
         p = p.substring(speakerMatch.end).trim();
+      }
+
+      // Check if timestamp is trailing e.g. "Speaker [01:23]: hello"
+      if (itemSeconds == null) {
+        final trailingTime = timestampRegex.firstMatch(p);
+        if (trailingTime != null) {
+          final hStr = trailingTime.group(1);
+          final mStr = trailingTime.group(2);
+          final sStr = trailingTime.group(3);
+          final h = hStr != null ? (int.tryParse(hStr) ?? 0) : 0;
+          final m = int.tryParse(mStr ?? '0') ?? 0;
+          final s = int.tryParse(sStr ?? '0') ?? 0;
+          itemSeconds = (h * 3600) + (m * 60) + s;
+          timeStr = '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+          p = p.substring(trailingTime.end).trim();
+          hasExplicitTimestamps = true;
+        }
       }
 
       // Clean remaining asterisks and artifacts
       p = p.replaceAll('**', '').replaceAll('*', '').trim();
       if (p.isEmpty) continue;
 
-      results.add(_PodcastTranscriptLine(
-        seconds: itemSeconds,
-        time: timeStr,
+      parsedItems.add(_PodcastTranscriptLine(
+        seconds: itemSeconds ?? 0,
+        time: timeStr ?? '',
         speaker: speaker,
         text: p,
       ));
-      syntheticSeconds += 30; // 30s step if timestamps absent
     }
-    return results;
+
+    if (parsedItems.isEmpty) {
+      return const [
+        _PodcastTranscriptLine(
+          seconds: 0,
+          time: '00:00',
+          speaker: 'Speaker',
+          text: 'Foundational truths for discipleship and spiritual growth.',
+        ),
+      ];
+    }
+
+    // If explicit timestamps were not present throughout, distribute time dynamically
+    // based on paragraph lengths and known or estimated duration!
+    if (!hasExplicitTimestamps) {
+      final totalSeconds = _parseSecondsFromString(widget.episodeData['duration']?.toString());
+      final effectiveDuration = totalSeconds > 0
+          ? totalSeconds
+          : (widget.audioPlayer.duration?.inSeconds ?? (parsedItems.length * 15));
+
+      final totalChars = parsedItems.fold<int>(0, (sum, item) => sum + item.text.length);
+      int accumulatedSeconds = 0;
+
+      final redistributed = <_PodcastTranscriptLine>[];
+      for (int i = 0; i < parsedItems.length; i++) {
+        final item = parsedItems[i];
+        final itemSec = accumulatedSeconds;
+        final mins = itemSec ~/ 60;
+        final secs = itemSec % 60;
+        final timeStr = '${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
+
+        redistributed.add(_PodcastTranscriptLine(
+          seconds: itemSec,
+          time: timeStr,
+          speaker: item.speaker,
+          text: item.text,
+        ));
+
+        // Weight next start by character count
+        final fraction = totalChars > 0 ? (item.text.length / totalChars) : (1.0 / parsedItems.length);
+        final step = (fraction * effectiveDuration).round().clamp(3, 120);
+        accumulatedSeconds += step;
+      }
+      return redistributed;
+    }
+
+    return parsedItems;
   }
 
   @override
@@ -871,30 +1021,45 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
 
           // Transcript List with Spotify-style live time synchronization
           Expanded(
-            child: NotificationListener<ScrollNotification>(
-              onNotification: (notification) {
-                if (notification is ScrollStartNotification) {
-                  _userIsScrollingTranscript = true;
-                } else if (notification is ScrollEndNotification) {
-                  // Re-enable auto-scroll after a short delay
-                  Future.delayed(const Duration(seconds: 3), () {
-                    if (mounted) {
-                      _userIsScrollingTranscript = false;
+            child: Stack(
+              children: [
+                NotificationListener<ScrollNotification>(
+                  onNotification: (notification) {
+                    if (notification is ScrollStartNotification) {
+                      if (notification.dragDetails != null) {
+                        _userScrollTimer?.cancel();
+                        setState(() {
+                          _userIsScrollingTranscript = true;
+                        });
+                      }
+                    } else if (notification is ScrollEndNotification) {
+                      if (notification.dragDetails != null || _userIsScrollingTranscript) {
+                        _userScrollTimer?.cancel();
+                        _userScrollTimer = Timer(const Duration(milliseconds: 1800), () {
+                          if (mounted) {
+                            setState(() {
+                              _userIsScrollingTranscript = false;
+                            });
+                            _scrollToActiveIndex(_activeTranscriptIndex, animate: true);
+                          }
+                        });
+                      }
                     }
-                  });
-                }
-                return false;
-              },
-              child: ListView.separated(
-                controller: _transcriptScrollController,
-                itemCount: filtered.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
-                itemBuilder: (context, index) {
-                  final item = filtered[index];
-                  final isActive = _transcriptQuery.isEmpty &&
-                      index == _activeTranscriptIndex;
+                    return false;
+                  },
+                  child: ListView.separated(
+                    controller: _transcriptScrollController,
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      final item = filtered[index];
+                      final isActive = _transcriptQuery.isEmpty &&
+                          index == _activeTranscriptIndex;
+                      final itemKey = _transcriptItemKeys.putIfAbsent(index, () => GlobalKey());
 
-                  return InkWell(
+                      return KeyedSubtree(
+                        key: itemKey,
+                        child: InkWell(
                     onTap: () {
                       // Tap timestamp or line to seek instantly
                       widget.audioPlayer
@@ -1024,11 +1189,55 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
                         ],
                       ),
                     ),
+                  ),
                   );
                 },
               ),
             ),
-          ),
+            // Floating "Resume Sync" button when user scrolls away
+            if (_userIsScrollingTranscript &&
+                _transcriptQuery.isEmpty &&
+                _activeTranscriptIndex >= 0)
+              Positioned(
+                bottom: 12,
+                right: 12,
+                child: Material(
+                  elevation: 4,
+                  borderRadius: BorderRadius.circular(20),
+                  color: colorScheme.primary,
+                  child: InkWell(
+                    onTap: () {
+                      _userScrollTimer?.cancel();
+                      setState(() {
+                        _userIsScrollingTranscript = false;
+                      });
+                      _scrollToActiveIndex(_activeTranscriptIndex, animate: true);
+                    },
+                    borderRadius: BorderRadius.circular(20),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.sync_rounded, size: 16, color: Colors.white),
+                          SizedBox(width: 6),
+                          Text(
+                            'Resume Sync',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
         ],
       ),
     );
