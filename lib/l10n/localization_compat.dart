@@ -457,7 +457,7 @@ String lookupLegacyMessage(AppLocalizations messages, String key) {
     case 'copyright':
       return messages.copyright;
     case 'books_and_tracts':
-      return messages.books_and_tracts;
+      return messages.tracts;
     case 'books':
       return messages.books;
     case 'tracts':
@@ -465,9 +465,9 @@ String lookupLegacyMessage(AppLocalizations messages, String key) {
     case 'downloaded':
       return messages.downloaded;
     case 'search_books_tracts':
-      return messages.search_books_tracts;
+      return 'Search tracts...';
     case 'search_tracts':
-      return messages.search_books_tracts;
+      return 'Search tracts...';
     case 'all_categories':
       return messages.all_categories;
     case 'category_doctrine':

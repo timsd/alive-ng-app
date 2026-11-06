@@ -270,6 +270,7 @@ class MainNavigationScreen extends ConsumerWidget {
       case AppConstants.podcastsRoute:
       case AppConstants.libraryRoute:
       case AppConstants.booksTractsRoute:
+      case AppConstants.tractsRoute:
       case AppConstants.interactiveLessonsRoute:
       case AppConstants.kidsStoriesRoute:
       case AppConstants.kidsMissionRoute:
@@ -549,7 +550,7 @@ class MainNavigationScreen extends ConsumerWidget {
                 {
                   'icon': Icons.library_books_rounded,
                   'label': 'tracts',
-                  'route': AppConstants.booksTractsRoute
+                  'route': AppConstants.tractsRoute
                 },
                 {
                   'icon': Icons.record_voice_over_rounded,

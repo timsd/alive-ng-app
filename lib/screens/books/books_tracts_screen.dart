@@ -14,14 +14,17 @@ import '../../models/donation_models.dart';
 import '../../screens/materials/donation_dialog.dart';
 import '../../providers/language_provider.dart';
 
-class BooksTractsScreen extends ConsumerStatefulWidget {
-  const BooksTractsScreen({super.key});
+class TractsScreen extends ConsumerStatefulWidget {
+  const TractsScreen({super.key});
 
   @override
-  ConsumerState<BooksTractsScreen> createState() => _BooksTractsScreenState();
+  ConsumerState<TractsScreen> createState() => _TractsScreenState();
 }
 
-class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
+typedef BooksTractsScreen = TractsScreen;
+
+class _TractsScreenState extends ConsumerState<TractsScreen>
+
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
@@ -102,7 +105,7 @@ class _BooksTractsScreenState extends ConsumerState<BooksTractsScreen>
                         tablet: 14.0,
                         desktop: 16.0)),
                 DropdownButtonFormField<String>(
-                  value: _selectedCategory,
+                  initialValue: _selectedCategory,
                   decoration: InputDecoration(
                     labelText: 'Category',
                     border: OutlineInputBorder(

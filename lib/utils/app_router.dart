@@ -664,11 +664,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           // Tracts Route & Alias
           GoRoute(
             path: AppConstants.tractsRoute,
-            builder: (context, state) => const BooksTractsScreen(),
+            builder: (context, state) => const TractsScreen(),
           ),
           GoRoute(
             path: AppConstants.booksTractsRoute,
-            builder: (context, state) => const BooksTractsScreen(),
+            redirect: (context, state) => AppConstants.tractsRoute,
           ),
 
           // Kids Stories Route

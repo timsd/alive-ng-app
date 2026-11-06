@@ -313,13 +313,13 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
         ],
       ),
       GuideItem(
-        title: 'Books & Tracts Interactive Reader',
+        title: 'Tracts Interactive Reader',
         description:
             'Read Christian literature, answer reflection questions, and download PDFs.',
         icon: Icons.library_books_rounded,
         color: Colors.deepOrange,
         steps: [
-          'Open Books & Tracts from the More tray or study area.',
+          'Open Tracts from the More tray or study area.',
           'Tap on any tract to launch the interactive reader.',
           'Read page by page and type in answers to personal reflection questions.',
           'Tap the PDF icon at the top to view the original publication.',
