@@ -29,6 +29,7 @@ class _DonationDialogState extends State<DonationDialog> {
   bool _isProcessing = false;
   double _donationAmount = 0.0;
   String _selectedCurrency = 'NGN'; // NGN (Naira) or USD (Dollar)
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -68,6 +69,7 @@ class _DonationDialogState extends State<DonationDialog> {
   void _switchCurrency(String currency) {
     if (_selectedCurrency == currency) return;
     setState(() {
+      _errorMessage = null;
       _selectedCurrency = currency;
       _donationAmount = _minimumForCurrentCurrency;
       _amountController.text = _donationAmount.toStringAsFixed(2);
@@ -77,6 +79,7 @@ class _DonationDialogState extends State<DonationDialog> {
   void _updateAmount(String value) {
     final amount = double.tryParse(value) ?? 0.0;
     setState(() {
+      _errorMessage = null;
       _donationAmount = amount;
     });
   }
@@ -95,7 +98,10 @@ class _DonationDialogState extends State<DonationDialog> {
       return;
     }
 
-    setState(() => _isProcessing = true);
+    setState(() {
+      _isProcessing = true;
+      _errorMessage = null;
+    });
 
     try {
       final symbol = _selectedCurrency == 'NGN' ? '₦' : '\$';
@@ -157,16 +163,11 @@ class _DonationDialogState extends State<DonationDialog> {
         );
       }
     } catch (e) {
-      setState(() => _isProcessing = false);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Payment failed: $e'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-      }
+      final cleanMsg = e.toString().replaceFirst('Exception: ', '').trim();
+      setState(() {
+        _isProcessing = false;
+        _errorMessage = cleanMsg;
+      });
     }
   }
 
@@ -523,6 +524,7 @@ class _DonationDialogState extends State<DonationDialog> {
                           onSelected: (selected) {
                             if (selected) {
                               setState(() {
+                                _errorMessage = null;
                                 _donationAmount = preset;
                                 _amountController.text =
                                     preset.toStringAsFixed(2);
@@ -605,7 +607,58 @@ class _DonationDialogState extends State<DonationDialog> {
                   ),
                 ),
 
-                const SizedBox(height: 20),
+                if (_errorMessage != null) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .errorContainer
+                          .withValues(alpha: 0.9),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .error
+                            .withValues(alpha: 0.5),
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.error_outline_rounded,
+                          size: 20,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            _errorMessage!,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onErrorContainer,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        InkWell(
+                          onTap: () => setState(() => _errorMessage = null),
+                          child: Icon(
+                            Icons.close_rounded,
+                            size: 18,
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ] else
+                  const SizedBox(height: 20),
 
                 // 5. Action Buttons (Cancel and prominent Pay button)
                 Row(
