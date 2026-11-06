@@ -673,6 +673,27 @@ class DiscipleshipService {
     String? goals,
   }) async {
     try {
+      // De-duplication guard: if an identical report was submitted in the last 2 minutes, return it
+      final existingReports = await getReports(discipleMakerId: discipleMakerId);
+      final recentDuplicate = existingReports.where((r) {
+        final sameStart = r.reportPeriodStart.year == startDate.year &&
+            r.reportPeriodStart.month == startDate.month &&
+            r.reportPeriodStart.day == startDate.day;
+        final sameEnd = r.reportPeriodEnd.year == endDate.year &&
+            r.reportPeriodEnd.month == endDate.month &&
+            r.reportPeriodEnd.day == endDate.day;
+        final sameOffice = r.routedOfficeTitle == routedOfficeTitle;
+        final submittedRecently =
+            DateTime.now().difference(r.createdAt).inMinutes < 2;
+        return sameStart && sameEnd && sameOffice && submittedRecently;
+      }).firstOrNull;
+
+      if (recentDuplicate != null) {
+        _logger.info(
+            'Duplicate report detected within 2 minutes. Returning existing report #${recentDuplicate.id}');
+        return recentDuplicate;
+      }
+
       final contacts = await getContacts(discipleMakerId: discipleMakerId);
       final interactions = await getInteractions(
         discipleMakerId: discipleMakerId,

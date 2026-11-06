@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../models/discipleship_models.dart';
 import '../../services/discipleship_service.dart';
 import '../../services/auth_service.dart';
@@ -91,8 +92,9 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
       final userReports =
           await _discipleshipService.getReports(discipleMakerId: user.uid);
       final assignments = await _discipleshipService.getOfficerAssignments();
-      _selectedOfficerOffice ??=
-          assignments.isNotEmpty ? assignments.first : null;
+      final userId = user.uid;
+      final myOffice = assignments.where((a) => a.officerId == userId).firstOrNull;
+      _selectedOfficerOffice ??= myOffice ?? (assignments.isNotEmpty ? assignments.first : null);
 
       List<DiscipleshipReport> officerReports = [];
       // Only resolve an inbox for an officer/coordinator. Loading it for a
@@ -1831,146 +1833,168 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
 
     showDialog(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (dialogContext, setDialogState) => AlertDialog(
-          title: const Text('Generate & Dispatch Report'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                DropdownButtonFormField<ReportFrequency>(
-                  initialValue: frequency,
-                  borderRadius: BorderRadius.circular(12),
-                  dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  icon: const Icon(Icons.arrow_drop_down_rounded),
-                  decoration: const InputDecoration(labelText: 'Report Frequency', border: OutlineInputBorder()),
-                  items: ReportFrequency.values
-                      .map((f) => DropdownMenuItem(value: f, child: Text(TextFormatter.formatText(f.name))))
-                      .toList(),
-                  onChanged: (val) {
-                    if (val != null) setDialogState(() => frequency = val);
-                  },
-                ),
-                const SizedBox(height: 14),
-                if (_officerAssignments.isNotEmpty)
-                  DropdownButtonFormField<OfficerOfficeAssignment>(
-                    initialValue: routedOfficer,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Dispatch To Officer / Office *',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: _officerAssignments
-                        .map((a) => DropdownMenuItem(
-                              value: a,
-                              child: Text('${a.officeTitle} (${a.officerName})', overflow: TextOverflow.ellipsis),
-                            ))
+      builder: (dialogContext) {
+        bool isSubmitting = false;
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) => AlertDialog(
+            title: const Text('Generate & Dispatch Report'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  DropdownButtonFormField<ReportFrequency>(
+                    initialValue: frequency,
+                    borderRadius: BorderRadius.circular(12),
+                    dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    icon: const Icon(Icons.arrow_drop_down_rounded),
+                    decoration: const InputDecoration(labelText: 'Report Frequency', border: OutlineInputBorder()),
+                    items: ReportFrequency.values
+                        .map((f) => DropdownMenuItem(value: f, child: Text(TextFormatter.formatText(f.name))))
                         .toList(),
                     onChanged: (val) {
-                      if (val != null) setDialogState(() => routedOfficer = val);
+                      if (val != null) setDialogState(() => frequency = val);
                     },
                   ),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate: startDate,
-                            firstDate: DateTime(2020),
-                            lastDate: DateTime.now(),
-                          );
-                          if (picked != null) setDialogState(() => startDate = picked);
-                        },
-                        child: Text('Start: ${DateFormat.MMMd().format(startDate)}'),
+                  const SizedBox(height: 14),
+                  if (_officerAssignments.isNotEmpty)
+                    DropdownButtonFormField<OfficerOfficeAssignment>(
+                      initialValue: routedOfficer,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Dispatch To Officer / Office *',
+                        border: OutlineInputBorder(),
                       ),
+                      items: _officerAssignments
+                          .map((a) => DropdownMenuItem(
+                                value: a,
+                                child: Text('${a.officeTitle} (${a.officerName})', overflow: TextOverflow.ellipsis),
+                              ))
+                          .toList(),
+                      onChanged: (val) {
+                        if (val != null) setDialogState(() => routedOfficer = val);
+                      },
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate: endDate,
-                            firstDate: startDate,
-                            lastDate: DateTime.now(),
-                          );
-                          if (picked != null) setDialogState(() => endDate = picked);
-                        },
-                        child: Text('End: ${DateFormat.MMMd().format(endDate)}'),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: isSubmitting ? null : () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: startDate,
+                              firstDate: DateTime(2020),
+                              lastDate: DateTime.now(),
+                            );
+                            if (picked != null) setDialogState(() => startDate = picked);
+                          },
+                          child: Text('Start: ${DateFormat.MMMd().format(startDate)}'),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: highlightsController,
-                  maxLines: 2,
-                  decoration: const InputDecoration(labelText: 'Highlights / Victories', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: challengesController,
-                  maxLines: 2,
-                  decoration: const InputDecoration(labelText: 'Challenges / Needs', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: goalsController,
-                  maxLines: 2,
-                  decoration: const InputDecoration(labelText: 'Goals for Next Period', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: prayerRequestsController,
-                  maxLines: 2,
-                  decoration: const InputDecoration(labelText: 'Prayer Requests for Mission', border: OutlineInputBorder()),
-                ),
-              ],
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: isSubmitting ? null : () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: endDate,
+                              firstDate: startDate,
+                              lastDate: DateTime.now(),
+                            );
+                            if (picked != null) setDialogState(() => endDate = picked);
+                          },
+                          child: Text('End: ${DateFormat.MMMd().format(endDate)}'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: highlightsController,
+                    enabled: !isSubmitting,
+                    maxLines: 2,
+                    decoration: const InputDecoration(labelText: 'Highlights / Victories', border: OutlineInputBorder()),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: challengesController,
+                    enabled: !isSubmitting,
+                    maxLines: 2,
+                    decoration: const InputDecoration(labelText: 'Challenges / Needs', border: OutlineInputBorder()),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: goalsController,
+                    enabled: !isSubmitting,
+                    maxLines: 2,
+                    decoration: const InputDecoration(labelText: 'Goals for Next Period', border: OutlineInputBorder()),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: prayerRequestsController,
+                    enabled: !isSubmitting,
+                    maxLines: 2,
+                    decoration: const InputDecoration(labelText: 'Prayer Requests for Mission', border: OutlineInputBorder()),
+                  ),
+                ],
+              ),
             ),
+            actions: [
+              TextButton(
+                onPressed: isSubmitting ? null : () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton.icon(
+                icon: isSubmitting
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.send_rounded),
+                label: Text(isSubmitting ? 'Dispatching...' : 'Dispatch Report'),
+                onPressed: isSubmitting
+                    ? null
+                    : () async {
+                        final user = _authService.currentUser;
+                        if (user == null) return;
+                        setDialogState(() => isSubmitting = true);
+                        try {
+                          await _discipleshipService.generateAndSubmitReport(
+                            discipleMakerId: user.uid,
+                            routedOfficerId: routedOfficer?.officerId,
+                            routedOfficeTitle: routedOfficer?.officeTitle,
+                            routedOfficerName: routedOfficer?.officerName,
+                            startDate: startDate,
+                            endDate: endDate,
+                            frequency: frequency,
+                            highlights: highlightsController.text.trim().isEmpty ? null : highlightsController.text.trim(),
+                            challenges: challengesController.text.trim().isEmpty ? null : challengesController.text.trim(),
+                            goals: goalsController.text.trim().isEmpty ? null : goalsController.text.trim(),
+                            prayerRequests: prayerRequestsController.text.trim().isEmpty ? null : prayerRequestsController.text.trim(),
+                          );
+                          if (dialogContext.mounted) {
+                            Navigator.pop(dialogContext);
+                          }
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Report dispatched to ${routedOfficer?.officeTitle ?? 'Office'} successfully!')),
+                            );
+                            _loadData();
+                          }
+                        } catch (e) {
+                          if (dialogContext.mounted) {
+                            setDialogState(() => isSubmitting = false);
+                            ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('Failed: $e')));
+                          }
+                        }
+                      },
+              ),
+            ],
           ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.send_rounded),
-              label: const Text('Dispatch Report'),
-              onPressed: () async {
-                final user = _authService.currentUser;
-                if (user == null) return;
-                try {
-                  await _discipleshipService.generateAndSubmitReport(
-                    discipleMakerId: user.uid,
-                    routedOfficerId: routedOfficer?.officerId,
-                    routedOfficeTitle: routedOfficer?.officeTitle,
-                    routedOfficerName: routedOfficer?.officerName,
-                    startDate: startDate,
-                    endDate: endDate,
-                    frequency: frequency,
-                    highlights: highlightsController.text.trim().isEmpty ? null : highlightsController.text.trim(),
-                    challenges: challengesController.text.trim().isEmpty ? null : challengesController.text.trim(),
-                    goals: goalsController.text.trim().isEmpty ? null : goalsController.text.trim(),
-                    prayerRequests: prayerRequestsController.text.trim().isEmpty ? null : prayerRequestsController.text.trim(),
-                  );
-                  if (dialogContext.mounted) {
-                    Navigator.pop(dialogContext);
-                    ScaffoldMessenger.of(dialogContext).showSnackBar(
-                      SnackBar(content: Text('Report dispatched to ${routedOfficer?.officeTitle ?? 'Office'} successfully!')),
-                    );
-                    _loadData();
-                  }
-                } catch (e) {
-                  if (dialogContext.mounted) {
-                    ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('Failed: $e')));
-                  }
-                }
-              },
-            ),
-          ],
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -2153,24 +2177,541 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
     );
   }
 
+  Future<void> _makePhoneCall(String phoneNumber) async {
+    final clean = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
+    final uri = Uri(scheme: 'tel', path: clean);
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        await launchUrl(uri);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open phone dialer: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _sendSms(String phoneNumber) async {
+    final clean = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
+    final uri = Uri(scheme: 'sms', path: clean);
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _sendEmail(String email) async {
+    final uri = Uri(scheme: 'mailto', path: email.trim());
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {}
+  }
+
+  Widget _buildDetailRow(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 18, color: colorScheme.primary),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: theme.textTheme.labelSmall
+                    ?.copyWith(color: colorScheme.onSurfaceVariant),
+              ),
+              Text(
+                value,
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMiniStatCard(
+    BuildContext context, {
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          Text(
+            title,
+            style: theme.textTheme.labelSmall?.copyWith(
+              fontSize: 10,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showContactDetails(DiscipleshipContact contact) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final levelColor = _getLevelColor(contact.currentLevel);
+
+    final contactInteractions =
+        _recentInteractions.where((i) => i.contactId == contact.id).toList();
+    final contactStudies =
+        _recentStudySessions.where((s) => s.contactId == contact.id).toList();
+    final contactPrayers =
+        _activePrayerRequests.where((p) => p.contactId == contact.id).toList();
+
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(contact.fullName),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Level: ${_getLevelDisplayName(contact.currentLevel)}'),
-            if (contact.email != null) Text('Email: ${contact.email}'),
-            if (contact.phone != null) Text('Phone: ${contact.phone}'),
-            Text('First contact: ${DateFormat('MMM dd, yyyy').format(contact.firstContact)}'),
-            if (contact.lastContact != null) Text('Last contact: ${DateFormat('MMM dd, yyyy').format(contact.lastContact!)}'),
-            if (contact.baptismDate != null) Text('Baptized: ${DateFormat('MMM dd, yyyy').format(contact.baptismDate!)}'),
-          ],
+      builder: (dialogContext) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 440),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header with Avatar and Level
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 26,
+                      backgroundColor: levelColor,
+                      child: Text(
+                        contact.firstName.isNotEmpty
+                            ? contact.firstName[0].toUpperCase()
+                            : 'D',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            contact.fullName,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: levelColor.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: levelColor.withValues(alpha: 0.4),
+                              ),
+                            ),
+                            child: Text(
+                              _getLevelDisplayName(contact.currentLevel),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: levelColor,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                      onPressed: () => Navigator.pop(dialogContext),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const Divider(height: 1),
+                const SizedBox(height: 14),
+
+                // Phone (Clickable to Call & SMS)
+                if (contact.phone != null && contact.phone!.trim().isNotEmpty) ...[
+                  InkWell(
+                    onTap: () => _makePhoneCall(contact.phone!),
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surfaceContainerHighest
+                            .withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: colorScheme.outline.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.phone_rounded,
+                              size: 20, color: colorScheme.primary),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Phone (Tap to call)',
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                                Text(
+                                  contact.phone!,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                    color: colorScheme.primary,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.call_rounded, size: 20),
+                            color: Colors.green,
+                            tooltip: 'Call Phone',
+                            onPressed: () => _makePhoneCall(contact.phone!),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.message_rounded, size: 20),
+                            color: colorScheme.primary,
+                            tooltip: 'Send SMS',
+                            onPressed: () => _sendSms(contact.phone!),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+
+                // Email
+                if (contact.email != null && contact.email!.trim().isNotEmpty) ...[
+                  InkWell(
+                    onTap: () => _sendEmail(contact.email!),
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surfaceContainerHighest
+                            .withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: colorScheme.outline.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.email_outlined,
+                              size: 20, color: colorScheme.primary),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Email Address',
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                                Text(
+                                  contact.email!,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: colorScheme.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.send_rounded, size: 16),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+
+                // Address / Location
+                if (contact.address != null &&
+                    contact.address!.trim().isNotEmpty) ...[
+                  _buildDetailRow(
+                    context,
+                    icon: Icons.location_on_outlined,
+                    label: 'Address / Location',
+                    value: contact.address!,
+                  ),
+                  const SizedBox(height: 10),
+                ],
+
+                // Occupation
+                if (contact.occupation != null &&
+                    contact.occupation!.trim().isNotEmpty) ...[
+                  _buildDetailRow(
+                    context,
+                    icon: Icons.work_outline_rounded,
+                    label: 'Occupation',
+                    value: contact.occupation!,
+                  ),
+                  const SizedBox(height: 10),
+                ],
+
+                // Interests / Spiritual Background
+                if (contact.interests != null &&
+                    contact.interests!.trim().isNotEmpty) ...[
+                  _buildDetailRow(
+                    context,
+                    icon: Icons.interests_outlined,
+                    label: 'Interests / Background',
+                    value: contact.interests!,
+                  ),
+                  const SizedBox(height: 10),
+                ],
+
+                // Date of Birth
+                if (contact.dateOfBirth != null) ...[
+                  _buildDetailRow(
+                    context,
+                    icon: Icons.cake_outlined,
+                    label: 'Date of Birth',
+                    value: DateFormat.yMMMd().format(contact.dateOfBirth!),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+
+                // Contact Timeline Card
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerHighest
+                        .withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.calendar_today_rounded,
+                                  size: 14, color: colorScheme.primary),
+                              const SizedBox(width: 6),
+                              Text('First Contact:',
+                                  style: theme.textTheme.labelMedium),
+                            ],
+                          ),
+                          Text(
+                            DateFormat.yMMMd().format(contact.firstContact),
+                            style: theme.textTheme.bodySmall
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.history_rounded,
+                                  size: 14, color: colorScheme.primary),
+                              const SizedBox(width: 6),
+                              Text('Last Contact:',
+                                  style: theme.textTheme.labelMedium),
+                            ],
+                          ),
+                          Text(
+                            contact.lastContact != null
+                                ? DateFormat.yMMMd().format(contact.lastContact!)
+                                : 'None yet',
+                            style: theme.textTheme.bodySmall
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      if (contact.baptismDate != null) ...[
+                        const SizedBox(height: 6),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.water_drop_rounded,
+                                    size: 14, color: Colors.blue),
+                                const SizedBox(width: 6),
+                                Text('Baptized:',
+                                    style: theme.textTheme.labelMedium),
+                              ],
+                            ),
+                            Text(
+                              DateFormat.yMMMd().format(contact.baptismDate!),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue[700],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+
+                // Notes
+                if (contact.notes != null &&
+                    contact.notes!.trim().isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Text('Notes:',
+                      style: theme.textTheme.labelMedium
+                          ?.copyWith(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerHighest
+                          .withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: colorScheme.outline.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    child: Text(
+                      contact.notes!,
+                      style: theme.textTheme.bodySmall?.copyWith(height: 1.4),
+                    ),
+                  ),
+                ],
+
+                // Tags
+                if (contact.tags.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: contact.tags
+                        .map((tag) => Chip(
+                              label: Text(tag,
+                                  style: const TextStyle(fontSize: 11)),
+                              padding: EdgeInsets.zero,
+                              visualDensity: VisualDensity.compact,
+                            ))
+                        .toList(),
+                  ),
+                ],
+
+                // Discipleship Journey Summary Stats
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildMiniStatCard(
+                        context,
+                        title: 'Studies',
+                        value: contactStudies.length.toString(),
+                        icon: Icons.menu_book_rounded,
+                        color: Colors.blue,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildMiniStatCard(
+                        context,
+                        title: 'Interactions',
+                        value: contactInteractions.length.toString(),
+                        icon: Icons.people_outline_rounded,
+                        color: Colors.green,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildMiniStatCard(
+                        context,
+                        title: 'Prayers',
+                        value: contactPrayers.length.toString(),
+                        icon: Icons.favorite_border_rounded,
+                        color: Colors.amber,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 20),
+
+                // Action Buttons
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: const Text('Close'),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton.icon(
+                      icon: const Icon(Icons.add_rounded, size: 16),
+                      label: const Text('Add Interaction'),
+                      onPressed: () {
+                        Navigator.pop(dialogContext);
+                        _showAddInteractionDialog(contact);
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ),
-        actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Close'))],
       ),
     );
   }
