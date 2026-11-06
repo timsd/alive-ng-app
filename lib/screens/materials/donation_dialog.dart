@@ -415,13 +415,17 @@ class _DonationDialogState extends State<DonationDialog> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Donation Amount ($_selectedCurrency)',
-                      style:
-                          Theme.of(context).textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                    Expanded(
+                      child: Text(
+                        'Donation Amount ($_selectedCurrency)',
+                        style:
+                            Theme.of(context).textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
+                    const SizedBox(width: 8),
                     // Currency Toggle: [ ₦ Naira ] [ $ USD ]
                     Container(
                       decoration: BoxDecoration(

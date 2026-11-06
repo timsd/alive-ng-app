@@ -42,8 +42,17 @@ class BibleReferenceModalSheet extends StatefulWidget {
 
 class _BibleReferenceModalSheetState extends State<BibleReferenceModalSheet> {
   late String _selectedVersion;
-  List<String> _availableVersions = ['NKJV', 'KJV', 'NIV'];
-  static const List<String> _supportedEnglishVersions = ['NKJV', 'KJV', 'NIV'];
+  List<String> _availableVersions = [
+    'NKJV',
+    'KJV',
+    'NIV',
+    'NLT',
+    'NASB',
+    'ASV',
+    'BM',
+    'HAU',
+    'IGBOB'
+  ];
   final BibleDatabaseHelper _dbHelper = BibleDatabaseHelper();
   final OfflineBibleService _offlineBible = OfflineBibleService();
 
@@ -66,7 +75,7 @@ class _BibleReferenceModalSheetState extends State<BibleReferenceModalSheet> {
       final loaded = await _dbHelper.getLoadedVersionCodes();
       if (loaded.isNotEmpty && mounted) {
         setState(() {
-          final sorted = loaded.where((v) => _supportedEnglishVersions.contains(v)).toList();
+          final sorted = List<String>.from(loaded);
           sorted.sort((a, b) {
             if (a == 'NKJV') return -1;
             if (b == 'NKJV') return 1;
@@ -180,11 +189,11 @@ class _BibleReferenceModalSheetState extends State<BibleReferenceModalSheet> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final sheetBg = isDark ? AppTheme.darkBackground : AppTheme.lightBackground;
-    final cardBg = isDark ? AppTheme.darkCard : AppTheme.lightCard;
-    final borderCol = isDark ? AppTheme.darkBorder : AppTheme.lightBorder;
-    final textColor = isDark ? AppTheme.darkForeground : AppTheme.lightForeground;
-    final textMuted = isDark ? AppTheme.darkMutedForeground : AppTheme.lightMutedForeground;
+    final sheetBg = isDark ? const Color(0xFF0D1520) : const Color(0xFFFCFAF5);
+    final cardBg = isDark ? const Color(0xFF141F2D) : Colors.white;
+    final borderCol = isDark ? const Color(0xFF2E3E50) : const Color(0xFFE2E8F0);
+    final textColor = isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
+    final textMuted = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
     final accentGold = isDark ? AppTheme.darkGold : const Color(0xFFB45309);
     final accentEmerald = isDark ? AppTheme.darkEmerald : AppTheme.lightEmerald;
 
@@ -310,8 +319,8 @@ class _BibleReferenceModalSheetState extends State<BibleReferenceModalSheet> {
                     ),
                   )
                 else
-                  RichText(
-                    text: TextSpan(
+                  Text.rich(
+                    TextSpan(
                       style: TextStyle(
                         color: textColor,
                         fontSize: 15,

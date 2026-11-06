@@ -1,4 +1,4 @@
-﻿import '../../widgets/in_app_pdf_viewer.dart';
+import '../../widgets/in_app_pdf_viewer.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -671,9 +671,12 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
       if (downloadUrl != null && downloadUrl.isNotEmpty) {
         if (!mounted) return;
         if (kIsWeb) {
-          final uri = Uri.tryParse(downloadUrl);
+          // On Web: open Google Docs embedded viewer to preview without forcing a file download
+          final viewerUrl =
+              'https://docs.google.com/viewer?url=${Uri.encodeComponent(downloadUrl)}&embedded=true';
+          final uri = Uri.tryParse(viewerUrl);
           if (uri != null) {
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
+            await launchUrl(uri, mode: LaunchMode.platformDefault);
             return;
           }
         }

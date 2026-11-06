@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../widgets/custom_image.dart';
@@ -47,6 +48,13 @@ class _StandardVideoPlayerModalState extends State<StandardVideoPlayerModal> {
   Timer? _hideControlsTimer;
   WebViewController? _webViewController;
   String? _youTubeId;
+  int _startSeconds = 0;
+
+  String get _videoKey =>
+      _youTubeId ??
+      widget.videoData['id']?.toString() ??
+      widget.videoData['title']?.toString() ??
+      'default_video';
 
   final List<double> _speeds = [0.75, 1.0, 1.25, 1.5, 2.0];
 
@@ -76,29 +84,58 @@ class _StandardVideoPlayerModalState extends State<StandardVideoPlayerModal> {
     final videoUrl = _resolveVideoUrl();
     _youTubeId = extractYouTubeId(videoUrl);
 
-    if (_youTubeId != null) {
-      if (!kIsWeb) {
-        // Mobile: use WebView for YouTube
-        try {
-          final embedUrl =
-              'https://www.youtube.com/embed/$_youTubeId?autoplay=1&playsinline=1';
-          _webViewController = WebViewController()
-            ..setJavaScriptMode(JavaScriptMode.unrestricted)
-            ..setBackgroundColor(Colors.black)
-            ..loadRequest(Uri.parse(embedUrl));
-        } catch (e) {
-          debugPrint('Failed to initialize mobile video player: $e');
+    _loadSavedPosition();
+    _startPlayback();
+    _scheduleHideControls();
+  }
+
+  Future<void> _loadSavedPosition() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getInt('video_resume_${_videoKey}') ?? 0;
+      if (saved > 5 && saved < (_totalSeconds - 10)) {
+        if (mounted) {
+          setState(() {
+            _startSeconds = saved;
+            _currentSeconds = saved.toDouble();
+          });
+          _initMobileWebView();
         }
+      } else {
+        _initMobileWebView();
       }
-      // Web: will use HtmlElementView iframe (no timer needed)
-    } else {
-      _startPlayback();
-      _scheduleHideControls();
+    } catch (_) {
+      _initMobileWebView();
+    }
+  }
+
+  void _initMobileWebView() {
+    if (!kIsWeb && _youTubeId != null) {
+      try {
+        final startQuery = _startSeconds > 0 ? '&start=$_startSeconds' : '';
+        final embedUrl =
+            'https://www.youtube.com/embed/$_youTubeId?autoplay=1&playsinline=1$startQuery';
+        _webViewController = WebViewController()
+          ..setJavaScriptMode(JavaScriptMode.unrestricted)
+          ..setBackgroundColor(Colors.black)
+          ..loadRequest(Uri.parse(embedUrl));
+      } catch (e) {
+        debugPrint('Failed to initialize mobile video player: $e');
+      }
+    }
+  }
+
+  void _saveCurrentPosition() {
+    if (_currentSeconds > 5 && _currentSeconds < (_totalSeconds - 5)) {
+      SharedPreferences.getInstance().then((prefs) {
+        prefs.setInt('video_resume_${_videoKey}', _currentSeconds.toInt());
+      }).catchError((_) {});
     }
   }
 
   @override
   void dispose() {
+    _saveCurrentPosition();
     _playbackTimer?.cancel();
     _hideControlsTimer?.cancel();
     super.dispose();
@@ -298,26 +335,25 @@ class _StandardVideoPlayerModalState extends State<StandardVideoPlayerModal> {
                         onPressed: _launchExternalVideo,
                       ),
                     // 16:9 Landscape vs 9:16 Portrait / Reels Toggle
-                    if (!_isEmbedded)
-                      IconButton(
-                        icon: Icon(
-                          _isVertical
-                              ? Icons.stay_current_portrait_rounded
-                              : Icons.stay_current_landscape_rounded,
-                          size: 20,
-                          color: _isVertical
-                              ? colorScheme.primary
-                              : colorScheme.onSurfaceVariant,
-                        ),
-                        tooltip: _isVertical
-                            ? 'Switch to 16:9 Landscape'
-                            : 'Switch to 9:16 Portrait / Reels',
-                        onPressed: () {
-                          setState(() {
-                            _isVertical = !_isVertical;
-                          });
-                        },
+                    IconButton(
+                      icon: Icon(
+                        _isVertical
+                            ? Icons.stay_current_portrait_rounded
+                            : Icons.stay_current_landscape_rounded,
+                        size: 20,
+                        color: _isVertical
+                            ? colorScheme.primary
+                            : colorScheme.onSurfaceVariant,
                       ),
+                      tooltip: _isVertical
+                          ? 'Switch to 16:9 Landscape'
+                          : 'Switch to 9:16 Portrait / Reels',
+                      onPressed: () {
+                        setState(() {
+                          _isVertical = !_isVertical;
+                        });
+                      },
+                    ),
                     IconButton(
                       icon: const Icon(Icons.close_rounded, size: 22),
                       tooltip: 'Close Player',
@@ -407,10 +443,11 @@ class _StandardVideoPlayerModalState extends State<StandardVideoPlayerModal> {
   }) {
     // YouTube on Web: embed iframe directly
     if (kIsWeb && _youTubeId != null) {
+      final startQuery = _startSeconds > 0 ? '&start=$_startSeconds' : '';
       final embedUrl =
-          'https://www.youtube.com/embed/$_youTubeId?autoplay=1&playsinline=1&rel=0';
+          'https://www.youtube.com/embed/$_youTubeId?autoplay=1&playsinline=1&rel=0$startQuery';
       return buildVideoEmbed(
-        videoId: _youTubeId!,
+        videoId: '${_youTubeId}_$_startSeconds',
         embedUrl: embedUrl,
       );
     }

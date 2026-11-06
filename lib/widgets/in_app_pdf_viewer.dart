@@ -109,9 +109,10 @@ class _InAppPdfViewerScreenState extends State<InAppPdfViewerScreen> {
   }
 
   Future<void> _openExternal() async {
-    final uri = Uri.tryParse(widget.pdfUrl);
+    final viewerUrl = _getViewerUrl(widget.pdfUrl);
+    final uri = Uri.tryParse(viewerUrl);
     if (uri != null) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      await launchUrl(uri, mode: LaunchMode.platformDefault);
     }
   }
 

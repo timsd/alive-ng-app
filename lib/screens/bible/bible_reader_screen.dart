@@ -289,7 +289,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
 
   Future<List<String>> _resolveVersionsForLanguage(String languageCode) async {
     if (languageCode == 'en') {
-      return const ['NKJV', 'KJV', 'NIV'];
+      return const ['NKJV', 'KJV', 'NIV', 'NLT', 'NASB', 'ASV'];
     }
     if (languageCode == 'ha') {
       return const ['HAU'];

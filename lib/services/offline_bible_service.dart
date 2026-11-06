@@ -137,6 +137,9 @@ class OfflineBibleService {
       {'code': 'NKJV', 'name': 'New King James Version'},
       {'code': 'KJV', 'name': 'King James Version'},
       {'code': 'NIV', 'name': 'New International Version'},
+      {'code': 'NLT', 'name': 'New Living Translation'},
+      {'code': 'NASB', 'name': 'New American Standard Bible'},
+      {'code': 'ASV', 'name': 'American Standard Version'},
     ],
     'yo': [
       {'code': 'BM', 'name': 'Biblica Yoruba (BM)'},
@@ -154,6 +157,12 @@ class OfflineBibleService {
     'NKJV': 'New King James Version (English)',
     'KJV': 'King James Version (English)',
     'NIV': 'New International Version (English)',
+    'NLT': 'New Living Translation (English)',
+    'NASB': 'New American Standard Bible (English)',
+    'ASV': 'American Standard Version (English)',
+    'BM': 'Biblica Yoruba (BM) (Yoruba)',
+    'HAU': 'Biblica Hausa (HAU) (Hausa)',
+    'IGBOB': 'Biblica Igbo (IGBOB) (Igbo)',
   };
 
   static const Map<String, String> supportedLanguages = {
