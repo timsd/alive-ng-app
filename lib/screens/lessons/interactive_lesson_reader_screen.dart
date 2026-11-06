@@ -489,6 +489,72 @@ class _InteractiveLessonReaderScreenState
     }
   }
 
+  Future<void> _confirmResetStudy() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.refresh_rounded, color: Colors.green),
+            SizedBox(width: 8),
+            Text('Reset Study for New Prospect?'),
+          ],
+        ),
+        content: const Text(
+          'This will clear all your answers, responses, and disciple details from this screen so you can conduct this study fresh with a new prospect.\n\nAny prior study sessions logged to your Discipleship Tracker remain safely saved.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF166534)),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Reset to 0%'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final prefs = await SharedPreferences.getInstance();
+      const prefix = 'interactive_lesson_1_';
+      final keys = prefs.getKeys().where((k) => k.startsWith(prefix)).toList();
+      for (final k in keys) {
+        await prefs.remove(k);
+      }
+
+      setState(() {
+        for (final controller in _controllers.values) {
+          controller.clear();
+        }
+        _nameController.clear();
+        _phoneController.clear();
+        _addressController.clear();
+        _matchedContact = null;
+        _matchedContactStudyCount = 0;
+        _haveBible = null;
+        _studyBible = null;
+        _believeBible = null;
+        _commitmentPrayer = false;
+        _selectedDiscipleshipLevel = DiscipleshipLevel.prospect;
+        _showSavedNotification = false;
+        _calculateProgress();
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Study reset to 0%! Ready for your new prospect.'),
+            backgroundColor: Color(0xFF166534),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
   void _calculateProgress() {
     int totalItems = _controllers.length + 4; // text fields + 3 toggles + prayer
     int filled = 0;
@@ -568,13 +634,49 @@ class _InteractiveLessonReaderScreenState
                     ),
                   ],
                 ),
-                Text(
-                  '${(_progress * 100).toInt()}% Completed',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green,
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Tooltip(
+                      message: 'Reset study to 0% for a new prospect',
+                      child: InkWell(
+                        onTap: _confirmResetStudy,
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.refresh_rounded, color: Colors.green, size: 14),
+                              SizedBox(width: 3),
+                              Text(
+                                'Reset',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.green,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${(_progress * 100).toInt()}% Completed',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -604,9 +706,7 @@ class _InteractiveLessonReaderScreenState
                 _buildSection8(isDark),
                 const SizedBox(height: 16),
                 _buildSection9Commitment(isDark),
-                const SizedBox(height: 24),
-                _buildSaveButtonSection(isDark),
-                const SizedBox(height: 40),
+                const SizedBox(height: 32),
               ],
             ),
           ),
@@ -1818,33 +1918,6 @@ class _InteractiveLessonReaderScreenState
             ),
           ],
         )
-      ],
-    );
-  }
-
-  Widget _buildSaveButtonSection(bool isDark) {
-    return Column(
-      children: [
-        ElevatedButton.icon(
-          onPressed: _saveResponses,
-          icon: const Icon(Icons.save, color: Colors.white),
-          label: const Text(
-            'Save My Lesson Answers & Progress',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF166534),
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        ),
-        if (_showSavedNotification) ...[
-          const SizedBox(height: 10),
-          const Text(
-            '✓ Your responses have been saved to your device!',
-            style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 13),
-          ),
-        ],
       ],
     );
   }

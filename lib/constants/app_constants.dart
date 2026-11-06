@@ -70,7 +70,7 @@ class AppConstants {
   static const String nonMonetaryGiftRoute = '/non-monetary-gift';
 
   // Bible Versions
-  static const List<String> bibleVersions = ['KJV', 'NKJV', 'NIV', 'NLT'];
+  static const List<String> bibleVersions = ['NKJV', 'KJV', 'NIV'];
 
   // Supported Languages
   static const Map<String, String> supportedLanguages = {

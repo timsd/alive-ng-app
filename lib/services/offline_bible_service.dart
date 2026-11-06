@@ -134,12 +134,9 @@ class OfflineBibleService {
   // Real availability is auto-discovered from assets at runtime.
   static const Map<String, List<Map<String, String>>> _supportedLanguages = {
     'en': [
-      {'code': 'KJV', 'name': 'King James Version'},
-      {'code': 'NLT', 'name': 'New Living Translation'},
-      {'code': 'NIV', 'name': 'New International Version'},
-      {'code': 'ASV', 'name': 'American Standard Version'},
-      {'code': 'NASB', 'name': 'New American Standard Bible'},
       {'code': 'NKJV', 'name': 'New King James Version'},
+      {'code': 'KJV', 'name': 'King James Version'},
+      {'code': 'NIV', 'name': 'New International Version'},
     ],
     'yo': [
       {'code': 'BM', 'name': 'Biblica Yoruba (BM)'},
@@ -154,12 +151,9 @@ class OfflineBibleService {
 
   // Supported Bible versions and languages
   static const Map<String, String> supportedVersions = {
-    'KJV': 'King James Version (English)',
-    'NLT': 'New Living Translation (English)',
-    'NIV': 'New International Version (English)',
-    'ASV': 'American Standard Version (English)',
-    'NASB': 'New American Standard Bible (English)',
     'NKJV': 'New King James Version (English)',
+    'KJV': 'King James Version (English)',
+    'NIV': 'New International Version (English)',
   };
 
   static const Map<String, String> supportedLanguages = {

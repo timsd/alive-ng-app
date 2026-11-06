@@ -42,7 +42,8 @@ class BibleReferenceModalSheet extends StatefulWidget {
 
 class _BibleReferenceModalSheetState extends State<BibleReferenceModalSheet> {
   late String _selectedVersion;
-  List<String> _availableVersions = ['NKJV', 'KJV', 'NIV', 'NLT', 'NASB', 'ASV'];
+  List<String> _availableVersions = ['NKJV', 'KJV', 'NIV'];
+  static const List<String> _supportedEnglishVersions = ['NKJV', 'KJV', 'NIV'];
   final BibleDatabaseHelper _dbHelper = BibleDatabaseHelper();
   final OfflineBibleService _offlineBible = OfflineBibleService();
 
@@ -65,7 +66,7 @@ class _BibleReferenceModalSheetState extends State<BibleReferenceModalSheet> {
       final loaded = await _dbHelper.getLoadedVersionCodes();
       if (loaded.isNotEmpty && mounted) {
         setState(() {
-          final sorted = loaded.toList();
+          final sorted = loaded.where((v) => _supportedEnglishVersions.contains(v)).toList();
           sorted.sort((a, b) {
             if (a == 'NKJV') return -1;
             if (b == 'NKJV') return 1;
@@ -215,7 +216,7 @@ class _BibleReferenceModalSheetState extends State<BibleReferenceModalSheet> {
               width: 38,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.white24,
+                color: isDark ? Colors.white24 : Colors.black26,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -277,8 +278,8 @@ class _BibleReferenceModalSheetState extends State<BibleReferenceModalSheet> {
               children: [
                 Text(
                   _referenceTitle,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: textColor,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 0.3,
@@ -301,8 +302,8 @@ class _BibleReferenceModalSheetState extends State<BibleReferenceModalSheet> {
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     child: Text(
                       _errorMessage!,
-                      style: const TextStyle(
-                        color: Colors.white70,
+                      style: TextStyle(
+                        color: textMuted,
                         fontSize: 14,
                         fontStyle: FontStyle.italic,
                       ),
@@ -311,8 +312,8 @@ class _BibleReferenceModalSheetState extends State<BibleReferenceModalSheet> {
                 else
                   RichText(
                     text: TextSpan(
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: textColor,
                         fontSize: 15,
                         height: 1.5,
                       ),
@@ -325,10 +326,10 @@ class _BibleReferenceModalSheetState extends State<BibleReferenceModalSheet> {
                                 padding: const EdgeInsets.only(right: 4.0),
                                 child: Text(
                                   '${v.number}',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.white60,
+                                    color: accentGold,
                                   ),
                                 ),
                               ),
@@ -363,7 +364,7 @@ class _BibleReferenceModalSheetState extends State<BibleReferenceModalSheet> {
               label: const Text(
                 'Open in Bible Reader',
                 style: TextStyle(
-                  color: Colors.greenAccent,
+                  color: isDark ? Colors.greenAccent : const Color(0xFF15803D),
                   fontWeight: FontWeight.w600,
                   fontSize: 13,
                 ),
