@@ -710,6 +710,9 @@ class AppLocalizationsYo extends AppLocalizations {
   String get search_books_tracts => 'Wa awọn iwe ati tirakti...';
 
   @override
+  String get search_tracts => 'Search tracts...';
+
+  @override
   String get all_categories => 'Gbogbo Ẹka';
 
   @override

@@ -712,6 +712,9 @@ class AppLocalizationsIg extends AppLocalizations {
   String get search_books_tracts => 'Chọọ akwụkwọ na tracts...';
 
   @override
+  String get search_tracts => 'Search tracts...';
+
+  @override
   String get all_categories => 'Ụdị Niile';
 
   @override

@@ -1455,7 +1455,7 @@ abstract class AppLocalizations {
   /// No description provided for @books_and_tracts.
   ///
   /// In en, this message translates to:
-  /// **'Books & Tracts'**
+  /// **'Tracts'**
   String get books_and_tracts;
 
   /// No description provided for @books.
@@ -1479,8 +1479,14 @@ abstract class AppLocalizations {
   /// No description provided for @search_books_tracts.
   ///
   /// In en, this message translates to:
-  /// **'Search books and tracts...'**
+  /// **'Search tracts...'**
   String get search_books_tracts;
+
+  /// No description provided for @search_tracts.
+  ///
+  /// In en, this message translates to:
+  /// **'Search tracts...'**
+  String get search_tracts;
 
   /// No description provided for @all_categories.
   ///

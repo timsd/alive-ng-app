@@ -693,7 +693,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get copyright => '© 2025 ALIVE Nigeria';
 
   @override
-  String get books_and_tracts => 'Books & Tracts';
+  String get books_and_tracts => 'Tracts';
 
   @override
   String get books => 'Books';
@@ -705,7 +705,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get downloaded => 'Downloaded';
 
   @override
-  String get search_books_tracts => 'Search books and tracts...';
+  String get search_books_tracts => 'Search tracts...';
+
+  @override
+  String get search_tracts => 'Search tracts...';
 
   @override
   String get all_categories => 'All Categories';

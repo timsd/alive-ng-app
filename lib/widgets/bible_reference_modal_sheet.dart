@@ -370,7 +370,7 @@ class _BibleReferenceModalSheetState extends State<BibleReferenceModalSheet> {
                 );
               },
               icon: Icon(Icons.menu_book, color: accentEmerald, size: 18),
-              label: const Text(
+              label: Text(
                 'Open in Bible Reader',
                 style: TextStyle(
                   color: isDark ? Colors.greenAccent : const Color(0xFF15803D),

@@ -715,6 +715,9 @@ class AppLocalizationsHa extends AppLocalizations {
   String get search_books_tracts => 'Nemo littattafai da tiraktoci...';
 
   @override
+  String get search_tracts => 'Search tracts...';
+
+  @override
   String get all_categories => 'Duk Rukunai';
 
   @override
