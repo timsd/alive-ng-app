@@ -1361,9 +1361,9 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
     BuildContext context,
     String Function(String) translate,
   ) {
-    return Container(
-      width: double.infinity,
-      margin: EdgeInsets.only(
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    return Padding(
+      padding: EdgeInsets.only(
         top: ResponsiveUtils.getResponsiveValue(
           context: context,
           mobile: 16.0,
@@ -1371,40 +1371,53 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
           desktop: 24.0,
         ),
       ),
-      child: OutlinedButton.icon(
-        onPressed: _authenticateWithBiometrics,
-        icon: Icon(
-          Icons.fingerprint,
-          size: ResponsiveUtils.getResponsiveValue(
-            context: context,
-            mobile: 24.0,
-            tablet: 26.0,
-            desktop: 28.0,
-          ),
-        ),
-        label: Text(
-          translate('use_biometric_auth'),
-          style: TextStyle(
-            fontSize: ResponsiveUtils.getResponsiveValue(
-              context: context,
-              mobile: 16.0,
-              tablet: 18.0,
-              desktop: 20.0,
+      child: Center(
+        child: InkWell(
+          onTap: _isLoading ? null : _authenticateWithBiometrics,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: primaryColor.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: primaryColor.withValues(alpha: 0.35),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.fingerprint_rounded,
+                    size: ResponsiveUtils.getResponsiveValue(
+                      context: context,
+                      mobile: 32.0,
+                      tablet: 36.0,
+                      desktop: 40.0,
+                    ),
+                    color: primaryColor,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  translate('use_biometric_auth'),
+                  style: TextStyle(
+                    fontSize: ResponsiveUtils.getResponsiveValue(
+                      context: context,
+                      mobile: 14.0,
+                      tablet: 15.0,
+                      desktop: 16.0,
+                    ),
+                    fontWeight: FontWeight.w600,
+                    color: primaryColor,
+                  ),
+                ),
+              ],
             ),
-            fontWeight: FontWeight.w600,
           ),
-        ),
-        style: OutlinedButton.styleFrom(
-          padding: EdgeInsets.symmetric(
-            vertical: ResponsiveUtils.getResponsiveValue(
-              context: context,
-              mobile: 16.0,
-              tablet: 18.0,
-              desktop: 20.0,
-            ),
-          ),
-          side: BorderSide(color: Theme.of(context).colorScheme.primary),
-          foregroundColor: Theme.of(context).colorScheme.primary,
         ),
       ),
     );
