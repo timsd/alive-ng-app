@@ -1,7 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import dns from 'node:dns';
 import { Client, Storage, Permission, Role } from 'node-appwrite';
 import { InputFile } from 'node-appwrite/file';
+
+dns.setDefaultResultOrder('ipv4first');
 
 if (fs.existsSync('.env')) {
   const envContent = fs.readFileSync('.env', 'utf8');
@@ -38,14 +41,26 @@ const headers = {
 
 async function appwriteRequest(urlPath, options = {}) {
   const url = `${endpoint}${urlPath}`;
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      ...headers,
-      ...(options.headers || {}),
-    },
-  });
-  return res;
+  let lastErr;
+  for (let attempt = 1; attempt <= 20; attempt++) {
+    try {
+      const res = await fetch(url, {
+        ...options,
+        headers: {
+          ...headers,
+          ...(options.headers || {}),
+        },
+      });
+      return res;
+    } catch (err) {
+      lastErr = err;
+      if (attempt < 20) {
+        console.warn(`Waiting for server (${urlPath}, attempt ${attempt}/20): ${err.message}. Retrying in 15s...`);
+        await new Promise((r) => setTimeout(r, 15000));
+      }
+    }
+  }
+  throw lastErr;
 }
 
 async function ensureReleaseBucket() {

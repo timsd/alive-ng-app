@@ -11,6 +11,7 @@ class AppTourService {
   static const String _tourVersionKey = 'app_tour_seen_version';
   static const String tourCompletedKey = 'app_feature_tour_v3_completed';
   static bool _isTourActive = false;
+  static bool isBiometricDialogActive = false;
 
   /// Returns true if the user has already viewed or dismissed the app tour
   /// for the current version on this device.
@@ -63,6 +64,18 @@ class AppTourService {
     }
 
     if (!context.mounted) return;
+
+    // Wait if another modal dialog (e.g. Biometric setup or OTA prompt) is currently active
+    // so the App Tour and Biometric dialog never collide on screen.
+    if (!force &&
+        (isBiometricDialogActive || ModalRoute.of(context)?.isCurrent == false)) {
+      Future.delayed(const Duration(seconds: 2), () {
+        if (context.mounted) {
+          maybeStartTour(context, force: force, onComplete: onComplete);
+        }
+      });
+      return;
+    }
 
     _isTourActive = true;
     try {

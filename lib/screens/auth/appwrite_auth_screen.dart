@@ -16,6 +16,7 @@ import '../../utils/responsive_utils.dart';
 import '../../models/app_models.dart';
 import '../../models/auth_models.dart';
 import '../../utils/layout_fix_utils.dart';
+import '../../widgets/app_tour/app_tour_service.dart';
 import 'package:flutter/foundation.dart';
 
 class AppwriteAuthScreen extends ConsumerStatefulWidget {
@@ -95,13 +96,28 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
         return;
       }
       final isAvailable = await _biometricService.isBiometricAvailable();
-      final isEnabled = await _biometricService.isBiometricEnabled();
+      final isEnabled = isAvailable && await _biometricService.isBiometricEnabled();
+      final boundEmail = isEnabled ? await _biometricService.getBoundEmail() : null;
 
       if (mounted) {
         setState(() {
           _isBiometricAvailable = isAvailable;
           _isBiometricEnabled = isEnabled;
+          if (boundEmail != null &&
+              boundEmail.isNotEmpty &&
+              _emailController.text.trim().isEmpty) {
+            _emailController.text = boundEmail;
+          }
         });
+        // Automatically prompt biometric authentication when the user arrives on /auth
+        // and has Biometric Sign-In enabled in their Profile.
+        if (isAvailable && isEnabled && !_isSignUp) {
+          Future.delayed(const Duration(milliseconds: 350), () {
+            if (mounted && !_isLoading && !_isSignUp) {
+              _authenticateWithBiometrics();
+            }
+          });
+        }
       }
     } catch (e) {
       // Biometric not available
@@ -135,20 +151,27 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
       final credentials = await _biometricService.authenticateWithBiometrics();
 
       if (credentials != null) {
-        // Sign in with the retrieved credentials
+        if (mounted) {
+          setState(() => _isLoading = true);
+        }
         final authProvider = ref.read(signInControllerProvider.notifier);
         await authProvider.signInWithEmailAndPassword(
           credentials['email']!,
           credentials['password']!,
         );
 
-        // Navigate to home on successful authentication
         if (mounted) {
-          context.go('/home');
+          setState(() => _isLoading = false);
+          final state = ref.read(signInControllerProvider);
+          if (!state.hasError) {
+            ref.read(isGuestModeProvider.notifier).state = false;
+            context.go(AppConstants.homeRoute);
+          }
         }
       }
     } catch (_) {
       if (mounted) {
+        setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text(
@@ -171,18 +194,20 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
     ref.listen<AsyncValue<void>>(signInControllerProvider, (previous, next) {
       next.when(
         data: (_) {
-          // Success - offer biometric setup at the ideal, non-intrusive time:
-          // after a successful email/password sign-in, before navigating home.
+          // Cache credentials silently so the user can toggle Biometric Sign-In
+          // ON or OFF inside Profile -> Account & Security without any login popup collision.
           if (mounted) {
             ref.read(isGuestModeProvider.notifier).state = false;
-            if (_isEmailPasswordSignIn &&
-                _isBiometricAvailable &&
-                !_isBiometricEnabled) {
-              _isEmailPasswordSignIn = false;
-              _maybeOfferBiometricSetup();
-            } else {
-              context.go('/');
+            if (_isEmailPasswordSignIn ||
+                (_emailController.text.trim().isNotEmpty &&
+                    _passwordController.text.isNotEmpty)) {
+              _biometricService.cacheSessionCredentials(
+                email: _emailController.text.trim(),
+                password: _passwordController.text,
+              );
             }
+            _isEmailPasswordSignIn = false;
+            context.go(AppConstants.homeRoute);
           }
         },
         error: (error, _) {
@@ -1760,6 +1785,7 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
   void _showBiometricSetupDialog() {
     final translate = ref.read(translationProvider);
     final rootContext = context;
+    AppTourService.isBiometricDialogActive = true;
 
     showDialog(
       context: rootContext,
@@ -1803,6 +1829,7 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
           // "Don't ask again" — persists preference
           TextButton(
             onPressed: () async {
+              AppTourService.isBiometricDialogActive = false;
               Navigator.of(dialogCtx).pop();
               try {
                 final prefs = await SharedPreferences.getInstance();
@@ -1823,6 +1850,7 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
             children: [
               TextButton(
                 onPressed: () {
+                  AppTourService.isBiometricDialogActive = false;
                   Navigator.of(dialogCtx).pop();
                   if (rootContext.mounted) rootContext.go('/');
                 },
@@ -1832,6 +1860,7 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
               ElevatedButton.icon(
                 icon: const Icon(Icons.fingerprint, size: 18),
                 onPressed: () async {
+                  AppTourService.isBiometricDialogActive = false;
                   Navigator.of(dialogCtx).pop();
                   await _setupBiometricAuth();
                   if (rootContext.mounted) rootContext.go('/');
@@ -1846,7 +1875,9 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
           ),
         ],
       ),
-    );
+    ).whenComplete(() {
+      AppTourService.isBiometricDialogActive = false;
+    });
   }
 
   Future<void> _setupBiometricAuth() async {

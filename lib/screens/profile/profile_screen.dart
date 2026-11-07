@@ -1080,6 +1080,7 @@ class _BiometricToggleState extends State<_BiometricToggle> {
   bool _available = false;
   bool _enabled = false;
   bool _busy = false;
+  String? _boundEmail;
 
   @override
   void initState() {
@@ -1091,10 +1092,12 @@ class _BiometricToggleState extends State<_BiometricToggle> {
     try {
       final available = await _bio.isBiometricAvailable();
       final enabled = available && await _bio.isBiometricEnabled();
+      final boundEmail = enabled ? await _bio.getBoundEmail() : null;
       if (!mounted) return;
       setState(() {
         _available = available;
         _enabled = enabled;
+        _boundEmail = boundEmail;
       });
     } catch (_) {
       if (mounted) setState(() => _available = false);
@@ -1106,13 +1109,27 @@ class _BiometricToggleState extends State<_BiometricToggle> {
     setState(() => _busy = true);
     try {
       if (value) {
-        final ok = await _promptPasswordAndEnable();
+        final ok = await _enableBiometric();
         if (!mounted) return;
-        if (ok) setState(() => _enabled = true);
+        if (ok) {
+          final bound = await _bio.getBoundEmail();
+          if (!mounted) return;
+          setState(() {
+            _enabled = true;
+            _boundEmail = bound;
+          });
+        }
       } else {
         await _bio.disableBiometricAuth();
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.remove('biometric_setup_dismissed');
+        } catch (_) {}
         if (!mounted) return;
-        setState(() => _enabled = false);
+        setState(() {
+          _enabled = false;
+          _boundEmail = null;
+        });
         ToastUtils.showSuccess('Biometric sign-in turned off');
       }
     } catch (e) {
@@ -1123,49 +1140,91 @@ class _BiometricToggleState extends State<_BiometricToggle> {
     }
   }
 
-  Future<bool> _promptPasswordAndEnable() async {
-    final controller = TextEditingController();
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Confirm your password'),
-        content: TextField(
-          controller: controller,
-          obscureText: true,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Password',
-            helperText: 'Needed once so you can sign in with your fingerprint.',
-          ),
-          onSubmitted: (_) => Navigator.of(dialogContext).pop(true),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Enable'),
-          ),
-        ],
-      ),
-    );
-    controller.dispose();
-    if (confirmed != true) return false;
-
-    final password = controller.text;
-    if (password.isEmpty) {
-      ToastUtils.showError('Please enter your password');
-      return false;
-    }
-    final email = widget.profile?.email ??
-        AuthService.instance.currentUser?.email ??
-        '';
+  Future<bool> _enableBiometric() async {
+    final email = (widget.profile?.email ??
+            AuthService.instance.currentUser?.email ??
+            '')
+        .trim();
     if (email.isEmpty) {
       ToastUtils.showError('No email address is available for this account');
       return false;
     }
+
+    // 1. Check if we already have cached session credentials from login
+    final cached = await _bio.getCachedCredentials(email: email);
+    if (cached != null && (cached['password'] ?? '').isNotEmpty) {
+      final ok = await _bio.enableBiometricAuth(
+        email: email,
+        password: cached['password']!,
+      );
+      if (ok) {
+        ToastUtils.showSuccess('Biometric sign-in turned on');
+        return true;
+      }
+      return false;
+    }
+
+    // 2. Otherwise prompt user to confirm their password once
+    if (!mounted) return false;
+    String enteredPassword = '';
+    bool obscure = true;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.fingerprint_rounded, color: Color(0xFF10B981)),
+              SizedBox(width: 10),
+              Expanded(child: Text('Enable Biometric Sign-In')),
+            ],
+          ),
+          content: TextField(
+            obscureText: obscure,
+            autofocus: true,
+            onChanged: (val) => enteredPassword = val,
+            decoration: InputDecoration(
+              labelText: 'Account Password',
+              helperText:
+                  'Needed once so your fingerprint or face can sign you in.',
+              suffixIcon: IconButton(
+                icon: Icon(
+                  obscure
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                ),
+                onPressed: () => setDialogState(() => obscure = !obscure),
+              ),
+            ),
+            onSubmitted: (val) {
+              enteredPassword = val;
+              Navigator.of(dialogContext).pop(true);
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton.icon(
+              icon: const Icon(Icons.fingerprint_rounded, size: 18),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              label: const Text('Enable'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true) return false;
+
+    final password = enteredPassword.trim();
+    if (password.isEmpty) {
+      ToastUtils.showError('Please enter your password');
+      return false;
+    }
+
     final ok = await _bio.enableBiometricAuth(email: email, password: password);
     if (ok) {
       ToastUtils.showSuccess('Biometric sign-in turned on');
@@ -1179,10 +1238,27 @@ class _BiometricToggleState extends State<_BiometricToggle> {
   Widget build(BuildContext context) {
     if (!_available) return const SizedBox.shrink();
     return SwitchListTile(
-      secondary:
-          const Icon(Icons.fingerprint_rounded, color: Color(0xFF10B981)),
-      title: const Text('Biometric Sign-In'),
-      subtitle: const Text('Use your fingerprint or face to sign in'),
+      secondary: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF10B981).withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: const Icon(
+          Icons.fingerprint_rounded,
+          color: Color(0xFF10B981),
+          size: 22,
+        ),
+      ),
+      title: const Text(
+        'Biometric Sign-In',
+        style: TextStyle(fontWeight: FontWeight.w500),
+      ),
+      subtitle: Text(
+        _enabled
+            ? 'Active${_boundEmail != null ? " ($_boundEmail)" : ""} — scan fingerprint or face on login'
+            : 'Use your fingerprint or face ID to sign in quickly',
+      ),
       value: _enabled,
       onChanged: _busy ? null : _setEnabled,
     );

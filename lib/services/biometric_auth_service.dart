@@ -19,35 +19,122 @@ class BiometricAuthService {
   final LocalAuthentication _localAuth = LocalAuthentication();
   final StorageService _storage = StorageService.instance;
 
+  static const String _credentialsKey = 'biometric_credentials';
+  static const String _sessionCredentialsKey = 'biometric_session_credentials';
+
   /// Check if biometric authentication is available on the device
   Future<bool> isBiometricAvailable() async {
     try {
-      // Check if running on web platform - biometrics not supported
       if (kIsWeb) {
         return false;
       }
 
       final isAvailable = await _localAuth.canCheckBiometrics;
       final isDeviceSupported = await _localAuth.isDeviceSupported();
-      return isAvailable && isDeviceSupported;
+      return isAvailable || isDeviceSupported;
     } catch (e) {
-      // Log platform exceptions for web or unsupported platforms
       _logger.warning('Error checking biometric availability: $e');
-      throw AuthException('Error checking biometric availability',
-          originalError: e);
+      return false;
     }
   }
 
   /// Check if biometric authentication is enabled for the current user
   Future<bool> isBiometricEnabled() async {
     try {
+      if (kIsWeb) return false;
       final enabled =
           await _storage.getSecureString(StorageKeys.biometricEnabled);
-      return enabled == 'true';
+      if (enabled != 'true') return false;
+      final creds = await _storage.getSecureString(_credentialsKey);
+      return creds != null && creds.isNotEmpty;
     } catch (e) {
       _logger.error('Error checking biometric enabled status', e);
-      throw AuthException('Error checking biometric enabled status',
-          originalError: e);
+      return false;
+    }
+  }
+
+  /// Returns the email address currently bound to biometric sign-in, if any.
+  Future<String?> getBoundEmail() async {
+    try {
+      if (kIsWeb) return null;
+      final raw = await _storage.getSecureString(_credentialsKey);
+      if (raw == null || raw.isEmpty) return null;
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      return (decoded['email'] as String?)?.trim();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Caches encrypted email/password from a normal login so the user can toggle
+  /// Biometric Sign-In ON later from Profile without re-typing their password.
+  Future<void> cacheSessionCredentials({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      if (kIsWeb || email.trim().isEmpty || password.isEmpty) return;
+      final payload = jsonEncode({
+        'email': email.trim(),
+        'password': password,
+        'cached_at': DateTime.now().toIso8601String(),
+      });
+      await _storage.setSecureString(_sessionCredentialsKey, payload);
+
+      // If biometric auth is already enabled for this email, keep the stored password fresh
+      final isEnabled = await isBiometricEnabled();
+      final boundEmail = await getBoundEmail();
+      if (isEnabled &&
+          boundEmail != null &&
+          boundEmail.toLowerCase() == email.trim().toLowerCase()) {
+        await _storage.setSecureString(_credentialsKey, payload);
+      }
+    } catch (e) {
+      _logger.warning('Could not cache session credentials: $e');
+    }
+  }
+
+  /// Retrieves cached session credentials for [email] (if available).
+  Future<Map<String, String>?> getCachedCredentials({String? email}) async {
+    try {
+      if (kIsWeb) return null;
+      for (final key in [_credentialsKey, _sessionCredentialsKey]) {
+        final raw = await _storage.getSecureString(key);
+        if (raw == null || raw.isEmpty) continue;
+        final map = jsonDecode(raw) as Map<String, dynamic>;
+        final savedEmail = (map['email'] as String?)?.trim() ?? '';
+        final savedPassword = (map['password'] as String?) ?? '';
+        if (savedEmail.isEmpty || savedPassword.isEmpty) continue;
+        if (email == null ||
+            email.trim().isEmpty ||
+            savedEmail.toLowerCase() == email.trim().toLowerCase()) {
+          return {'email': savedEmail, 'password': savedPassword};
+        }
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<bool> _promptOSBiometric(String reason) async {
+    try {
+      return await _localAuth.authenticate(
+        localizedReason: reason,
+        options: const AuthenticationOptions(
+          biometricOnly: true,
+          stickyAuth: true,
+        ),
+      );
+    } catch (_) {
+      // Fallback for Android devices with Class-2 Face Unlock or combined biometric/credential prompt
+      return await _localAuth.authenticate(
+        localizedReason: reason,
+        options: const AuthenticationOptions(
+          biometricOnly: false,
+          stickyAuth: true,
+        ),
+      );
     }
   }
 
@@ -57,33 +144,27 @@ class BiometricAuthService {
     required String password,
   }) async {
     try {
-      // Check if running on web platform - biometrics not supported
       if (kIsWeb) {
         return false;
       }
 
-      // First verify biometric authentication works
-      final isAuthenticated = await _localAuth.authenticate(
-        localizedReason: 'Please authenticate to enable biometric sign-in',
-        options: const AuthenticationOptions(
-          biometricOnly: true,
-          stickyAuth: true,
-        ),
+      final isAuthenticated = await _promptOSBiometric(
+        'Authenticate with your fingerprint or face to enable Biometric Sign-In',
       );
 
       if (!isAuthenticated) {
         return false;
       }
 
-      // Store credentials securely
       final credentials = {
-        'email': email,
-        'password': password, // In production, consider using tokens instead
+        'email': email.trim(),
+        'password': password,
         'enabled_at': DateTime.now().toIso8601String(),
       };
 
-      await _storage.setSecureString(
-          'biometric_credentials', jsonEncode(credentials));
+      final encoded = jsonEncode(credentials);
+      await _storage.setSecureString(_credentialsKey, encoded);
+      await _storage.setSecureString(_sessionCredentialsKey, encoded);
       await _storage.setSecureString(StorageKeys.biometricEnabled, 'true');
 
       return true;
@@ -96,7 +177,7 @@ class BiometricAuthService {
   /// Disable biometric authentication
   Future<void> disableBiometricAuth() async {
     try {
-      await _storage.removeSecure('biometric_credentials');
+      await _storage.removeSecure(_credentialsKey);
       await _storage.setSecureString(StorageKeys.biometricEnabled, 'false');
     } catch (e) {
       _logger.error('Error disabling biometric auth', e);
@@ -107,40 +188,31 @@ class BiometricAuthService {
   /// Authenticate using biometrics and return stored credentials
   Future<Map<String, String>?> authenticateWithBiometrics() async {
     try {
-      // Check if running on web platform - biometrics not supported
       if (kIsWeb) {
         return null;
       }
 
-      // Check if biometric auth is enabled
       final isEnabled = await isBiometricEnabled();
       if (!isEnabled) {
         return null;
       }
 
-      // Perform biometric authentication
-      final isAuthenticated = await _localAuth.authenticate(
-        localizedReason: 'Please authenticate to sign in',
-        options: const AuthenticationOptions(
-          biometricOnly: true,
-          stickyAuth: true,
-        ),
+      final isAuthenticated = await _promptOSBiometric(
+        'Scan your fingerprint or face to sign in to ALIVE Nigeria',
       );
 
       if (!isAuthenticated) {
         return null;
       }
 
-      // Retrieve stored credentials
-      final credentialsJson =
-          await _storage.getSecureString('biometric_credentials');
+      final credentialsJson = await _storage.getSecureString(_credentialsKey);
       if (credentialsJson == null) {
         return null;
       }
 
       final credentials = jsonDecode(credentialsJson) as Map<String, dynamic>;
       return {
-        'email': credentials['email'] as String,
+        'email': (credentials['email'] as String).trim(),
         'password': credentials['password'] as String,
       };
     } catch (e) {
