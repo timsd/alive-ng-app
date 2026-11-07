@@ -103,9 +103,79 @@ function getAppVersion() {
   try {
     const content = fs.readFileSync('pubspec.yaml', 'utf8');
     const match = content.match(/^version:\s*([^\s+]+)/m);
-    return match ? match[1] : '2.0.2';
+    return match ? match[1] : '2.0.5';
   } catch {
-    return '2.0.2';
+    return '2.0.5';
+  }
+}
+
+function getBuildNumber() {
+  try {
+    const content = fs.readFileSync('pubspec.yaml', 'utf8');
+    const match = content.match(/^version:\s*[^\s+]+\+(\d+)/m);
+    return match ? Number(match[1]) : 13;
+  } catch {
+    return 13;
+  }
+}
+
+async function syncOtaAppVersionSetting(downloadUrl) {
+  const databaseId = process.env.APPWRITE_DATABASE_ID || 'alive_db';
+  const collectionId = 'app_settings';
+  const docId = 'app_version';
+  const latestVersion = getAppVersion();
+  const buildNumber = getBuildNumber();
+  const nowIso = new Date().toISOString();
+
+  const valueObj = {
+    latest_version: latestVersion,
+    build_number: buildNumber,
+    force_update: false,
+    update_url: downloadUrl,
+    updated_at: nowIso,
+  };
+  const payload = {
+    data: {
+      key: 'app_version',
+      setting_key: 'app_version',
+      display_name: 'Android OTA App Version',
+      category: 'system',
+      type: 'json',
+      data_type: 'json',
+      value: JSON.stringify(valueObj),
+      setting_value: JSON.stringify(valueObj),
+      is_public: true,
+      is_active: true,
+      updated_at: nowIso,
+    },
+  };
+
+  try {
+    const patchRes = await appwriteRequest(
+      `/databases/${databaseId}/collections/${collectionId}/documents/${docId}`,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }
+    );
+    if (patchRes.status === 404) {
+      await appwriteRequest(
+        `/databases/${databaseId}/collections/${collectionId}/documents`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            documentId: docId,
+            permissions: ['read("any")'],
+            data: { ...payload.data, created_at: nowIso },
+          }),
+        }
+      );
+    }
+    console.log(`✅ OTA app_version synced in app_settings: v${latestVersion}+${buildNumber}`);
+  } catch (err) {
+    console.warn('Notice syncing OTA app_version setting:', err.message);
   }
 }
 
@@ -202,6 +272,8 @@ async function uploadRelease() {
   }
 
   const downloadUrl = `${endpoint}/storage/buckets/${bucketId}/files/${uploadResult.$id}/download?project=${encodeURIComponent(projectId)}`;
+
+  await syncOtaAppVersionSetting(downloadUrl);
 
   console.log(`\n========================================`);
   console.log(`SUCCESS: Uploaded ${uploadResult.name} (${uploadResult.sizeOriginal || totalSize} bytes)`);

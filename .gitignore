@@ -68,6 +68,7 @@ config/*.json
 # Service account keys (security)
 **/service-account-*.json
 **/serviceAccountKey.json
+android/play-store-service-account.json
 
 # Firebase Admin SDK Key
 firebase-admin-key.json

@@ -1,7 +1,7 @@
 class AppConstants {
   // App Information
   static const String appName = 'ALIVE Nigeria';
-  static const String appVersion = '2.0.5+13';
+  static const String appVersion = '2.0.6+14';
 
   // Navigation Routes
   static const String splashRoute = '/';
