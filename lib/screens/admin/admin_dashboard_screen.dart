@@ -1408,37 +1408,56 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
                                     style: theme.textTheme.bodySmall,
                                   ),
                                   isThreeLine: true,
-                                  trailing: IconButton(
-                                    icon: const Icon(Icons.delete_outline,
-                                        color: Colors.redAccent),
-                                    tooltip: 'Remove office assignment',
-                                    onPressed: () async {
-                                      final confirm = await showDialog<bool>(
-                                        context: context,
-                                        builder: (c) => AlertDialog(
-                                          title: const Text('Remove Officer?'),
-                                          content: Text(
-                                              'Remove ${a.officerName} from ${a.officeTitle}?'),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(c, false),
-                                              child: const Text('Cancel'),
-                                            ),
-                                            ElevatedButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(c, true),
-                                              child: const Text('Remove'),
-                                            ),
-                                          ],
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        icon: Icon(
+                                          Icons.edit_outlined,
+                                          color: colorScheme.primary,
                                         ),
-                                      );
-                                      if (confirm == true) {
-                                        await DiscipleshipService.instance
-                                            .removeOfficerAssignment(a.id);
-                                        setDialogState(() {});
-                                      }
-                                    },
+                                        tooltip:
+                                            'Edit officer / handover tenure',
+                                        onPressed: () => _showAddOfficerDialog(
+                                          setDialogState,
+                                          existing: a,
+                                        ),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete_outline,
+                                            color: Colors.redAccent),
+                                        tooltip: 'Remove office assignment',
+                                        onPressed: () async {
+                                          final confirm =
+                                              await showDialog<bool>(
+                                            context: context,
+                                            builder: (c) => AlertDialog(
+                                              title:
+                                                  const Text('Remove Officer?'),
+                                              content: Text(
+                                                  'Remove ${a.officerName} from ${a.officeTitle}?'),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(c, false),
+                                                  child: const Text('Cancel'),
+                                                ),
+                                                ElevatedButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(c, true),
+                                                  child: const Text('Remove'),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                          if (confirm == true) {
+                                            await DiscipleshipService.instance
+                                                .removeOfficerAssignment(a.id);
+                                            setDialogState(() {});
+                                          }
+                                        },
+                                      ),
+                                    ],
                                   ),
                                 );
                               },
@@ -1467,12 +1486,22 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
     );
   }
 
-  void _showAddOfficerDialog(void Function(void Function()) parentSetState) {
-    final titleController = TextEditingController();
-    final nameController = TextEditingController();
-    final emailController = TextEditingController();
-    final idController = TextEditingController();
-    String officeType = 'coordinator';
+  void _showAddOfficerDialog(
+    void Function(void Function()) parentSetState, {
+    OfficerOfficeAssignment? existing,
+  }) {
+    final titleController =
+        TextEditingController(text: existing?.officeTitle ?? '');
+    final nameController =
+        TextEditingController(text: existing?.officerName ?? '');
+    final emailController =
+        TextEditingController(text: existing?.officerEmail ?? '');
+    final idController =
+        TextEditingController(text: existing?.officerId ?? '');
+    String officeType =
+        (existing?.officeType.toLowerCase() == 'director')
+            ? 'director'
+            : 'coordinator';
 
     showDialog(
       context: context,
@@ -1480,7 +1509,11 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
         return StatefulBuilder(
           builder: (context, setSubState) {
             return AlertDialog(
-              title: const Text('Assign Report Officer'),
+              title: Text(
+                existing != null
+                    ? 'Edit Office Assignment (Tenure Handover)'
+                    : 'Assign Report Officer',
+              ),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -1489,7 +1522,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
                       controller: titleController,
                       decoration: const InputDecoration(
                         labelText: 'Office / Role Title *',
-                        hintText: 'e.g. Zonal Director, District Coordinator',
+                        hintText: 'e.g. Director of Evangelism, AMTC Coordinator',
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -1520,7 +1553,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
                       keyboardType: TextInputType.emailAddress,
                       decoration: const InputDecoration(
                         labelText: 'Officer Email *',
-                        hintText: 'e.g. pastor.john@aliveng.org',
+                        hintText: 'e.g. evangelism@alivenigeria.org',
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -1554,6 +1587,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
                         ? emailController.text.trim().toLowerCase()
                         : idController.text.trim();
                     await DiscipleshipService.instance.assignOfficerToOffice(
+                      existingId: existing?.id,
                       officeTitle: titleController.text.trim(),
                       officeType: officeType,
                       officerName: nameController.text.trim(),
@@ -1563,7 +1597,8 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
                     if (ctx.mounted) Navigator.pop(ctx);
                     parentSetState(() {});
                   },
-                  child: const Text('Save Assignment'),
+                  child: Text(
+                      existing != null ? 'Update Officer' : 'Save Assignment'),
                 ),
               ],
             );

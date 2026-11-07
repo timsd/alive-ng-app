@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -182,13 +181,17 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       // If onboarding hasn't been completed and user is not authenticated,
-      // route to onboarding first so first-time visitors always get the intro.
+      // route to onboarding first so visitors get the Onboarding -> Oath -> Auth flow
+      // (while preserving direct deep links like password reset or admin approval).
       if (!isAuthenticated &&
           !OnboardingService.isCompleted &&
           state.uri.path != '/oath' &&
+          state.uri.path != '/admin-approve' &&
+          state.uri.path != AppConstants.donationRoute &&
+          state.uri.path != '/donate' &&
           state.uri.path != AppConstants.resetPasswordRoute &&
           state.uri.path != AppConstants.authRoute) {
-        debugPrint('First-time visitor: redirecting to onboarding');
+        debugPrint('Unauthenticated visitor: redirecting to onboarding');
         return AppConstants.onboardingRoute;
       }
 
@@ -258,18 +261,25 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppConstants.splashRoute,
         builder: (context, state) => AnimatedSplashScreen(
           onAnimationComplete: () async {
-            bool show = false;
+            final isAuthenticated =
+                ref.read(authGatewayProvider).currentUser != null;
+            if (isAuthenticated) {
+              if (!context.mounted) return;
+              context.go(AppConstants.homeRoute);
+              return;
+            }
+            bool show = true;
             try {
               show = await OnboardingService.shouldShowOnboarding()
-                  .timeout(const Duration(seconds: 2), onTimeout: () => false);
+                  .timeout(const Duration(seconds: 2), onTimeout: () => true);
             } catch (e) {
-              debugPrint('Onboarding check failed; defaulting to home: $e');
-              show = false;
+              debugPrint('Onboarding check failed; defaulting to onboarding: $e');
+              show = true;
             }
             if (!context.mounted) return;
             final nextRoute = show
                 ? AppConstants.onboardingRoute
-                : (kIsWeb ? AppConstants.homeRoute : AppConstants.authRoute);
+                : AppConstants.authRoute;
             context.go(nextRoute);
           },
         ),

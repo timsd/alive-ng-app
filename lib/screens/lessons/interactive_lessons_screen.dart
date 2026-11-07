@@ -6,9 +6,7 @@ import '../../utils/responsive_utils.dart';
 import '../../utils/search_utils.dart';
 import '../../utils/text_formatter.dart';
 import '../../services/interactive_lessons_service.dart';
-import '../../models/tract_models.dart';
 import '../../widgets/custom_image.dart';
-import '../tracts/tract_reader_screen.dart';
 import 'interactive_lesson_reader_screen.dart';
 
 class InteractiveLessonsScreen extends ConsumerStatefulWidget {
@@ -594,30 +592,14 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
               Navigator.of(context).pop();
               final lessonId = lesson['id']?.toString() ??
                   'lesson_${(lesson['title'] ?? '').toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_')}';
-              _lessonsService.updateLessonProgress(lessonId, 0.5);
-              if (lessonId == "lesson_something_we_can_trust" || (lesson["title"] ?? "").toString().toLowerCase().contains("something we can trust")) {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => InteractiveLessonReaderScreen(
-                      lessonId: lessonId,
-                      title: lesson["title"] ?? "Lesson 1: Something We Can Trust",
-                    ),
-                  ),
-                );
-                return;
-              }
-              final tract = Tract(
-                id: lessonId,
-                title: lesson['title'] ?? 'Interactive Lesson',
-                description: lesson['description'] ?? '',
-                category: lesson['category'] ?? 'Bible Study',
-                pages: 8,
-                createdAt: DateTime.now(),
-                updatedAt: DateTime.now(),
-              );
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => TractReaderScreen(tract: tract),
+                  builder: (context) => InteractiveLessonReaderScreen(
+                    lessonId: lessonId,
+                    title: lesson['title']?.toString() ??
+                        'Lesson 1: Something We Can Trust',
+                    lessonData: lesson,
+                  ),
                 ),
               );
             },

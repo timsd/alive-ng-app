@@ -2,22 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/bible_reference_modal_sheet.dart';
+import '../../widgets/custom_image.dart';
 import '../../services/interactive_lessons_service.dart';
+import '../../services/pdf_extractor_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/discipleship_service.dart';
 import '../../models/discipleship_models.dart';
 
-/// Full interactive study screen for Lesson 1: Something We Can Trust (What The Bible Says Series).
-/// Implements all 9 sections, interactive reflection inputs, prophecy checklist, filterable Messianic table,
-/// decision buttons, study commitment, local persistence, and instant clickable Bible verse popups.
+/// Full interactive study screen for Lesson 1: Something We Can Trust (What The Bible Says Series)
+/// as well as any dynamically extracted Tract / Interactive Bible Study uploaded by Admins.
+/// Implements dynamic brand colour palettes across sections, interactive reflection inputs,
+/// clickable Bible verse popups, decision buttons, study commitment, and Discipleship Tracker sync.
 class InteractiveLessonReaderScreen extends StatefulWidget {
   final String lessonId;
   final String title;
+  final Map<String, dynamic>? lessonData;
 
   const InteractiveLessonReaderScreen({
     super.key,
     this.lessonId = 'lesson_something_we_can_trust',
     this.title = 'Lesson 1: Something We Can Trust',
+    this.lessonData,
   });
 
   @override
@@ -30,6 +35,15 @@ class _InteractiveLessonReaderScreenState
   final Map<String, TextEditingController> _controllers = {};
   final Map<String, bool> _prophecyChecked = {};
   final Map<int, bool> _messianicStudied = {};
+  List<ExtractedLessonSection> _dynamicSections = [];
+
+  bool get _isLesson1 =>
+      widget.lessonId == 'lesson_something_we_can_trust' ||
+      widget.title.toLowerCase().contains('something we can trust');
+
+  String get _storagePrefix => _isLesson1
+      ? 'interactive_lesson_1_'
+      : 'interactive_lesson_${widget.lessonId}_';
 
   bool? _haveBible;
   bool? _studyBible;
@@ -121,12 +135,37 @@ class _InteractiveLessonReaderScreenState
     super.initState();
     _filteredMessianicProphecies = List.from(_allMessianicProphecies);
 
-    for (int i = 1; i <= 7; i++) {
-      _controllers['q$i'] = TextEditingController();
+    if (_isLesson1) {
+      for (int i = 1; i <= 7; i++) {
+        _controllers['q$i'] = TextEditingController();
+      }
+      _controllers['q8_a'] = TextEditingController();
+      _controllers['q8_b'] = TextEditingController();
+      _controllers['q8_c'] = TextEditingController();
+    } else {
+      final rawContent = widget.lessonData?['content']?.toString() ??
+          InteractiveLessonsService.instance.lessons
+              .where((l) => l.id == widget.lessonId)
+              .map((l) => l.content)
+              .firstOrNull ??
+          widget.lessonData?['description']?.toString() ??
+          '';
+      final seed = widget.title.codeUnits
+          .fold<int>(0, (prev, elem) => prev + elem);
+      _dynamicSections = PdfExtractorService.parseInteractiveSections(
+        rawContent,
+        fallbackTitle: widget.title,
+        basePaletteIndex: seed,
+      );
+      for (final sec in _dynamicSections) {
+        if (sec.hasInputTarget) {
+          _controllers['q${sec.number}'] = TextEditingController();
+        }
+      }
+      if (_controllers.isEmpty) {
+        _controllers['q1'] = TextEditingController();
+      }
     }
-    _controllers['q8_a'] = TextEditingController();
-    _controllers['q8_b'] = TextEditingController();
-    _controllers['q8_c'] = TextEditingController();
 
     _loadSavedResponses();
     _loadDisciples();
@@ -146,7 +185,7 @@ class _InteractiveLessonReaderScreenState
 
   Future<void> _loadSavedResponses() async {
     final prefs = await SharedPreferences.getInstance();
-    final prefix = 'interactive_lesson_1_';
+    final prefix = _storagePrefix;
 
     setState(() {
       for (final key in _controllers.keys) {
@@ -293,7 +332,7 @@ class _InteractiveLessonReaderScreenState
     setState(() => _isSaving = true);
 
     final prefs = await SharedPreferences.getInstance();
-    final prefix = 'interactive_lesson_1_';
+    final prefix = _storagePrefix;
 
     for (final entry in _controllers.entries) {
       await prefs.setString('$prefix${entry.key}', entry.value.text);
@@ -519,7 +558,7 @@ class _InteractiveLessonReaderScreenState
 
     if (confirmed == true && mounted) {
       final prefs = await SharedPreferences.getInstance();
-      const prefix = 'interactive_lesson_1_';
+      final prefix = _storagePrefix;
       final keys = prefs.getKeys().where((k) => k.startsWith(prefix)).toList();
       for (final k in keys) {
         await prefs.remove(k);
@@ -602,7 +641,7 @@ class _InteractiveLessonReaderScreenState
 
     return Scaffold(
       appBar: CustomAppBar(
-        title: 'What The Bible Says: Lesson 1',
+        title: _isLesson1 ? 'What The Bible Says: Lesson 1' : widget.title,
         showBackButton: true,
       ),
       body: Column(
@@ -689,22 +728,26 @@ class _InteractiveLessonReaderScreenState
               children: [
                 _buildHeroBanner(isDark),
                 const SizedBox(height: 16),
-                _buildSection1(isDark),
-                const SizedBox(height: 16),
-                _buildSection2(isDark),
-                const SizedBox(height: 16),
-                _buildSection3(isDark),
-                const SizedBox(height: 16),
-                _buildSection4(isDark),
-                const SizedBox(height: 16),
-                _buildSection5(isDark),
-                const SizedBox(height: 16),
-                _buildSection6(isDark),
-                const SizedBox(height: 16),
-                _buildSection7(isDark),
-                const SizedBox(height: 16),
-                _buildSection8(isDark),
-                const SizedBox(height: 16),
+                if (_isLesson1) ...[
+                  _buildSection1(isDark),
+                  const SizedBox(height: 16),
+                  _buildSection2(isDark),
+                  const SizedBox(height: 16),
+                  _buildSection3(isDark),
+                  const SizedBox(height: 16),
+                  _buildSection4(isDark),
+                  const SizedBox(height: 16),
+                  _buildSection5(isDark),
+                  const SizedBox(height: 16),
+                  _buildSection6(isDark),
+                  const SizedBox(height: 16),
+                  _buildSection7(isDark),
+                  const SizedBox(height: 16),
+                  _buildSection8(isDark),
+                  const SizedBox(height: 16),
+                ] else ...[
+                  ..._buildDynamicExtractedSections(isDark),
+                ],
                 _buildSection9Commitment(isDark),
                 const SizedBox(height: 32),
               ],
@@ -810,12 +853,39 @@ class _InteractiveLessonReaderScreenState
   }
 
   Widget _buildHeroBanner(bool isDark) {
+    final heroPalette = _isLesson1
+        ? LessonColorPalette.brandPalettes.first
+        : LessonColorPalette.byId(
+            _dynamicSections.firstOrNull?.paletteId,
+            fallbackIndex: widget.title.hashCode,
+          );
+    final coverUrl = (widget.lessonData?['coverImage'] ??
+                widget.lessonData?['cover_image'] ??
+                widget.lessonData?['imageUrl'])
+            ?.toString() ??
+        (_isLesson1 ? 'assets/images/series/what_the_bible_says_lesson_1.jpg' : '');
+    final categoryLabel =
+        (widget.lessonData?['category']?.toString() ?? 'ALIVE NIGERIA SERIES')
+            .toUpperCase();
+    final heroVerse = _isLesson1
+        ? 'Psalms 119:105'
+        : (_dynamicSections
+                .expand((s) => s.scriptureReferences)
+                .firstOrNull ??
+            '2 Timothy 3:16');
+    final introDescription = _isLesson1
+        ? 'In these morally challenged times when billions are embezzled through corporate fraud; when trusted spiritual leaders prove false; when lying in politics seems to be the norm... is there anything left you can trust?\n\nYes! You can fully trust the Bible! Just look at the evidence:'
+        : (widget.lessonData?['description']?.toString().trim().isNotEmpty == true
+            ? widget.lessonData!['description'].toString()
+            : 'Explore God\'s Word interactively through scripture references, personal reflection prompts, and practical discipleship commitment.');
+
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: isDark
-              ? [const Color(0xFF0F3D24), const Color(0xFF072415)]
-              : [const Color(0xFF14532D), const Color(0xFF064E3B)],
+          colors: [
+            Color(heroPalette.darkGradientStartHex),
+            Color(heroPalette.darkGradientEndHex),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -842,10 +912,10 @@ class _InteractiveLessonReaderScreenState
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: Colors.white24),
                       ),
-                      child: const Text(
-                        'ALIVE NIGERIA SERIES',
+                      child: Text(
+                        categoryLabel,
                         style: TextStyle(
-                          color: Colors.amberAccent,
+                          color: Color(heroPalette.accentHex),
                           fontWeight: FontWeight.bold,
                           fontSize: 10,
                           letterSpacing: 1,
@@ -853,34 +923,53 @@ class _InteractiveLessonReaderScreenState
                       ),
                     ),
                     const SizedBox(height: 10),
-                    const Text(
-                      'Something We Can Trust',
-                      style: TextStyle(
+                    Text(
+                      _isLesson1 ? 'Something We Can Trust' : widget.title,
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    _buildScriptureChip('Psalms 119:105'),
+                    _buildScriptureChip(
+                      heroVerse,
+                      accentColor: Color(heroPalette.accentHex),
+                    ),
                   ],
                 ),
               ),
               const SizedBox(width: 12),
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
-                child: Image.asset(
-                  'assets/images/series/what_the_bible_says_lesson_1.jpg',
-                  width: 90,
-                  height: 115,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    width: 90,
-                    height: 115,
-                    color: Colors.white12,
-                    child: const Icon(Icons.book, color: Colors.white, size: 40),
-                  ),
-                ),
+                child: coverUrl.isNotEmpty
+                    ? (coverUrl.startsWith('assets/')
+                        ? Image.asset(
+                            coverUrl,
+                            width: 90,
+                            height: 115,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              width: 90,
+                              height: 115,
+                              color: Colors.white12,
+                              child: const Icon(Icons.book, color: Colors.white, size: 40),
+                            ),
+                          )
+                        : SizedBox(
+                            width: 90,
+                            height: 115,
+                            child: CustomImage(
+                              imageUrl: coverUrl,
+                              fit: BoxFit.cover,
+                            ),
+                          ))
+                    : Container(
+                        width: 90,
+                        height: 115,
+                        color: Colors.white12,
+                        child: const Icon(Icons.menu_book_rounded, color: Colors.white, size: 40),
+                      ),
               ),
             ],
           ),
@@ -888,15 +977,15 @@ class _InteractiveLessonReaderScreenState
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: isDark ? Colors.white10 : const Color(0xFFFFFBEB),
+              color: isDark ? Colors.white10 : Color(heroPalette.lightTintHex),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              'In these morally challenged times when billions are embezzled through corporate fraud; when trusted spiritual leaders prove false; when lying in politics seems to be the norm... is there anything left you can trust?\n\nYes! You can fully trust the Bible! Just look at the evidence:',
+              introDescription,
               style: TextStyle(
                 fontSize: 13,
                 height: 1.45,
-                color: isDark ? Colors.white : const Color(0xFF451A03),
+                color: isDark ? Colors.white : const Color(0xFF1E293B),
               ),
             ),
           ),
@@ -905,23 +994,117 @@ class _InteractiveLessonReaderScreenState
     );
   }
 
+  List<Widget> _buildDynamicExtractedSections(bool isDark) {
+    if (_dynamicSections.isEmpty) {
+      return [
+        _buildSectionCard(
+          number: 1,
+          title: widget.title,
+          isDark: isDark,
+          children: [
+            Text(
+              widget.lessonData?['description']?.toString() ??
+                  'Study content extracted from tract.',
+              style: const TextStyle(fontSize: 14, height: 1.5),
+            ),
+            _buildReflectionInput(
+              label: 'Your Study Notes & Reflection',
+              hint: 'Write your insights and personal response...',
+              controller: _controllers.putIfAbsent('q1', () => TextEditingController()),
+              isDark: isDark,
+              sectionNumber: 1,
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+      ];
+    }
+
+    final widgets = <Widget>[];
+    for (final sec in _dynamicSections) {
+      final palette = LessonColorPalette.byId(
+        sec.paletteId,
+        fallbackIndex: sec.number - 1,
+      );
+      final controller = _controllers.putIfAbsent(
+        'q${sec.number}',
+        () => TextEditingController(),
+      );
+
+      widgets.add(
+        _buildSectionCard(
+          number: sec.number,
+          title: sec.title,
+          isDark: isDark,
+          palette: palette,
+          children: [
+            for (final q in sec.verseQuotes)
+              _buildVerseQuoteCard(
+                quote: q['quote'] ?? '',
+                reference: q['reference'] ?? '',
+                isDark: isDark,
+                palette: palette,
+              ),
+            if (sec.bodyText.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                sec.bodyText,
+                style: const TextStyle(fontSize: 13.5, height: 1.5),
+              ),
+            ],
+            if (sec.scriptureReferences.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: sec.scriptureReferences
+                    .map((ref) => _buildScriptureChip(
+                          ref,
+                          accentColor: Color(palette.primaryHex),
+                        ))
+                    .toList(),
+              ),
+            ],
+            if (sec.hasInputTarget)
+              _buildReflectionInput(
+                label: sec.reflectionPrompt,
+                hint: 'Write your answer or personal reflection on Section ${sec.number}...',
+                controller: controller,
+                isDark: isDark,
+                sectionNumber: sec.number,
+                palette: palette,
+              ),
+          ],
+        ),
+      );
+      widgets.add(const SizedBox(height: 16));
+    }
+    return widgets;
+  }
+
   Widget _buildSectionCard({
     required int number,
     required String title,
     required List<Widget> children,
     required bool isDark,
+    LessonColorPalette? palette,
   }) {
+    final effectivePalette =
+        palette ?? LessonColorPalette.byId(null, fallbackIndex: number - 1);
+    final primaryColor = Color(effectivePalette.primaryHex);
+
     return Container(
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isDark ? Colors.white12 : const Color(0xFFE2E8F0),
+          color: primaryColor.withValues(alpha: isDark ? 0.35 : 0.22),
+          width: 1.2,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 6,
+            color: primaryColor.withValues(alpha: 0.05),
+            blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
@@ -935,7 +1118,7 @@ class _InteractiveLessonReaderScreenState
             children: [
               CircleAvatar(
                 radius: 14,
-                backgroundColor: const Color(0xFF166534),
+                backgroundColor: primaryColor,
                 child: Text(
                   '$number',
                   style: const TextStyle(
@@ -947,13 +1130,18 @@ class _InteractiveLessonReaderScreenState
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: isDark ? Colors.white : const Color(0xFF0F172A),
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -969,14 +1157,21 @@ class _InteractiveLessonReaderScreenState
     required String quote,
     required String reference,
     required bool isDark,
+    LessonColorPalette? palette,
   }) {
+    final effectivePalette =
+        palette ?? LessonColorPalette.byId(null, fallbackIndex: reference.hashCode);
+    final primaryColor = Color(effectivePalette.primaryHex);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF14241B) : const Color(0xFFF0FDF4),
+        color: isDark
+            ? Color(effectivePalette.darkTintHex)
+            : Color(effectivePalette.lightTintHex),
         borderRadius: BorderRadius.circular(8),
-        border: const Border(
-          left: BorderSide(color: Color(0xFF166534), width: 4),
+        border: Border(
+          left: BorderSide(color: primaryColor, width: 4),
         ),
       ),
       padding: const EdgeInsets.all(12),
@@ -995,33 +1190,37 @@ class _InteractiveLessonReaderScreenState
           const SizedBox(height: 6),
           Align(
             alignment: Alignment.centerRight,
-            child: _buildScriptureChip(reference),
+            child: _buildScriptureChip(
+              reference,
+              accentColor: isDark ? Color(effectivePalette.accentHex) : primaryColor,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildScriptureChip(String reference) {
+  Widget _buildScriptureChip(String reference, {Color? accentColor}) {
+    final chipColor = accentColor ?? Colors.green;
     return InkWell(
       onTap: () => _openScripture(reference),
       borderRadius: BorderRadius.circular(6),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-          color: Colors.green.withValues(alpha: 0.1),
+          color: chipColor.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+          border: Border.all(color: chipColor.withValues(alpha: 0.35)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.open_in_new, color: Colors.green, size: 12),
+            Icon(Icons.open_in_new, color: chipColor, size: 12),
             const SizedBox(width: 4),
             Text(
               reference,
-              style: const TextStyle(
-                color: Colors.green,
+              style: TextStyle(
+                color: chipColor,
                 fontWeight: FontWeight.bold,
                 fontSize: 11,
               ),
@@ -1038,7 +1237,13 @@ class _InteractiveLessonReaderScreenState
     required TextEditingController controller,
     required bool isDark,
     int maxLines = 2,
+    int sectionNumber = 1,
+    LessonColorPalette? palette,
   }) {
+    final effectivePalette =
+        palette ?? LessonColorPalette.byId(null, fallbackIndex: sectionNumber - 1);
+    final focusColor = Color(effectivePalette.primaryHex);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1049,7 +1254,7 @@ class _InteractiveLessonReaderScreenState
             fontSize: 11,
             fontWeight: FontWeight.bold,
             letterSpacing: 0.5,
-            color: isDark ? Colors.white60 : Colors.grey[700],
+            color: isDark ? Colors.white60 : focusColor,
           ),
         ),
         const SizedBox(height: 6),
@@ -1073,7 +1278,7 @@ class _InteractiveLessonReaderScreenState
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Colors.green, width: 1.5),
+              borderSide: BorderSide(color: focusColor, width: 1.5),
             ),
             contentPadding: const EdgeInsets.all(12),
           ),

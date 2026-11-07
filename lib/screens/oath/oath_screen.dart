@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../constants/app_constants.dart';
+import '../../services/onboarding_service.dart';
 import '../../widgets/custom_app_bar.dart';
 
 /// Oath page shown after onboarding's "Get Started".
@@ -115,7 +116,12 @@ class OathScreen extends ConsumerWidget {
               ),
               const Spacer(),
               ElevatedButton(
-                onPressed: () => context.go(AppConstants.homeRoute),
+                onPressed: () async {
+                  await OnboardingService.complete();
+                  if (context.mounted) {
+                    context.go(AppConstants.authRoute);
+                  }
+                },
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size.fromHeight(52),
                   shape: RoundedRectangleBorder(

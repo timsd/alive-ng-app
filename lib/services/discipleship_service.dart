@@ -915,6 +915,7 @@ class DiscipleshipService {
   }
 
   Future<OfficerOfficeAssignment> assignOfficerToOffice({
+    String? existingId,
     required String officerId,
     required String officerName,
     required String officerEmail,
@@ -922,10 +923,10 @@ class DiscipleshipService {
     required String officeType,
   }) async {
     final list = await getOfficerAssignments();
-    final updatedList =
-        list.where((a) => a.officeTitle != officeTitle).toList();
     final newAssignment = OfficerOfficeAssignment(
-      id: AppwriteIdUtils.uniqueId(),
+      id: (existingId != null && existingId.trim().isNotEmpty)
+          ? existingId.trim()
+          : AppwriteIdUtils.uniqueId(),
       officerId: officerId,
       officerName: officerName,
       officerEmail: officerEmail,
@@ -933,7 +934,29 @@ class DiscipleshipService {
       officeType: officeType,
       assignedAt: DateTime.now().toUtc(),
     );
-    updatedList.add(newAssignment);
+
+    final updatedList = <OfficerOfficeAssignment>[];
+    var replaced = false;
+    for (final a in list) {
+      final matchesId = existingId != null &&
+          existingId.trim().isNotEmpty &&
+          a.id == existingId.trim();
+      final matchesTitle = existingId == null &&
+          a.officeTitle.trim().toLowerCase() ==
+              officeTitle.trim().toLowerCase();
+      if (matchesId || matchesTitle) {
+        if (!replaced) {
+          updatedList.add(newAssignment);
+          replaced = true;
+        }
+      } else {
+        updatedList.add(a);
+      }
+    }
+    if (!replaced) {
+      updatedList.add(newAssignment);
+    }
+
     await _saveOfficerAssignments(updatedList);
     return newAssignment;
   }

@@ -1140,13 +1140,21 @@ class _TractFormDialogState extends State<_TractFormDialog> {
             );
             extractedBody = article.fullFormattedBody.trim();
             if (extractedBody.isNotEmpty) {
+              final extractedQuestions = article.interactiveSections
+                  .map((s) => {
+                        'id': 'q_${s.number}',
+                        'question': s.title,
+                        'scriptureReferences': s.scriptureReferences,
+                        'paletteId': s.paletteId,
+                      })
+                  .toList();
               await contentService.upsertDocument(
                 'tract_contents',
                 tract.id,
                 {
                   'tract_id': tract.id,
                   'content': extractedBody,
-                  'questions': jsonEncode(const []),
+                  'questions': jsonEncode(extractedQuestions),
                   'metadata': jsonEncode({
                     'source_file': _selectedPdfName,
                     'source_pdf_url': tract.downloadUrl,
@@ -1154,6 +1162,10 @@ class _TractFormDialogState extends State<_TractFormDialog> {
                     'pages': article.sections,
                     'headings': article.headings,
                     'word_count': article.totalWordCount,
+                    'primary_palette_id': article.primaryPaletteId,
+                    'interactive_sections': article.interactiveSections
+                        .map((s) => s.toJson())
+                        .toList(),
                   }),
                 },
               );
@@ -1200,6 +1212,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
               duration: '${((tract.pages ?? 6) * 3).clamp(15, 45)} min',
               content: lessonContent,
               tractId: tract.id,
+              coverImage: tract.coverImage,
               isActive: true,
             );
             await InteractiveLessonsService.instance.saveLesson(interactiveLesson);

@@ -21,9 +21,9 @@ class OnboardingService {
   }
 
   static Future<void> complete() async {
+    _completed = true;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(AppConstants.onboardingKey, true);
-    _completed = true;
   }
 }
 

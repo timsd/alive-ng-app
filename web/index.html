@@ -49,7 +49,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="preload" as="script" href="flutter_bootstrap.js">
   <!-- Cache-busting: forces browsers to fetch fresh assets after each deploy -->
-  <meta name="version" content="2.0.5+12">
+  <meta name="version" content="2.0.5+13">
   <script>
     // Clean stale flutter service workers while protecting sqflite SQLite worker for offline Bible
     (function () {
@@ -378,6 +378,15 @@
       height: 100%;
     }
 
+    .feature-card .btn-cta {
+      padding: 12px 18px;
+      font-size: 14px;
+      font-weight: 700;
+      border-radius: 10px;
+      min-height: 44px;
+      cursor: pointer;
+    }
+
     .legal-links {
       margin-top: 24px;
       font-size: 14px;
@@ -580,13 +589,13 @@
         gap: 6px;
       }
 
-      .btn-cta {
+      .header-actions .btn-cta {
         padding: 6px 8px;
         font-weight: 600;
         font-size: 12px;
       }
 
-      .btn-cta svg {
+      .header-actions .btn-cta svg {
         width: 14px;
         height: 14px;
       }
@@ -690,12 +699,12 @@
         gap: 4px;
       }
 
-      .btn-cta {
+      .header-actions .btn-cta {
         padding: 5px 7px;
         font-size: 11px;
       }
 
-      .btn-cta svg {
+      .header-actions .btn-cta svg {
         width: 12px;
         height: 12px;
       }
@@ -706,7 +715,7 @@
         gap: 3px;
       }
 
-      .btn-cta {
+      .header-actions .btn-cta {
         padding: 4px 6px;
         font-size: 10px;
       }
