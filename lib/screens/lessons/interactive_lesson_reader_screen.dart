@@ -64,6 +64,30 @@ class _InteractiveLessonReaderScreenState
   bool _showSavedNotification = false;
   bool _isSaving = false;
 
+  final Map<String, String> _lessonVerseQuotes = {
+    '2 timothy 3:16':
+        'All scripture is given by inspiration of God, and is profitable for doctrine, for reproof, for correction, for instruction in righteousness:',
+    '2 peter 1:21':
+        'Prophecy came not in old time by the will of man: but holy men of God spake as they were moved by the Holy Ghost.',
+    'john 10:35': 'The scripture cannot be broken.',
+    'isaiah 42:8, 9':
+        'I am the Lord... new things do I declare: before they spring forth I tell you of them.',
+    'isaiah 46:9, 10':
+        'Declaring the end from the beginning, and from ancient times the things that are not yet done.',
+    'psalms 119:160': 'Thy word is true from the beginning.',
+    '2 corinthians 5:17':
+        'Therefore if any man be in Christ, he is a new creature: old things are passed away; behold, all things are become new.',
+    'luke 24:27':
+        'And beginning at Moses and all the prophets, He expounded unto them in all the Scriptures the things concerning Himself.',
+    'psalms 119:100':
+        'I understand more than the ancients, because I keep thy precepts.',
+    'psalms 119:105':
+        'Thy word is a lamp unto my feet, and a light unto my path.',
+    'john 17:17': 'Sanctify them through thy truth: thy word is truth.',
+    'isaiah 8:20':
+        'To the law and to the testimony: if they speak not according to this word, it is because there is no light in them.',
+  };
+
   // Messianic prophecies table
   final List<Map<String, String>> _allMessianicProphecies = [
     {
@@ -160,6 +184,13 @@ class _InteractiveLessonReaderScreenState
       for (final sec in _dynamicSections) {
         if (sec.hasInputTarget) {
           _controllers['q${sec.number}'] = TextEditingController();
+        }
+        for (final q in sec.verseQuotes) {
+          final r = q['reference']?.trim();
+          final t = q['quote']?.trim();
+          if (r != null && r.isNotEmpty && t != null && t.isNotEmpty) {
+            _lessonVerseQuotes[r.toLowerCase()] = t;
+          }
         }
       }
       if (_controllers.isEmpty) {
@@ -634,11 +665,18 @@ class _InteractiveLessonReaderScreenState
     });
   }
 
-  void _openScripture(String reference) {
+  String? _lookupQuote(String reference) {
+    final key = reference.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+    return _lessonVerseQuotes[key];
+  }
+
+  void _openScripture(String reference, {String? initialQuote}) {
+    final quote = initialQuote ?? _lookupQuote(reference);
     BibleReferenceModalSheet.show(
       context,
       reference: reference,
-      initialVersion: 'NKJV',
+      initialQuote: quote,
+      initialVersion: 'KJV',
     );
   }
 
@@ -1200,6 +1238,7 @@ class _InteractiveLessonReaderScreenState
             alignment: Alignment.centerRight,
             child: _buildScriptureChip(
               reference,
+              quote: quote,
               accentColor: isDark ? Color(effectivePalette.accentHex) : primaryColor,
             ),
           ),
@@ -1208,10 +1247,10 @@ class _InteractiveLessonReaderScreenState
     );
   }
 
-  Widget _buildScriptureChip(String reference, {Color? accentColor}) {
+  Widget _buildScriptureChip(String reference, {Color? accentColor, String? quote}) {
     final chipColor = accentColor ?? Colors.green;
     return InkWell(
-      onTap: () => _openScripture(reference),
+      onTap: () => _openScripture(reference, initialQuote: quote),
       borderRadius: BorderRadius.circular(6),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
