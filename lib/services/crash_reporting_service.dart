@@ -24,6 +24,22 @@ class CrashReportingService {
       options.attachScreenshot = false;
       options.diagnosticLevel =
           kReleaseMode ? SentryLevel.warning : SentryLevel.info;
+
+      // Filter out pure network dropouts / offline connectivity disconnects
+      // to avoid retry loops when the device's internet flickers or disconnects.
+      options.beforeSend = (event, hint) {
+        final throwableStr = event.throwable?.toString().toLowerCase() ?? '';
+        final messageStr = event.message?.formatted.toLowerCase() ?? '';
+        if (throwableStr.contains('err_internet_disconnected') ||
+            throwableStr.contains('socketexception') ||
+            throwableStr.contains('clientexception') ||
+            throwableStr.contains('failed host lookup') ||
+            throwableStr.contains('connection refused') ||
+            messageStr.contains('err_internet_disconnected')) {
+          return null; // Do not report offline connectivity losses
+        }
+        return event;
+      };
     });
 
     _initialized = true;

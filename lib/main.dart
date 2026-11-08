@@ -530,20 +530,6 @@ class MainNavigationScreen extends ConsumerWidget {
                     'route': AppConstants.discipleshipTrackerRoute,
                   },
                   {
-                    'icon': Icons.history_edu_rounded,
-                    'label': 'leadership_archive',
-                    'customLabel': 'Leadership',
-                    'route': AppConstants.leadershipArchiveRoute,
-                    'allowedRoles': ['admin', 'super_admin', 'bod', 'trustee', 'director']
-                  },
-                  {
-                    'icon': Icons.folder_shared_rounded,
-                    'label': 'meeting_files',
-                    'customLabel': 'Meeting Files',
-                    'route': AppConstants.meetingFileSharingRoute,
-                    'allowedRoles': ['admin', 'super_admin', 'bod', 'trustee', 'director']
-                  },
-                  {
                     'icon': Icons.record_voice_over_rounded,
                     'label': 'scribe',
                     'customLabel': 'ALIVE Scribe',
@@ -566,27 +552,6 @@ class MainNavigationScreen extends ConsumerWidget {
                   'label': 'admin',
                   'route': AppConstants.adminRoute,
                   'adminOnly': true,
-                },
-                {
-                  'icon': Icons.how_to_reg_rounded,
-                  'label': 'user_approval',
-                  'customLabel': 'Approvals',
-                  'route': AppConstants.adminApprovalRoute,
-                  'adminOnly': true,
-                },
-                {
-                  'icon': Icons.manage_accounts_rounded,
-                  'label': 'role_management',
-                  'customLabel': 'Roles',
-                  'route': AppConstants.roleManagementRoute,
-                  'adminOnly': true,
-                },
-                {
-                  'icon': Icons.receipt_long_rounded,
-                  'label': 'donations_report',
-                  'customLabel': 'Donations',
-                  'route': AppConstants.adminDonationsReportRoute,
-                  'allowedRoles': ['admin', 'super_admin', 'bod', 'trustee', 'treasurer'],
                 },
                 {
                   'icon': Icons.auto_stories_rounded,

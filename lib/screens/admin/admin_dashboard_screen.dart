@@ -748,8 +748,10 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
         _MgmtTile('Report Officers & Routing', 'Map Coordinators and Directors to receive dispatched reports', Icons.mark_email_read_outlined, () => _showOfficerRoutingDialog()),
         _MgmtTile('Disciple Deletion Requests', 'Review and approve or reject deletion requests', Icons.person_remove_outlined, () => _showDeletionRequestsDialog()),
       ]),
-      _MgmtSection('Storage Management', Icons.cloud_upload_outlined, [
+      _MgmtSection('Storage & Meeting Documents', Icons.cloud_upload_outlined, [
         _MgmtTile('File Storage', 'Manage buckets, audio, PDFs and profile pictures', Icons.folder_outlined, () => _navigateToStorageAdmin()),
+        _MgmtTile('Meeting File Sharing', 'Manage and share leadership files and meeting documents', Icons.folder_shared_outlined, () => context.push(AppConstants.meetingFileSharingRoute)),
+        _MgmtTile('ALIVE Scribe (Meeting Minutes)', 'View on-device transcripts, resolutions, and action items', Icons.record_voice_over_outlined, () => context.push(AppConstants.scribeRoute)),
       ]),
       _MgmtSection('Communication & Data Export', Icons.import_export_rounded, [
         _MgmtTile('Chat & Messages Export', 'Export chat channels, messages, and communication backups', Icons.chat_outlined, () => _showChatExportDialog()),
