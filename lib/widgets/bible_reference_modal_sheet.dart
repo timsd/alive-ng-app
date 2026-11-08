@@ -107,26 +107,50 @@ class _BibleReferenceModalSheetState extends State<BibleReferenceModalSheet> {
       final rawBook = parsed['book'] as String;
       final canonBook = BibleData.canonicalBookName(rawBook) ?? rawBook;
       final chapter = parsed['chapter'] as int;
-      final startVerse = (parsed['verse'] as int?) ?? 1;
 
-      // Extract target verses (ranges or comma-separated lists)
+      // Extract target verses from parsed targetVerses or fallback to range/comma extraction
       final Set<int> targetVerses = {};
-      final rangeMatch = RegExp(r'[-–](\d+)').firstMatch(widget.reference);
-      if (rangeMatch != null) {
-        final endVerse = int.tryParse(rangeMatch.group(1)!) ?? startVerse;
-        for (int i = startVerse; i <= endVerse; i++) {
-          targetVerses.add(i);
+      final rawTargetVerses = parsed['targetVerses'];
+      if (rawTargetVerses is List && rawTargetVerses.isNotEmpty) {
+        for (final v in rawTargetVerses) {
+          if (v is int) targetVerses.add(v);
         }
-      } else {
-        final commaMatches = RegExp(r'[:,]\s*(\d+)').allMatches(widget.reference);
-        if (commaMatches.length > 1) {
-          for (final m in commaMatches) {
-            final v = int.tryParse(m.group(1)!);
-            if (v != null) targetVerses.add(v);
+      }
+
+      if (targetVerses.isEmpty) {
+        final startVerse = (parsed['verse'] as int?) ?? 1;
+        final rangeMatch = RegExp(r'[-–](\d+)').firstMatch(widget.reference);
+        if (rangeMatch != null) {
+          final endVerse = int.tryParse(rangeMatch.group(1)!) ?? startVerse;
+          for (int i = startVerse; i <= endVerse; i++) {
+            targetVerses.add(i);
           }
         } else {
-          targetVerses.add(startVerse);
+          final commaMatches = RegExp(r'[:,]\s*(\d+)').allMatches(widget.reference);
+          if (commaMatches.length > 1) {
+            for (final m in commaMatches) {
+              final v = int.tryParse(m.group(1)!);
+              if (v != null) targetVerses.add(v);
+            }
+          } else {
+            targetVerses.add(startVerse);
+          }
         }
+      }
+
+      // Automatically determine correct language code and name for selected Bible translation
+      String langCode = 'en';
+      String langName = 'English';
+      final vUpper = _selectedVersion.toUpperCase().trim();
+      if (vUpper == 'BM') {
+        langCode = 'yo';
+        langName = 'Yoruba';
+      } else if (vUpper == 'IGBOB') {
+        langCode = 'ig';
+        langName = 'Igbo';
+      } else if (vUpper == 'HAU') {
+        langCode = 'ha';
+        langName = 'Hausa';
       }
 
       // Query offline Bible service (checks in-memory cache, local prebuilt SQLite, and asset bundles)
@@ -134,15 +158,15 @@ class _BibleReferenceModalSheetState extends State<BibleReferenceModalSheet> {
         book: canonBook,
         chapter: chapter,
         version: _selectedVersion,
-        language: 'en',
+        language: langCode,
       );
 
-      // Direct fallback to database helper
+      // Direct fallback to database helper with proper localized book lookup
       chapterData ??= await _dbHelper.getChapter(
         canonBook,
         chapter,
         _selectedVersion,
-        'English',
+        langName,
       );
 
       // If version is missing this chapter, fallback seamlessly to KJV
@@ -326,27 +350,41 @@ class _BibleReferenceModalSheetState extends State<BibleReferenceModalSheet> {
                         fontSize: 15,
                         height: 1.5,
                       ),
-                      children: _verses.map((v) {
-                        return TextSpan(
-                          children: [
+                      children: [
+                        for (int i = 0; i < _verses.length; i++) ...[
+                          if (i > 0 && _verses[i].number > _verses[i - 1].number + 1)
                             WidgetSpan(
-                              alignment: PlaceholderAlignment.top,
+                              alignment: PlaceholderAlignment.middle,
                               child: Padding(
-                                padding: const EdgeInsets.only(right: 4.0),
+                                padding: const EdgeInsets.symmetric(horizontal: 6.0),
                                 child: Text(
-                                  '${v.number}',
+                                  '• • •',
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
                                     color: accentGold,
+                                    letterSpacing: 2,
                                   ),
                                 ),
                               ),
                             ),
-                            TextSpan(text: '${v.text.trim()} '),
-                          ],
-                        );
-                      }).toList(),
+                          WidgetSpan(
+                            alignment: PlaceholderAlignment.top,
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 4.0),
+                              child: Text(
+                                '${_verses[i].number}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: accentGold,
+                                ),
+                              ),
+                            ),
+                          ),
+                          TextSpan(text: '${_verses[i].text.trim()} '),
+                        ],
+                      ],
                     ),
                   ),
               ],

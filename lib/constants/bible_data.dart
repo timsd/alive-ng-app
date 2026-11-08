@@ -538,29 +538,31 @@ class BibleData {
   }
 
   /// Parses reference strings such as:
-  /// "John 3:16", "John 3 16", "1 Corinthians 13:4-7", "1Cor 13:4", "Psalm 23", "Genesis 1", "Revelation"
+  /// "John 3:16", "John 3 16", "1 Corinthians 13:4-7", "1Cor 13:4", "Psalm 23", "Genesis 1", "Revelation",
+  /// and discontinuous verse references such as: "Matthew 4:4, 7, 10", "John 13:18, 19, 26"
   static Map<String, dynamic> parseReference(String reference) {
     final trimmed = reference.trim();
     if (trimmed.isEmpty) {
       return {
         'book': '',
         'chapter': 1,
+        'verse': 1,
         'startVerse': 1,
         'endVerse': 1,
+        'targetVerses': <int>[],
         'hasChapter': false,
         'hasVerse': false,
         'isValid': false,
       };
     }
 
-    // Pattern matching:
-    // Group 1: Book name with optional leading digit (e.g. "1 Corinthians", "Song of Solomon", "John", "1Cor", "Psalm")
+    // Pattern matching supporting continuous ranges AND discontinuous verse lists
+    // Group 1: Book name with optional leading digit (e.g. "1 Corinthians", "Matthew", "John", "1Cor", "Psalm")
     // Group 2: Chapter number
-    // Group 3: Verse number (after colon or dot)
-    // Group 4: End verse (after dash)
-    // Group 5: Verse number (space-separated after chapter e.g. "John 3 16")
+    // Group 3: Verse specification after colon or dot (e.g. "4, 7, 10", "4-7", "16", "1-4, 7, 10")
+    // Group 4: Verse number (space-separated after chapter e.g. "John 3 16")
     final refRegex = RegExp(
-      r"^((?:[1-3]\s*)?[a-zA-Z'’\-]+(?:\s+[a-zA-Z'’\-]+)*)\s*(\d+)?(?:\s*[:.]\s*(\d+)(?:\s*-\s*(\d+))?|\s+(\d+))?$",
+      r"^((?:[1-3]\s*)?[a-zA-Z'’\-]+(?:\s+[a-zA-Z'’\-]+)*)\s*(\d+)?(?:\s*[:.]\s*([0-9,\s\-–]+)|\s+(\d+))?$",
     );
     final match = refRegex.firstMatch(trimmed);
     if (match != null) {
@@ -569,10 +571,48 @@ class BibleData {
       if (canonicalBook != null) {
         final chapterStr = match.group(2);
         final chapter = chapterStr != null ? (int.tryParse(chapterStr) ?? 1) : 1;
-        final startVerseStr = match.group(3) ?? match.group(5);
-        final startVerse = startVerseStr != null ? (int.tryParse(startVerseStr) ?? 1) : 1;
-        final endVerseStr = match.group(4);
-        final endVerse = endVerseStr != null ? (int.tryParse(endVerseStr) ?? startVerse) : startVerse;
+        final verseSpec = match.group(3)?.trim();
+        final spaceVerseStr = match.group(4);
+
+        final targetVerses = <int>{};
+        int startVerse = 1;
+        int endVerse = 1;
+        bool hasVerse = false;
+
+        if (verseSpec != null && verseSpec.isNotEmpty) {
+          hasVerse = true;
+          // Parse segments separated by comma (e.g. "4", "7", "10" or "1-4", "7")
+          final segments = verseSpec.split(',');
+          for (final seg in segments) {
+            final trimmedSeg = seg.trim();
+            final range = RegExp(r'^(\d+)\s*[-–]\s*(\d+)$').firstMatch(trimmedSeg);
+            if (range != null) {
+              final rStart = int.tryParse(range.group(1)!) ?? 1;
+              final rEnd = int.tryParse(range.group(2)!) ?? rStart;
+              for (int i = rStart; i <= rEnd; i++) {
+                targetVerses.add(i);
+              }
+            } else {
+              final single = RegExp(r'\d+').firstMatch(trimmedSeg);
+              if (single != null) {
+                final v = int.tryParse(single.group(0)!);
+                if (v != null) targetVerses.add(v);
+              }
+            }
+          }
+          if (targetVerses.isNotEmpty) {
+            final sorted = targetVerses.toList()..sort();
+            startVerse = sorted.first;
+            endVerse = sorted.last;
+          }
+        } else if (spaceVerseStr != null) {
+          hasVerse = true;
+          startVerse = int.tryParse(spaceVerseStr) ?? 1;
+          endVerse = startVerse;
+          targetVerses.add(startVerse);
+        }
+
+        final sortedList = targetVerses.toList()..sort();
 
         return {
           'book': canonicalBook,
@@ -580,8 +620,9 @@ class BibleData {
           'verse': startVerse,
           'startVerse': startVerse,
           'endVerse': endVerse,
+          'targetVerses': sortedList,
           'hasChapter': chapterStr != null,
-          'hasVerse': startVerseStr != null,
+          'hasVerse': hasVerse,
           'isValid': isValidChapter(canonicalBook, chapter),
         };
       }
@@ -596,6 +637,7 @@ class BibleData {
         'verse': 1,
         'startVerse': 1,
         'endVerse': 1,
+        'targetVerses': <int>[],
         'hasChapter': false,
         'hasVerse': false,
         'isValid': true,
@@ -608,6 +650,7 @@ class BibleData {
       'verse': 1,
       'startVerse': 1,
       'endVerse': 1,
+      'targetVerses': <int>[],
       'hasChapter': false,
       'hasVerse': false,
       'isValid': false,

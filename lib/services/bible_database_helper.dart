@@ -806,6 +806,16 @@ class BibleDatabaseHelper {
       );
     }
 
+    // 5. Case-insensitive localized fallback (e.g. "matiu" -> "MATIU")
+    if (chapterMaps.isEmpty && localizedForVersion != canon) {
+      chapterMaps = await db.query(
+        _chaptersTable,
+        where: 'UPPER(book) = ? AND chapter = ? AND version = ?',
+        whereArgs: [localizedForVersion.toUpperCase(), chapter, version],
+        limit: 1,
+      );
+    }
+
     if (chapterMaps.isEmpty) return null;
 
     final chapterMap = chapterMaps.first;

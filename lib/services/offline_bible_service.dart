@@ -277,7 +277,15 @@ class OfflineBibleService {
   }) async {
     try {
       final versionCode = version ?? _defaultVersion;
-      final languageCode = language ?? _defaultLanguage;
+      var languageCode = language ?? _defaultLanguage;
+      final vUpper = versionCode.toUpperCase().trim();
+      if (vUpper == 'BM') {
+        languageCode = 'yo';
+      } else if (vUpper == 'IGBOB') {
+        languageCode = 'ig';
+      } else if (vUpper == 'HAU') {
+        languageCode = 'ha';
+      }
 
       // 0. Super-fast in-memory cache check (0 ms response)
       final memKey = '$languageCode/$versionCode/${book.toLowerCase().trim()}/$chapter';
@@ -753,7 +761,15 @@ class OfflineBibleService {
   }) async {
     try {
       final versionCode = version ?? _defaultVersion;
-      final languageCode = language ?? _defaultLanguage;
+      var languageCode = language ?? _defaultLanguage;
+      final vUpper = versionCode.toUpperCase().trim();
+      if (vUpper == 'BM') {
+        languageCode = 'yo';
+      } else if (vUpper == 'IGBOB') {
+        languageCode = 'ig';
+      } else if (vUpper == 'HAU') {
+        languageCode = 'ha';
+      }
 
       if (kIsWeb) return [];
 
