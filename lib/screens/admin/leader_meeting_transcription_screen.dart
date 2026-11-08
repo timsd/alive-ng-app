@@ -1,23 +1,23 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 import '../../models/meeting_models.dart';
 import '../../providers/meeting_provider.dart';
+import '../../services/alive_scribe_service.dart';
 import '../../services/appwrite_meeting_file_service.dart';
 import '../../services/auth_service.dart';
-import '../../services/on_device_meeting_synthesizer.dart';
 import '../../widgets/custom_app_bar.dart';
 import 'meeting_file_sharing_screen.dart';
 
+// Backwards compatibility classes for synthesizer and references
 enum TranscriptEntryType {
   general,
   decision,
@@ -75,34 +75,9 @@ class MeetingActionItem {
   });
 }
 
-class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
-  final TabBar tabBar;
-  final Color backgroundColor;
-
-  _SliverTabBarDelegate(this.tabBar, {required this.backgroundColor});
-
-  @override
-  double get minExtent => tabBar.preferredSize.height;
-
-  @override
-  double get maxExtent => tabBar.preferredSize.height;
-
-  @override
-  Widget build(
-      BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(
-      color: backgroundColor,
-      child: tabBar,
-    );
-  }
-
-  @override
-  bool shouldRebuild(_SliverTabBarDelegate oldDelegate) {
-    return tabBar != oldDelegate.tabBar ||
-        backgroundColor != oldDelegate.backgroundColor;
-  }
-}
-
+/// Zero-touch, high-accuracy meeting transcription & intelligence dashboard.
+/// Powered by distributed client-side speech recognition, LiveKit data channels,
+/// and two-pass deterministic extraction with traceable citations.
 class LeaderMeetingTranscriptionScreen extends ConsumerStatefulWidget {
   final String? initialMeetingTitle;
   final String? initialMeetingType;
@@ -125,35 +100,26 @@ class _LeaderMeetingTranscriptionScreenState
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final ScrollController _transcriptScrollController = ScrollController();
-  final TextEditingController _inputController = TextEditingController();
-  final TextEditingController _summaryController = TextEditingController();
   final TextEditingController _meetingTitleController = TextEditingController();
 
-  final stt.SpeechToText _speech = stt.SpeechToText();
-  bool _speechInitialized = false;
-  bool _isListening = false;
-  String _interimWords = '';
+  AliveScribeService? _scribeService;
+  StreamSubscription? _transcriptSub;
+  StreamSubscription? _decisionsSub;
+  StreamSubscription? _actionItemsSub;
+
+  List<ScribeTranscriptPacket> _transcript = [];
+  List<ScribeDecision> _decisions = [];
+  List<ScribeActionItem> _actionItems = [];
 
   late String _meetingType;
-  final DateTime _meetingDate = DateTime.now();
+  final DateTime _meetingStartTime = DateTime.now();
   String? _connectedRoomName;
 
-  final List<MeetingAttendee> _attendees = [];
-  late MeetingAttendee _selectedSpeaker;
-
-  final List<MeetingTranscriptEntry> _transcriptEntries = [];
-  final List<String> _decisions = [];
-  final List<MeetingActionItem> _actionItems = [];
-  final List<String> _discussionThemes = [];
-  bool _quorumAchieved = false;
-
-  final OnDeviceMeetingSynthesizer _synthesizer =
-      const OnDeviceMeetingSynthesizer();
-
   bool _isSavingToFileArea = false;
-  bool _isRearmingSpeech = false;
+  Timer? _durationTimer;
+  Duration _sessionDuration = Duration.zero;
 
-  static const List<Color> _colorPalette = [
+  static const List<Color> _avatarColors = [
     Color(0xFF1B365D), // Host Navy
     Color(0xFF00897B), // Teal
     Color(0xFFE65100), // Amber
@@ -170,482 +136,65 @@ class _LeaderMeetingTranscriptionScreenState
     _tabController = TabController(length: 2, vsync: this);
     _meetingTitleController.text = widget.initialMeetingTitle ??
         'Council Meeting - ${DateFormat('MMMM d, yyyy').format(DateTime.now())}';
-    _meetingType = widget.initialMeetingType ?? 'Board of Directors';
+    _meetingType = widget.initialMeetingType ?? 'Council';
     _connectedRoomName = widget.initialRoomName;
 
-    // Initialize with current authenticated leader as primary host
-    final user = AuthService.instance.currentUser;
-    final leaderName = user?.displayName ?? 'Host Leader';
-    _attendees.add(MeetingAttendee(
-      id: user?.uid ?? 'host',
-      name: leaderName,
-      role: 'Meeting Host',
-      color: _colorPalette.first,
-    ));
-    _selectedSpeaker = _attendees.first;
-
-    _summaryController.text = '';
-    _checkExistingDraft();
-  }
-
-  static const String _draftKey = 'alive_leader_scribe_backup_draft';
-  Map<String, dynamic>? _detectedDraft;
-  bool _dismissedDraftBanner = false;
-
-  Future<void> _checkExistingDraft() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final draftStr = prefs.getString(_draftKey);
-      if (draftStr != null && draftStr.isNotEmpty && mounted) {
-        final draft = jsonDecode(draftStr) as Map<String, dynamic>;
-        final count = (draft['entries'] as List?)?.length ?? 0;
-        if (count > 0 && _transcriptEntries.isEmpty) {
-          setState(() {
-            _detectedDraft = draft;
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint('Error checking scribe draft: $e');
-    }
-  }
-
-  Future<void> _backupDraftLocally({bool showNotification = true}) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final draft = {
-        'title': _meetingTitleController.text,
-        'summary': _summaryController.text,
-        'meetingType': _meetingType,
-        'date': _meetingDate.toIso8601String(),
-        'decisions': _decisions,
-        'actionItems': _actionItems
-            .map((a) => {
-                  'id': a.id,
-                  'task': a.task,
-                  'assignee': a.assignee,
-                  'dueDate': a.dueDate?.toIso8601String(),
-                  'isCompleted': a.isCompleted,
-                })
-            .toList(),
-        'entries': _transcriptEntries
-            .map((e) => {
-                  'id': e.id,
-                  'speakerName': e.speakerName,
-                  'speakerRole': e.speakerRole,
-                  'speakerColor': e.speakerColor.toARGB32(),
-                  'content': e.content,
-                  'timestamp': e.timestamp.toIso8601String(),
-                  'type': e.type.index,
-                })
-            .toList(),
-        'savedAt': DateTime.now().toIso8601String(),
-      };
-      await prefs.setString(_draftKey, jsonEncode(draft));
-      if (showNotification && mounted) {
-        _showFeedback('Notes backed up locally!');
-      }
-    } catch (e) {
-      if (showNotification && mounted) {
-        _showFeedback('Backup failed: $e');
-      }
-    }
-  }
-
-  void _restoreDraftFromBackup(Map<String, dynamic> draft) {
-    setState(() {
-      if (draft['title'] != null && draft['title'].toString().isNotEmpty) {
-        _meetingTitleController.text = draft['title'].toString();
-      }
-      if (draft['summary'] != null) {
-        _summaryController.text = draft['summary'].toString();
-      }
-      if (draft['meetingType'] != null) {
-        _meetingType = draft['meetingType'].toString();
-      }
-      if (draft['decisions'] is List) {
-        _decisions
-          ..clear()
-          ..addAll(List<String>.from(draft['decisions']));
-      }
-      if (draft['actionItems'] is List) {
-        _actionItems
-          ..clear()
-          ..addAll((draft['actionItems'] as List).map((i) => MeetingActionItem(
-                id: i['id'] ?? '',
-                task: i['task'] ?? '',
-                assignee: i['assignee'] ?? '',
-                dueDate:
-                    i['dueDate'] != null ? DateTime.tryParse(i['dueDate']) : null,
-                isCompleted: i['isCompleted'] == true,
-              )));
-      }
-      if (draft['entries'] is List) {
-        _transcriptEntries
-          ..clear()
-          ..addAll((draft['entries'] as List).map((e) => MeetingTranscriptEntry(
-                id: e['id'] ?? '',
-                speakerName: e['speakerName'] ?? 'Speaker',
-                speakerRole: e['speakerRole'] ?? 'Member',
-                speakerColor: Color(e['speakerColor'] ?? 0xFF1B365D),
-                content: e['content'] ?? '',
-                timestamp:
-                    DateTime.tryParse(e['timestamp'] ?? '') ?? DateTime.now(),
-                type: TranscriptEntryType.values[(e['type'] as int?) ?? 0],
-              )));
-      }
-    });
-    _showFeedback('Restored ${_transcriptEntries.length} entries from backup!');
-  }
-
-  /// Synchronizes LiveKit conference room participants directly into Scribe attendees
-  void _syncLiveKitSession(MeetingSession session) {
-    if (!session.isConnected) return;
-
-    bool stateChanged = false;
-    _connectedRoomName = session.roomName;
-
-    for (final p in session.participants) {
-      final name = p.name.isNotEmpty ? p.name : p.identity;
-      final existingIndex = _attendees.indexWhere(
-        (a) => a.id == p.identity || a.name.toLowerCase() == name.toLowerCase(),
-      );
-
-      if (existingIndex == -1) {
-        final color = _colorPalette[_attendees.length % _colorPalette.length];
-        final role = p.isLocal ? 'Meeting Host' : 'Council Delegate';
-        _attendees.add(MeetingAttendee(
-          id: p.identity,
-          name: name,
-          role: role,
-          color: color,
-        ));
-        stateChanged = true;
-      }
-    }
-
-    // Active Speaker Tracking from LiveKit WebRTC audio stream
-    ParticipantInfo? speakingParticipant;
-    for (final p in session.participants) {
-      if (p.isSpeaking) {
-        speakingParticipant = p;
-        break;
-      }
-    }
-
-    if (speakingParticipant != null) {
-      final sName = speakingParticipant.name.isNotEmpty
-          ? speakingParticipant.name
-          : speakingParticipant.identity;
-      final match = _attendees.firstWhere(
-        (a) =>
-            a.id == speakingParticipant!.identity ||
-            a.name.toLowerCase() == sName.toLowerCase(),
-        orElse: () => _selectedSpeaker,
-      );
-
-      if (match.id != _selectedSpeaker.id) {
-        _selectedSpeaker = match;
-        stateChanged = true;
-      }
-    }
-
-    if (stateChanged && mounted) {
-      setState(() {});
-    }
-  }
-
-  Future<void> _initSpeech() async {
-    try {
-      final available = await _speech.initialize(
-        onError: (err) {
-          debugPrint('Scribe speech engine note: ${err.errorMsg}');
-          if (mounted && _isListening) {
-            _rearmContinuousScribe();
-          }
-        },
-        onStatus: (status) {
-          debugPrint('Scribe status: $status');
-          if (status == 'done' || status == 'notListening') {
-            if (mounted && _isListening) {
-              _commitInterimWords();
-              _rearmContinuousScribe();
-            }
-          }
-        },
-      );
+    _durationTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) {
-        setState(() => _speechInitialized = available);
+        setState(() {
+          _sessionDuration = DateTime.now().difference(_meetingStartTime);
+        });
       }
-    } catch (e) {
-      debugPrint('Speech engine initialization: $e');
-    }
-  }
+    });
 
-  void _rearmContinuousScribe() {
-    if (!mounted || !_isListening || _isRearmingSpeech) return;
-    _isRearmingSpeech = true;
-    Future.delayed(const Duration(milliseconds: 150), () async {
-      if (!mounted || !_isListening) {
-        _isRearmingSpeech = false;
-        return;
-      }
-      try {
-        if (!_speech.isListening) {
-          await _startContinuousScribe();
-        }
-      } catch (e) {
-        debugPrint('Rearm continuous scribe error: $e');
-      } finally {
-        _isRearmingSpeech = false;
-      }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initAliveScribe();
     });
   }
 
-  @override
-  void dispose() {
-    if (_transcriptEntries.isNotEmpty ||
-        _decisions.isNotEmpty ||
-        _actionItems.isNotEmpty ||
-        _summaryController.text.trim().isNotEmpty) {
-      _backupDraftLocally(showNotification: false);
-    }
-    ScaffoldMessenger.of(context).clearSnackBars();
-    _tabController.dispose();
-    _transcriptScrollController.dispose();
-    _inputController.dispose();
-    _summaryController.dispose();
-    _meetingTitleController.dispose();
-    _speech.stop();
-    super.dispose();
-  }
+  void _initAliveScribe() {
+    final gateway = ref.read(meetingGatewayProvider);
+    final user = AuthService.instance.currentUser;
+    final userId = user?.uid ?? 'leader_${DateTime.now().millisecondsSinceEpoch}';
+    final userName = user?.displayName ?? 'Host Leader';
 
-  void _showFeedback(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: const Duration(seconds: 3),
-      ),
+    _scribeService = AliveScribeService(
+      gateway: gateway,
+      localUserId: userId,
+      localUserName: userName,
+      localUserRole: 'Council Member',
     );
-  }
 
-  /// Toggle Autonomous Scribe
-  Future<void> _toggleScribeMode() async {
-    HapticFeedback.mediumImpact();
-
-    if (_isListening) {
-      await _speech.stop();
-      _commitInterimWords();
-      setState(() => _isListening = false);
-      _showFeedback('Scribe paused.');
-      return;
-    }
-
-    // Direct OS permission prompt like Zoom/Meet
-    try {
-      final micStatus = await Permission.microphone.request();
-      if (micStatus.isPermanentlyDenied) {
-        _showFeedback(
-            'Microphone permission is denied. Please allow it in device Settings.');
-        return;
+    _transcriptSub = _scribeService!.transcriptStream.listen((list) {
+      if (mounted) {
+        setState(() {
+          _transcript = list;
+        });
+        _scrollToBottom();
       }
-      if (!micStatus.isGranted) {
-        _showFeedback('Microphone permission is required for speech transcription.');
-        return;
-      }
-    } catch (e) {
-      debugPrint('Direct mic permission error: $e');
-    }
-
-    if (!_speechInitialized) {
-      await _initSpeech();
-    }
-
-    setState(() {
-      _isListening = true;
-      _interimWords = '';
     });
 
-    _showFeedback(
-        'Scribe active: capturing all conference room speakers simultaneously.');
-    await _startContinuousScribe();
-  }
-
-  Future<void> _startContinuousScribe() async {
-    if (!_isListening) return;
-
-    try {
-      await _speech.listen(
-        onResult: (result) {
-          if (!mounted || !_isListening) return;
-          setState(() {
-            _interimWords = result.recognizedWords;
-          });
-
-          if (result.finalResult && _interimWords.trim().isNotEmpty) {
-            _commitInterimWords();
-          }
-        },
-        listenMode: stt.ListenMode.dictation,
-        listenOptions: stt.SpeechListenOptions(
-          listenFor: const Duration(hours: 4),
-          pauseFor: const Duration(seconds: 25),
-          cancelOnError: false,
-          partialResults: true,
-        ),
-      );
-    } catch (e) {
-      debugPrint('Continuous scribe listener error: $e');
-    }
-  }
-
-  void _commitInterimWords() {
-    final text = _interimWords.trim();
-    if (text.isEmpty) return;
-
-    // Attribute speaker: detect if an attendee is explicitly addressed/named in text
-    MeetingAttendee speaker = _selectedSpeaker;
-    for (final attendee in _attendees) {
-      final firstName = attendee.name.toLowerCase().split(' ').first;
-      if (text.toLowerCase().startsWith(firstName) ||
-          text.toLowerCase().contains('$firstName:')) {
-        speaker = attendee;
-        break;
+    _decisionsSub = _scribeService!.decisionsStream.listen((list) {
+      if (mounted) {
+        setState(() {
+          _decisions = list;
+        });
       }
-    }
-
-    final entryType = _inferEntryType(text);
-
-    _addTranscriptEntry(
-      speaker: speaker,
-      content: text,
-      type: entryType,
-    );
-
-    // Auto-extract Decisions on-the-fly into Key Decisions list
-    final tempEntry = MeetingTranscriptEntry(
-      id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
-      speakerName: speaker.name,
-      speakerRole: speaker.role,
-      speakerColor: speaker.color,
-      content: text,
-      timestamp: DateTime.now(),
-      type: entryType,
-    );
-
-    final decisions = _synthesizer.extractDecisions(
-      entries: [tempEntry],
-      existingDecisions: _decisions,
-    );
-    for (final d in decisions) {
-      if (!_decisions.contains(d)) {
-        setState(() => _decisions.add(d));
-      }
-    }
-
-    // Auto-extract Action Items on-the-fly into Action Items list
-    final actionItems = _synthesizer.extractActionItems(
-      entries: [tempEntry],
-      attendees: _attendees,
-      meetingDate: DateTime.now(),
-      existingActionItems: _actionItems,
-    );
-    if (actionItems.length > _actionItems.length) {
-      setState(() {
-        _actionItems
-          ..clear()
-          ..addAll(actionItems);
-      });
-    }
-
-    setState(() {
-      _interimWords = '';
-    });
-  }
-
-  TranscriptEntryType _inferEntryType(String text) {
-    final lower = text.toLowerCase();
-    if (lower.contains('decision:') ||
-        lower.contains('resolution:') ||
-        lower.contains('consensus:') ||
-        lower.contains('it is decided') ||
-        lower.contains('it was decided') ||
-        lower.contains('we decided') ||
-        lower.contains('we have decided') ||
-        lower.contains('we have agreed') ||
-        lower.contains('we agreed') ||
-        lower.contains('agreed that') ||
-        lower.contains('approved unanimously') ||
-        lower.contains('unanimously approved') ||
-        lower.contains('motion passed') ||
-        lower.contains('motion carried') ||
-        lower.contains('motion adopted') ||
-        lower.contains('board approved') ||
-        lower.contains('council approved') ||
-        lower.contains('council resolved') ||
-        lower.contains('resolved that')) {
-      return TranscriptEntryType.decision;
-    }
-    if (lower.contains('action:') ||
-        lower.contains('action item:') ||
-        lower.contains('action point:') ||
-        lower.contains('action points:') ||
-        lower.contains('todo:') ||
-        lower.contains('next step:') ||
-        lower.contains('will follow up') ||
-        lower.contains('assigned to') ||
-        lower.contains('task for') ||
-        lower.contains('we need to') ||
-        lower.contains('let us') ||
-        lower.contains("let's") ||
-        lower.contains('please make sure') ||
-        lower.contains('will coordinate') ||
-        lower.contains('will prepare') ||
-        lower.contains('will handle') ||
-        lower.contains('will send') ||
-        lower.contains('will organize') ||
-        lower.contains('will submit') ||
-        lower.contains('will finalize') ||
-        lower.contains('will review') ||
-        lower.contains('will check') ||
-        lower.contains('will write') ||
-        lower.contains('will contact')) {
-      return TranscriptEntryType.actionItem;
-    }
-    if (lower.startsWith('motion:') || lower.contains('i move that')) {
-      return TranscriptEntryType.motion;
-    }
-    return TranscriptEntryType.general;
-  }
-
-  void _addTranscriptEntry({
-    required MeetingAttendee speaker,
-    required String content,
-    TranscriptEntryType type = TranscriptEntryType.general,
-  }) {
-    final cleanContent = content.trim();
-    if (cleanContent.isEmpty) return;
-
-    final entry = MeetingTranscriptEntry(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      speakerName: speaker.name,
-      speakerRole: speaker.role,
-      speakerColor: speaker.color,
-      content: cleanContent,
-      timestamp: DateTime.now(),
-      type: type,
-    );
-
-    setState(() {
-      _transcriptEntries.add(entry);
     });
 
-    _autoScrollTranscript();
-    _backupDraftLocally(showNotification: false);
+    _actionItemsSub = _scribeService!.actionItemsStream.listen((list) {
+      if (mounted) {
+        setState(() {
+          _actionItems = list;
+        });
+      }
+    });
+
+    // Start on-device audio transcription for the local microphone
+    _scribeService!.startListening();
   }
 
-  void _autoScrollTranscript() {
+  void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_transcriptScrollController.hasClients) {
         _transcriptScrollController.animateTo(
@@ -657,299 +206,94 @@ class _LeaderMeetingTranscriptionScreenState
     });
   }
 
-  void _submitManualInput({TranscriptEntryType? forcedType}) {
-    final text = _inputController.text.trim();
-    if (text.isEmpty) return;
-
-    final type = forcedType ?? _inferEntryType(text);
-    _addTranscriptEntry(
-      speaker: _selectedSpeaker,
-      content: text,
-      type: type,
-    );
-
-    if (type == TranscriptEntryType.decision) {
-      final decs = _synthesizer.extractDecisions(
-        entries: [
-          MeetingTranscriptEntry(
-            id: 'temp',
-            speakerName: _selectedSpeaker.name,
-            speakerRole: _selectedSpeaker.role,
-            speakerColor: _selectedSpeaker.color,
-            content: text,
-            timestamp: DateTime.now(),
-            type: type,
-          )
-        ],
-        existingDecisions: _decisions,
-      );
-      for (final d in decs) {
-        if (!_decisions.contains(d)) _decisions.add(d);
-      }
-    } else if (type == TranscriptEntryType.actionItem) {
-      final acts = _synthesizer.extractActionItems(
-        entries: [
-          MeetingTranscriptEntry(
-            id: 'temp',
-            speakerName: _selectedSpeaker.name,
-            speakerRole: _selectedSpeaker.role,
-            speakerColor: _selectedSpeaker.color,
-            content: text,
-            timestamp: DateTime.now(),
-            type: type,
-          )
-        ],
-        attendees: _attendees,
-        meetingDate: DateTime.now(),
-        existingActionItems: _actionItems,
-      );
-      _actionItems
-        ..clear()
-        ..addAll(acts);
-    }
-
-    _inputController.clear();
+  Color _getSpeakerColor(String speakerName) {
+    final hash = speakerName.hashCode.abs();
+    return _avatarColors[hash % _avatarColors.length];
   }
 
-  /// 100% On-Device Minutes Synthesis
-  void _autoSummarizeFromTranscript() {
-    // If input box has pending text that hasn't been submitted yet, commit it
-    if (_inputController.text.trim().isNotEmpty) {
-      _submitManualInput();
+  String _formatDuration(Duration d) {
+    final hours = d.inHours;
+    final mins = d.inMinutes.remainder(60);
+    final secs = d.inSeconds.remainder(60);
+    if (hours > 0) {
+      return '${hours.toString().padLeft(2, '0')}:${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
     }
-
-    // Check if current session has no entries, decisions, actions, or notes
-    final hasCurrentContent = _transcriptEntries.isNotEmpty ||
-        _decisions.isNotEmpty ||
-        _actionItems.isNotEmpty ||
-        _summaryController.text.trim().isNotEmpty;
-
-    if (!hasCurrentContent) {
-      // Check if there is an existing backed-up draft that hasn't been compiled/restored yet
-      if (_detectedDraft != null) {
-        final draftEntries = _detectedDraft!['entries'] as List?;
-        final draftDecisions = _detectedDraft!['decisions'] as List?;
-        final draftActions = _detectedDraft!['actionItems'] as List?;
-        final draftSummary = _detectedDraft!['summary']?.toString().trim();
-        final hasDraft = (draftEntries != null && draftEntries.isNotEmpty) ||
-            (draftDecisions != null && draftDecisions.isNotEmpty) ||
-            (draftActions != null && draftActions.isNotEmpty) ||
-            (draftSummary != null && draftSummary.isNotEmpty);
-
-        if (hasDraft) {
-          final draft = _detectedDraft!;
-          setState(() {
-            _detectedDraft = null;
-          });
-          _restoreDraftFromBackup(draft);
-        } else {
-          _showFeedback(
-            'No meeting was held or recorded yet. Tap "Record All Speakers" to start recording, or type notes first.',
-          );
-          return;
-        }
-      } else {
-        _showFeedback(
-          'No meeting was held or recorded yet. Tap "Record All Speakers" to start recording, or type notes first.',
-        );
-        return;
-      }
-    }
-
-    // Re-verify after draft restoration
-    final canSynthesize = _transcriptEntries.isNotEmpty ||
-        _decisions.isNotEmpty ||
-        _actionItems.isNotEmpty ||
-        _summaryController.text.trim().isNotEmpty;
-
-    if (!canSynthesize) {
-      _showFeedback(
-        'No meeting was held or recorded yet. Tap "Record All Speakers" to start recording, or type notes first.',
-      );
-      return;
-    }
-
-    final result = _synthesizer.synthesize(
-      meetingTitle: _meetingTitleController.text.trim().isNotEmpty
-          ? _meetingTitleController.text.trim()
-          : 'Council Meeting',
-      meetingType: _meetingType,
-      meetingDate: _meetingDate,
-      attendees: _attendees,
-      entries: _transcriptEntries,
-      existingDecisions: _decisions,
-      existingActionItems: _actionItems,
-    );
-
-    setState(() {
-      _summaryController.text = result.executiveSummary;
-      _decisions
-        ..clear()
-        ..addAll(result.keyDecisions);
-      _actionItems
-        ..clear()
-        ..addAll(result.actionItems);
-      _discussionThemes
-        ..clear()
-        ..addAll(result.discussionThemes);
-      _quorumAchieved = result.quorumAchieved;
-    });
-
-    _showFeedback(
-      'Minutes Compiled: Executive Summary, ${_decisions.length} Decisions, and ${_actionItems.length} Action Items!',
-    );
-    _backupDraftLocally(showNotification: false);
+    return '${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
   }
 
-  String _generateMarkdownNotes() {
-    final buffer = StringBuffer();
-    final dateStr = DateFormat('EEEE, MMMM d, y • h:mm a').format(_meetingDate);
-
-    buffer.writeln('# 🏛️ ${_meetingTitleController.text.trim()}');
-    buffer.writeln('**Meeting Category:** $_meetingType  ');
-    buffer.writeln('**Date & Time:** $dateStr  ');
-    if (_connectedRoomName != null && _connectedRoomName!.isNotEmpty) {
-      buffer.writeln('**LiveKit Conference Room:** `$_connectedRoomName`  ');
-    }
-    buffer.writeln(
-        '**Quorum Status:** ${_quorumAchieved ? 'Duly Constituted' : 'Informally Observed'}  ');
-    buffer.writeln(
-        '**Council Attendees (${_attendees.length}):** ${_attendees.map((a) => '${a.name} (${a.role})').join(', ')}  \n');
-
-    buffer.writeln('---');
-    buffer.writeln('## 📋 Executive Summary\n');
-    buffer.writeln(
-        '${_summaryController.text.trim().isNotEmpty ? _summaryController.text.trim() : '*No executive summary compiled yet.*'}\n');
-
-    if (_discussionThemes.isNotEmpty) {
-      buffer.writeln('### 🏷️ Agenda Discussion Themes\n');
-      for (final theme in _discussionThemes) {
-        buffer.writeln('- $theme');
-      }
-      buffer.writeln();
-    }
-
-    buffer.writeln('---');
-    buffer.writeln('## ⚖️ Key Decisions & Council Resolutions\n');
-    if (_decisions.isEmpty) {
-      buffer.writeln('*No formal resolutions recorded.*\n');
+  Future<void> _toggleMicrophone() async {
+    if (_scribeService == null) return;
+    if (_scribeService!.isListening) {
+      await _scribeService!.stopListening();
     } else {
-      for (int i = 0; i < _decisions.length; i++) {
-        buffer.writeln('${i + 1}. **[ADOPTED RESOLUTION]** ${_decisions[i]}');
-      }
-      buffer.writeln();
+      await _scribeService!.startListening();
     }
-
-    buffer.writeln('---');
-    buffer.writeln('## ✅ Action Items & Target Deadlines\n');
-    if (_actionItems.isEmpty) {
-      buffer.writeln('*No pending action items assigned.*\n');
-    } else {
-      for (final item in _actionItems) {
-        final status = item.isCompleted ? '[x]' : '[ ]';
-        final due = item.dueDate != null
-            ? ' *(Target Deadline: ${DateFormat.yMMMd().format(item.dueDate!)})*'
-            : '';
-        buffer.writeln('- $status **${item.assignee}:** ${item.task}$due');
-      }
-      buffer.writeln();
-    }
-
-    buffer.writeln('---');
-    buffer.writeln('## 🎙️ Chronological Multi-Speaker Transcript\n');
-    buffer.writeln(
-        '> *Automated multi-speaker transcript recorded on-device by ALIVE Scribe.*\n');
-
-    if (_transcriptEntries.isEmpty) {
-      buffer.writeln('*No speech dialogue captured for this sitting.*\n');
-    } else {
-      for (final entry in _transcriptEntries) {
-        final time = DateFormat('h:mm a').format(entry.timestamp);
-        final tag = entry.type == TranscriptEntryType.decision
-            ? ' `[DECISION]`'
-            : entry.type == TranscriptEntryType.actionItem
-                ? ' `[ACTION]`'
-                : entry.type == TranscriptEntryType.motion
-                    ? ' `[MOTION]`'
-                    : '';
-        buffer.writeln(
-            '- **[$time] ${entry.speakerName} (${entry.speakerRole}):**$tag ${entry.content}');
-      }
-    }
-
-    return buffer.toString();
+    if (mounted) setState(() {});
   }
 
-  Future<void> _finishAndSaveToMeetingFiles() async {
-    final hasContent = _transcriptEntries.isNotEmpty ||
-        _decisions.isNotEmpty ||
-        _actionItems.isNotEmpty ||
-        _summaryController.text.trim().isNotEmpty;
-    if (!hasContent) {
-      _showFeedback(
-        'Cannot store empty minutes. Record a meeting or compile notes before saving.',
+  // ──────────────────────────────────────────────────────────
+  //  Action 1: Save to Meeting Files (Appwrite Bucket)
+  // ──────────────────────────────────────────────────────────
+  Future<void> _saveToMeetingFiles() async {
+    if (_transcript.isEmpty && _decisions.isEmpty && _actionItems.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cannot save empty minutes. Waiting for discussion...'),
+          duration: Duration(seconds: 2),
+        ),
       );
-      return;
-    }
-
-    final title = _meetingTitleController.text.trim();
-    if (title.isEmpty) {
-      _showFeedback('Please provide a meeting title.');
       return;
     }
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) {
-        return AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.folder_special, color: Color(0xFF5865F2)),
-              SizedBox(width: 8),
-              Text('Store Formatted Minutes'),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'ALIVE Scribe will save the synthesized executive summary, council resolutions, and assigned action items into the leadership Meeting Files repository.',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('• Title: $title',
-                        style: const TextStyle(fontWeight: FontWeight.w600)),
-                    Text('• Speaker entries: ${_transcriptEntries.length}'),
-                    Text('• Key decisions: ${_decisions.length}'),
-                    Text('• Action items: ${_actionItems.length}'),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Cancel'),
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.folder_special, color: Color(0xFF1B365D)),
+            SizedBox(width: 8),
+            Text('Save to Meeting Files'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'ALIVE Scribe will compile the executive overview, timestamped resolutions, assigned action items table, and full cleaned transcript into a markdown file and store it in the Meeting Files repository.',
             ),
-            FilledButton.icon(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              icon: const Icon(Icons.cloud_upload),
-              label: const Text('Store Minutes'),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('• Title: ${_meetingTitleController.text.trim()}',
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                  Text('• Transcripts: ${_transcript.length} turns'),
+                  Text('• Resolutions: ${_decisions.length}'),
+                  Text('• Action Items: ${_actionItems.length}'),
+                ],
+              ),
             ),
           ],
-        );
-      },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            icon: const Icon(Icons.cloud_upload),
+            label: const Text('Save Minutes'),
+          ),
+        ],
+      ),
     );
 
     if (confirmed != true || !mounted) return;
@@ -957,408 +301,42 @@ class _LeaderMeetingTranscriptionScreenState
     setState(() => _isSavingToFileArea = true);
 
     try {
-      final markdown = _generateMarkdownNotes();
-      final bytes = Uint8List.fromList(utf8.encode(markdown));
+      final markdown = _scribeService?.generateMarkdownMinutes(
+            meetingTitle: _meetingTitleController.text.trim(),
+            meetingType: _meetingType,
+          ) ??
+          '';
 
-      final dateClean = DateFormat('yyyyMMdd_HHmm').format(_meetingDate);
-      final sanitizedTitle = title
-          .replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_')
-          .replaceAll(RegExp(r'_+'), '_');
+      final bytes = Uint8List.fromList(utf8.encode(markdown));
+      final dateClean = DateFormat('yyyyMMdd_HHmm').format(DateTime.now());
+      final sanitizedTitle = _meetingTitleController.text
+          .trim()
+          .replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_');
       final fileName = 'Minutes_${sanitizedTitle}_$dateClean.md';
 
-      // Always ensure notes are backed up locally first
-      await _backupDraftLocally(showNotification: false);
-
       final user = AuthService.instance.currentUser;
-      final uploaderId = user?.uid ?? 'leader-scribe';
+      final uploaderId = user?.uid ?? 'alive-scribe';
       final uploaderName = user?.displayName ?? 'ALIVE Scribe';
 
-      bool cloudSuccess = false;
-      try {
-        await AppwriteMeetingFileService.instance.uploadMeetingFileBytes(
-          bytes,
-          fileName: fileName,
-          description:
-              'Synthesized minutes, council resolutions & multi-speaker transcript for "$title" compiled by ALIVE Scribe.',
-          uploaderId: uploaderId,
-          uploadedBy: uploaderName,
-        );
-        cloudSuccess = true;
-      } catch (uploadErr) {
-        debugPrint('Meeting file cloud upload error (falling back to local): $uploadErr');
-      }
+      await AppwriteMeetingFileService.instance.uploadMeetingFileBytes(
+        bytes,
+        fileName: fileName,
+        description:
+            'Synthesized council minutes, resolutions & clean transcript for "${_meetingTitleController.text.trim()}".',
+        uploaderId: uploaderId,
+        uploadedBy: uploaderName,
+      );
 
       if (!mounted) return;
 
-      if (cloudSuccess) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Saved "$fileName" directly to Meeting Files!'),
-            backgroundColor: Colors.green.shade800,
-            duration: const Duration(seconds: 5),
-            action: SnackBarAction(
-              label: 'View in Files',
-              textColor: Colors.white,
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const MeetingFileSharingScreen(),
-                  ),
-                );
-              },
-            ),
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Minutes compiled & saved locally as "$fileName". Cloud repository sync will retry automatically.'),
-            backgroundColor: Colors.teal.shade800,
-            duration: const Duration(seconds: 5),
-          ),
-        );
-      }
-
-      // Always open share or copy dialog so user has immediate access to their minutes
-      _showShareOrCopyDialog(markdown, fileName, isCloudSaved: cloudSuccess);
-    } catch (e) {
-      if (mounted) {
-        _showFeedback('Failed to process minutes: $e');
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isSavingToFileArea = false);
-      }
-    }
-  }
-
-  void _showShareOrCopyDialog(String markdown, String fileName, {bool isCloudSaved = true}) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  isCloudSaved ? Icons.check_circle : Icons.verified_user_outlined,
-                  color: isCloudSaved ? Colors.green : const Color(0xFF1B365D),
-                  size: 48,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  isCloudSaved ? 'Minutes Successfully Formatted & Stored!' : 'Minutes Successfully Formatted & Backed Up!',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  isCloudSaved
-                      ? 'File "$fileName" is now stored in Meeting Files. You can also copy or distribute the formatted minutes directly.'
-                      : 'File "$fileName" is saved securely on your device. You can copy or distribute the formatted minutes directly.',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () async {
-                          await Clipboard.setData(ClipboardData(text: markdown));
-                          if (ctx.mounted) {
-                            Navigator.of(ctx).pop();
-                            _showFeedback('Copied formatted minutes to clipboard!');
-                          }
-                        },
-                        icon: const Icon(Icons.copy),
-                        label: const Text('Copy'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: FilledButton.icon(
-                        onPressed: () {
-                          Navigator.of(ctx).pop();
-                          SharePlus.instance.share(
-                            ShareParams(
-                              text: markdown,
-                              subject: _meetingTitleController.text,
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.share),
-                        label: const Text('Share'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  void _showAddSpeakerDialog() {
-    final nameCtrl = TextEditingController();
-    final roleCtrl = TextEditingController();
-    Color chosenColor = Colors.teal;
-
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setDlgState) {
-            return AlertDialog(
-              title: const Text('Add Meeting Attendee / Speaker'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: nameCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Full Name / Title',
-                      hintText: 'e.g. Bro. Emmanuel',
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: roleCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Role in Meeting',
-                      hintText: 'e.g. Trustee / Coordinator',
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      const Text('Speaker Color: '),
-                      const SizedBox(width: 8),
-                      ..._colorPalette.take(5).map((c) {
-                        final isSelected = chosenColor == c;
-                        return GestureDetector(
-                          onTap: () => setDlgState(() => chosenColor = c),
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            width: 28,
-                            height: 28,
-                            decoration: BoxDecoration(
-                              color: c,
-                              shape: BoxShape.circle,
-                              border: isSelected
-                                  ? Border.all(color: Colors.white, width: 2.5)
-                                  : null,
-                              boxShadow: isSelected
-                                  ? [
-                                      BoxShadow(
-                                        color: c.withValues(alpha: 0.5),
-                                        blurRadius: 6,
-                                      )
-                                    ]
-                                  : null,
-                            ),
-                          ),
-                        );
-                      }),
-                    ],
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: () {
-                    final n = nameCtrl.text.trim();
-                    final r = roleCtrl.text.trim();
-                    if (n.isNotEmpty) {
-                      final newAttendee = MeetingAttendee(
-                        id: DateTime.now().millisecondsSinceEpoch.toString(),
-                        name: n,
-                        role: r.isNotEmpty ? r : 'Council Delegate',
-                        color: chosenColor,
-                      );
-                      setState(() {
-                        _attendees.add(newAttendee);
-                        _selectedSpeaker = newAttendee;
-                      });
-                      Navigator.of(ctx).pop();
-                    }
-                  },
-                  child: const Text('Add Speaker'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _showAddActionItemDialog() {
-    final taskCtrl = TextEditingController();
-    String selectedAssignee = _selectedSpeaker.name;
-    DateTime selectedDate = DateTime.now().add(const Duration(days: 7));
-
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setDlgState) {
-            return AlertDialog(
-              title: const Text('Add Action Item'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: taskCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Action Task Description',
-                      hintText: 'e.g. Prepare financial statement for Q4',
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    initialValue: selectedAssignee,
-                    decoration: const InputDecoration(
-                      labelText: 'Assignee',
-                    ),
-                    items: _attendees
-                        .map((a) =>
-                            DropdownMenuItem(value: a.name, child: Text(a.name)))
-                        .toList(),
-                    onChanged: (val) {
-                      if (val != null) {
-                        setDlgState(() => selectedAssignee = val);
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Target Deadline'),
-                    subtitle: Text(DateFormat.yMMMd().format(selectedDate)),
-                    trailing: const Icon(Icons.calendar_today),
-                    onTap: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: selectedDate,
-                        firstDate: DateTime.now(),
-                        lastDate: DateTime.now().add(const Duration(days: 365)),
-                      );
-                      if (picked != null) {
-                        setDlgState(() => selectedDate = picked);
-                      }
-                    },
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: () {
-                    final t = taskCtrl.text.trim();
-                    if (t.isNotEmpty) {
-                      setState(() {
-                        _actionItems.add(MeetingActionItem(
-                          id: DateTime.now().millisecondsSinceEpoch.toString(),
-                          task: t,
-                          assignee: selectedAssignee,
-                          dueDate: selectedDate,
-                        ));
-                      });
-                      Navigator.of(ctx).pop();
-                    }
-                  },
-                  child: const Text('Add Item'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _showAddDecisionDialog() {
-    final decisionCtrl = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        return AlertDialog(
-          title: const Text('Record Council Resolution'),
-          content: TextField(
-            controller: decisionCtrl,
-            maxLines: 3,
-            decoration: const InputDecoration(
-              labelText: 'Resolution Text',
-              hintText:
-                  'e.g. Board approved budget increment for Chapter operations.',
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final d = decisionCtrl.text.trim();
-                if (d.isNotEmpty) {
-                  setState(() => _decisions.add(d));
-                  Navigator.of(ctx).pop();
-                }
-              },
-              child: const Text('Adopt Resolution'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Synchronize LiveKit room session automatically if connected
-    ref.listen<AsyncValue<MeetingSession>>(meetingSessionStreamProvider,
-        (previous, next) {
-      final session = next.value;
-      if (session != null && session.isConnected) {
-        _syncLiveKitSession(session);
-      }
-    });
-
-    final currentLiveKitSession = ref.watch(meetingSessionStreamProvider).value;
-    final isLiveKitActive = currentLiveKitSession?.isConnected == true;
-
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Scaffold(
-      appBar: CustomAppBar(
-        title: 'Scribe & Notes',
-        showBackButton: true,
-        showThemeToggle: false,
-        showLanguageToggle: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.folder_open_outlined),
-            tooltip: 'View Meeting Files',
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Saved "$fileName" to Meeting Files!'),
+          backgroundColor: const Color(0xFF2E7D32),
+          duration: const Duration(seconds: 4),
+          action: SnackBarAction(
+            label: 'View Files',
+            textColor: Colors.white,
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
@@ -1367,1364 +345,757 @@ class _LeaderMeetingTranscriptionScreenState
               );
             },
           ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Note saving file: $e'),
+            backgroundColor: Colors.orange.shade800,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSavingToFileArea = false);
+      }
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────
+  //  Action 2: Copy / Share Minutes
+  // ──────────────────────────────────────────────────────────
+  Future<void> _copyOrShareMinutes() async {
+    final markdown = _scribeService?.generateMarkdownMinutes(
+          meetingTitle: _meetingTitleController.text.trim(),
+          meetingType: _meetingType,
+        ) ??
+        '';
+
+    if (markdown.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No transcript or minutes available to share yet.')),
+      );
+      return;
+    }
+
+    await showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Share Minutes',
+                style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: const Icon(Icons.copy_rounded, color: Color(0xFF1B365D)),
+                title: const Text('Copy to Clipboard'),
+                subtitle: const Text('Markdown format with overview, decisions & table'),
+                onTap: () async {
+                  await Clipboard.setData(ClipboardData(text: markdown));
+                  if (ctx.mounted) {
+                    Navigator.of(ctx).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Minutes copied to clipboard!'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.share_rounded, color: Color(0xFF00897B)),
+                title: const Text('Share via App / Email'),
+                subtitle: const Text('Send verified minutes through system share'),
+                onTap: () async {
+                  Navigator.of(ctx).pop();
+                  await SharePlus.instance.share(
+                    ShareParams(
+                      text: markdown,
+                      subject: '${_meetingTitleController.text.trim()} - Minutes',
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _durationTimer?.cancel();
+    _transcriptSub?.cancel();
+    _decisionsSub?.cancel();
+    _actionItemsSub?.cancel();
+    _scribeService?.dispose();
+    _tabController.dispose();
+    _transcriptScrollController.dispose();
+    _meetingTitleController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final sessionAsync = ref.watch(meetingSessionStreamProvider);
+    final session = sessionAsync.value;
+
+    final isLiveKitConnected = session != null &&
+        session.status == RoomStatus.connected &&
+        session.roomName.isNotEmpty;
+    final roomName = isLiveKitConnected
+        ? session.roomName
+        : (_connectedRoomName ?? 'Standalone Scribe');
+
+    final remoteAttendees = session?.participants ?? [];
+    final totalAttendeesCount =
+        remoteAttendees.isNotEmpty ? remoteAttendees.length : (_scribeService?.attendees.length ?? 1);
+
+    return Scaffold(
+      appBar: CustomAppBar(
+        title: 'ALIVE Scribe',
+        showBackButton: true,
+        actions: [
+          // Local Microphone Listening Indicator / Toggle
+          IconButton(
+            icon: Icon(
+              _scribeService?.isListening == true
+                  ? Icons.mic_rounded
+                  : Icons.mic_off_rounded,
+              color: _scribeService?.isListening == true
+                  ? Colors.greenAccent
+                  : Colors.grey,
+            ),
+            tooltip: _scribeService?.isListening == true
+                ? 'Scribe Listening (Tap to Mute)'
+                : 'Scribe Mic Muted (Tap to Listen)',
+            onPressed: _toggleMicrophone,
+          ),
+          IconButton(
+            icon: const Icon(Icons.share_rounded),
+            tooltip: 'Copy or Share Minutes',
+            onPressed: _copyOrShareMinutes,
+          ),
           IconButton(
             icon: _isSavingToFileArea
                 ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                   )
-                : const Icon(Icons.save_as_outlined),
-            tooltip: 'Save Notes to Meeting Files',
-            onPressed:
-                _isSavingToFileArea ? null : _finishAndSaveToMeetingFiles,
+                : const Icon(Icons.cloud_upload_rounded),
+            tooltip: 'Save to Meeting Files',
+            onPressed: _isSavingToFileArea ? null : _saveToMeetingFiles,
           ),
         ],
       ),
-      body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) {
-          return [
-            SliverToBoxAdapter(
-              child: _buildScribeHeaderCard(theme, colorScheme, isLiveKitActive),
-            ),
-            if (_detectedDraft != null && !_dismissedDraftBanner)
-              SliverToBoxAdapter(
-                child: _buildDraftBanner(colorScheme),
+      body: Column(
+        children: [
+          // ──────────────────────────────────────────────────────────
+          //  Zero-Touch Header: Connection Status & Active Attendees
+          // ──────────────────────────────────────────────────────────
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF131D2A) : const Color(0xFFF1F5F9),
+              border: Border(
+                bottom: BorderSide(
+                  color: isDark ? const Color(0xFF233549) : const Color(0xFFE2E8F0),
+                ),
               ),
-            SliverToBoxAdapter(
-              child: _buildActiveSpeakerBar(colorScheme),
             ),
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: _SliverTabBarDelegate(
-                TabBar(
-                  controller: _tabController,
-                  isScrollable: true,
-                  tabAlignment: TabAlignment.start,
-                  labelColor: colorScheme.primary,
-                  unselectedLabelColor: colorScheme.onSurfaceVariant,
-                  indicatorColor: colorScheme.primary,
-                  labelPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  tabs: [
-                    Tab(
-                      icon: const Icon(Icons.chat_bubble_outline, size: 18),
-                      text: 'Live Transcript (${_transcriptEntries.length})',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    // Connection Status Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isLiveKitConnected
+                            ? const Color(0xFF16A34A).withValues(alpha: 0.15)
+                            : const Color(0xFF64748B).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isLiveKitConnected
+                              ? const Color(0xFF16A34A)
+                              : const Color(0xFF94A3B8),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: isLiveKitConnected
+                                  ? const Color(0xFF16A34A)
+                                  : const Color(0xFF94A3B8),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            isLiveKitConnected ? 'LiveKit: $roomName' : roomName,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: isLiveKitConnected
+                                  ? (isDark ? Colors.greenAccent : const Color(0xFF15803D))
+                                  : (isDark ? Colors.white70 : const Color(0xFF475569)),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    Tab(
-                      icon: const Icon(Icons.assignment_outlined, size: 18),
-                      text: 'Summary & Decisions (${_decisions.length})',
+                    const Spacer(),
+
+                    // Duration Counter
+                    Row(
+                      children: [
+                        Icon(Icons.timer_outlined, size: 14, color: theme.colorScheme.outline),
+                        const SizedBox(width: 4),
+                        Text(
+                          _formatDuration(_sessionDuration),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'monospace',
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-                backgroundColor: theme.scaffoldBackgroundColor,
-              ),
+                const SizedBox(height: 8),
+
+                // Active Attendees Row
+                Row(
+                  children: [
+                    Text(
+                      'Attendees ($totalAttendeesCount):',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.outline,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            if (remoteAttendees.isNotEmpty)
+                              ...remoteAttendees.map((p) {
+                                final color = _getSpeakerColor(p.name);
+                                return Container(
+                                  margin: const EdgeInsets.only(right: 6),
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: color.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: p.isSpeaking ? Colors.green : color.withValues(alpha: 0.3),
+                                      width: p.isSpeaking ? 1.5 : 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 6,
+                                        backgroundColor: color,
+                                        child: Text(
+                                          p.name.isNotEmpty ? p.name[0].toUpperCase() : '?',
+                                          style: const TextStyle(fontSize: 8, color: Colors.white),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Text(
+                                        p.name,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: p.isSpeaking ? FontWeight.bold : FontWeight.w500,
+                                        ),
+                                      ),
+                                      if (p.isSpeaking) ...[
+                                        const SizedBox(width: 4),
+                                        const Icon(Icons.volume_up, size: 12, color: Colors.green),
+                                      ],
+                                    ],
+                                  ),
+                                );
+                              })
+                            else
+                              ...(_scribeService?.attendees ?? {'Host'}).map((name) {
+                                final color = _getSpeakerColor(name);
+                                return Container(
+                                  margin: const EdgeInsets.only(right: 6),
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: color.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: color.withValues(alpha: 0.3)),
+                                  ),
+                                  child: Text(
+                                    name,
+                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+                                  ),
+                                );
+                              }),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ];
-        },
-        body: TabBarView(
-          controller: _tabController,
-          children: [
-            _buildTranscriptTab(theme, colorScheme),
-            _buildSummaryTab(theme, colorScheme),
-          ],
-        ),
+          ),
+
+          // ──────────────────────────────────────────────────────────
+          //  Tabs: Live Transcript & Live Council Intelligence
+          // ──────────────────────────────────────────────────────────
+          TabBar(
+            controller: _tabController,
+            labelColor: theme.colorScheme.primary,
+            unselectedLabelColor: theme.colorScheme.outline,
+            indicatorColor: theme.colorScheme.primary,
+            indicatorWeight: 3,
+            tabs: [
+              Tab(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.subtitles_outlined, size: 18),
+                    const SizedBox(width: 6),
+                    Text('Live Transcript (${_transcript.length})'),
+                  ],
+                ),
+              ),
+              Tab(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.verified_outlined, size: 18),
+                    const SizedBox(width: 6),
+                    Text('Intelligence (${_decisions.length + _actionItems.length})'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          // ──────────────────────────────────────────────────────────
+          //  Tab Content
+          // ──────────────────────────────────────────────────────────
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                // 1. Live Transcript View
+                _buildLiveTranscriptTab(isDark),
+
+                // 2. Extracted Decisions & Action Items View
+                _buildIntelligenceTab(isDark),
+              ],
+            ),
+          ),
+
+          // ──────────────────────────────────────────────────────────
+          //  Zero-Touch Bottom Bar: Only Essential Actions
+          // ──────────────────────────────────────────────────────────
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF131D2A) : Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _copyOrShareMinutes,
+                    icon: const Icon(Icons.share_rounded, size: 18),
+                    label: const Text('Share Minutes'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: _isSavingToFileArea ? null : _saveToMeetingFiles,
+                    icon: _isSavingToFileArea
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.cloud_upload_rounded, size: 18),
+                    label: const Text('Save to Files'),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  /// On-Device Hybrid Scribe Card with LiveKit room connection banner
-  Widget _buildScribeHeaderCard(
-      ThemeData theme, ColorScheme colorScheme, bool isLiveKitActive) {
-    const brandColor = Color(0xFF1B365D);
-    const livekitGreen = Color(0xFF00897B);
-    final isListening = _isListening;
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isListening
-              ? Colors.redAccent.withValues(alpha: 0.6)
-              : isLiveKitActive
-                  ? livekitGreen.withValues(alpha: 0.4)
-                  : brandColor.withValues(alpha: 0.25),
-          width: isListening ? 1.8 : 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+  // ──────────────────────────────────────────────────────────
+  //  Tab 1: Multi-Speaker Cleaned Transcript List
+  // ──────────────────────────────────────────────────────────
+  Widget _buildLiveTranscriptTab(bool isDark) {
+    if (_transcript.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              // Avatar with active indicator
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: isLiveKitActive ? livekitGreen : brandColor,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: (isLiveKitActive ? livekitGreen : brandColor)
-                              .withValues(alpha: 0.35),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.record_voice_over,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                  Positioned(
-                    bottom: -1,
-                    right: -1,
-                    child: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: isListening ? Colors.redAccent : Colors.green,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: colorScheme.surface,
-                          width: 2,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+              Icon(
+                Icons.record_voice_over_outlined,
+                size: 48,
+                color: Colors.grey.withValues(alpha: 0.5),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'ALIVE Scribe is active and listening.',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'When attendees speak, their speech is cleaned of filler words ("um", "you know") and streamed here in real time with 100% speaker attribution.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey, fontSize: 13),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      controller: _transcriptScrollController,
+      padding: const EdgeInsets.all(16),
+      itemCount: _transcript.length,
+      itemBuilder: (context, index) {
+        final packet = _transcript[index];
+        final color = _getSpeakerColor(packet.speakerName);
+        final timeStr = DateFormat('HH:mm').format(packet.timestamp);
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: color,
+                child: Text(
+                  packet.speakerName.isNotEmpty ? packet.speakerName[0].toUpperCase() : '?',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Flexible(
-                          child: Text(
-                            'ALIVE Meeting Scribe',
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            packet.speakerName,
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 5),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 5, vertical: 1.5),
-                          decoration: BoxDecoration(
-                            color: brandColor,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            'SCRIBE',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 8.5,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0.5,
+                              fontSize: 13,
+                              color: color,
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: isListening
-                                ? Colors.redAccent.withValues(alpha: 0.15)
-                                : Colors.green.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 6,
-                                height: 6,
-                                decoration: BoxDecoration(
-                                  color: isListening
-                                      ? Colors.redAccent
-                                      : Colors.green,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                isListening
-                                    ? 'RECORDING'
-                                    : (isLiveKitActive
-                                        ? 'LIVEKIT'
-                                        : 'ONLINE'),
-                                style: TextStyle(
-                                  fontSize: 9.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: isListening
-                                      ? Colors.redAccent
-                                      : Colors.green.shade800,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      isLiveKitActive
-                          ? 'Synchronized with "${_connectedRoomName ?? 'Active Meet'}" • ${_attendees.length} Connected'
-                          : (isListening
-                              ? 'Recording all conference room speakers simultaneously...'
-                              : '100% On-Device Hybrid Scribe: private, offline, multi-speaker.'),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontSize: 11,
-                        color: isListening
-                            ? colorScheme.primary
-                            : colorScheme.onSurfaceVariant,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              FilledButton.icon(
-                onPressed: _toggleScribeMode,
-                style: FilledButton.styleFrom(
-                  backgroundColor: isListening
-                      ? Colors.redAccent
-                      : const Color(0xFF1B365D),
-                  foregroundColor: Colors.white,
-                  visualDensity: VisualDensity.compact,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                ),
-                icon: Icon(
-                  isListening
-                      ? Icons.stop_circle_outlined
-                      : Icons.mic_none_outlined,
-                  size: 16,
-                ),
-                label: Text(
-                  isListening ? 'Pause Recording' : 'Record All Speakers',
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12.5),
-                ),
-              ),
-              OutlinedButton.icon(
-                onPressed: _autoSummarizeFromTranscript,
-                style: OutlinedButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                ),
-                icon: const Icon(Icons.auto_awesome, size: 15),
-                label: const Text('Compile Minutes', style: TextStyle(fontSize: 12)),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Active Speaker Bar: Displays all meeting attendees / LiveKit participants
-  Widget _buildDraftBanner(ColorScheme colorScheme) {
-    final count = (_detectedDraft?['entries'] as List?)?.length ?? 0;
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colorScheme.primary.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.history_edu_rounded, color: colorScheme.primary, size: 22),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'Found backed-up meeting draft ($count entries).',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: colorScheme.onSurface,
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              final draft = _detectedDraft!;
-              setState(() {
-                _detectedDraft = null;
-              });
-              _restoreDraftFromBackup(draft);
-            },
-            child: const Text('Restore', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-          IconButton(
-            icon: const Icon(Icons.close, size: 18),
-            onPressed: () {
-              setState(() {
-                _dismissedDraftBanner = true;
-                _detectedDraft = null;
-              });
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActiveSpeakerBar(ColorScheme colorScheme) {
-    return Container(
-      height: 48,
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        scrollDirection: Axis.horizontal,
-        itemCount: _attendees.length + 1,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          if (index == _attendees.length) {
-            return ActionChip(
-              avatar: const Icon(Icons.add, size: 16),
-              label: const Text('Add Speaker'),
-              onPressed: _showAddSpeakerDialog,
-            );
-          }
-
-          final attendee = _attendees[index];
-          final isSelected = _selectedSpeaker.id == attendee.id;
-
-          return ChoiceChip(
-            selected: isSelected,
-            selectedColor: attendee.color.withValues(alpha: 0.2),
-            avatar: CircleAvatar(
-              radius: 12,
-              backgroundColor: attendee.color,
-              child: Text(
-                attendee.name.isNotEmpty ? attendee.name[0] : '?',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            label: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  attendee.name,
-                  style: TextStyle(
-                    fontWeight:
-                        isSelected ? FontWeight.bold : FontWeight.normal,
-                    color: isSelected ? attendee.color : null,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '• ${attendee.role.split(' ').first}',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-            onSelected: (selected) {
-              if (selected) {
-                setState(() => _selectedSpeaker = attendee);
-              }
-            },
-          );
-        },
-      ),
-    );
-  }
-
-  /// Live Transcript Tab: Multi-Speaker Thread
-  Widget _buildTranscriptTab(ThemeData theme, ColorScheme colorScheme) {
-    return Column(
-      children: [
-        Expanded(
-          child: _transcriptEntries.isEmpty && _interimWords.isEmpty
-              ? ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(
-                      vertical: 24, horizontal: 16),
-                  children: [
-                    Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.record_voice_over_outlined,
-                            size: 48,
-                            color: colorScheme.onSurfaceVariant
-                                .withValues(alpha: 0.4),
-                          ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'No transcription entries yet.',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              packet.speakerRole,
+                              style: TextStyle(fontSize: 9, color: color, fontWeight: FontWeight.w600),
                             ),
                           ),
-                          const SizedBox(height: 6),
+                          const Spacer(),
                           Text(
-                            'Tap "Record All Speakers" above to transcribe live speech, or type an entry below.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: colorScheme.onSurfaceVariant,
-                              fontSize: 12,
-                            ),
+                            timeStr,
+                            style: const TextStyle(fontSize: 11, color: Colors.grey),
                           ),
                         ],
                       ),
-                    ),
-                  ],
-                )
-              : ListView.builder(
-                  controller: _transcriptScrollController,
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 10),
-                  itemCount: _transcriptEntries.length +
-                      (_interimWords.isNotEmpty ? 1 : 0),
-                  itemBuilder: (context, index) {
-                    if (index == _transcriptEntries.length) {
-                      return _buildInterimBubble(colorScheme);
-                    }
-                    final entry = _transcriptEntries[index];
-                    return _buildMessageRow(entry, theme, colorScheme);
-                  },
+                      const SizedBox(height: 6),
+                      Text(
+                        packet.text,
+                        style: const TextStyle(fontSize: 14, height: 1.4),
+                      ),
+                    ],
+                  ),
                 ),
-        ),
-        _buildInputBar(theme, colorScheme),
-      ],
-    );
-  }
-
-  Widget _buildMessageRow(
-    MeetingTranscriptEntry entry,
-    ThemeData theme,
-    ColorScheme colorScheme,
-  ) {
-    final isDecision = entry.type == TranscriptEntryType.decision;
-    final isAction = entry.type == TranscriptEntryType.actionItem;
-    final isMotion = entry.type == TranscriptEntryType.motion;
-
-    final timeStr = DateFormat('h:mm a').format(entry.timestamp);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: isDecision
-            ? Colors.green.withValues(alpha: 0.08)
-            : isAction
-                ? Colors.amber.withValues(alpha: 0.08)
-                : isMotion
-                    ? Colors.purple.withValues(alpha: 0.08)
-                    : colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(12),
-        border: Border(
-          left: BorderSide(
-            color: isDecision
-                ? Colors.green
-                : isAction
-                    ? Colors.amber.shade800
-                    : isMotion
-                        ? Colors.deepPurple
-                        : entry.speakerColor,
-            width: 3.5,
-          ),
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: entry.speakerColor,
-            child: Text(
-              entry.speakerName.isNotEmpty ? entry.speakerName[0] : '?',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
               ),
-            ),
+            ],
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                      entry.speakerName,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        color: entry.speakerColor,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 1.5),
-                      decoration: BoxDecoration(
-                        color: entry.speakerColor.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        entry.speakerRole,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: entry.speakerColor,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      timeStr,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color:
-                            colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
-                      ),
-                    ),
-                    const Spacer(),
-                    if (isDecision)
-                      _buildTagPill('DECISION', Colors.green)
-                    else if (isAction)
-                      _buildTagPill('ACTION ITEM', Colors.amber.shade900)
-                    else if (isMotion)
-                      _buildTagPill('MOTION', Colors.deepPurple),
-                    PopupMenuButton<String>(
-                      icon: Icon(
-                        Icons.more_horiz,
-                        size: 18,
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                      padding: EdgeInsets.zero,
-                      itemBuilder: (ctx) => [
-                        PopupMenuItem(
-                          value: 'decision',
-                          child: Row(
-                            children: [
-                              const Icon(Icons.check_circle_outline,
-                                  color: Colors.green, size: 18),
-                              const SizedBox(width: 8),
-                              Text(isDecision
-                                  ? 'Unmark Decision'
-                                  : 'Mark as Decision'),
-                            ],
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: 'action',
-                          child: Row(
-                            children: [
-                              Icon(Icons.assignment_outlined,
-                                  color: Colors.amber.shade900, size: 18),
-                              const SizedBox(width: 8),
-                              Text(isAction
-                                  ? 'Unmark Action'
-                                  : 'Mark as Action Item'),
-                            ],
-                          ),
-                        ),
-                        const PopupMenuItem(
-                          value: 'delete',
-                          child: Row(
-                            children: [
-                              Icon(Icons.delete_outline,
-                                  color: Colors.red, size: 18),
-                              SizedBox(width: 8),
-                              Text('Delete Entry'),
-                            ],
-                          ),
-                        ),
-                      ],
-                      onSelected: (val) {
-                        if (val == 'decision') {
-                          setState(() {
-                            entry.type = isDecision
-                                ? TranscriptEntryType.general
-                                : TranscriptEntryType.decision;
-                            if (entry.type == TranscriptEntryType.decision) {
-                              if (!_decisions.contains(entry.content)) {
-                                _decisions.add(entry.content);
-                              }
-                            }
-                          });
-                        } else if (val == 'action') {
-                          setState(() {
-                            entry.type = isAction
-                                ? TranscriptEntryType.general
-                                : TranscriptEntryType.actionItem;
-                            if (entry.type == TranscriptEntryType.actionItem) {
-                              _actionItems.add(MeetingActionItem(
-                                id: DateTime.now()
-                                    .millisecondsSinceEpoch
-                                    .toString(),
-                                task: entry.content,
-                                assignee: entry.speakerName,
-                              ));
-                            }
-                          });
-                        } else if (val == 'delete') {
-                          setState(() {
-                            _transcriptEntries.remove(entry);
-                          });
-                        }
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                SelectableText(
-                  entry.content,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    height: 1.35,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildTagPill(String label, Color color) {
-    return Container(
-      margin: const EdgeInsets.only(right: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 9,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 0.5,
+  // ──────────────────────────────────────────────────────────
+  //  Tab 2: Real-Time Extracted Resolutions & Action Items
+  // ──────────────────────────────────────────────────────────
+  Widget _buildIntelligenceTab(bool isDark) {
+    if (_decisions.isEmpty && _actionItems.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.lightbulb_outline,
+                size: 48,
+                color: Colors.grey.withValues(alpha: 0.5),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'No decisions or action items yet.',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'As participants state agreements ("we agreed to...", "it is resolved that...") or commitments ("I will...", "Bro. Samuel to follow up..."), ALIVE Scribe will extract them here with exact verbatim citations.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey, fontSize: 13),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
-  }
+      );
+    }
 
-  /// Real-time live speech preview bubble
-  Widget _buildInterimBubble(ColorScheme colorScheme) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: _selectedSpeaker.color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: _selectedSpeaker.color.withValues(alpha: 0.4),
-        ),
-      ),
-      child: Row(
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          CircleAvatar(
-            radius: 14,
-            backgroundColor: _selectedSpeaker.color,
-            child: Text(
-              _selectedSpeaker.name.isNotEmpty ? _selectedSpeaker.name[0] : '?',
-              style: const TextStyle(color: Colors.white, fontSize: 11),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          // 1. Council Resolutions Card
+          if (_decisions.isNotEmpty) ...[
+            Row(
               children: [
+                const Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 20),
+                const SizedBox(width: 8),
                 Text(
-                  '${_selectedSpeaker.name} (speaking now...)',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: _selectedSpeaker.color,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  _interimWords,
-                  style: const TextStyle(
-                    fontStyle: FontStyle.italic,
-                    fontSize: 14,
-                  ),
+                  'Council Resolutions (${_decisions.length})',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.check, size: 20),
-            tooltip: 'Commit sentence',
-            onPressed: _commitInterimWords,
-          ),
+            const SizedBox(height: 8),
+            ..._decisions.map((dec) => _buildDecisionCard(dec, isDark)),
+            const SizedBox(height: 20),
+          ],
+
+          // 2. Assigned Action Items Card
+          if (_actionItems.isNotEmpty) ...[
+            Row(
+              children: [
+                const Icon(Icons.assignment_turned_in_rounded, color: Color(0xFF2563EB), size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'Assigned Action Items (${_actionItems.length})',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ..._actionItems.map((act) => _buildActionItemCard(act, isDark)),
+          ],
         ],
       ),
     );
   }
 
-  /// Bottom Input Bar with quick tagging buttons
-  Widget _buildInputBar(ThemeData theme, ColorScheme colorScheme) {
+  Widget _buildDecisionCard(ScribeDecision dec, bool isDark) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: colorScheme.surface,
-        border: Border(
-          top: BorderSide(
-            color: colorScheme.outlineVariant.withValues(alpha: 0.4),
-          ),
+        color: isDark ? const Color(0xFF142419) : const Color(0xFFF0FDF4),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isDark ? const Color(0xFF1E3A27) : const Color(0xFFDCFCE7),
         ),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                Text(
-                  'Tag as:',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _buildInputTagButton(
-                  icon: Icons.check_circle_outline,
-                  label: 'Decision',
-                  color: Colors.green,
-                  onTap: () => _submitManualInput(
-                      forcedType: TranscriptEntryType.decision),
-                ),
-                const SizedBox(width: 6),
-                _buildInputTagButton(
-                  icon: Icons.assignment_outlined,
-                  label: 'Action',
-                  color: Colors.amber.shade900,
-                  onTap: () => _submitManualInput(
-                      forcedType: TranscriptEntryType.actionItem),
-                ),
-                const SizedBox(width: 6),
-                _buildInputTagButton(
-                  icon: Icons.gavel_outlined,
-                  label: 'Motion',
-                  color: Colors.deepPurple,
-                  onTap: () =>
-                      _submitManualInput(forcedType: TranscriptEntryType.motion),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 6),
           Row(
             children: [
-              CircleAvatar(
-                radius: 15,
-                backgroundColor: _selectedSpeaker.color,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF16A34A).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(4),
+                ),
                 child: Text(
-                  _selectedSpeaker.name.isNotEmpty
-                      ? _selectedSpeaker.name[0]
-                      : '?',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  dec.category.toUpperCase(),
+                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF16A34A)),
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextField(
-                  controller: _inputController,
-                  decoration: InputDecoration(
-                    hintText: 'Add statement as ${_selectedSpeaker.name}...',
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
-                    ),
-                    filled: true,
-                    fillColor: colorScheme.surfaceContainerHighest
-                        .withValues(alpha: 0.4),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(24),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                  onSubmitted: (_) => _submitManualInput(),
-                ),
-              ),
-              const SizedBox(width: 6),
-              IconButton(
-                icon: Icon(
-                  _isListening ? Icons.stop_circle : Icons.mic_none,
-                  color: _isListening ? Colors.redAccent : colorScheme.primary,
-                ),
-                tooltip:
-                    _isListening ? 'Pause Recording' : 'Record All Speakers',
-                onPressed: _toggleScribeMode,
-              ),
-              IconButton(
-                icon: const Icon(Icons.send_rounded),
-                color: colorScheme.primary,
-                tooltip: 'Send Statement',
-                onPressed: () => _submitManualInput(),
+              const Spacer(),
+              Text(
+                '[${dec.timestampFormatted}]',
+                style: const TextStyle(fontSize: 11, color: Colors.grey, fontFamily: 'monospace'),
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInputTagButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 13, color: color),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                color: color,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Summary & Decisions Tab: Formatted Minutes
-  Widget _buildSummaryTab(ThemeData theme, ColorScheme colorScheme) {
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(16),
-      children: [
-        // Meeting Context Card
-        Card(
-          elevation: 0,
-          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.meeting_room_outlined, size: 20),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Meeting Details',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: _quorumAchieved
-                            ? Colors.green.withValues(alpha: 0.15)
-                            : Colors.amber.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        _quorumAchieved
-                            ? 'QUORUM CONSTITUTED'
-                            : 'INFORMAL SESSION',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: _quorumAchieved
-                              ? Colors.green.shade800
-                              : Colors.amber.shade900,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _meetingTitleController,
-                  decoration: const InputDecoration(
-                    labelText: 'Meeting Title',
-                    border: OutlineInputBorder(),
-                    contentPadding:
-                        EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        isExpanded: true,
-                        initialValue: _meetingType,
-                        decoration: const InputDecoration(
-                          labelText: 'Meeting Category',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 10),
-                        ),
-                        items: const [
-                          DropdownMenuItem(
-                              value: 'Board of Directors',
-                              child: Text('Board of Directors')),
-                          DropdownMenuItem(
-                              value: 'Trustees Council',
-                              child: Text('Trustees Council')),
-                          DropdownMenuItem(
-                              value: 'Executive Committee',
-                              child: Text('Executive Committee')),
-                          DropdownMenuItem(
-                              value: 'General Leadership',
-                              child: Text('General Leadership')),
-                        ],
-                        onChanged: (val) {
-                          if (val != null) setState(() => _meetingType = val);
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: InputDatePickerFormField(
-                        firstDate: DateTime(2020),
-                        lastDate: DateTime(2030),
-                        initialDate: _meetingDate,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+          const SizedBox(height: 8),
+          Text(
+            dec.decision,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, height: 1.35),
           ),
-        ),
-        const SizedBox(height: 16),
-
-        // Discussion Themes Chips
-        if (_discussionThemes.isNotEmpty) ...[
-          Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: 8),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+              borderRadius: BorderRadius.circular(6),
+            ),
             child: Text(
-              'Agenda Discussion Themes:',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: colorScheme.onSurfaceVariant,
-              ),
+              'Citation: "${dec.verbatimQuote}" — ${dec.speakerName}',
+              style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: Colors.grey.shade600),
             ),
           ),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: _discussionThemes.map((themeStr) {
-              return Chip(
-                avatar: const Icon(Icons.label_outline, size: 14),
-                label: Text(themeStr, style: const TextStyle(fontSize: 12)),
-                backgroundColor:
-                    colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 16),
         ],
+      ),
+    );
+  }
 
-        // 📋 Executive Summary Card
-        Card(
-          elevation: 0,
-          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  Widget _buildActionItemCard(ScribeActionItem act, bool isDark) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF17223B) : const Color(0xFFEFF6FF),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isDark ? const Color(0xFF22355A) : const Color(0xFFDBEAFE),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2563EB).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Expanded(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.summarize_outlined, size: 20),
-                          const SizedBox(width: 8),
-                          Flexible(
-                            child: Text(
-                              'Summary',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    FilledButton.tonalIcon(
-                      onPressed: _autoSummarizeFromTranscript,
-                      icon: const Icon(Icons.auto_awesome, size: 15),
-                      label: const Text('Auto-Compile'),
-                      style: FilledButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
-                      ),
+                    const Icon(Icons.person, size: 12, color: Color(0xFF2563EB)),
+                    const SizedBox(width: 4),
+                    Text(
+                      act.assignee,
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _summaryController,
-                  maxLines: 5,
-                  decoration: const InputDecoration(
-                    hintText:
-                        'Professional synthesized minutes detailing quorum, floor deliberations, and outcomes...',
-                    border: OutlineInputBorder(),
+              ),
+              if (act.targetDueDate != null) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    act.targetDueDate!,
+                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.amber),
                   ),
                 ),
               ],
+              const Spacer(),
+              Text(
+                '[${act.timestampFormatted}]',
+                style: const TextStyle(fontSize: 11, color: Colors.grey, fontFamily: 'monospace'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            act.task,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, height: 1.35),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              'Citation: "${act.verbatimQuote}" — ${act.speakerName}',
+              style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: Colors.grey.shade600),
             ),
           ),
-        ),
-        const SizedBox(height: 16),
-
-        // ⚖️ Key Decisions Card
-        Card(
-          elevation: 0,
-          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.gavel_rounded,
-                              size: 20, color: Colors.green),
-                          const SizedBox(width: 8),
-                          Flexible(
-                            child: Text(
-                              'Key Decisions (${_decisions.length})',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton.filledTonal(
-                      icon: const Icon(Icons.add, size: 20),
-                      tooltip: 'Record Resolution',
-                      onPressed: _showAddDecisionDialog,
-                      style: IconButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                if (_decisions.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8),
-                    child: Text(
-                      'No formal decisions recorded yet. Tap + to add or mark statements in the transcript.',
-                      style: TextStyle(fontStyle: FontStyle.italic),
-                    ),
-                  )
-                else
-                  ..._decisions.asMap().entries.map((entry) {
-                    final idx = entry.key;
-                    final decision = entry.value;
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.green.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                            color: Colors.green.withValues(alpha: 0.3)),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(Icons.check_circle,
-                              color: Colors.green, size: 18),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'RESOLUTION ${idx + 1}',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.green.shade800,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  decision,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w500),
-                                ),
-                              ],
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.close, size: 16),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            onPressed: () {
-                              setState(() => _decisions.removeAt(idx));
-                            },
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        // ✅ Action Items Card
-        Card(
-          elevation: 0,
-          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.checklist_rounded,
-                              size: 20, color: Colors.amber.shade900),
-                          const SizedBox(width: 8),
-                          Flexible(
-                            child: Text(
-                              'Action Items (${_actionItems.length})',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton.filledTonal(
-                      icon: const Icon(Icons.add, size: 20),
-                      tooltip: 'Add Action Item',
-                      onPressed: _showAddActionItemDialog,
-                      style: IconButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                if (_actionItems.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8),
-                    child: Text(
-                      'No action items assigned. Tap + to add tasks and assignees.',
-                      style: TextStyle(fontStyle: FontStyle.italic),
-                    ),
-                  )
-                else
-                  ..._actionItems.map((item) {
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                            color: Colors.amber.withValues(alpha: 0.3)),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Checkbox(
-                            value: item.isCompleted,
-                            activeColor: Colors.amber.shade900,
-                            onChanged: (val) {
-                              setState(() => item.isCompleted = val ?? false);
-                            },
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  item.task,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    decoration: item.isCompleted
-                                        ? TextDecoration.lineThrough
-                                        : null,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 6, vertical: 1.5),
-                                      decoration: BoxDecoration(
-                                        color: colorScheme.surface,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        'Assignee: ${item.assignee}',
-                                        style: const TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ),
-                                    if (item.dueDate != null) ...[
-                                      const SizedBox(width: 8),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 6, vertical: 1.5),
-                                        decoration: BoxDecoration(
-                                          color: colorScheme.surface,
-                                          borderRadius:
-                                              BorderRadius.circular(4),
-                                        ),
-                                        child: Text(
-                                          'Target Deadline: ${DateFormat.yMMMd().format(item.dueDate!)}',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w500,
-                                            color: colorScheme.onSurfaceVariant,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline, size: 18),
-                            onPressed: () {
-                              setState(() => _actionItems.remove(item));
-                            },
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 24),
-
-        // Primary Action Button: Store in Meeting Files
-        FilledButton.icon(
-          onPressed: _isSavingToFileArea ? null : _finishAndSaveToMeetingFiles,
-          style: FilledButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          icon: _isSavingToFileArea
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-              : const Icon(Icons.cloud_upload_outlined),
-          label: Text(
-            _isSavingToFileArea ? 'Storing...' : 'Save Formatted Minutes',
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-          ),
-        ),
-        const SizedBox(height: 24),
-      ],
+        ],
+      ),
     );
   }
 }

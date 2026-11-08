@@ -124,6 +124,12 @@ abstract class MeetingGateway {
   /// Stream of user-facing moderation prompts (e.g. host ask-to-unmute requests).
   Stream<String> get moderationPromptsStream;
 
+  /// Stream of arbitrary data channel messages (e.g. ALIVE Scribe transcript packets).
+  Stream<Map<String, dynamic>> get dataChannelMessagesStream;
+
+  /// Broadcasts a data channel packet to all meeting attendees.
+  Future<void> sendDataChannelMessage(Map<String, dynamic> message, {bool reliable = true});
+
   /// Releases resources, disconnects from room, and closes streams.
   void dispose();
 

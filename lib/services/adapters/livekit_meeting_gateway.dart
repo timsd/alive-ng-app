@@ -60,6 +60,9 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
   final StreamController<String> _moderationPromptsController =
       StreamController<String>.broadcast();
 
+  final StreamController<Map<String, dynamic>> _dataChannelMessagesController =
+      StreamController<Map<String, dynamic>>.broadcast();
+
   // ── Broadcast state ──────────────────────────────────────────
   bool _isBroadcasting = false;
   String? _activeEgressId;
@@ -88,6 +91,17 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
   @override
   Stream<String> get moderationPromptsStream =>
       _moderationPromptsController.stream;
+
+  @override
+  Stream<Map<String, dynamic>> get dataChannelMessagesStream =>
+      _dataChannelMessagesController.stream;
+
+  @override
+  Future<void> sendDataChannelMessage(Map<String, dynamic> message,
+      {bool reliable = true}) async {
+    final bytes = utf8.encode(jsonEncode(message));
+    await _room?.localParticipant?.publishData(bytes, reliable: reliable);
+  }
 
   @override
   bool get isConnected => _room != null && _currentSession.isConnected;
@@ -410,6 +424,9 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
           final map = jsonDecode(payloadStr);
           if (map is Map<String, dynamic>) {
             _handleControlMessage(map, sender: event.participant?.identity);
+            if (!_dataChannelMessagesController.isClosed) {
+              _dataChannelMessagesController.add(map);
+            }
           }
         } catch (e) {
           debugPrint('[LiveKitMeetingGateway] DataReceived parse note: $e');
@@ -1332,6 +1349,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
     _sessionController.close();
     _statusController.close();
     _moderationPromptsController.close();
+    _dataChannelMessagesController.close();
     _broadcastingController.close();
     super.dispose();
   }
