@@ -121,6 +121,32 @@ abstract class MeetingGateway {
   /// Host command: Toggles whether the room requires host approval (waiting room).
   Future<void> setWaitingRoom(bool enabled);
 
+  // ──────────────────────────────────────────────────────────
+  //  Breakout Rooms
+  // ──────────────────────────────────────────────────────────
+
+  /// Host command: Opens breakout sub-rooms and broadcasts room assignments.
+  Future<void> startBreakoutRooms({
+    required List<BreakoutRoom> rooms,
+    int? durationMinutes,
+    bool allowSelfSelect = true,
+  });
+
+  /// Host command: Closes all breakout rooms and recalls everyone to the main room.
+  Future<void> closeBreakoutRooms();
+
+  /// Participant / Host action: Switches connection into the specified breakout [room].
+  Future<void> joinBreakoutRoom(BreakoutRoom room);
+
+  /// Participant / Host action: Leaves the current breakout sub-room and reconnects to the main room.
+  Future<void> returnToMainRoom();
+
+  /// Host command: Broadcasts a text announcement across all active breakout rooms.
+  Future<void> broadcastToBreakoutRooms(String message);
+
+  /// Participant action: Alerts the host that the current breakout room needs assistance.
+  Future<void> requestHostHelpInBreakout();
+
   /// Stream of user-facing moderation prompts (e.g. host ask-to-unmute requests).
   Stream<String> get moderationPromptsStream;
 

@@ -48,6 +48,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   bool _isProjectorMode = false;
   String? _activeEgressId;
   StreamSubscription<String>? _moderationSub;
+  Timer? _breakoutUiTicker;
 
   @override
   void initState() {
@@ -57,6 +58,14 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     // Auto-prompt media permissions upfront (Google Meet flow)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       MediaPermissionService.requestMediaPermissions();
+    });
+
+    _breakoutUiTicker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      final session = ref.read(meetingGatewayProvider).currentSession;
+      if (session.isBreakoutActive && session.breakoutEndsAt != null) {
+        setState(() {});
+      }
     });
 
     final gateway = ref.read(meetingGatewayProvider);
@@ -89,6 +98,26 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
         _showMessage('You have been admitted to the meeting room.');
       } else if (event == 'declined_by_host') {
         _showDeclinedDialog();
+      } else if (event == 'breakout_started') {
+        _showMessage('Breakout rooms are now open! Tap "Breakout Rooms" to join.');
+      } else if (event.startsWith('breakout_assigned:')) {
+        final raw = event.substring('breakout_assigned:'.length);
+        final parts = raw.split('|');
+        final roomId = parts.isNotEmpty ? parts[0] : '';
+        final roomName = parts.length > 1 ? parts[1] : 'Breakout Room';
+        _showBreakoutAssignmentDialog(gateway, roomId, roomName);
+      } else if (event == 'breakout_closed') {
+        _showMessage('Breakout rooms closed by host. Returning to Main Room...');
+      } else if (event.startsWith('breakout_broadcast:')) {
+        final msg = event.substring('breakout_broadcast:'.length);
+        _showMessage('Host Announcement: $msg');
+      } else if (event.startsWith('breakout_help:')) {
+        final raw = event.substring('breakout_help:'.length);
+        final parts = raw.split('|');
+        final roomId = parts.isNotEmpty ? parts[0] : '';
+        final roomName = parts.length > 1 ? parts[1] : 'Breakout Room';
+        final requester = parts.length > 2 ? parts[2] : 'Participant';
+        _showBreakoutHelpRequestDialog(gateway, roomId, roomName, requester);
       }
     });
   }
@@ -313,6 +342,18 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     return items;
   }
 
+  String _formatBreakoutRemaining(DateTime? endsAt) {
+    if (endsAt == null) return '';
+    final diff = endsAt.difference(DateTime.now().toUtc());
+    if (diff.isNegative || diff.inSeconds <= 0) return '00:00';
+    final mins = diff.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final secs = diff.inSeconds.remainder(60).toString().padLeft(2, '0');
+    if (diff.inHours > 0) {
+      return '${diff.inHours}:$mins:$secs';
+    }
+    return '$mins:$secs';
+  }
+
   @override
   Widget build(BuildContext context) {
     final gateway = ref.watch(meetingGatewayProvider);
@@ -323,7 +364,9 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     final isAudioMuted = session.isAudioMuted;
     final isVideoMuted = session.isVideoMuted;
 
-    final isLeader = RoleAccessService.instance.canStartConferencing() || widget.isModerator;
+    final isLeader = RoleAccessService.instance.canStartConferencing() ||
+        widget.isModerator ||
+        _isLocalCoHost;
     final canShareScreen = isLeader || _isLocalCoHost;
 
     if (connected && _isProjectorMode) {
@@ -353,739 +396,1505 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
         }
       },
       child: Scaffold(
-      appBar: CustomAppBar(
-        title: widget.meetingType?.displayName ?? 'ALIVE Meet',
-        showBackButton: true,
-        showDonationButton: false,
-        actions: [
-          if (connected) ...[
+        appBar: CustomAppBar(
+          title: session.isInBreakoutRoom
+              ? (session.activeBreakoutRoomName ?? 'Breakout Room')
+              : (widget.meetingType?.displayName ?? 'ALIVE Meet'),
+          showBackButton: true,
+          showDonationButton: false,
+          actions: [
+            if (connected && (isLeader || session.isBreakoutActive)) ...[
+              IconButton(
+                icon: Badge(
+                  isLabelVisible: session.isBreakoutActive,
+                  label: Text('${session.breakoutRooms.length}'),
+                  child: const Icon(Icons.workspaces_rounded),
+                ),
+                tooltip: 'Breakout Rooms',
+                onPressed: () =>
+                    _showBreakoutRoomsSheet(context, session, gateway, isLeader),
+              ),
+            ],
+            if (connected) ...[
+              IconButton(
+                icon: const Icon(Icons.tv_rounded),
+                tooltip: 'Projector / Stage Display',
+                onPressed: () => setState(() => _isProjectorMode = true),
+              ),
+            ],
             IconButton(
-              icon: const Icon(Icons.tv_rounded),
-              tooltip: 'Projector / Stage Display',
-              onPressed: () => setState(() => _isProjectorMode = true),
+              icon: const Icon(Icons.note_alt_outlined),
+              tooltip: 'Scribe & Notes',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => LeaderMeetingTranscriptionScreen(
+                      initialMeetingTitle:
+                          widget.meetingType?.displayName ?? _roomController.text,
+                      initialRoomName: _roomController.text.trim(),
+                      initialMeetingType: widget.meetingType?.displayName,
+                    ),
+                  ),
+                );
+              },
             ),
           ],
-          IconButton(
-            icon: const Icon(Icons.note_alt_outlined),
-            tooltip: 'Scribe & Notes',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => LeaderMeetingTranscriptionScreen(
-                    initialMeetingTitle:
-                        widget.meetingType?.displayName ?? _roomController.text,
-                    initialRoomName: _roomController.text.trim(),
-                    initialMeetingType: widget.meetingType?.displayName,
-                  ),
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                controller: _roomController,
+                decoration: InputDecoration(
+                  labelText: 'Meeting Room',
+                  border: const OutlineInputBorder(),
+                  helperText: !isLeader
+                      ? 'Members can join designated rooms. Starting new rooms is reserved for leaders.'
+                      : null,
                 ),
-              );
-            },
-          ),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextField(
-              controller: _roomController,
-              decoration: InputDecoration(
-                labelText: 'Meeting Room',
-                border: const OutlineInputBorder(),
-                helperText: !isLeader
-                    ? 'Members can join designated rooms. Starting new rooms is reserved for leaders.'
-                    : null,
+                readOnly: !isLeader,
               ),
-              readOnly: !isLeader,
-            ),
-            if (isLeader && !connected) ...[
-              const SizedBox(height: 8),
-              // Waiting Room Policy toggle
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                secondary: const Icon(Icons.meeting_room_outlined),
-                title: const Text('Require Host Approval (Waiting Room)'),
-                subtitle: const Text('Participants wait in virtual lobby until admitted by host/leader'),
-                value: _requireHostApproval,
-                onChanged: (val) => setState(() => _requireHostApproval = val),
-              ),
-              const SizedBox(height: 4),
-              // Targeted Push Notification toggle
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                secondary: const Icon(Icons.notifications_active_outlined),
-                title: const Text('Notify members via push notification'),
-                subtitle: const Text('Sends a background push notification when meeting starts'),
-                value: _notifyMembers,
-                onChanged: (val) => setState(() => _notifyMembers = val),
-              ),
-              if (_notifyMembers) ...[
+              if (isLeader && !connected) ...[
                 const SizedBox(height: 8),
-                Builder(
-                  builder: (context) {
-                    final audienceItems = _buildTargetAudienceItems();
-                    final effectiveAudience =
-                        audienceItems.any((i) => i.value == _targetAudience)
-                            ? _targetAudience
-                            : 'general';
-
-                    return DropdownButtonFormField<String>(
-                      value: effectiveAudience,
-                      isExpanded: true,
-                      decoration: InputDecoration(
-                        labelText: 'Notification Target Audience',
-                        prefixIcon: const Icon(Icons.group_outlined),
-                        suffixIcon: IconButton(
-                          icon: _isLoadingChannels
-                              ? const SizedBox(
-                                  width: 14,
-                                  height: 14,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Icon(Icons.refresh_rounded, size: 18),
-                          tooltip: 'Refresh Channels',
-                          onPressed: _isLoadingChannels
-                              ? null
-                              : _loadAvailableChannels,
-                        ),
-                        border: const OutlineInputBorder(),
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 10),
-                      ),
-                      items: audienceItems,
-                      onChanged: (val) {
-                        if (val != null) setState(() => _targetAudience = val);
-                      },
-                    );
-                  },
+                // Waiting Room Policy toggle
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  secondary: const Icon(Icons.meeting_room_outlined),
+                  title: const Text('Require Host Approval (Waiting Room)'),
+                  subtitle: const Text('Participants wait in virtual lobby until admitted by host/leader'),
+                  value: _requireHostApproval,
+                  onChanged: (val) => setState(() => _requireHostApproval = val),
                 ),
-                if (_targetAudience == 'chapter') ...[
+                const SizedBox(height: 4),
+                // Targeted Push Notification toggle
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  secondary: const Icon(Icons.notifications_active_outlined),
+                  title: const Text('Notify members via push notification'),
+                  subtitle: const Text('Sends a background push notification when meeting starts'),
+                  value: _notifyMembers,
+                  onChanged: (val) => setState(() => _notifyMembers = val),
+                ),
+                if (_notifyMembers) ...[
                   const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
-                    value: _selectedTargetChapter,
-                    decoration: const InputDecoration(
-                      labelText: 'Select Chapter to Notify',
-                      prefixIcon: Icon(Icons.location_on_outlined),
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    ),
-                    items: ChapterConstants.availableChapters.map((ch) {
-                      return DropdownMenuItem(
-                        value: ch,
-                        child: Text(ch),
+                  Builder(
+                    builder: (context) {
+                      final audienceItems = _buildTargetAudienceItems();
+                      final effectiveAudience =
+                          audienceItems.any((i) => i.value == _targetAudience)
+                              ? _targetAudience
+                              : 'general';
+
+                      return DropdownButtonFormField<String>(
+                        value: effectiveAudience,
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          labelText: 'Notification Target Audience',
+                          prefixIcon: const Icon(Icons.group_outlined),
+                          suffixIcon: IconButton(
+                            icon: _isLoadingChannels
+                                ? const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : const Icon(Icons.refresh_rounded, size: 18),
+                            tooltip: 'Refresh Channels',
+                            onPressed: _isLoadingChannels
+                                ? null
+                                : _loadAvailableChannels,
+                          ),
+                          border: const OutlineInputBorder(),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 10),
+                        ),
+                        items: audienceItems,
+                        onChanged: (val) {
+                          if (val != null) setState(() => _targetAudience = val);
+                        },
                       );
-                    }).toList(),
-                    onChanged: (val) {
-                      if (val != null) setState(() => _selectedTargetChapter = val);
                     },
                   ),
+                  if (_targetAudience == 'chapter') ...[
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      value: _selectedTargetChapter,
+                      decoration: const InputDecoration(
+                        labelText: 'Select Chapter to Notify',
+                        prefixIcon: Icon(Icons.location_on_outlined),
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                      items: ChapterConstants.availableChapters.map((ch) {
+                        return DropdownMenuItem(
+                          value: ch,
+                          child: Text(ch),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) setState(() => _selectedTargetChapter = val);
+                      },
+                    ),
+                  ],
                 ],
               ],
-            ],
-            const SizedBox(height: 12),
-            ElevatedButton.icon(
-              onPressed: _isJoining || connected
-                  ? null
-                  : () => _joinMeeting(gateway),
-              icon: _isJoining
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.video_call),
-              label: Text(_isJoining
-                  ? 'Joining...'
-                  : connected
-                      ? 'Connected'
-                      : (isLeader ? 'Start / Join ALIVE Meet' : 'Join ALIVE Meet')),
-            ),
-            // Connection status banner
-            if (session.status == RoomStatus.connecting ||
-                session.status == RoomStatus.reconnecting) ...[
               const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .primaryContainer
-                      .withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        session.status == RoomStatus.reconnecting
-                            ? 'Reconnecting to meeting...'
-                            : 'Connecting to meeting...',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ),
-                  ],
-                ),
+              ElevatedButton.icon(
+                onPressed: _isJoining || connected
+                    ? null
+                    : () => _joinMeeting(gateway),
+                icon: _isJoining
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.video_call),
+                label: Text(_isJoining
+                    ? 'Joining...'
+                    : connected
+                        ? (session.isInBreakoutRoom
+                            ? 'Connected • ${session.activeBreakoutRoomName}'
+                            : 'Connected')
+                        : (isLeader ? 'Start / Join ALIVE Meet' : 'Join ALIVE Meet')),
               ),
-            ],
-            // Notice / Error banner
-            if (session.error != null && !connected) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: session.error!.toLowerCase().contains('listen-only') ||
-                          session.error!.toLowerCase().contains('device not detected')
-                      ? Colors.amber.withValues(alpha: 0.15)
-                      : Theme.of(context)
-                          .colorScheme
-                          .errorContainer
-                          .withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: session.error!.toLowerCase().contains('listen-only') ||
-                            session.error!.toLowerCase().contains('device not detected')
-                        ? Colors.amber.shade700.withValues(alpha: 0.4)
-                        : Theme.of(context).colorScheme.error.withValues(alpha: 0.4),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      session.error!.toLowerCase().contains('listen-only') ||
-                              session.error!.toLowerCase().contains('device not detected')
-                          ? Icons.info_outline_rounded
-                          : Icons.error_outline,
-                      color: session.error!.toLowerCase().contains('listen-only') ||
-                              session.error!.toLowerCase().contains('device not detected')
-                          ? Colors.amber.shade800
-                          : Theme.of(context).colorScheme.error,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        session.error!,
-                        style:
-                            Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: session.error!.toLowerCase().contains('listen-only') ||
-                                          session.error!.toLowerCase().contains('device not detected')
-                                      ? (Theme.of(context).brightness == Brightness.dark
-                                          ? Colors.amber.shade200
-                                          : Colors.amber.shade900)
-                                      : Theme.of(context).colorScheme.error,
-                                ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            const SizedBox(height: 16),
-            if (connected && !session.isAdmitted && session.isWaitingRoomEnabled && !isLeader) ...[
-              // Gated Waiting Room UI for unadmitted participants
-              const SizedBox(height: 24),
-              Center(
-                child: Container(
-                  constraints: const BoxConstraints(maxWidth: 480),
-                  padding: const EdgeInsets.all(24),
+              // Connection status banner
+              if (session.status == RoomStatus.connecting ||
+                  session.status == RoomStatus.reconnecting) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: const Color(0xFFD49B28).withValues(alpha: 0.5),
-                    ),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .primaryContainer
+                        .withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+                  child: Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFD49B28).withValues(alpha: 0.15),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.hourglass_top_rounded,
-                          size: 48,
-                          color: Color(0xFFD49B28),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Waiting for Host Approval',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'The meeting leader has been notified that you are in the lobby. You will be admitted automatically once approved.',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 20),
                       const SizedBox(
-                        width: 24,
-                        height: 24,
+                        width: 20,
+                        height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
-                      const SizedBox(height: 24),
-                      OutlinedButton.icon(
-                        onPressed: gateway.leaveMeeting,
-                        icon: const Icon(Icons.call_end),
-                        label: const Text('Leave Waiting Room'),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          session.status == RoomStatus.reconnecting
+                              ? 'Reconnecting to meeting...'
+                              : 'Connecting to meeting...',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
                       ),
                     ],
                   ),
                 ),
-              ),
-            ] else if (connected) ...[
-              // Host Waiting Room Admission Requests Banner
-              if (isLeader && session.waitingKnocks.isNotEmpty) ...[
+              ],
+              // Notice / Error banner
+              if (session.error != null && !connected) ...[
+                const SizedBox(height: 12),
                 Container(
-                  margin: const EdgeInsets.only(bottom: 14),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.amber.shade900.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.amber.shade700.withValues(alpha: 0.6)),
+                    color: session.error!.toLowerCase().contains('listen-only') ||
+                            session.error!.toLowerCase().contains('device not detected')
+                        ? Colors.amber.withValues(alpha: 0.15)
+                        : Theme.of(context)
+                            .colorScheme
+                            .errorContainer
+                            .withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: session.error!.toLowerCase().contains('listen-only') ||
+                              session.error!.toLowerCase().contains('device not detected')
+                          ? Colors.amber.shade700.withValues(alpha: 0.4)
+                          : Theme.of(context).colorScheme.error.withValues(alpha: 0.4),
+                    ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.door_sliding_outlined, size: 20, color: Color(0xFFD49B28)),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Waiting Room (${session.waitingKnocks.length})',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
+                      Icon(
+                        session.error!.toLowerCase().contains('listen-only') ||
+                                session.error!.toLowerCase().contains('device not detected')
+                            ? Icons.info_outline_rounded
+                            : Icons.error_outline,
+                        color: session.error!.toLowerCase().contains('listen-only') ||
+                                session.error!.toLowerCase().contains('device not detected')
+                            ? Colors.amber.shade800
+                            : Theme.of(context).colorScheme.error,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          session.error!,
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: session.error!.toLowerCase().contains('listen-only') ||
+                                            session.error!.toLowerCase().contains('device not detected')
+                                        ? (Theme.of(context).brightness == Brightness.dark
+                                            ? Colors.amber.shade200
+                                            : Colors.amber.shade900)
+                                        : Theme.of(context).colorScheme.error,
+                                  ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
+              if (connected && !session.isAdmitted && session.isWaitingRoomEnabled && !isLeader) ...[
+                // Gated Waiting Room UI for unadmitted participants
+                const SizedBox(height: 24),
+                Center(
+                  child: Container(
+                    constraints: const BoxConstraints(maxWidth: 480),
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: const Color(0xFFD49B28).withValues(alpha: 0.5),
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFD49B28).withValues(alpha: 0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.hourglass_top_rounded,
+                            size: 48,
+                            color: Color(0xFFD49B28),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Waiting for Host Approval',
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'The meeting leader has been notified that you are in the lobby. You will be admitted automatically once approved.',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 20),
+                        const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        const SizedBox(height: 24),
+                        OutlinedButton.icon(
+                          onPressed: gateway.leaveMeeting,
+                          icon: const Icon(Icons.call_end),
+                          label: const Text('Leave Waiting Room'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ] else if (connected) ...[
+                // Active Breakout Room Status Banner
+                if (session.isBreakoutActive || session.isInBreakoutRoom)
+                  _buildBreakoutBanner(context, session, gateway, isLeader),
+
+                // Host Waiting Room Admission Requests Banner
+                if (isLeader && session.waitingKnocks.isNotEmpty) ...[
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 14),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade900.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.amber.shade700.withValues(alpha: 0.6)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.door_sliding_outlined, size: 20, color: Color(0xFFD49B28)),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Waiting Room (${session.waitingKnocks.length})',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const Spacer(),
+                            TextButton(
+                              onPressed: () {
+                                for (final knock in List<Map<String, String>>.from(session.waitingKnocks)) {
+                                  final id = knock['id'];
+                                  if (id != null) gateway.admitParticipant(id);
+                                }
+                              },
+                              child: const Text('Admit All'),
+                            ),
+                          ],
+                        ),
+                        const Divider(height: 12),
+                        ...session.waitingKnocks.map((knock) {
+                          final kId = knock['id'] ?? '';
+                          final kName = knock['name'] ?? 'Participant';
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 14,
+                                  backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                                  child: Text(
+                                    kName.isNotEmpty ? kName.substring(0, 1).toUpperCase() : 'U',
+                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    kName,
+                                    style: const TextStyle(fontWeight: FontWeight.w600),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                FilledButton(
+                                  onPressed: () => gateway.admitParticipant(kId),
+                                  style: FilledButton.styleFrom(
+                                    visualDensity: VisualDensity.compact,
+                                    backgroundColor: Colors.green.shade700,
+                                  ),
+                                  child: const Text('Admit'),
+                                ),
+                                const SizedBox(width: 8),
+                                OutlinedButton(
+                                  onPressed: () => gateway.declineParticipant(kId),
+                                  style: OutlinedButton.styleFrom(
+                                    visualDensity: VisualDensity.compact,
+                                  ),
+                                  child: const Text('Decline'),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+                ],
+                // Audio Lock notice banner
+                if (session.isRoomAudioLocked) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.amber.shade700.withValues(alpha: 0.5)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.lock_rounded, size: 16, color: Colors.amber.shade800),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            isLeader
+                                ? 'Room Audio Locked: Standard participants cannot unmute themselves.'
+                                : 'Microphones are locked by the host. Raise your hand to request to speak.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.amber.shade200
+                                  : Colors.amber.shade900,
                             ),
                           ),
-                          const Spacer(),
-                          TextButton(
-                            onPressed: () {
-                              for (final knock in List<Map<String, String>>.from(session.waitingKnocks)) {
-                                final id = knock['id'];
-                                if (id != null) gateway.admitParticipant(id);
-                              }
-                            },
-                            child: const Text('Admit All'),
-                          ),
-                        ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    FilledButton.icon(
+                      onPressed: () async {
+                        if (!isLeader && session.isRoomAudioLocked && isAudioMuted) {
+                          _showMessage('The host has locked microphones. Raise your hand to ask to speak.');
+                          return;
+                        }
+                        try {
+                          await gateway.toggleAudio();
+                        } catch (e) {
+                          _showMessage(e.toString().replaceAll('Exception: ', ''));
+                        }
+                      },
+                      icon: Icon(isAudioMuted ? Icons.mic_off : Icons.mic),
+                      label: Text(
+                        !isLeader && session.isRoomAudioLocked && isAudioMuted
+                            ? 'Muted (Locked)'
+                            : (isAudioMuted ? 'Unmute' : 'Mute'),
                       ),
-                      const Divider(height: 12),
-                      ...session.waitingKnocks.map((knock) {
-                        final kId = knock['id'] ?? '';
-                        final kName = knock['name'] ?? 'Participant';
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Row(
+                      style: !isLeader && session.isRoomAudioLocked && isAudioMuted
+                          ? FilledButton.styleFrom(
+                              backgroundColor: Colors.grey.shade700,
+                            )
+                          : null,
+                    ),
+                    FilledButton.icon(
+                      onPressed: () async {
+                        try {
+                          await gateway.toggleVideo();
+                        } catch (e) {
+                          _showMessage(e.toString().replaceAll('Exception: ', ''));
+                        }
+                      },
+                      icon: Icon(isVideoMuted ? Icons.videocam_off : Icons.videocam),
+                      label: Text(isVideoMuted ? 'Camera On' : 'Camera Off'),
+                    ),
+                    // Screen Share button for Host and Co-Host
+                    if (canShareScreen)
+                      FilledButton.icon(
+                        onPressed: () async {
+                          try {
+                            await gateway.toggleScreenShare();
+                            _showMessage(session.isScreenShareEnabled
+                                ? 'Screen sharing stopped.'
+                                : 'Screen sharing started.');
+                          } catch (e) {
+                            _showMessage('Screen share: $e');
+                          }
+                        },
+                        icon: Icon(session.isScreenShareEnabled
+                            ? Icons.stop_screen_share_rounded
+                            : Icons.screen_share_rounded),
+                        label: Text(session.isScreenShareEnabled
+                            ? 'Stop Screen'
+                            : 'Share Screen'),
+                        style: session.isScreenShareEnabled
+                            ? FilledButton.styleFrom(
+                                backgroundColor: Colors.teal.shade700,
+                                foregroundColor: Colors.white,
+                              )
+                            : null,
+                      ),
+                    // Breakout Rooms button
+                    if (isLeader || session.isBreakoutActive)
+                      FilledButton.tonalIcon(
+                        onPressed: () => _showBreakoutRoomsSheet(
+                          context,
+                          session,
+                          gateway,
+                          isLeader,
+                        ),
+                        icon: const Icon(Icons.workspaces_rounded),
+                        label: Text(
+                          session.isBreakoutActive
+                              ? 'Breakout Rooms (${session.breakoutRooms.length})'
+                              : 'Breakout Rooms',
+                        ),
+                      ),
+                    if (session.isInBreakoutRoom)
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                          await gateway.returnToMainRoom();
+                          _showMessage('Returned to Main Plenary Room');
+                        },
+                        icon: const Icon(Icons.keyboard_return_rounded),
+                        label: const Text('Main Room'),
+                      ),
+                    // Projector / Display View button
+                    FilledButton.tonalIcon(
+                      onPressed: () => setState(() => _isProjectorMode = true),
+                      icon: const Icon(Icons.tv_rounded),
+                      label: const Text('Projector Display'),
+                    ),
+                    // Raise Hand button for all attendees
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        final newRaised = !session.isHandRaised;
+                        await gateway.raiseHand(raised: newRaised);
+                        _showMessage(newRaised ? 'Hand raised' : 'Hand lowered');
+                      },
+                      icon: Icon(
+                        session.isHandRaised ? Icons.pan_tool_rounded : Icons.pan_tool_outlined,
+                        color: session.isHandRaised ? const Color(0xFFD49B28) : null,
+                      ),
+                      label: Text(session.isHandRaised ? 'Lower Hand' : 'Raise Hand'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () => _handleHostExit(gateway),
+                      icon: const Icon(Icons.call_end),
+                      label: const Text('Leave'),
+                    ),
+                    // End Meeting for All button (leaders/hosts only)
+                    if (isLeader)
+                      FilledButton.icon(
+                        onPressed: () => _confirmEndMeetingForAll(gateway),
+                        icon: const Icon(Icons.stop_circle_outlined),
+                        label: const Text('End Meeting for All'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.red.shade800,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    // Go Live button — streams to YouTube via LiveKit egress
+                    if (isLeader)
+                      FilledButton.icon(
+                        onPressed: _isBroadcasting
+                            ? () => _stopBroadcast(gateway)
+                            : () => _startBroadcast(gateway),
+                        icon: Icon(_isBroadcasting ? Icons.stop : Icons.live_tv),
+                        label: Text(_isBroadcasting ? 'Stop Live' : 'Go Live'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor:
+                              _isBroadcasting ? Colors.red : null,
+                        ),
+                      ),
+                  ],
+                ),
+
+                // Host / Moderator Controls Area
+                if (isLeader) ...[
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? const Color(0xFF1B2432)
+                          : const Color(0xFFF3EBE0),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFFD49B28).withValues(alpha: 0.4),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.admin_panel_settings_rounded, size: 16, color: Color(0xFFD49B28)),
+                            SizedBox(width: 6),
+                            Text(
+                              'Host Moderation Controls',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFFD49B28),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: [
+                            // "Mute All" button
+                            ElevatedButton.icon(
+                              onPressed: () async {
+                                await gateway.muteAll();
+                                _showMessage('Broadcast command sent: All participants muted.');
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red.shade800,
+                                foregroundColor: Colors.white,
+                              ),
+                              icon: const Icon(Icons.volume_off_rounded, size: 16),
+                              label: const Text('Mute All'),
+                            ),
+                            // Hard Lockout toggle ("Disallow Participants to Unmute")
+                            OutlinedButton.icon(
+                              onPressed: () async {
+                                final newLock = !session.isRoomAudioLocked;
+                                await gateway.setRoomAudioLock(newLock);
+                                _showMessage(newLock
+                                    ? 'Host Hard Lockout activated: Participants cannot unmute.'
+                                    : 'Host Hard Lockout released: Participants can now unmute.');
+                              },
+                              icon: Icon(
+                                session.isRoomAudioLocked ? Icons.lock_open_rounded : Icons.lock_rounded,
+                                size: 16,
+                              ),
+                              label: Text(session.isRoomAudioLocked ? 'Unlock Mics' : 'Lock Mics'),
+                            ),
+                            // Waiting Room / Gated meeting toggle
+                            OutlinedButton.icon(
+                              onPressed: () async {
+                                final newWaiting = !session.isWaitingRoomEnabled;
+                                await gateway.setWaitingRoom(newWaiting);
+                                _showMessage(newWaiting
+                                    ? 'Waiting Room activated: New participants must be admitted.'
+                                    : 'Waiting Room disabled: Participants can now join directly.');
+                              },
+                              icon: Icon(
+                                session.isWaitingRoomEnabled ? Icons.door_sliding : Icons.meeting_room_outlined,
+                                size: 16,
+                              ),
+                              label: Text(session.isWaitingRoomEnabled ? 'Waiting Room: ON' : 'Waiting Room: OFF'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: session.isWaitingRoomEnabled ? const Color(0xFFD49B28) : null,
+                              ),
+                            ),
+                            // Breakout Rooms Manager button in Host Controls
+                            OutlinedButton.icon(
+                              onPressed: () => _showBreakoutRoomsSheet(
+                                context,
+                                session,
+                                gateway,
+                                isLeader,
+                              ),
+                              icon: const Icon(Icons.workspaces_rounded, size: 16),
+                              label: Text(
+                                session.isBreakoutActive
+                                    ? 'Manage Breakout Rooms (${session.breakoutRooms.length})'
+                                    : 'Create Breakout Rooms',
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: session.isBreakoutActive
+                                    ? Colors.teal
+                                    : const Color(0xFFD49B28),
+                              ),
+                            ),
+                            // End Meeting for All in Host Controls
+                            ElevatedButton.icon(
+                              onPressed: () => _confirmEndMeetingForAll(gateway),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red.shade900,
+                                foregroundColor: Colors.white,
+                              ),
+                              icon: const Icon(Icons.power_settings_new_rounded, size: 16),
+                              label: const Text('End Meeting for All'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                if (session.participants.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    session.isInBreakoutRoom
+                        ? '${session.activeBreakoutRoomName} Participants (${session.participants.length}):'
+                        : 'Participants (${session.participants.length}):',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: session.participants.length,
+                      itemBuilder: (context, index) {
+                        final participant = session.participants[index];
+                        final displayName = _formatParticipantName(participant);
+                        return ListTile(
+                          onTap: () => _showParticipantActions(
+                            context,
+                            participant,
+                            gateway,
+                            isLeader,
+                          ),
+                          leading: CircleAvatar(
+                            child: Text(
+                              displayName.isNotEmpty
+                                  ? displayName[0].toUpperCase()
+                                  : 'M',
+                            ),
+                          ),
+                          title: Text(
+                            participant.isLocal
+                                ? '$displayName (You)'
+                                : displayName,
+                          ),
+                          subtitle: Text(
+                            isLeader
+                                ? 'Tap to manage (mute, video, co-host)'
+                                : (participant.isLocal ? 'Tap for your audio/video controls' : ''),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                            ),
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              CircleAvatar(
-                                radius: 14,
-                                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                                child: Text(
-                                  kName.isNotEmpty ? kName.substring(0, 1).toUpperCase() : 'U',
-                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                              if (participant.isHandRaised) ...[
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  margin: const EdgeInsets.only(right: 8),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFD49B28).withValues(alpha: 0.18),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: const Color(0xFFD49B28), width: 1),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.pan_tool_rounded, size: 13, color: Color(0xFFD49B28)),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'Hand Raised',
+                                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFD49B28)),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  kName,
-                                  style: const TextStyle(fontWeight: FontWeight.w600),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              FilledButton(
-                                onPressed: () => gateway.admitParticipant(kId),
-                                style: FilledButton.styleFrom(
-                                  visualDensity: VisualDensity.compact,
-                                  backgroundColor: Colors.green.shade700,
-                                ),
-                                child: const Text('Admit'),
+                              ],
+                              Icon(
+                                participant.isAudioMuted
+                                    ? Icons.mic_off
+                                    : Icons.mic,
+                                size: 18,
+                                color: participant.isAudioMuted
+                                    ? Colors.red
+                                    : Colors.green,
                               ),
                               const SizedBox(width: 8),
-                              OutlinedButton(
-                                onPressed: () => gateway.declineParticipant(kId),
-                                style: OutlinedButton.styleFrom(
-                                  visualDensity: VisualDensity.compact,
-                                ),
-                                child: const Text('Decline'),
+                              Icon(
+                                participant.isVideoMuted
+                                    ? Icons.videocam_off
+                                    : Icons.videocam,
+                                size: 18,
+                                color: participant.isVideoMuted
+                                    ? Colors.red
+                                    : Colors.green,
+                              ),
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.chevron_right,
+                                size: 18,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
                               ),
                             ],
                           ),
                         );
-                      }),
-                    ],
+                      },
+                    ),
+                  ),
+                ],
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBreakoutBanner(
+    BuildContext context,
+    MeetingSession session,
+    MeetingGateway gateway,
+    bool isLeader,
+  ) {
+    final remaining = _formatBreakoutRemaining(session.breakoutEndsAt);
+    final inSubRoom = session.isInBreakoutRoom;
+    final broadcastMsg = session.breakoutBroadcastMessage;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.teal.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.teal.shade600.withValues(alpha: 0.6)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.workspaces_rounded,
+                size: 18,
+                color: Colors.teal.shade700,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  inSubRoom
+                      ? 'Breakout Room: ${session.activeBreakoutRoomName}'
+                      : 'Breakout Sessions Active (${session.breakoutRooms.length} Rooms)',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
                   ),
                 ),
-              ],
-              // Audio Lock notice banner
-              if (session.isRoomAudioLocked) ...[
+              ),
+              if (remaining.isNotEmpty)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: Colors.amber.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.amber.shade700.withValues(alpha: 0.5)),
+                    color: Colors.teal.shade800,
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.lock_rounded, size: 16, color: Colors.amber.shade800),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          isLeader
-                              ? 'Room Audio Locked: Standard participants cannot unmute themselves.'
-                              : 'Microphones are locked by the host. Raise your hand to request to speak.',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Theme.of(context).brightness == Brightness.dark
-                                ? Colors.amber.shade200
-                                : Colors.amber.shade900,
-                          ),
+                      const Icon(Icons.timer_outlined, size: 12, color: Colors.white),
+                      const SizedBox(width: 4),
+                      Text(
+                        remaining,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ],
                   ),
                 ),
-              ],
-
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
+            ],
+          ),
+          if (broadcastMsg != null && broadcastMsg.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFD49B28).withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
                 children: [
-                  FilledButton.icon(
-                    onPressed: () async {
-                      if (!isLeader && session.isRoomAudioLocked && isAudioMuted) {
-                        _showMessage('The host has locked microphones. Raise your hand to ask to speak.');
-                        return;
-                      }
-                      try {
-                        await gateway.toggleAudio();
-                      } catch (e) {
-                        _showMessage(e.toString().replaceAll('Exception: ', ''));
-                      }
-                    },
-                    icon: Icon(isAudioMuted ? Icons.mic_off : Icons.mic),
-                    label: Text(
-                      !isLeader && session.isRoomAudioLocked && isAudioMuted
-                          ? 'Muted (Locked)'
-                          : (isAudioMuted ? 'Unmute' : 'Mute'),
+                  const Icon(Icons.campaign_rounded, size: 16, color: Color(0xFFD49B28)),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Host Broadcast: $broadcastMsg',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                     ),
-                    style: !isLeader && session.isRoomAudioLocked && isAudioMuted
-                        ? FilledButton.styleFrom(
-                            backgroundColor: Colors.grey.shade700,
-                          )
-                        : null,
                   ),
-                  FilledButton.icon(
-                    onPressed: () async {
-                      try {
-                        await gateway.toggleVideo();
-                      } catch (e) {
-                        _showMessage(e.toString().replaceAll('Exception: ', ''));
-                      }
-                    },
-                    icon: Icon(isVideoMuted ? Icons.videocam_off : Icons.videocam),
-                    label: Text(isVideoMuted ? 'Camera On' : 'Camera Off'),
-                  ),
-                  // Screen Share button for Host and Co-Host
-                  if (canShareScreen)
-                    FilledButton.icon(
-                      onPressed: () async {
-                        try {
-                          await gateway.toggleScreenShare();
-                          _showMessage(session.isScreenShareEnabled
-                              ? 'Screen sharing stopped.'
-                              : 'Screen sharing started.');
-                        } catch (e) {
-                          _showMessage('Screen share: $e');
-                        }
-                      },
-                      icon: Icon(session.isScreenShareEnabled
-                          ? Icons.stop_screen_share_rounded
-                          : Icons.screen_share_rounded),
-                      label: Text(session.isScreenShareEnabled
-                          ? 'Stop Screen'
-                          : 'Share Screen'),
-                      style: session.isScreenShareEnabled
-                          ? FilledButton.styleFrom(
-                              backgroundColor: Colors.teal.shade700,
-                              foregroundColor: Colors.white,
-                            )
-                          : null,
-                    ),
-                  // Projector / Display View button
-                  FilledButton.tonalIcon(
-                    onPressed: () => setState(() => _isProjectorMode = true),
-                    icon: const Icon(Icons.tv_rounded),
-                    label: const Text('Projector Display'),
-                  ),
-                  // Raise Hand button for all attendees
-                  OutlinedButton.icon(
-                    onPressed: () async {
-                      final newRaised = !session.isHandRaised;
-                      await gateway.raiseHand(raised: newRaised);
-                      _showMessage(newRaised ? 'Hand raised' : 'Hand lowered');
-                    },
-                    icon: Icon(
-                      session.isHandRaised ? Icons.pan_tool_rounded : Icons.pan_tool_outlined,
-                      color: session.isHandRaised ? const Color(0xFFD49B28) : null,
-                    ),
-                    label: Text(session.isHandRaised ? 'Lower Hand' : 'Raise Hand'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: () => _handleHostExit(gateway),
-                    icon: const Icon(Icons.call_end),
-                    label: const Text('Leave'),
-                  ),
-                  // End Meeting for All button (leaders/hosts only)
-                  if (isLeader)
-                    FilledButton.icon(
-                      onPressed: () => _confirmEndMeetingForAll(gateway),
-                      icon: const Icon(Icons.stop_circle_outlined),
-                      label: const Text('End Meeting for All'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: Colors.red.shade800,
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
-                  // Go Live button — streams to YouTube via LiveKit egress
-                  if (isLeader)
-                    FilledButton.icon(
-                      onPressed: _isBroadcasting
-                          ? () => _stopBroadcast(gateway)
-                          : () => _startBroadcast(gateway),
-                      icon: Icon(_isBroadcasting ? Icons.stop : Icons.live_tv),
-                      label: Text(_isBroadcasting ? 'Stop Live' : 'Go Live'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor:
-                            _isBroadcasting ? Colors.red : null,
-                      ),
-                    ),
                 ],
               ),
-
-              // Host / Moderator Controls Area
-              if (isLeader) ...[
-                const SizedBox(height: 14),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? const Color(0xFF1B2432)
-                        : const Color(0xFFF3EBE0),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: const Color(0xFFD49B28).withValues(alpha: 0.4),
-                    ),
+            ),
+          ],
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              FilledButton.tonalIcon(
+                onPressed: () =>
+                    _showBreakoutRoomsSheet(context, session, gateway, isLeader),
+                icon: const Icon(Icons.Swap_horiz_rounded, size: 16),
+                label: Text(inSubRoom ? 'Switch / View Rooms' : 'View / Join Rooms'),
+                style: FilledButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+              if (inSubRoom && !isLeader)
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    await gateway.requestHostHelpInBreakout();
+                    _showMessage('Host has been invited to assist your room.');
+                  },
+                  icon: const Icon(Icons.support_agent_rounded, size: 16),
+                  label: const Text('Ask Host for Help'),
+                  style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.admin_panel_settings_rounded, size: 16, color: Color(0xFFD49B28)),
-                          SizedBox(width: 6),
-                          Text(
-                            'Host Moderation Controls',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFFD49B28),
+                ),
+              if (inSubRoom)
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    await gateway.returnToMainRoom();
+                    _showMessage('Returned to Main Room');
+                  },
+                  icon: const Icon(Icons.keyboard_return_rounded, size: 16),
+                  label: const Text('Return to Main Room'),
+                  style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showBreakoutAssignmentDialog(
+    MeetingGateway gateway,
+    String roomId,
+    String roomName,
+  ) {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.workspaces_rounded, color: Colors.teal.shade700),
+            const SizedBox(width: 8),
+            const Expanded(child: Text('Breakout Room Assigned')),
+          ],
+        ),
+        content: Text(
+          'The host has assigned you to "$roomName". Would you like to join your breakout group now?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Later'),
+          ),
+          FilledButton.icon(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              final room = gateway.currentSession.breakoutRooms.firstWhere(
+                (r) => r.id == roomId,
+                orElse: () => BreakoutRoom(id: roomId, name: roomName),
+              );
+              await gateway.joinBreakoutRoom(room);
+            },
+            icon: const Icon(Icons.login_rounded, size: 18),
+            label: const Text('Join Room'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showBreakoutHelpRequestDialog(
+    MeetingGateway gateway,
+    String roomId,
+    String roomName,
+    String requester,
+  ) {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.support_agent_rounded, color: Color(0xFFD49B28)),
+            SizedBox(width: 8),
+            Expanded(child: Text('Breakout Help Requested')),
+          ],
+        ),
+        content: Text(
+          '$requester in "$roomName" is requesting the host to join their breakout room.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Dismiss'),
+          ),
+          if (roomId.isNotEmpty)
+            FilledButton.icon(
+              onPressed: () async {
+                Navigator.of(ctx).pop();
+                final room = gateway.currentSession.breakoutRooms.firstWhere(
+                  (r) => r.id == roomId,
+                  orElse: () => BreakoutRoom(id: roomId, name: roomName),
+                );
+                await gateway.joinBreakoutRoom(room);
+              },
+              icon: const Icon(Icons.login_rounded, size: 18),
+              label: Text('Join $roomName'),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _showBreakoutRoomsSheet(
+    BuildContext context,
+    MeetingSession initialSession,
+    MeetingGateway gateway,
+    bool isLeader,
+  ) {
+    final defaultRoomTopics = <String>[
+      'Prayer & Intercession',
+      'Evangelism & Outreach',
+      'Bible Study & Doctrine',
+      'Youth & Campus Mission',
+      'Medical & Health Ministry',
+      'Family & Fellowship',
+      'Chapter Strategy',
+      'Media & Publications',
+    ];
+
+    int roomCount = 2;
+    int? selectedDurationMins = 15;
+    bool allowSelfSelect = true;
+    bool autoAssign = true;
+    final nameControllers = List.generate(
+      8,
+      (i) => TextEditingController(
+        text: 'Room ${i + 1}: ${defaultRoomTopics[i % defaultRoomTopics.length]}',
+      ),
+    );
+    final broadcastController = TextEditingController();
+    final manualAssignments = <String, int>{}; // participantId -> roomIndex
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            final session = gateway.currentSession;
+            final isActive = session.isBreakoutActive;
+            final localId = session.localParticipant?.identity ??
+                ref.read(currentUserProvider)?.uid ??
+                '';
+
+            if (isActive) {
+              final remaining = _formatBreakoutRemaining(session.breakoutEndsAt);
+              return DraggableScrollableSheet(
+                expand: false,
+                initialChildSize: 0.75,
+                minChildSize: 0.45,
+                maxChildSize: 0.92,
+                builder: (_, scrollController) {
+                  return Padding(
+                    padding: EdgeInsets.only(
+                      left: 20,
+                      right: 20,
+                      top: 16,
+                      bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+                    ),
+                    child: ListView(
+                      controller: scrollController,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.workspaces_rounded, color: Colors.teal),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Breakout Rooms (${session.breakoutRooms.length})',
+                                    style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                  ),
+                                  Text(
+                                    session.isInBreakoutRoom
+                                        ? 'Currently in: ${session.activeBreakoutRoomName}'
+                                        : 'Currently in: Main Plenary Room',
+                                    style: Theme.of(ctx).textTheme.bodySmall,
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children: [
-                          // "Mute All" button
-                          ElevatedButton.icon(
+                            if (remaining.isNotEmpty)
+                              Chip(
+                                avatar: const Icon(Icons.timer_outlined, size: 16),
+                                label: Text(remaining),
+                                visualDensity: VisualDensity.compact,
+                              ),
+                          ],
+                        ),
+                        const Divider(height: 24),
+                        if (session.isInBreakoutRoom) ...[
+                          FilledButton.tonalIcon(
                             onPressed: () async {
-                              await gateway.muteAll();
-                              _showMessage('Broadcast command sent: All participants muted.');
+                              Navigator.of(ctx).pop();
+                              await gateway.returnToMainRoom();
+                              _showMessage('Returned to Main Plenary Room');
                             },
-                            style: ElevatedButton.styleFrom(
+                            icon: const Icon(Icons.keyboard_return_rounded),
+                            label: const Text('Return to Main Plenary Room'),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                        if (isLeader) ...[
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: broadcastController,
+                                  decoration: const InputDecoration(
+                                    hintText: 'Broadcast announcement to all rooms...',
+                                    isDense: true,
+                                    border: OutlineInputBorder(),
+                                    prefixIcon: Icon(Icons.campaign_outlined, size: 18),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              FilledButton(
+                                onPressed: () async {
+                                  final msg = broadcastController.text.trim();
+                                  if (msg.isEmpty) return;
+                                  broadcastController.clear();
+                                  await gateway.broadcastToBreakoutRooms(msg);
+                                  _showMessage('Announcement broadcast to all breakout rooms.');
+                                  setSheetState(() {});
+                                },
+                                child: const Text('Send'),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                        ...session.breakoutRooms.map((room) {
+                          final isCurrent = session.activeBreakoutRoomId == room.id;
+                          final isAssigned = room.assignedParticipantIds.contains(localId);
+                          final canJoin = isLeader ||
+                              session.allowBreakoutSelfSelect ||
+                              isAssigned;
+
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(
+                                color: isCurrent
+                                    ? Colors.teal
+                                    : (isAssigned
+                                        ? const Color(0xFFD49B28)
+                                        : Colors.transparent),
+                                width: isCurrent || isAssigned ? 1.5 : 0.5,
+                              ),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Flexible(
+                                                  child: Text(
+                                                    room.name,
+                                                    style: const TextStyle(
+                                                      fontWeight: FontWeight.bold,
+                                                      fontSize: 14,
+                                                    ),
+                                                  ),
+                                                ),
+                                                if (isAssigned) ...[
+                                                  const SizedBox(width: 6),
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(
+                                                      horizontal: 6,
+                                                      vertical: 2,
+                                                    ),
+                                                    decoration: BoxDecoration(
+                                                      color: const Color(0xFFD49B28)
+                                                          .withValues(alpha: 0.2),
+                                                      borderRadius: BorderRadius.circular(8),
+                                                    ),
+                                                    child: const Text(
+                                                      'Assigned',
+                                                      style: TextStyle(
+                                                        fontSize: 10,
+                                                        fontWeight: FontWeight.bold,
+                                                        color: Color(0xFFD49B28),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ],
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              room.assignedParticipantNames.isEmpty
+                                                  ? 'Open for participants to join'
+                                                  : 'Assigned (${room.assignedParticipantNames.length}): ${room.assignedParticipantNames.values.join(", ")}',
+                                              style: Theme.of(ctx).textTheme.bodySmall,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      if (isCurrent)
+                                        const Chip(
+                                          label: Text('Joined'),
+                                          visualDensity: VisualDensity.compact,
+                                        )
+                                      else if (canJoin)
+                                        FilledButton.tonal(
+                                          onPressed: () async {
+                                            Navigator.of(ctx).pop();
+                                            await gateway.joinBreakoutRoom(room);
+                                            _showMessage('Joined ${room.name}');
+                                          },
+                                          child: const Text('Join'),
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }),
+                        if (isLeader) ...[
+                          const SizedBox(height: 12),
+                          FilledButton.icon(
+                            onPressed: () async {
+                              Navigator.of(ctx).pop();
+                              await gateway.closeBreakoutRooms();
+                              _showMessage('Closed all breakout rooms and recalled participants.');
+                            },
+                            style: FilledButton.styleFrom(
                               backgroundColor: Colors.red.shade800,
                               foregroundColor: Colors.white,
                             ),
-                            icon: const Icon(Icons.volume_off_rounded, size: 16),
-                            label: const Text('Mute All'),
+                            icon: const Icon(Icons.meeting_room_rounded),
+                            label: const Text('Close All Breakout Rooms'),
                           ),
-                          // Hard Lockout toggle ("Disallow Participants to Unmute")
-                          OutlinedButton.icon(
-                            onPressed: () async {
-                              final newLock = !session.isRoomAudioLocked;
-                              await gateway.setRoomAudioLock(newLock);
-                              _showMessage(newLock
-                                  ? 'Host Hard Lockout activated: Participants cannot unmute.'
-                                  : 'Host Hard Lockout released: Participants can now unmute.');
-                            },
-                            icon: Icon(
-                              session.isRoomAudioLocked ? Icons.lock_open_rounded : Icons.lock_rounded,
-                              size: 16,
+                        ],
+                      ],
+                    ),
+                  );
+                },
+              );
+            }
+
+            // Host Creation View (when breakout rooms are not yet active)
+            final remoteMembers = session.participants.where((p) => !p.isLocal).toList();
+            return DraggableScrollableSheet(
+              expand: false,
+              initialChildSize: 0.82,
+              minChildSize: 0.5,
+              maxChildSize: 0.95,
+              builder: (_, scrollController) {
+                return Padding(
+                  padding: EdgeInsets.only(
+                    left: 20,
+                    right: 20,
+                    top: 16,
+                    bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+                  ),
+                  child: ListView(
+                    controller: scrollController,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.workspaces_rounded, color: Color(0xFFD49B28)),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Create Breakout Rooms',
+                              style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
                             ),
-                            label: Text(session.isRoomAudioLocked ? 'Unlock Mics' : 'Lock Mics'),
                           ),
-                          // Waiting Room / Gated meeting toggle
-                          OutlinedButton.icon(
-                            onPressed: () async {
-                              final newWaiting = !session.isWaitingRoomEnabled;
-                              await gateway.setWaitingRoom(newWaiting);
-                              _showMessage(newWaiting
-                                  ? 'Waiting Room activated: New participants must be admitted.'
-                                  : 'Waiting Room disabled: Participants can now join directly.');
-                            },
-                            icon: Icon(
-                              session.isWaitingRoomEnabled ? Icons.door_sliding : Icons.meeting_room_outlined,
-                              size: 16,
-                            ),
-                            label: Text(session.isWaitingRoomEnabled ? 'Waiting Room: ON' : 'Waiting Room: OFF'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: session.isWaitingRoomEnabled ? const Color(0xFFD49B28) : null,
-                            ),
-                          ),
-                          // End Meeting for All in Host Controls
-                          ElevatedButton.icon(
-                            onPressed: () => _confirmEndMeetingForAll(gateway),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red.shade900,
-                              foregroundColor: Colors.white,
-                            ),
-                            icon: const Icon(Icons.power_settings_new_rounded, size: 16),
-                            label: const Text('End Meeting for All'),
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () => Navigator.of(ctx).pop(),
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-              ],
-
-              if (session.participants.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                Text(
-                  'Participants (${session.participants.length}):',
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                const SizedBox(height: 8),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: session.participants.length,
-                    itemBuilder: (context, index) {
-                      final participant = session.participants[index];
-                      final displayName = _formatParticipantName(participant);
-                      return ListTile(
-                        onTap: () => _showParticipantActions(
-                          context,
-                          participant,
-                          gateway,
-                          isLeader,
+                      const Divider(height: 20),
+                      // Number of Rooms
+                      Row(
+                        children: [
+                          const Text(
+                            'Number of Rooms:',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          const Spacer(),
+                          IconButton.outlined(
+                            icon: const Icon(Icons.remove, size: 18),
+                            onPressed: roomCount > 2
+                                ? () => setSheetState(() => roomCount--)
+                                : null,
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            child: Text(
+                              '$roomCount',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          IconButton.outlined(
+                            icon: const Icon(Icons.add, size: 18),
+                            onPressed: roomCount < 8
+                                ? () => setSheetState(() => roomCount++)
+                                : null,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      // Duration Timer
+                      DropdownButtonFormField<int?>(
+                        value: selectedDurationMins,
+                        decoration: const InputDecoration(
+                          labelText: 'Breakout Duration Timer',
+                          prefixIcon: Icon(Icons.timer_outlined),
+                          border: OutlineInputBorder(),
+                          isDense: true,
                         ),
-                        leading: CircleAvatar(
-                          child: Text(
-                            displayName.isNotEmpty
-                                ? displayName[0].toUpperCase()
-                                : 'M',
+                        items: const [
+                          DropdownMenuItem(value: null, child: Text('No Time Limit (Manual Close)')),
+                          DropdownMenuItem(value: 5, child: Text('5 Minutes')),
+                          DropdownMenuItem(value: 10, child: Text('10 Minutes')),
+                          DropdownMenuItem(value: 15, child: Text('15 Minutes')),
+                          DropdownMenuItem(value: 20, child: Text('20 Minutes')),
+                          DropdownMenuItem(value: 30, child: Text('30 Minutes')),
+                          DropdownMenuItem(value: 45, child: Text('45 Minutes')),
+                          DropdownMenuItem(value: 60, child: Text('60 Minutes')),
+                        ],
+                        onChanged: (val) => setSheetState(() => selectedDurationMins = val),
+                      ),
+                      const SizedBox(height: 8),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Automatically distribute participants'),
+                        subtitle: const Text('Evenly assigns current attendees across breakout rooms'),
+                        value: autoAssign,
+                        onChanged: (val) => setSheetState(() => autoAssign = val),
+                      ),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Allow participants to choose or switch rooms'),
+                        value: allowSelfSelect,
+                        onChanged: (val) => setSheetState(() => allowSelfSelect = val),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Room Names & Topics:',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                      const SizedBox(height: 8),
+                      for (int i = 0; i < roomCount; i++)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: TextField(
+                            controller: nameControllers[i],
+                            decoration: InputDecoration(
+                              labelText: 'Breakout Room ${i + 1}',
+                              prefixIcon: const Icon(Icons.meeting_room_outlined, size: 18),
+                              border: const OutlineInputBorder(),
+                              isDense: true,
+                            ),
                           ),
                         ),
-                        title: Text(
-                          participant.isLocal
-                              ? '$displayName (You)'
-                              : displayName,
+                      if (!autoAssign && remoteMembers.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Assign Participants to Rooms:',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                         ),
-                        subtitle: Text(
-                          isLeader
-                              ? 'Tap to manage (mute, video, co-host)'
-                              : (participant.isLocal ? 'Tap for your audio/video controls' : ''),
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
-                          ),
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (participant.isHandRaised) ...[
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                margin: const EdgeInsets.only(right: 8),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFD49B28).withValues(alpha: 0.18),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: const Color(0xFFD49B28), width: 1),
-                                ),
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.pan_tool_rounded, size: 13, color: Color(0xFFD49B28)),
-                                    SizedBox(width: 4),
-                                    Text(
-                                      'Hand Raised',
-                                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFD49B28)),
-                                    ),
-                                  ],
+                        const SizedBox(height: 6),
+                        ...remoteMembers.map((member) {
+                          final mName = _formatParticipantName(member);
+                          final currentIdx = manualAssignments[member.identity] ?? 0;
+                          final safeIdx = currentIdx < roomCount ? currentIdx : 0;
+                          return ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            dense: true,
+                            title: Text(mName),
+                            trailing: DropdownButton<int>(
+                              value: safeIdx,
+                              items: List.generate(
+                                roomCount,
+                                (rIdx) => DropdownMenuItem(
+                                  value: rIdx,
+                                  child: Text('Room ${rIdx + 1}'),
                                 ),
                               ),
-                            ],
-                            Icon(
-                              participant.isAudioMuted
-                                  ? Icons.mic_off
-                                  : Icons.mic,
-                              size: 18,
-                              color: participant.isAudioMuted
-                                  ? Colors.red
-                                  : Colors.green,
+                              onChanged: (val) {
+                                if (val != null) {
+                                  setSheetState(() {
+                                    manualAssignments[member.identity] = val;
+                                  });
+                                }
+                              },
                             ),
-                            const SizedBox(width: 8),
-                            Icon(
-                              participant.isVideoMuted
-                                  ? Icons.videocam_off
-                                  : Icons.videocam,
-                              size: 18,
-                              color: participant.isVideoMuted
-                                  ? Colors.red
-                                  : Colors.green,
-                            ),
-                            const SizedBox(width: 4),
-                            Icon(
-                              Icons.chevron_right,
-                              size: 18,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
+                          );
+                        }),
+                      ],
+                      const SizedBox(height: 16),
+                      FilledButton.icon(
+                        onPressed: () async {
+                          final baseSlug = (session.mainRoomName != null &&
+                                  session.mainRoomName!.isNotEmpty)
+                              ? session.mainRoomName!
+                              : (session.roomName.isNotEmpty
+                                  ? session.roomName
+                                  : _getRoomSlug());
+
+                          final createdRooms = <BreakoutRoom>[];
+                          for (int i = 0; i < roomCount; i++) {
+                            final assignedIds = <String>[];
+                            final assignedNames = <String, String>{};
+
+                            for (int mIdx = 0; mIdx < remoteMembers.length; mIdx++) {
+                              final m = remoteMembers[mIdx];
+                              final targetRoomIdx = autoAssign
+                                  ? (mIdx % roomCount)
+                                  : (manualAssignments[m.identity] ?? 0);
+                              if (targetRoomIdx == i) {
+                                assignedIds.add(m.identity);
+                                assignedNames[m.identity] = _formatParticipantName(m);
+                              }
+                            }
+
+                            final roomTitle = nameControllers[i].text.trim().isNotEmpty
+                                ? nameControllers[i].text.trim()
+                                : 'Breakout Room ${i + 1}';
+
+                            createdRooms.add(
+                              BreakoutRoom(
+                                id: '$baseSlug--br-${i + 1}',
+                                name: roomTitle,
+                                assignedParticipantIds: assignedIds,
+                                assignedParticipantNames: assignedNames,
+                              ),
+                            );
+                          }
+
+                          Navigator.of(ctx).pop();
+                          await gateway.startBreakoutRooms(
+                            rooms: createdRooms,
+                            durationMinutes: selectedDurationMins,
+                            allowSelfSelect: allowSelfSelect,
+                          );
+                          _showMessage(
+                            'Started ${createdRooms.length} breakout rooms!',
+                          );
+                        },
+                        icon: const Icon(Icons.rocket_launch_rounded),
+                        label: Text('Open $roomCount Breakout Rooms'),
+                      ),
+                    ],
                   ),
-                ),
-              ],
-            ],
-          ],
-        ),
-      ),
-    ),
-  );
+                );
+              },
+            );
+          },
+        );
+      },
+    );
   }
 
   void _showParticipantActions(
@@ -1516,17 +2325,25 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.red.shade900,
+                        color: session.isInBreakoutRoom
+                            ? Colors.teal.shade800
+                            : Colors.red.shade900,
                         borderRadius: BorderRadius.circular(4),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.fiber_manual_record, size: 10, color: Colors.white),
-                          SizedBox(width: 4),
+                          Icon(
+                            session.isInBreakoutRoom
+                                ? Icons.workspaces_rounded
+                                : Icons.fiber_manual_record,
+                            size: 10,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 4),
                           Text(
-                            'LIVE STAGE',
-                            style: TextStyle(
+                            session.isInBreakoutRoom ? 'BREAKOUT' : 'LIVE STAGE',
+                            style: const TextStyle(
                               color: Colors.white,
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
@@ -1541,9 +2358,11 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _roomController.text.isNotEmpty
-                                ? _roomController.text
-                                : (widget.meetingType?.displayName ?? 'ALIVE Sanctuary Stage'),
+                            session.isInBreakoutRoom
+                                ? (session.activeBreakoutRoomName ?? 'Breakout Room')
+                                : (_roomController.text.isNotEmpty
+                                    ? _roomController.text
+                                    : (widget.meetingType?.displayName ?? 'ALIVE Sanctuary Stage')),
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 16,
@@ -1560,6 +2379,17 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                         ],
                       ),
                     ),
+                    if (isLeader || session.isBreakoutActive)
+                      IconButton(
+                        icon: const Icon(Icons.workspaces_rounded, color: Colors.white),
+                        tooltip: 'Breakout Rooms',
+                        onPressed: () => _showBreakoutRoomsSheet(
+                          context,
+                          session,
+                          gateway,
+                          isLeader,
+                        ),
+                      ),
                     IconButton(
                       icon: const Icon(Icons.fullscreen_exit_rounded, color: Colors.white),
                       tooltip: 'Exit Projector Display',
@@ -1645,6 +2475,25 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                           foregroundColor: Colors.white,
                         ),
                         tooltip: session.isScreenShareEnabled ? 'Stop Sharing' : 'Share Screen',
+                      ),
+                    ],
+                    if (isLeader || session.isBreakoutActive) ...[
+                      const SizedBox(width: 14),
+                      IconButton.filledTonal(
+                        onPressed: () => _showBreakoutRoomsSheet(
+                          context,
+                          session,
+                          gateway,
+                          isLeader,
+                        ),
+                        icon: const Icon(Icons.workspaces_rounded),
+                        style: IconButton.styleFrom(
+                          backgroundColor: session.isBreakoutActive
+                              ? Colors.teal.shade700
+                              : Colors.white12,
+                          foregroundColor: Colors.white,
+                        ),
+                        tooltip: 'Breakout Rooms',
                       ),
                     ],
                     const SizedBox(width: 14),
@@ -1966,6 +2815,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
 
   @override
   void dispose() {
+    _breakoutUiTicker?.cancel();
     _moderationSub?.cancel();
     _roomController.dispose();
     super.dispose();

@@ -118,15 +118,59 @@ class _PaymentCallbackScreenState extends State<PaymentCallbackScreen> {
 
       final isSuccessful = resultPayload != null &&
           (resultPayload['status'] == 'success' ||
-              resultPayload['success'] == true);
+              resultPayload['status'] == true ||
+              resultPayload['success'] == true ||
+              resultPayload['data']?['status'] == 'success');
 
-      final metadata = resultPayload?['metadata'] as Map<String, dynamic>? ?? {};
-      final donationType = (metadata['donation_type'] ?? metadata['category'])?.toString() ?? '';
-      final materialId = (metadata['material_id'] ?? metadata['materialId'])?.toString();
-      final materialTitle = (metadata['material_title'] ?? metadata['materialTitle'])?.toString();
+      final dataMap = (resultPayload?['data'] is Map<String, dynamic>)
+          ? resultPayload!['data'] as Map<String, dynamic>
+          : (resultPayload?['data'] is Map
+              ? Map<String, dynamic>.from(resultPayload!['data'] as Map)
+              : <String, dynamic>{});
 
-      final isTract = donationType.toLowerCase().contains('tract') ||
+      dynamic rawMeta = resultPayload?['metadata'] ?? dataMap['metadata'];
+      Map<String, dynamic> metadata = {};
+      if (rawMeta is Map) {
+        metadata = Map<String, dynamic>.from(rawMeta);
+      } else if (rawMeta is String && rawMeta.trim().isNotEmpty) {
+        try {
+          final decoded = jsonDecode(rawMeta);
+          if (decoded is Map) metadata = Map<String, dynamic>.from(decoded);
+        } catch (_) {}
+      }
+
+      final donationType = (metadata['donation_type'] ??
+              metadata['category'] ??
+              dataMap['donation_type'])
+          ?.toString() ??
+          '';
+      String? materialId = (metadata['material_id'] ??
+              metadata['materialId'] ??
+              dataMap['material_id'])
+          ?.toString();
+      String? materialTitle = (metadata['material_title'] ??
+              metadata['materialTitle'] ??
+              dataMap['material_title'])
+          ?.toString();
+
+      bool isTract = donationType.toLowerCase().contains('tract') ||
           (materialId != null && materialId.isNotEmpty);
+
+      // Robust fallback: if metadata wasn't populated in the webhook/gateway response,
+      // look up the donation record by reference directly from Appwrite!
+      if (ref.isNotEmpty) {
+        try {
+          final donation = await DonationService().getDonation(ref);
+          if (donation != null) {
+            if (donation.type == DonationType.tractProduction ||
+                (donation.materialId != null && donation.materialId!.isNotEmpty)) {
+              isTract = true;
+              materialId ??= donation.materialId;
+              materialTitle ??= donation.materialTitle;
+            }
+          }
+        } catch (_) {}
+      }
 
       if (isSuccessful && isTract && materialId != null) {
         try {

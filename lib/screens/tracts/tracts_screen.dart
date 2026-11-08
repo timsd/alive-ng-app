@@ -52,6 +52,17 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
   }
 
   @override
+  void didUpdateWidget(TractsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialTabIndex != oldWidget.initialTabIndex) {
+      _tabController.animateTo(widget.initialTabIndex.clamp(0, 1));
+      setState(() {
+        _downloadsFuture = DonationService().getUserDownloads();
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _tabController.dispose();
     _searchController.dispose();
@@ -434,10 +445,18 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
 
   Tract _resolveTractForDownload(UserDownload download, List<Tract> tracts) {
     for (final t in tracts) {
-      if (t.id == download.materialId) return t;
+      if (t.id == download.materialId) {
+        return t.copyWith(
+          isDownloaded: true,
+          pdfUrl: t.pdfUrl ?? download.downloadUrl,
+        );
+      }
       if (t.title.trim().toLowerCase() ==
           download.materialTitle.trim().toLowerCase()) {
-        return t;
+        return t.copyWith(
+          isDownloaded: true,
+          pdfUrl: t.pdfUrl ?? download.downloadUrl,
+        );
       }
     }
     // Also check lesson number matching (e.g. "Lesson 1" vs "bible_says_1")
@@ -447,20 +466,32 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
       final numStr = lessonMatch.group(1);
       for (final t in tracts) {
         if (t.id.contains('bible_says_$numStr') ||
-            t.id.contains('lesson_$numStr')) {
-          return t;
+            t.id.contains('lesson_$numStr') ||
+            t.title.toLowerCase().contains('lesson $numStr')) {
+          return t.copyWith(
+            isDownloaded: true,
+            pdfUrl: t.pdfUrl ?? download.downloadUrl,
+          );
         }
       }
     }
+
+    final fallbackCover = _resolveTractCoverImage(Tract(
+      id: download.materialId,
+      title: download.materialTitle,
+      category: 'Bible Study',
+    ));
 
     return Tract(
       id: download.materialId,
       title: download.materialTitle,
       description:
           'Downloaded on ${download.downloadedAt.day}/${download.downloadedAt.month}/${download.downloadedAt.year}',
-      category: 'Evangelism',
+      category: 'Bible Study',
       isDownloaded: true,
       pdfUrl: download.downloadUrl,
+      coverImage: fallbackCover,
+      imageUrl: fallbackCover,
       author: 'Alive by the Truth',
       pages: 6,
     );
@@ -474,9 +505,15 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
       coverUrl = tract.imageUrl!.trim();
     } else if (tract.coverImages.isNotEmpty && tract.coverImages.first.trim().isNotEmpty) {
       coverUrl = tract.coverImages.first.trim();
-    } else if (tract.id.contains('lesson_1') ||
-        tract.id.contains('bible_says_1') ||
-        tract.title.toLowerCase().contains('something we can trust')) {
+    }
+    
+    final idLower = tract.id.toLowerCase();
+    final titleLower = tract.title.toLowerCase();
+    if (coverUrl.isEmpty &&
+        (idLower.contains('lesson_1') ||
+            idLower.contains('bible_says_1') ||
+            titleLower.contains('something we can trust') ||
+            titleLower.contains('lesson 1'))) {
       coverUrl = 'assets/images/series/what_the_bible_says_lesson_1.jpg';
     }
 
@@ -847,9 +884,12 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
       return tract.imageUrl!.trim();
     } else if (tract.coverImages.isNotEmpty && tract.coverImages.first.trim().isNotEmpty) {
       return tract.coverImages.first.trim();
-    } else if (tract.id.contains('lesson_1') ||
-        tract.id.contains('bible_says_1') ||
-        tract.title.toLowerCase().contains('something we can trust')) {
+    final idLower = tract.id.toLowerCase();
+    final titleLower = tract.title.toLowerCase();
+    if (idLower.contains('lesson_1') ||
+        idLower.contains('bible_says_1') ||
+        titleLower.contains('something we can trust') ||
+        titleLower.contains('lesson 1')) {
       return 'assets/images/series/what_the_bible_says_lesson_1.jpg';
     }
     return null;
@@ -966,6 +1006,9 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
       }
 
       String? downloadUrl = download?.downloadUrl?.trim();
+      if (downloadUrl == null || downloadUrl.isEmpty) {
+        downloadUrl = tract.pdfUrl?.trim();
+      }
       if (downloadUrl == null || downloadUrl.isEmpty) {
         downloadUrl = await _resolveTractPdfUrl(tract);
       }

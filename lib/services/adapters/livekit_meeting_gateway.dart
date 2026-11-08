@@ -49,6 +49,22 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
   final List<Map<String, String>> _waitingKnocks = [];
   final Map<String, bool> _handsRaised = {};
 
+  // ── Breakout room state ──────────────────────────────────────
+  bool _isBreakoutActive = false;
+  List<BreakoutRoom> _breakoutRooms = [];
+  String? _mainRoomName;
+  String? _activeBreakoutRoomId;
+  String? _activeBreakoutRoomName;
+  bool _allowBreakoutSelfSelect = true;
+  DateTime? _breakoutEndsAt;
+  String? _breakoutBroadcastMessage;
+  Timer? _breakoutTimer;
+  bool _isSwitchingBreakoutRoom = false;
+
+  String _lastUserId = '';
+  String _lastUserName = '';
+  String _lastMeetingType = 'general';
+
   MeetingSession _currentSession = MeetingSession.initial();
 
   final StreamController<MeetingSession> _sessionController =
@@ -270,6 +286,8 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       final waitingIds = _waitingKnocks.map((k) => k['id']).toSet();
       for (final remote in room.remoteParticipants.values) {
         if (waitingIds.contains(remote.identity)) continue;
+        // Filter out ephemeral cross-room relay bots
+        if (remote.identity.contains('_relay_')) continue;
         list.add(_mapParticipant(remote, isLocal: false));
       }
     } catch (e) {
@@ -283,8 +301,10 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
     try {
       final room = _room;
       if (room == null) {
-        _currentSession = MeetingSession.initial();
-        _emitSession();
+        if (!_isSwitchingBreakoutRoom) {
+          _currentSession = MeetingSession.initial();
+          _emitSession();
+        }
         return;
       }
 
@@ -318,7 +338,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       }
 
       final localId = _room?.localParticipant?.identity ?? '';
-      _currentSession = _currentSession.copyWith(
+      _currentSession = MeetingSession(
         roomName: roomName,
         status: status,
         isAudioMuted: _isAudioMuted,
@@ -330,12 +350,35 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         isWaitingRoomEnabled: _isWaitingRoomEnabled,
         isAdmitted: _isAdmitted,
         waitingKnocks: List<Map<String, String>>.from(_waitingKnocks),
+        isBreakoutActive: _isBreakoutActive,
+        breakoutRooms: List<BreakoutRoom>.from(_breakoutRooms),
+        mainRoomName: _mainRoomName,
+        activeBreakoutRoomId: _activeBreakoutRoomId,
+        activeBreakoutRoomName: _activeBreakoutRoomName,
+        allowBreakoutSelfSelect: _allowBreakoutSelfSelect,
+        breakoutEndsAt: _breakoutEndsAt,
+        breakoutBroadcastMessage: _breakoutBroadcastMessage,
         participants: participants,
+        error: _currentSession.error,
       );
       _emitSession();
     } catch (e) {
       debugPrint('[LiveKitMeetingGateway] State sync note: $e');
     }
+  }
+
+  Map<String, dynamic> _buildRoomStatePayload() {
+    return {
+      'action': 'room_state',
+      'isWaitingRoomEnabled': _isWaitingRoomEnabled,
+      'isRoomAudioLocked': _isRoomAudioLocked,
+      'isBreakoutActive': _isBreakoutActive,
+      'breakoutRooms': _breakoutRooms.map((r) => r.toJson()).toList(),
+      'mainRoomName': _mainRoomName,
+      'allowBreakoutSelfSelect': _allowBreakoutSelfSelect,
+      'breakoutEndsAt': _breakoutEndsAt?.toIso8601String(),
+      'breakoutBroadcastMessage': _breakoutBroadcastMessage,
+    };
   }
 
   void _attachRoomListeners(lk.Room room) {
@@ -362,8 +405,10 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         _syncStateFromRoom();
       })
       ..on<lk.RoomDisconnectedEvent>((_) {
-        _currentSession = MeetingSession.initial();
-        _emitSession();
+        if (!_isSwitchingBreakoutRoom) {
+          _currentSession = MeetingSession.initial();
+          _emitSession();
+        }
       })
       ..on<lk.RoomReconnectingEvent>((_) {
         _currentSession = _currentSession.copyWith(status: RoomStatus.reconnecting);
@@ -377,20 +422,18 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         _syncStateFromRoom();
       })
       ..on<lk.ParticipantConnectedEvent>((event) {
+        if (event.participant.identity.contains('_relay_')) return;
         if (_isHostOrModerator) {
-          // Immediately inform the new participant of the current room policies (Waiting room, locked mics)
+          // Immediately inform the new participant of the current room policies (Waiting room, locked mics, breakout rooms)
           try {
-            final statePayload = utf8.encode(jsonEncode({
-              'action': 'room_state',
-              'isWaitingRoomEnabled': _isWaitingRoomEnabled,
-              'isRoomAudioLocked': _isRoomAudioLocked,
-            }));
+            final statePayload = utf8.encode(jsonEncode(_buildRoomStatePayload()));
             _room?.localParticipant?.publishData(statePayload, reliable: true);
           } catch (_) {}
         }
         _syncStateFromRoom();
       })
       ..on<lk.ParticipantDisconnectedEvent>((event) {
+        if (event.participant.identity.contains('_relay_')) return;
         _waitingKnocks.removeWhere((k) => k['id'] == event.participant.identity);
         _syncStateFromRoom();
       })
@@ -434,9 +477,34 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       });
   }
 
+  void _scheduleBreakoutTimer() {
+    _breakoutTimer?.cancel();
+    final endsAt = _breakoutEndsAt;
+    if (!_isBreakoutActive || endsAt == null) return;
+
+    final remaining = endsAt.difference(DateTime.now().toUtc());
+    if (remaining.isNegative || remaining.inSeconds <= 0) {
+      if (_isHostOrModerator) {
+        closeBreakoutRooms();
+      } else if (_activeBreakoutRoomId != null && _activeBreakoutRoomId!.isNotEmpty) {
+        returnToMainRoom();
+      }
+      return;
+    }
+
+    _breakoutTimer = Timer(remaining, () {
+      if (_isHostOrModerator) {
+        closeBreakoutRooms();
+      } else if (_activeBreakoutRoomId != null && _activeBreakoutRoomId!.isNotEmpty) {
+        _moderationPromptsController.add('breakout_closed');
+        returnToMainRoom();
+      }
+    });
+  }
+
   void _handleControlMessage(Map<String, dynamic> msg, {String? sender}) {
     final action = msg['action'];
-    final myIdentity = _room?.localParticipant?.identity ?? '';
+    final myIdentity = _room?.localParticipant?.identity ?? _lastUserId;
     final targetIdentity = msg['target_identity']?.toString();
 
     if (action == 'mute_all') {
@@ -536,11 +604,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       }
     } else if (action == 'query_room_state') {
       if (_isHostOrModerator) {
-        final resp = utf8.encode(jsonEncode({
-          'action': 'room_state',
-          'isWaitingRoomEnabled': _isWaitingRoomEnabled,
-          'isRoomAudioLocked': _isRoomAudioLocked,
-        }));
+        final resp = utf8.encode(jsonEncode(_buildRoomStatePayload()));
         try {
           _room?.localParticipant?.publishData(resp, reliable: true);
         } catch (_) {}
@@ -550,8 +614,28 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
           ? (msg['enabled'] == true)
           : (msg['isWaitingRoomEnabled'] == true);
       _isWaitingRoomEnabled = waitingEnabled;
-      if (action == 'room_state' && msg['isRoomAudioLocked'] == true) {
-        _isRoomAudioLocked = true;
+      if (action == 'room_state') {
+        if (msg['isRoomAudioLocked'] == true) {
+          _isRoomAudioLocked = true;
+        }
+        if (msg['isBreakoutActive'] == true) {
+          _isBreakoutActive = true;
+          final rawRooms = msg['breakoutRooms'];
+          if (rawRooms is List) {
+            _breakoutRooms = rawRooms
+                .whereType<Map>()
+                .map((m) => BreakoutRoom.fromJson(Map<String, dynamic>.from(m)))
+                .toList();
+          }
+          _mainRoomName = msg['mainRoomName']?.toString() ?? _mainRoomName;
+          _allowBreakoutSelfSelect = msg['allowBreakoutSelfSelect'] != false;
+          final endsAtRaw = msg['breakoutEndsAt']?.toString();
+          _breakoutEndsAt = (endsAtRaw != null && endsAtRaw.isNotEmpty)
+              ? DateTime.tryParse(endsAtRaw)
+              : null;
+          _breakoutBroadcastMessage = msg['breakoutBroadcastMessage']?.toString();
+          _scheduleBreakoutTimer();
+        }
       }
       if (!_isHostOrModerator && waitingEnabled && !_isAdmitted) {
         _room?.localParticipant?.setMicrophoneEnabled(false);
@@ -568,6 +652,64 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         } catch (_) {}
       }
       _syncStateFromRoom();
+    } else if (action == 'breakout_start') {
+      final rawRooms = msg['rooms'];
+      if (rawRooms is List) {
+        _breakoutRooms = rawRooms
+            .whereType<Map>()
+            .map((m) => BreakoutRoom.fromJson(Map<String, dynamic>.from(m)))
+            .toList();
+      }
+      _isBreakoutActive = true;
+      _mainRoomName = msg['mainRoomName']?.toString() ??
+          _mainRoomName ??
+          _currentSession.roomName;
+      _allowBreakoutSelfSelect = msg['allowSelfSelect'] != false;
+      final endsAtStr = msg['endsAt']?.toString();
+      _breakoutEndsAt = (endsAtStr != null && endsAtStr.isNotEmpty)
+          ? DateTime.tryParse(endsAtStr)
+          : null;
+      _breakoutBroadcastMessage = null;
+      _scheduleBreakoutTimer();
+      _syncStateFromRoom();
+
+      // Check if local user is assigned to a specific breakout room
+      final assignedRoom = _breakoutRooms.firstWhereOrNull(
+        (r) => r.assignedParticipantIds.contains(myIdentity),
+      );
+      if (assignedRoom != null && !_isHostOrModerator) {
+        _moderationPromptsController
+            .add('breakout_assigned:${assignedRoom.id}|${assignedRoom.name}');
+      } else {
+        _moderationPromptsController.add('breakout_started');
+      }
+    } else if (action == 'breakout_close') {
+      _breakoutTimer?.cancel();
+      _isBreakoutActive = false;
+      _breakoutRooms = [];
+      _breakoutEndsAt = null;
+      _breakoutBroadcastMessage = null;
+      _moderationPromptsController.add('breakout_closed');
+      if (_activeBreakoutRoomId != null && _activeBreakoutRoomId!.isNotEmpty) {
+        returnToMainRoom();
+      } else {
+        _syncStateFromRoom();
+      }
+    } else if (action == 'breakout_broadcast') {
+      final text = msg['message']?.toString() ?? '';
+      if (text.isNotEmpty) {
+        _breakoutBroadcastMessage = text;
+        _syncStateFromRoom();
+        _moderationPromptsController.add('breakout_broadcast:$text');
+      }
+    } else if (action == 'breakout_help') {
+      if (_isHostOrModerator) {
+        final roomId = msg['roomId']?.toString() ?? '';
+        final roomName = msg['roomName']?.toString() ?? 'Breakout Room';
+        final userName = msg['userName']?.toString() ?? sender ?? 'Participant';
+        _moderationPromptsController
+            .add('breakout_help:$roomId|$roomName|$userName');
+      }
     }
   }
 
@@ -673,11 +815,18 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
     bool isWaitingRoomEnabled = false,
   }) async {
     try {
+      _lastUserId = userId;
+      _lastUserName = userName;
+      _lastMeetingType = meetingType;
+      if (!roomName.contains('--br-')) {
+        _mainRoomName = roomName;
+      }
+
       _isHostOrModerator = RoleAccessService.instance.canAccessAdmin() ||
           RoleAccessService.instance.canStartConferencing();
       _isWaitingRoomEnabled = isWaitingRoomEnabled;
       // Host / Leader is always admitted immediately; standard attendee in a waiting room starts unadmitted
-      _isAdmitted = _isHostOrModerator || !isWaitingRoomEnabled;
+      _isAdmitted = _isHostOrModerator || !isWaitingRoomEnabled || roomName.contains('--br-');
       _waitingKnocks.clear();
 
       _currentSession = _currentSession.copyWith(
@@ -746,13 +895,34 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
     }
   }
 
+  /// Disconnects only the underlying LiveKit room without wiping breakout session metadata.
+  Future<void> _disconnectRoomInstanceOnly() async {
+    final room = _room;
+    if (room == null) return;
+    try {
+      _roomListener?.dispose();
+      _roomListener = null;
+      await room.disconnect();
+    } catch (e) {
+      debugPrint('[LiveKitMeetingGateway] _disconnectRoomInstanceOnly note: $e');
+    } finally {
+      _room = null;
+      _isScreenShareEnabled = false;
+      _handsRaised.clear();
+    }
+  }
+
   @override
   Future<void> joinMeeting({
     required String roomToken,
     String? roomName,
   }) async {
     try {
-      await leaveMeeting();
+      if (_isSwitchingBreakoutRoom) {
+        await _disconnectRoomInstanceOnly();
+      } else {
+        await leaveMeeting();
+      }
 
       _currentSession = _currentSession.copyWith(
         roomName: roomName ?? '',
@@ -854,11 +1024,26 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
           ? room.name!
           : (roomName ?? '');
 
+      if (!finalRoomName.contains('--br-') && (_mainRoomName == null || _mainRoomName!.isEmpty)) {
+        _mainRoomName = finalRoomName;
+      }
+
       _currentSession = MeetingSession(
         roomName: finalRoomName,
         status: RoomStatus.connected,
         isAudioMuted: _isAudioMuted,
         isVideoMuted: _isVideoMuted,
+        isRoomAudioLocked: _isRoomAudioLocked,
+        isWaitingRoomEnabled: _isWaitingRoomEnabled,
+        isAdmitted: _isAdmitted,
+        isBreakoutActive: _isBreakoutActive,
+        breakoutRooms: List<BreakoutRoom>.from(_breakoutRooms),
+        mainRoomName: _mainRoomName,
+        activeBreakoutRoomId: _activeBreakoutRoomId,
+        activeBreakoutRoomName: _activeBreakoutRoomName,
+        allowBreakoutSelfSelect: _allowBreakoutSelfSelect,
+        breakoutEndsAt: _breakoutEndsAt,
+        breakoutBroadcastMessage: _breakoutBroadcastMessage,
         participants: _collectParticipants(),
       );
       _emitSession();
@@ -1160,6 +1345,15 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       }
     }
 
+    // 2. If breakout rooms are active, relay end_meeting_for_all to all breakout sub-rooms too
+    if (_isBreakoutActive && _breakoutRooms.isNotEmpty) {
+      final subRoomIds = _breakoutRooms.map((r) => r.id).toList();
+      unawaited(_relayControlMessageToRooms(
+        {'action': 'end_meeting_for_all'},
+        subRoomIds,
+      ));
+    }
+
     try {
       final payload = utf8.encode(jsonEncode({
         'action': 'end_meeting_for_all',
@@ -1240,10 +1434,258 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
     }
   }
 
+  // ──────────────────────────────────────────────────────────
+  //  Breakout Rooms Implementation
+  // ──────────────────────────────────────────────────────────
+
+  /// Relays a control packet to other LiveKit rooms (e.g., from Main Room to Breakout Sub-Rooms
+  /// or from a Breakout Sub-Room back to the Main Room).
+  Future<void> _relayControlMessageToRooms(
+    Map<String, dynamic> message,
+    List<String> targetRoomNames,
+  ) async {
+    final currentRoomName = _room?.name ?? _currentSession.roomName;
+    final bytes = utf8.encode(jsonEncode(message));
+
+    for (final targetRoom in targetRoomNames.toSet()) {
+      if (targetRoom.isEmpty) continue;
+      if (targetRoom == currentRoomName) {
+        try {
+          await _room?.localParticipant?.publishData(bytes, reliable: true);
+        } catch (_) {}
+        continue;
+      }
+
+      // Connect an ephemeral headless room client to deliver the control packet
+      unawaited(() async {
+        lk.Room? relayRoom;
+        try {
+          final relayId =
+              '${_lastUserId.isNotEmpty ? _lastUserId : "host"}_relay_${DateTime.now().millisecondsSinceEpoch % 10000}';
+          final decoded = await _executeFunctionSafely(
+            functionId: AppwriteBackendConfig.createLiveKitTokenFunctionId,
+            body: {
+              'roomName': targetRoom,
+              'identity': relayId,
+              'participantName': 'ALIVE Meet System',
+              'meetingType': _lastMeetingType,
+            },
+          );
+          final token = decoded['token'] as String?;
+          if (token == null || token.isEmpty) return;
+
+          relayRoom = lk.Room();
+          await relayRoom
+              .connect(livekitUrl, token)
+              .timeout(const Duration(seconds: 10));
+          await relayRoom.localParticipant?.publishData(bytes, reliable: true);
+          await Future<void>.delayed(const Duration(milliseconds: 350));
+        } catch (e) {
+          debugPrint('[LiveKitMeetingGateway] Relay to $targetRoom note: $e');
+        } finally {
+          try {
+            await relayRoom?.disconnect();
+          } catch (_) {}
+        }
+      }());
+    }
+  }
+
+  @override
+  Future<void> startBreakoutRooms({
+    required List<BreakoutRoom> rooms,
+    int? durationMinutes,
+    bool allowSelfSelect = true,
+  }) async {
+    if (rooms.isEmpty) return;
+
+    _mainRoomName ??= _room?.name ?? _currentSession.roomName;
+    _isBreakoutActive = true;
+    _breakoutRooms = List<BreakoutRoom>.from(rooms);
+    _allowBreakoutSelfSelect = allowSelfSelect;
+    _breakoutEndsAt = (durationMinutes != null && durationMinutes > 0)
+        ? DateTime.now().toUtc().add(Duration(minutes: durationMinutes))
+        : null;
+    _breakoutBroadcastMessage = null;
+
+    _scheduleBreakoutTimer();
+    _syncStateFromRoom();
+
+    final payload = {
+      'action': 'breakout_start',
+      'mainRoomName': _mainRoomName,
+      'rooms': _breakoutRooms.map((r) => r.toJson()).toList(),
+      'allowSelfSelect': _allowBreakoutSelfSelect,
+      if (_breakoutEndsAt != null) 'endsAt': _breakoutEndsAt!.toIso8601String(),
+    };
+
+    try {
+      await _room?.localParticipant
+          ?.publishData(utf8.encode(jsonEncode(payload)), reliable: true);
+      debugPrint(
+        '[LiveKitMeetingGateway] Started ${_breakoutRooms.length} breakout rooms',
+      );
+    } catch (e) {
+      debugPrint('[LiveKitMeetingGateway] startBreakoutRooms error: $e');
+    }
+  }
+
+  @override
+  Future<void> closeBreakoutRooms() async {
+    final roomsToClose = _breakoutRooms.map((r) => r.id).toList();
+    final mainRoom = _mainRoomName;
+    if (mainRoom != null && mainRoom.isNotEmpty) {
+      roomsToClose.add(mainRoom);
+    }
+
+    _breakoutTimer?.cancel();
+    _isBreakoutActive = false;
+    _breakoutRooms = [];
+    _breakoutEndsAt = null;
+    _breakoutBroadcastMessage = null;
+
+    final payload = {'action': 'breakout_close'};
+    await _relayControlMessageToRooms(payload, roomsToClose);
+
+    if (_activeBreakoutRoomId != null && _activeBreakoutRoomId!.isNotEmpty) {
+      await returnToMainRoom();
+    } else {
+      _syncStateFromRoom();
+    }
+  }
+
+  @override
+  Future<void> joinBreakoutRoom(BreakoutRoom room) async {
+    if (room.id.isEmpty) return;
+    if (_activeBreakoutRoomId == room.id && isConnected) return;
+
+    _mainRoomName ??= _room?.name ?? _currentSession.roomName;
+    final userId = _lastUserId.isNotEmpty
+        ? _lastUserId
+        : (_room?.localParticipant?.identity ?? 'member');
+    final userName = _lastUserName.isNotEmpty
+        ? _lastUserName
+        : (_room?.localParticipant?.name ?? userId);
+
+    _isSwitchingBreakoutRoom = true;
+    _activeBreakoutRoomId = room.id;
+    _activeBreakoutRoomName = room.name;
+    _syncStateFromRoom();
+
+    try {
+      await executionAndJoin(
+        roomName: room.id,
+        userId: userId,
+        userName: userName,
+        meetingType: _lastMeetingType,
+        isWaitingRoomEnabled: false,
+      );
+    } finally {
+      _isSwitchingBreakoutRoom = false;
+      _syncStateFromRoom();
+    }
+  }
+
+  @override
+  Future<void> returnToMainRoom() async {
+    final targetMainRoom = _mainRoomName;
+    if (targetMainRoom == null || targetMainRoom.isEmpty) return;
+    if (_activeBreakoutRoomId == null &&
+        (_room?.name == targetMainRoom || _currentSession.roomName == targetMainRoom)) {
+      return;
+    }
+
+    final userId = _lastUserId.isNotEmpty
+        ? _lastUserId
+        : (_room?.localParticipant?.identity ?? 'member');
+    final userName = _lastUserName.isNotEmpty
+        ? _lastUserName
+        : (_room?.localParticipant?.name ?? userId);
+
+    _isSwitchingBreakoutRoom = true;
+    _activeBreakoutRoomId = null;
+    _activeBreakoutRoomName = null;
+    _syncStateFromRoom();
+
+    try {
+      await executionAndJoin(
+        roomName: targetMainRoom,
+        userId: userId,
+        userName: userName,
+        meetingType: _lastMeetingType,
+        isWaitingRoomEnabled: false,
+      );
+    } finally {
+      _isSwitchingBreakoutRoom = false;
+      _syncStateFromRoom();
+    }
+  }
+
+  @override
+  Future<void> broadcastToBreakoutRooms(String message) async {
+    final trimmed = message.trim();
+    if (trimmed.isEmpty) return;
+
+    _breakoutBroadcastMessage = trimmed;
+    _syncStateFromRoom();
+
+    final targets = _breakoutRooms.map((r) => r.id).toList();
+    if (_mainRoomName != null && _mainRoomName!.isNotEmpty) {
+      targets.add(_mainRoomName!);
+    }
+
+    await _relayControlMessageToRooms(
+      {
+        'action': 'breakout_broadcast',
+        'message': trimmed,
+      },
+      targets,
+    );
+  }
+
+  @override
+  Future<void> requestHostHelpInBreakout() async {
+    final roomId = _activeBreakoutRoomId;
+    final roomName = _activeBreakoutRoomName ?? 'Breakout Room';
+    final mainRoom = _mainRoomName;
+    if (roomId == null || roomId.isEmpty || mainRoom == null || mainRoom.isEmpty) {
+      return;
+    }
+
+    final userName = _lastUserName.isNotEmpty
+        ? _lastUserName
+        : (_room?.localParticipant?.name ?? 'Participant');
+
+    final targets = <String>[mainRoom, ..._breakoutRooms.map((r) => r.id)];
+    await _relayControlMessageToRooms(
+      {
+        'action': 'breakout_help',
+        'roomId': roomId,
+        'roomName': roomName,
+        'userName': userName,
+      },
+      targets,
+    );
+  }
+
   @override
   Future<void> leaveMeeting() async {
     final room = _room;
-    if (room == null) return;
+    _breakoutTimer?.cancel();
+    _breakoutTimer = null;
+
+    if (room == null) {
+      _isBreakoutActive = false;
+      _breakoutRooms = [];
+      _mainRoomName = null;
+      _activeBreakoutRoomId = null;
+      _activeBreakoutRoomName = null;
+      _breakoutEndsAt = null;
+      _breakoutBroadcastMessage = null;
+      _currentSession = MeetingSession.initial();
+      _emitSession();
+      return;
+    }
 
     try {
       _roomListener?.dispose();
@@ -1262,6 +1704,13 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       _isAdmitted = true;
       _waitingKnocks.clear();
       _handsRaised.clear();
+      _isBreakoutActive = false;
+      _breakoutRooms = [];
+      _mainRoomName = null;
+      _activeBreakoutRoomId = null;
+      _activeBreakoutRoomName = null;
+      _breakoutEndsAt = null;
+      _breakoutBroadcastMessage = null;
       _currentSession = MeetingSession.initial();
       _emitSession();
     }
@@ -1342,6 +1791,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
 
   @override
   void dispose() {
+    _breakoutTimer?.cancel();
     _roomListener?.dispose();
     _roomListener = null;
     _room?.disconnect();
