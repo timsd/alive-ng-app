@@ -942,6 +942,18 @@
 
       if (isReturn) {
         handlePaymentReturn(returnRef);
+      } else {
+        // Always auto-scroll directly to where the user inputs their details
+        setTimeout(function () {
+          var target = document.getElementById('donation-form') || document.querySelector('.panel');
+          if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            var nameInput = document.getElementById('donor-name');
+            if (nameInput && window.innerWidth > 768) {
+              try { nameInput.focus(); } catch (_) { }
+            }
+          }
+        }, 250);
       }
 
       function showSuccessDialog(amountStr, refStr) {
