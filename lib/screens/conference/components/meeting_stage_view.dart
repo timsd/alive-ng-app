@@ -1,0 +1,358 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../models/meeting_models.dart';
+import '../../../providers/user_profile_provider.dart';
+import '../../../services/meeting_gateway.dart';
+
+String formatMeetingParticipantName(ParticipantInfo p) {
+  final raw = p.name.trim();
+  if (raw.isEmpty || raw == p.identity || (raw.length > 20 && !raw.contains(' '))) {
+    return p.isLocal ? 'You' : 'ALIVE Member';
+  }
+  return raw;
+}
+
+/// Stage rendering active screen share feed with projector canvas fallback.
+class MeetingScreenShareStage extends StatelessWidget {
+  final MeetingSession session;
+  final MeetingGateway gateway;
+
+  const MeetingScreenShareStage({
+    super.key,
+    required this.session,
+    required this.gateway,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final presenter = session.activeScreenShareName ?? (session.isScreenShareEnabled ? 'You' : 'Presenter');
+    final screenVideoWidget = gateway.buildScreenShareVideoWidget();
+
+    return Container(
+      margin: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF14181F),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.teal.shade600, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.teal.withValues(alpha: 0.2),
+            blurRadius: 20,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        fit: StackFit.expand,
+        alignment: Alignment.center,
+        children: [
+          if (screenVideoWidget != null)
+            screenVideoWidget
+          else
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: Colors.teal.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.screen_share_rounded,
+                    size: 42,
+                    color: Colors.tealAccent,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  '$presenter is Presenting Screen',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'High-Resolution Sanctuary & Stage Presentation Feed Active',
+                  style: TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.black45,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white24),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.hd_rounded, size: 16, color: Colors.tealAccent),
+                      SizedBox(width: 6),
+                      Text(
+                        '1080p Stage Projection • Low Latency WebRTC',
+                        style: TextStyle(color: Colors.white, fontSize: 11),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          Positioned(
+            top: 14,
+            left: 14,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: Colors.black87,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Colors.teal.shade400, width: 1),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.cast_connected, size: 14, color: Colors.tealAccent),
+                  const SizedBox(width: 6),
+                  Text(
+                    'STAGE PRESENTATION: $presenter',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Video grid displaying attendee and speaker tiles with speaking indicator borders.
+class MeetingVideoGridStage extends ConsumerWidget {
+  final MeetingSession session;
+  final MeetingGateway gateway;
+  final bool isLeader;
+  final void Function(ParticipantInfo p) onParticipantTap;
+
+  const MeetingVideoGridStage({
+    super.key,
+    required this.session,
+    required this.gateway,
+    required this.isLeader,
+    required this.onParticipantTap,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (session.participants.isEmpty) {
+      return const Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.meeting_room_outlined, size: 64, color: Colors.white38),
+          SizedBox(height: 16),
+          Text(
+            'Sanctuary Stage Waiting for Attendees...',
+            style: TextStyle(color: Colors.white70, fontSize: 16),
+          ),
+        ],
+      );
+    }
+
+    final participants = session.participants;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final crossAxisCount = constraints.maxWidth > 900
+            ? 3
+            : (constraints.maxWidth > 500 ? 2 : 1);
+
+        return GridView.builder(
+          padding: const EdgeInsets.all(16),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 16 / 10,
+          ),
+          itemCount: participants.length,
+          itemBuilder: (context, index) {
+            final p = participants[index];
+            final name = formatMeetingParticipantName(p);
+            final isSpeaking = p.isSpeaking;
+            final isParticipantHost = gateway.isParticipantHost(p.identity);
+            final isParticipantCoHost = gateway.isParticipantCoHost(p.identity);
+            final liveVideo = !p.isVideoMuted
+                ? gateway.buildParticipantVideoWidget(p.identity)
+                : null;
+
+            return InkWell(
+              onTap: () => onParticipantTap(p),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF161B22),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isSpeaking
+                        ? Colors.green
+                        : (isParticipantHost
+                            ? const Color(0xFFD49B28)
+                            : (isParticipantCoHost ? Colors.teal : Colors.white24)),
+                    width: isSpeaking ? 2.5 : 1,
+                  ),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Stack(
+                  fit: StackFit.expand,
+                  alignment: Alignment.center,
+                  children: [
+                    if (liveVideo != null)
+                      liveVideo
+                    else
+                      Builder(
+                        builder: (context) {
+                          final effectiveAvatar = p.isLocal
+                              ? (ref.watch(currentUserAvatarUrlProvider) ?? p.avatarUrl)
+                              : p.avatarUrl;
+                          final hasAvatar = effectiveAvatar != null && effectiveAvatar.isNotEmpty;
+
+                          return Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              CircleAvatar(
+                                radius: 28,
+                                backgroundColor: p.isLocal
+                                    ? const Color(0xFF3B82F6)
+                                    : const Color(0xFF10B981),
+                                backgroundImage: hasAvatar ? NetworkImage(effectiveAvatar) : null,
+                                child: hasAvatar
+                                    ? null
+                                    : Text(
+                                        name.isNotEmpty ? name[0].toUpperCase() : 'M',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                p.isVideoMuted ? 'Camera Off' : 'Starting Camera...',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.6),
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+
+                    // Top Right Audio / Hand Status
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (p.isHandRaised)
+                            Container(
+                              padding: const EdgeInsets.all(4),
+                              margin: const EdgeInsets.only(right: 4),
+                              decoration: const BoxDecoration(
+                                color: Colors.amber,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.pan_tool_rounded, size: 12, color: Colors.black87),
+                            ),
+                          Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: p.isAudioMuted ? Colors.red.shade900 : Colors.black54,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              p.isAudioMuted ? Icons.mic_off : Icons.mic,
+                              size: 14,
+                              color: p.isAudioMuted ? Colors.white : Colors.greenAccent,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Bottom Pill Name Overlay
+                    Positioned(
+                      bottom: 8,
+                      left: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.black87,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          children: [
+                            if (isParticipantHost)
+                              const Padding(
+                                padding: EdgeInsets.only(right: 4),
+                                child: Icon(Icons.star, size: 12, color: Color(0xFFD49B28)),
+                              )
+                            else if (isParticipantCoHost)
+                              const Padding(
+                                padding: EdgeInsets.only(right: 4),
+                                child: Icon(Icons.shield, size: 12, color: Colors.tealAccent),
+                              ),
+                            Expanded(
+                              child: Text(
+                                name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            if (p.isLocal)
+                              Container(
+                                margin: const EdgeInsets.only(left: 4),
+                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade800,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Text(
+                                  'YOU',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}

@@ -954,4 +954,20 @@ class DiscipleDeletionRequest {
   };
 }
 
+/// A parsed message in an Officer Feedback / Disciple Maker Response conversation thread.
+class DiscipleshipThreadMessage {
+  final bool isOfficer;
+  final String author;
+  final String? date;
+  final String content;
+
+  const DiscipleshipThreadMessage({
+    required this.isOfficer,
+    required this.author,
+    this.date,
+    required this.content,
+  });
+}
+
+
 

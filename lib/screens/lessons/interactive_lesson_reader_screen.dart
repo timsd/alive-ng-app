@@ -8,6 +8,7 @@ import '../../services/pdf_extractor_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/discipleship_service.dart';
 import '../../models/discipleship_models.dart';
+import 'components/lesson_reader_widgets.dart';
 
 /// Full interactive study screen for Lesson 1: Something We Can Trust (What The Bible Says Series)
 /// as well as any dynamically extracted Tract / Interactive Bible Study uploaded by Admins.
@@ -1097,67 +1098,12 @@ class _InteractiveLessonReaderScreenState
     required bool isDark,
     LessonColorPalette? palette,
   }) {
-    final effectivePalette =
-        palette ?? LessonColorPalette.byId(null, fallbackIndex: number - 1);
-    final primaryColor = Color(effectivePalette.primaryHex);
-
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: primaryColor.withValues(alpha: isDark ? 0.35 : 0.22),
-          width: 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: primaryColor.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CircleAvatar(
-                radius: 14,
-                backgroundColor: primaryColor,
-                child: Text(
-                  '$number',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: isDark ? Colors.white : const Color(0xFF0F172A),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          ...children,
-        ],
-      ),
+    return LessonSectionCard(
+      number: number,
+      title: title,
+      children: children,
+      isDark: isDark,
+      palette: palette,
     );
   }
 
@@ -1167,75 +1113,20 @@ class _InteractiveLessonReaderScreenState
     required bool isDark,
     LessonColorPalette? palette,
   }) {
-    final effectivePalette =
-        palette ?? LessonColorPalette.byId(null, fallbackIndex: reference.hashCode);
-    final primaryColor = Color(effectivePalette.primaryHex);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: isDark
-            ? Color(effectivePalette.darkTintHex)
-            : Color(effectivePalette.lightTintHex),
-        borderRadius: BorderRadius.circular(8),
-        border: Border(
-          left: BorderSide(color: primaryColor, width: 4),
-        ),
-      ),
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '"$quote"',
-            style: TextStyle(
-              fontSize: 14,
-              fontStyle: FontStyle.italic,
-              height: 1.4,
-              color: isDark ? Colors.white : const Color(0xFF1F2937),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Align(
-            alignment: Alignment.centerRight,
-            child: _buildScriptureChip(
-              reference,
-              accentColor: isDark ? Color(effectivePalette.accentHex) : primaryColor,
-            ),
-          ),
-        ],
-      ),
+    return LessonVerseQuoteCard(
+      quote: quote,
+      reference: reference,
+      isDark: isDark,
+      palette: palette,
+      onOpenScripture: _openScripture,
     );
   }
 
   Widget _buildScriptureChip(String reference, {Color? accentColor}) {
-    final chipColor = accentColor ?? Colors.green;
-    return InkWell(
+    return LessonScriptureChip(
+      reference: reference,
+      accentColor: accentColor,
       onTap: () => _openScripture(reference),
-      borderRadius: BorderRadius.circular(6),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: chipColor.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: chipColor.withValues(alpha: 0.35)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.open_in_new, color: chipColor, size: 12),
-            const SizedBox(width: 4),
-            Text(
-              reference,
-              style: TextStyle(
-                color: chipColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 11,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -1248,51 +1139,14 @@ class _InteractiveLessonReaderScreenState
     int sectionNumber = 1,
     LessonColorPalette? palette,
   }) {
-    final effectivePalette =
-        palette ?? LessonColorPalette.byId(null, fallbackIndex: sectionNumber - 1);
-    final focusColor = Color(effectivePalette.primaryHex);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 8),
-        Text(
-          label.toUpperCase(),
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 0.5,
-            color: isDark ? Colors.white60 : focusColor,
-          ),
-        ),
-        const SizedBox(height: 6),
-        TextField(
-          controller: controller,
-          maxLines: maxLines,
-          onChanged: (_) => _calculateProgress(),
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: TextStyle(
-              fontSize: 13,
-              color: isDark ? Colors.white30 : Colors.grey[400],
-            ),
-            filled: true,
-            fillColor: isDark ? Colors.white10 : const Color(0xFFF8FAFC),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(
-                color: isDark ? Colors.white12 : const Color(0xFFCBD5E1),
-              ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: focusColor, width: 1.5),
-            ),
-            contentPadding: const EdgeInsets.all(12),
-          ),
-          style: const TextStyle(fontSize: 14),
-        ),
-      ],
+    return LessonReflectionInput(
+      label: label,
+      hint: hint,
+      controller: controller,
+      isDark: isDark,
+      maxLines: maxLines,
+      sectionNumber: sectionNumber,
+      palette: palette,
     );
   }
 
