@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../services/offline_bible_service.dart';
 import '../widgets/custom_app_bar.dart';
 import '../screens/splash/animated_splash_screen.dart';
 import '../screens/onboarding/onboarding_screen.dart';
@@ -149,6 +151,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       debugPrint('Router redirect start: ${state.uri.path}');
       final currentUser = ref.read(authGatewayProvider).currentUser;
       final isAuthenticated = currentUser != null;
+      if (isAuthenticated) {
+        unawaited(OfflineBibleService().prewarmBundle());
+      }
       try {
         debugPrint('Auth state: authenticated=$isAuthenticated');
       } catch (e) {
