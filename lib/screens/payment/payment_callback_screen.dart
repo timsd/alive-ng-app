@@ -294,7 +294,7 @@ class _PaymentCallbackScreenState extends State<PaymentCallbackScreen> {
                     const SizedBox(width: 12),
                     ElevatedButton(
                       onPressed: () => context.go('/tracts?tab=downloaded'),
-                      child: const Text('View Downloaded Tracts'),
+                      child: const Text('View Saved Tracts'),
                     ),
                   ],
                 ),
@@ -306,3 +306,4 @@ class _PaymentCallbackScreenState extends State<PaymentCallbackScreen> {
     );
   }
 }
+
