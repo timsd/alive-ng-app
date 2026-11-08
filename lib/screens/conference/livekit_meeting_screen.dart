@@ -1,11 +1,15 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../config/meeting_links_config.dart';
 import '../../constants/chapters.dart';
 import '../../models/chat_models.dart';
 import '../../models/meeting_models.dart';
+import '../../providers/appwrite_auth_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/meeting_provider.dart';
 import '../../services/chat_service.dart';
@@ -15,6 +19,46 @@ import '../../services/role_access_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../utils/error_handler.dart';
 import '../admin/leader_meeting_transcription_screen.dart';
+
+class InMeetingChatMessage {
+  final String id;
+  final String senderId;
+  final String senderName;
+  final String? senderAvatar;
+  final String text;
+  final DateTime timestamp;
+  final bool isLocal;
+
+  const InMeetingChatMessage({
+    required this.id,
+    required this.senderId,
+    required this.senderName,
+    this.senderAvatar,
+    required this.text,
+    required this.timestamp,
+    required this.isLocal,
+  });
+
+  factory InMeetingChatMessage.fromJson(Map<String, dynamic> json, {bool isLocal = false}) {
+    DateTime ts;
+    try {
+      ts = json['timestamp'] != null
+          ? DateTime.parse(json['timestamp'].toString())
+          : DateTime.now();
+    } catch (_) {
+      ts = DateTime.now();
+    }
+    return InMeetingChatMessage(
+      id: json['id']?.toString() ?? UniqueKey().toString(),
+      senderId: json['senderId']?.toString() ?? '',
+      senderName: json['senderName']?.toString() ?? 'Attendee',
+      senderAvatar: json['senderAvatar']?.toString(),
+      text: json['text']?.toString() ?? '',
+      timestamp: ts,
+      isLocal: isLocal,
+    );
+  }
+}
 
 class LiveKitMeetingScreen extends ConsumerStatefulWidget {
   final MeetingType? meetingType;
@@ -50,7 +94,15 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   bool _isProjectorMode = false;
   String? _activeEgressId;
   StreamSubscription<String>? _moderationSub;
+  StreamSubscription<Map<String, dynamic>>? _dataChannelSub;
   Timer? _breakoutUiTicker;
+
+  // In-Meeting Real-time Chat
+  final List<InMeetingChatMessage> _inMeetingChatMessages = [];
+  int _unreadChatCount = 0;
+  bool _isChatSheetOpen = false;
+  final TextEditingController _inMeetingChatController = TextEditingController();
+  final ScrollController _chatScrollController = ScrollController();
 
   @override
   void initState() {
@@ -71,6 +123,20 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     });
 
     final gateway = ref.read(meetingGatewayProvider);
+
+    _dataChannelSub = gateway.dataChannelMessagesStream.listen((data) {
+      if (!mounted) return;
+      if (data['action'] == 'in_meeting_chat') {
+        final msg = InMeetingChatMessage.fromJson(data, isLocal: false);
+        setState(() {
+          _inMeetingChatMessages.add(msg);
+          if (!_isChatSheetOpen) {
+            _unreadChatCount++;
+          }
+        });
+        _scrollChatToBottom();
+      }
+    });
     _moderationSub = gateway.moderationPromptsStream.listen((event) {
       if (!mounted) return;
       if (event == 'ask_unmute') {
@@ -186,6 +252,8 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       final roomSlug = _getRoomSlug();
       final roomTitle = widget.meetingType?.displayName ?? roomName;
 
+      final currentAvatar = ref.read(currentUserAvatarUrlProvider);
+
       await gateway.executionAndJoin(
         roomName: roomSlug,
         userId: user.uid,
@@ -196,6 +264,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
         targetAudience: _targetAudience,
         targetChapter: _targetAudience == 'chapter' ? _selectedTargetChapter : null,
         isWaitingRoomEnabled: _requireHostApproval,
+        avatarUrl: currentAvatar,
       );
 
       // User gesture: Unlock audio playback & speaker routing immediately on entry
@@ -293,6 +362,287 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       debugPrint('Load channels for meeting notification note: $e');
       if (mounted) setState(() => _isLoadingChannels = false);
     }
+  }
+
+  void _shareMeetingLink() {
+    final roomSlug = _getRoomSlug();
+    final roomTitle = widget.meetingType?.displayName ?? _roomController.text.trim();
+    final meetingUrl = 'https://app.alivenigeria.org/meet?room=${Uri.encodeComponent(roomSlug)}';
+    final shareText =
+        'You are invited to join the ALIVE meeting: "$roomTitle"\n\nJoin directly here:\n$meetingUrl';
+
+    Clipboard.setData(ClipboardData(text: meetingUrl));
+    SharePlus.instance.share(
+      ShareParams(
+        text: shareText,
+        subject: 'ALIVE Meeting Invitation: $roomTitle',
+      ),
+    );
+    _showMessage('Meeting invitation link copied to clipboard!');
+  }
+
+  void _sendInMeetingChatMessage(MeetingGateway gateway) {
+    final text = _inMeetingChatController.text.trim();
+    if (text.isEmpty) return;
+
+    final user = ref.read(currentUserProvider);
+    final avatar = ref.read(currentUserAvatarUrlProvider);
+    final senderId = user?.uid ?? 'anonymous';
+    final senderName = user?.displayNameOrFallback ?? 'Attendee';
+    final now = DateTime.now();
+    final messageId = 'msg_${now.millisecondsSinceEpoch}_${UniqueKey().toString()}';
+
+    final packet = {
+      'action': 'in_meeting_chat',
+      'id': messageId,
+      'senderId': senderId,
+      'senderName': senderName,
+      'senderAvatar': avatar,
+      'text': text,
+      'timestamp': now.toIso8601String(),
+    };
+
+    gateway.sendDataChannelMessage(packet);
+
+    setState(() {
+      _inMeetingChatMessages.add(InMeetingChatMessage(
+        id: messageId,
+        senderId: senderId,
+        senderName: senderName,
+        senderAvatar: avatar,
+        text: text,
+        timestamp: now,
+        isLocal: true,
+      ));
+    });
+
+    _inMeetingChatController.clear();
+    _scrollChatToBottom();
+  }
+
+  void _scrollChatToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_chatScrollController.hasClients) {
+        _chatScrollController.animateTo(
+          _chatScrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  void _showInMeetingChatSheet(BuildContext context, MeetingGateway gateway) {
+    setState(() {
+      _isChatSheetOpen = true;
+      _unreadChatCount = 0;
+    });
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            final theme = Theme.of(ctx);
+            final bottomInset = MediaQuery.of(ctx).viewInsets.bottom;
+            final user = ref.read(currentUserProvider);
+            final myUid = user?.uid ?? '';
+
+            return Container(
+              height: MediaQuery.of(ctx).size.height * 0.75,
+              padding: EdgeInsets.only(bottom: bottomInset),
+              child: Column(
+                children: [
+                  // Header
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 12, 10),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFFD49B28)),
+                        const SizedBox(width: 8),
+                        Text(
+                          'In-Meeting Chat',
+                          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded),
+                          onPressed: () => Navigator.of(ctx).pop(),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  // Message list
+                  Expanded(
+                    child: _inMeetingChatMessages.isEmpty
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.mark_chat_unread_outlined,
+                                    size: 48,
+                                    color: theme.hintColor.withValues(alpha: 0.5),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'No messages yet',
+                                    style: TextStyle(color: theme.hintColor, fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Send a message to everyone in the meeting room.',
+                                    style: TextStyle(color: theme.hintColor, fontSize: 12),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        : ListView.builder(
+                            controller: _chatScrollController,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            itemCount: _inMeetingChatMessages.length,
+                            itemBuilder: (ctx, idx) {
+                              final msg = _inMeetingChatMessages[idx];
+                              final isMe = msg.isLocal || (myUid.isNotEmpty && msg.senderId == myUid);
+                              final timeStr = DateFormat.jm().format(msg.timestamp);
+
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: Row(
+                                  mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    if (!isMe) ...[
+                                      CircleAvatar(
+                                        radius: 14,
+                                        backgroundColor: theme.colorScheme.primaryContainer,
+                                        backgroundImage: (msg.senderAvatar != null && msg.senderAvatar!.isNotEmpty)
+                                            ? NetworkImage(msg.senderAvatar!)
+                                            : null,
+                                        child: (msg.senderAvatar != null && msg.senderAvatar!.isNotEmpty)
+                                            ? null
+                                            : Text(
+                                                msg.senderName.isNotEmpty ? msg.senderName[0].toUpperCase() : 'M',
+                                                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                                              ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                    ],
+                                    Flexible(
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                        decoration: BoxDecoration(
+                                          color: isMe
+                                              ? theme.colorScheme.primary
+                                              : (theme.brightness == Brightness.dark
+                                                  ? const Color(0xFF2D3748)
+                                                  : Colors.grey.shade200),
+                                          borderRadius: BorderRadius.only(
+                                            topLeft: const Radius.circular(14),
+                                            topRight: const Radius.circular(14),
+                                            bottomLeft: isMe ? const Radius.circular(14) : Radius.zero,
+                                            bottomRight: isMe ? Radius.zero : const Radius.circular(14),
+                                          ),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                                          children: [
+                                            if (!isMe)
+                                              Text(
+                                                msg.senderName,
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: theme.colorScheme.primary,
+                                                ),
+                                              ),
+                                            Text(
+                                              msg.text,
+                                              style: TextStyle(
+                                                color: isMe
+                                                    ? theme.colorScheme.onPrimary
+                                                    : (theme.brightness == Brightness.dark ? Colors.white : Colors.black87),
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              timeStr,
+                                              style: TextStyle(
+                                                fontSize: 9,
+                                                color: isMe
+                                                    ? theme.colorScheme.onPrimary.withValues(alpha: 0.7)
+                                                    : theme.hintColor,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    if (isMe) const SizedBox(width: 4),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                  const Divider(height: 1),
+                  // Chat Input bar
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _inMeetingChatController,
+                            textCapitalization: TextCapitalization.sentences,
+                            decoration: InputDecoration(
+                              hintText: 'Type a message to everyone...',
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(24),
+                                borderSide: BorderSide(color: theme.dividerColor),
+                              ),
+                            ),
+                            onSubmitted: (_) {
+                              _sendInMeetingChatMessage(gateway);
+                              setSheetState(() {});
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton.filled(
+                          onPressed: () {
+                            _sendInMeetingChatMessage(gateway);
+                            setSheetState(() {});
+                          },
+                          icon: const Icon(Icons.send_rounded, size: 20),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    ).whenComplete(() {
+      if (mounted) {
+        setState(() => _isChatSheetOpen = false);
+      }
+    });
   }
 
   List<DropdownMenuItem<String>> _buildTargetAudienceItems() {
@@ -432,6 +782,22 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
           showBackButton: true,
           showDonationButton: false,
           actions: [
+            IconButton(
+              icon: const Icon(Icons.share_rounded),
+              tooltip: 'Share Meeting Link',
+              onPressed: _shareMeetingLink,
+            ),
+            if (connected) ...[
+              IconButton(
+                icon: Badge(
+                  isLabelVisible: _unreadChatCount > 0,
+                  label: Text('$_unreadChatCount'),
+                  child: const Icon(Icons.chat_bubble_outline_rounded),
+                ),
+                tooltip: 'In-Meeting Chat',
+                onPressed: () => _showInMeetingChatSheet(context, gateway),
+              ),
+            ],
             if (connected && (isLeader || session.isBreakoutActive)) ...[
               IconButton(
                 icon: Badge(
@@ -949,6 +1315,22 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                         icon: const Icon(Icons.keyboard_return_rounded),
                         label: const Text('Main Room'),
                       ),
+                    // In-Meeting Chat button
+                    FilledButton.tonalIcon(
+                      onPressed: () => _showInMeetingChatSheet(context, gateway),
+                      icon: Badge(
+                        isLabelVisible: _unreadChatCount > 0,
+                        label: Text('$_unreadChatCount'),
+                        child: const Icon(Icons.chat_bubble_outline_rounded),
+                      ),
+                      label: Text(_unreadChatCount > 0 ? 'Chat ($_unreadChatCount)' : 'Chat'),
+                    ),
+                    // Share Meeting Link button
+                    OutlinedButton.icon(
+                      onPressed: _shareMeetingLink,
+                      icon: const Icon(Icons.share_rounded),
+                      label: const Text('Share Link'),
+                    ),
                     // Projector / Display View button
                     FilledButton.tonalIcon(
                       onPressed: () => setState(() => _isProjectorMode = true),
@@ -1142,11 +1524,16 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                             isLeader,
                           ),
                           leading: CircleAvatar(
-                            child: Text(
-                              displayName.isNotEmpty
-                                  ? displayName[0].toUpperCase()
-                                  : 'M',
-                            ),
+                            backgroundImage: (participant.avatarUrl != null && participant.avatarUrl!.isNotEmpty)
+                                ? NetworkImage(participant.avatarUrl!)
+                                : null,
+                            child: (participant.avatarUrl != null && participant.avatarUrl!.isNotEmpty)
+                                ? null
+                                : Text(
+                                    displayName.isNotEmpty
+                                        ? displayName[0].toUpperCase()
+                                        : 'M',
+                                  ),
                           ),
                           title: Row(
                             children: [
@@ -1999,10 +2386,15 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                       CircleAvatar(
                         radius: 22,
                         backgroundColor: const Color(0xFFD49B28),
-                        child: Text(
-                          displayName.isNotEmpty ? displayName[0].toUpperCase() : 'M',
-                          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-                        ),
+                        backgroundImage: (participant.avatarUrl != null && participant.avatarUrl!.isNotEmpty)
+                            ? NetworkImage(participant.avatarUrl!)
+                            : null,
+                        child: (participant.avatarUrl != null && participant.avatarUrl!.isNotEmpty)
+                            ? null
+                            : Text(
+                                displayName.isNotEmpty ? displayName[0].toUpperCase() : 'M',
+                                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                              ),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
@@ -2860,32 +3252,44 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                       liveVideo
                     else
                       // Avatar / camera off placeholder
-                      Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          CircleAvatar(
-                            radius: 28,
-                            backgroundColor: p.isLocal
-                                ? const Color(0xFF3B82F6)
-                                : const Color(0xFF10B981),
-                            child: Text(
-                              name.isNotEmpty ? name[0].toUpperCase() : 'M',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
+                      Builder(
+                        builder: (context) {
+                          final effectiveAvatar = p.isLocal
+                              ? (ref.watch(currentUserAvatarUrlProvider) ?? p.avatarUrl)
+                              : p.avatarUrl;
+                          final hasAvatar = effectiveAvatar != null && effectiveAvatar.isNotEmpty;
+
+                          return Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              CircleAvatar(
+                                radius: 28,
+                                backgroundColor: p.isLocal
+                                    ? const Color(0xFF3B82F6)
+                                    : const Color(0xFF10B981),
+                                backgroundImage: hasAvatar ? NetworkImage(effectiveAvatar) : null,
+                                child: hasAvatar
+                                    ? null
+                                    : Text(
+                                        name.isNotEmpty ? name[0].toUpperCase() : 'M',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            p.isVideoMuted ? 'Camera Off' : 'Starting Camera...',
-                            style: TextStyle(
-                              color: p.isVideoMuted ? Colors.white38 : Colors.greenAccent,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ],
+                              const SizedBox(height: 8),
+                              Text(
+                                p.isVideoMuted ? 'Camera Off' : 'Starting Camera...',
+                                style: TextStyle(
+                                  color: p.isVideoMuted ? Colors.white38 : Colors.greenAccent,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
 
                     // Top Right Host / Co-Host Badge & More Options Hint
@@ -3046,6 +3450,9 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   void dispose() {
     _breakoutUiTicker?.cancel();
     _moderationSub?.cancel();
+    _dataChannelSub?.cancel();
+    _inMeetingChatController.dispose();
+    _chatScrollController.dispose();
     _roomController.dispose();
     super.dispose();
   }

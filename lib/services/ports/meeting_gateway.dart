@@ -50,6 +50,7 @@ abstract class MeetingGateway {
     required String roomName,
     required String userId,
     required String userName,
+    String? avatarUrl,
     required String meetingType,
     bool notifyMembers = false,
     String? meetingTitle,

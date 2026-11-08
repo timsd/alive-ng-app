@@ -33,6 +33,8 @@ import '../screens/admin/role_management_screen.dart';
 import '../services/role_access_service.dart';
 import '../providers/guest_provider.dart';
 import '../screens/conference/conference_platform_screen.dart';
+import '../screens/conference/livekit_meeting_screen.dart';
+import '../config/meeting_links_config.dart';
 import '../screens/admin/leader_meeting_transcription_screen.dart';
 import '../screens/bible/bible_game_screen.dart';
 import '../screens/bible/bible_reader_screen.dart';
@@ -580,10 +582,23 @@ final routerProvider = Provider<GoRouter>((ref) {
             },
           ),
 
-          // Conference Platform Route
+          // Conference Platform Route & Direct Meeting Join Alias
           GoRoute(
             path: AppConstants.conferenceRoute,
-            builder: (context, state) => const ConferencePlatformScreen(),
+            builder: (context, state) {
+              final room = state.uri.queryParameters['room'];
+              if (room != null && room.isNotEmpty) {
+                return LiveKitMeetingScreen(customRoomName: room);
+              }
+              return const ConferencePlatformScreen();
+            },
+          ),
+          GoRoute(
+            path: '/meet',
+            builder: (context, state) {
+              final room = state.uri.queryParameters['room'] ?? AliveMeetConfig.communityRoom;
+              return LiveKitMeetingScreen(customRoomName: room);
+            },
           ),
 
           // Leader Scribe & Meeting Notes Route

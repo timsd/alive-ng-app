@@ -780,12 +780,37 @@ class DiscipleshipService {
   }) async {
     try {
       final now = DateTime.now().toUtc();
+      final dateStr = DateFormat('MMM d, yyyy h:mm a').format(now.toLocal());
+
+      // Fetch existing report to preserve conversation thread
+      String combinedFeedback;
+      try {
+        final currentDoc = await _tables.getRow(
+          databaseId: AppwriteBackendConfig.databaseId,
+          tableId: _reportsCollection,
+          rowId: AppwriteIdUtils.toValidUid(reportId),
+        );
+        final currentReport = _reportFromDocument(currentDoc);
+        final existing = (currentReport.feedback ?? '').trim();
+        final newEntry = '--- Officer Feedback ($dateStr) by $officerName ---\n${feedback.trim()}';
+        if (existing.isEmpty) {
+          combinedFeedback = newEntry;
+        } else if (existing.contains('--- Officer Feedback') || existing.contains('--- Disciple Maker Response')) {
+          combinedFeedback = '$existing\n\n$newEntry';
+        } else {
+          // Wrap legacy plain text feedback as the initial officer entry, then append new entry
+          combinedFeedback = '--- Officer Feedback by ${currentReport.feedbackOfficerName ?? officerName} ---\n$existing\n\n$newEntry';
+        }
+      } catch (_) {
+        combinedFeedback = '--- Officer Feedback ($dateStr) by $officerName ---\n${feedback.trim()}';
+      }
+
       final document = await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _reportsCollection,
         rowId: AppwriteIdUtils.toValidUid(reportId),
         data: {
-          'feedback': feedback,
+          'feedback': combinedFeedback,
           'feedback_officer_name': officerName,
           'feedback_at': _iso(now),
           'status': 'reviewed',
@@ -813,27 +838,27 @@ class DiscipleshipService {
         rowId: AppwriteIdUtils.toValidUid(reportId),
       );
       final currentReport = _reportFromDocument(currentDoc);
-      final existingFeedback = currentReport.feedback ?? '';
+      final existingFeedback = (currentReport.feedback ?? '').trim();
+      final dateStr = DateFormat('MMM d, yyyy h:mm a').format(now.toLocal());
+      final newReply = '--- Disciple Maker Response ($dateStr) by $userName ---\n${userReply.trim()}';
 
-      // Clean out any previous reply if updating
-      String baseOfficerFeedback = existingFeedback;
-      final replyMarkerIndex =
-          existingFeedback.indexOf('\n\n--- Disciple Maker Response');
-      if (replyMarkerIndex != -1) {
-        baseOfficerFeedback =
-            existingFeedback.substring(0, replyMarkerIndex).trim();
+      String updatedFeedback;
+      if (existingFeedback.isEmpty) {
+        updatedFeedback = newReply;
+      } else if (existingFeedback.contains('--- Officer Feedback') || existingFeedback.contains('--- Disciple Maker Response')) {
+        updatedFeedback = '$existingFeedback\n\n$newReply';
+      } else {
+        // Wrap legacy plain text feedback as the initial officer entry, then append new reply
+        final officerName = currentReport.feedbackOfficerName ?? 'Officer';
+        updatedFeedback = '--- Officer Feedback by $officerName ---\n$existingFeedback\n\n$newReply';
       }
-
-      final dateStr = DateFormat('MMM d, yyyy').format(now.toLocal());
-      final formattedReply =
-          '$baseOfficerFeedback\n\n--- Disciple Maker Response ($dateStr) ---\n${userReply.trim()}';
 
       final document = await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _reportsCollection,
         rowId: AppwriteIdUtils.toValidUid(reportId),
         data: {
-          'feedback': formattedReply,
+          'feedback': updatedFeedback,
         },
       );
       return _reportFromDocument(document);

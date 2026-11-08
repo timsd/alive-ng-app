@@ -2063,15 +2063,14 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
   }
 
   void _showSendFeedbackDialog(DiscipleshipReport report) {
-    final raw = report.feedback ?? '';
-    const marker = '\n\n--- Disciple Maker Response';
-    final initialText =
-        raw.contains(marker) ? raw.split(marker)[0].trim() : raw;
-    final feedbackController = TextEditingController(text: initialText);
+    final feedbackController = TextEditingController();
+    final defaultOfficerName = _selectedOfficerOffice?.officerName ?? report.feedbackOfficerName ?? 'Officer';
+    final thread = _parseFeedbackThread(report.feedback ?? '', defaultOfficerName);
+
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Send Officer Feedback'),
+        title: Text(thread.isEmpty ? 'Send Officer Feedback' : 'Send Follow-up Feedback'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2080,13 +2079,20 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
               'Report Period: ${DateFormat.yMMMd().format(report.reportPeriodStart)} – ${DateFormat.yMMMd().format(report.reportPeriodEnd)}',
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
+            if (thread.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                'Conversation history has ${thread.length} previous message(s). Your new message will be appended to the thread.',
+                style: const TextStyle(fontSize: 11, color: Colors.grey),
+              ),
+            ],
             const SizedBox(height: 12),
             TextField(
               controller: feedbackController,
               maxLines: 4,
               decoration: const InputDecoration(
                 labelText: 'Officer Feedback & Encouragement *',
-                hintText: 'Write feedback, guidance, or words of encouragement...',
+                hintText: 'Write feedback, guidance, or follow-up words of encouragement...',
                 border: OutlineInputBorder(),
               ),
             ),
@@ -2104,14 +2110,9 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                 return;
               }
               try {
-                String effectiveFeedback = text;
-                if (raw.contains(marker)) {
-                  final replyPart = raw.substring(raw.indexOf(marker));
-                  effectiveFeedback = '$text$replyPart';
-                }
                 await _discipleshipService.submitReportFeedback(
                   reportId: report.id,
-                  feedback: effectiveFeedback,
+                  feedback: text,
                   officerName: _selectedOfficerOffice?.officerName ?? 'Officer',
                 );
                 if (dialogContext.mounted) {
@@ -2134,71 +2135,92 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
     );
   }
 
+  List<_DiscipleshipThreadMessage> _parseFeedbackThread(
+      String rawFeedback, String defaultOfficerName) {
+    final messages = <_DiscipleshipThreadMessage>[];
+    if (rawFeedback.trim().isEmpty) return messages;
+
+    final regExp = RegExp(
+      r'---\s*(Officer Feedback|Disciple Maker Response)(?:\s*\(([^)]+)\))?(?:\s*by\s*([^-]+))?---\n',
+      caseSensitive: false,
+    );
+
+    final matches = regExp.allMatches(rawFeedback).toList();
+    if (matches.isEmpty) {
+      messages.add(_DiscipleshipThreadMessage(
+        isOfficer: true,
+        author: defaultOfficerName,
+        date: null,
+        content: rawFeedback.trim(),
+      ));
+      return messages;
+    }
+
+    if (matches.first.start > 0) {
+      final preText = rawFeedback.substring(0, matches.first.start).trim();
+      if (preText.isNotEmpty) {
+        messages.add(_DiscipleshipThreadMessage(
+          isOfficer: true,
+          author: defaultOfficerName,
+          date: null,
+          content: preText,
+        ));
+      }
+    }
+
+    for (int i = 0; i < matches.length; i++) {
+      final m = matches[i];
+      final headerType = m.group(1) ?? '';
+      final isOfficer = headerType.toLowerCase().contains('officer');
+      final date = m.group(2)?.trim();
+      final byName = m.group(3)?.trim();
+      final author = byName != null && byName.isNotEmpty
+          ? byName
+          : (isOfficer ? defaultOfficerName : 'Disciple Maker');
+
+      final contentStart = m.end;
+      final contentEnd =
+          (i + 1 < matches.length) ? matches[i + 1].start : rawFeedback.length;
+      final content = rawFeedback.substring(contentStart, contentEnd).trim();
+
+      if (content.isNotEmpty) {
+        messages.add(_DiscipleshipThreadMessage(
+          isOfficer: isOfficer,
+          author: author,
+          date: date,
+          content: content,
+        ));
+      }
+    }
+
+    return messages;
+  }
+
   Widget _buildFeedbackSection(DiscipleshipReport report) {
     final theme = Theme.of(context);
     final rawFeedback = report.feedback ?? '';
-    const marker = '\n\n--- Disciple Maker Response';
+    final defaultOfficerName = report.feedbackOfficerName ?? 'Officer';
+    final messages = _parseFeedbackThread(rawFeedback, defaultOfficerName);
 
-    String officerText = rawFeedback;
-    String? userReplyText;
-    String? replyDate;
-
-    if (rawFeedback.contains(marker)) {
-      final parts = rawFeedback.split(marker);
-      officerText = parts[0].trim();
-      if (parts.length > 1) {
-        final afterMarker = parts[1].trim();
-        final splitDash = afterMarker.split('---\n');
-        if (splitDash.length > 1) {
-          replyDate = splitDash[0].replaceAll(RegExp(r'[\(\)]'), '').trim();
-          userReplyText = splitDash.sublist(1).join('---\n').trim();
-        } else {
-          userReplyText = afterMarker;
-        }
-      }
-    }
+    if (messages.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.amber.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.rate_review_rounded, size: 16, color: Colors.amber),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      'Feedback from ${report.feedbackOfficerName ?? 'Officer'}:',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Text(officerText, style: theme.textTheme.bodyMedium),
-            ],
-          ),
-        ),
-        if (userReplyText != null && userReplyText.isNotEmpty) ...[
-          const SizedBox(height: 8),
+        for (final msg in messages) ...[
           Container(
             width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withValues(alpha: 0.08),
+              color: msg.isOfficer
+                  ? Colors.amber.withValues(alpha: 0.12)
+                  : theme.colorScheme.primary.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                color: theme.colorScheme.primary.withValues(alpha: 0.25),
+                color: msg.isOfficer
+                    ? Colors.amber.withValues(alpha: 0.4)
+                    : theme.colorScheme.primary.withValues(alpha: 0.25),
               ),
             ),
             child: Column(
@@ -2207,50 +2229,61 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                 Row(
                   children: [
                     Icon(
-                      Icons.reply_rounded,
+                      msg.isOfficer ? Icons.rate_review_rounded : Icons.reply_rounded,
                       size: 16,
-                      color: theme.colorScheme.primary,
+                      color: msg.isOfficer ? Colors.amber : theme.colorScheme.primary,
                     ),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        'Your Response${replyDate != null && replyDate.isNotEmpty ? ' ($replyDate)' : ''}:',
+                        msg.isOfficer
+                            ? 'Feedback from ${msg.author}${msg.date != null && msg.date!.isNotEmpty ? ' (${msg.date})' : ''}:'
+                            : 'Response from ${msg.author}${msg.date != null && msg.date!.isNotEmpty ? ' (${msg.date})' : ''}:',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 12,
-                          color: theme.colorScheme.primary,
+                          color: msg.isOfficer ? Colors.amber.shade900 : theme.colorScheme.primary,
                         ),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 6),
-                Text(userReplyText, style: theme.textTheme.bodyMedium),
+                Text(msg.content, style: theme.textTheme.bodyMedium),
               ],
             ),
           ),
         ],
         const SizedBox(height: 4),
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton.icon(
-            onPressed: () => _showUserReplyDialog(report, userReplyText),
-            icon: Icon(
-              userReplyText != null ? Icons.edit_note_rounded : Icons.reply_rounded,
-              size: 16,
+        Wrap(
+          alignment: WrapAlignment.end,
+          spacing: 8,
+          children: [
+            TextButton.icon(
+              onPressed: () => _showUserReplyDialog(report),
+              icon: const Icon(Icons.reply_rounded, size: 16),
+              label: const Text(
+                'Reply to Conversation',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              ),
             ),
-            label: Text(
-              userReplyText != null ? 'Edit Your Response' : 'Reply to Feedback',
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-            ),
-          ),
+            if (_canAccessOfficerInbox)
+              TextButton.icon(
+                onPressed: () => _showSendFeedbackDialog(report),
+                icon: const Icon(Icons.rate_review_rounded, size: 16),
+                label: const Text(
+                  'Send Follow-up Feedback',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+              ),
+          ],
         ),
       ],
     );
   }
 
-  void _showUserReplyDialog(DiscipleshipReport report, String? currentReply) {
-    final controller = TextEditingController(text: currentReply ?? '');
+  void _showUserReplyDialog(DiscipleshipReport report) {
+    final controller = TextEditingController();
     final theme = Theme.of(context);
     final officerName = report.feedbackOfficerName ?? 'Officer';
 

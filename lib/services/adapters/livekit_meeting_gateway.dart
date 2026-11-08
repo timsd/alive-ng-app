@@ -67,6 +67,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
 
   String _lastUserId = '';
   String _lastUserName = '';
+  String? _lastAvatarUrl;
   String _lastMeetingType = 'general';
 
   MeetingSession _currentSession = MeetingSession.initial();
@@ -264,6 +265,20 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
     final identity = participant.identity;
     final isHandRaised = _handsRaised[identity] ?? false;
 
+    String? avatarUrl;
+    try {
+      final metaStr = participant.metadata;
+      if (metaStr != null && metaStr.isNotEmpty) {
+        final meta = jsonDecode(metaStr);
+        if (meta is Map && meta['avatarUrl'] != null) {
+          avatarUrl = meta['avatarUrl'].toString().trim();
+        }
+      }
+    } catch (_) {}
+    if (isLocal && (avatarUrl == null || avatarUrl.isEmpty)) {
+      avatarUrl = _lastAvatarUrl;
+    }
+
     return ParticipantInfo(
       identity: identity,
       name: participant.name.isNotEmpty ? participant.name : participant.identity,
@@ -273,6 +288,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       isLocal: isLocal,
       isHandRaised: isHandRaised,
       isScreenShareEnabled: isScreenShare,
+      avatarUrl: avatarUrl,
     );
   }
 
@@ -856,6 +872,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
     required String roomName,
     required String userId,
     required String userName,
+    String? avatarUrl,
     required String meetingType,
     bool notifyMembers = false,
     String? meetingTitle,
@@ -866,6 +883,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
     try {
       _lastUserId = userId;
       _lastUserName = userName;
+      _lastAvatarUrl = avatarUrl;
       _lastMeetingType = meetingType;
       if (!roomName.contains('--br-')) {
         _mainRoomName = roomName;
@@ -894,6 +912,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
           'roomName': roomName,
           'identity': userId,
           'participantName': userName,
+          if (avatarUrl != null && avatarUrl.isNotEmpty) 'avatarUrl': avatarUrl,
           'meetingType': meetingType,
           if (notifyMembers) 'notifyMembers': true,
           if (meetingTitle != null) 'meetingTitle': meetingTitle,
@@ -913,6 +932,12 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       }
 
       await joinMeeting(roomToken: token, roomName: roomName);
+
+      if (avatarUrl != null && avatarUrl.isNotEmpty) {
+        try {
+          _room?.localParticipant?.setMetadata(jsonEncode({'avatarUrl': avatarUrl}));
+        } catch (_) {}
+      }
 
       // If this attendee is in waiting room and not yet admitted, knock on the door
       if (!_isAdmitted) {
@@ -1708,6 +1733,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         roomName: room.id,
         userId: userId,
         userName: userName,
+        avatarUrl: _lastAvatarUrl,
         meetingType: _lastMeetingType,
         isWaitingRoomEnabled: false,
       );
@@ -1743,6 +1769,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         roomName: targetMainRoom,
         userId: userId,
         userName: userName,
+        avatarUrl: _lastAvatarUrl,
         meetingType: _lastMeetingType,
         isWaitingRoomEnabled: false,
       );

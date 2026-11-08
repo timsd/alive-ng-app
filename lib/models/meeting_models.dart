@@ -119,6 +119,9 @@ class ParticipantInfo {
   /// Whether this participant is currently sharing their screen.
   final bool isScreenShareEnabled;
 
+  /// URL of the participant's profile avatar image, if available.
+  final String? avatarUrl;
+
   const ParticipantInfo({
     required this.identity,
     required this.name,
@@ -128,6 +131,7 @@ class ParticipantInfo {
     this.isLocal = false,
     this.isHandRaised = false,
     this.isScreenShareEnabled = false,
+    this.avatarUrl,
   });
 
   /// Convenience getter to check if audio is muted.
@@ -145,6 +149,7 @@ class ParticipantInfo {
     bool? isLocal,
     bool? isHandRaised,
     bool? isScreenShareEnabled,
+    String? avatarUrl,
   }) {
     return ParticipantInfo(
       identity: identity ?? this.identity,
@@ -155,6 +160,7 @@ class ParticipantInfo {
       isLocal: isLocal ?? this.isLocal,
       isHandRaised: isHandRaised ?? this.isHandRaised,
       isScreenShareEnabled: isScreenShareEnabled ?? this.isScreenShareEnabled,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
     );
   }
 
