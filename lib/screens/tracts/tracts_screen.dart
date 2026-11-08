@@ -460,7 +460,7 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
           'Downloaded on ${download.downloadedAt.day}/${download.downloadedAt.month}/${download.downloadedAt.year}',
       category: 'Evangelism',
       isDownloaded: true,
-      downloadUrl: download.downloadUrl,
+      pdfUrl: download.downloadUrl,
       author: 'Alive by the Truth',
       pages: 6,
     );
