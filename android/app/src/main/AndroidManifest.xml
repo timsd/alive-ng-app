@@ -30,6 +30,10 @@
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     
+    <!-- LiveKit screen sharing permissions for Android 10+ / 14+ -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    
     <!-- Phone permission for emergency contacts -->
 
     <!--
@@ -222,5 +226,10 @@
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="alive_ng_notifications" />
+        <!-- LiveKit / FlutterWebRTC media projection foreground service for screen sharing -->
+        <service
+            android:name="com.cloudwebrtc.webrtc.FlutterWebRTCService"
+            android:foregroundServiceType="mediaProjection"
+            android:exported="false" />
     </application>
 </manifest>

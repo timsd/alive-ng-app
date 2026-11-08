@@ -42,6 +42,8 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
   bool _isAudioMuted = true; // "Mute on Entry by Default"
   bool _isVideoMuted = false;
   bool _isScreenShareEnabled = false;
+  bool _isScreenSharePermitted = false;
+  final Set<String> _screenSharePermittedIdentities = {};
   bool _isRoomAudioLocked = false;
   bool _isHostOrModerator = false;
   bool _isWaitingRoomEnabled = false;
@@ -344,6 +346,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         isAudioMuted: _isAudioMuted,
         isVideoMuted: _isVideoMuted,
         isScreenShareEnabled: _isScreenShareEnabled,
+        isScreenSharePermitted: _isScreenSharePermitted,
         activeScreenShareName: activeScreenShareName,
         isRoomAudioLocked: _isRoomAudioLocked,
         isHandRaised: _handsRaised[localId] ?? false,
@@ -557,6 +560,27 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         _isHostOrModerator = true;
         _syncStateFromRoom();
         _moderationPromptsController.add('granted_cohost');
+      }
+    } else if (action == 'grant_screenshare') {
+      if (targetIdentity != null && targetIdentity.isNotEmpty) {
+        _screenSharePermittedIdentities.add(targetIdentity);
+      }
+      if (targetIdentity == myIdentity) {
+        _isScreenSharePermitted = true;
+        _syncStateFromRoom();
+        _moderationPromptsController.add('granted_screenshare');
+      }
+    } else if (action == 'revoke_screenshare') {
+      if (targetIdentity != null && targetIdentity.isNotEmpty) {
+        _screenSharePermittedIdentities.remove(targetIdentity);
+      }
+      if (targetIdentity == myIdentity) {
+        _isScreenSharePermitted = false;
+        if (_isScreenShareEnabled) {
+          toggleScreenShare();
+        }
+        _syncStateFromRoom();
+        _moderationPromptsController.add('revoked_screenshare');
       }
     } else if (action == 'remove_participant') {
       if (targetIdentity == myIdentity) {
@@ -1193,6 +1217,13 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
           _isScreenShareEnabled = true;
         } catch (innerErr) {
           _isScreenShareEnabled = false;
+          final errStr = innerErr.toString();
+          if (errStr.contains('Screen sharing is not supported') ||
+              errStr.contains('not supported on mobile devices')) {
+            throw Exception(
+              'Screen sharing on mobile web browsers is restricted by iOS Safari and Android Chrome. To share your screen, please use the installed ALIVE mobile app or join from a desktop browser.',
+            );
+          }
           rethrow;
         }
       } else {
@@ -1316,6 +1347,40 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       debugPrint('[LiveKitMeetingGateway] Make co-host sent to $identity');
     } catch (e) {
       debugPrint('[LiveKitMeetingGateway] makeParticipantCoHost error: $e');
+    }
+  }
+
+  @override
+  bool isScreenSharePermitted(String identity) =>
+      _screenSharePermittedIdentities.contains(identity);
+
+  @override
+  Future<void> grantScreenShare(String identity) async {
+    try {
+      _screenSharePermittedIdentities.add(identity);
+      final payload = utf8.encode(jsonEncode({
+        'action': 'grant_screenshare',
+        'target_identity': identity,
+      }));
+      await _room?.localParticipant?.publishData(payload, reliable: true);
+      debugPrint('[LiveKitMeetingGateway] Grant screen share sent to $identity');
+    } catch (e) {
+      debugPrint('[LiveKitMeetingGateway] grantScreenShare error: $e');
+    }
+  }
+
+  @override
+  Future<void> revokeScreenShare(String identity) async {
+    try {
+      _screenSharePermittedIdentities.remove(identity);
+      final payload = utf8.encode(jsonEncode({
+        'action': 'revoke_screenshare',
+        'target_identity': identity,
+      }));
+      await _room?.localParticipant?.publishData(payload, reliable: true);
+      debugPrint('[LiveKitMeetingGateway] Revoke screen share sent to $identity');
+    } catch (e) {
+      debugPrint('[LiveKitMeetingGateway] revokeScreenShare error: $e');
     }
   }
 
@@ -1699,6 +1764,8 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       _isAudioMuted = true;
       _isVideoMuted = false;
       _isScreenShareEnabled = false;
+      _isScreenSharePermitted = false;
+      _screenSharePermittedIdentities.clear();
       _isRoomAudioLocked = false;
       _isWaitingRoomEnabled = false;
       _isAdmitted = true;

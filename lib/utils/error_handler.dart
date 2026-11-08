@@ -155,6 +155,11 @@ class ErrorHandler {
     }
 
     // 4. Meeting & Conference Room Policies
+    if (lower.contains('screen sharing is not supported') ||
+        lower.contains('screen sharing is not supported on mobile devices') ||
+        lower.contains('getdisplaymedia')) {
+      return 'Screen sharing on mobile web browsers is restricted by iOS Safari and Android Chrome. To share your screen, please use the installed ALIVE mobile app or join from a desktop browser.';
+    }
     if (lower.contains('only alive leaders')) {
       return 'Only ALIVE leaders and administrators can start new meeting rooms.';
     }

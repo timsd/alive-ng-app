@@ -45,6 +45,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   String _selectedTargetChapter = 'Ibadan';
   bool _requireHostApproval = false;
   bool _isLocalCoHost = false;
+  bool _isLocalScreenSharePermitted = false;
   bool _isProjectorMode = false;
   String? _activeEgressId;
   StreamSubscription<String>? _moderationSub;
@@ -82,15 +83,23 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       } else if (event == 'granted_cohost') {
         setState(() => _isLocalCoHost = true);
         _showMessage('You are now a co-host of this meeting.');
+      } else if (event == 'granted_screenshare') {
+        setState(() => _isLocalScreenSharePermitted = true);
+        _showMessage('The host has granted you permission to share your screen.');
+      } else if (event == 'revoked_screenshare') {
+        setState(() => _isLocalScreenSharePermitted = false);
+        _showMessage('The host has revoked your screen share permission.');
       } else if (event == 'removed_by_host') {
         setState(() {
           _isLocalCoHost = false;
+          _isLocalScreenSharePermitted = false;
           _isProjectorMode = false;
         });
         _showMessage('You have been removed from the meeting by the host.');
       } else if (event == 'ended_by_host') {
         setState(() {
           _isLocalCoHost = false;
+          _isLocalScreenSharePermitted = false;
           _isProjectorMode = false;
         });
         _showMessage('The meeting has been ended for all by the host.');
@@ -367,7 +376,10 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     final isLeader = RoleAccessService.instance.canStartConferencing() ||
         widget.isModerator ||
         _isLocalCoHost;
-    final canShareScreen = isLeader || _isLocalCoHost;
+    final canShareScreen = isLeader ||
+        _isLocalCoHost ||
+        _isLocalScreenSharePermitted ||
+        session.isScreenSharePermitted;
 
     if (connected && _isProjectorMode) {
       return PopScope(
@@ -879,7 +891,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                                 ? 'Screen sharing stopped.'
                                 : 'Screen sharing started.');
                           } catch (e) {
-                            _showMessage('Screen share: $e');
+                            _showMessage(ErrorHandler.getUserFriendlyMessage(e));
                           }
                         },
                         icon: Icon(session.isScreenShareEnabled
@@ -2068,6 +2080,34 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                     },
                   ),
                   ListTile(
+                    leading: Icon(
+                      gateway.isScreenSharePermitted(participant.identity)
+                          ? Icons.cancel_presentation_rounded
+                          : Icons.present_to_all_rounded,
+                      color: const Color(0xFFD49B28),
+                    ),
+                    title: Text(
+                      gateway.isScreenSharePermitted(participant.identity)
+                          ? 'Revoke Screen Share'
+                          : 'Allow Screen Share',
+                    ),
+                    subtitle: Text(
+                      gateway.isScreenSharePermitted(participant.identity)
+                          ? 'Prevent participant from presenting screen'
+                          : 'Give participant permission to share their screen',
+                    ),
+                    onTap: () async {
+                      Navigator.of(ctx).pop();
+                      if (gateway.isScreenSharePermitted(participant.identity)) {
+                        await gateway.revokeScreenShare(participant.identity);
+                        _showMessage('Screen share revoked for $displayName');
+                      } else {
+                        await gateway.grantScreenShare(participant.identity);
+                        _showMessage('Granted screen share permission to $displayName');
+                      }
+                    },
+                  ),
+                  ListTile(
                     leading: const Icon(Icons.person_remove_rounded, color: Colors.red),
                     title: const Text('Remove from Meeting', style: TextStyle(color: Colors.red)),
                     onTap: () {
@@ -2464,7 +2504,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                                 ? 'Screen sharing stopped.'
                                 : 'Screen sharing started.');
                           } catch (e) {
-                            _showMessage('Screen share: $e');
+                            _showMessage(ErrorHandler.getUserFriendlyMessage(e));
                           }
                         },
                         icon: Icon(session.isScreenShareEnabled

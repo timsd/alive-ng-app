@@ -103,6 +103,15 @@ abstract class MeetingGateway {
   /// Host command: Designates a participant as a co-host.
   Future<void> makeParticipantCoHost(String identity);
 
+  /// Host command: Grants a specific participant permission to share their screen.
+  Future<void> grantScreenShare(String identity);
+
+  /// Host command: Revokes screen sharing permission from a specific participant.
+  Future<void> revokeScreenShare(String identity);
+
+  /// Whether a specific participant has been granted screen sharing permission.
+  bool isScreenSharePermitted(String identity);
+
   /// Host command: Removes a participant from the meeting room.
   Future<void> removeParticipant(String identity);
 

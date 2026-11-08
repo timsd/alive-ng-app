@@ -224,6 +224,9 @@ class MeetingSession {
   /// Whether local screen sharing is active.
   final bool isScreenShareEnabled;
 
+  /// Whether the local user has explicit permission to share screen.
+  final bool isScreenSharePermitted;
+
   /// Display name of the participant currently presenting their screen, if any.
   final String? activeScreenShareName;
 
@@ -269,6 +272,7 @@ class MeetingSession {
     this.isWaitingRoomEnabled = false,
     this.isAdmitted = true,
     this.isScreenShareEnabled = false,
+    this.isScreenSharePermitted = false,
     this.activeScreenShareName,
     this.waitingKnocks = const [],
     this.isBreakoutActive = false,
@@ -320,6 +324,7 @@ class MeetingSession {
     bool? isWaitingRoomEnabled,
     bool? isAdmitted,
     bool? isScreenShareEnabled,
+    bool? isScreenSharePermitted,
     String? activeScreenShareName,
     List<Map<String, String>>? waitingKnocks,
     bool? isBreakoutActive,
@@ -344,6 +349,8 @@ class MeetingSession {
       isWaitingRoomEnabled: isWaitingRoomEnabled ?? this.isWaitingRoomEnabled,
       isAdmitted: isAdmitted ?? this.isAdmitted,
       isScreenShareEnabled: isScreenShareEnabled ?? this.isScreenShareEnabled,
+      isScreenSharePermitted:
+          isScreenSharePermitted ?? this.isScreenSharePermitted,
       activeScreenShareName:
           activeScreenShareName ?? this.activeScreenShareName,
       waitingKnocks: waitingKnocks ?? this.waitingKnocks,
