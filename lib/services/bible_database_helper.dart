@@ -613,8 +613,6 @@ class BibleDatabaseHelper {
     });
   }
 
-  static Set<String>? _cachedLoadedVersionCodes;
-
   /// The version codes that actually have verse text in this database.
   ///
   /// `bible_versions` is a catalogue, not proof of content: NLT and HAU are both
@@ -624,25 +622,13 @@ class BibleDatabaseHelper {
   /// phrase is present in all five versions that do have text.
   ///
   /// Derived from the chapters table, so it stays correct if a later build
-  /// loads the missing translations. Cached in memory so it does not trigger
-  /// a table scan across hundreds of thousands of rows on every reference tap.
+  /// loads the missing translations.
   Future<Set<String>> getLoadedVersionCodes() async {
-    if (_cachedLoadedVersionCodes != null && _cachedLoadedVersionCodes!.isNotEmpty) {
-      return _cachedLoadedVersionCodes!;
-    }
-    try {
-      final db = await database;
-      final rows = await db.rawQuery(
-        'SELECT DISTINCT version FROM $_chaptersTable',
-      );
-      final codes = rows.map((r) => r['version'] as String).toSet();
-      if (codes.isNotEmpty) {
-        _cachedLoadedVersionCodes = codes;
-      }
-      return codes;
-    } catch (_) {
-      return {'KJV', 'ASV', 'BM', 'HAU', 'IGBOB'};
-    }
+    final db = await database;
+    final rows = await db.rawQuery(
+      'SELECT DISTINCT version FROM $_chaptersTable',
+    );
+    return rows.map((r) => r['version'] as String).toSet();
   }
 
   Future<List<BibleVersion>> getDownloadedVersions() async {
