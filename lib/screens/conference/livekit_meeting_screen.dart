@@ -44,6 +44,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   String _targetAudience = 'general';
   String _selectedTargetChapter = 'Ibadan';
   bool _requireHostApproval = false;
+  bool _isLocalHost = false;
   bool _isLocalCoHost = false;
   bool _isLocalScreenSharePermitted = false;
   bool _isProjectorMode = false;
@@ -80,9 +81,24 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
         _showMessage('The host has muted your microphone.');
       } else if (event == 'video_stopped_by_host') {
         _showMessage('The host has stopped your video.');
+      } else if (event == 'granted_host') {
+        setState(() {
+          _isLocalHost = true;
+          _isLocalCoHost = false;
+        });
+        _showMessage('You are now the Host of this meeting.');
+      } else if (event == 'transferred_host') {
+        setState(() {
+          _isLocalHost = false;
+          _isLocalCoHost = true;
+        });
+        _showMessage('Host role transferred. You are now a Co-Host.');
       } else if (event == 'granted_cohost') {
         setState(() => _isLocalCoHost = true);
         _showMessage('You are now a co-host of this meeting.');
+      } else if (event == 'revoked_cohost') {
+        setState(() => _isLocalCoHost = false);
+        _showMessage('Your co-host permissions were revoked by the host.');
       } else if (event == 'granted_screenshare') {
         setState(() => _isLocalScreenSharePermitted = true);
         _showMessage('The host has granted you permission to share your screen.');
@@ -375,6 +391,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
 
     final isLeader = RoleAccessService.instance.canStartConferencing() ||
         widget.isModerator ||
+        _isLocalHost ||
         _isLocalCoHost;
     final canShareScreen = isLeader ||
         _isLocalCoHost ||
@@ -1131,14 +1148,58 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                                   : 'M',
                             ),
                           ),
-                          title: Text(
-                            participant.isLocal
-                                ? '$displayName (You)'
-                                : displayName,
+                          title: Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  participant.isLocal
+                                      ? '$displayName (You)'
+                                      : displayName,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (gateway.isParticipantHost(participant.identity)) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFD49B28).withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(color: const Color(0xFFD49B28), width: 0.8),
+                                  ),
+                                  child: const Text(
+                                    'HOST',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFFD49B28),
+                                    ),
+                                  ),
+                                ),
+                              ] else if (gateway.isParticipantCoHost(participant.identity)) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.teal.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(color: Colors.teal, width: 0.8),
+                                  ),
+                                  child: const Text(
+                                    'CO-HOST',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.teal,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                           subtitle: Text(
                             isLeader
-                                ? 'Tap to manage (mute, video, co-host)'
+                                ? 'Tap to manage (mute, video, host, co-host)'
                                 : (participant.isLocal ? 'Tap for your audio/video controls' : ''),
                             style: TextStyle(
                               fontSize: 11,
@@ -1958,7 +2019,11 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                             Text(
                               participant.isLocal
                                   ? (isLeaderOrHost ? 'Host / Moderator (You)' : 'Participant (You)')
-                                  : 'Meeting Participant',
+                                  : (gateway.isParticipantHost(participant.identity)
+                                      ? 'Meeting Host'
+                                      : (gateway.isParticipantCoHost(participant.identity)
+                                          ? 'Meeting Co-Host'
+                                          : 'Meeting Participant')),
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: theme.colorScheme.onSurfaceVariant,
                               ),
@@ -2071,12 +2136,62 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                       },
                     ),
                   ListTile(
-                    leading: const Icon(Icons.admin_panel_settings_outlined, color: Color(0xFFD49B28)),
-                    title: const Text('Make Co-Host'),
+                    leading: const Icon(Icons.stars_rounded, color: Color(0xFFD49B28)),
+                    title: const Text('Make Host'),
+                    subtitle: const Text('Transfer primary host control to this participant'),
                     onTap: () async {
                       Navigator.of(ctx).pop();
-                      await gateway.makeParticipantCoHost(participant.identity);
-                      _showMessage('$displayName is now a co-host');
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (dCtx) => AlertDialog(
+                          title: const Text('Transfer Host Role?'),
+                          content: Text(
+                            'Are you sure you want to make $displayName the host of this meeting? They will have full administrative control.',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(dCtx).pop(false),
+                              child: const Text('Cancel'),
+                            ),
+                            FilledButton(
+                              onPressed: () => Navigator.of(dCtx).pop(true),
+                              child: const Text('Make Host'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirmed == true) {
+                        await gateway.makeParticipantHost(participant.identity);
+                        _showMessage('$displayName is now the meeting host');
+                      }
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(
+                      gateway.isParticipantCoHost(participant.identity)
+                          ? Icons.remove_moderator_outlined
+                          : Icons.admin_panel_settings_outlined,
+                      color: const Color(0xFFD49B28),
+                    ),
+                    title: Text(
+                      gateway.isParticipantCoHost(participant.identity)
+                          ? 'Remove Co-Host'
+                          : 'Make Co-Host',
+                    ),
+                    subtitle: Text(
+                      gateway.isParticipantCoHost(participant.identity)
+                          ? 'Revoke co-host moderation controls'
+                          : 'Grant meeting moderation and presenter controls',
+                    ),
+                    onTap: () async {
+                      Navigator.of(ctx).pop();
+                      if (gateway.isParticipantCoHost(participant.identity)) {
+                        await gateway.revokeParticipantCoHost(participant.identity);
+                        _showMessage('Co-host permissions removed for $displayName');
+                      } else {
+                        await gateway.makeParticipantCoHost(participant.identity);
+                        _showMessage('$displayName is now a co-host');
+                      }
                     },
                   ),
                   ListTile(
@@ -2709,54 +2824,127 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
             final p = participants[index];
             final name = _formatParticipantName(p);
             final isSpeaking = p.isSpeaking;
+            final isParticipantHost = gateway.isParticipantHost(p.identity);
+            final isParticipantCoHost = gateway.isParticipantCoHost(p.identity);
             final liveVideo = !p.isVideoMuted
                 ? gateway.buildParticipantVideoWidget(p.identity)
                 : null;
 
-            return Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF161B22),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isSpeaking ? Colors.green : Colors.white24,
-                  width: isSpeaking ? 2.5 : 1,
-                ),
+            return InkWell(
+              onTap: () => _showParticipantActions(
+                context,
+                p,
+                gateway,
+                isLeader,
               ),
-              clipBehavior: Clip.antiAlias,
-              child: Stack(
-                fit: StackFit.expand,
-                alignment: Alignment.center,
-                children: [
-                  if (liveVideo != null)
-                    liveVideo
-                  else
-                    // Avatar / camera off placeholder
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircleAvatar(
-                          radius: 28,
-                          backgroundColor: p.isLocal
-                              ? const Color(0xFF3B82F6)
-                              : const Color(0xFF10B981),
-                          child: Text(
-                            name.isNotEmpty ? name[0].toUpperCase() : 'M',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF161B22),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isSpeaking
+                        ? Colors.green
+                        : (isParticipantHost
+                            ? const Color(0xFFD49B28)
+                            : (isParticipantCoHost ? Colors.teal : Colors.white24)),
+                    width: isSpeaking ? 2.5 : 1,
+                  ),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Stack(
+                  fit: StackFit.expand,
+                  alignment: Alignment.center,
+                  children: [
+                    if (liveVideo != null)
+                      liveVideo
+                    else
+                      // Avatar / camera off placeholder
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircleAvatar(
+                            radius: 28,
+                            backgroundColor: p.isLocal
+                                ? const Color(0xFF3B82F6)
+                                : const Color(0xFF10B981),
+                            child: Text(
+                              name.isNotEmpty ? name[0].toUpperCase() : 'M',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          p.isVideoMuted ? 'Camera Off' : 'Starting Camera...',
-                          style: TextStyle(
-                            color: p.isVideoMuted ? Colors.white38 : Colors.greenAccent,
-                            fontSize: 11,
+                          const SizedBox(height: 8),
+                          Text(
+                            p.isVideoMuted ? 'Camera Off' : 'Starting Camera...',
+                            style: TextStyle(
+                              color: p.isVideoMuted ? Colors.white38 : Colors.greenAccent,
+                              fontSize: 11,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
+
+                    // Top Right Host / Co-Host Badge & More Options Hint
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (isParticipantHost) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFD49B28),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'HOST',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ] else if (isParticipantCoHost) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.teal.shade700,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'CO-HOST',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                          if (isLeader) ...[
+                            const SizedBox(width: 4),
+                            Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: const BoxDecoration(
+                                color: Colors.black54,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.more_vert_rounded,
+                                size: 13,
+                                color: Colors.white70,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
 
                   // Bottom name banner (content-aware: compact for short names, extending up to max width for long names)
@@ -2808,8 +2996,9 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                   ),
                 ],
               ),
-            );
-          },
+            ),
+          );
+        },
         );
       },
     );

@@ -44,6 +44,8 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
   bool _isScreenShareEnabled = false;
   bool _isScreenSharePermitted = false;
   final Set<String> _screenSharePermittedIdentities = {};
+  String? _hostIdentity;
+  final Set<String> _coHostIdentities = {};
   bool _isRoomAudioLocked = false;
   bool _isHostOrModerator = false;
   bool _isWaitingRoomEnabled = false;
@@ -555,11 +557,34 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         _syncStateFromRoom();
         _moderationPromptsController.add('video_stopped_by_host');
       }
+    } else if (action == 'make_host') {
+      if (targetIdentity != null && targetIdentity.isNotEmpty) {
+        _hostIdentity = targetIdentity;
+      }
+      final prevHost = msg['previous_host']?.toString();
+      if (targetIdentity == myIdentity) {
+        _isHostOrModerator = true;
+        _syncStateFromRoom();
+        _moderationPromptsController.add('granted_host');
+      } else if (prevHost == myIdentity) {
+        _moderationPromptsController.add('transferred_host');
+      }
     } else if (action == 'make_cohost') {
+      if (targetIdentity != null && targetIdentity.isNotEmpty) {
+        _coHostIdentities.add(targetIdentity);
+      }
       if (targetIdentity == myIdentity) {
         _isHostOrModerator = true;
         _syncStateFromRoom();
         _moderationPromptsController.add('granted_cohost');
+      }
+    } else if (action == 'revoke_cohost') {
+      if (targetIdentity != null && targetIdentity.isNotEmpty) {
+        _coHostIdentities.remove(targetIdentity);
+      }
+      if (targetIdentity == myIdentity) {
+        _syncStateFromRoom();
+        _moderationPromptsController.add('revoked_cohost');
       }
     } else if (action == 'grant_screenshare') {
       if (targetIdentity != null && targetIdentity.isNotEmpty) {
@@ -1337,8 +1362,34 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
   }
 
   @override
+  bool isParticipantCoHost(String identity) =>
+      _coHostIdentities.contains(identity);
+
+  @override
+  bool isParticipantHost(String identity) =>
+      _hostIdentity == identity;
+
+  @override
+  Future<void> makeParticipantHost(String identity) async {
+    try {
+      final myId = _room?.localParticipant?.identity ?? '';
+      _hostIdentity = identity;
+      final payload = utf8.encode(jsonEncode({
+        'action': 'make_host',
+        'target_identity': identity,
+        'previous_host': myId,
+      }));
+      await _room?.localParticipant?.publishData(payload, reliable: true);
+      debugPrint('[LiveKitMeetingGateway] Make host sent to $identity');
+    } catch (e) {
+      debugPrint('[LiveKitMeetingGateway] makeParticipantHost error: $e');
+    }
+  }
+
+  @override
   Future<void> makeParticipantCoHost(String identity) async {
     try {
+      _coHostIdentities.add(identity);
       final payload = utf8.encode(jsonEncode({
         'action': 'make_cohost',
         'target_identity': identity,
@@ -1347,6 +1398,21 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       debugPrint('[LiveKitMeetingGateway] Make co-host sent to $identity');
     } catch (e) {
       debugPrint('[LiveKitMeetingGateway] makeParticipantCoHost error: $e');
+    }
+  }
+
+  @override
+  Future<void> revokeParticipantCoHost(String identity) async {
+    try {
+      _coHostIdentities.remove(identity);
+      final payload = utf8.encode(jsonEncode({
+        'action': 'revoke_cohost',
+        'target_identity': identity,
+      }));
+      await _room?.localParticipant?.publishData(payload, reliable: true);
+      debugPrint('[LiveKitMeetingGateway] Revoke co-host sent to $identity');
+    } catch (e) {
+      debugPrint('[LiveKitMeetingGateway] revokeParticipantCoHost error: $e');
     }
   }
 
@@ -1766,6 +1832,8 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       _isScreenShareEnabled = false;
       _isScreenSharePermitted = false;
       _screenSharePermittedIdentities.clear();
+      _hostIdentity = null;
+      _coHostIdentities.clear();
       _isRoomAudioLocked = false;
       _isWaitingRoomEnabled = false;
       _isAdmitted = true;

@@ -100,8 +100,20 @@ abstract class MeetingGateway {
   /// Host command: Stops a specific participant's video.
   Future<void> stopParticipantVideo(String identity);
 
+  /// Host command: Transfers primary host ownership to a specific participant.
+  Future<void> makeParticipantHost(String identity);
+
   /// Host command: Designates a participant as a co-host.
   Future<void> makeParticipantCoHost(String identity);
+
+  /// Host command: Revokes co-host status from a specific participant.
+  Future<void> revokeParticipantCoHost(String identity);
+
+  /// Whether a specific participant is currently designated as a co-host.
+  bool isParticipantCoHost(String identity);
+
+  /// Whether a specific participant is currently the primary host.
+  bool isParticipantHost(String identity);
 
   /// Host command: Grants a specific participant permission to share their screen.
   Future<void> grantScreenShare(String identity);
