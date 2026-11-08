@@ -373,9 +373,13 @@ class AliveScribeService {
 
     // 1. Council Decisions / Resolutions Matcher
     final decisionPatterns = [
+      RegExp(r'\b(i\s+(hereby\s+)?move\s+that\s+(.+))', caseSensitive: false),
+      RegExp(r'\b(second(ed)?\s+(the\s+motion|by\s+[A-Za-z\s]+))', caseSensitive: false),
+      RegExp(r'\b(adopt(ed)?\s+(it|this|the\s+minutes|the\s+report)\s+as\s+a\s+working\s+document)', caseSensitive: false),
       RegExp(r'\b(we (agreed|decided) to\s+(.+))', caseSensitive: false),
       RegExp(r'\b(it is resolved that\s+(.+))', caseSensitive: false),
       RegExp(r'\b(council (agreed|resolves|approved)\s+(.+))', caseSensitive: false),
+      RegExp(r'\b(board (agreed|resolves|approved|decided)\s+(.+))', caseSensitive: false),
       RegExp(r'\b(moved and seconded that\s+(.+))', caseSensitive: false),
       RegExp(r'\b(consensus (is|was) that\s+(.+))', caseSensitive: false),
       RegExp(r'\b(unanimously (approved|agreed|adopted)\s+(.+))', caseSensitive: false),
@@ -390,7 +394,7 @@ class AliveScribeService {
         var extractedDecision = match.group(0)!;
         // Clean leading indicators for a punchy resolution statement
         extractedDecision = extractedDecision
-            .replaceFirst(RegExp(r'^(we agreed to|it is resolved that|council agreed that|consensus is that|unanimously approved that)\s*', caseSensitive: false), '')
+            .replaceFirst(RegExp(r'^(we agreed to|it is resolved that|council agreed that|board agreed that|consensus is that|unanimously approved that)\s*', caseSensitive: false), '')
             .trim();
         if (extractedDecision.isNotEmpty) {
           extractedDecision =
@@ -414,8 +418,8 @@ class AliveScribeService {
                 ? 'Budget'
                 : lower.contains('appoint')
                     ? 'Appointment'
-                    : lower.contains('motion')
-                        ? 'Motion'
+                    : lower.contains('move') || lower.contains('second') || lower.contains('adopt')
+                        ? 'Motion / Resolution'
                         : 'Resolution',
           );
           _decisions.add(decisionObj);
@@ -430,9 +434,10 @@ class AliveScribeService {
       RegExp(r'\b(i (will|am going to|shall)\s+(.+))', caseSensitive: false),
       RegExp(r'\b(i\'ll\s+(.+))', caseSensitive: false),
       RegExp(r'\b(assigned to\s+([A-Za-z\s]+?)\s+(to|for|with)\s+(.+))', caseSensitive: false),
-      RegExp(r'\b((bro|brother|sis|sister|pastor|elder)\s+[A-Za-z]+\s+will\s+(.+))', caseSensitive: false),
+      RegExp(r'\b((bro|brother|sis|sister|pastor|elder|sir|uncle|aunty|dr)\s+[A-Za-z]+\s+(will|is to|to|should)\s+(.+))', caseSensitive: false),
       RegExp(r'\b(we will follow up on\s+(.+))', caseSensitive: false),
       RegExp(r'\b(take responsibility for\s+(.+))', caseSensitive: false),
+      RegExp(r'\b(action point(\s+is)?\s+(.+))', caseSensitive: false),
     ];
 
     for (final pattern in actionPatterns) {
@@ -443,7 +448,7 @@ class AliveScribeService {
 
         // Detect third-party assignment
         final thirdPartyMatch = RegExp(
-          r'\b(assigned to\s+([A-Za-z\s]+?)|(bro|brother|sis|sister|pastor|elder)\s+([A-Za-z]+))\b',
+          r'\b(assigned to\s+([A-Za-z\s]+?)|(bro|brother|sis|sister|pastor|elder|sir|uncle|aunty|dr)\s+([A-Za-z]+))\b',
           caseSensitive: false,
         ).firstMatch(text);
         if (thirdPartyMatch != null) {
@@ -454,7 +459,7 @@ class AliveScribeService {
         // Detect deadline or target date
         String? targetDueDate;
         final dateMatch = RegExp(
-          r'\b(by\s+(next\s+)?(monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|tonight|next week|end of the month|[0-9]{1,2}(st|nd|rd|th)?\s+[A-Za-z]+))\b',
+          r'\b(by\s+(next\s+)?(monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|tonight|next week|end of the month|month end|[0-9]{1,2}(st|nd|rd|th)?\s+[A-Za-z]+)|within\s+[0-9]+\s+(days|weeks|months))\b',
           caseSensitive: false,
         ).firstMatch(text);
         if (dateMatch != null) {
@@ -463,7 +468,7 @@ class AliveScribeService {
 
         // Clean task description
         task = task
-            .replaceFirst(RegExp(r'^(i will|i\'ll|we will follow up on|take responsibility for)\s*', caseSensitive: false), '')
+            .replaceFirst(RegExp(r'^(i will|i\'ll|we will follow up on|take responsibility for|action point is|action point)\s*', caseSensitive: false), '')
             .trim();
         if (task.isNotEmpty) {
           task = task[0].toUpperCase() + task.substring(1);
@@ -516,8 +521,26 @@ class AliveScribeService {
 
     final quorumAchieved = _attendees.length >= 2 || _transcript.length >= 3;
 
+    // Detect Devotional Metadata if available in the first parts of the session
+    String? devotionHymn;
+    String? devotionScripture;
+    String? devotionSpeaker;
+    for (final p in _transcript.take(15)) {
+      final hymnM = RegExp(r'\b(SDAH\s*[0-9]+|hymn\s*(number\s*)?[0-9]+)\b', caseSensitive: false).firstMatch(p.text);
+      if (hymnM != null && devotionHymn == null) {
+        devotionHymn = hymnM.group(0);
+      }
+      final scriptM = RegExp(r'\b([1-3]?\s?[A-Za-z]+)\s+[0-9]+:[0-9]+(-[0-9]+)?\b').firstMatch(p.text);
+      if (scriptM != null && devotionScripture == null) {
+        devotionScripture = scriptM.group(0);
+      }
+      if ((p.text.toLowerCase().contains('prayer') || p.text.toLowerCase().contains('admonition')) && devotionSpeaker == null) {
+        devotionSpeaker = p.speakerName;
+      }
+    }
+
     final buffer = StringBuffer();
-    buffer.writeln('# ALIVE Council Meeting Minutes');
+    buffer.writeln('# ALIVE Council & Board Meeting Minutes');
     buffer.writeln('**$meetingTitle**');
     buffer.writeln();
 
@@ -529,6 +552,14 @@ class AliveScribeService {
     buffer.writeln('- **Quorum:** ${quorumAchieved ? "✅ Achieved" : "⚠️ Incomplete"} (${_attendees.length} members present)');
     buffer.writeln('- **Attendees:** ${_attendees.join(", ")}');
     buffer.writeln();
+
+    if (devotionHymn != null || devotionScripture != null || devotionSpeaker != null) {
+      buffer.writeln('### Preliminaries & Devotion');
+      if (devotionHymn != null) buffer.writeln('- **Opening Hymn:** $devotionHymn');
+      if (devotionScripture != null) buffer.writeln('- **Scripture Reading:** $devotionScripture');
+      if (devotionSpeaker != null) buffer.writeln('- **Exhortation & Opening Prayer:** $devotionSpeaker');
+      buffer.writeln();
+    }
 
     if (totalWords > 0) {
       buffer.writeln('### Attendee Participation Breakdown');
