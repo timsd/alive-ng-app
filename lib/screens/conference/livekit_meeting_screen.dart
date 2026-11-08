@@ -101,6 +101,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   final List<InMeetingChatMessage> _inMeetingChatMessages = [];
   int _unreadChatCount = 0;
   bool _isChatSheetOpen = false;
+  bool _isChatLockedByHost = false;
   final TextEditingController _inMeetingChatController = TextEditingController();
   final ScrollController _chatScrollController = ScrollController();
 
@@ -135,6 +136,20 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
           }
         });
         _scrollChatToBottom();
+      } else if (data['action'] == 'in_meeting_chat_lock') {
+        final isLocked = data['isLocked'] == true;
+        setState(() {
+          _isChatLockedByHost = isLocked;
+        });
+        _showMessage(isLocked
+            ? 'Meeting chat has been locked by the host.'
+            : 'Meeting chat has been unlocked by the host.');
+      } else if (data['action'] == 'in_meeting_chat_clear') {
+        setState(() {
+          _inMeetingChatMessages.clear();
+          _unreadChatCount = 0;
+        });
+        _showMessage('Meeting chat transcript cleared by host.');
       }
     });
     _moderationSub = gateway.moderationPromptsStream.listen((event) {
@@ -382,6 +397,17 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   }
 
   void _sendInMeetingChatMessage(MeetingGateway gateway) {
+    if (_isChatLockedByHost) {
+      final isLeader = RoleAccessService.instance.canStartConferencing() ||
+          widget.isModerator ||
+          _isLocalHost ||
+          _isLocalCoHost;
+      if (!isLeader) {
+        _showMessage('Meeting chat is locked by the host.');
+        return;
+      }
+    }
+
     final text = _inMeetingChatController.text.trim();
     if (text.isEmpty) return;
 
@@ -452,6 +478,10 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
             final bottomInset = MediaQuery.of(ctx).viewInsets.bottom;
             final user = ref.read(currentUserProvider);
             final myUid = user?.uid ?? '';
+            final isLeader = RoleAccessService.instance.canStartConferencing() ||
+                widget.isModerator ||
+                _isLocalHost ||
+                _isLocalCoHost;
 
             return Container(
               height: MediaQuery.of(ctx).size.height * 0.75,
@@ -469,7 +499,56 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                           'In-Meeting Chat',
                           style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                         ),
+                        if (_isChatLockedByHost) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              'Locked',
+                              style: TextStyle(color: Colors.red, fontSize: 11, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
                         const Spacer(),
+                        if (isLeader) ...[
+                          IconButton(
+                            icon: Icon(
+                              _isChatLockedByHost ? Icons.lock_rounded : Icons.lock_open_rounded,
+                              color: _isChatLockedByHost ? Colors.red : null,
+                              size: 20,
+                            ),
+                            tooltip: _isChatLockedByHost ? 'Unlock Chat for Attendees' : 'Lock Chat (Host Only)',
+                            onPressed: () {
+                              final newLock = !_isChatLockedByHost;
+                              gateway.sendDataChannelMessage({
+                                'action': 'in_meeting_chat_lock',
+                                'isLocked': newLock,
+                              });
+                              setState(() => _isChatLockedByHost = newLock);
+                              setSheetState(() {});
+                              _showMessage(newLock ? 'Chat locked for participants' : 'Chat unlocked');
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete_sweep_rounded, size: 20),
+                            tooltip: 'Clear Chat Transcript',
+                            onPressed: () {
+                              gateway.sendDataChannelMessage({
+                                'action': 'in_meeting_chat_clear',
+                              });
+                              setState(() {
+                                _inMeetingChatMessages.clear();
+                                _unreadChatCount = 0;
+                              });
+                              setSheetState(() {});
+                              _showMessage('Chat transcript cleared');
+                            },
+                          ),
+                        ],
                         IconButton(
                           icon: const Icon(Icons.close_rounded),
                           onPressed: () => Navigator.of(ctx).pop(),
@@ -598,40 +677,60 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                   ),
                   const Divider(height: 1),
                   // Chat Input bar
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _inMeetingChatController,
-                            textCapitalization: TextCapitalization.sentences,
-                            decoration: InputDecoration(
-                              hintText: 'Type a message to everyone...',
-                              isDense: true,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(24),
-                                borderSide: BorderSide(color: theme.dividerColor),
-                              ),
+                  if (_isChatLockedByHost && !isLeader)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.lock_outline_rounded, size: 16, color: theme.hintColor),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Chat has been locked by the meeting host.',
+                            style: TextStyle(
+                              color: theme.hintColor,
+                              fontSize: 13,
+                              fontStyle: FontStyle.italic,
                             ),
-                            onSubmitted: (_) {
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _inMeetingChatController,
+                              textCapitalization: TextCapitalization.sentences,
+                              decoration: InputDecoration(
+                                hintText: 'Type a message to everyone...',
+                                isDense: true,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(24),
+                                  borderSide: BorderSide(color: theme.dividerColor),
+                                ),
+                              ),
+                              onSubmitted: (_) {
+                                _sendInMeetingChatMessage(gateway);
+                                setSheetState(() {});
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton.filled(
+                            onPressed: () {
                               _sendInMeetingChatMessage(gateway);
                               setSheetState(() {});
                             },
+                            icon: const Icon(Icons.send_rounded, size: 20),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton.filled(
-                          onPressed: () {
-                            _sendInMeetingChatMessage(gateway);
-                            setSheetState(() {});
-                          },
-                          icon: const Icon(Icons.send_rounded, size: 20),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
                 ],
               ),
             );
@@ -2653,6 +2752,16 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
 
     if (!isLeader) {
       await gateway.leaveMeeting();
+      return true;
+    }
+
+    // If host is the only person remaining in the room, leave cleanly and end the session
+    if ((session?.participants.length ?? 0) <= 1) {
+      if (_isProjectorMode) {
+        setState(() => _isProjectorMode = false);
+      }
+      await gateway.endMeetingForAll();
+      _showMessage('Meeting ended.');
       return true;
     }
 

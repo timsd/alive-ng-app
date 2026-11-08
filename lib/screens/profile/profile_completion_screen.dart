@@ -5,8 +5,12 @@ import 'package:go_router/go_router.dart';
 
 import '../../models/app_models.dart';
 import '../../providers/appwrite_auth_provider.dart';
-import '../../services/appwrite_profile_service.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/profile_setup_provider.dart';
+import '../../services/appwrite_profile_service.dart';
+import '../../services/auth_service.dart';
+import '../../services/channel_membership_sync_service.dart';
+import '../../services/role_access_service.dart';
 import '../../widgets/profile_page_cues.dart';
 import '../../widgets/custom_app_bar.dart';
 
@@ -189,12 +193,14 @@ class _ProfileCompletionScreenState
   }
 
   Future<void> _loadExistingProfile() async {
-    final user = ref.read(appwriteUserStreamProvider).value;
-    if (user == null) return;
+    final authUser = AuthService.instance.currentUser ??
+        ref.read(currentUserProvider) ??
+        ref.read(appwriteUserStreamProvider).value;
+    if (authUser == null) return;
     final profileService = ref.read(appwriteProfileServiceProvider);
     UserProfile? profile;
     try {
-      profile = await profileService.getUserProfileModel(user.uid);
+      profile = await profileService.getUserProfileModel(authUser.uid);
     } catch (e) {
       debugPrint('ProfileCompletion: could not load existing profile: $e');
     }
@@ -234,7 +240,7 @@ class _ProfileCompletionScreenState
   /// Auto-advances to the next step once the current step's required fields are
   /// filled, or saves on the final step. Shows a hint if required fields are
   /// empty so the flow can never be completed with blank required sections.
-    void _advanceOrSave() {
+  void _advanceOrSave() {
     if (!mounted) return;
     final steps = _buildSteps(context);
     final isLastStep = _currentStep == steps.length - 1;
@@ -285,47 +291,98 @@ class _ProfileCompletionScreenState
   Future<void> _saveProfile() async {
     setState(() => _isSaving = true);
     try {
-      final user = ref.read(appwriteUserStreamProvider).value;
-      if (user == null) {
+      final authUser = AuthService.instance.currentUser ??
+          ref.read(currentUserProvider) ??
+          ref.read(appwriteUserStreamProvider).value;
+      if (authUser == null) {
         context.go('/home');
         return;
       }
 
       final profileService = ref.read(appwriteProfileServiceProvider);
 
-      final profileData = <String, dynamic>{
-        if (_phoneController.text.trim().isNotEmpty)
-          'phone_number': _phoneController.text.trim(),
-        if (_locationController.text.trim().isNotEmpty)
-          'location': _locationController.text.trim(),
-        if (_localChurchController.text.trim().isNotEmpty)
-          'local_church': _localChurchController.text.trim(),
-        if (_chapterController.text.trim().isNotEmpty)
-          'local_chapter': _chapterController.text.trim(),
-        if (_occupationController.text.trim().isNotEmpty)
-          'occupation': _occupationController.text.trim(),
-        if (_skillsController.text.trim().isNotEmpty)
-          'skills': _skillsController.text.trim(),
-        'commitment_type': _commitmentType,
-        if ((_commitmentType == 'financial' || _commitmentType == 'both') &&
-            _financialController.text.trim().isNotEmpty)
-          'financial_commitment':
-              double.tryParse(_financialController.text.trim()),
-        if ((_commitmentType == 'active_availability' ||
-                _commitmentType == 'both') &&
-            _availabilityController.text.trim().isNotEmpty)
-          'availability_commitment': _availabilityController.text.trim(),
-      };
+      // Load existing or synthesize from current auth account
+      UserProfile? existing;
+      try {
+        existing = await profileService.getUserProfileModel(authUser.uid);
+      } catch (_) {}
 
-      await profileService.updateUserProfile(
-        userId: user.uid,
-        profileData: profileData,
+      final baseProfile = existing ??
+          UserProfile(
+            id: authUser.uid,
+            email: authUser.email,
+            fullName: authUser.displayNameOrFallback,
+            role: 'member',
+            isApproved: true,
+            approvalStatus: 'approved',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+            avatarUrl: authUser.photoUrl,
+            photoUrl: authUser.photoUrl,
+          );
+
+      final updatedProfile = baseProfile.copyWith(
+        phoneNumber: _phoneController.text.trim().isNotEmpty
+            ? _phoneController.text.trim()
+            : baseProfile.phoneNumber,
+        location: _locationController.text.trim().isNotEmpty
+            ? _locationController.text.trim()
+            : baseProfile.location,
+        localChurch: _localChurchController.text.trim().isNotEmpty
+            ? _localChurchController.text.trim()
+            : baseProfile.localChurch,
+        localChapter: _chapterController.text.trim().isNotEmpty
+            ? _chapterController.text.trim()
+            : baseProfile.localChapter,
+        occupation: _occupationController.text.trim().isNotEmpty
+            ? _occupationController.text.trim()
+            : baseProfile.occupation,
+        skills: _skillsController.text.trim().isNotEmpty
+            ? _skillsController.text.trim()
+            : baseProfile.skills,
+        commitmentType: _commitmentType,
+        financialCommitment: (_commitmentType == 'financial' || _commitmentType == 'both') &&
+                _financialController.text.trim().isNotEmpty
+            ? double.tryParse(_financialController.text.trim())
+            : baseProfile.financialCommitment,
+        availabilityCommitment: (_commitmentType == 'active_availability' || _commitmentType == 'both') &&
+                _availabilityController.text.trim().isNotEmpty
+            ? _availabilityController.text.trim()
+            : baseProfile.availabilityCommitment,
+        commitmentDetails: {
+          'financial_commitment': _financialController.text.trim(),
+          'availability_commitment': _availabilityController.text.trim(),
+        },
+        updatedAt: DateTime.now(),
       );
 
-      // Record completion so the router guard releases the user into the main
-      // app instead of redirecting straight back to this screen.
+      // Save updated profile to database via AppwriteProfileService
+      // uses identical reliable payload and mapping as EditProfileScreen
+      await profileService.updateUserProfile(
+        userId: updatedProfile.id,
+        email: updatedProfile.email,
+        fullName: updatedProfile.fullName,
+        role: updatedProfile.role,
+        profileData: profileService.userProfileToAppwriteData(updatedProfile),
+      );
+
+      // Keep reactive avatar state and role cache in sync
+      if (updatedProfile.avatarUrl != null && updatedProfile.avatarUrl!.isNotEmpty) {
+        ref.read(uploadedAvatarUrlProvider.notifier).state = updatedProfile.avatarUrl!;
+      }
+      RoleAccessService.instance.clearCache();
+
+      // Automatically sync channel memberships based on new profile selections
+      try {
+        await ChannelMembershipSyncService.instance.syncUserChannels(updatedProfile);
+      } catch (e) {
+        debugPrint('Channel sync after profile completion note: $e');
+      }
+
+      // Record completion so the router guard releases the user into the main app
       await completeProfileSetup();
-      ref.invalidate(profileSetupRequiredProvider(user.uid));
+      ref.invalidate(profileSetupRequiredProvider(authUser.uid));
+      ref.invalidate(currentUserProfileProvider);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

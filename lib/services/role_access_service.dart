@@ -221,6 +221,25 @@ class RoleAccessService {
     return canAccessAdmin();
   }
 
+  /// Check if user has organization-wide leadership privilege
+  /// (Admin, Super Admin, Board of Directors (BOD), Directors, Trustees).
+  /// These roles have auto-access across all chapter and chat channels.
+  bool hasAllChannelsLeadershipAccess() {
+    if (canAccessAdmin() || isSuperAdmin()) return true;
+    final role = _normalizeRole(getCurrentUserRole());
+    if (role == null) return false;
+    const allChannelsRoles = {
+      'admin',
+      'super_admin',
+      'superadmin',
+      'bod',
+      'director',
+      'trustee',
+      'president',
+    };
+    return allChannelsRoles.contains(role);
+  }
+
   /// Check if user can start/host an ALIVE Meet conference.
   /// Only leaders (coordinator, chapter leader, director, bod, trustee, admin, super_admin) can start a meeting.
   bool canStartConferencing() {

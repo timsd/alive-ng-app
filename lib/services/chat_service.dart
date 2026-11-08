@@ -67,6 +67,7 @@ class ChatService {
     required ChannelType type,
     required List<String> members,
     List<String> admins = const [],
+    bool excludeLeadership = false,
   }) {
     return _appwrite.createChannel(
       name: name,
@@ -74,6 +75,7 @@ class ChatService {
       type: type,
       members: members,
       admins: admins,
+      excludeLeadership: excludeLeadership,
     );
   }
 

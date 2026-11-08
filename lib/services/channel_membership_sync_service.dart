@@ -102,7 +102,50 @@ class ChannelMembershipSyncService {
         shouldBeMember: isBod,
       );
 
-      _logger.info('Synced channel memberships for user: $userId (married=$isMarried, bod=$isBod, coordinator=$isCoordinator, donor=$isDonor)');
+      // 6. Organization Leadership Auto-Access (Admin, Super Admin, BOD, Directors, Trustees)
+      // Automatically enrolls leadership across all active non-secluded channels and chapters
+      final isLeadership = !profile.isArchived && (
+          role == 'admin' ||
+          role == 'super_admin' ||
+          role == 'superadmin' ||
+          role == 'bod' ||
+          role == 'board' ||
+          role.contains('director') ||
+          role.contains('trustee') ||
+          role.contains('president') ||
+          AppwriteBackendConfig.isSuperAdminEmail(profile.email)
+      );
+
+      if (isLeadership) {
+        try {
+          final allChannels = await tables.listRows(
+            databaseId: databaseId,
+            tableId: channelsCollectionId,
+            queries: [
+              Query.equal('is_archived', false),
+              Query.limit(100),
+            ],
+          );
+          for (final doc in allChannels.rows) {
+            final desc = (doc.data['description'] ?? '').toString();
+            final isSecluded = doc.data['exclude_leadership'] == true ||
+                doc.data['is_secluded'] == true ||
+                desc.contains('[secluded]');
+            if (!isSecluded) {
+              await _ensureMembership(
+                tables: tables,
+                channelId: doc.$id,
+                userId: userId,
+                shouldBeMember: true,
+              );
+            }
+          }
+        } catch (e) {
+          _logger.warning('Auto-membership across channels for leader note: $e');
+        }
+      }
+
+      _logger.info('Synced channel memberships for user: $userId (married=$isMarried, bod=$isBod, leader=$isLeadership, coordinator=$isCoordinator, donor=$isDonor)');
     } catch (e) {
       _logger.warning('Channel sync note: $e');
     }

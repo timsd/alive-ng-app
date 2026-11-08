@@ -12,6 +12,7 @@ import '../models/chat_models.dart';
 import '../utils/app_exception.dart';
 import '../utils/logger.dart';
 import 'auth_service.dart';
+import 'role_access_service.dart';
 
 class AppwriteChatService extends ChangeNotifier {
   AppwriteChatService() {
@@ -36,6 +37,25 @@ class AppwriteChatService extends ChangeNotifier {
       AppwriteBackendConfig.messageTagsCollectionId;
 
   Future<List<ChatChannel>> getUserChannels(String userId) async {
+    // Admin, Super Admin, Board of Directors (BOD), Directors, and Trustees
+    // have automatic organization-wide visibility across all channels,
+    // except channels explicitly configured as private/secluded from leadership.
+    final hasLeadershipPrivilege = RoleAccessService.instance.hasAllChannelsLeadershipAccess();
+
+    if (hasLeadershipPrivilege) {
+      try {
+        final allActive = await getActiveChannels();
+        return allActive.where((c) {
+          if (c.excludeLeadership || c.isSecluded) {
+            return c.members.contains(userId) || c.admins.contains(userId);
+          }
+          return true;
+        }).toList();
+      } catch (e) {
+        _logger.warning('Leader channel access fetch note: $e');
+      }
+    }
+
     try {
       final response = await _tables.listRows(
         databaseId: databaseId,
@@ -324,14 +344,50 @@ class AppwriteChatService extends ChangeNotifier {
     required ChannelType type,
     required List<String> members,
     List<String> admins = const [],
+    bool excludeLeadership = false,
   }) async {
     try {
       final user = AuthService.instance.currentUser;
       if (user == null) throw AuthException('User not authenticated');
 
       final now = DateTime.now().toIso8601String();
-      final allMembers = <String>{user.uid, ...members}.toList();
-      final allAdmins = <String>{user.uid, ...admins}.toList();
+      final allMembers = <String>{user.uid, ...members};
+      final allAdmins = <String>{user.uid, ...admins};
+
+      // Auto-include organization leadership (Admin, Super Admin, BOD, Directors, Trustees)
+      // unless this channel is explicitly secluded
+      if (!excludeLeadership && type != ChannelType.direct) {
+        try {
+          final leadershipRows = await _tables.listRows(
+            databaseId: databaseId,
+            tableId: AppwriteBackendConfig.usersCollectionId,
+            queries: [
+              Query.equal('is_archived', false),
+              Query.limit(100),
+            ],
+          );
+          const leaderKeywords = {'admin', 'super_admin', 'superadmin', 'bod', 'director', 'trustee', 'president'};
+          for (final doc in leadershipRows.rows) {
+            final role = (doc.data['role'] ?? '').toString().toLowerCase();
+            final email = (doc.data['email'] ?? '').toString().toLowerCase();
+            final isLeader = leaderKeywords.contains(role) ||
+                role.contains('bod') ||
+                role.contains('director') ||
+                AppwriteBackendConfig.isSuperAdminEmail(email);
+            if (isLeader) {
+              allMembers.add(doc.$id);
+              allAdmins.add(doc.$id);
+            }
+          }
+        } catch (e) {
+          _logger.warning('Could not auto-populate leadership members for new channel: $e');
+        }
+      }
+
+      final channelSettings = <String, dynamic>{
+        'exclude_leadership': excludeLeadership,
+        'is_secluded': excludeLeadership,
+      };
 
       final row = await _tables.createRow(
         databaseId: databaseId,
@@ -345,10 +401,10 @@ class AppwriteChatService extends ChangeNotifier {
           'created_at': now,
           'updated_at': now,
           'is_archived': false,
-          'members': allMembers,
-          'admins': allAdmins,
+          'members': allMembers.toList(),
+          'admins': allAdmins.toList(),
           'last_message_at': now,
-          'settings': jsonEncode(<String, dynamic>{}),
+          'settings': jsonEncode(channelSettings),
         },
       );
 

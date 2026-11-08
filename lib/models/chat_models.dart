@@ -165,6 +165,13 @@ class ChatChannel {
   final bool isArchived;
   final Map<String, dynamic> settings;
 
+  bool get excludeLeadership =>
+      settings['exclude_leadership'] == true ||
+      settings['is_secluded'] == true ||
+      description.contains('[secluded]');
+
+  bool get isSecluded => excludeLeadership;
+
   const ChatChannel({
     required this.id,
     required this.name,

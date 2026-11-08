@@ -1110,6 +1110,7 @@ class _CreateChannelDialogState extends State<_CreateChannelDialog> {
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
   ChannelType _selectedType = ChannelType.general;
+  bool _excludeLeadership = false;
   bool _isCreating = false;
 
   @override
@@ -1143,6 +1144,7 @@ class _CreateChannelDialogState extends State<_CreateChannelDialog> {
         type: _selectedType,
         members: [userId],
         admins: [userId],
+        excludeLeadership: _excludeLeadership,
       );
 
       widget.onChannelCreated(channel);
@@ -1235,6 +1237,20 @@ class _CreateChannelDialogState extends State<_CreateChannelDialog> {
                   });
                 }
               },
+            ),
+            const SizedBox(height: 12),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text(
+                'Private / Secluded Channel',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+              subtitle: const Text(
+                'Exclude general leadership (Admins, BOD, Directors) from auto-enrollment',
+                style: TextStyle(fontSize: 12),
+              ),
+              value: _excludeLeadership,
+              onChanged: (val) => setState(() => _excludeLeadership = val),
             ),
           ],
         ),
