@@ -1133,6 +1133,16 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
 
   @override
   Future<void> endMeetingForAll() async {
+    // 1. If broadcast / egress is active, automatically stop it
+    if (_activeEgressId != null && _activeEgressId!.isNotEmpty) {
+      try {
+        await stopBroadcast(egressId: _activeEgressId!);
+        debugPrint('[LiveKitMeetingGateway] Auto-stopped active broadcast on endMeetingForAll');
+      } catch (e) {
+        debugPrint('[LiveKitMeetingGateway] Auto-stop broadcast note: $e');
+      }
+    }
+
     try {
       final payload = utf8.encode(jsonEncode({
         'action': 'end_meeting_for_all',

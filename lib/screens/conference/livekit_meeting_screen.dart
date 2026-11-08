@@ -327,13 +327,32 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     final canShareScreen = isLeader || _isLocalCoHost;
 
     if (connected && _isProjectorMode) {
-      return Scaffold(
-        backgroundColor: Colors.black,
-        body: _buildProjectorView(context, session, gateway, isLeader, canShareScreen),
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) async {
+          if (didPop) return;
+          final shouldPop = await _handleHostExit(gateway);
+          if (shouldPop && context.mounted) {
+            Navigator.of(context).maybePop();
+          }
+        },
+        child: Scaffold(
+          backgroundColor: Colors.black,
+          body: _buildProjectorView(context, session, gateway, isLeader, canShareScreen),
+        ),
       );
     }
 
-    return Scaffold(
+    return PopScope(
+      canPop: !connected,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldPop = await _handleHostExit(gateway);
+        if (shouldPop && context.mounted) {
+          Navigator.of(context).maybePop();
+        }
+      },
+      child: Scaffold(
       appBar: CustomAppBar(
         title: widget.meetingType?.displayName ?? 'ALIVE Meet',
         showBackButton: true,
@@ -833,7 +852,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                     label: Text(session.isHandRaised ? 'Lower Hand' : 'Raise Hand'),
                   ),
                   OutlinedButton.icon(
-                    onPressed: gateway.leaveMeeting,
+                    onPressed: () => _handleHostExit(gateway),
                     icon: const Icon(Icons.call_end),
                     label: const Text('Leave'),
                   ),
@@ -1065,7 +1084,8 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 
   void _showParticipantActions(
@@ -1264,6 +1284,72 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
         );
       },
     );
+  }
+
+  Future<bool> _handleHostExit(MeetingGateway gateway) async {
+    final session = ref.read(meetingSessionStreamProvider).value;
+    final isConnected = session?.isConnected ?? false;
+    final isLeader = RoleAccessService.instance.canStartConferencing() || widget.isModerator;
+
+    if (!isConnected) {
+      return true;
+    }
+
+    if (!isLeader) {
+      await gateway.leaveMeeting();
+      return true;
+    }
+
+    // Host / Leader: Show Zoom / Google Meet standard choice dialog
+    final action = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.call_end_rounded, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Leave or End Meeting?'),
+          ],
+        ),
+        content: const Text(
+          'As the meeting host, would you like to end the meeting for all attendees, or leave and keep the session active for others?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop('cancel'),
+            child: const Text('Cancel'),
+          ),
+          OutlinedButton(
+            onPressed: () => Navigator.of(ctx).pop('leave'),
+            child: const Text('Leave Meeting'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.of(ctx).pop('end_all'),
+            icon: const Icon(Icons.stop_circle_outlined, size: 18),
+            label: const Text('End Meeting for All'),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red.shade800),
+          ),
+        ],
+      ),
+    );
+
+    if (action == 'end_all') {
+      if (_isProjectorMode) {
+        setState(() => _isProjectorMode = false);
+      }
+      await gateway.endMeetingForAll();
+      _showMessage('Meeting ended for all participants.');
+      return true;
+    } else if (action == 'leave') {
+      if (_isProjectorMode) {
+        setState(() => _isProjectorMode = false);
+      }
+      await gateway.leaveMeeting();
+      return true;
+    }
+
+    return false; // User cancelled
   }
 
   void _confirmEndMeetingForAll(MeetingGateway gateway) {
@@ -1570,10 +1656,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                     ),
                     const SizedBox(width: 14),
                     IconButton.filledTonal(
-                      onPressed: () {
-                        setState(() => _isProjectorMode = false);
-                        gateway.leaveMeeting();
-                      },
+                      onPressed: () => _handleHostExit(gateway),
                       icon: const Icon(Icons.call_end),
                       style: IconButton.styleFrom(backgroundColor: Colors.red.shade900, foregroundColor: Colors.white),
                       tooltip: 'Leave Meeting',
