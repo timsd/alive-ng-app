@@ -1,6 +1,7 @@
 import 'dart:typed_data';
+import '../../utils/error_handler.dart';
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
+import '../../services/file_picker_facade.dart';
 import '../../services/pdf_extractor_service.dart';
 import '../../services/appwrite_storage_service.dart';
 import '../../services/kids_content_service.dart';
@@ -83,7 +84,7 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Failed to extract: $e'),
+              content: Text('Failed to extract: ${ErrorHandler.getUserFriendlyMessage(e)}'),
               backgroundColor: Theme.of(context).colorScheme.error),
         );
       }
@@ -182,7 +183,7 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Save failed: $e'),
+              content: Text('Save failed: ${ErrorHandler.getUserFriendlyMessage(e)}'),
               backgroundColor: Theme.of(context).colorScheme.error),
         );
       }

@@ -1,4 +1,5 @@
 import '../../widgets/in_app_pdf_viewer.dart';
+import '../../utils/error_handler.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -224,9 +225,9 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
               ),
               childAspectRatio: ResponsiveUtils.getResponsiveValue(
                 context: context,
-                mobile: 0.58,
-                tablet: 0.64,
-                desktop: 0.70,
+                mobile: 0.48,
+                tablet: 0.52,
+                desktop: 0.56,
               ),
               crossAxisSpacing: ResponsiveUtils.getResponsiveValue(
                   context: context, mobile: 12.0, tablet: 16.0, desktop: 20.0),
@@ -435,9 +436,9 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Tract Cover (Top of card)
-            Expanded(
-              flex: 12,
+            // Tract Cover (Top of card - 2:3 aspect ratio)
+            AspectRatio(
+              aspectRatio: 2 / 3,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -468,7 +469,6 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
 
             // Tract Info (Bottom of card)
             Expanded(
-              flex: 9,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
                 child: Column(
@@ -565,8 +565,8 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
         leading: ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: SizedBox(
-            width: 48,
-            height: 60,
+            width: 44,
+            height: 66,
             child: _buildTractCoverWidget(context, tract),
           ),
         ),
@@ -670,16 +670,6 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
 
       if (downloadUrl != null && downloadUrl.isNotEmpty) {
         if (!mounted) return;
-        if (kIsWeb) {
-          // On Web: open Google Docs embedded viewer to preview without forcing a file download
-          final viewerUrl =
-              'https://docs.google.com/viewer?url=${Uri.encodeComponent(downloadUrl)}&embedded=true';
-          final uri = Uri.tryParse(viewerUrl);
-          if (uri != null) {
-            await launchUrl(uri, mode: LaunchMode.platformDefault);
-            return;
-          }
-        }
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -698,7 +688,7 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('Error'),
-          content: Text('Error opening PDF: $e'),
+          content: Text('Error opening PDF: ${ErrorHandler.getUserFriendlyMessage(e)}'),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(context),
@@ -807,7 +797,7 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to download tract: $e')),
+        SnackBar(content: Text('Failed to download tract: ${ErrorHandler.getUserFriendlyMessage(e)}')),
       );
     }
   }
@@ -825,7 +815,7 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to re-download: $e')),
+        SnackBar(content: Text('Failed to re-download: ${ErrorHandler.getUserFriendlyMessage(e)}')),
       );
     }
   }

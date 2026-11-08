@@ -19,6 +19,7 @@ import '../../providers/appwrite_auth_provider.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../services/exchange_rate_service.dart';
 import '../../services/channel_membership_sync_service.dart';
+import '../../utils/error_handler.dart';
 
 class DonationScreen extends ConsumerStatefulWidget {
   const DonationScreen({super.key});
@@ -1751,15 +1752,28 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       } else {
         // Show error
         if (!rootCtx.mounted) return;
+        final errorMsg = ErrorHandler.getUserFriendlyMessage(
+          paymentResult['message'],
+          'Donation could not be initialized. Please try again.',
+        );
         ScaffoldMessenger.of(rootCtx).showSnackBar(
           SnackBar(
-              content: Text(paymentResult['message'] ?? 'Donation failed')),
+            content: Text(errorMsg),
+            backgroundColor: Theme.of(rootCtx).colorScheme.error,
+          ),
         );
       }
     } catch (e) {
       if (!rootCtx.mounted) return;
+      final errorMsg = ErrorHandler.getUserFriendlyMessage(
+        e,
+        'Error processing donation. Please check your internet connection.',
+      );
       ScaffoldMessenger.of(rootCtx).showSnackBar(
-        SnackBar(content: Text('Error processing donation: $e')),
+        SnackBar(
+          content: Text(errorMsg),
+          backgroundColor: Theme.of(rootCtx).colorScheme.error,
+        ),
       );
     }
   }

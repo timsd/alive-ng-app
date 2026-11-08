@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../constants/app_constants.dart';
+import '../../utils/navigation_keys.dart';
 import 'app_tour_overlay.dart';
 
 class AppTourService {
@@ -65,6 +68,23 @@ class AppTourService {
 
     if (!context.mounted) return;
 
+    // When the user explicitly requests to replay or start the tour, ensure
+    // the app is routed to the Home screen and any active dialogs/sheets are
+    // dismissed so the tour spotlight aligns with the actual Home header and tabs.
+    if (force) {
+      try {
+        Navigator.of(context, rootNavigator: true).popUntil((route) => route.isFirst);
+      } catch (_) {}
+
+      try {
+        context.go(AppConstants.homeRoute);
+      } catch (_) {}
+
+      // Allow Home screen and app bar to render before painting the tour overlay
+      await Future.delayed(const Duration(milliseconds: 320));
+      if (!context.mounted) return;
+    }
+
     // Wait if another modal dialog (e.g. Biometric setup or OTA prompt) is currently active
     // so the App Tour and Biometric dialog never collide on screen.
     if (!force &&
@@ -79,8 +99,9 @@ class AppTourService {
 
     _isTourActive = true;
     try {
+      final activeContext = rootNavigatorKey.currentContext ?? context;
       await showGeneralDialog(
-        context: context,
+        context: activeContext,
         barrierDismissible: false,
         barrierColor: Colors.transparent,
         barrierLabel: 'App Tour',

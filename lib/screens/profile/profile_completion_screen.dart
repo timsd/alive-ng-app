@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/error_handler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -340,7 +341,7 @@ class _ProfileCompletionScreenState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Could not save profile: $e'),
+            content: Text('Could not save profile: ${ErrorHandler.getUserFriendlyMessage(e)}'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );

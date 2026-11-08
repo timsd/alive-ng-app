@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/error_handler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -597,7 +598,7 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
                         loading: () =>
                             const Center(child: CircularProgressIndicator()),
                         error: (error, stack) => Center(
-                          child: Text('Unable to load episodes: $error'),
+                          child: Text('Unable to load episodes: ${ErrorHandler.getUserFriendlyMessage(error)}'),
                         ),
                       );
                     },
@@ -821,7 +822,7 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
     } catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error playing episode: $e')),
+        SnackBar(content: Text('Error playing episode: ${ErrorHandler.getUserFriendlyMessage(e)}')),
       );
     }
   }
@@ -885,7 +886,7 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
               } catch (e) {
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error downloading episode: $e')),
+                  SnackBar(content: Text('Error downloading episode: ${ErrorHandler.getUserFriendlyMessage(e)}')),
                 );
               }
             },

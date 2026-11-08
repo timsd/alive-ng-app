@@ -2,6 +2,7 @@ import '../utils/appwrite_id_utils.dart';
 import 'dart:convert';
 
 import 'package:appwrite/appwrite.dart';
+import 'package:intl/intl.dart';
 
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';
@@ -160,7 +161,7 @@ class DiscipleshipService {
         ));
       }
 
-      return updateContact(contact.copyWith(
+      return await updateContact(contact.copyWith(
         currentLevel: newLevel,
         lastContact: now,
         baptismDate:
@@ -794,6 +795,51 @@ class DiscipleshipService {
     } catch (e) {
       _logger.error('Failed to submit report feedback', e);
       throw DatabaseException('Failed to submit report feedback',
+          originalError: e);
+    }
+  }
+
+  /// Allows a disciple maker to reply to an officer's review feedback.
+  Future<DiscipleshipReport> submitUserReplyToFeedback({
+    required String reportId,
+    required String userReply,
+    required String userName,
+  }) async {
+    try {
+      final now = DateTime.now().toUtc();
+      final currentDoc = await _tables.getRow(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: _reportsCollection,
+        rowId: AppwriteIdUtils.toValidUid(reportId),
+      );
+      final currentReport = _reportFromDocument(currentDoc);
+      final existingFeedback = currentReport.feedback ?? '';
+
+      // Clean out any previous reply if updating
+      String baseOfficerFeedback = existingFeedback;
+      final replyMarkerIndex =
+          existingFeedback.indexOf('\n\n--- Disciple Maker Response');
+      if (replyMarkerIndex != -1) {
+        baseOfficerFeedback =
+            existingFeedback.substring(0, replyMarkerIndex).trim();
+      }
+
+      final dateStr = DateFormat('MMM d, yyyy').format(now.toLocal());
+      final formattedReply =
+          '$baseOfficerFeedback\n\n--- Disciple Maker Response ($dateStr) ---\n${userReply.trim()}';
+
+      final document = await _tables.updateRow(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: _reportsCollection,
+        rowId: AppwriteIdUtils.toValidUid(reportId),
+        data: {
+          'feedback': formattedReply,
+        },
+      );
+      return _reportFromDocument(document);
+    } catch (e) {
+      _logger.error('Failed to submit user reply to feedback', e);
+      throw DatabaseException('Failed to submit response to officer feedback',
           originalError: e);
     }
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/error_handler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/notification_settings.dart';
 import '../../providers/achievement_provider.dart';
@@ -71,7 +72,7 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
         _isLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading settings: $e')),
+        SnackBar(content: Text('Error loading settings: ${ErrorHandler.getUserFriendlyMessage(e)}')),
       );
     }
   }
@@ -95,7 +96,7 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
       }
     } catch (e) {
       messenger.showSnackBar(
-        SnackBar(content: Text('Error updating settings: $e')),
+        SnackBar(content: Text('Error updating settings: ${ErrorHandler.getUserFriendlyMessage(e)}')),
       );
     } finally {
       if (mounted) {

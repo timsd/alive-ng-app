@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/error_handler.dart';
 import 'package:intl/intl.dart';
 import '../../models/board_models.dart';
 import '../../services/appwrite_board_service.dart';
@@ -47,7 +48,7 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Error loading decisions: $e'),
+              content: Text('Error loading decisions: ${ErrorHandler.getUserFriendlyMessage(e)}'),
               backgroundColor: Theme.of(context).colorScheme.error),
         );
       }
@@ -112,7 +113,7 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Error deleting decision: $e'),
+              content: Text('Error deleting decision: ${ErrorHandler.getUserFriendlyMessage(e)}'),
               backgroundColor: Theme.of(context).colorScheme.error,
             ),
           );

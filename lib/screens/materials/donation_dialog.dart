@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../models/donation_models.dart';
 import '../../services/donation_service.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/error_handler.dart';
 import '../../utils/responsive_utils.dart';
 import '../../widgets/custom_image.dart';
 
@@ -136,6 +137,15 @@ class _DonationDialogState extends State<DonationDialog> {
         email: donation.userEmail,
       );
 
+      if (paymentResult['cancelled'] == true) {
+        if (mounted) {
+          setState(() {
+            _isProcessing = false;
+          });
+        }
+        return;
+      }
+
       if (paymentResult['success'] != true &&
           paymentResult['initialized'] != true) {
         throw Exception(paymentResult['message'] ?? 'Payment failed');
@@ -163,7 +173,10 @@ class _DonationDialogState extends State<DonationDialog> {
         );
       }
     } catch (e) {
-      final cleanMsg = e.toString().replaceFirst('Exception: ', '').trim();
+      final cleanMsg = ErrorHandler.getUserFriendlyMessage(
+        e,
+        'Payment could not be completed. Please check your internet connection and try again.',
+      );
       setState(() {
         _isProcessing = false;
         _errorMessage = cleanMsg;
@@ -541,7 +554,8 @@ class _DonationDialogState extends State<DonationDialog> {
 
                 // 4. Paystack Secured Badge
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 10),
                   decoration: BoxDecoration(
                     color: Theme.of(context)
                         .colorScheme
@@ -555,38 +569,23 @@ class _DonationDialogState extends State<DonationDialog> {
                     ),
                   ),
                   child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.lock_outline,
-                          size: 18,
-                          color: Theme.of(context).colorScheme.secondary),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Secured by Paystack',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                      Icon(
+                        Icons.shield_outlined,
+                        size: 16,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Secured by Paystack',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
                             ),
-                            Text(
-                              'Pay with card, bank transfer, USSD, or QR',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurface
-                                        .withValues(alpha: 0.6),
-                                  ),
-                            ),
-                          ],
-                        ),
                       ),
                     ],
                   ),

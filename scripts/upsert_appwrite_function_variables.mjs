@@ -276,6 +276,30 @@ const functionConfigs = [
       scopes: ['users.read', 'users.write'],
     },
   },
+  {
+    id: 'start_livekit_broadcast',
+    name: 'startLiveKitBroadcast',
+    path: 'appwrite_functions/startLiveKitBroadcast',
+    variables: [
+      envVariable('LIVEKIT_API_KEY', { required: true, secret: true }),
+      envVariable('LIVEKIT_API_SECRET', { required: true, secret: true }),
+      envVariable('LIVEKIT_SECRET', { secret: true }),
+      envVariable('LIVEKIT_URL', { fallback: 'https://livekit.alivenigeria.org' }),
+      envVariable('YOUTUBE_STREAM_KEY', { required: false, secret: true }),
+      envVariable('YOUTUBE_STREAM_URL', { fallback: 'rtmp://a.rtmp.youtube.com/live2' }),
+      envVariable('YOUTUBE_BACKUP_STREAM_URL', { fallback: 'rtmp://b.rtmp.youtube.com/live2?backup=1' }),
+      literalVariable('APPWRITE_ENDPOINT', endpoint),
+      literalVariable('APPWRITE_PROJECT_ID', projectId),
+      literalVariable('APPWRITE_DATABASE_ID', databaseId),
+      literalVariable('APPWRITE_USERS_TABLE_ID', '6a08943100226f5b4963'),
+      envVariable('APPWRITE_FUNCTION_API_KEY', { secret: true }),
+    ],
+    create: {
+      runtime: 'node-20.0',
+      execute: ['users'],
+      scopes: ['databases.read', 'documents.read'],
+    },
+  },
 ];
 
 const client = new Client()

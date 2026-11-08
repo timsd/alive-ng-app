@@ -10,6 +10,7 @@ import 'dart:convert';
 import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/enums.dart' as appwrite_enums;
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:paystack_flutter_sdk/paystack_flutter_sdk.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -18,6 +19,7 @@ import '../../config/payment_config.dart';
 import '../../main.dart';
 import '../../models/payment_models.dart';
 import '../../utils/logger.dart';
+import '../../utils/error_handler.dart';
 import '../ports/payment_gateway.dart';
 
 /// Concrete [PaymentGateway] adapter for Paystack.
@@ -104,18 +106,13 @@ class PaystackPaymentGateway implements PaymentGateway {
       };
 
       final data = await _executePaystackFunction(payload);
-      return _handlePaystackInitResponse(data: data, fallbackReference: ref);
+      return await _handlePaystackInitResponse(data: data, fallbackReference: ref);
     } catch (e) {
       _logger.error('Error processing donation: $e');
-      String msg = 'Could not initialize payment. Please try again.';
-      final eStr = e.toString();
-      if (eStr.toLowerCase().contains('currency not supported')) {
-        msg = 'USD payment could not be processed with current settings. Please try NGN or contact support.';
-      } else if (e is Exception) {
-        msg = eStr.replaceFirst('Exception: ', '');
-      } else if (eStr.contains('Bad state') || eStr.contains('No element')) {
-        msg = 'Payment service unavailable or returned invalid state. Please try again.';
-      }
+      final msg = ErrorHandler.getUserFriendlyMessage(
+        e,
+        'Could not initialize payment. Please check your internet connection and try again.',
+      );
       return PaymentResponse.failed(
         message: msg,
         reference: request.reference,
@@ -164,11 +161,15 @@ class PaystackPaymentGateway implements PaymentGateway {
       };
 
       final data = await _executePaystackFunction(payload);
-      return _handlePaystackInitResponse(data: data, fallbackReference: ref);
+      return await _handlePaystackInitResponse(data: data, fallbackReference: ref);
     } catch (e) {
       _logger.error('Error processing monthly donation: $e');
+      final msg = ErrorHandler.getUserFriendlyMessage(
+        e,
+        'Could not initialize monthly donation. Please check your internet connection and try again.',
+      );
       return PaymentResponse.failed(
-        message: 'Error processing monthly donation: $e',
+        message: msg,
         reference: request.reference,
       );
     }
@@ -219,7 +220,10 @@ class PaystackPaymentGateway implements PaymentGateway {
       return PaymentResponse.failed(message: message);
     } catch (e) {
       _logger.error('Error cancelling monthly subscription: $e');
-      final message = e.toString().replaceFirst('Exception: ', '');
+      final message = ErrorHandler.getUserFriendlyMessage(
+        e,
+        'Could not cancel monthly donation. Please try again.',
+      );
       return PaymentResponse.failed(message: message);
     }
   }
@@ -227,28 +231,112 @@ class PaystackPaymentGateway implements PaymentGateway {
   Future<Map<String, dynamic>> _executePaystackFunction(
     Map<String, dynamic> payload,
   ) async {
-    final functions = Functions(appwriteClient);
-    final execution = await functions.createExecution(
-      functionId: AppwriteBackendConfig.paystackPaymentsFunctionId,
-      body: jsonEncode(payload),
-      xasync: false,
-      method: appwrite_enums.ExecutionMethod.pOST,
-    );
+    final bodyJson = jsonEncode(payload);
 
-    final bodyStr = execution.responseBody.trim();
-    if (bodyStr.isEmpty) {
-      throw Exception('Payment service returned an empty response. Please check your connection and retry.');
-    }
+    // 1. First attempt via Appwrite Functions SDK
+    try {
+      final functions = Functions(appwriteClient);
+      final execution = await functions.createExecution(
+        functionId: AppwriteBackendConfig.paystackPaymentsFunctionId,
+        body: bodyJson,
+        xasync: false,
+        method: appwrite_enums.ExecutionMethod.pOST,
+      );
 
-    final data = jsonDecode(bodyStr) as Map<String, dynamic>;
-    if (data['error'] != null) {
-      final err = data['error'].toString();
-      if (err.toLowerCase().contains('currency not supported')) {
-        throw Exception('USD payment could not be processed with current settings. Please try NGN or contact support.');
+      final bodyStr = execution.responseBody.trim();
+      if (bodyStr.isNotEmpty) {
+        final decoded = jsonDecode(bodyStr);
+        if (decoded is Map<String, dynamic>) {
+          if (decoded['error'] != null) {
+            final err = decoded['error'].toString();
+            if (err.toLowerCase().contains('currency not supported')) {
+              throw Exception(
+                'USD payment could not be processed with current settings. Please try NGN or contact support.',
+              );
+            }
+            throw Exception(err);
+          }
+          return decoded;
+        }
       }
-      throw Exception(err);
+    } catch (sdkErr) {
+      _logger.warning(
+        'Appwrite SDK createExecution note: $sdkErr. Falling back to direct HTTP execution...',
+      );
+      if (sdkErr is Exception &&
+          sdkErr.toString().contains('currency not supported')) {
+        rethrow;
+      }
     }
-    return data;
+
+    // 2. Direct HTTP execution fallback (works across Flutter Web and Mobile,
+    // avoiding Appwrite SDK Execution.fromMap deserialization enum crashes on self-hosted instances)
+    try {
+      final uri = Uri.parse(
+        '${appwriteClient.endPoint}/functions/${AppwriteBackendConfig.paystackPaymentsFunctionId}/executions',
+      );
+      final headers = <String, String>{
+        'X-Appwrite-Project': AppwriteBackendConfig.projectId,
+        'Content-Type': 'application/json',
+      };
+      try {
+        final jwt = await Account(appwriteClient).createJWT();
+        headers['X-Appwrite-JWT'] = jwt.jwt;
+      } catch (_) {}
+
+      final client = http.Client();
+      try {
+        final response = await client.post(
+          uri,
+          headers: headers,
+          body: jsonEncode({
+            'body': bodyJson,
+            'async': false,
+            'method': 'POST',
+          }),
+        );
+
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          final execMap = jsonDecode(response.body);
+          if (execMap is Map<String, dynamic>) {
+            final respBody = execMap['responseBody']?.toString() ??
+                execMap['response']?.toString() ??
+                '';
+            if (respBody.trim().isNotEmpty) {
+              final decodedBody = jsonDecode(respBody);
+              if (decodedBody is Map<String, dynamic>) {
+                if (decodedBody['error'] != null) {
+                  final err = decodedBody['error'].toString();
+                  if (err.toLowerCase().contains('currency not supported')) {
+                    throw Exception(
+                      'USD payment could not be processed with current settings. Please try NGN or contact support.',
+                    );
+                  }
+                  throw Exception(err);
+                }
+                return decodedBody;
+              }
+            }
+          }
+        } else {
+          final errorMap = jsonDecode(response.body);
+          if (errorMap is Map<String, dynamic> && errorMap['message'] != null) {
+            throw Exception(errorMap['message']);
+          }
+        }
+      } finally {
+        client.close();
+      }
+    } catch (httpErr) {
+      _logger.error('Direct HTTP payment function note: $httpErr');
+      if (httpErr is Exception && !httpErr.toString().contains('No element')) {
+        rethrow;
+      }
+    }
+
+    throw Exception(
+      'Payment service temporarily unavailable. Please try again or contact support.',
+    );
   }
 
   Future<PaymentResponse> _handlePaystackInitResponse({

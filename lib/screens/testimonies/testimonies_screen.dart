@@ -163,7 +163,11 @@ class _TestimoniesScreenState extends ConsumerState<TestimoniesScreen>
                       } catch (e) {
                         if (!rootContext.mounted) return;
                         ScaffoldMessenger.of(rootContext).showSnackBar(
-                          SnackBar(content: Text('${translate('error')}: $e')),
+                          SnackBar(
+                            content: Text(
+                              '${translate('error')}: ${ErrorHandler.getUserFriendlyMessage(e)}',
+                            ),
+                          ),
                         );
                       }
                     },

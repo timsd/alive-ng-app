@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/error_handler.dart';
 import '../utils/layout_fix_utils.dart';
 
 class AppErrorWidget extends StatelessWidget {
@@ -45,7 +46,7 @@ class AppErrorWidget extends StatelessWidget {
               const SizedBox(height: 8),
             ],
             Text(
-              message,
+              ErrorHandler.getUserFriendlyMessage(message),
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: Theme.of(context)
                         .colorScheme
@@ -328,7 +329,7 @@ class AsyncErrorWidget extends StatelessWidget {
     String message = customMessage ?? 'An error occurred while loading data.';
 
     if (error != null) {
-      message = error.toString();
+      message = ErrorHandler.getUserFriendlyMessage(error, customMessage);
     }
 
     return AppErrorWidget(

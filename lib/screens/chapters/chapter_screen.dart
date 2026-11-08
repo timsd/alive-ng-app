@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/error_handler.dart';
 import 'package:appwrite/appwrite.dart';
 import '../../models/chapter_models.dart';
 import '../../services/chapter_service.dart';
@@ -1137,7 +1138,7 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to join chapter: $e'),
+            content: Text('Failed to join chapter: ${ErrorHandler.getUserFriendlyMessage(e)}'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -1152,7 +1153,7 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(content: Text('Error: ${ErrorHandler.getUserFriendlyMessage(e)}')),
         );
       }
     }

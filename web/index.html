@@ -77,6 +77,15 @@
         }
       } catch (_) { }
     })();
+
+    // Web Hardening: Prevent right-click context menu (Save Image/Download) on canvas & protected media
+    window.addEventListener('contextmenu', function (e) {
+      var tag = (e.target && e.target.tagName) || '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target && e.target.isContentEditable)) {
+        return;
+      }
+      e.preventDefault();
+    }, false);
   </script>
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://www.google.com" crossorigin>

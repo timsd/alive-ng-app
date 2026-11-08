@@ -2,77 +2,71 @@ name: alive_flutter_app
 description: A Flutter version of the ALIVE Nigeria Ministry app
 version: 2.0.7+15
 environment:
-  sdk: '>=3.0.0 <4.0.0'
-  flutter: ">=3.10.0"
+  sdk: ^3.13.7
+  flutter: ">=3.47.9"
 
 dependencies:
   flutter:
     sdk: flutter
   flutter_web_plugins:
     sdk: flutter
-  archive: ^3.6.1
+  archive: ^4.6.0
   
   # UI Components
-  cupertino_icons: ^1.0.8
   font_awesome_flutter: ^11.0.0
   flutter_svg: ^2.2.4
   path_parsing: ^1.1.0
-  cached_network_image: ^3.4.1
-  image: ^4.3.0
+  cached_network_image: ^4.0.6
+  image: ^4.12.0
   
   # State Management (using flutter_riverpod as primary)
   flutter_riverpod: ^2.6.1
   
   # Navigation
-  go_router: ^14.0.0
+  go_router: ^18.1.3
   http: ^1.2.0
   json_annotation: ^4.9.0
-  # json_serializable removed from dependencies; kept in dev_dependencies
   
   # Database & Storage
   shared_preferences: ^2.5.4
-  flutter_secure_storage: ^9.2.4
-  sqflite: ^2.4.2
+  flutter_secure_storage: ^11.2.0
+  sqflite: ^2.4.5
   # SQLite for the web build. `sqflite` has no web implementation, so without
   # this the Bible reader has no database at all in the browser and the app --
   # which ships as a web app -- opens an empty one.
-  sqflite_common_ffi_web: ^1.0.0
-  path_provider: ^2.1.5
+  sqflite_common_ffi_web: ^1.2.0
   path: ^1.9.0
   
   # Appwrite backend
-  appwrite: ^26.2.0
+  appwrite: ^28.3.0
 
   # Push notifications & crash reporting via Appwrite + GlitchTip/Sentry
-  sentry_flutter: ^9.30.1
+  sentry_flutter: ^10.3.0
   
   # Date & Time
   intl: ^0.20.2
   
   # Authentication & Security
-  local_auth: ^2.3.0
+  local_auth: ^3.0.2
   
   # Notifications
-  flutter_local_notifications: ^19.5.0
+  flutter_local_notifications: ^22.3.3
   
   # File Handling
-  file_picker: ^10.3.10
-  pdf: ^3.11.3
-  # printing removed temporarily to resolve native library conflict in Android release
+  file_picker: ^13.3.2
   
   # Forms & Validation
-  flutter_form_builder: ^10.3.0
+  flutter_form_builder: ^10.3.0+2
   form_builder_validators: ^11.2.0
   
   # Speech & Audio (used in bible game and TTS service)
-  speech_to_text: ^7.3.0
-  flutter_tts: ^3.8.5
+  speech_to_text: ^7.5.0
+  flutter_tts: ^4.2.5
   
   # Video Conferencing
   livekit_client: ^2.11.0
   
   # Payment Integration
-  pay_with_paystack: ^1.0.14
   paystack_flutter_sdk: ^0.0.1-alpha.2
   
   # Internationalization
@@ -80,47 +74,40 @@ dependencies:
     sdk: flutter
   
   # Utils
-  uuid: ^4.5.3
   url_launcher: ^6.3.2
-  package_info_plus: ^9.0.0
-  device_info_plus: ^12.4.0
+  package_info_plus: ^10.2.2
   image_picker: ^1.2.1
-  share_plus: ^12.0.2
-  in_app_update: ^4.2.5
-  web: ^1.1.1
+  share_plus: ^13.3.1
+  in_app_update: ^5.0.0
+  web: ^1.1.2
   
-  # Location & Permissions
-  geolocator: ^10.1.1
-  permission_handler: ^11.4.0
+  # Permissions
+  permission_handler: ^13.0.2
   
-  # Connectivity
-  connectivity_plus: ^7.3.1
+  # Time formatting
   timeago: ^3.6.1
 
   # Email & Web Services
   webview_flutter: ^4.14.1
 
-  # Data models
-  equatable: ^2.0.8
-  timezone: ^0.10.1
-  just_audio: ^0.9.46
+  # Data models & Media
+  equatable: ^3.0.0
+  timezone: ^0.11.2
+  just_audio: ^0.10.6
   crypto: ^3.0.6
-  syncfusion_flutter_pdf: ^32.2.9
-  firebase_core: ^4.15.2
-  firebase_messaging: ^16.7.1
-dependency_overrides:
-  record: 6.2.0
-  record_android: 1.5.1
-  record_linux: 1.3.0
-  record_web: 1.3.0
+  syncfusion_flutter_pdf: ^35.1.43
+  pdfrx: ^1.1.7
+  firebase_core: ^5.1.0
+  firebase_messaging: ^17.0.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
-  build_runner: ^2.12.2
-  json_serializable: ^6.13.0
-  mockito: ^5.6.3
-  puppeteer: ^3.16.0
+  build_runner: ^2.15.1
+  json_serializable: ^6.14.1
+  mockito: ^5.8.1
+  puppeteer: ^3.28.0
 
 flutter:
   generate: true

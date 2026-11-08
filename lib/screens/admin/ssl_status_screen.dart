@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/error_handler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../services/ssl_service.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -42,7 +43,7 @@ class _SSLStatusScreenState extends ConsumerState<SSLStatusScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading SSL status: $e')),
+          SnackBar(content: Text('Error loading SSL status: ${ErrorHandler.getUserFriendlyMessage(e)}')),
         );
       }
     } finally {
@@ -71,7 +72,7 @@ class _SSLStatusScreenState extends ConsumerState<SSLStatusScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('SSL test failed: $e')),
+          SnackBar(content: Text('SSL test failed: ${ErrorHandler.getUserFriendlyMessage(e)}')),
         );
       }
     } finally {

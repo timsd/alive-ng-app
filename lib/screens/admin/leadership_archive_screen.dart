@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/error_handler.dart';
 import '../../models/leadership_models.dart';
 import '../../services/leadership_service.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -77,7 +78,7 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
       });
     } catch (e) {
       setState(() {
-        _error = e.toString();
+        _error = ErrorHandler.getUserFriendlyMessage(e);
         _isLoading = false;
       });
     }
@@ -773,7 +774,7 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error creating record: $e'),
+            content: Text('Error creating record: ${ErrorHandler.getUserFriendlyMessage(e)}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -822,7 +823,7 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error completing service: $e'),
+            content: Text('Error completing service: ${ErrorHandler.getUserFriendlyMessage(e)}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -854,7 +855,7 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error archiving record: $e'),
+            content: Text('Error archiving record: ${ErrorHandler.getUserFriendlyMessage(e)}'),
             backgroundColor: Colors.red,
           ),
         );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/error_handler.dart';
 import '../../models/study_guide_models.dart';
 import '../../services/study_guide_service.dart';
 import '../../services/auth_service.dart';
@@ -70,7 +71,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading data: $e')),
+          SnackBar(content: Text('Error loading data: ${ErrorHandler.getUserFriendlyMessage(e)}')),
         );
       }
     } finally {
@@ -853,7 +854,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error starting study: $e')),
+          SnackBar(content: Text('Error starting study: ${ErrorHandler.getUserFriendlyMessage(e)}')),
         );
       }
     }

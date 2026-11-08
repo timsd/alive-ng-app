@@ -14,9 +14,9 @@ class AppwritePushService {
   AppwritePushService._();
   static final AppwritePushService instance = AppwritePushService._();
 
-  final Account _account = Account(appwriteClient);
-  final TablesDB _tables = TablesDB(appwriteClient);
-  final Messaging _messaging = Messaging(appwriteClient);
+  late final Account _account = Account(appwriteClient);
+  late final TablesDB _tables = TablesDB(appwriteClient);
+  late final Messaging _messaging = Messaging(appwriteClient);
   final Logger _logger = Logger('AppwritePushService');
 
   Future<String?> registerToken(String token) async {

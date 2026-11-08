@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/error_handler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -117,7 +118,7 @@ class _GiftInKindFormScreenState extends ConsumerState<GiftInKindFormScreen> {
     } catch (e) {
       if (!rootCtx.mounted) return;
       ScaffoldMessenger.of(rootCtx).showSnackBar(
-        SnackBar(content: Text('Failed to submit gift form: $e')),
+        SnackBar(content: Text('Failed to submit gift form: ${ErrorHandler.getUserFriendlyMessage(e)}')),
       );
     }
   }

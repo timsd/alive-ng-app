@@ -1,8 +1,9 @@
 import 'dart:async';
+import '../../utils/error_handler.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:file_picker/file_picker.dart';
+import '../../services/file_picker_facade.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../services/auth_service.dart';
 import '../../services/appwrite_storage_service.dart';
@@ -349,7 +350,7 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to upload image: $e')),
+          SnackBar(content: Text('Failed to upload image: ${ErrorHandler.getUserFriendlyMessage(e)}')),
         );
       }
     } finally {
@@ -415,7 +416,7 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to upload file: $e')),
+          SnackBar(content: Text('Failed to upload file: ${ErrorHandler.getUserFriendlyMessage(e)}')),
         );
       }
     } finally {

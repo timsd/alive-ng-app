@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../utils/error_handler.dart';
 import '../../utils/appwrite_id_utils.dart';
 import 'package:flutter/material.dart';
 
@@ -75,7 +76,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error loading data: $e'),
+            content: Text('Error loading data: ${ErrorHandler.getUserFriendlyMessage(e)}'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -100,7 +101,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error loading users: $e'),
+            content: Text('Error loading users: ${ErrorHandler.getUserFriendlyMessage(e)}'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -779,7 +780,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error updating user role: $e'),
+            content: Text('Error updating user role: ${ErrorHandler.getUserFriendlyMessage(e)}'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -829,7 +830,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Error archiving user: $e'),
+              content: Text('Error archiving user: ${ErrorHandler.getUserFriendlyMessage(e)}'),
               backgroundColor: Theme.of(context).colorScheme.error,
             ),
           );

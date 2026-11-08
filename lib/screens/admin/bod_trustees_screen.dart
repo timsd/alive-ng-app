@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/error_handler.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'leader_meeting_transcription_screen.dart';
@@ -1042,7 +1043,7 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
                   } catch (e) {
                     if (!mounted) return;
                     messenger.showSnackBar(
-                      SnackBar(content: Text('Save failed: $e')),
+                      SnackBar(content: Text('Save failed: ${ErrorHandler.getUserFriendlyMessage(e)}')),
                     );
                   }
                 },

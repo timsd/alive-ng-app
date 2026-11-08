@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/error_handler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../services/donation_service.dart';
@@ -57,7 +58,7 @@ class _NonMonetaryGiftFormScreenState
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to submit: $e')),
+        SnackBar(content: Text('Failed to submit: ${ErrorHandler.getUserFriendlyMessage(e)}')),
       );
     } finally {
       if (mounted) {

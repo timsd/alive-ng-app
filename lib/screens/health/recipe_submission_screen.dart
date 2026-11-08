@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/error_handler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:form_builder_validators/form_builder_validators.dart';
@@ -636,7 +637,7 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
 
       messenger.showSnackBar(
         SnackBar(
-          content: Text('$errorMessage: $e'),
+          content: Text('$errorMessage: ${ErrorHandler.getUserFriendlyMessage(e)}'),
           backgroundColor: Colors.red,
         ),
       );
@@ -712,7 +713,7 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
 
       messenger.showSnackBar(
         SnackBar(
-          content: Text('$errorMessage: $e'),
+          content: Text('$errorMessage: ${ErrorHandler.getUserFriendlyMessage(e)}'),
           backgroundColor: Colors.red,
         ),
       );

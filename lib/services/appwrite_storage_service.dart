@@ -130,42 +130,150 @@ class AppwriteStorageService {
     required String contentType,
     List<String>? permissions,
   }) async {
+    final fileId = ID.unique();
+
     InputFile buildInput() => InputFile.fromBytes(
           bytes: bytes,
           filename: fileName,
           contentType: contentType,
         );
 
-    final fileId = ID.unique();
+    // Primary: use appwriteClient.chunkedUpload directly to bypass the
+    // Appwrite Flutter SDK 28.3 deserialization bug where models.File.fromMap crashes
+    // with "TypeError: null: type 'minified:a0l' is not a subtype of type 'int'"
+    // when self-hosted Appwrite (1.5/1.6/1.8) returns null for sizeActual/chunksTotal.
     try {
-      final file = await _storage.createFile(
-        bucketId: bucketId,
-        fileId: fileId,
-        file: buildInput(),
-        permissions: permissions,
+      final apiPath = '/storage/buckets/$bucketId/files';
+      final apiParams = <String, dynamic>{
+        'fileId': fileId,
+        'file': buildInput(),
+        if (permissions != null && permissions.isNotEmpty)
+          'permissions': permissions,
+      };
+      final apiHeaders = <String, String>{
+        'X-Appwrite-Project': appwriteClient.config['project'] ??
+            AppwriteBackendConfig.projectId,
+        'content-type': 'multipart/form-data',
+        'accept': 'application/json',
+      };
+
+      final res = await appwriteClient.chunkedUpload(
+        path: apiPath,
+        params: apiParams,
+        paramName: 'file',
+        idParamName: 'fileId',
+        headers: apiHeaders,
+        method: HttpMethod.post,
       );
-      final resolvedId = file.$id.isNotEmpty ? file.$id : fileId;
+
+      final dynamic data = res.data;
+      String resolvedId = fileId;
+      if (data is Map) {
+        final sid = data['\$id']?.toString();
+        if (sid != null && sid.isNotEmpty) {
+          resolvedId = sid;
+        }
+      }
+
       return '${AppwriteBackendConfig.endpoint}/storage/buckets/'
           '$bucketId/files/$resolvedId/view'
           '?project=${AppwriteBackendConfig.projectId}';
     } catch (e) {
-      // If permissions caused rejection or bucket has fileSecurity disabled, retry with bucket defaults
+      final eStr = e.toString().toLowerCase();
+      // If direct chunkedUpload threw because permissions caused rejection, retry without permissions
       if (permissions != null && permissions.isNotEmpty) {
         try {
           debugPrint(
-              'Retrying upload without permissions for bucket $bucketId due to: $e');
-          final file = await _storage.createFile(
-            bucketId: bucketId,
-            fileId: fileId,
-            file: buildInput(),
+              '[AppwriteStorageService] Retrying chunkedUpload without permissions for bucket $bucketId due to: $e');
+          final res = await appwriteClient.chunkedUpload(
+            path: '/storage/buckets/$bucketId/files',
+            params: <String, dynamic>{
+              'fileId': fileId,
+              'file': buildInput(),
+            },
+            paramName: 'file',
+            idParamName: 'fileId',
+            headers: <String, String>{
+              'X-Appwrite-Project': appwriteClient.config['project'] ??
+                  AppwriteBackendConfig.projectId,
+              'content-type': 'multipart/form-data',
+              'accept': 'application/json',
+            },
+            method: HttpMethod.post,
           );
-          final resolvedId = file.$id.isNotEmpty ? file.$id : fileId;
+          final dynamic data = res.data;
+          String resolvedId = fileId;
+          if (data is Map) {
+            final sid = data['\$id']?.toString();
+            if (sid != null && sid.isNotEmpty) {
+              resolvedId = sid;
+            }
+          }
           return '${AppwriteBackendConfig.endpoint}/storage/buckets/'
               '$bucketId/files/$resolvedId/view'
               '?project=${AppwriteBackendConfig.projectId}';
         } catch (_) {}
       }
-      rethrow;
+
+      debugPrint(
+          '[AppwriteStorageService] Direct chunkedUpload failed: $e. Falling back to _storage.createFile with TypeError protection...');
+
+      // Fallback: use _storage.createFile with TypeError tolerance
+      try {
+        final file = await _storage.createFile(
+          bucketId: bucketId,
+          fileId: fileId,
+          file: buildInput(),
+          permissions: permissions,
+        );
+        final resolvedId = file.$id.isNotEmpty ? file.$id : fileId;
+        return '${AppwriteBackendConfig.endpoint}/storage/buckets/'
+            '$bucketId/files/$resolvedId/view'
+            '?project=${AppwriteBackendConfig.projectId}';
+      } catch (err) {
+        // If it's a TypeError (null cast to int in models.File.fromMap), the upload
+        // on the server has already SUCCEEDED and fileId is the created file!
+        final errStr = err.toString().toLowerCase();
+        final isTypeMismatch = err is TypeError ||
+            errStr.contains('subtype of type') ||
+            errStr.contains('minified:') ||
+            errStr.contains('typeerror');
+        if (isTypeMismatch) {
+          debugPrint(
+              '[AppwriteStorageService] Caught SDK models.File deserialization bug ($err). File was successfully uploaded with ID: $fileId');
+          return '${AppwriteBackendConfig.endpoint}/storage/buckets/'
+              '$bucketId/files/$fileId/view'
+              '?project=${AppwriteBackendConfig.projectId}';
+        }
+
+        // Retry without permissions if rejected
+        if (permissions != null && permissions.isNotEmpty) {
+          try {
+            debugPrint(
+                'Retrying upload without permissions for bucket $bucketId due to: $err');
+            final file = await _storage.createFile(
+              bucketId: bucketId,
+              fileId: fileId,
+              file: buildInput(),
+            );
+            final resolvedId = file.$id.isNotEmpty ? file.$id : fileId;
+            return '${AppwriteBackendConfig.endpoint}/storage/buckets/'
+                '$bucketId/files/$resolvedId/view'
+                '?project=${AppwriteBackendConfig.projectId}';
+          } catch (retryErr) {
+            final retryStr = retryErr.toString().toLowerCase();
+            if (retryErr is TypeError ||
+                retryStr.contains('subtype of type') ||
+                retryStr.contains('minified:') ||
+                retryStr.contains('typeerror')) {
+              return '${AppwriteBackendConfig.endpoint}/storage/buckets/'
+                  '$bucketId/files/$fileId/view'
+                  '?project=${AppwriteBackendConfig.projectId}';
+            }
+          }
+        }
+        rethrow;
+      }
     }
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/error_handler.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -536,7 +537,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error speaking chapter: $e'),
+            content: Text('Error speaking chapter: ${ErrorHandler.getUserFriendlyMessage(e)}'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -597,7 +598,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error loading verse: $e'),
+            content: Text('Error loading verse: ${ErrorHandler.getUserFriendlyMessage(e)}'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -716,17 +717,6 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
         showLanguageToggle: false,
         showDonationButton: true,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.collections_bookmark_outlined),
-            onPressed: () {
-              if (_tabController.index == 2) {
-                _tabController.animateTo(0);
-              } else {
-                _tabController.animateTo(2);
-              }
-            },
-            tooltip: 'My Study (Notes, Highlights & Bookmarks)',
-          ),
           IconButton(
             icon: Icon(_isSpeaking ? Icons.stop : Icons.volume_up),
             onPressed: () {
@@ -2144,7 +2134,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error speaking verse: $e'),
+            content: Text('Error speaking verse: ${ErrorHandler.getUserFriendlyMessage(e)}'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );

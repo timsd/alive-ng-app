@@ -49,9 +49,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   String get _effectiveUserId => _userIdController.text.trim();
   String get _effectiveSecret => _secretController.text.trim();
 
-  bool get _hasRecoveryParams =>
-      _effectiveUserId.isNotEmpty && _effectiveSecret.isNotEmpty;
-
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 

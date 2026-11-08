@@ -534,9 +534,17 @@ class _InteractiveLessonReaderScreenState
       builder: (ctx) => AlertDialog(
         title: const Row(
           children: [
-            Icon(Icons.refresh_rounded, color: Colors.green),
+            Icon(Icons.refresh_rounded, color: Color(0xFF166534)),
             SizedBox(width: 8),
-            Text('Reset Study for New Prospect?'),
+            Expanded(
+              child: Text(
+                'Reset Study for New Prospect?',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
           ],
         ),
         content: const Text(

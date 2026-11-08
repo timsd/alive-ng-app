@@ -121,7 +121,7 @@ class ReminderService {
     );
 
     await _flutterLocalNotificationsPlugin.initialize(
-      initializationSettings,
+      settings: initializationSettings,
       onDidReceiveNotificationResponse: _onNotificationTapped,
     );
 
@@ -206,10 +206,10 @@ class ReminderService {
     const iosDetails = DarwinNotificationDetails();
 
     await _flutterLocalNotificationsPlugin.show(
-      id,
-      title,
-      body,
-      const NotificationDetails(android: androidDetails, iOS: iosDetails),
+      id: id,
+      title: title,
+      body: body,
+      notificationDetails: const NotificationDetails(android: androidDetails, iOS: iosDetails),
       payload: payload,
     );
   }
@@ -247,11 +247,11 @@ class ReminderService {
     );
 
     await _flutterLocalNotificationsPlugin.zonedSchedule(
-      config.type.value.hashCode,
-      config.title,
-      config.body,
-      tz.TZDateTime.from(scheduledDate, tz.local),
-      platformChannelSpecifics,
+      id: config.type.value.hashCode,
+      title: config.title,
+      body: config.body,
+      scheduledDate: tz.TZDateTime.from(scheduledDate, tz.local),
+      notificationDetails: platformChannelSpecifics,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       payload: jsonEncode({
         'type': config.type.value,
@@ -326,10 +326,10 @@ class ReminderService {
     );
 
     await _flutterLocalNotificationsPlugin.show(
-      config.type.value.hashCode,
-      config.title,
-      config.body,
-      platformChannelSpecifics,
+      id: config.type.value.hashCode,
+      title: config.title,
+      body: config.body,
+      notificationDetails: platformChannelSpecifics,
       payload: jsonEncode({
         'type': config.type.value,
         'route': _getRouteForType(config.type),
@@ -373,7 +373,7 @@ class ReminderService {
   Future<void> clearReminder(String type) async {
     await initialize();
     // Cancel scheduled notification
-    await _flutterLocalNotificationsPlugin.cancel(type.hashCode);
+    await _flutterLocalNotificationsPlugin.cancel(id: type.hashCode);
 
     // Cancel recurring timer
     final timer = _scheduledReminders[type];

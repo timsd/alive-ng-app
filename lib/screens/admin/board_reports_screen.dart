@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/error_handler.dart';
 import 'package:intl/intl.dart';
 import '../../models/board_models.dart';
 import '../../services/appwrite_board_service.dart';
@@ -69,7 +70,7 @@ class _BoardReportsScreenState extends State<BoardReportsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error loading reports: $e'),
+            content: Text('Error loading reports: ${ErrorHandler.getUserFriendlyMessage(e)}'),
             backgroundColor: Colors.red,
           ),
         );

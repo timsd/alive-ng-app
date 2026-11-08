@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../utils/error_handler.dart';
 import 'package:intl/intl.dart';
-import 'package:file_picker/file_picker.dart';
+import '../../services/file_picker_facade.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/board_models.dart';
 import '../../services/appwrite_board_service.dart';
@@ -64,7 +65,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error loading documents: $e'),
+            content: Text('Error loading documents: ${ErrorHandler.getUserFriendlyMessage(e)}'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -725,7 +726,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error downloading document: $e'),
+            content: Text('Error downloading document: ${ErrorHandler.getUserFriendlyMessage(e)}'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -793,7 +794,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                       if (mounted) {
                         messenger.showSnackBar(
                           SnackBar(
-                            content: Text('Error selecting file: $e'),
+                            content: Text('Error selecting file: ${ErrorHandler.getUserFriendlyMessage(e)}'),
                             backgroundColor: theme.colorScheme.error,
                           ),
                         );
@@ -985,7 +986,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
         final theme = Theme.of(context);
         messenger.showSnackBar(
           SnackBar(
-            content: Text('Error uploading document: $e'),
+            content: Text('Error uploading document: ${ErrorHandler.getUserFriendlyMessage(e)}'),
             backgroundColor: theme.colorScheme.error,
           ),
         );

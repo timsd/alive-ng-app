@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/error_handler.dart';
 
 class AddPrayerRequestDialog extends StatefulWidget {
   final Future<void> Function({
@@ -69,7 +70,7 @@ class _AddPrayerRequestDialogState extends State<AddPrayerRequestDialog> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not submit request: $e')),
+        SnackBar(content: Text('Could not submit request: ${ErrorHandler.getUserFriendlyMessage(e)}')),
       );
     } finally {
       if (mounted) {

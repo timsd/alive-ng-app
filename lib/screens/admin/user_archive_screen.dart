@@ -1,4 +1,5 @@
 import '../../services/appwrite_facade.dart';
+import '../../utils/error_handler.dart';
 import 'package:flutter/material.dart';
 import '../../config/appwrite_backend_config.dart';
 import '../../main.dart';
@@ -84,7 +85,7 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error loading archived users: $e'),
+          content: Text('Error loading archived users: ${ErrorHandler.getUserFriendlyMessage(e)}'),
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
@@ -566,7 +567,7 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
       final messenger = ScaffoldMessenger.of(context);
       messenger.showSnackBar(
         SnackBar(
-          content: Text('Error restoring user: $e'),
+          content: Text('Error restoring user: ${ErrorHandler.getUserFriendlyMessage(e)}'),
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
@@ -640,7 +641,7 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
         final messenger = ScaffoldMessenger.of(context);
         messenger.showSnackBar(
           SnackBar(
-            content: Text('Error deleting user: $e'),
+            content: Text('Error deleting user: ${ErrorHandler.getUserFriendlyMessage(e)}'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );

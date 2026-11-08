@@ -239,7 +239,11 @@ class AboutAppScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'Developed by Timothy Olodude as a dedicated contribution to advancing ALIVE Nigeria\'s missionary mandate, operational excellence, and technological self-reliance. © Project 2025/2026. For feedback, feature suggestions, or technical support, please use the in-app Feedback section.',
+                        '“Not unto us, O Lord, not unto us, but unto Thy name give glory.” (Psalm 115:1)\n\n'
+                        'Dedication:\n\n'
+                        'This platform is dedicated to the Almighty God for the expansion of His kingdom work and the equipping of His church.\n\n'
+                        'Technical Stewardship:\n\n'
+                        'Architected and developed by Timothy Olodude as a ministry contribution to ALIVE Nigeria. © Project 2025/2026.',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           height: 1.6,
                           color: colorScheme.onSurfaceVariant,
@@ -254,7 +258,7 @@ class AboutAppScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        'If you notice missing information, styling issues, or anything that should work better, you can reach the team directly.',
+                        'If you notice missing information, styling issues, or anything that should work better, you can reach the developer directly here, or use the feedback on the Help/Support to get in-touch with the team.',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           height: 1.6,
                           color: colorScheme.onSurfaceVariant,

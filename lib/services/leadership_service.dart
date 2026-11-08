@@ -29,7 +29,7 @@ class LeadershipService {
       final userId = _authService.currentUser?.uid;
       if (userId == null) throw AuthException('User not authenticated');
 
-      return _listRecords([
+      return await _listRecords([
         Query.equal('user_id', userId),
         Query.orderDesc('created_at'),
       ]);
@@ -62,7 +62,7 @@ class LeadershipService {
         queries.add(Query.offset(offset));
       }
 
-      return _listRecords(queries);
+      return await _listRecords(queries);
     } catch (e) {
       _logger.error('Failed to fetch all leadership records', e);
       throw DatabaseException('Failed to fetch all leadership records',
@@ -327,7 +327,7 @@ class LeadershipService {
   Future<List<LeadershipRecord>> searchRecords(String searchTerm) async {
     try {
       final term = searchTerm.trim().toLowerCase();
-      if (term.isEmpty) return getAllRecords(limit: 100);
+      if (term.isEmpty) return await getAllRecords(limit: 100);
 
       final records = await getAllRecords(limit: 500);
       return records.where((record) {

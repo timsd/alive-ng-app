@@ -249,9 +249,6 @@ class _StandardVideoPlayerModalState extends State<StandardVideoPlayerModal> {
     }
   }
 
-  /// True when the video is a YouTube embed (web iframe or mobile WebView)
-  bool get _isEmbedded => _youTubeId != null;
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);

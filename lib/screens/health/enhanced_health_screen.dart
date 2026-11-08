@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/error_handler.dart';
 import '../../services/health_content_service.dart';
 import '../../services/role_access_service.dart';
 import '../../providers/auth_provider.dart';
@@ -52,7 +53,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
       });
     } catch (e) {
       setState(() {
-        _error = e.toString();
+        _error = ErrorHandler.getUserFriendlyMessage(e);
         _isLoading = false;
       });
     }

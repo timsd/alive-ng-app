@@ -141,6 +141,14 @@ class AppwriteMeetingFileService {
         );
         storageSucceeded = true;
       } catch (storageErr) {
+        final errStr = storageErr.toString().toLowerCase();
+        if (storageErr is TypeError ||
+            errStr.contains('subtype of type') ||
+            errStr.contains('minified:') ||
+            errStr.contains('typeerror')) {
+          _logger.info('File uploaded with ID $fileId (handled SDK deserialization quirk)');
+          storageSucceeded = true;
+        } else {
         _logger.warning(
             'Primary meeting_files bucket failed: $storageErr, trying content_media bucket...');
         try {
@@ -160,7 +168,16 @@ class AppwriteMeetingFileService {
           );
           storageSucceeded = true;
         } catch (secondaryErr) {
-          _logger.warning('Secondary bucket also failed: $secondaryErr. Proceeding with database record.');
+          final secStr = secondaryErr.toString().toLowerCase();
+          if (secondaryErr is TypeError ||
+              secStr.contains('subtype of type') ||
+              secStr.contains('minified:') ||
+              secStr.contains('typeerror')) {
+            storageSucceeded = true;
+          } else {
+            _logger.warning('Secondary bucket also failed: $secondaryErr. Proceeding with database record.');
+          }
+        }
         }
       }
 

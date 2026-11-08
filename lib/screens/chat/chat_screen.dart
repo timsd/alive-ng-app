@@ -554,8 +554,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 )
               else
                 IconButton(
-                  icon: const Icon(Icons.tag_rounded),
-                  tooltip: 'View Channels',
+                  icon: const Icon(Icons.menu_rounded),
+                  tooltip: 'Channels',
                   onPressed: () => _scaffoldKey.currentState?.openDrawer(),
                 ),
               if (canCreateChannel)

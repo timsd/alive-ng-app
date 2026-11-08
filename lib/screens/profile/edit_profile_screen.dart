@@ -1,16 +1,17 @@
 import 'dart:io' as io;
 
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../utils/error_handler.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:file_picker/file_picker.dart';
+import '../../services/file_picker_facade.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/image_compression_utils.dart';
 import '../../models/app_models.dart';
 import '../../utils/responsive_utils.dart';
-import '../../utils/error_detail.dart';
+import '../../utils/error_handler.dart';
 import '../../utils/layout_fix_utils.dart';
 import '../../services/appwrite_storage_service.dart';
 import '../../services/appwrite_profile_service.dart';
@@ -242,7 +243,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to update profile: $e'),
+            content: Text('Failed to update profile: ${ErrorHandler.getUserFriendlyMessage(e)}'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );

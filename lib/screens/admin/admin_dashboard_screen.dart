@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../../utils/error_handler.dart';
 import 'dart:typed_data';
 import 'package:share_plus/share_plus.dart';
 import '../../services/appwrite_facade.dart';
@@ -139,7 +140,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error loading dashboard: $e'),
+            content: Text('Error loading dashboard: ${ErrorHandler.getUserFriendlyMessage(e)}'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -1274,7 +1275,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
                 } catch (e) {
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Export failed: $e')),
+                    SnackBar(content: Text('Export failed: ${ErrorHandler.getUserFriendlyMessage(e)}')),
                   );
                 }
               },
@@ -1297,7 +1298,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
         Navigator.of(context, rootNavigator: true).pop(); // dismiss loading
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Chat export failed: $e'),
+            content: Text('Chat export failed: ${ErrorHandler.getUserFriendlyMessage(e)}'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );

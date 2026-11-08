@@ -253,7 +253,9 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         list.add(_mapParticipant(local, isLocal: true));
       }
 
+      final waitingIds = _waitingKnocks.map((k) => k['id']).toSet();
       for (final remote in room.remoteParticipants.values) {
+        if (waitingIds.contains(remote.identity)) continue;
         list.add(_mapParticipant(remote, isLocal: false));
       }
     } catch (e) {
@@ -332,6 +334,17 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
           await room.startAudio();
           await room.setSpeakerOn(true);
         } catch (_) {}
+        final myId = _room?.localParticipant?.identity ?? '';
+        if (!_isHostOrModerator && myId.isNotEmpty) {
+          try {
+            final queryPayload = utf8.encode(jsonEncode({
+              'action': 'query_room_state',
+              'userId': myId,
+              'userName': _room?.localParticipant?.name ?? myId,
+            }));
+            await room.localParticipant?.publishData(queryPayload, reliable: true);
+          } catch (_) {}
+        }
         _syncStateFromRoom();
       })
       ..on<lk.RoomDisconnectedEvent>((_) {
@@ -349,8 +362,24 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         } catch (_) {}
         _syncStateFromRoom();
       })
-      ..on<lk.ParticipantConnectedEvent>((_) => _syncStateFromRoom())
-      ..on<lk.ParticipantDisconnectedEvent>((_) => _syncStateFromRoom())
+      ..on<lk.ParticipantConnectedEvent>((event) {
+        if (_isHostOrModerator) {
+          // Immediately inform the new participant of the current room policies (Waiting room, locked mics)
+          try {
+            final statePayload = utf8.encode(jsonEncode({
+              'action': 'room_state',
+              'isWaitingRoomEnabled': _isWaitingRoomEnabled,
+              'isRoomAudioLocked': _isRoomAudioLocked,
+            }));
+            _room?.localParticipant?.publishData(statePayload, reliable: true);
+          } catch (_) {}
+        }
+        _syncStateFromRoom();
+      })
+      ..on<lk.ParticipantDisconnectedEvent>((event) {
+        _waitingKnocks.removeWhere((k) => k['id'] == event.participant.identity);
+        _syncStateFromRoom();
+      })
       ..on<lk.TrackSubscribedEvent>((event) async {
         try {
           if (event.track is lk.AudioTrack) {
@@ -488,8 +517,39 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         _waitingKnocks.removeWhere((k) => k['id'] == target);
         _syncStateFromRoom();
       }
-    } else if (action == 'toggle_waiting_room') {
-      _isWaitingRoomEnabled = msg['enabled'] == true;
+    } else if (action == 'query_room_state') {
+      if (_isHostOrModerator) {
+        final resp = utf8.encode(jsonEncode({
+          'action': 'room_state',
+          'isWaitingRoomEnabled': _isWaitingRoomEnabled,
+          'isRoomAudioLocked': _isRoomAudioLocked,
+        }));
+        try {
+          _room?.localParticipant?.publishData(resp, reliable: true);
+        } catch (_) {}
+      }
+    } else if (action == 'room_state' || action == 'toggle_waiting_room') {
+      final waitingEnabled = action == 'toggle_waiting_room'
+          ? (msg['enabled'] == true)
+          : (msg['isWaitingRoomEnabled'] == true);
+      _isWaitingRoomEnabled = waitingEnabled;
+      if (action == 'room_state' && msg['isRoomAudioLocked'] == true) {
+        _isRoomAudioLocked = true;
+      }
+      if (!_isHostOrModerator && waitingEnabled && !_isAdmitted) {
+        _room?.localParticipant?.setMicrophoneEnabled(false);
+        _room?.localParticipant?.setCameraEnabled(false);
+        _isAudioMuted = true;
+        _isVideoMuted = true;
+        final knockPayload = utf8.encode(jsonEncode({
+          'action': 'knock',
+          'userId': myIdentity,
+          'userName': _room?.localParticipant?.name ?? myIdentity,
+        }));
+        try {
+          _room?.localParticipant?.publishData(knockPayload, reliable: true);
+        } catch (_) {}
+      }
       _syncStateFromRoom();
     }
   }
@@ -757,12 +817,19 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         _isAudioMuted = true;
       }
 
-      // Enable camera defensively so hardware/permission absence does not abort meeting join
-      try {
-        await _room!.localParticipant?.setCameraEnabled(true);
-        _isVideoMuted = false;
-      } catch (videoErr) {
-        debugPrint('Camera unavailable or permission denied: $videoErr');
+      // Enable camera only if participant is already admitted to the call
+      if (_isAdmitted) {
+        try {
+          await _room!.localParticipant?.setCameraEnabled(true);
+          _isVideoMuted = false;
+        } catch (videoErr) {
+          debugPrint('Camera unavailable or permission denied: $videoErr');
+          _isVideoMuted = true;
+        }
+      } else {
+        try {
+          await _room!.localParticipant?.setCameraEnabled(false);
+        } catch (_) {}
         _isVideoMuted = true;
       }
 

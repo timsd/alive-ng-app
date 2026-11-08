@@ -1,7 +1,8 @@
 import 'dart:io' as io;
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:file_picker/file_picker.dart';
+import '../../utils/error_handler.dart';
+import '../../services/file_picker_facade.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,7 +19,7 @@ import '../../services/appwrite_storage_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/biometric_auth_service.dart';
 import '../../services/role_access_service.dart';
-import '../../utils/error_detail.dart';
+import '../../utils/error_handler.dart';
 import '../../utils/toast_utils.dart';
 import '../../utils/image_compression_utils.dart';
 import '../../config/appwrite_backend_config.dart';
@@ -402,7 +403,7 @@ class ProfileScreen extends ConsumerWidget {
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Failed to send reset email: $e')),
+                    SnackBar(content: Text('Failed to send reset email: ${ErrorHandler.getUserFriendlyMessage(e)}')),
                   );
                 }
               }
@@ -438,7 +439,7 @@ class ProfileScreen extends ConsumerWidget {
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Unable to sign out: $e')),
+                    SnackBar(content: Text('Unable to sign out: ${ErrorHandler.getUserFriendlyMessage(e)}')),
                   );
                 }
               }
@@ -584,7 +585,7 @@ class ProfileScreen extends ConsumerWidget {
                 } catch (e) {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Unable to delete account: $e')),
+                      SnackBar(content: Text('Unable to delete account: ${ErrorHandler.getUserFriendlyMessage(e)}')),
                     );
                   }
                 }
@@ -1236,7 +1237,118 @@ class _BiometricToggleState extends State<_BiometricToggle> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_available) return const SizedBox.shrink();
+    if (kIsWeb) {
+      return ListTile(
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Theme.of(context)
+                .colorScheme
+                .surfaceContainerHighest
+                .withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(
+            Icons.fingerprint_rounded,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            size: 22,
+          ),
+        ),
+        title: const Text(
+          'Biometric Sign-In',
+          style: TextStyle(fontWeight: FontWeight.w500),
+        ),
+        subtitle: const Text(
+          'Available on Android & iOS mobile devices with fingerprint or Face ID',
+          style: TextStyle(fontSize: 12),
+        ),
+        trailing: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: Theme.of(context)
+                .colorScheme
+                .surfaceContainerHighest
+                .withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            'Mobile Only',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        onTap: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Biometric sign-in (Fingerprint / Face ID) is supported on the ALIVE Nigeria Android & iOS mobile app.',
+              ),
+              duration: Duration(seconds: 4),
+            ),
+          );
+        },
+      );
+    }
+
+    if (!_available) {
+      return ListTile(
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Theme.of(context)
+                .colorScheme
+                .surfaceContainerHighest
+                .withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(
+            Icons.fingerprint_rounded,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            size: 22,
+          ),
+        ),
+        title: const Text(
+          'Biometric Sign-In',
+          style: TextStyle(fontWeight: FontWeight.w500),
+        ),
+        subtitle: const Text(
+          'No biometric sensor or fingerprint/face unlock configured on this device',
+          style: TextStyle(fontSize: 12),
+        ),
+        trailing: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: Theme.of(context)
+                .colorScheme
+                .surfaceContainerHighest
+                .withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            'Not Enrolled',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        onTap: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'To use Biometric Sign-In, set up fingerprint or face unlock in your device security settings.',
+              ),
+              duration: Duration(seconds: 4),
+            ),
+          );
+        },
+      );
+    }
+
     return SwitchListTile(
       secondary: Container(
         padding: const EdgeInsets.all(8),

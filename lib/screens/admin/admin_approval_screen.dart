@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/error_handler.dart';
 import '../../services/appwrite_facade.dart';
 
 import '../../config/appwrite_backend_config.dart';
@@ -70,7 +71,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
       if (mounted) {
         messenger.showSnackBar(
           SnackBar(
-            content: Text('Error loading users: $e'),
+            content: Text('Error loading users: ${ErrorHandler.getUserFriendlyMessage(e)}'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -149,7 +150,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
       if (mounted) {
         messenger.showSnackBar(
           SnackBar(
-            content: Text('Error approving user: $e'),
+            content: Text('Error approving user: ${ErrorHandler.getUserFriendlyMessage(e)}'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -188,7 +189,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
       if (mounted) {
         messenger.showSnackBar(
           SnackBar(
-            content: Text('Error rejecting user: $e'),
+            content: Text('Error rejecting user: ${ErrorHandler.getUserFriendlyMessage(e)}'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );

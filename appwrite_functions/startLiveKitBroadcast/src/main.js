@@ -1,7 +1,10 @@
 import { EgressClient } from 'livekit-server-sdk';
 
-const SERVICE_URL = (process.env.LIVEKIT_URL || 'wss://livekit.alivenigeria.org')
+const rawServiceUrl = (process.env.LIVEKIT_URL || 'https://livekit.alivenigeria.org')
+  .replace(/^ws:\/\//, 'http://')
+  .replace(/^wss:\/\//, 'https://')
   .replace(/\/$/, '');
+const SERVICE_URL = rawServiceUrl;
 const YOUTUBE_INGEST = 'rtmp://a.rtmp.youtube.com/live2';
 
 const roomPolicies = {
@@ -72,9 +75,13 @@ export default async ({ req, res, error }) => {
 
     if (!userId) return res.json({ error: 'Authentication is required.' }, 401);
 
-    const apiKey = process.env.LIVEKIT_API_KEY;
-    const apiSecret = process.env.LIVEKIT_API_SECRET || process.env.LIVEKIT_SECRET;
-    if (!apiKey || !apiSecret) return res.json({ error: 'Broadcast is not configured.' }, 503);
+    const apiKey = (process.env.LIVEKIT_API_KEY || '').trim();
+    const apiSecret = (process.env.LIVEKIT_API_SECRET || process.env.LIVEKIT_SECRET || '').trim();
+    if (!apiKey || !apiSecret) {
+      return res.json({
+        error: 'Live broadcast is not configured: LIVEKIT_API_KEY or LIVEKIT_API_SECRET is missing.'
+      }, 503);
+    }
 
     const egress = new EgressClient(SERVICE_URL, apiKey, apiSecret);
 
@@ -137,6 +144,12 @@ export default async ({ req, res, error }) => {
     return res.json({ egressId: egressIdOut, status: 'started', roomName: targetRoom });
   } catch (err) {
     error(`Broadcast failed: ${err.message}`);
-    return res.json({ error: `Broadcast failed: ${err.message}` }, 503);
+    const errMsg = err.message || 'unknown error';
+    if (errMsg.toLowerCase().includes('invalid api key') || errMsg.toLowerCase().includes('unauthorized')) {
+      return res.json({
+        error: 'Broadcast failed: LiveKit streaming API key or secret is invalid on the server. Please verify LIVEKIT_API_KEY and LIVEKIT_API_SECRET in Appwrite and LiveKit server settings.'
+      }, 503);
+    }
+    return res.json({ error: `Broadcast failed: ${errMsg}` }, 503);
   }
 };

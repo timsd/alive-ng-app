@@ -252,7 +252,7 @@ class AppwriteStorageCompatService {
   Future<Map<int, String>> getWhatTheBibleSaysLessons() async {
     try {
       final files = await getWhatTheBibleSaysFiles();
-      return _lessonUrls(files);
+      return await _lessonUrls(files);
     } catch (e) {
       if (e is AppException) rethrow;
       _logger.error('Error getting What the Bible Says lessons', e);
@@ -264,7 +264,7 @@ class AppwriteStorageCompatService {
   Future<Map<int, String>> downloadAllWhatTheBibleSaysLessons() async {
     try {
       final files = await getWhatTheBibleSaysFiles();
-      return _lessonUrls(files);
+      return await _lessonUrls(files);
     } catch (e) {
       if (e is AppException) rethrow;
       _logger.error('Error downloading What the Bible Says lessons', e);
@@ -297,19 +297,33 @@ class AppwriteStorageCompatService {
   }) async {
     try {
       final sanitizedFilename = objectName.split('/').last;
-      final file = await _storage.createFile(
-        bucketId: bucketId,
-        fileId: ID.unique(),
-        file: InputFile.fromBytes(
-          bytes: bytes,
-          filename: sanitizedFilename,
-          contentType: contentType,
-        ),
-        permissions: [
-          Permission.read(Role.any()),
-        ],
-      );
-      return _downloadUrl(bucketId, file.$id);
+      final fileId = ID.unique();
+      try {
+        final file = await _storage.createFile(
+          bucketId: bucketId,
+          fileId: fileId,
+          file: InputFile.fromBytes(
+            bytes: bytes,
+            filename: sanitizedFilename,
+            contentType: contentType,
+          ),
+          permissions: [
+            Permission.read(Role.any()),
+          ],
+        );
+        return _downloadUrl(bucketId, file.$id);
+      } catch (err) {
+        final errStr = err.toString().toLowerCase();
+        if (err is TypeError ||
+            errStr.contains('subtype of type') ||
+            errStr.contains('minified:') ||
+            errStr.contains('typeerror')) {
+          _logger.warning(
+              'Caught Appwrite models.File deserialization issue in $logLabel ($err). Server stored file: $fileId');
+          return _downloadUrl(bucketId, fileId);
+        }
+        rethrow;
+      }
     } catch (e) {
       _logger.error('Error uploading $logLabel', e);
       throw StorageException('Failed to upload $logLabel: $e', originalError: e);

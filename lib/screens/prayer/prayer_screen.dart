@@ -1,4 +1,5 @@
 import 'package:share_plus/share_plus.dart';
+import '../../utils/error_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -740,7 +741,7 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to record prayer: $e'),
+            content: Text('Failed to record prayer: ${ErrorHandler.getUserFriendlyMessage(e)}'),
             backgroundColor: Theme.of(context).colorScheme.error,
             duration: const Duration(seconds: 2),
           ),

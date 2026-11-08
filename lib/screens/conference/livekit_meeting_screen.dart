@@ -13,6 +13,7 @@ import '../../services/platform/media_permission_adapter.dart';
 import '../../services/ports/meeting_gateway.dart';
 import '../../services/role_access_service.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../utils/error_handler.dart';
 import '../admin/leader_meeting_transcription_screen.dart';
 
 class LiveKitMeetingScreen extends ConsumerStatefulWidget {
@@ -1391,10 +1392,9 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   }
 
   String _formatParticipantName(ParticipantInfo p) {
-    if (p.isLocal) return 'You';
     final raw = p.name.trim();
     if (raw.isEmpty || raw == p.identity || (raw.length > 20 && !raw.contains(' '))) {
-      return 'ALIVE Member';
+      return p.isLocal ? 'You' : 'ALIVE Member';
     }
     return raw;
   }
@@ -1787,40 +1787,50 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                       ],
                     ),
 
-                  // Bottom name banner
+                  // Bottom name banner (content-aware: compact for short names, extending up to max width for long names)
                   Positioned(
                     bottom: 8,
                     left: 8,
                     right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.black87,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            p.isAudioMuted ? Icons.mic_off : Icons.mic,
-                            size: 14,
-                            color: p.isAudioMuted ? Colors.red : Colors.green,
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              p.isLocal ? '$name (You)' : name,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              overflow: TextOverflow.ellipsis,
+                    child: Align(
+                      alignment: Alignment.bottomLeft,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.black87,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              p.isAudioMuted ? Icons.mic_off : Icons.mic,
+                              size: 14,
+                              color: p.isAudioMuted ? Colors.red : Colors.green,
                             ),
-                          ),
-                          if (p.isHandRaised)
-                            const Icon(Icons.pan_tool_rounded,
-                                size: 14, color: Color(0xFFD49B28)),
-                        ],
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                p.isLocal
+                                    ? (name.toLowerCase() == 'you'
+                                        ? 'You'
+                                        : '$name (You)')
+                                    : name,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (p.isHandRaised) ...[
+                              const SizedBox(width: 4),
+                              const Icon(Icons.pan_tool_rounded,
+                                  size: 14, color: Color(0xFFD49B28)),
+                            ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -1844,7 +1854,11 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       });
       _showMessage('Live stream started');
     } catch (e) {
-      _showMessage('Go Live failed: $e');
+      final friendly = ErrorHandler.getUserFriendlyMessage(
+        e,
+        'Live broadcast could not be started. Please check streaming settings or contact support.',
+      );
+      _showMessage(friendly);
     }
   }
 
@@ -1859,7 +1873,11 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       });
       _showMessage('Live stream stopped');
     } catch (e) {
-      _showMessage('Stop Live failed: $e');
+      final friendly = ErrorHandler.getUserFriendlyMessage(
+        e,
+        'Live stream could not be stopped. Please try again.',
+      );
+      _showMessage(friendly);
     }
   }
 

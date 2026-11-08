@@ -64,9 +64,19 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>This app needs photo library access to select images for profile pictures and prayer requests.</string>
 	
-	<!-- Microphone permission -->
+	<!-- Microphone & Speech Recognition permissions -->
 	<key>NSMicrophoneUsageDescription</key>
-	<string>This app needs microphone access for audio recordings and voice messages.</string>
+	<string>This app needs microphone access for Bible verse recitation, meeting audio, and voice transcription.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>This app uses speech recognition for the Bible memorization recitation game and live meeting transcription.</string>
+	
+	<!-- Face ID / Biometric authentication permission -->
+	<key>NSFaceIDUsageDescription</key>
+	<string>This app uses Face ID so you can securely sign in to your ALIVE Nigeria account with biometrics.</string>
+	
+	<!-- App Store Export Compliance (Standard HTTPS/TLS only) -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	
 	<!-- Contacts permission -->
 	<key>NSContactsUsageDescription</key>
@@ -76,9 +86,10 @@
 	<key>NSCalendarsUsageDescription</key>
 	<string>This app needs calendar access to add ministry events and reminders.</string>
 	
-	<!-- Notifications -->
+	<!-- Notifications & Background Audio -->
 	<key>UIBackgroundModes</key>
 	<array>
+		<string>audio</string>
 		<string>fetch</string>
 		<string>remote-notification</string>
 	</array>

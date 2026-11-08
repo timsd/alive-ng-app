@@ -5,6 +5,7 @@ import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/enums.dart' as appwrite_enums;
 import 'package:appwrite/models.dart' as models;
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';
@@ -14,6 +15,7 @@ import '../models/donation_models.dart';
 import '../models/project_model.dart';
 import '../utils/logger.dart';
 import '../utils/app_exception.dart';
+import '../utils/error_handler.dart';
 import 'auth_service.dart';
 
 class DonationService {
@@ -835,7 +837,34 @@ class DonationService {
             method: appwrite_enums.ExecutionMethod.pOST,
           );
         } catch (e) {
-          _logger.error('Failed to trigger server-side verification', e);
+          _logger.warning('Functions SDK verification note: $e. Using direct HTTP fallback...');
+          try {
+            final uri = Uri.parse(
+              '${appwriteClient.endPoint}/functions/${AppwriteBackendConfig.paystackPaymentsFunctionId}/executions',
+            );
+            final client = http.Client();
+            try {
+              await client.post(
+                uri,
+                headers: {
+                  'X-Appwrite-Project': AppwriteBackendConfig.projectId,
+                  'Content-Type': 'application/json',
+                },
+                body: jsonEncode({
+                  'body': jsonEncode({
+                    'action': 'verify_transaction',
+                    'reference': paymentResult.reference ?? donationId,
+                  }),
+                  'async': true,
+                  'method': 'POST',
+                }),
+              );
+            } finally {
+              client.close();
+            }
+          } catch (httpErr) {
+            _logger.error('Failed to trigger server-side verification', httpErr);
+          }
         }
 
         return {
@@ -866,6 +895,7 @@ class DonationService {
       return {
         'success': false,
         'initialized': paymentResult.initialized,
+        'cancelled': paymentResult.cancelled,
         'message': paymentResult.message,
         'donation_id': donationId,
       };
@@ -874,9 +904,10 @@ class DonationService {
       _logger.error('Error processing Paystack payment', e);
       return {
         'success': false,
-        // Surface the real reason (e.g. Paystack init error) so APK failures
-        // are diagnosable instead of a generic "could not open checkout".
-        'message': '$e'.replaceFirst('Exception: ', ''),
+        'message': ErrorHandler.getUserFriendlyMessage(
+          e,
+          'Unable to complete donation. Please check your internet connection and try again.',
+        ),
         'donation_id': donationId,
         'initialized': false,
       };

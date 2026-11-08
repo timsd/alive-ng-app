@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/error_handler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/event_models.dart';
@@ -50,7 +51,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
       });
     } catch (e) {
       setState(() {
-        _error = e.toString();
+        _error = ErrorHandler.getUserFriendlyMessage(e);
         _isLoading = false;
       });
     }

@@ -26,6 +26,7 @@ import 'services/crash_reporting_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'config/payment_config.dart';
 import 'services/notification_service.dart';
+import 'utils/navigation_keys.dart';
 import 'widgets/app_tour/app_tour_service.dart';
 
 export 'services/appwrite_client.dart';
@@ -150,6 +151,7 @@ class AliveApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'ALIVE Nigeria',
       debugShowCheckedModeBanner: false,
+      scaffoldMessengerKey: rootScaffoldMessengerKey,
 
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
@@ -571,7 +573,19 @@ class MainNavigationScreen extends ConsumerWidget {
                   'icon': Icons.explore_rounded,
                   'label': 'app_tour',
                   'onTap': () {
-                    AppTourService.maybeStartTour(context, force: true);
+                    // Close the More bottom sheet first so the underlying UI is clean
+                    Navigator.of(context).pop();
+                    // Navigate to Home screen so the tour targets and spotlights align perfectly
+                    context.go(AppConstants.homeRoute);
+                    // Start tour once the Home screen has settled
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      Future.delayed(const Duration(milliseconds: 350), () {
+                        final navContext = rootNavigatorKey.currentContext;
+                        if (navContext != null && navContext.mounted) {
+                          AppTourService.maybeStartTour(navContext, force: true);
+                        }
+                      });
+                    });
                   },
                 },
                 {

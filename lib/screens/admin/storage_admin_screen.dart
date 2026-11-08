@@ -1,6 +1,7 @@
 // import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
+import '../../utils/error_handler.dart';
+import '../../services/file_picker_facade.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart';
 // import '../../services/auth_service.dart';
@@ -533,7 +534,7 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Sync failed: $e'),
+            content: Text('Sync failed: ${ErrorHandler.getUserFriendlyMessage(e)}'),
             backgroundColor: Colors.red,
           ),
         );

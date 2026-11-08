@@ -1,6 +1,7 @@
 import 'package:syncfusion_flutter_pdf/pdf.dart';
+import '../../utils/error_handler.dart';
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
+import '../../services/file_picker_facade.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import '../../models/tract_models.dart';
@@ -426,7 +427,7 @@ class _TractManagementTabState extends State<_TractManagementTab> {
                   navigator.pop();
                   messenger.showSnackBar(
                     SnackBar(
-                      content: Text('Error deleting tract: $e'),
+                      content: Text('Error deleting tract: ${ErrorHandler.getUserFriendlyMessage(e)}'),
                       backgroundColor: Colors.red,
                     ),
                   );
@@ -1246,7 +1247,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
       } catch (e) {
         messenger.showSnackBar(
           SnackBar(
-            content: Text('Error uploading tract: $e'),
+            content: Text('Error uploading tract: ${ErrorHandler.getUserFriendlyMessage(e)}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -1343,7 +1344,7 @@ class _StandaloneLessonFormDialogState
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to save interactive lesson: $e'),
+          content: Text('Failed to save interactive lesson: ${ErrorHandler.getUserFriendlyMessage(e)}'),
           backgroundColor: Colors.red,
         ),
       );
@@ -1855,7 +1856,7 @@ class _PodcastManagementTabState extends State<_PodcastManagementTab> {
                   navigator.pop();
                   messenger.showSnackBar(
                     SnackBar(
-                      content: Text('Error deleting podcast: $e'),
+                      content: Text('Error deleting podcast: ${ErrorHandler.getUserFriendlyMessage(e)}'),
                       backgroundColor: Colors.red,
                     ),
                   );
@@ -2167,7 +2168,7 @@ class _CategoryManagementTabState extends State<_CategoryManagementTab> {
                   final messenger = ScaffoldMessenger.of(rootCtx);
                   messenger.showSnackBar(
                     SnackBar(
-                      content: Text('Error adding category: $e'),
+                      content: Text('Error adding category: ${ErrorHandler.getUserFriendlyMessage(e)}'),
                       backgroundColor: Colors.red,
                     ),
                   );
@@ -2241,7 +2242,7 @@ class _CategoryManagementTabState extends State<_CategoryManagementTab> {
                   if (!mounted) return;
                   messenger.showSnackBar(
                     SnackBar(
-                      content: Text('Error updating category: $e'),
+                      content: Text('Error updating category: ${ErrorHandler.getUserFriendlyMessage(e)}'),
                       backgroundColor: Colors.red,
                     ),
                   );
@@ -2337,7 +2338,7 @@ class _CategoryManagementTabState extends State<_CategoryManagementTab> {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text('Error deleting category: $e'),
+          content: Text('Error deleting category: ${ErrorHandler.getUserFriendlyMessage(e)}'),
           backgroundColor: Colors.red,
         ),
       );
@@ -3011,7 +3012,7 @@ class _PodcastFormDialogState extends State<_PodcastFormDialog> {
         if (!mounted) return;
         messenger.showSnackBar(
           SnackBar(
-            content: Text('Error uploading podcast: $e'),
+            content: Text('Error uploading podcast: ${ErrorHandler.getUserFriendlyMessage(e)}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -3312,7 +3313,7 @@ class _EpisodeManagementDialogState extends State<_EpisodeManagementDialog> {
                   navigator.pop();
                   messenger.showSnackBar(
                     SnackBar(
-                      content: Text('Error deleting episode: $e'),
+                      content: Text('Error deleting episode: ${ErrorHandler.getUserFriendlyMessage(e)}'),
                       backgroundColor: Colors.red,
                     ),
                   );

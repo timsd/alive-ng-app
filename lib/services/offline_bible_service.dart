@@ -602,7 +602,7 @@ class OfflineBibleService {
 
       for (final file in jsonFiles) {
         final content = file.content;
-        if (content is! List<int>) continue;
+        if (content.isEmpty) continue;
         final jsonStr = utf8.decode(content);
         final data = json.decode(jsonStr) as Map<String, dynamic>;
         final meta = data['metadata'] as Map<String, dynamic>? ?? {};
@@ -1050,11 +1050,11 @@ class OfflineBibleService {
       for (final assetPath in candidates) {
         final fileName = assetPath.split('/').last.toLowerCase();
         final file = fileMap[fileName];
-        if (file == null || !file.isFile || file.content is! List<int>) {
+        if (file == null || !file.isFile || file.content.isEmpty) {
           continue;
         }
 
-        final chapterJson = utf8.decode(file.content as List<int>);
+        final chapterJson = utf8.decode(file.content);
         final Map<String, dynamic> chapterData = json.decode(chapterJson);
         final verses = (chapterData['verses'] as List<dynamic>)
             .map((v) => BibleVerse(

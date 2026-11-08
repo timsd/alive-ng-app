@@ -31,3 +31,8 @@ analyzer:
     - lib/**.g.dart
     - oldfirebasedelete/**
     - tool/**
+    - build/**
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**

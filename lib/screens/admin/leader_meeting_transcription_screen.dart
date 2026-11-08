@@ -404,6 +404,12 @@ class _LeaderMeetingTranscriptionScreenState
 
   @override
   void dispose() {
+    if (_transcriptEntries.isNotEmpty ||
+        _decisions.isNotEmpty ||
+        _actionItems.isNotEmpty ||
+        _summaryController.text.trim().isNotEmpty) {
+      _backupDraftLocally(showNotification: false);
+    }
     ScaffoldMessenger.of(context).clearSnackBars();
     _tabController.dispose();
     _transcriptScrollController.dispose();
@@ -636,6 +642,7 @@ class _LeaderMeetingTranscriptionScreenState
     });
 
     _autoScrollTranscript();
+    _backupDraftLocally(showNotification: false);
   }
 
   void _autoScrollTranscript() {
@@ -706,6 +713,62 @@ class _LeaderMeetingTranscriptionScreenState
 
   /// 100% On-Device Minutes Synthesis
   void _autoSummarizeFromTranscript() {
+    // If input box has pending text that hasn't been submitted yet, commit it
+    if (_inputController.text.trim().isNotEmpty) {
+      _addManualEntry();
+    }
+
+    // Check if current session has no entries, decisions, actions, or notes
+    final hasCurrentContent = _transcriptEntries.isNotEmpty ||
+        _decisions.isNotEmpty ||
+        _actionItems.isNotEmpty ||
+        _summaryController.text.trim().isNotEmpty;
+
+    if (!hasCurrentContent) {
+      // Check if there is an existing backed-up draft that hasn't been compiled/restored yet
+      if (_detectedDraft != null) {
+        final draftEntries = _detectedDraft!['entries'] as List?;
+        final draftDecisions = _detectedDraft!['decisions'] as List?;
+        final draftActions = _detectedDraft!['actionItems'] as List?;
+        final draftSummary = _detectedDraft!['summary']?.toString().trim();
+        final hasDraft = (draftEntries != null && draftEntries.isNotEmpty) ||
+            (draftDecisions != null && draftDecisions.isNotEmpty) ||
+            (draftActions != null && draftActions.isNotEmpty) ||
+            (draftSummary != null && draftSummary.isNotEmpty);
+
+        if (hasDraft) {
+          final draft = _detectedDraft!;
+          setState(() {
+            _detectedDraft = null;
+          });
+          _restoreDraftFromBackup(draft);
+        } else {
+          _showFeedback(
+            'No meeting was held or recorded yet. Tap "Record All Speakers" to start recording, or type notes first.',
+          );
+          return;
+        }
+      } else {
+        _showFeedback(
+          'No meeting was held or recorded yet. Tap "Record All Speakers" to start recording, or type notes first.',
+        );
+        return;
+      }
+    }
+
+    // Re-verify after draft restoration
+    final canSynthesize = _transcriptEntries.isNotEmpty ||
+        _decisions.isNotEmpty ||
+        _actionItems.isNotEmpty ||
+        _summaryController.text.trim().isNotEmpty;
+
+    if (!canSynthesize) {
+      _showFeedback(
+        'No meeting was held or recorded yet. Tap "Record All Speakers" to start recording, or type notes first.',
+      );
+      return;
+    }
+
     final result = _synthesizer.synthesize(
       meetingTitle: _meetingTitleController.text.trim().isNotEmpty
           ? _meetingTitleController.text.trim()
@@ -735,6 +798,7 @@ class _LeaderMeetingTranscriptionScreenState
     _showFeedback(
       'Minutes Compiled: Executive Summary, ${_decisions.length} Decisions, and ${_actionItems.length} Action Items!',
     );
+    _backupDraftLocally(showNotification: false);
   }
 
   String _generateMarkdownNotes() {
@@ -817,6 +881,17 @@ class _LeaderMeetingTranscriptionScreenState
   }
 
   Future<void> _finishAndSaveToMeetingFiles() async {
+    final hasContent = _transcriptEntries.isNotEmpty ||
+        _decisions.isNotEmpty ||
+        _actionItems.isNotEmpty ||
+        _summaryController.text.trim().isNotEmpty;
+    if (!hasContent) {
+      _showFeedback(
+        'Cannot store empty minutes. Record a meeting or compile notes before saving.',
+      );
+      return;
+    }
+
     final title = _meetingTitleController.text.trim();
     if (title.isEmpty) {
       _showFeedback('Please provide a meeting title.');
@@ -1281,11 +1356,6 @@ class _LeaderMeetingTranscriptionScreenState
         showThemeToggle: false,
         showLanguageToggle: false,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.backup_outlined),
-            tooltip: 'Backup / Save Draft',
-            onPressed: () => _backupDraftLocally(),
-          ),
           IconButton(
             icon: const Icon(Icons.folder_open_outlined),
             tooltip: 'View Meeting Files',

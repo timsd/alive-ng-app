@@ -779,7 +779,7 @@ class ChapterService {
         updatedAt: DateTime.now().toUtc(),
       );
 
-      return createReport(report);
+      return await createReport(report);
     } catch (e) {
       throw DatabaseException('Failed to generate monthly report',
           originalError: e);

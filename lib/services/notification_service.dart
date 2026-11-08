@@ -29,9 +29,9 @@ class NotificationService {
 
   NotificationService._();
 
-  final AuthService _authService = AuthService.instance;
+  late final AuthService _authService = AuthService.instance;
   final Logger _logger = Logger('NotificationService');
-  final TablesDB _tables = TablesDB(appwriteClient);
+  late final TablesDB _tables = TablesDB(appwriteClient);
 
   // Local notifications plugin (no Firebase dependency)
   final FlutterLocalNotificationsPlugin _localNotifications =
@@ -63,7 +63,7 @@ class NotificationService {
         iOS: iosSettings,
       );
       await _localNotifications.initialize(
-        settings,
+        settings: settings,
         onDidReceiveNotificationResponse: _onNotificationTapped,
       );
 
@@ -302,10 +302,10 @@ class NotificationService {
     );
 
     await _localNotifications.show(
-      id,
-      title,
-      body,
-      details,
+      id: id,
+      title: title,
+      body: body,
+      notificationDetails: details,
       payload: payload,
     );
   }
@@ -478,11 +478,11 @@ class NotificationService {
     );
 
     await _localNotifications.zonedSchedule(
-      id,
-      title,
-      body,
-      tz.TZDateTime.from(scheduledDate, tz.local),
-      details,
+      id: id,
+      title: title,
+      body: body,
+      scheduledDate: tz.TZDateTime.from(scheduledDate, tz.local),
+      notificationDetails: details,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       payload: payload?.toString(),
     );
@@ -583,7 +583,7 @@ class NotificationService {
 
   // Cancel notification
   Future<void> cancelNotification(int id) async {
-    await _localNotifications.cancel(id);
+    await _localNotifications.cancel(id: id);
   }
 
   // Cancel all notifications

@@ -1,7 +1,8 @@
 import 'dart:typed_data';
+import '../../utils/error_handler.dart';
 
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
+import '../../services/file_picker_facade.dart';
 
 import '../../models/podcast_models.dart';
 import '../../services/appwrite_admin_content_service.dart';
@@ -254,7 +255,7 @@ class _PodcastEpisodeFormDialogState extends State<PodcastEpisodeFormDialog> {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text('Error uploading episode: $e'),
+          content: Text('Error uploading episode: ${ErrorHandler.getUserFriendlyMessage(e)}'),
           backgroundColor: Colors.red,
         ),
       );

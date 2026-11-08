@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/error_handler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../utils/responsive_utils.dart';
@@ -656,7 +657,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error opening book: $e')),
+          SnackBar(content: Text('Error opening book: ${ErrorHandler.getUserFriendlyMessage(e)}')),
         );
       }
     }
@@ -674,7 +675,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error opening article: $e')),
+          SnackBar(content: Text('Error opening article: ${ErrorHandler.getUserFriendlyMessage(e)}')),
         );
       }
     }
@@ -701,7 +702,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error playing video: $e')),
+          SnackBar(content: Text('Error playing video: ${ErrorHandler.getUserFriendlyMessage(e)}')),
         );
       }
     }

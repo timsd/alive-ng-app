@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/error_handler.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -34,10 +35,43 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
   String _searchQuery = '';
   DiscipleshipLevel? _selectedLevel;
 
+  bool get _canAccessOfficerInbox {
+    final roleService = RoleAccessService.instance;
+    if (roleService.canAccessAdmin() ||
+        roleService.hasRole('coordinator') ||
+        roleService.hasRole('director') ||
+        roleService.hasRole('leader') ||
+        roleService.hasRole('bod')) {
+      return true;
+    }
+    final uid = _authService.currentUser?.uid;
+    if (uid != null && _officerAssignments.any((a) => a.officerId == uid)) {
+      return true;
+    }
+    return false;
+  }
+
+  int get _tabCount => _canAccessOfficerInbox ? 6 : 5;
+
+  void _updateTabController() {
+    final count = _tabCount;
+    if (_tabController.length != count) {
+      final oldIndex = _tabController.index;
+      _tabController.dispose();
+      _tabController = TabController(
+        length: count,
+        vsync: this,
+        initialIndex: oldIndex >= count ? count - 1 : oldIndex,
+      );
+      _tabController.addListener(() => setState(() {}));
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 6, vsync: this);
+    _tabController = TabController(length: _tabCount, vsync: this);
+    _tabController.addListener(() => setState(() {}));
     _loadData();
   }
 
@@ -119,11 +153,12 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
         _officerReports = officerReports;
         _isLoading = false;
       });
+      _updateTabController();
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading data: $e')),
+          SnackBar(content: Text('Error loading data: ${ErrorHandler.getUserFriendlyMessage(e)}')),
         );
       }
     }
@@ -168,13 +203,14 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
               unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
               isScrollable: true,
               tabAlignment: TabAlignment.start,
-              tabs: const [
-                Tab(text: 'Overview'),
-                Tab(text: 'Contacts'),
-                Tab(text: 'Activities'),
-                Tab(text: 'Prayer'),
-                Tab(text: 'Reports'),
-                Tab(text: 'Officer Inbox'),
+              tabs: [
+                const Tab(text: 'Overview'),
+                const Tab(text: 'Contacts'),
+                const Tab(text: 'Activities'),
+                const Tab(text: 'Prayer'),
+                const Tab(text: 'Reports'),
+                if (_canAccessOfficerInbox)
+                  const Tab(text: 'Officer Inbox'),
               ],
             ),
           ),
@@ -203,7 +239,8 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                     _buildActivitiesTab(),
                     _buildPrayerTab(),
                     _buildReportsTab(),
-                    _buildOfficerInboxTab(),
+                    if (_canAccessOfficerInbox)
+                      _buildOfficerInboxTab(),
                   ],
                 ),
     );
@@ -215,7 +252,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
   Widget _buildAddFab() {
     // Never show a "create" affordance to a signed-out visitor.
     if (_authService.currentUser == null) return const SizedBox.shrink();
-    if (_tabController.index == 4 || _tabController.index == 5) {
+    if (_tabController.index == 4 || (_canAccessOfficerInbox && _tabController.index == 5)) {
       return const SizedBox.shrink();
     }
     return FloatingActionButton(
@@ -759,31 +796,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                       ],
                       if (report.feedback != null && report.feedback!.isNotEmpty) ...[
                         const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.amber.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(Icons.rate_review_rounded, size: 16, color: Colors.amber),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    'Feedback from ${report.feedbackOfficerName ?? 'Officer'}:',
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Text(report.feedback!, style: theme.textTheme.bodyMedium),
-                            ],
-                          ),
-                        ),
+                        _buildFeedbackSection(report),
                       ],
                     ],
                   ),
@@ -979,18 +992,69 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                       ],
                       if (report.feedback != null && report.feedback!.isNotEmpty) ...[
                         const SizedBox(height: 10),
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.green.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
-                          ),
-                          child: Text(
-                            'Your Feedback: "${report.feedback}"',
-                            style: const TextStyle(fontSize: 13),
-                          ),
-                        ),
+                        Builder(builder: (context) {
+                          const marker = '\n\n--- Disciple Maker Response';
+                          String officerText = report.feedback!;
+                          String? discipleReply;
+                          String? replyDate;
+                          if (report.feedback!.contains(marker)) {
+                            final parts = report.feedback!.split(marker);
+                            officerText = parts[0].trim();
+                            if (parts.length > 1) {
+                              final after = parts[1].trim();
+                              final dash = after.split('---\n');
+                              if (dash.length > 1) {
+                                replyDate = dash[0].replaceAll(RegExp(r'[\(\)]'), '').trim();
+                                discipleReply = dash.sublist(1).join('---\n').trim();
+                              } else {
+                                discipleReply = after;
+                              }
+                            }
+                          }
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                                ),
+                                child: Text(
+                                  'Your Feedback: "$officerText"',
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                              ),
+                              if (discipleReply != null && discipleReply.isNotEmpty) ...[
+                                const SizedBox(height: 6),
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue.withValues(alpha: 0.08),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Icon(Icons.reply_rounded, size: 16, color: Colors.blue),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: Text(
+                                          'Disciple Maker Response${replyDate != null && replyDate.isNotEmpty ? ' ($replyDate)' : ''}: "$discipleReply"',
+                                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ],
+                          );
+                        }),
                       ],
                       const SizedBox(height: 12),
                       OutlinedButton.icon(
@@ -1545,7 +1609,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                 }
               } catch (e) {
                 if (dialogContext.mounted) {
-                  ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('Failed: $e')));
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('Failed: ${ErrorHandler.getUserFriendlyMessage(e)}')));
                 }
               }
             },
@@ -1624,7 +1688,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                   }
                 } catch (e) {
                   if (dialogContext.mounted) {
-                    ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('Failed: $e')));
+                    ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('Failed: ${ErrorHandler.getUserFriendlyMessage(e)}')));
                   }
                 }
               },
@@ -1808,7 +1872,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                   }
                 } catch (e) {
                   if (dialogContext.mounted) {
-                    ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('Request failed: $e')));
+                    ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('Request failed: ${ErrorHandler.getUserFriendlyMessage(e)}')));
                   }
                 }
               },
@@ -1986,7 +2050,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                         } catch (e) {
                           if (dialogContext.mounted) {
                             setDialogState(() => isSubmitting = false);
-                            ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('Failed: $e')));
+                            ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('Failed: ${ErrorHandler.getUserFriendlyMessage(e)}')));
                           }
                         }
                       },
@@ -1999,7 +2063,11 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
   }
 
   void _showSendFeedbackDialog(DiscipleshipReport report) {
-    final feedbackController = TextEditingController(text: report.feedback ?? '');
+    final raw = report.feedback ?? '';
+    const marker = '\n\n--- Disciple Maker Response';
+    final initialText =
+        raw.contains(marker) ? raw.split(marker)[0].trim() : raw;
+    final feedbackController = TextEditingController(text: initialText);
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -2036,9 +2104,14 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                 return;
               }
               try {
+                String effectiveFeedback = text;
+                if (raw.contains(marker)) {
+                  final replyPart = raw.substring(raw.indexOf(marker));
+                  effectiveFeedback = '$text$replyPart';
+                }
                 await _discipleshipService.submitReportFeedback(
                   reportId: report.id,
-                  feedback: text,
+                  feedback: effectiveFeedback,
                   officerName: _selectedOfficerOffice?.officerName ?? 'Officer',
                 );
                 if (dialogContext.mounted) {
@@ -2050,11 +2123,209 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                 }
               } catch (e) {
                 if (dialogContext.mounted) {
-                  ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('Failed: $e')));
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('Failed: ${ErrorHandler.getUserFriendlyMessage(e)}')));
                 }
               }
             },
             child: const Text('Send Feedback'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeedbackSection(DiscipleshipReport report) {
+    final theme = Theme.of(context);
+    final rawFeedback = report.feedback ?? '';
+    const marker = '\n\n--- Disciple Maker Response';
+
+    String officerText = rawFeedback;
+    String? userReplyText;
+    String? replyDate;
+
+    if (rawFeedback.contains(marker)) {
+      final parts = rawFeedback.split(marker);
+      officerText = parts[0].trim();
+      if (parts.length > 1) {
+        final afterMarker = parts[1].trim();
+        final splitDash = afterMarker.split('---\n');
+        if (splitDash.length > 1) {
+          replyDate = splitDash[0].replaceAll(RegExp(r'[\(\)]'), '').trim();
+          userReplyText = splitDash.sublist(1).join('---\n').trim();
+        } else {
+          userReplyText = afterMarker;
+        }
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.amber.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.rate_review_rounded, size: 16, color: Colors.amber),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Feedback from ${report.feedbackOfficerName ?? 'Officer'}:',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(officerText, style: theme.textTheme.bodyMedium),
+            ],
+          ),
+        ),
+        if (userReplyText != null && userReplyText.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: theme.colorScheme.primary.withValues(alpha: 0.25),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.reply_rounded,
+                      size: 16,
+                      color: theme.colorScheme.primary,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Your Response${replyDate != null && replyDate.isNotEmpty ? ' ($replyDate)' : ''}:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(userReplyText, style: theme.textTheme.bodyMedium),
+              ],
+            ),
+          ),
+        ],
+        const SizedBox(height: 4),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+            onPressed: () => _showUserReplyDialog(report, userReplyText),
+            icon: Icon(
+              userReplyText != null ? Icons.edit_note_rounded : Icons.reply_rounded,
+              size: 16,
+            ),
+            label: Text(
+              userReplyText != null ? 'Edit Your Response' : 'Reply to Feedback',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showUserReplyDialog(DiscipleshipReport report, String? currentReply) {
+    final controller = TextEditingController(text: currentReply ?? '');
+    final theme = Theme.of(context);
+    final officerName = report.feedbackOfficerName ?? 'Officer';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.reply_rounded, color: theme.colorScheme.primary),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Reply to $officerName',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Acknowledge feedback or provide an update on this report.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: controller,
+              maxLines: 4,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: 'Your Response',
+                hintText: 'e.g. Thank you! We have followed up on the active contacts and scheduled the next study.',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.icon(
+            onPressed: () async {
+              final text = controller.text.trim();
+              if (text.isEmpty) return;
+              Navigator.pop(ctx);
+              try {
+                final user = _authService.currentUser;
+                final userName = user?.displayName ?? 'Disciple Maker';
+                await _discipleshipService.submitUserReplyToFeedback(
+                  reportId: report.id,
+                  userReply: text,
+                  userName: userName,
+                );
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Response submitted successfully!')),
+                  );
+                }
+                await _loadData();
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(ErrorHandler.getUserFriendlyMessage(e))),
+                  );
+                }
+              }
+            },
+            icon: const Icon(Icons.send_rounded, size: 16),
+            label: const Text('Send Response'),
           ),
         ],
       ),
@@ -2165,7 +2436,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                   _loadData();
                 } catch (e) {
                   if (dialogContext.mounted) {
-                    ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('Could not add disciple: $e')));
+                    ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('Could not add disciple: ${ErrorHandler.getUserFriendlyMessage(e)}')));
                   }
                 }
               },
@@ -2189,7 +2460,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not open phone dialer: $e')),
+          SnackBar(content: Text('Could not open phone dialer: ${ErrorHandler.getUserFriendlyMessage(e)}')),
         );
       }
     }
@@ -2757,7 +3028,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                   if (dialogContext.mounted) Navigator.pop(dialogContext);
                   _loadData();
                 } catch (e) {
-                  if (dialogContext.mounted) ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('Save failed: $e')));
+                  if (dialogContext.mounted) ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('Save failed: ${ErrorHandler.getUserFriendlyMessage(e)}')));
                 }
               },
               child: const Text('Save'),
@@ -2809,7 +3080,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                   if (dialogContext.mounted) Navigator.pop(dialogContext);
                   _loadData();
                 } catch (e) {
-                  if (dialogContext.mounted) ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('Save failed: $e')));
+                  if (dialogContext.mounted) ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('Save failed: ${ErrorHandler.getUserFriendlyMessage(e)}')));
                 }
               },
               child: const Text('Save'),
@@ -2841,7 +3112,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                   if (dialogContext.mounted) Navigator.pop(dialogContext);
                   _loadData();
                 } catch (e) {
-                  if (dialogContext.mounted) ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('Update failed: $e')));
+                  if (dialogContext.mounted) ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('Update failed: ${ErrorHandler.getUserFriendlyMessage(e)}')));
                 }
               },
               child: const Text('Update'),
@@ -2955,7 +3226,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
                 } catch (e) {
                   if (dialogContext.mounted) {
                     ScaffoldMessenger.of(dialogContext).showSnackBar(
-                      SnackBar(content: Text('Save failed: $e')),
+                      SnackBar(content: Text('Save failed: ${ErrorHandler.getUserFriendlyMessage(e)}')),
                     );
                   }
                 }
