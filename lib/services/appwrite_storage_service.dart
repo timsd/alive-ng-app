@@ -1,4 +1,5 @@
 import 'package:appwrite/appwrite.dart';
+import 'package:appwrite/src/enums.dart';
 import 'package:flutter/foundation.dart';
 
 import '../config/appwrite_backend_config.dart';
@@ -163,7 +164,7 @@ class AppwriteStorageService {
         paramName: 'file',
         idParamName: 'fileId',
         headers: apiHeaders,
-        method: 'POST',
+        method: HttpMethod.post,
       );
 
       final dynamic data = res.data;
@@ -199,7 +200,7 @@ class AppwriteStorageService {
               'content-type': 'multipart/form-data',
               'accept': 'application/json',
             },
-            method: 'POST',
+            method: HttpMethod.post,
           );
           final dynamic data = res.data;
           String resolvedId = fileId;

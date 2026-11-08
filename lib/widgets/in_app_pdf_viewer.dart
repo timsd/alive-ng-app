@@ -172,7 +172,6 @@ class _InAppPdfViewerScreenState extends State<InAppPdfViewerScreen> {
               controller: _pdfController,
               params: PdfViewerParams(
                 backgroundColor: theme.scaffoldBackgroundColor,
-                enableTextSelection: false, // Prevents unauthorized text scraping
                 maxScale: 6.0,
                 minScale: 0.5,
                 margin: 8.0,
