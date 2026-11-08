@@ -83,7 +83,7 @@ async function prepareProductionJson() {
     PAYSTACK_WEBHOOK_URL: 'https://api.alivenigeria.org/webhooks/paystack',
     PAYSTACK_CALLBACK_URL: 'https://app.alivenigeria.org/payment/callback',
     RECAPTCHA_SITE_KEY: '6LcKstkrAAAAAMWfR5Ki5eBh1TdCLQD-e7ofMi4S',
-    GLITCHTIP_DSN: 'https://73d0ec10487c4a92b5ea6d5f2e97da8d@glitchtip.alivenigeria.org/1',
+    GLITCHTIP_DSN: '',
     GLITCHTIP_ENVIRONMENT: 'production',
     GLITCHTIP_RELEASE: 'alive-ng-app@2.0.7+15',
     GLITCHTIP_TRACES_SAMPLE_RATE: '0',

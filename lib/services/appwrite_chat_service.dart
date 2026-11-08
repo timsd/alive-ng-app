@@ -168,21 +168,27 @@ class AppwriteChatService extends ChangeNotifier {
       'databases.$databaseId.tables.$messagesCollectionId.rows',
     ]);
 
-    _subscription!.stream.listen((event) {
-      final isCreateEvent = event.events.any((name) =>
-          name.endsWith('.create') ||
-          name == 'databases.*.tables.*.rows.*.create');
-      if (!isCreateEvent) return;
+    _subscription!.stream.listen(
+      (event) {
+        final isCreateEvent = event.events.any((name) =>
+            name.endsWith('.create') ||
+            name == 'databases.*.tables.*.rows.*.create');
+        if (!isCreateEvent) return;
 
-      final document = _rowToDocument(models.Row.fromMap(event.payload));
-      final data = document.data;
-      final messageRoomId = data['channel_id'] ?? data['roomId'];
+        final document = _rowToDocument(models.Row.fromMap(event.payload));
+        final data = document.data;
+        final messageRoomId = data['channel_id'] ?? data['roomId'];
 
-      if (messageRoomId == roomId) {
-        _messageDocuments.add(document);
-        notifyListeners();
-      }
-    });
+        if (messageRoomId == roomId) {
+          _messageDocuments.add(document);
+          notifyListeners();
+        }
+      },
+      onError: (err) {
+        _logger.warning('Appwrite realtime room error: $err');
+      },
+      cancelOnError: false,
+    );
   }
 
   Stream<List<ChatMessage>> subscribeToChannelMessages(String channelId) {

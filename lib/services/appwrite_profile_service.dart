@@ -45,28 +45,35 @@ class AppwriteProfileService {
         'databases.$dbId.tables.$usersTable.rows',
         'databases.$dbId.collections.$usersTable.documents',
       ]);
-      _usersSubscription?.stream.listen((event) {
-        try {
-          if (event.events.any((e) => e.contains('.update') || e.contains('.create'))) {
-            final data = event.payload;
-            final userDoc = models.Row.fromMap(data);
-            final updatedProfile = userProfileFromDocument(
-              userDoc,
-              fallbackEmail: (userDoc.data['email'] ?? '').toString(),
-              fallbackFullName: (userDoc.data['fullName'] ?? userDoc.data['full_name'])?.toString(),
-            );
-            _userProfileUpdatedController.add(updatedProfile);
+      _usersSubscription?.stream.listen(
+        (event) {
+          try {
+            if (event.events.any((e) => e.contains('.update') || e.contains('.create'))) {
+              final data = event.payload;
+              final userDoc = models.Row.fromMap(data);
+              final updatedProfile = userProfileFromDocument(
+                userDoc,
+                fallbackEmail: (userDoc.data['email'] ?? '').toString(),
+                fallbackFullName: (userDoc.data['fullName'] ?? userDoc.data['full_name'])?.toString(),
+              );
+              _userProfileUpdatedController.add(updatedProfile);
 
-            // If this is the currently authenticated user, update role cache immediately!
-            final currentAuthUser = AuthService.instance.currentUser;
-            if (currentAuthUser != null && updatedProfile.id == currentAuthUser.uid) {
-              RoleAccessService.instance.notifyRoleChanged(updatedProfile);
+              // If this is the currently authenticated user, update role cache immediately!
+              final currentAuthUser = AuthService.instance.currentUser;
+              if (currentAuthUser != null && updatedProfile.id == currentAuthUser.uid) {
+                RoleAccessService.instance.notifyRoleChanged(updatedProfile);
+              }
             }
+          } catch (e) {
+            debugPrint('[AppwriteProfileService] Realtime sync notice: $e');
           }
-        } catch (e) {
-          debugPrint('[AppwriteProfileService] Realtime sync notice: $e');
-        }
-      });
+        },
+        onError: (err) {
+          // Gracefully absorb network dropouts and websocket reconnect notices
+          debugPrint('[AppwriteProfileService] Realtime subscription notice: $err');
+        },
+        cancelOnError: false,
+      );
     } catch (e) {
       debugPrint('[AppwriteProfileService] Realtime subscription init error: $e');
     }
