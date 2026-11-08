@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../services/offline_bible_service.dart';
 import '../../l10n/generated/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
@@ -31,6 +33,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    // Warm up offline Bible database as soon as user lands in the app
+    unawaited(OfflineBibleService().prewarmBundle());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Allow the home feed widgets to render and settle before presenting tour
       Future.delayed(const Duration(milliseconds: 800), () {

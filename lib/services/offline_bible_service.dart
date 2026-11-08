@@ -1205,11 +1205,22 @@ class OfflineBibleService {
     });
   }
 
+  static bool _hasPrewarmed = false;
+
   /// Pre-warm the Bible database in background so chapter loads are instant
   Future<void> prewarmBundle({String language = 'en', String version = 'KJV'}) async {
+    if (_hasPrewarmed) return;
+    _hasPrewarmed = true;
     try {
-      unawaited(_dbHelper.database.catchError((_) => null as dynamic));
-    } catch (_) {}
+      final db = await _dbHelper.database;
+      // Pre-warm version codes
+      await _dbHelper.getLoadedVersionCodes();
+      // Pre-cache primary book in background to initialize SQLite caches
+      await getBibleChapter(book: 'John', chapter: 1, version: version, language: language);
+      _logger.info('Offline Bible database loaded and pre-warmed successfully');
+    } catch (e) {
+      _logger.warning('Offline Bible pre-warm completed with note: $e');
+    }
   }
 
   // Remote Bible integrations intentionally removed for offline/local assets.

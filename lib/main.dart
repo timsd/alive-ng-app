@@ -32,6 +32,7 @@ import 'widgets/app_tour/app_tour_service.dart';
 export 'services/appwrite_client.dart';
 import 'services/appwrite_client.dart';
 import 'services/onboarding_service.dart';
+import 'services/offline_bible_service.dart';
 import 'utils/url_strategy.dart';
 
 void main() {
@@ -99,6 +100,9 @@ void main() {
     );
 
     Future(() async {
+      // Pre-warm offline Bible database as soon as the user enters the app
+      unawaited(OfflineBibleService().prewarmBundle());
+
       if (backendReady) {
         try {
           await AnalyticsService.instance.initialize();

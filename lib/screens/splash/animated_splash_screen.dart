@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../../services/offline_bible_service.dart';
 import 'alive_mark_data.dart';
 
 class AnimatedSplashScreen extends StatefulWidget {
@@ -24,6 +26,8 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
     super.initState();
     // Warm up the parsed paths & centers
     AliveMarkData.prewarm();
+    // Warm up offline Bible database as user gets into the app
+    unawaited(OfflineBibleService().prewarmBundle());
 
     // Total animation time plus a short 350ms hold
     const totalDuration = Duration(
