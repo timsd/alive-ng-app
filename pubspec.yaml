@@ -16,7 +16,7 @@ dependencies:
   font_awesome_flutter: ^11.0.0
   flutter_svg: ^2.2.4
   path_parsing: ^1.1.0
-  cached_network_image: ^4.0.6
+  cached_network_image: ^4.0.3
   image: ^4.12.0
   
   # State Management (using flutter_riverpod as primary)
