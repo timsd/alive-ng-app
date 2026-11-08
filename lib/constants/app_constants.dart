@@ -66,6 +66,7 @@ class AppConstants {
   // Support Routes
   static const String helpSupportRoute = '/help-support';
   static const String donationRoute = '/donation';
+  static const String paymentCallbackRoute = '/payment/callback';
   static const String giftInKindRoute = '/gift-in-kind';
   static const String nonMonetaryGiftRoute = '/non-monetary-gift';
 

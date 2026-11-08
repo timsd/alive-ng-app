@@ -72,6 +72,7 @@ import '../utils/navigation_keys.dart';
 import '../screens/admin/leadership_archive_screen.dart';
 import '../screens/admin/video_content_admin_screen.dart';
 import '../screens/profile/profile_completion_screen.dart';
+import '../screens/payment/payment_callback_screen.dart';
 
 const bool kMinimalRouterMode = false;
 
@@ -103,6 +104,8 @@ bool _isGuestAccessibleRoute(String path) {
     '/help-support',
     '/donation',
     '/donate',
+    '/payment/callback',
+    '/payment-callback',
     '/gift-in-kind',
     '/non-monetary-gift',
     '/admin-approve',
@@ -674,11 +677,41 @@ final routerProvider = Provider<GoRouter>((ref) {
           // Tracts Route & Alias
           GoRoute(
             path: AppConstants.tractsRoute,
-            builder: (context, state) => const TractsScreen(),
+            builder: (context, state) {
+              final tabParam = state.uri.queryParameters['tab'];
+              final initialTab =
+                  (tabParam == 'downloaded' || tabParam == '1') ? 1 : 0;
+              return TractsScreen(initialTabIndex: initialTab);
+            },
           ),
           GoRoute(
             path: AppConstants.booksTractsRoute,
-            redirect: (context, state) => AppConstants.tractsRoute,
+            redirect: (context, state) {
+              final tab = state.uri.queryParameters['tab'];
+              return tab != null
+                  ? '${AppConstants.tractsRoute}?tab=$tab'
+                  : AppConstants.tractsRoute;
+            },
+          ),
+
+          // Payment Callback Route & Alias
+          GoRoute(
+            path: AppConstants.paymentCallbackRoute,
+            builder: (context, state) {
+              final ref = state.uri.queryParameters['reference'] ??
+                  state.uri.queryParameters['trxref'];
+              return PaymentCallbackScreen(reference: ref);
+            },
+          ),
+          GoRoute(
+            path: '/payment-callback',
+            redirect: (context, state) {
+              final ref = state.uri.queryParameters['reference'] ??
+                  state.uri.queryParameters['trxref'];
+              return ref != null
+                  ? '${AppConstants.paymentCallbackRoute}?reference=$ref'
+                  : AppConstants.paymentCallbackRoute;
+            },
           ),
 
           // Kids Stories Route

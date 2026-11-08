@@ -1,3 +1,5 @@
+import 'package:http/http.dart' as http;
+import 'package:share_plus/share_plus.dart';
 import '../../widgets/in_app_pdf_viewer.dart';
 import '../../utils/error_handler.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -16,7 +18,12 @@ import '../../screens/materials/donation_dialog.dart';
 import '../../providers/language_provider.dart';
 
 class TractsScreen extends ConsumerStatefulWidget {
-  const TractsScreen({super.key});
+  final int initialTabIndex;
+
+  const TractsScreen({
+    super.key,
+    this.initialTabIndex = 0,
+  });
 
   @override
   ConsumerState<TractsScreen> createState() => _TractsScreenState();
@@ -35,7 +42,11 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(
+      length: 2,
+      vsync: this,
+      initialIndex: widget.initialTabIndex.clamp(0, 1),
+    );
     _tractsFuture = TractService().getAllTracts();
     _downloadsFuture = DonationService().getUserDownloads();
   }
@@ -253,17 +264,38 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
   }
 
   Widget _buildDownloadedTab(String Function(String) translate) {
-    return FutureBuilder<List<UserDownload>>(
-      future: _downloadsFuture,
+    return FutureBuilder<List<dynamic>>(
+      future: Future.wait([_downloadsFuture, _tractsFuture]),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
         if (snapshot.hasError) {
-          return const Center(child: Text('Failed to load downloads'));
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 48, color: Colors.orange),
+                const SizedBox(height: 12),
+                const Text('Failed to load downloads'),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _downloadsFuture = DonationService().getUserDownloads();
+                      _tractsFuture = TractService().getAllTracts();
+                    });
+                  },
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          );
         }
 
-        final downloads = snapshot.data ?? [];
+        final downloads = (snapshot.data?[0] as List<UserDownload>?) ?? [];
+        final allTracts = (snapshot.data?[1] as List<Tract>?) ?? [];
+
         if (downloads.isEmpty) {
           return Center(
             child: Column(
@@ -295,61 +327,142 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
           );
         }
 
+        // Deduplicate downloads by materialId / tract title (latest first)
+        final seenIds = <String>{};
+        final uniqueDownloads = <UserDownload>[];
+        for (final d in downloads) {
+          final key = d.materialId.isNotEmpty ? d.materialId : d.materialTitle;
+          if (!seenIds.contains(key)) {
+            seenIds.add(key);
+            uniqueDownloads.add(d);
+          }
+        }
+
+        // Map unique downloads to Tract objects with paired download records
+        final downloadedTractPairs = uniqueDownloads.map((download) {
+          final tract = _resolveTractForDownload(download, allTracts);
+          return (tract: tract, download: download);
+        }).toList();
+
+        // Apply search query and category filters
+        final query = _searchController.text.toLowerCase().trim();
+        final filteredPairs = downloadedTractPairs.where((pair) {
+          final t = pair.tract;
+          final matchesSearch = query.isEmpty ||
+              t.title.toLowerCase().contains(query) ||
+              t.description.toLowerCase().contains(query);
+          final matchesCategory = _selectedCategory == 'All' ||
+              t.category.tractDisplayName == _selectedCategory;
+          return matchesSearch && matchesCategory;
+        }).toList();
+
+        if (filteredPairs.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.search_off, size: 64),
+                const SizedBox(height: 12),
+                Text(translate('no_tracts_found')),
+              ],
+            ),
+          );
+        }
+
         return RefreshIndicator(
           onRefresh: () async {
             setState(() {
               _downloadsFuture = DonationService().getUserDownloads();
+              _tractsFuture = TractService().getAllTracts();
             });
           },
-          child: ListView.builder(
-            padding: context.responsivePadding,
-            itemCount: downloads.length,
-            itemBuilder: (context, index) {
-              return _buildRealDownloadedItem(context, downloads[index]);
-            },
-          ),
+          child: _viewMode == 'grid'
+              ? GridView.builder(
+                  padding: context.responsivePadding,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: ResponsiveUtils.getResponsiveValue(
+                      context: context,
+                      mobile: 2,
+                      tablet: 3,
+                      desktop: 4,
+                    ),
+                    childAspectRatio: ResponsiveUtils.getResponsiveValue(
+                      context: context,
+                      mobile: 0.48,
+                      tablet: 0.52,
+                      desktop: 0.56,
+                    ),
+                    crossAxisSpacing: ResponsiveUtils.getResponsiveValue(
+                        context: context,
+                        mobile: 12.0,
+                        tablet: 16.0,
+                        desktop: 20.0),
+                    mainAxisSpacing: ResponsiveUtils.getResponsiveValue(
+                        context: context,
+                        mobile: 14.0,
+                        tablet: 18.0,
+                        desktop: 20.0),
+                  ),
+                  itemCount: filteredPairs.length,
+                  itemBuilder: (context, index) {
+                    final item = filteredPairs[index];
+                    return _buildTractGridItem(
+                      context,
+                      item.tract,
+                      isDownloaded: true,
+                      download: item.download,
+                    );
+                  },
+                )
+              : ListView.builder(
+                  padding: context.responsivePadding,
+                  itemCount: filteredPairs.length,
+                  itemBuilder: (context, index) {
+                    final item = filteredPairs[index];
+                    return _buildTractListItem(
+                      context,
+                      item.tract,
+                      isDownloaded: true,
+                      download: item.download,
+                    );
+                  },
+                ),
         );
       },
     );
   }
 
-  Widget _buildRealDownloadedItem(BuildContext context, UserDownload download) {
-    return Card(
-      margin: EdgeInsets.only(
-        bottom: ResponsiveUtils.getResponsiveValue(
-            context: context, mobile: 10.0, tablet: 12.0, desktop: 14.0),
-      ),
-      child: ListTile(
-        leading: Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: Colors.green.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Center(
-            child: Icon(Icons.article_rounded, color: Colors.green, size: 24),
-          ),
-        ),
-        title: Text(
-          download.materialTitle,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Text(
+  Tract _resolveTractForDownload(UserDownload download, List<Tract> tracts) {
+    for (final t in tracts) {
+      if (t.id == download.materialId) return t;
+      if (t.title.trim().toLowerCase() ==
+          download.materialTitle.trim().toLowerCase()) {
+        return t;
+      }
+    }
+    // Also check lesson number matching (e.g. "Lesson 1" vs "bible_says_1")
+    final lessonMatch = RegExp(r'lesson\s*(\d+)', caseSensitive: false)
+        .firstMatch(download.materialTitle);
+    if (lessonMatch != null) {
+      final numStr = lessonMatch.group(1);
+      for (final t in tracts) {
+        if (t.id.contains('bible_says_$numStr') ||
+            t.id.contains('lesson_$numStr')) {
+          return t;
+        }
+      }
+    }
+
+    return Tract(
+      id: download.materialId,
+      title: download.materialTitle,
+      description:
           'Downloaded on ${download.downloadedAt.day}/${download.downloadedAt.month}/${download.downloadedAt.year}',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Colors.grey[600],
-              ),
-        ),
-        trailing: IconButton(
-          icon: const Icon(Icons.download_rounded),
-          tooltip: 'Re-download',
-          onPressed: () => _redownloadMaterial(download),
-        ),
-        onTap: () => _redownloadMaterial(download),
-      ),
+      category: 'Evangelism',
+      isDownloaded: true,
+      downloadUrl: download.downloadUrl,
+      author: 'Alive by the Truth',
+      pages: 6,
     );
   }
 
@@ -422,7 +535,12 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
     );
   }
 
-  Widget _buildTractGridItem(BuildContext context, Tract tract) {
+  Widget _buildTractGridItem(
+    BuildContext context,
+    Tract tract, {
+    bool isDownloaded = false,
+    UserDownload? download,
+  }) {
     return Card(
       elevation: 2,
       clipBehavior: Clip.antiAlias,
@@ -449,12 +567,14 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.65),
+                        color: isDownloaded
+                            ? const Color(0xFF1B5E20).withValues(alpha: 0.85)
+                            : Colors.black.withValues(alpha: 0.65),
                         borderRadius: BorderRadius.circular(6),
                       ),
-                      child: const Text(
-                        'TRACT',
-                        style: TextStyle(
+                      child: Text(
+                        isDownloaded ? 'DOWNLOADED' : 'TRACT',
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 9,
                           fontWeight: FontWeight.bold,
@@ -534,13 +654,22 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
                             ),
                             const SizedBox(width: 10),
                             IconButton(
-                              icon: const Icon(Icons.download, size: 18),
+                              icon: Icon(
+                                isDownloaded
+                                    ? Icons.share_rounded
+                                    : Icons.download,
+                                size: 18,
+                              ),
                               onPressed: () {
-                                _downloadTract(tract);
+                                if (isDownloaded) {
+                                  _shareDownloadedTract(tract, download);
+                                } else {
+                                  _downloadTract(tract);
+                                }
                               },
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
-                              tooltip: 'Download',
+                              tooltip: isDownloaded ? 'Share PDF' : 'Download',
                             ),
                           ],
                         ),
@@ -556,7 +685,12 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
     );
   }
 
-  Widget _buildTractListItem(BuildContext context, Tract tract) {
+  Widget _buildTractListItem(
+    BuildContext context,
+    Tract tract, {
+    bool isDownloaded = false,
+    UserDownload? download,
+  }) {
     return Card(
       margin: EdgeInsets.only(
           bottom: ResponsiveUtils.getResponsiveValue(
@@ -579,7 +713,7 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '${tract.author} • ${tract.pages} pages',
+              '${tract.author ?? 'Alive by the Truth'} • ${tract.pages ?? 6} pages',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context)
                         .colorScheme
@@ -619,16 +753,22 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
               tooltip: 'View PDF',
             ),
             IconButton(
-              icon: Icon(Icons.download,
-                  size: ResponsiveUtils.getResponsiveValue(
-                      context: context,
-                      mobile: 20.0,
-                      tablet: 24.0,
-                      desktop: 28.0)),
+              icon: Icon(
+                isDownloaded ? Icons.share_rounded : Icons.download,
+                size: ResponsiveUtils.getResponsiveValue(
+                    context: context,
+                    mobile: 20.0,
+                    tablet: 24.0,
+                    desktop: 28.0),
+              ),
               onPressed: () {
-                _downloadTract(tract);
+                if (isDownloaded) {
+                  _shareDownloadedTract(tract, download);
+                } else {
+                  _downloadTract(tract);
+                }
               },
-              tooltip: 'Download',
+              tooltip: isDownloaded ? 'Share PDF' : 'Download',
             ),
           ],
         ),
@@ -776,8 +916,16 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
       }
       downloadUrl ??= await _resolveTractPdfUrl(tract);
 
+      await donationService.recordDownload(material.id, material.title);
+      if (mounted) {
+        // Bring user directly to Downloaded tab
+        _tabController.animateTo(1);
+        setState(() {
+          _downloadsFuture = donationService.getUserDownloads();
+        });
+      }
+
       if (downloadUrl != null && await canLaunchUrl(Uri.parse(downloadUrl))) {
-        await donationService.recordDownload(material.id);
         await launchUrl(Uri.parse(downloadUrl),
             mode: LaunchMode.externalApplication);
         if (mounted) {
@@ -787,17 +935,92 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
               backgroundColor: Theme.of(context).colorScheme.tertiary,
             ),
           );
-          setState(() {
-            _downloadsFuture = donationService.getUserDownloads();
-          });
         }
       } else {
-        throw 'Could not launch downloaded tract';
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${tract.title} is now available in your Downloaded area.'),
+              backgroundColor: Theme.of(context).colorScheme.tertiary,
+            ),
+          );
+        }
       }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to download tract: ${ErrorHandler.getUserFriendlyMessage(e)}')),
+      );
+    }
+  }
+
+  Future<void> _shareDownloadedTract(Tract tract, UserDownload? download) async {
+    try {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Preparing ${tract.title} for sharing...'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+
+      String? downloadUrl = download?.downloadUrl?.trim();
+      if (downloadUrl == null || downloadUrl.isEmpty) {
+        downloadUrl = await _resolveTractPdfUrl(tract);
+      }
+      if (downloadUrl == null || downloadUrl.isEmpty) {
+        try {
+          downloadUrl = await DonationService().generateDownloadUrl(tract.id);
+        } catch (_) {}
+      }
+
+      final safeTitle = tract.title
+          .replaceAll(RegExp(r'[^\w\s\-]'), '')
+          .trim()
+          .replaceAll(RegExp(r'\s+'), '_');
+      final fileName = '${safeTitle.isNotEmpty ? safeTitle : "tract"}.pdf';
+
+      if (downloadUrl != null && downloadUrl.isNotEmpty) {
+        try {
+          final uri = Uri.parse(downloadUrl);
+          final res = await http.get(uri).timeout(const Duration(seconds: 15));
+          if (res.statusCode == 200 && res.bodyBytes.isNotEmpty) {
+            await SharePlus.instance.share(
+              ShareParams(
+                files: [
+                  XFile.fromData(
+                    res.bodyBytes,
+                    name: fileName,
+                    mimeType: 'application/pdf',
+                  ),
+                ],
+                text: 'Read "${tract.title}" - Gospel Tract from ALIVE Nigeria',
+                subject: tract.title,
+              ),
+            );
+            return;
+          }
+        } catch (downloadErr) {
+          debugPrint('Could not fetch bytes for sharing tract: $downloadErr');
+        }
+      }
+
+      // Fallback if bytes couldn't be fetched: share tract title and URL
+      await SharePlus.instance.share(
+        ShareParams(
+          text:
+              'Read "${tract.title}" - Gospel Tract from ALIVE Nigeria\n${downloadUrl ?? "https://app.alivenigeria.org/tracts"}',
+          subject: tract.title,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              'Could not share tract: ${ErrorHandler.getUserFriendlyMessage(e)}'),
+        ),
       );
     }
   }
