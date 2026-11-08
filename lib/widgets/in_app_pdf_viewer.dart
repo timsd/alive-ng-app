@@ -168,6 +168,7 @@ class _InAppPdfViewerScreenState extends State<InAppPdfViewerScreen> {
           else if (_bytes != null)
             PdfViewer.data(
               _bytes!,
+              sourceName: widget.title,
               controller: _pdfController,
               params: PdfViewerParams(
                 backgroundColor: theme.scaffoldBackgroundColor,
@@ -223,7 +224,7 @@ class _InAppPdfViewerScreenState extends State<InAppPdfViewerScreen> {
                       icon: const Icon(Icons.zoom_out_rounded, size: 20),
                       tooltip: 'Zoom Out',
                       onPressed: () {
-                        _pdfController.zoomUp(zoom: 0.8);
+                        _pdfController.zoomDown();
                       },
                     ),
                     const SizedBox(width: 8),
@@ -231,7 +232,12 @@ class _InAppPdfViewerScreenState extends State<InAppPdfViewerScreen> {
                       icon: const Icon(Icons.fit_screen_rounded, size: 20),
                       tooltip: 'Fit to Width',
                       onPressed: () {
-                        _pdfController.relayout();
+                        final m = _pdfController.calcMatrixFitWidthForPage(
+                          pageNumber: _currentPage,
+                        );
+                        if (m != null) {
+                          _pdfController.goTo(m);
+                        }
                       },
                     ),
                     const SizedBox(width: 8),
@@ -239,7 +245,7 @@ class _InAppPdfViewerScreenState extends State<InAppPdfViewerScreen> {
                       icon: const Icon(Icons.zoom_in_rounded, size: 20),
                       tooltip: 'Zoom In',
                       onPressed: () {
-                        _pdfController.zoomUp(zoom: 1.25);
+                        _pdfController.zoomUp();
                       },
                     ),
                   ],

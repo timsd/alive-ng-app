@@ -3,7 +3,11 @@
 FROM ghcr.io/cirruslabs/flutter:stable AS build
 
 RUN git config --global --add safe.directory /sdks/flutter \
-    && flutter upgrade --force
+    && cd /sdks/flutter \
+    && git remote set-branches origin '*' \
+    && git fetch --depth=1 origin stable \
+    && git checkout -B stable origin/stable \
+    && flutter doctor
 
 WORKDIR /app
 

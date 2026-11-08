@@ -114,6 +114,12 @@
 @import paystack_flutter_sdk;
 #endif
 
+#if __has_include(<pdfium_flutter/PDFiumFlutterPlugin.h>)
+#import <pdfium_flutter/PDFiumFlutterPlugin.h>
+#else
+@import pdfium_flutter;
+#endif
+
 #if __has_include(<permission_handler_apple/PermissionHandlerPlugin.h>)
 #import <permission_handler_apple/PermissionHandlerPlugin.h>
 #else
@@ -183,6 +189,7 @@
   [LocalAuthPlugin registerWithRegistrar:[registry registrarForPlugin:@"LocalAuthPlugin"]];
   [FPPPackageInfoPlusPlugin registerWithRegistrar:[registry registrarForPlugin:@"FPPPackageInfoPlusPlugin"]];
   [PaystackSDKPlugin registerWithRegistrar:[registry registrarForPlugin:@"PaystackSDKPlugin"]];
+  [PDFiumFlutterPlugin registerWithRegistrar:[registry registrarForPlugin:@"PDFiumFlutterPlugin"]];
   [PermissionHandlerPlugin registerWithRegistrar:[registry registrarForPlugin:@"PermissionHandlerPlugin"]];
   [SentryFlutterPlugin registerWithRegistrar:[registry registrarForPlugin:@"SentryFlutterPlugin"]];
   [FPPSharePlusPlugin registerWithRegistrar:[registry registrarForPlugin:@"FPPSharePlusPlugin"]];

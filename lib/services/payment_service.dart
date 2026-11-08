@@ -101,12 +101,14 @@ class PaymentResult {
   final String? reference;
   final String message;
   final bool initialized;
+  final bool cancelled;
 
   PaymentResult({
     required this.success,
     this.reference,
     required this.message,
     this.initialized = false,
+    this.cancelled = false,
   });
 
   /// Translates domain [PaymentResponse] to [PaymentResult].
@@ -116,6 +118,7 @@ class PaymentResult {
       reference: response.reference,
       message: response.message,
       initialized: response.isRedirectInitialized,
+      cancelled: response.status == PaymentStatus.cancelled,
     );
   }
 }

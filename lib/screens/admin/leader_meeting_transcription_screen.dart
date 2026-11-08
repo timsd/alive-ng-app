@@ -715,7 +715,7 @@ class _LeaderMeetingTranscriptionScreenState
   void _autoSummarizeFromTranscript() {
     // If input box has pending text that hasn't been submitted yet, commit it
     if (_inputController.text.trim().isNotEmpty) {
-      _addManualEntry();
+      _submitManualInput();
     }
 
     // Check if current session has no entries, decisions, actions, or notes

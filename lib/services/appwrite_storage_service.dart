@@ -163,7 +163,7 @@ class AppwriteStorageService {
         paramName: 'file',
         idParamName: 'fileId',
         headers: apiHeaders,
-        method: HttpMethod.post,
+        method: 'POST',
       );
 
       final dynamic data = res.data;
@@ -199,7 +199,7 @@ class AppwriteStorageService {
               'content-type': 'multipart/form-data',
               'accept': 'application/json',
             },
-            method: HttpMethod.post,
+            method: 'POST',
           );
           final dynamic data = res.data;
           String resolvedId = fileId;

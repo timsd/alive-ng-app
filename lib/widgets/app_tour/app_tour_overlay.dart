@@ -507,21 +507,19 @@ class _SpotlightPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final holeRadius = targetRadius * pulseScale;
 
-    // 1. Porter-Duff true penetration: cut out the hole cleanly with BlendMode.clear
-    // This penetrates the dark mask completely with zero residual darkness inside the circle
-    canvas.saveLayer(Rect.fromLTWH(0, 0, size.width, size.height), Paint());
+    // 1. Vector difference cutout: punches out the circle mathematically from the background rect.
+    // This avoids canvas.saveLayer() and BlendMode.clear which allocate full-screen GPU framebuffers
+    // on every animation frame and cause GPU VRAM flickering / multicolored TV static glitches on Android.
+    final backgroundPath = Path()
+      ..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
+    final holePath = Path()
+      ..addOval(Rect.fromCircle(center: targetCenter, radius: holeRadius));
+    final cutoutPath = Path.combine(PathOperation.difference, backgroundPath, holePath);
 
-    // Dark backdrop overlay mask
-    canvas.drawRect(
-      Rect.fromLTWH(0, 0, size.width, size.height),
+    canvas.drawPath(
+      cutoutPath,
       Paint()..color = const Color(0xEE070C14),
     );
-
-    // Punch out the crystal-clear spotlight hole
-    final clearPaint = Paint()..blendMode = BlendMode.clear;
-    canvas.drawCircle(targetCenter, holeRadius, clearPaint);
-
-    canvas.restore();
 
     // 2. Luminous penetrating spotlight beam inside the circle:
     // When the underlying icon or avatar is dark in dark mode or on dark surfaces,
