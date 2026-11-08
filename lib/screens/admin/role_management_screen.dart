@@ -582,8 +582,14 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
       ),
     );
 
-    // Admins can modify anyone except other admins (unless they're the same person)
-    if (currentUser.role == 'admin') {
+    final isCurrentSuperAdmin = AppwriteBackendConfig.isSuperAdminEmail(currentUser.email) ||
+        currentUser.role == 'super_admin' ||
+        currentUser.role == 'superadmin';
+    final isCurrentAdmin = isCurrentSuperAdmin || currentUser.role == 'admin';
+
+    // Super Admins can modify anyone; Admins can modify anyone except other admins (unless same person)
+    if (isCurrentSuperAdmin) return true;
+    if (isCurrentAdmin) {
       return user.id != currentUser.id || user.role != 'admin';
     }
 
@@ -729,8 +735,13 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
       ),
     );
 
-    if (currentUser.role == 'admin') {
-      return true; // Admins can assign any role
+    final isCurrentSuperAdmin = AppwriteBackendConfig.isSuperAdminEmail(currentUser.email) ||
+        currentUser.role == 'super_admin' ||
+        currentUser.role == 'superadmin';
+    final isCurrentAdmin = isCurrentSuperAdmin || currentUser.role == 'admin';
+
+    if (isCurrentAdmin) {
+      return true; // Admins and Super Admins can assign any role
     }
 
     if (currentUser.role == 'leader') {

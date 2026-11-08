@@ -398,6 +398,7 @@ class MainNavigationScreen extends ConsumerWidget {
       orElse: () => false,
     );
     final userRole = roleService.getCurrentUserRole();
+    final isAdmin = roleService.canAccessAdmin() || roleService.isSuperAdmin();
     final isGuest = !isAuthenticated || userRole == 'guest';
     const crossAxisCount = 4;
 
@@ -521,7 +522,33 @@ class MainNavigationScreen extends ConsumerWidget {
                     'icon': Icons.shield_rounded,
                     'label': 'bod_trustees',
                     'route': AppConstants.bodTrusteesRoute,
-                    'allowedRoles': ['admin', 'bod', 'trustee']
+                    'allowedRoles': ['admin', 'super_admin', 'bod', 'trustee']
+                  },
+                  {
+                    'icon': Icons.groups_2_rounded,
+                    'label': 'discipleship',
+                    'route': AppConstants.discipleshipTrackerRoute,
+                  },
+                  {
+                    'icon': Icons.history_edu_rounded,
+                    'label': 'leadership_archive',
+                    'customLabel': 'Leadership',
+                    'route': AppConstants.leadershipArchiveRoute,
+                    'allowedRoles': ['admin', 'super_admin', 'bod', 'trustee', 'director']
+                  },
+                  {
+                    'icon': Icons.folder_shared_rounded,
+                    'label': 'meeting_files',
+                    'customLabel': 'Meeting Files',
+                    'route': AppConstants.meetingFileSharingRoute,
+                    'allowedRoles': ['admin', 'super_admin', 'bod', 'trustee', 'director']
+                  },
+                  {
+                    'icon': Icons.record_voice_over_rounded,
+                    'label': 'scribe',
+                    'customLabel': 'ALIVE Scribe',
+                    'route': AppConstants.scribeRoute,
+                    'allowedRoles': ['admin', 'super_admin', 'bod', 'trustee', 'director', 'coordinator']
                   },
                 ],
                 {
@@ -538,7 +565,28 @@ class MainNavigationScreen extends ConsumerWidget {
                   'icon': Icons.admin_panel_settings_rounded,
                   'label': 'admin',
                   'route': AppConstants.adminRoute,
-                  'roleOnly': true
+                  'adminOnly': true,
+                },
+                {
+                  'icon': Icons.how_to_reg_rounded,
+                  'label': 'user_approval',
+                  'customLabel': 'Approvals',
+                  'route': AppConstants.adminApprovalRoute,
+                  'adminOnly': true,
+                },
+                {
+                  'icon': Icons.manage_accounts_rounded,
+                  'label': 'role_management',
+                  'customLabel': 'Roles',
+                  'route': AppConstants.roleManagementRoute,
+                  'adminOnly': true,
+                },
+                {
+                  'icon': Icons.receipt_long_rounded,
+                  'label': 'donations_report',
+                  'customLabel': 'Donations',
+                  'route': AppConstants.adminDonationsReportRoute,
+                  'allowedRoles': ['admin', 'super_admin', 'bod', 'trustee', 'treasurer'],
                 },
                 {
                   'icon': Icons.auto_stories_rounded,
@@ -630,15 +678,19 @@ class MainNavigationScreen extends ConsumerWidget {
                 if (item['authOnly'] == true && !isAuthenticated) {
                   return false;
                 }
-                if (item['roleOnly'] == true && userRole != 'admin') {
+                if ((item['roleOnly'] == true || item['adminOnly'] == true) && !isAdmin) {
                   return false;
                 }
                 if (item['allowedRoles'] is List) {
-                  final allowed = (item['allowedRoles'] as List)
-                      .map((e) => e.toString())
-                      .toList();
-                  if (userRole == null || !allowed.contains(userRole)) {
-                    return false;
+                  // Super Admins and Admins automatically inherit full access across all leadership and admin routes
+                  if (!isAdmin) {
+                    final allowed = (item['allowedRoles'] as List)
+                        .map((e) => e.toString().toLowerCase())
+                        .toList();
+                    final normalizedRole = userRole?.toLowerCase();
+                    if (normalizedRole == null || !allowed.contains(normalizedRole)) {
+                      return false;
+                    }
                   }
                 }
                 return true;
@@ -655,12 +707,14 @@ class MainNavigationScreen extends ConsumerWidget {
                   itemCount: visibleItems.length,
                   itemBuilder: (context, index) {
                     final item = visibleItems[index];
+                    final String labelText = (item['customLabel'] as String?) ??
+                        translate(item['label'] as String);
                     return _buildMoreItem(
                       context,
                       item['icon'] as IconData,
-                      translate(item['label'] as String),
+                      labelText,
                       item['route'] as String?,
-                      roleOnly: item['roleOnly'] == true,
+                      roleOnly: item['roleOnly'] == true || item['adminOnly'] == true,
                       onTap: item['onTap'] as VoidCallback?,
                     );
                   });
