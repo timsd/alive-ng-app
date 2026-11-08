@@ -1237,38 +1237,38 @@ class _BiometricToggleState extends State<_BiometricToggle> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     if (kIsWeb) {
       return ListTile(
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Theme.of(context)
-                .colorScheme
-                .surfaceContainerHighest
-                .withValues(alpha: 0.5),
+            color: const Color(0xFF10B981).withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(
+          child: const Icon(
             Icons.fingerprint_rounded,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            color: Color(0xFF10B981),
             size: 22,
           ),
         ),
-        title: const Text(
+        title: Text(
           'Biometric Sign-In',
-          style: TextStyle(fontWeight: FontWeight.w500),
+          style: theme.textTheme.bodyLarge?.copyWith(
+            fontWeight: FontWeight.w500,
+          ),
         ),
-        subtitle: const Text(
-          'Available on Android & iOS mobile devices with fingerprint or Face ID',
-          style: TextStyle(fontSize: 12),
+        subtitle: Text(
+          'Sign in with fingerprint or Face ID',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+          ),
         ),
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: Theme.of(context)
-                .colorScheme
-                .surfaceContainerHighest
-                .withValues(alpha: 0.6),
+            color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
             borderRadius: BorderRadius.circular(6),
           ),
           child: Text(
@@ -1276,7 +1276,7 @@ class _BiometricToggleState extends State<_BiometricToggle> {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w500,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
         ),
@@ -1298,33 +1298,31 @@ class _BiometricToggleState extends State<_BiometricToggle> {
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Theme.of(context)
-                .colorScheme
-                .surfaceContainerHighest
-                .withValues(alpha: 0.5),
+            color: const Color(0xFF10B981).withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(
+          child: const Icon(
             Icons.fingerprint_rounded,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            color: Color(0xFF10B981),
             size: 22,
           ),
         ),
-        title: const Text(
+        title: Text(
           'Biometric Sign-In',
-          style: TextStyle(fontWeight: FontWeight.w500),
+          style: theme.textTheme.bodyLarge?.copyWith(
+            fontWeight: FontWeight.w500,
+          ),
         ),
-        subtitle: const Text(
-          'No biometric sensor or fingerprint/face unlock configured on this device',
-          style: TextStyle(fontSize: 12),
+        subtitle: Text(
+          'Sign in with fingerprint or Face ID',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+          ),
         ),
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: Theme.of(context)
-                .colorScheme
-                .surfaceContainerHighest
-                .withValues(alpha: 0.6),
+            color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
             borderRadius: BorderRadius.circular(6),
           ),
           child: Text(
@@ -1332,7 +1330,7 @@ class _BiometricToggleState extends State<_BiometricToggle> {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w500,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
         ),
@@ -1362,14 +1360,19 @@ class _BiometricToggleState extends State<_BiometricToggle> {
           size: 22,
         ),
       ),
-      title: const Text(
+      title: Text(
         'Biometric Sign-In',
-        style: TextStyle(fontWeight: FontWeight.w500),
+        style: theme.textTheme.bodyLarge?.copyWith(
+          fontWeight: FontWeight.w500,
+        ),
       ),
       subtitle: Text(
         _enabled
             ? 'Active${_boundEmail != null ? " ($_boundEmail)" : ""} — scan fingerprint or face on login'
-            : 'Use your fingerprint or face ID to sign in quickly',
+            : 'Sign in with fingerprint or Face ID',
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+        ),
       ),
       value: _enabled,
       onChanged: _busy ? null : _setEnabled,
