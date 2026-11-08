@@ -25,6 +25,13 @@ subprojects {
         resolutionStrategy.force("org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.0")
         resolutionStrategy.force("org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.1.0")
     }
+    afterEvaluate {
+        if (plugins.hasPlugin("com.android.application") || plugins.hasPlugin("com.android.library")) {
+            configure<com.android.build.gradle.BaseExtension> {
+                ndkVersion = "28.2.13676358"
+            }
+        }
+    }
 }
 
 tasks.register<Delete>("clean") {
