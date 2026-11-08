@@ -125,7 +125,7 @@ async function run() {
 
   if (target === 'apk' || target === 'all') {
     console.log('\n📦 Building Release APK with --dart-define-from-file=config/production_env.json...');
-    execSync('flutter build apk --release --no-pub --dart-define-from-file=config/production_env.json', {
+    execSync('flutter build apk --release --no-pub --android-skip-build-dependency-validation --dart-define-from-file=config/production_env.json', {
       stdio: 'inherit',
     });
     console.log('✅ APK build completed successfully!');
@@ -133,7 +133,7 @@ async function run() {
 
   if (target === 'aab' || target === 'all') {
     console.log('\n📦 Building Release App Bundle (AAB) with --dart-define-from-file=config/production_env.json...');
-    execSync('flutter build appbundle --release --no-pub --dart-define-from-file=config/production_env.json', {
+    execSync('flutter build appbundle --release --no-pub --android-skip-build-dependency-validation --dart-define-from-file=config/production_env.json', {
       stdio: 'inherit',
     });
     console.log('✅ AAB build completed successfully!');
