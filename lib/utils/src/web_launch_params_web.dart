@@ -32,15 +32,25 @@ String? getInitialRoute() {
   }
 }
 
+String? _inMemoryPostAuthRedirect;
+
 String? getPostAuthRedirect() {
   try {
-    return web.window.sessionStorage.getItem('post_auth_redirect');
+    return web.window.sessionStorage.getItem('post_auth_redirect') ?? _inMemoryPostAuthRedirect;
   } catch (_) {
-    return null;
+    return _inMemoryPostAuthRedirect;
   }
 }
 
+void setPostAuthRedirect(String route) {
+  _inMemoryPostAuthRedirect = route;
+  try {
+    web.window.sessionStorage.setItem('post_auth_redirect', route);
+  } catch (_) {}
+}
+
 void clearPostAuthRedirect() {
+  _inMemoryPostAuthRedirect = null;
   try {
     web.window.sessionStorage.removeItem('post_auth_redirect');
   } catch (_) {}

@@ -14,11 +14,19 @@ String? getInitialRoute() {
   return null;
 }
 
+String? _stubPostAuthRedirect;
+
 String? getPostAuthRedirect() {
-  return null;
+  return _stubPostAuthRedirect;
 }
 
-void clearPostAuthRedirect() {}
+void setPostAuthRedirect(String route) {
+  _stubPostAuthRedirect = route;
+}
+
+void clearPostAuthRedirect() {
+  _stubPostAuthRedirect = null;
+}
 
 /// Clears Appwrite's `cookieFallback` key from localStorage.
 /// No-op on non-web platforms.

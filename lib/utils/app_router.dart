@@ -114,6 +114,8 @@ bool _isGuestAccessibleRoute(String path) {
     '/non-monetary-gift',
     '/admin-approve',
     '/reset-password',
+    '/meet',
+    '/conference',
   ];
 
   return guestAccessibleRoutes.contains(path) || guestAccessibleRoutes.contains(normalized);
@@ -244,16 +246,24 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (!isAuthenticated &&
           !isAuthRoute &&
           state.uri.path != AppConstants.resetPasswordRoute) {
-        debugPrint('Unauthenticated; redirect to auth');
+        final target = state.uri.toString();
+        if (target.isNotEmpty &&
+            target != '/' &&
+            target != AppConstants.authRoute &&
+            target != AppConstants.splashRoute) {
+          setPostAuthRedirect(target);
+        }
+        debugPrint('Unauthenticated; saved target: $target; redirect to auth');
         return AppConstants.authRoute;
       }
 
-      // If authenticated and on auth route, redirect to home
+      // If authenticated and on auth route, redirect to target or home
       if (isAuthenticated && isAuthRoute) {
-        if (postAuthRedirect != null) {
+        final pendingRedirect = getPostAuthRedirect();
+        if (pendingRedirect != null && pendingRedirect.isNotEmpty) {
           clearPostAuthRedirect();
-          debugPrint('Post-auth redirect: $postAuthRedirect');
-          return postAuthRedirect;
+          debugPrint('Post-auth redirect to: $pendingRedirect');
+          return pendingRedirect;
         }
         if (selectedProjectId != null) {
           debugPrint('Selected project present; redirect to donation');

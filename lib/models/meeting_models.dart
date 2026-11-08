@@ -421,3 +421,44 @@ class MeetingSession {
       'isBreakoutActive: $isBreakoutActive, activeBreakoutRoomId: $activeBreakoutRoomId, '
       'participants: ${participants.length}, error: $error)';
 }
+
+/// A real-time chat message exchanged inside an active video conference session.
+class InMeetingChatMessage {
+  final String id;
+  final String senderId;
+  final String senderName;
+  final String? senderAvatar;
+  final String text;
+  final DateTime timestamp;
+  final bool isLocal;
+
+  const InMeetingChatMessage({
+    this.id = '',
+    required this.senderId,
+    required this.senderName,
+    this.senderAvatar,
+    required this.text,
+    required this.timestamp,
+    this.isLocal = false,
+  });
+
+  factory InMeetingChatMessage.fromJson(Map<String, dynamic> json, {bool isLocal = false}) {
+    DateTime ts;
+    try {
+      ts = json['timestamp'] != null
+          ? DateTime.parse(json['timestamp'].toString())
+          : DateTime.now();
+    } catch (_) {
+      ts = DateTime.now();
+    }
+    return InMeetingChatMessage(
+      id: json['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+      senderId: json['senderId']?.toString() ?? '',
+      senderName: json['senderName']?.toString() ?? 'Attendee',
+      senderAvatar: json['senderAvatar']?.toString(),
+      text: json['text']?.toString() ?? '',
+      timestamp: ts,
+      isLocal: isLocal,
+    );
+  }
+}
