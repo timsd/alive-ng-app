@@ -2,6 +2,9 @@
 
 FROM ghcr.io/cirruslabs/flutter:stable AS build
 
+RUN git config --global --add safe.directory /sdks/flutter \
+    && flutter upgrade --force
+
 WORKDIR /app
 
 # Public Flutter web configuration only. Do not put server/API secrets here.
