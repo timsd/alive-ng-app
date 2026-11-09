@@ -30,37 +30,54 @@ class AdminNotificationService {
     try {
       _logger.info(
           'Processing admin notification for new user: ${userProfile.email} (role: ${userProfile.role}, status: ${userProfile.approvalStatus})');
-      final recipients = ['alivenigeria2011@gmail.com']; // Super admin inbox
 
       final bool requiresApproval =
           !userProfile.isApproved && userProfile.approvalStatus == 'pending';
 
-      String emailSubject;
-      String emailBody;
-      String? approvalUrl;
+      // Auto-approved regular members/guests do NOT require admin approval.
+      // Exclude sending email notifications to alivenigeria2011@gmail.com or other admins for auto-approved users.
+      if (!requiresApproval) {
+        _logger.info(
+            'Member ${userProfile.email} is auto-approved. Skipping notification email dispatch.');
 
-      if (requiresApproval) {
-        emailSubject =
-            'Action Required: New ${userProfile.requestedRole ?? userProfile.role} Registration - ALIVE Nigeria';
-
-        if (userProfile.id.isNotEmpty) {
-          final token = await ApprovalLinkService.instance
-              .generateToken(userId: userProfile.id);
-          approvalUrl = ApprovalLinkService.instance.buildApprovalUrl(
-            baseUrl: 'https://app.alivenigeria.org',
-            userId: userProfile.id,
-            token: token,
-          );
-        }
-
-        emailBody =
-            '${_buildApprovalEmailBody(userProfile)}${approvalUrl != null ? '\n\nDirect Approval Link:\n$approvalUrl' : '\n\nPlease review this registration in the ALIVE Nigeria Admin Dashboard.'}';
-      } else {
-        // Informational notification for regular auto-approved member or guest
-        emailSubject =
-            'New Member Joined: ${userProfile.fullName ?? userProfile.email} - ALIVE Nigeria';
-        emailBody = _buildNewMemberInfoEmailBody(userProfile);
+        await _storeNotificationRecord(
+          type: 'new_member_registered',
+          userId: userProfile.id,
+          details: {
+            'email': userProfile.email,
+            'full_name': userProfile.fullName,
+            'role': userProfile.role,
+            'requires_approval': false,
+            'status': userProfile.approvalStatus,
+            'success': true,
+            'recipients': <String>[],
+          },
+        );
+        return true;
       }
+
+      // Resolve admin recipients for registrations that explicitly require manual approval
+      final recipients = AppwriteBackendConfig.superAdminEmails.toList();
+      if (recipients.isEmpty) {
+        recipients.add(AppwriteBackendConfig.supportEmail);
+      }
+
+      final emailSubject =
+          'Action Required: New ${userProfile.requestedRole ?? userProfile.role} Registration - ALIVE Nigeria';
+
+      String? approvalUrl;
+      if (userProfile.id.isNotEmpty) {
+        final token = await ApprovalLinkService.instance
+            .generateToken(userId: userProfile.id);
+        approvalUrl = ApprovalLinkService.instance.buildApprovalUrl(
+          baseUrl: 'https://app.alivenigeria.org',
+          userId: userProfile.id,
+          token: token,
+        );
+      }
+
+      final emailBody =
+          '${_buildApprovalEmailBody(userProfile)}${approvalUrl != null ? '\n\nDirect Approval Link:\n$approvalUrl' : '\n\nPlease review this registration in the ALIVE Nigeria Admin Dashboard.'}';
 
       bool anySuccess = false;
       for (final to in recipients) {
@@ -285,7 +302,10 @@ class AdminNotificationService {
       const subject = 'User Approval Status Changed - ALIVE Nigeria App';
       final body =
           _buildApprovalChangeEmailBody(userProfile, newStatus, reason);
-      final recipients = ['alivenigeria2011@gmail.com']; // Fallback super admin
+      final recipients = AppwriteBackendConfig.superAdminEmails.toList();
+      if (recipients.isEmpty) {
+        recipients.add(AppwriteBackendConfig.supportEmail);
+      }
 
       bool anySuccess = false;
       for (final to in recipients) {

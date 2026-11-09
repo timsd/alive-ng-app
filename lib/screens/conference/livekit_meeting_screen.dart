@@ -50,7 +50,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   bool _isBroadcasting = false;
   bool _notifyMembers = true;
   String _targetAudience = 'general';
-  String _selectedTargetChapter = 'Ibadan';
+  String _selectedTargetChapter = ChapterConstants.availableChapters.first;
   bool _requireHostApproval = false;
   bool _isLocalHost = false;
   bool _isLocalCoHost = false;
@@ -72,6 +72,14 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   @override
   void initState() {
     super.initState();
+    // Resolve default notification target chapter from user's assigned chapter if present
+    final profile = ref.read(currentUserProfileProvider).value;
+    final userChapter = profile?.chapterId?.trim() ?? profile?.localChapter?.trim();
+    if (userChapter != null &&
+        userChapter.isNotEmpty &&
+        ChapterConstants.availableChapters.contains(userChapter)) {
+      _selectedTargetChapter = userChapter;
+    }
     _roomController = TextEditingController(text: _initialRoomName());
     _loadAvailableChannels();
     // Auto-prompt media permissions upfront (Google Meet flow)
