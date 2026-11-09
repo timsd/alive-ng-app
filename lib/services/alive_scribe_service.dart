@@ -144,6 +144,21 @@ class AliveScribeService {
   final stt.SpeechToText _speechToText = stt.SpeechToText();
   bool _isSttInitialized = false;
   bool _isListening = false;
+  bool _isRestarting = false;
+  String _lastRecognizedWords = '';
+
+  /// The best available STT locale resolved at init (en-NG → en-GB → en-US), matching Bible Game.
+  String _resolvedSttLocale = 'en-NG';
+
+  /// Ordered locale fallback chain: Nigerian English → British English → US English.
+  static const _localeFallbackChain = [
+    'en-NG',
+    'en_NG',
+    'en-GB',
+    'en_GB',
+    'en-US',
+    'en_US',
+  ];
 
   final List<ScribeTranscriptPacket> _transcript = [];
   final List<ScribeDecision> _decisions = [];
@@ -210,14 +225,48 @@ class AliveScribeService {
     if (_isSttInitialized) return true;
     try {
       _isSttInitialized = await _speechToText.initialize(
-        onError: (err) => debugPrint('[AliveScribeService] STT error: $err'),
+        onError: (err) {
+          debugPrint('[AliveScribeService] STT error: $err');
+          _commitPendingSpeech();
+          if (_isListening) {
+            _restartListening();
+          }
+        },
         onStatus: (status) {
-          if (status == 'notListening' && _isListening) {
-            // Auto restart speech recognition if microphone is still open
+          debugPrint('[AliveScribeService] STT status: $status');
+          if ((status == 'notListening' || status == 'done') && _isListening) {
+            _commitPendingSpeech();
             _restartListening();
           }
         },
       );
+
+      // Resolve the best available STT locale from the fallback chain (matching Bible Game accuracy: en-NG → en-GB → en-US)
+      if (_isSttInitialized) {
+        try {
+          final locales = await _speechToText.locales();
+          final availableIds = locales.map((l) => l.localeId).toSet();
+          for (final candidate in _localeFallbackChain) {
+            if (availableIds.contains(candidate)) {
+              _resolvedSttLocale = candidate;
+              debugPrint('[AliveScribeService] STT locale resolved: $candidate');
+              break;
+            }
+          }
+          if (!_localeFallbackChain.contains(_resolvedSttLocale) ||
+              !availableIds.contains(_resolvedSttLocale)) {
+            final fallback = availableIds.firstWhere(
+              (id) => id.startsWith('en'),
+              orElse: () => 'en-US',
+            );
+            _resolvedSttLocale = fallback;
+            debugPrint('[AliveScribeService] STT locale fallback to: $fallback');
+          }
+        } catch (e) {
+          debugPrint('[AliveScribeService] Error resolving STT locales: $e');
+        }
+      }
+
       return _isSttInitialized;
     } catch (e) {
       debugPrint('[AliveScribeService] STT init failed: $e');
@@ -232,6 +281,7 @@ class AliveScribeService {
     }
 
     _isListening = true;
+    _lastRecognizedWords = '';
     _startSttSession();
   }
 
@@ -239,44 +289,61 @@ class AliveScribeService {
     if (!_isListening) return;
 
     try {
+      _lastRecognizedWords = '';
       _speechToText.listen(
         onResult: (result) {
           final rawText = result.recognizedWords.trim();
           if (rawText.isEmpty) return;
-
-          // Pass 1: Disfluency & Filler Stripping
-          final cleanText = cleanDisfluencies(rawText);
-          if (cleanText.isEmpty) return;
-
-          final packet = ScribeTranscriptPacket(
-            id: DateTime.now().microsecondsSinceEpoch.toString(),
-            speakerId: localUserId,
-            speakerName: localUserName,
-            speakerRole: localUserRole,
-            text: cleanText,
-            timestamp: DateTime.now(),
-            isFinal: result.finalResult,
-          );
+          _lastRecognizedWords = rawText;
 
           if (result.finalResult) {
-            _handleIncomingPacket(packet);
-            _broadcastPacket(packet);
+            _commitPendingSpeech();
           }
         },
-        listenFor: const Duration(seconds: 30),
-        pauseFor: const Duration(seconds: 3),
-        partialResults: true,
-        cancelOnError: false,
-        listenMode: stt.ListenMode.dictation,
+        listenOptions: stt.SpeechListenOptions(
+          partialResults: true,
+          cancelOnError: false,
+          listenMode: stt.ListenMode.dictation,
+          listenFor: const Duration(seconds: 60),
+          pauseFor: const Duration(seconds: 4),
+          localeId: _resolvedSttLocale,
+        ),
       );
     } catch (e) {
       debugPrint('[AliveScribeService] Start STT session error: $e');
+      if (_isListening) {
+        _restartListening();
+      }
     }
   }
 
+  void _commitPendingSpeech() {
+    final pending = _lastRecognizedWords.trim();
+    if (pending.isEmpty) return;
+    _lastRecognizedWords = '';
+
+    final cleanText = cleanDisfluencies(pending);
+    if (cleanText.isEmpty) return;
+
+    final packet = ScribeTranscriptPacket(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      speakerId: localUserId,
+      speakerName: localUserName,
+      speakerRole: localUserRole,
+      text: cleanText,
+      timestamp: DateTime.now(),
+      isFinal: true,
+    );
+
+    _handleIncomingPacket(packet);
+    _broadcastPacket(packet);
+  }
+
   void _restartListening() {
-    if (!_isListening) return;
+    if (!_isListening || _isRestarting) return;
+    _isRestarting = true;
     Future.delayed(const Duration(milliseconds: 300), () {
+      _isRestarting = false;
       if (_isListening) {
         _startSttSession();
       }
@@ -285,6 +352,7 @@ class AliveScribeService {
 
   Future<void> stopListening() async {
     _isListening = false;
+    _commitPendingSpeech();
     try {
       await _speechToText.stop();
     } catch (_) {}
@@ -304,19 +372,13 @@ class AliveScribeService {
   static String cleanDisfluencies(String input) {
     if (input.trim().isEmpty) return '';
 
-    // Remove fillers with word boundaries
+    // Only clean pure speech hesitation noises (um, uh, er, ah, hmm), preserving all actual vocabulary
     final fillerRegex = RegExp(
-      r'\b(um|uh|er|ah|you know|i mean|like|actually|basically|sort of|kind of|you see)\b',
+      r'\b(um|uh|er|ah|hmm|erm)\b',
       caseSensitive: false,
     );
 
     var cleaned = input.replaceAll(fillerRegex, ' ');
-
-    // Remove repeated stuttered words (e.g. "we we" -> "we", "the the" -> "the")
-    final stutterRegex = RegExp(r'\b([a-zA-Z]+)\s+\1\b', caseSensitive: false);
-    while (stutterRegex.hasMatch(cleaned)) {
-      cleaned = cleaned.replaceAllMapped(stutterRegex, (m) => m.group(1)!);
-    }
 
     // Collapse multiple spaces
     cleaned = cleaned.replaceAll(RegExp(r'\s+'), ' ').trim();
